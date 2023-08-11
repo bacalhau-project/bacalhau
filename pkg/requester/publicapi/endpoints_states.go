@@ -7,7 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type stateRequest struct {
@@ -41,7 +41,7 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, stateReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
-	ctx = tracing.AddJobIDToBaggage(ctx, stateReq.JobID)
+	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
 	js, err := getJobStateFromRequest(ctx, s, stateReq)
 	if err != nil {

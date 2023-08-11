@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type BufferingEnvelope struct {
@@ -67,7 +67,7 @@ func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T]
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)
@@ -164,7 +164,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 
 // flush the buffer to the delegate pubsub
 func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context, envelope BufferingEnvelope, oldestMessageTime time.Time) {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
 	defer span.End()
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",
@@ -184,7 +184,7 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
 				func() {
-					ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
+					ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
 					defer span.End()
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()

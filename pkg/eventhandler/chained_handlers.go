@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // An event handler implementation that chains multiple event handlers, and accepts a context provider
@@ -52,8 +52,8 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 
 		// TODO: #829 Is checking environment every event the most efficient way
 		// to do this? Could we just shunt logs to different places?
-		switch environment.GetEnvironment() {
-		case environment.EnvironmentDev, environment.EnvironmentTest:
+		switch system.GetEnvironment() {
+		case system.EnvironmentDev, system.EnvironmentTest:
 			logMsg = log.Ctx(ctx).Trace()
 		default:
 			logMsg = log.Ctx(ctx).Info()

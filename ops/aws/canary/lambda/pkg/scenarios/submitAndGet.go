@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func SubmitAndGet(ctx context.Context) error {
@@ -19,7 +19,7 @@ func SubmitAndGet(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := getClient()
 
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	j, err := getSampleDockerJob()
 	if err != nil {
 		return err

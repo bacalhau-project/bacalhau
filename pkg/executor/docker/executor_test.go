@@ -23,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 const (
@@ -36,7 +35,7 @@ type ExecutorTestSuite struct {
 	suite.Suite
 	executor *Executor
 	server   *http.Server
-	cm       *cleanup.CleanupManager
+	cm       *system.CleanupManager
 }
 
 func TestExecutorTestSuite(t *testing.T) {
@@ -47,7 +46,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 	docker.MustHaveDocker(s.T())
 
 	var err error
-	s.cm = cleanup.NewCleanupManager()
+	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() {
 		s.cm.Cleanup(context.Background())
 	})

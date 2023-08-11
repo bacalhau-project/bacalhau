@@ -22,8 +22,8 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/waiter"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -38,7 +38,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	system.SetupBacalhauRepoForTesting(suite.T())
+	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 type SeenJobRecord struct {
@@ -157,7 +157,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		// wait for all the jobs to have completed
 		// we can check the seenJobs because that is easier
-		waiter := &waiter.FunctionWaiter{
+		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
 			MaxAttempts: 30,
 			Delay:       time.Second * 1,

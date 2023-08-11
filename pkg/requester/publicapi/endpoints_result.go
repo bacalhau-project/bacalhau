@@ -9,7 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type resultsRequest struct {
@@ -44,8 +44,8 @@ func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request)
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, stateReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 
-	ctx = tracing.AddJobIDToBaggage(ctx, stateReq.JobID)
-	tracing.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
+	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
+	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
 	stateResolver := jobstore.GetStateResolver(s.jobStore)
 	results, err := stateResolver.GetResults(ctx, stateReq.JobID)

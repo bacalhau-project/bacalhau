@@ -24,7 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -38,7 +38,7 @@ type StorageProvider struct {
 	client   *retryablehttp.Client
 }
 
-func NewStorage(cm *cleanup.CleanupManager) (*StorageProvider, error) {
+func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {

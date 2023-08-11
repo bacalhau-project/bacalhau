@@ -26,8 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
-	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"github.com/rs/zerolog/log"
@@ -238,7 +236,7 @@ func GetPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	if OS.PeerConnect == DefaultPeerConnect {
 		peersStrings = []string{}
 	} else if OS.PeerConnect == "env" {
-		peersStrings = system.Envs[environment.GetEnvironment()].BootstrapAddresses
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
@@ -538,7 +536,7 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	return addresses[0]
 }
 
-func IpfsClient(ctx context.Context, OS *ServeOptions, cm *cleanup.CleanupManager) (ipfs.Client, error) {
+func IpfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {
 	if OS.IPFSConnect == "" {
 		// Connect to the public IPFS nodes by default
 		newNode := ipfs.NewNode

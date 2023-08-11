@@ -10,15 +10,14 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type BaseEndpointParams struct {
@@ -73,7 +72,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
 		// job lifecycle spans go in their own, dedicated trace
 		trace.WithNewRoot(),
 		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces

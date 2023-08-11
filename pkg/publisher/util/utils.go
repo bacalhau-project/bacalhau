@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 /* TODO(forrest): Fix me(!):
@@ -30,7 +30,7 @@ Issue: https://github.com/bacalhau-project/bacalhau/issues/2555
 
 func NewIPFSPublishers(
 	ctx context.Context,
-	cm *cleanup.CleanupManager,
+	cm *system.CleanupManager,
 	cl ipfsClient.Client,
 	estuaryAPIKey string,
 ) (publisher.PublisherProvider, error) {
@@ -72,7 +72,7 @@ func NewIPFSPublishers(
 	}), nil
 }
 
-func configureS3Publisher(cm *cleanup.CleanupManager) (*s3.Publisher, error) {
+func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func configureS3Publisher(cm *cleanup.CleanupManager) (*s3.Publisher, error) {
 
 func NewNoopPublishers(
 	_ context.Context,
-	_ *cleanup.CleanupManager,
+	_ *system.CleanupManager,
 	config noop.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisherWithConfig(config)

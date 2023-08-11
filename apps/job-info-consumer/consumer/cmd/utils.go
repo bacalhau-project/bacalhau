@@ -4,11 +4,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
-
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func getCommandLineExecutable() string {
@@ -31,7 +30,7 @@ func getPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	if peerConnect == "none" {
 		peersStrings = []string{}
 	} else if peerConnect == "" {
-		peersStrings = system.Envs[environment.EnvironmentProd].BootstrapAddresses
+		peersStrings = system.Envs[system.EnvironmentProd].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type AllProviderFetcher func(ctx context.Context) ([]storage.Storage, error)
@@ -19,7 +19,7 @@ type ComboStorageProvider struct {
 }
 
 func NewStorage(
-	_ *cleanup.CleanupManager,
+	_ *system.CleanupManager,
 	allFetcher AllProviderFetcher,
 	readFetcher ReadProviderFetcher,
 	writeFetcher WriteProviderFetcher,

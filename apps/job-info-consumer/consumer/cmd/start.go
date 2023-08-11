@@ -11,8 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/apps/job-info-consumer/consumer/pkg"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
@@ -92,7 +91,7 @@ func newStartCmd() *cobra.Command {
 
 func start(cmd *cobra.Command, options *StartOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup(cmd.Context())
 	ctx := cmd.Context()
@@ -101,7 +100,7 @@ func start(cmd *cobra.Command, options *StartOptions) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	ctx, rootSpan := tracing.NewRootSpan(ctx, tracing.GetTracer(), "bacalhau.consumer")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "bacalhau.consumer")
 	defer rootSpan.End()
 
 	peers, err := getPeers(options.peerConnect)

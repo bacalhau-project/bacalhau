@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package tracing
+package system
 
 import (
 	"context"

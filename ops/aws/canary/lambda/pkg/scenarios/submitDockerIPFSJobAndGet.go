@@ -11,14 +11,14 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // This test submits a job that uses the Docker executor with an IPFS input.
 func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	client := getClient()
 
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	j, err := getSampleDockerIPFSJob()
 	if err != nil {
 		return err

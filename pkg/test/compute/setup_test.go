@@ -23,17 +23,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	repo2 "github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	repo2 "github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type ComputeSuite struct {
 	suite.Suite
 	node             *node.Compute
 	config           node.ComputeConfig
-	cm               *cleanup.CleanupManager
+	cm               *system.CleanupManager
 	executor         *noop_executor.NoopExecutor
 	publisher        *noop_publisher.NoopPublisher
 	stateResolver    resolver.StateResolver
@@ -53,7 +53,7 @@ func (s *ComputeSuite) SetupSuite() {
 func (s *ComputeSuite) SetupTest() {
 	var err error
 	ctx := context.Background()
-	s.cm = cleanup.NewCleanupManager()
+	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
 	s.executor = noop_executor.NewNoopExecutor()

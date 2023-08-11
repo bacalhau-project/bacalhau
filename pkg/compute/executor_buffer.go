@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type bufferTask struct {
@@ -123,9 +123,9 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	ctx = tracing.AddJobIDToBaggage(ctx, task.execution.Job.Metadata.ID)
-	ctx = tracing.AddNodeIDToBaggage(ctx, s.ID)
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
+	ctx = system.AddJobIDToBaggage(ctx, task.execution.Job.Metadata.ID)
+	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
 	timeout := task.execution.Job.Spec.GetTimeout()
@@ -197,9 +197,9 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 	// TODO: Enqueue cancel tasks
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = tracing.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
-		ctx = tracing.AddNodeIDToBaggage(ctx, s.ID)
-		ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
+		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
+		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
 
 		err := s.delegateService.Cancel(ctx, execution)

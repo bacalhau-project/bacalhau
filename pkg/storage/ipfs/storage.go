@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 // a storage driver runs the downloads content
@@ -26,7 +25,7 @@ type StorageProvider struct {
 	ipfsClient ipfs.Client
 }
 
-func NewStorage(cm *cleanup.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
+func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {

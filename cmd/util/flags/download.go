@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
 )
 
 func NewDefaultDownloaderSettings() *DownloaderSettings {
@@ -23,7 +22,7 @@ func NewDefaultDownloaderSettings() *DownloaderSettings {
 	if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
 		settings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
 	} else {
-		settings.IPFSSwarmAddrs = strings.Join(system.Envs[environment.GetEnvironment()].IPFSSwarmAddresses, ",")
+		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 	return settings
 }

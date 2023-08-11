@@ -10,20 +10,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
-func setupNodeForTest(t *testing.T, cm *cleanup.CleanupManager) *APIClient {
+func setupNodeForTest(t *testing.T, cm *system.CleanupManager) *APIClient {
 	// blank config should result in using defaults in node.Node constructor
 	return setupNodeForTestWithConfig(t, cm, APIServerConfig{})
 }
 
-func setupNodeForTestWithConfig(t *testing.T, cm *cleanup.CleanupManager, serverConfig APIServerConfig) *APIClient {
-	system.SetupBacalhauRepoForTesting(t)
+func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverConfig APIServerConfig) *APIClient {
+	setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	libp2pPort, err := freeport.GetFreePort()

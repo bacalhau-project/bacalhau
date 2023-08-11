@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -32,7 +32,7 @@ func TestDevstackSubmitSuite(t *testing.T) {
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	system.SetupBacalhauRepoForTesting(suite.T())
+	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {

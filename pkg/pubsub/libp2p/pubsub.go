@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type PubSubParams struct {
@@ -52,7 +52,7 @@ func NewPubSub[T any](params PubSubParams) (*PubSub[T], error) {
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/pubsub/libp2p.publish.publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub/libp2p.publish.publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)

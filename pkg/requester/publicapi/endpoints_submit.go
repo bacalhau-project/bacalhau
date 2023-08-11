@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type submitRequest = publicapi.SignedRequest[model.JobCreatePayload] //nolint:unused // Swagger wants this
@@ -54,8 +54,8 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 
 	j, err := s.requester.SubmitJob(ctx, jobCreatePayload)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
-	ctx = tracing.AddJobIDToBaggage(ctx, j.Metadata.ID)
-	tracing.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
+	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)

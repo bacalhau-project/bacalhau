@@ -1,7 +1,5 @@
 package system
 
-import "github.com/bacalhau-project/bacalhau/pkg/system/environment"
-
 // EnvironmentData captures data for a particular environment.
 type EnvironmentData struct {
 	// APIHost is the hostname of an environment's public API servers.
@@ -19,8 +17,8 @@ type EnvironmentData struct {
 }
 
 // Envs is a list of environment data for various environments:
-var Envs = map[environment.Environment]EnvironmentData{
-	environment.EnvironmentProd: {
+var Envs = map[Environment]EnvironmentData{
+	EnvironmentProd: {
 		APIPort: 1234,
 		APIHost: "bootstrap.production.bacalhau.org",
 		BootstrapAddresses: []string{
@@ -34,7 +32,7 @@ var Envs = map[environment.Environment]EnvironmentData{
 			"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
 		},
 	},
-	environment.EnvironmentDev: {
+	EnvironmentDev: {
 		APIPort: 1234,
 		APIHost: "bootstrap.development.bacalhau.org",
 		BootstrapAddresses: []string{
@@ -46,7 +44,7 @@ var Envs = map[environment.Environment]EnvironmentData{
 			"/ip4/35.228.112.50/tcp/1235/p2p/QmQM1yRXyKGAfFtYpPSy5grHSief3fic6YjLEWQYpmiGTM",
 		},
 	},
-	environment.EnvironmentStaging: {
+	EnvironmentStaging: {
 		APIPort: 1234,
 		APIHost: "bootstrap.staging.bacalhau.org",
 		BootstrapAddresses: []string{
@@ -60,7 +58,7 @@ var Envs = map[environment.Environment]EnvironmentData{
 			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
 		},
 	},
-	environment.EnvironmentTest: {
+	EnvironmentTest: {
 		APIPort: 9999,
 		APIHost: "test",
 		BootstrapAddresses: []string{

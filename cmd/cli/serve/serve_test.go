@@ -23,8 +23,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -48,7 +48,7 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.SetupBacalhauRepoForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -56,7 +56,7 @@ func (s *ServeSuite) SetupTest() {
 		cancel()
 	})
 
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	s.T().Cleanup(func() {
 		cm.Cleanup(s.ctx)
 	})
@@ -185,7 +185,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 }
 
 func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	OS := serve.NewServeOptions()
 
 	client, err := serve.IpfsClient(s.ctx, OS, cm)

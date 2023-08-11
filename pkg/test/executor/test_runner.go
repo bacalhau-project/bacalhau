@@ -12,7 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
@@ -72,7 +72,7 @@ func RunTestCase(
 
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
-	runCommandCleanup := cleanup.NewCleanupManager()
+	runCommandCleanup := system.NewCleanupManager()
 	execution := store.NewExecution("test-execution", job, "res-requesterID", model.ResourceUsageData{})
 	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, *execution, resultsDirectory, runCommandCleanup)
 	require.NoError(t, err)

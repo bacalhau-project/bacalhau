@@ -6,7 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
 )
 
@@ -23,7 +23,7 @@ func Wrap(delegate publisher.Publisher) publisher.Publisher {
 }
 
 func (t *tracingPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
 	defer span.End()
 
 	return t.delegate.IsInstalled(ctx)
@@ -36,7 +36,7 @@ func (t *tracingPublisher) ValidateJob(ctx context.Context, j model.Job) error {
 func (t *tracingPublisher) PublishResult(
 	ctx context.Context, executionID string, j model.Job, resultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
 	defer span.End()
 
 	return t.delegate.PublishResult(ctx, executionID, j, resultPath)

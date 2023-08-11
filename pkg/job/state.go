@@ -8,8 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
-	"github.com/bacalhau-project/bacalhau/pkg/system/waiter"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type JobLoader func(ctx context.Context, id string) (model.Job, error)
@@ -60,7 +59,7 @@ func (resolver *StateResolver) GetExecutions(ctx context.Context, jobID string) 
 }
 
 func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/job.StateResolver.StateSummary")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.StateSummary")
 	defer span.End()
 
 	jobState, err := resolver.stateLoader(ctx, jobID)
@@ -101,7 +100,7 @@ func (resolver *StateResolver) WaitWithOptions(
 	options WaitOptions,
 	checkJobStateFunctions ...CheckStatesFunction,
 ) error {
-	waiter := &waiter.FunctionWaiter{
+	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
 		MaxAttempts: resolver.maxWaitAttempts,
 		Delay:       resolver.waitDelay,
@@ -150,7 +149,7 @@ func (resolver *StateResolver) WaitWithOptions(
 // this is an auto wait where we auto calculate how many execution
 // states we expect to see and we use that to pass to WaitForExecutionStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID string) error {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/job.StateResolver.WaitUntilComplete")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.WaitUntilComplete")
 	defer span.End()
 
 	return resolver.Wait(
@@ -161,7 +160,7 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]model.PublishedResult, error) {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/job.StateResolver.GetResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.GetResults")
 	defer span.End()
 
 	results := []model.PublishedResult{}

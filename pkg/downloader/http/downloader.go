@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -34,7 +34,7 @@ func (httpDownloader *Downloader) DescribeResult(ctx context.Context, result mod
 }
 
 func (httpDownloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
 	defer span.End()
 
 	err := func() error {

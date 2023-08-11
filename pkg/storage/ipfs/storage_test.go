@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // how many bytes more does ipfs report the file than the actual content?
@@ -21,7 +21,7 @@ const IpfsMetadataSize uint64 = 8
 
 func getIpfsStorage(t *testing.T) *StorageProvider {
 	ctx := context.Background()
-	cm := cleanup.NewCleanupManager()
+	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(context.Background())
 	})

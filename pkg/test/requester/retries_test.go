@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -42,7 +42,7 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	system.SetupBacalhauRepoForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	nodeOverrides := []node.NodeConfig{
 		{

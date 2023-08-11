@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
@@ -30,7 +30,7 @@ func TestDownloaderSuite(t *testing.T) {
 
 type DownloaderSuite struct {
 	suite.Suite
-	cm               *cleanup.CleanupManager
+	cm               *system.CleanupManager
 	client           ipfs.Client
 	outputDir        string
 	downloadSettings *model.DownloaderSettings
@@ -39,12 +39,12 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
-	system.SetupBacalhauRepoForTesting(ds.T())
+	setup.SetupBacalhauRepoForTesting(ds.T())
 }
 
 // Before each test
 func (ds *DownloaderSuite) SetupTest() {
-	ds.cm = cleanup.NewCleanupManager()
+	ds.cm = system.NewCleanupManager()
 	ds.T().Cleanup(func() {
 		ds.cm.Cleanup(context.Background())
 	})

@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package cleanup
+package system
 
 import (
 	"context"

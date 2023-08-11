@@ -30,7 +30,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
@@ -48,7 +47,7 @@ type Requester struct {
 //nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
-	cleanupManager *cleanup.CleanupManager,
+	cleanupManager *system.CleanupManager,
 	host host.Host,
 	apiServer *publicapi.APIServer,
 	nodeConfig RequesterConfig,

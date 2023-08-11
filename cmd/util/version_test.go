@@ -12,7 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -53,7 +53,7 @@ func (s *UtilsSuite) TestSafeRegex() {
 }
 
 func (s *UtilsSuite) TestVersionCheck() {
-	system.SetupBacalhauRepoForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	// OK: Normal operation
 	err := EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{

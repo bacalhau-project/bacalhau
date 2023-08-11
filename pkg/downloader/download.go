@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // specialFiles - i.e. anything that is not a volume
@@ -43,7 +43,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 	downloadProvider DownloaderProvider,
 	settings *model.DownloaderSettings,
 ) error {
-	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/downloader.DownloadResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadResults")
 	defer span.End()
 
 	if len(publishedResults) == 0 {

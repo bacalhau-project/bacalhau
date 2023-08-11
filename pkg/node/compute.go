@@ -22,7 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
@@ -44,7 +44,7 @@ type Compute struct {
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
-	cleanupManager *cleanup.CleanupManager,
+	cleanupManager *system.CleanupManager,
 	host host.Host,
 	apiServer *publicapi.APIServer,
 	config ComputeConfig,

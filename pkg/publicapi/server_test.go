@@ -15,7 +15,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 )
 
@@ -24,7 +24,7 @@ import (
 // returns the current testing context
 type ServerSuite struct {
 	suite.Suite
-	cleanupManager *cleanup.CleanupManager
+	cleanupManager *system.CleanupManager
 	client         *APIClient
 }
 
@@ -37,7 +37,7 @@ func TestServerSuite(t *testing.T) {
 // Before each test
 func (s *ServerSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.cleanupManager = cleanup.NewCleanupManager()
+	s.cleanupManager = system.NewCleanupManager()
 	s.client = setupNodeForTest(s.T(), s.cleanupManager)
 }
 

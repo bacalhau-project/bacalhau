@@ -9,7 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/joho/godotenv"
@@ -36,7 +36,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
 	defer cancel()
 
-	if _, err := system.SetupBacalhauRepo(); err != nil {
+	if _, err := setup.SetupBacalhauRepo(); err != nil {
 		fmt.Fprintf(os.Stderr, "Faild to initalize bacalhau repo: %s", err)
 		os.Exit(1)
 	}

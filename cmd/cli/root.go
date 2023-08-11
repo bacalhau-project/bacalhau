@@ -28,8 +28,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
-	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -43,7 +41,7 @@ func NewRootCmd() *cobra.Command {
 
 			logger.ConfigureLogging(util.LoggingMode)
 
-			cm := cleanup.NewCleanupManager()
+			cm := system.NewCleanupManager()
 			cm.RegisterCallback(telemetry.Cleanup)
 			ctx = context.WithValue(ctx, util.SystemManagerKey, cm)
 
@@ -53,7 +51,7 @@ func NewRootCmd() *cobra.Command {
 				names = append([]string{root.Name()}, names...)
 			}
 			name := fmt.Sprintf("bacalhau.%s", strings.Join(names, "."))
-			ctx, span := tracing.NewRootSpan(ctx, tracing.GetTracer(), name)
+			ctx, span := system.NewRootSpan(ctx, system.GetTracer(), name)
 			ctx = context.WithValue(ctx, spanKey, span)
 
 			cmd.SetContext(ctx)
@@ -62,7 +60,7 @@ func NewRootCmd() *cobra.Command {
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
 			ctx.Value(spanKey).(trace.Span).End()
-			ctx.Value(util.SystemManagerKey).(*cleanup.CleanupManager).Cleanup(ctx)
+			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
 	defaultRepo, err := defaultRepo()
