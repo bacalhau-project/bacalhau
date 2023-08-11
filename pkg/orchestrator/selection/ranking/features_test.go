@@ -40,14 +40,10 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceURLDownload}},
 		},
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("estuary")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{Publishers: []model.Publisher{model.PublisherEstuary}},
-		},
-		{
 			PeerInfo: peer.AddrInfo{ID: peer.ID("combo")},
 			ComputeNodeInfo: &model.ComputeNodeInfo{
 				ExecutionEngines: []model.Engine{model.EngineDocker, model.EngineWasm},
-				Publishers:       []model.Publisher{model.PublisherIpfs, model.PublisherEstuary},
+				Publishers:       []model.Publisher{model.PublisherIpfs},
 				StorageSources:   []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceURLDownload},
 			},
 		},
@@ -104,16 +100,6 @@ func (s *FeatureNodeRankerSuite) TestEngineNoop() {
 	assertEquals(s.T(), ranks, "docker", -1)
 	assertEquals(s.T(), ranks, "wasm", -1)
 	assertEquals(s.T(), ranks, "combo", -1)
-	assertEquals(s.T(), ranks, "unknown", 0)
-}
-
-func (s *FeatureNodeRankerSuite) TestPublisherEstuary() {
-	job := model.Job{Spec: model.Spec{PublisherSpec: model.PublisherSpec{Type: model.PublisherEstuary}}}
-	ranks, err := s.PublisherNodeRanker.RankNodes(context.Background(), job, s.Nodes())
-	s.NoError(err)
-	s.Equal(len(s.Nodes()), len(ranks))
-	assertEquals(s.T(), ranks, "estuary", 10)
-	assertEquals(s.T(), ranks, "combo", 10)
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 

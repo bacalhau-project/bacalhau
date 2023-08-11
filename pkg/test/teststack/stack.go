@@ -29,7 +29,6 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		NumberOfBadRequesterActors: 0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		DisabledFeatures:           node.FeatureConfig{},

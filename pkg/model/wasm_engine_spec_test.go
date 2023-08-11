@@ -25,7 +25,7 @@ func TestWasmEngineBuilder(t *testing.T) {
 	},
 		{
 			Name:          "w4b",
-			StorageSource: StorageSourceEstuary,
+			StorageSource: StorageSourceIPFS,
 		}}
 
 	spec := builder.WithEntrypoint(entrypoint).

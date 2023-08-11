@@ -28,7 +28,6 @@ import (
 type StandardStorageProviderOptions struct {
 	API                   ipfs.Client
 	DownloadPath          string
-	EstuaryAPIKey         string
 	AllowListedLocalPaths []string
 }
 
@@ -51,7 +50,7 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage, options.EstuaryAPIKey)
+	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage)
 	if err != nil {
 		return nil, err
 	}

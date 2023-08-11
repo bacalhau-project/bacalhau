@@ -81,7 +81,7 @@ func (s *StorageSuite) TestNewStorageProvider() {
 	if err != nil {
 		panic(err)
 	}
-	sp, err := NewStorage(cm, storage, "")
+	sp, err := NewStorage(cm, storage)
 	require.NoError(s.T(), err, "failed to create storage provider")
 
 	// is dir writable?
@@ -105,7 +105,7 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	if err != nil {
 		panic(err)
 	}
-	sp, err := NewStorage(cm, storage, "")
+	sp, err := NewStorage(cm, storage)
 	require.NoError(s.T(), err, "failed to create storage provider")
 
 	spec := model.StorageSpec{
@@ -151,7 +151,7 @@ func (s *StorageSuite) TestCloneRepo() {
 			if err != nil {
 				panic(err)
 			}
-			sp, err := NewStorage(cm, storage, "")
+			sp, err := NewStorage(cm, storage)
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}

@@ -145,7 +145,7 @@ def test_sign_for_client():
         client_id=get_client_id(),
         spec=Spec(
             engine="Docker",
-            publisher=PublisherSpec(type="Estuary"),
+            publisher=PublisherSpec(type="IPFS"),
             docker=JobSpecDocker(
                 image="ubuntu",
                 entrypoint=["date"],

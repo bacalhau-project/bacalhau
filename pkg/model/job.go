@@ -75,7 +75,7 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
 			PublisherSpec: PublisherSpec{
-				Type: PublisherEstuary,
+				Type: PublisherIpfs,
 			},
 			Deal: Deal{
 				Concurrency: 1,
