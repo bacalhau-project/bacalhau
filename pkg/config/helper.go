@@ -3,9 +3,6 @@ package config
 import (
 	"fmt"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/viper"
 )
 
 func KeyAsEnvVar(key string) string {
@@ -14,6 +11,16 @@ func KeyAsEnvVar(key string) string {
 	)
 }
 
-func GetConfigForKey(key string, cfg interface{}) error {
-	return viper.UnmarshalKey(key, &cfg, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc()))
+// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
+// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
+// nested sub-keys are correctly populated into the cfg structure.
+//
+// Parameters:
+//   - key: The configuration key to retrieve values for.
+//   - cfg: The structure into which the configuration values will be unmarshaled.
+//
+// Returns:
+//   - An error if any occurred during unmarshaling; otherwise, nil.
+func ForKey(key string, cfg interface{}) error {
+	return unmarshalCompositeKey(key, cfg)
 }

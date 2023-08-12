@@ -13,24 +13,35 @@ import (
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
-func SetViperDefaults(config BacalhauConfig) error {
-	setDefaults(config)
+func SetViperDefaults(config types.BacalhauConfig) error {
+	types.SetDefaults(config)
 	return nil
 }
 
-const configType = "toml"
+const configType = "yaml"
 const configName = "config"
 
 const environmentVariablePrefix = "BACALHAU"
 
 var environmentVariableReplace = strings.NewReplacer(".", "_")
+
+func Get() (types.BacalhauConfig, error) {
+	var out types.BacalhauConfig
+	if err := viper.Unmarshal(&out, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	return out, nil
+}
 
 func InitConfig(configPath string) error {
 	// configure viper.
@@ -61,12 +72,12 @@ func InitConfig(configPath string) error {
 	}
 
 	// TODO bit of a shoe horn.
-	viper.SetDefault(NodeUserUserKeyPath, userKeyPath)
-	viper.SetDefault(NodeUserLibp2pKeyPath, libp2pKeyPath)
-	viper.SetDefault(NodeExecutorPluginPath, pluginPath)
-	viper.SetDefault(NodeComputeStoragePath, storagePath)
-	viper.SetDefault(NodeMetricsEventTracerPath, filepath.Join(configPath, "bacalhau-event-tracer.json"))
-	viper.SetDefault(NodeMetricsLibp2pTracerPath, filepath.Join(configPath, "bacalhau-libp2p-tracer.json"))
+	viper.SetDefault(types.NodeUserUserKeyPath, userKeyPath)
+	viper.SetDefault(types.NodeUserLibp2pKeyPath, libp2pKeyPath)
+	viper.SetDefault(types.NodeExecutorPluginPath, pluginPath)
+	viper.SetDefault(types.NodeComputeStoragePath, storagePath)
+	viper.SetDefault(types.NodeMetricsEventTracerPath, filepath.Join(configPath, "bacalhau-event-tracer.json"))
+	viper.SetDefault(types.NodeMetricsLibp2pTracerPath, filepath.Join(configPath, "bacalhau-libp2p-tracer.json"))
 
 	// now write the default values to it.
 	if err := viper.SafeWriteConfig(); err != nil {
@@ -112,12 +123,12 @@ func LoadConfig(configPath string) error {
 	}
 
 	// TODO bit of a shoe horn.
-	viper.SetDefault(NodeUserUserKeyPath, userKeyPath)
-	viper.SetDefault(NodeUserLibp2pKeyPath, libp2pKeyPath)
-	viper.SetDefault(NodeExecutorPluginPath, pluginPath)
-	viper.SetDefault(NodeComputeStoragePath, storagePath)
-	viper.SetDefault(NodeMetricsEventTracerPath, filepath.Join(configPath, "bacalhau-event-tracer.json"))
-	viper.SetDefault(NodeMetricsLibp2pTracerPath, filepath.Join(configPath, "bacalhau-libp2p-tracer.json"))
+	viper.SetDefault(types.NodeUserUserKeyPath, userKeyPath)
+	viper.SetDefault(types.NodeUserLibp2pKeyPath, libp2pKeyPath)
+	viper.SetDefault(types.NodeExecutorPluginPath, pluginPath)
+	viper.SetDefault(types.NodeComputeStoragePath, storagePath)
+	viper.SetDefault(types.NodeMetricsEventTracerPath, filepath.Join(configPath, "bacalhau-event-tracer.json"))
+	viper.SetDefault(types.NodeMetricsLibp2pTracerPath, filepath.Join(configPath, "bacalhau-libp2p-tracer.json"))
 
 	// now register env vars
 	viper.AutomaticEnv()
@@ -194,7 +205,7 @@ func ensureUserIDKey(configDir string) (string, error) {
 }
 
 func ensureLibp2pKey(configDir string) (string, error) {
-	keyName := fmt.Sprintf("private_key.%d", viper.GetInt(NodeLibp2pSwarmPort))
+	keyName := fmt.Sprintf("private_key.%d", viper.GetInt(types.NodeLibp2pSwarmPort))
 
 	// We include the port in the filename so that in devstack multiple nodes
 	// running on the same host get different identities

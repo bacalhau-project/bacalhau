@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/scenarios"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -26,7 +27,7 @@ var TestcasesMap = map[string]Handler{
 func init() {
 	// init system configs
 	// set the default configuration
-	if err := config.SetViperDefaults(config.Default); err != nil {
+	if err := config.SetViperDefaults(types.Default); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to set up default config values: %s\n", err)
 		os.Exit(1)
 	}

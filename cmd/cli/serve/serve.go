@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/multiformats/go-multiaddr"
@@ -18,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
@@ -63,7 +65,7 @@ var (
 )
 
 func GetServerOptions() (*ServeOptions, error) {
-	engineStrs := viper.GetStringSlice(config.NodeDisabledFeaturesEngines)
+	engineStrs := viper.GetStringSlice(types.NodeDisabledFeaturesEngines)
 	var engines []model.Engine
 	for _, e := range engineStrs {
 		engine, err := model.ParseEngine(e)
@@ -72,7 +74,7 @@ func GetServerOptions() (*ServeOptions, error) {
 		}
 		engines = append(engines, engine)
 	}
-	publishersStrs := viper.GetStringSlice(config.NodeDisabledFeaturesPublishers)
+	publishersStrs := viper.GetStringSlice(types.NodeDisabledFeaturesPublishers)
 	var publishers []model.Publisher
 	for _, p := range publishersStrs {
 		publisher, err := model.ParsePublisher(p)
@@ -81,7 +83,7 @@ func GetServerOptions() (*ServeOptions, error) {
 		}
 		publishers = append(publishers, publisher)
 	}
-	storagesStrs := viper.GetStringSlice(config.NodeDisabledFeaturesStorages)
+	storagesStrs := viper.GetStringSlice(types.NodeDisabledFeaturesStorages)
 	var storages []model.StorageSourceType
 	for _, s := range storagesStrs {
 		storageType, err := model.ParseStorageSourceType(s)
@@ -96,46 +98,46 @@ func GetServerOptions() (*ServeOptions, error) {
 		combinedLabelMap[key] = value
 	}
 
-	for key, value := range viper.GetStringMapString(config.NodeLabels) {
+	for key, value := range viper.GetStringMapString(types.NodeLabels) {
 		combinedLabelMap[key] = value
 	}
 
-	jobLocality, err := model.ParseJobSelectionDataLocality(viper.GetString(config.NodeRequesterJobSelectionPolicyLocality))
+	jobLocality, err := model.ParseJobSelectionDataLocality(viper.GetString(types.NodeRequesterJobSelectionPolicyLocality))
 	if err != nil {
 		return nil, err
 	}
 
 	return &ServeOptions{
-		NodeType:      viper.GetStringSlice(config.NodeType),
-		PeerConnect:   viper.GetString(config.NodeLibp2pPeerConnect),
-		IPFSConnect:   viper.GetString(config.NodeIPFSConnect),
-		EstuaryAPIKey: viper.GetString(config.NodeEstuaryAPIKey),
+		NodeType:      viper.GetStringSlice(types.NodeType),
+		PeerConnect:   viper.GetString(types.NodeLibp2pPeerConnect),
+		IPFSConnect:   viper.GetString(types.NodeIPFSConnect),
+		EstuaryAPIKey: viper.GetString(types.NodeEstuaryAPIKey),
 		HostAddress:   "0.0.0.0", // TODO
-		SwarmPort:     viper.GetInt(config.NodeLibp2pSwarmPort),
+		SwarmPort:     viper.GetInt(types.NodeLibp2pSwarmPort),
 		JobSelectionPolicy: model.JobSelectionPolicy{
 			Locality:            jobLocality,
-			RejectStatelessJobs: viper.GetBool(config.NodeRequesterJobSelectionPolicyRejectStatelessJobs),
-			AcceptNetworkedJobs: viper.GetBool(config.NodeRequesterJobSelectionPolicyAcceptNetworkedJobs),
-			ProbeHTTP:           viper.GetString(config.NodeRequesterJobSelectionPolicyProbeHTTP),
-			ProbeExec:           viper.GetString(config.NodeRequesterJobSelectionPolicyProbeExec),
+			RejectStatelessJobs: viper.GetBool(types.NodeRequesterJobSelectionPolicyRejectStatelessJobs),
+			AcceptNetworkedJobs: viper.GetBool(types.NodeRequesterJobSelectionPolicyAcceptNetworkedJobs),
+			ProbeHTTP:           viper.GetString(types.NodeRequesterJobSelectionPolicyProbeHTTP),
+			ProbeExec:           viper.GetString(types.NodeRequesterJobSelectionPolicyProbeExec),
 		},
 		ExternalVerifierHook: nil, //TODO currently there isn't a flag for this
-		LimitTotalCPU:        viper.GetString(config.NodeComputeCapacityTotalCPU),
-		LimitTotalMemory:     viper.GetString(config.NodeComputeCapacityTotalMemory),
-		LimitTotalGPU:        viper.GetString(config.NodeComputeCapacityTotalGPU),
-		LimitJobCPU:          viper.GetString(config.NodeComputeCapacityJobCPU),
-		LimitJobMemory:       viper.GetString(config.NodeComputeCapacityJobMemory),
-		LimitJobGPU:          viper.GetString(config.NodeComputeCapacityJobGPU),
+		LimitTotalCPU:        viper.GetString(types.NodeComputeCapacityTotalResourceLimitsCPU),
+		LimitTotalMemory:     viper.GetString(types.NodeComputeCapacityTotalResourceLimitsMemory),
+		LimitTotalGPU:        viper.GetString(types.NodeComputeCapacityTotalResourceLimitsGPU),
+		LimitJobCPU:          viper.GetString(types.NodeComputeCapacityTotalResourceLimitsCPU),
+		LimitJobMemory:       viper.GetString(types.NodeComputeCapacityDefaultJobResourceLimitsMemory),
+		LimitJobGPU:          viper.GetString(types.NodeComputeCapacityJobResourceLimitsGPU),
 		DisabledFeatures: node.FeatureConfig{
 			Engines:    engines,
 			Publishers: publishers,
 			Storages:   storages,
 		},
-		JobExecutionTimeoutClientIDBypassList: viper.GetStringSlice(config.NodeComputeClientIDBypass),
+		JobExecutionTimeoutClientIDBypassList: viper.GetStringSlice(types.NodeComputeJobTimeoutsJobExecutionTimeoutClientIDBypassList),
 		Labels:                                combinedLabelMap,
-		IPFSSwarmAddresses:                    viper.GetStringSlice(config.NodeIPFSSwarmAddresses),
-		PrivateInternalIPFS:                   viper.GetBool(config.NodeIPFSPrivateInternal),
-		AllowListedLocalPaths:                 viper.GetStringSlice(config.NodeAllowListedLocalPaths),
+		IPFSSwarmAddresses:                    viper.GetStringSlice(types.NodeIPFSSwarmAddresses),
+		PrivateInternalIPFS:                   viper.GetBool(types.NodeIPFSPrivateInternal),
+		AllowListedLocalPaths:                 viper.GetStringSlice(types.NodeAllowListedLocalPaths),
 	}, nil
 
 }
@@ -252,29 +254,50 @@ func GetPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	return peers, nil
 }
 
-func GetComputeConfig(OS *ServeOptions) node.ComputeConfig {
+func GetComputeConfig() (node.ComputeConfig, error) {
+	var cfg types.ComputeConfig
+	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
+		return node.ComputeConfig{}, err
+	}
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy: OS.JobSelectionPolicy,
-		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
-			CPU:    OS.LimitTotalCPU,
-			Memory: OS.LimitTotalMemory,
-			GPU:    OS.LimitTotalGPU,
-		}),
-		JobResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
-			CPU:    OS.LimitJobCPU,
-			Memory: OS.LimitJobMemory,
-			GPU:    OS.LimitJobGPU,
-		}),
-		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
-		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
-	})
+		TotalResourceLimits:                   capacity.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits),
+		QueueResourceLimits:                   capacity.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits),
+		JobResourceLimits:                     capacity.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits),
+		DefaultJobResourceLimits:              capacity.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits),
+		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
+		ExecutorBufferBackoffDuration:         time.Duration(cfg.Queue.ExecutorBufferBackoffDuration),
+		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
+		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
+		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),
+		DefaultJobExecutionTimeout:            time.Duration(cfg.JobTimeouts.DefaultJobExecutionTimeout),
+		JobExecutionTimeoutClientIDBypassList: cfg.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+		JobSelectionPolicy:                    cfg.JobSelection,
+		LogRunningExecutionsInterval:          time.Duration(cfg.Logging.LogRunningExecutionsInterval),
+	}), nil
 }
 
-func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
+func GetRequesterConfig() (node.RequesterConfig, error) {
+	var cfg types.RequesterConfig
+	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
+		return node.RequesterConfig{}, err
+	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobSelectionPolicy:       OS.JobSelectionPolicy,
-		ExternalValidatorWebhook: OS.ExternalVerifierHook,
-	})
+		MinJobExecutionTimeout:             time.Duration(cfg.Timeouts.MinJobExecutionTimeout),
+		DefaultJobExecutionTimeout:         time.Duration(cfg.Timeouts.DefaultJobExecutionTimeout),
+		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
+		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
+		OverAskForBidsFactor:               cfg.OverAskForBidsFactor,
+		JobSelectionPolicy:                 cfg.JobSelectionPolicy,
+		FailureInjectionConfig:             cfg.FailureInjectionConfig,
+		EvalBrokerVisibilityTimeout:        time.Duration(cfg.EvaluationBroker.EvalBrokerVisibilityTimeout),
+		EvalBrokerInitialRetryDelay:        time.Duration(cfg.EvaluationBroker.EvalBrokerInitialRetryDelay),
+		EvalBrokerSubsequentRetryDelay:     time.Duration(cfg.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
+		EvalBrokerMaxRetryCount:            cfg.EvaluationBroker.EvalBrokerMaxRetryCount,
+		WorkerCount:                        cfg.Worker.WorkerCount,
+		WorkerEvalDequeueTimeout:           time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
+		WorkerEvalDequeueBaseBackoff:       time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
+		WorkerEvalDequeueMaxBackoff:        time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+	}), nil
 }
 
 func NewCmd() *cobra.Command {
@@ -381,6 +404,14 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	for key, value := range OS.Labels {
 		combinedMap[key] = value
 	}
+	computeConfig, err := GetComputeConfig()
+	if err != nil {
+		return err
+	}
+	requesterConfig, err := GetRequesterConfig()
+	if err != nil {
+		return err
+	}
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		IPFSClient:            ipfsClient,
@@ -389,9 +420,9 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
-		APIPort:               config.GetAPIPort(),
-		ComputeConfig:         GetComputeConfig(OS),
-		RequesterNodeConfig:   GetRequesterConfig(OS),
+		APIPort:               config.APIPort(),
+		ComputeConfig:         computeConfig,
+		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                combinedMap,
@@ -453,22 +484,22 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		summaryBuilder := strings.Builder{}
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",
-			config.KeyAsEnvVar(config.NodeIPFSSwarmAddresses),
+			config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
 			ipfsSwarmAddress,
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",
-			config.KeyAsEnvVar(config.NodeAPIHost),
+			config.KeyAsEnvVar(types.NodeAPIHost),
 			OS.HostAddress,
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%d\n",
-			config.KeyAsEnvVar(config.NodeAPIPort),
-			config.GetAPIPort(),
+			config.KeyAsEnvVar(types.NodeAPIPort),
+			config.APIPort(),
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",
-			config.KeyAsEnvVar(config.NodeLibp2pPeerConnect),
+			config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 			peerAddress,
 		))
 

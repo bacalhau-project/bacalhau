@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -29,7 +30,7 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
-	config.SetViperDefaults(config.Default)
+	config.SetViperDefaults(types.Default)
 	suite.Run(t, new(StorageSuite))
 }
 

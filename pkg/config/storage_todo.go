@@ -5,24 +5,26 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 // TODO idk where this goes yet these are mostly random
 
 func GetDownloadURLRequestRetries() int {
-	return viper.GetInt(NodeDownloadURLRequestRetries)
+	return viper.GetInt(types.NodeDownloadURLRequestRetries)
 }
 
 func GetDownloadURLRequestTimeout() time.Duration {
-	return viper.GetDuration(NodeDownloadURLRequestTimeout)
+	return viper.GetDuration(types.NodeDownloadURLRequestTimeout)
 }
 
 func SetVolumeSizeRequestTimeout(value time.Duration) {
-	viper.Set(NodeVolumeSizeRequestTimeout, value)
+	viper.Set(types.NodeVolumeSizeRequestTimeout, value)
 }
 
 func GetVolumeSizeRequestTimeout() time.Duration {
-	return viper.GetDuration(NodeVolumeSizeRequestTimeout)
+	return viper.GetDuration(types.NodeVolumeSizeRequestTimeout)
 }
 
 func GetStoragePath() string {

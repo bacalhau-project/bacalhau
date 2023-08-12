@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -394,22 +395,22 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryBuilder := strings.Builder{}
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(config.NodeIPFSSwarmAddresses),
+		config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
 		devStackIPFSSwarmAddress,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(config.NodeAPIHost),
+		config.KeyAsEnvVar(types.NodeAPIHost),
 		devStackAPIHost,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(config.NodeAPIPort),
+		config.KeyAsEnvVar(types.NodeAPIPort),
 		devStackAPIPort,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(config.NodeLibp2pPeerConnect),
+		config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 		strings.Join(devstackPeerAddrs, ","),
 	))
 
@@ -431,7 +432,7 @@ export BACALHAU_API_PORT_%d=%d`,
 				"You can also run a new IPFS daemon locally and connect it to Bacalhau using:\n\n",
 		)
 		summaryBuilder.WriteString(
-			fmt.Sprintf("ipfs swarm connect $%s", config.KeyAsEnvVar(config.NodeIPFSSwarmAddresses)),
+			fmt.Sprintf("ipfs swarm connect $%s", config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses)),
 		)
 	}
 

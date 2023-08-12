@@ -1,11 +1,15 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
 
-func GetAPIPort() uint16 {
-	return uint16(viper.GetInt(NodeAPIPort))
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+)
+
+func APIPort() uint16 {
+	return uint16(viper.GetInt(types.NodeAPIPort))
 }
 
-func GetAPIHost() string {
-	return viper.GetString(NodeAPIHost)
+func APIHost() string {
+	return viper.GetString(types.NodeAPIHost)
 }

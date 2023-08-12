@@ -13,6 +13,7 @@ import (
 	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -77,7 +78,7 @@ func encodePublicKey(key *rsa.PublicKey) string {
 
 // loadUserIDKey loads the user ID key from whatever source is configured.
 func loadUserIDKey() (*rsa.PrivateKey, error) {
-	keyFile := viper.GetString(NodeUserUserKeyPath)
+	keyFile := viper.GetString(types.NodeUserUserKeyPath)
 	if keyFile == "" {
 		return nil, fmt.Errorf("config error: user-id-key not set")
 	}
@@ -119,7 +120,7 @@ func GetLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
 }
 
 func loadLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
-	keyFile := viper.GetString(NodeUserLibp2pKeyPath)
+	keyFile := viper.GetString(types.NodeUserLibp2pKeyPath)
 	if keyFile == "" {
 		return nil, fmt.Errorf("config error: libp2p private key not set")
 	}

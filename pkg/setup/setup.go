@@ -10,13 +10,14 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initalized.
 func SetupBacalhauRepo() (string, error) {
 	// set the default configuration
-	if err := config.SetViperDefaults(config.Default); err != nil {
+	if err := config.SetViperDefaults(types.Default); err != nil {
 		return "", fmt.Errorf("fialed to set up default config values: %w", err)
 	}
 	configDir := os.Getenv("BACALHAU_DIR")
@@ -57,7 +58,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	viper.Reset()
 	// TODO pass a testing config
 	// set the default configuration
-	if err := config.SetViperDefaults(config.Default); err != nil {
+	if err := config.SetViperDefaults(types.Default); err != nil {
 		t.Fatal(fmt.Sprintf("fialed to set up default config values: %s", err))
 	}
 

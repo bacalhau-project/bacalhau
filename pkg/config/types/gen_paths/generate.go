@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 // generateConstants is a recursive function that iterates through the fields of a given reflect.Type representing
@@ -65,7 +65,7 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 }
 
 func main() {
-	config := config.BacalhauConfig{}
+	config := types.BacalhauConfig{}
 
 	// Open a file for writing
 	file, err := os.Create("generated_constants.go")
@@ -75,7 +75,7 @@ func main() {
 	defer file.Close()
 
 	// Write the package declaration
-	fmt.Fprintln(file, "package config_v2")
+	fmt.Fprintln(file, "package types")
 
 	generateConstants(reflect.TypeOf(config), "Node", file)
 }

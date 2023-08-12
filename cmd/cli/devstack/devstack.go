@@ -172,8 +172,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		}
 	}
 
-	computeConfig := serve.GetComputeConfig(OS)
-	requestorConfig := serve.GetRequesterConfig(OS)
+	computeConfig, err := serve.GetComputeConfig()
+	if err != nil {
+		return err
+	}
+	requestorConfig, err := serve.GetRequesterConfig()
+	if err != nil {
+		return err
+	}
 
 	options := append(ODs.Options(),
 		devstack.WithComputeConfig(computeConfig),

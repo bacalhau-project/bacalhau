@@ -4,11 +4,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 func GetLogMode() logger.LogMode {
-	mode := viper.Get(NodeLoggingMode)
+	mode := viper.Get(types.NodeLoggingMode)
 	switch v := mode.(type) {
 	case logger.LogMode:
 		return v
