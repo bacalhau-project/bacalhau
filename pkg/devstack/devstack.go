@@ -209,6 +209,12 @@ func Setup(
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
 
+		if isRequesterNode {
+			// Only TLS on the requester node
+			nodeConfig.TLSCert = stackConfig.TLSCert
+			nodeConfig.TLSKey = stackConfig.TLSKey
+		}
+
 		// allow overriding configs of some nodes
 		if i < len(stackConfig.NodeOverrides) {
 			originalConfig := nodeConfig

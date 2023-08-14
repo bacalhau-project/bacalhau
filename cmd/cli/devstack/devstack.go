@@ -168,6 +168,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requestorConfig),
 	)
+
+	if OS.TLSCert != "" {
+		options = append(options, devstack.WithTLSCert(OS.TLSCert))
+	}
+	if OS.TLSKey != "" {
+		options = append(options, devstack.WithTLSKey(OS.TLSKey))
+	}
+
 	if IsNoop {
 		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
 	} else if ODs.ExecutorPlugins {

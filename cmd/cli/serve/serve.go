@@ -58,6 +58,9 @@ var (
 
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
+
+		# Start a requester node listening over TLS 
+		bacalhau serve --node-type requester --tlscert ./server.crt --tlskey ./server.key 
 `))
 )
 
@@ -70,6 +73,8 @@ type ServeOptions struct {
 	SwarmPort                             int                      // The host port for libp2p network.
 	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
 	ExternalVerifierHook                  *url.URL                 // Where to send external verification requests to.
+	TLSCert                               string                   // Local server certificate - DO NOT SHARE
+	TLSKey                                string                   // Local server key - DO NOT SHARE
 	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
 	LimitTotalMemory                      string                   // The total amount of memory the system can be using at one time.
 	LimitTotalGPU                         string                   // The total amount of GPU the system can be using at one time.
@@ -137,6 +142,14 @@ func SetupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 		&OS.JobExecutionTimeoutClientIDBypassList, "job-execution-timeout-bypass-client-id", OS.JobExecutionTimeoutClientIDBypassList,
 		`List of IDs of clients that are allowed to bypass the job execution timeout check`,
 	)
+	cmd.PersistentFlags().StringVar(
+		&OS.TLSCert, "tlscert", "",
+		`File location of the server certificate`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&OS.TLSKey, "tlskey", "",
+		`File location of the server key`,
+	)
 }
 
 func SetupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
@@ -201,6 +214,9 @@ func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 		JobSelectionPolicy:         OS.JobSelectionPolicy,
 		ExternalValidatorWebhook:   OS.ExternalVerifierHook,
 		DefaultJobExecutionTimeout: OS.MaxJobExecutionTimeout,
+		// This is where it _should_ be, but joint API Server infra makes this impossible
+		// TLSCert:                    OS.TLSCert,
+		// TLSKey:                     OS.TLSKey,
 	})
 }
 
@@ -326,6 +342,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                combinedMap,
 		AllowListedLocalPaths: OS.AllowListedLocalPaths,
+		TLSCert:               OS.TLSCert,
+		TLSKey:                OS.TLSKey,
 	}
 
 	// Create node

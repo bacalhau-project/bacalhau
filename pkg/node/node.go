@@ -51,6 +51,8 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
+	TLSCert                   string
+	TLSKey                    string
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -184,6 +186,8 @@ func NewNode(
 		Host:             config.Host,
 		Config:           config.APIServerConfig,
 		NodeInfoProvider: nodeInfoProvider,
+		TLSCert:          config.TLSCert,
+		TLSKey:           config.TLSKey,
 	})
 	if err != nil {
 		return nil, err

@@ -56,6 +56,9 @@ type DevStackConfig struct {
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
+
+	TLSCert string
+	TLSKey  string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -108,6 +111,18 @@ func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {
 func WithDependencyInjector(injector node.NodeDependencyInjector) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NodeDependencyInjector = injector
+	}
+}
+
+func WithTLSCert(cert string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.TLSCert = cert
+	}
+}
+
+func WithTLSKey(key string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.TLSKey = key
 	}
 }
 

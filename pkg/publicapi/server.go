@@ -54,6 +54,10 @@ type APIServerConfig struct {
 
 	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
 	MaxBytesToReadInBody datasize.ByteSize
+
+	// TLS details for the listener to access requests over TLS.
+	TLSCert string
+	TLSKey  string
 }
 
 type APIServerParams struct {
@@ -62,6 +66,8 @@ type APIServerParams struct {
 	Host             host.Host
 	NodeInfoProvider model.NodeInfoProvider
 	Config           APIServerConfig
+	TLSCert          string
+	TLSKey           string
 }
 
 // APIServer configures a node's public REST API.
@@ -74,6 +80,8 @@ type APIServer struct {
 	handlers         map[string]http.Handler
 	handlersMu       sync.Mutex
 	started          bool
+	tlsCert          string
+	tlsKey           string
 }
 
 func NewAPIServer(params APIServerParams) (*APIServer, error) {
@@ -84,6 +92,8 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 		nodeInfoProvider: params.NodeInfoProvider,
 		config:           params.Config,
 		handlers:         make(map[string]http.Handler),
+		tlsCert:          params.TLSCert,
+		tlsKey:           params.TLSKey,
 	}
 
 	server.handlersMu.EnableTracerWithOpts(sync.Opts{
@@ -192,7 +202,14 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	cm.RegisterCallbackWithContext(srv.Shutdown)
 
 	go func() {
-		err := srv.Serve(listener)
+		var err error
+
+		if apiServer.tlsCert != "" && apiServer.tlsKey != "" {
+			err = srv.ServeTLS(listener, apiServer.tlsCert, apiServer.tlsKey)
+		} else {
+			err = srv.Serve(listener)
+		}
+
 		if err == http.ErrServerClosed {
 			log.Ctx(ctx).Debug().Msgf(
 				"API server closed for host %s on %s.", apiServer.Address, srv.Addr)
