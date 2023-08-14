@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -33,15 +32,6 @@ const configName = "config"
 const environmentVariablePrefix = "BACALHAU"
 
 var environmentVariableReplace = strings.NewReplacer(".", "_")
-
-func Get() (types.BacalhauConfig, error) {
-	var out types.BacalhauConfig
-	if err := viper.Unmarshal(&out, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())); err != nil {
-		return types.BacalhauConfig{}, err
-	}
-
-	return out, nil
-}
 
 func InitConfig(configPath string) error {
 	// configure viper.

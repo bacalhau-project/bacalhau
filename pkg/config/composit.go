@@ -11,7 +11,7 @@ import (
 // unmarshalCompositeKey takes a key and an output structure to unmarshal into. It gets the
 // composite value associated with the given key and decodes it into the provided output structure.
 // It's especially useful when the desired value is not directly associated with the key, but
-// instead is spread across various nested sub-keys.
+// instead is spread across various nested sub-keys within the configuration.
 func unmarshalCompositeKey(key string, output interface{}) error {
 	compositeValue, err := getCompositeValue(key)
 	if err != nil {
