@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -229,6 +230,12 @@ func NewComputeNode(
 	debugInfoProviders := []model.DebugInfoProvider{
 		runningInfoProvider,
 		sensors.NewCompletedJobs(executionStore),
+	}
+
+	startup := compute.NewStartup(executionStore, bufferRunner)
+	startupErr := startup.Execute(ctx)
+	if startupErr != nil {
+		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
 	}
 
 	// register compute public http apis
