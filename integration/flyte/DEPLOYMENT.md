@@ -136,7 +136,11 @@ spec:
 
 ## Install Flyte
 
-The official docs'll have you download a yaml file with values for their GCP Helm chart, instead, use the one below which adds the Bacalhau Agent config as well as a number of minor fixes.
+The official docs will tell you download a yaml file with values for their GCP Helm chart, instead, use the one below which adds the Bacalhau Agent config as well as a number of minor fixes.
+
+```shell
+$ helm install -n flyte -f values-gcp.yaml --create-namespace flyte flyteorg/flyte-core
+```
 
 <details>
   <summary>values-gcp.yaml:</summary>
