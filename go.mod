@@ -34,7 +34,7 @@ require (
 	github.com/ipfs/kubo v0.21.0
 	github.com/ipld/go-car/v2 v2.9.1-0.20230325062757-fff0e4397a3d
 	github.com/ipld/go-codec-dagpb v1.6.0
-	github.com/ipld/go-ipld-prime v0.20.0
+	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/joho/godotenv v1.5.1
 	github.com/libp2p/go-libp2p v0.27.8
