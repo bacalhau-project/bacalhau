@@ -51,6 +51,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
+	AutoCert                  string
 	TLSCert                   string
 	TLSKey                    string
 }
@@ -186,6 +187,7 @@ func NewNode(
 		Host:             config.Host,
 		Config:           config.APIServerConfig,
 		NodeInfoProvider: nodeInfoProvider,
+		AutoCert:         config.AutoCert,
 		TLSCert:          config.TLSCert,
 		TLSKey:           config.TLSKey,
 	})

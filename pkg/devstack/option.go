@@ -57,8 +57,9 @@ type DevStackConfig struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 
-	TLSCert string
-	TLSKey  string
+	AutoCert string // autocert domains
+	TLSCert  string // manually obtained server tls cert
+	TLSKey   string // server key for TLSCert
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -123,6 +124,12 @@ func WithTLSCert(cert string) ConfigOption {
 func WithTLSKey(key string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.TLSKey = key
+	}
+}
+
+func WithAutoCertDomains(domains string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.AutoCert = domains
 	}
 }
 

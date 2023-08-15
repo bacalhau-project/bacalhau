@@ -41,8 +41,9 @@ type RequesterConfigParams struct {
 	WorkerEvalDequeueMaxBackoff  time.Duration
 
 	// TLS Settings
-	TLSCert string
-	TLSKey  string
+	AutoCert string
+	TLSCert  string
+	TLSKey   string
 }
 
 type RequesterConfig struct {

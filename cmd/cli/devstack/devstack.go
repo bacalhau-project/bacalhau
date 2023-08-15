@@ -169,6 +169,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		devstack.WithRequesterConfig(requestorConfig),
 	)
 
+	if OS.AutoCert != "" {
+		options = append(options, devstack.WithAutoCertDomains(OS.AutoCert))
+	}
 	if OS.TLSCert != "" {
 		options = append(options, devstack.WithTLSCert(OS.TLSCert))
 	}

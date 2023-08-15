@@ -24,6 +24,7 @@ type RequesterAPIServerParams struct {
 	DebugInfoProviders []model.DebugInfoProvider
 	JobStore           jobstore.Store
 	NodeDiscoverer     orchestrator.NodeDiscoverer
+	AutoCert           string
 	TLSCert            string
 	TLSKey             string
 }
@@ -39,8 +40,9 @@ type RequesterAPIServer struct {
 	websocketsMutex sync.RWMutex
 
 	// TLS details
-	tlsCert string
-	tlsKey  string
+	autoCert string
+	tlsCert  string
+	tlsKey   string
 }
 
 func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer {
@@ -51,6 +53,7 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 		jobStore:           params.JobStore,
 		nodeDiscoverer:     params.NodeDiscoverer,
 		websockets:         make(map[string][]*websocket.Conn),
+		autoCert:           params.AutoCert,
 		tlsCert:            params.TLSCert,
 		tlsKey:             params.TLSKey,
 	}

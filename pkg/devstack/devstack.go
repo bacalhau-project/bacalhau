@@ -213,6 +213,7 @@ func Setup(
 			// Only TLS on the requester node
 			nodeConfig.TLSCert = stackConfig.TLSCert
 			nodeConfig.TLSKey = stackConfig.TLSKey
+			nodeConfig.AutoCert = stackConfig.AutoCert
 		}
 
 		// allow overriding configs of some nodes

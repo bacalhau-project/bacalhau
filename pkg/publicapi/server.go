@@ -2,13 +2,18 @@ package publicapi
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/docs"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
@@ -22,6 +27,7 @@ import (
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 var DefaultAPIServerConfig = APIServerConfig{
@@ -56,8 +62,9 @@ type APIServerConfig struct {
 	MaxBytesToReadInBody datasize.ByteSize
 
 	// TLS details for the listener to access requests over TLS.
-	TLSCert string
-	TLSKey  string
+	AutoCert string
+	TLSCert  string
+	TLSKey   string
 }
 
 type APIServerParams struct {
@@ -66,6 +73,7 @@ type APIServerParams struct {
 	Host             host.Host
 	NodeInfoProvider model.NodeInfoProvider
 	Config           APIServerConfig
+	AutoCert         string
 	TLSCert          string
 	TLSKey           string
 }
@@ -80,6 +88,7 @@ type APIServer struct {
 	handlers         map[string]http.Handler
 	handlersMu       sync.Mutex
 	started          bool
+	autoCert         string
 	tlsCert          string
 	tlsKey           string
 }
@@ -92,6 +101,7 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 		nodeInfoProvider: params.NodeInfoProvider,
 		config:           params.Config,
 		handlers:         make(map[string]http.Handler),
+		autoCert:         params.AutoCert,
 		tlsCert:          params.TLSCert,
 		tlsKey:           params.TLSKey,
 	}
@@ -180,6 +190,29 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		},
 	}
 
+	useTLS := false
+	tlsCert := ""
+	tlsKey := ""
+	if apiServer.autoCert != "" {
+		certManager := apiServer.getCertificateManager(apiServer.autoCert)
+		srv.Addr = ":https"
+		srv.TLSConfig = &tls.Config{
+			MinVersion:     tls.VersionTLS12,
+			GetCertificate: certManager.GetCertificate,
+		}
+
+		// Need to start a goroutine listening for ACME to come and check we
+		// own the domain using the HTTP verification as SNI has been deprecated
+		//nolint:errcheck,gosec
+		go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+
+		useTLS = true
+	} else {
+		tlsCert = apiServer.tlsCert
+		tlsKey = apiServer.tlsKey
+		useTLS = tlsCert != "" && tlsKey != ""
+	}
+
 	addr := fmt.Sprintf("%s:%d", apiServer.Address, apiServer.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -201,13 +234,13 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	// Cleanup resources when system is done:
 	cm.RegisterCallbackWithContext(srv.Shutdown)
 
-	go func() {
+	go func(lstnr net.Listener) {
 		var err error
 
-		if apiServer.tlsCert != "" && apiServer.tlsKey != "" {
-			err = srv.ServeTLS(listener, apiServer.tlsCert, apiServer.tlsKey)
+		if useTLS {
+			err = srv.ServeTLS(lstnr, tlsCert, tlsKey)
 		} else {
-			err = srv.Serve(listener)
+			err = srv.Serve(lstnr)
 		}
 
 		if err == http.ErrServerClosed {
@@ -216,9 +249,23 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		} else if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Api server can't run. Cannot serve client requests!")
 		}
-	}()
+	}(listener)
 
 	return nil
+}
+
+func (apiServer *APIServer) getCertificateManager(domainsString string) autocert.Manager {
+	dir := filepath.Join(config.GetConfigPath(), "autocert-cache")
+	if err := os.MkdirAll(dir, 0700); err != nil { //nolint:gomnd
+		panic("failed to create autocert cache directory")
+	}
+
+	domains := strings.Split(domainsString, ",")
+	return autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(domains...),
+		Cache:      autocert.DirCache(dir),
+	}
 }
 
 func (apiServer *APIServer) RegisterHandlers(apiPrefix string, config ...HandlerConfig) error {

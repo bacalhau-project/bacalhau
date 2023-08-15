@@ -73,6 +73,7 @@ type ServeOptions struct {
 	SwarmPort                             int                      // The host port for libp2p network.
 	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
 	ExternalVerifierHook                  *url.URL                 // Where to send external verification requests to.
+	AutoCert                              string                   // Specifies the domains names that this instance should obtain certs for
 	TLSCert                               string                   // Local server certificate - DO NOT SHARE
 	TLSKey                                string                   // Local server key - DO NOT SHARE
 	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
@@ -141,6 +142,10 @@ func SetupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringSliceVar(
 		&OS.JobExecutionTimeoutClientIDBypassList, "job-execution-timeout-bypass-client-id", OS.JobExecutionTimeoutClientIDBypassList,
 		`List of IDs of clients that are allowed to bypass the job execution timeout check`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&OS.AutoCert, "autocert", "",
+		`Automatically obtain a cert for a public server`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.TLSCert, "tlscert", "",
@@ -214,9 +219,6 @@ func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 		JobSelectionPolicy:         OS.JobSelectionPolicy,
 		ExternalValidatorWebhook:   OS.ExternalVerifierHook,
 		DefaultJobExecutionTimeout: OS.MaxJobExecutionTimeout,
-		// This is where it _should_ be, but joint API Server infra makes this impossible
-		// TLSCert:                    OS.TLSCert,
-		// TLSKey:                     OS.TLSKey,
 	})
 }
 
@@ -342,6 +344,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                combinedMap,
 		AllowListedLocalPaths: OS.AllowListedLocalPaths,
+		AutoCert:              OS.AutoCert,
 		TLSCert:               OS.TLSCert,
 		TLSKey:                OS.TLSKey,
 	}
