@@ -201,11 +201,19 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 			GetCertificate: certManager.GetCertificate,
 		}
 
-		// Need to start a goroutine listening for ACME to come and check we
-		// own the domain using the HTTP verification as SNI has been deprecated
-		//nolint:errcheck,gosec
-		go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
-
+		// Need to start a goroutine listening for ACME to check we
+		// own the domain using the HTTP verification - SNI has been deprecated.
+		// The process will need to be running with an account able to listen on
+		// port 80, and we can achieve this (on Linux) with the following which
+		// needs to be done after each build (or deployment).
+		//       sudo setcap CAP_NET_BIND_SERVICE+ep bacalhau
+		go func(c context.Context) {
+			//nolint:gosec
+			err := http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+			if err != nil {
+				log.Ctx(c).Error().Err(err).Msg("auto cert is no longer listening for ACME verifier on port 80")
+			}
+		}(ctx)
 		useTLS = true
 	} else {
 		tlsCert = apiServer.tlsCert
