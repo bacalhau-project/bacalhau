@@ -52,7 +52,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			port, err := s.serve(args...)
 			s.Require().NoError(err)
 
-			client := publicapi.NewRequesterAPIClient("localhost", port)
+			client := publicapi.NewRequesterAPIClient("localhost", port, nil)
 			s.Require().NoError(publicapi.WaitForHealthy(s.ctx, client))
 
 			testJob := model.NewJob()

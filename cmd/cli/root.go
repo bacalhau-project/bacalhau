@@ -37,6 +37,8 @@ import (
 
 var apiHost string
 var apiPort uint16
+var cacert string
+var allowInsecure bool
 
 var defaultAPIHost string
 var defaultAPIPort uint16
@@ -57,7 +59,7 @@ func init() { //nolint:gochecknoinits
 		util.LoggingMode = logger.LogMode(strings.ToLower(logtype))
 	}
 
-	// Force cobra to set apiHost & apiPort
+	// Force cobra to set apiHost & apiPort & cacert
 	NewRootCmd()
 }
 
@@ -147,10 +149,25 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	if err := viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port")); err != nil {
 		panic(err)
 	}
+	RootCmd.PersistentFlags().StringVar(
+		&cacert, "cacert", "",
+		`The CA certificate to allow us to access self-signed server endpoints`,
+	)
+	if err := viper.BindPFlag("cacert", RootCmd.PersistentFlags().Lookup("cacert")); err != nil {
+		panic(err)
+	}
+	RootCmd.PersistentFlags().BoolVar(
+		&allowInsecure, "insecure", false,
+		`Sets whether API calls are allowed without certificate verification`,
+	)
+	if err := viper.BindPFlag("insecure", RootCmd.PersistentFlags().Lookup("insecure")); err != nil {
+		panic(err)
+	}
 	RootCmd.PersistentFlags().Var(
 		flags.LoggingFlag(&util.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,
 	)
+
 	return RootCmd
 }
 
@@ -172,6 +189,14 @@ func Execute() {
 		log.Ctx(ctx).Fatal().Msgf("API_PORT was set, but could not bind.")
 	}
 
+	if err := viper.BindEnv("CACERT"); err != nil {
+		log.Ctx(ctx).Fatal().Msgf("CACERT was set, but could not bind.")
+	}
+
+	if err := viper.BindEnv("INSECURE"); err != nil {
+		log.Ctx(ctx).Fatal().Msgf("INSECURE was set, but could not bind.")
+	}
+
 	viper.AutomaticEnv()
 
 	if envAPIHost := viper.GetString("API_HOST"); envAPIHost != "" {
@@ -186,6 +211,14 @@ func Execute() {
 		} else {
 			apiPort = uint16(parsedPort)
 		}
+	}
+
+	if envCacert := viper.GetString("CACERT"); envCacert != "" {
+		cacert = envCacert
+	}
+
+	if envInsecure := viper.GetBool("INSECURE"); envInsecure {
+		allowInsecure = envInsecure
 	}
 
 	// Use stdout, not stderr for cmd.Print output, so that

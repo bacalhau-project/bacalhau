@@ -30,8 +30,8 @@ type RequesterAPIClient struct {
 }
 
 // NewRequesterAPIClient returns a new client for a node's API server.
-func NewRequesterAPIClient(host string, port uint16, path ...string) *RequesterAPIClient {
-	return NewRequesterAPIClientFromClient(publicapi.NewAPIClient(host, port, path...))
+func NewRequesterAPIClient(host string, port uint16, tlsConfig *publicapi.ClientTLSConfig, path ...string) *RequesterAPIClient {
+	return NewRequesterAPIClientFromClient(publicapi.NewAPIClient(host, port, tlsConfig, path...))
 }
 
 // NewRequesterAPIClientFromClient returns a new client for a node's API server.

@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	pubapi "github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
@@ -42,7 +43,7 @@ func ExecuteJob(ctx context.Context,
 		}
 
 		apiServer := stack.Nodes[0].APIServer
-		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port, &pubapi.ClientTLSConfig{})
 	} else {
 		apiClient = GetAPIClient(ctx)
 	}

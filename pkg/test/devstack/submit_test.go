@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	pubapi "github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -43,7 +44,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port, &pubapi.ClientTLSConfig{})
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}

@@ -40,7 +40,7 @@ func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverC
 
 	require.NoError(t, apiServer.ListenAndServe(ctx, cm))
 
-	client := NewAPIClient(apiServer.Address, apiServer.Port)
+	client := NewAPIClient(apiServer.Address, apiServer.Port, &ClientTLSConfig{})
 	require.NoError(t, waitForHealthy(ctx, client))
 	return client
 }

@@ -139,7 +139,7 @@ func (s *RetriesSuite) SetupSuite() {
 	)
 
 	s.requester = stack.Nodes[0]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port, nil)
 	s.stateResolver = job.NewStateResolver(
 		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)

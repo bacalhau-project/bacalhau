@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	pubapi "github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
@@ -27,7 +28,14 @@ func GetAPIClient(ctx context.Context) *publicapi.RequesterAPIClient {
 		}
 	}
 
-	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
+	tlsConfig := &pubapi.ClientTLSConfig{}
+	if cert := viper.GetString("cacert"); cert != "" {
+		tlsConfig.CACert = cert
+	} else {
+		tlsConfig.AllowInsecure = viper.GetBool("insecure")
+	}
+
+	return publicapi.NewRequesterAPIClient(apiHost, apiPort, tlsConfig)
 }
 
 func GetAPIPort(ctx context.Context) uint16 {

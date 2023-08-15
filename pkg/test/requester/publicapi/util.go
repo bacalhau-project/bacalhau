@@ -64,7 +64,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	client := requester_publicapi.NewRequesterAPIClient(n.APIServer.Address, n.APIServer.Port)
+	client := requester_publicapi.NewRequesterAPIClient(n.APIServer.Address, n.APIServer.Port, nil)
 	require.NoError(t, requester_publicapi.WaitForHealthy(ctx, client))
 	return n, client
 }

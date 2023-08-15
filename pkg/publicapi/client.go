@@ -3,11 +3,14 @@ package publicapi
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"time"
 
@@ -24,24 +27,48 @@ import (
 type APIClient struct {
 	BaseURI        *url.URL
 	DefaultHeaders map[string]string
+	Client         *http.Client
+}
 
-	Client *http.Client
+type ClientTLSConfig struct {
+	AllowInsecure bool
+	CACert        string
 }
 
 // NewAPIClient returns a new client for a node's API server against v1 APIs
 // the client will use /api/v1 path by default is no custom path is defined
-func NewAPIClient(host string, port uint16, path ...string) *APIClient {
-	baseURI := system.MustParseURL(fmt.Sprintf("http://%s:%d", host, port)).JoinPath(path...)
+func NewAPIClient(host string, port uint16, tlsConfig *ClientTLSConfig, path ...string) *APIClient {
+	baseURI := system.MustParseURL(fmt.Sprintf("https://%s:%d", host, port)).JoinPath(path...)
 	if len(path) == 0 {
 		baseURI = baseURI.JoinPath(V1APIPrefix)
 	}
+
+	tr := &http.Transport{}
+	if tlsConfig.CACert != "" {
+		caCert, err := os.ReadFile(tlsConfig.CACert)
+		if err != nil {
+			panic("invalid ca certificate provided")
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		tr.TLSClientConfig = &tls.Config{
+			RootCAs:    caCertPool,
+			MinVersion: tls.VersionTLS12,
+		}
+	} else if tlsConfig.AllowInsecure {
+		tr.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec
+			MinVersion:         tls.VersionTLS12,
+		}
+	}
+
 	return &APIClient{
 		BaseURI:        baseURI,
 		DefaultHeaders: map[string]string{},
 
 		Client: &http.Client{
 			Timeout: 300 * time.Second,
-			Transport: otelhttp.NewTransport(nil,
+			Transport: otelhttp.NewTransport(tr,
 				otelhttp.WithSpanOptions(
 					trace.WithAttributes(
 						attribute.String("clientID", system.GetClientID()),

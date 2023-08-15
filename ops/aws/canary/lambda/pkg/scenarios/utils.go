@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	pubapi "github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -140,7 +141,9 @@ func getClient() *publicapi.RequesterAPIClient {
 		defaultPort := system.Envs[system.GetEnvironment()].APIPort
 		apiPort = &defaultPort
 	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+
+	// Allow canaries to make an insecure connection
+	return publicapi.NewRequesterAPIClient(apiHost, *apiPort, &pubapi.ClientTLSConfig{})
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
