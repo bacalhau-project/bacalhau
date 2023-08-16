@@ -56,6 +56,10 @@ func Get[T any](key string) (T, error) {
 	return val, nil
 }
 
+func GetStringMapString(key string) map[string]string {
+	return viper.GetStringMapString(key)
+}
+
 func zeroValue[T any]() T {
 	var zero T
 	return zero

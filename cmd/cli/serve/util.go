@@ -150,10 +150,7 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 }
 
 func getNodeLabels(autoLabel bool) (map[string]string, error) {
-	var labelConfig map[string]string
-	if err := config.ForKey(types.NodeLabels, &labelConfig); err != nil {
-		return nil, err
-	}
+	labelConfig := config.GetStringMapString(types.NodeLabels)
 	labelMap := make(map[string]string)
 	if autoLabel {
 		AutoLabels := AutoOutputLabels()
