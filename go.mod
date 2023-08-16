@@ -15,7 +15,7 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/didip/tollbooth/v7 v7.0.1
-	github.com/docker/docker v24.0.4+incompatible
+	github.com/docker/docker v24.0.5+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/felixge/httpsnoop v1.0.3
 	github.com/google/uuid v1.3.0
@@ -76,7 +76,7 @@ require (
 	go.ptx.dk/multierrgroup v0.0.3
 	go.uber.org/mock v0.2.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.25.0
 	golang.org/x/crypto v0.11.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	k8s.io/apimachinery v0.27.4
