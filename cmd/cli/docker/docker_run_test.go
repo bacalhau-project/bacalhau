@@ -67,6 +67,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			ctx := context.Background()
 			randomUUID := uuid.New()
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 				"ubuntu",
@@ -91,6 +92,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			randomUUID := uuid.New()
 			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 				"ubuntu",
@@ -137,7 +139,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
+			allArgs := []string{"docker", "run", "--http", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
 			allArgs = append(allArgs, tc.submitArgs...)
 			_, out, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
 
@@ -176,6 +178,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			s.Require().NoError(err)
 
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -230,6 +233,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 			func() {
 				ctx := context.Background()
 				flagsArray := []string{"docker", "run",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port)}
 				for _, iv := range tcids.inputVolumes {
@@ -299,6 +303,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			func() {
 				ctx := context.Background()
 				flagsArray := []string{"docker", "run",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port)}
 
@@ -350,6 +355,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 			func() {
 				ctx := context.Background()
 				flagsArray := []string{"docker", "run",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port)}
 				ovString := ""
@@ -427,6 +433,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 		func() {
 			ctx := context.Background()
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 				"ubuntu",
@@ -488,7 +495,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 			for _, labelTest := range annotationsToTest {
 				var args []string
 
-				args = append(args, "docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port))
+				args = append(args, "docker", "run", "--http", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port))
 				for _, label := range labelTest.Annotations {
 					args = append(args, "-l", label)
 				}
@@ -544,7 +551,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
+			allArgs := []string{"docker", "run", "--http", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
 			allArgs = append(allArgs, tc.submitArgs...)
 			_, out, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
 
@@ -585,6 +592,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 		func() {
 			ctx := context.Background()
 			flagsArray := []string{"docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port)}
 			flagsArray = append(flagsArray, "-w", tc.workdir)
@@ -636,6 +644,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	allArgs := []string{
 		"docker", "run",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 		"--wait",
@@ -692,6 +701,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			ctx := context.Background()
 			_, out, err := cmdtesting.ExecuteTestCobraCommand(
 				"docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 				"ubuntu", "--", "perl", "-e", fmt.Sprintf(`print "=" x %d`, tc.inputLength),
@@ -736,6 +746,7 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		var args []string
 
 		args = append(args, "docker", "run",
+			"--http",
 			"--api-host", s.Host,
 			"--api-port", fmt.Sprint(s.Port),
 		)
@@ -791,6 +802,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			var args []string
 
 			args = append(args, "docker", "run",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 			)
@@ -814,6 +826,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	ctx := context.Background()
 
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 		"@", "--",
@@ -836,6 +849,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	ctx := context.Background()
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 		"ubuntu",
@@ -854,6 +868,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	ctx := context.Background()
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),

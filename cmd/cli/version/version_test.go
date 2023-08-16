@@ -40,6 +40,7 @@ type VersionSuite struct {
 
 func (suite *VersionSuite) TestVersionHumanOutput() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
@@ -51,6 +52,7 @@ func (suite *VersionSuite) TestVersionHumanOutput() {
 
 func (suite *VersionSuite) TestVersionJSONOutput() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 		"--output", string(output.JSONFormat),
@@ -65,6 +67,7 @@ func (suite *VersionSuite) TestVersionJSONOutput() {
 
 func (suite *VersionSuite) TestVersionYAMLOutput() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 		"--output", string(output.YAMLFormat),

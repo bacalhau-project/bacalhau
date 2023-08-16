@@ -131,6 +131,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 		"--download",
 	})
@@ -151,6 +152,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	require.NoError(s.T(), err)
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 		"--download",
 		"--output-dir", tempDir,
@@ -173,6 +175,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
@@ -181,6 +184,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+		"--http",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -197,6 +201,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	require.NoError(s.T(), err)
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
@@ -204,6 +209,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+		"--http",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -220,6 +226,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
@@ -228,6 +235,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+		"--http",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -246,6 +254,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
@@ -254,6 +263,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+		"--http",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -283,6 +293,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	require.NoError(s.T(), err)
 
 	args := s.getDockerRunArgs([]string{
+		"--http",
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
@@ -292,6 +303,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+		"--http",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),

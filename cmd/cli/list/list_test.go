@@ -60,6 +60,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
 				"--hide-header",
+				"--http",
 				"--api-host", suite.Host,
 				"--api-port", fmt.Sprint(suite.Port),
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
@@ -88,6 +89,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	}
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
 		"--hide-header",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 		"--id-filter", jobIds[0],
@@ -106,6 +108,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
 	_, out, err = cmdtesting.ExecuteTestCobraCommand("list",
 		"--hide-header",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 		"--id-filter", jobLongIds[0],
@@ -180,6 +183,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			checkList := func(shouldAppear bool, flags ...string) {
 				args := []string{"list",
 					"--hide-header",
+					"--http",
 					"--api-host", suite.Host,
 					"--api-port", fmt.Sprint(suite.Port),
 					"--output", "json",
@@ -287,6 +291,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
 					"--hide-header",
 					"--no-style",
+					"--http",
 					"--api-host", suite.Host,
 					"--api-port", fmt.Sprint(suite.Port),
 					"--sort-by", sortFlags.sortFlag,

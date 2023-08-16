@@ -68,6 +68,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				// No job id (should error)
 				_, _, err := cmdtesting.ExecuteTestCobraCommand("describe",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port),
 				)
@@ -75,6 +76,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				// Job Id at the end
 				_, out, err := cmdtesting.ExecuteTestCobraCommand("describe",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port),
 					submittedJob.Metadata.ID,
@@ -97,6 +99,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				// Job Id in the middle
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
+					"--http",
 					"--api-host", s.Host,
 					submittedJob.Metadata.ID,
 					"--api-port", fmt.Sprint(s.Port),
@@ -116,6 +119,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				// Short job id
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
+					"--http",
 					"--api-host", s.Host,
 					submittedJob.Metadata.ID[0:model.ShortIDLength],
 					"--api-port", fmt.Sprint(s.Port),
@@ -161,7 +165,7 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port), submittedJob.Metadata.ID)
+			args = append(args, "describe", "--http", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port), submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
@@ -235,6 +239,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				}
 
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
+					"--http",
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port),
 					jobID,
