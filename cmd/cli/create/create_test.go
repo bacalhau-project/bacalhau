@@ -93,6 +93,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 
 			ctx := context.Background()
 			_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(tc.Fixture.Data, "create",
+				"--http",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 			)
@@ -107,6 +108,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 
 func (s *CreateSuite) TestCreateFromStdin() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.YamlJobNoop.Data, "create",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 	)
@@ -116,6 +118,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.Client, out)
 	_, _, err = cmdtesting.ExecuteTestCobraCommand("describe",
+		"--http",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 		job.Metadata.ID,

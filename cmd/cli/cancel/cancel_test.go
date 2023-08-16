@@ -35,6 +35,7 @@ func TestCancelSuite(t *testing.T) {
 func (suite *CancelSuite) TestCancelTerminalJob() {
 	ctx := context.Background()
 	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.IPVMTaskDocker.Data, "create",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
@@ -45,6 +46,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 
 	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
 		job.Metadata.ID,
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
@@ -56,6 +58,7 @@ func (suite *CancelSuite) TestCancelJob() {
 
 	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.JsonJobCancel.Data, "create",
 		"--wait=false",
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
@@ -70,6 +73,7 @@ func (suite *CancelSuite) TestCancelJob() {
 
 	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
 		jobInfo.Job.Metadata.ID,
+		"--http",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)

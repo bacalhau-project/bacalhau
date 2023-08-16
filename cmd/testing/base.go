@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	pubapi "github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
@@ -52,7 +51,7 @@ func (s *BaseSuite) SetupTest() {
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = publicapi.NewRequesterAPIClient(s.Host, s.Port, &pubapi.ClientTLSConfig{})
+	s.Client = publicapi.NewRequesterAPIClient(s.Host, s.Port, nil)
 }
 
 // After each test

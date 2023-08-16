@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -38,15 +39,27 @@ type ClientTLSConfig struct {
 // NewAPIClient returns a new client for a node's API server against v1 APIs
 // the client will use /api/v1 path by default is no custom path is defined
 func NewAPIClient(host string, port uint16, tlsConfig *ClientTLSConfig, path ...string) *APIClient {
-	baseURI := system.MustParseURL(fmt.Sprintf("https://%s:%d", host, port)).JoinPath(path...)
-	if len(path) == 0 {
-		baseURI = baseURI.JoinPath(V1APIPrefix)
-	}
-
+	scheme := "https"
 	if tlsConfig == nil {
 		// Create a default empty config if one was not supplied which will be the case
-		// in testing.
+		// in testing, non-testing usage should always provide a ClientTLSConfig until
+		// TLS becomes the only supported scheme.
 		tlsConfig = &ClientTLSConfig{}
+		scheme = "http"
+	}
+
+	// TODO: Refactor the API clients.  This is the way we _don't_ want to
+	// use Viper, but passing all of the properties (host, port, tlsConfig etc)
+	// separately makes it hard to change, the top level caller should be able
+	// to get a configured struct to pass all this information through in a
+	// single APIClientParams.
+	if viper.GetBool("HTTP") {
+		scheme = "http"
+	}
+
+	baseURI := system.MustParseURL(fmt.Sprintf("%s://%s:%d", scheme, host, port)).JoinPath(path...)
+	if len(path) == 0 {
+		baseURI = baseURI.JoinPath(V1APIPrefix)
 	}
 
 	tr := &http.Transport{}

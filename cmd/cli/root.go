@@ -38,6 +38,7 @@ import (
 var apiHost string
 var apiPort uint16
 var cacert string
+var onlyHTTP bool
 var allowInsecure bool
 
 var defaultAPIHost string
@@ -59,7 +60,7 @@ func init() { //nolint:gochecknoinits
 		util.LoggingMode = logger.LogMode(strings.ToLower(logtype))
 	}
 
-	// Force cobra to set apiHost & apiPort & cacert
+	// Force cobra to set apiHost & apiPort & tls options
 	NewRootCmd()
 }
 
@@ -163,6 +164,14 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	if err := viper.BindPFlag("insecure", RootCmd.PersistentFlags().Lookup("insecure")); err != nil {
 		panic(err)
 	}
+	RootCmd.PersistentFlags().BoolVar(
+		&onlyHTTP, "http", false,
+		`Sets whether API calls are only made over http`,
+	)
+	if err := viper.BindPFlag("http", RootCmd.PersistentFlags().Lookup("http")); err != nil {
+		panic(err)
+	}
+
 	RootCmd.PersistentFlags().Var(
 		flags.LoggingFlag(&util.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,
@@ -219,6 +228,10 @@ func Execute() {
 
 	if envInsecure := viper.GetBool("INSECURE"); envInsecure {
 		allowInsecure = envInsecure
+	}
+
+	if envHTTP := viper.GetBool("HTTP"); envHTTP {
+		onlyHTTP = envHTTP
 	}
 
 	// Use stdout, not stderr for cmd.Print output, so that
