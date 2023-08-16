@@ -43,6 +43,12 @@ func NewAPIClient(host string, port uint16, tlsConfig *ClientTLSConfig, path ...
 		baseURI = baseURI.JoinPath(V1APIPrefix)
 	}
 
+	if tlsConfig == nil {
+		// Create a default empty config if one was not supplied which will be the case
+		// in testing.
+		tlsConfig = &ClientTLSConfig{}
+	}
+
 	tr := &http.Transport{}
 	if tlsConfig.CACert != "" {
 		caCert, err := os.ReadFile(tlsConfig.CACert)
