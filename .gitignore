@@ -56,3 +56,4 @@ coverage.out
 docker/.images
 docker/.pulled
 clients/pyproject.toml
+certs 

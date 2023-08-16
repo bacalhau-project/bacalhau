@@ -252,6 +252,7 @@ images: docker/.pulled
 clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
+	$(RM) certs/*
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled
@@ -278,6 +279,16 @@ ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
 .PHONY: all_schemas
 all_schemas: ${ALL_SCHEMAS}
 
+################################################################################
+# Target: certs (for creating certificates)
+################################################################################
+CERT_DIR ?= certs
+
+.PHONY: certs 
+certs: ${CERT_DIR}/dev-ca.crt
+
+${CERT_DIR}/dev-ca.crt:
+	@./scripts/make-certs.sh 
 
 ################################################################################
 # Target: test
