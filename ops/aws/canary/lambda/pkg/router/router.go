@@ -3,11 +3,14 @@ package router
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/scenarios"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 var TestcasesMap = map[string]Handler{
@@ -20,10 +23,15 @@ var TestcasesMap = map[string]Handler{
 }
 
 func init() {
-	// init system configs
-	err := system.InitConfig()
+	// init system configs and repo.
+	home, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Faild to get home dir: %s", err)
+		os.Exit(1)
+	}
+	if _, err := setup.SetupBacalhauRepo(filepath.Join(home, ".bacalhau_canary")); err != nil {
+		fmt.Fprintf(os.Stderr, "Faild to initalize bacalhau repo: %s", err)
+		os.Exit(1)
 	}
 }
 

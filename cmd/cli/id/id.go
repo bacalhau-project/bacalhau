@@ -1,16 +1,19 @@
 package id
 
 import (
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
+	"github.com/libp2p/go-libp2p"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
-	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 type IDInfo struct {
@@ -19,27 +22,36 @@ type IDInfo struct {
 }
 
 func NewCmd() *cobra.Command {
-	OS := serve.NewServeOptions()
 	outputOpts := output.OutputOptions{
 		Format: output.JSONFormat,
 	}
 
-	// make sure serve options point to local mode
-	OS.PeerConnect = serve.DefaultPeerConnect
-	OS.PrivateInternalIPFS = true
+	idFlags := map[string][]configflags.Definition{
+		"libp2p": configflags.Libp2pFlags,
+	}
 
 	idCmd := &cobra.Command{
 		Use:   "id",
 		Short: "Show bacalhau node id info",
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			if err := configflags.BindFlags(cmd, idFlags); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+		},
 		Run: func(cmd *cobra.Command, _ []string) {
-			if err := id(cmd, OS, outputOpts); err != nil {
+			if err := id(cmd, outputOpts); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
 
-	idCmd.Flags().AddFlagSet(flags.OutputFormatFlags(&outputOpts))
-	serve.SetupLibp2pCLIFlags(idCmd, OS)
+	// TODO(forrest): [ux] these are flags without a corresponding value in the config
+	// in the future we can bind all flags to a config value.
+	idCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&outputOpts))
+
+	if err := configflags.RegisterFlags(idCmd, idFlags); err != nil {
+		util.Fatal(idCmd, err, 1)
+	}
 
 	return idCmd
 }
@@ -55,8 +67,17 @@ var idColumns = []output.TableColumn[IDInfo]{
 	},
 }
 
-func id(cmd *cobra.Command, OS *serve.ServeOptions, outputOpts output.OutputOptions) error {
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
+func id(cmd *cobra.Command, outputOpts output.OutputOptions) error {
+	privKey, err := config.GetLibp2pPrivKey()
+	if err != nil {
+		return err
+	}
+	libp2pCfg, err := config.GetLibp2pConfig()
+	if err != nil {
+		return err
+	}
+
+	libp2pHost, err := bac_libp2p.NewHost(libp2pCfg.SwarmPort, libp2p.Identity(privKey))
 	if err != nil {
 		return err
 	}

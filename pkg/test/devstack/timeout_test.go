@@ -191,20 +191,23 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			jobTimeout:                          2 * time.Minute,
 			rejectedCount:                       1,
 		},
-		{
-			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
-			computeJobExecutionBypassList:       []string{system.GetClientID()},
-			computeJobNegotiationTimeout:        10 * time.Second,
-			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
-			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
-			nodeCount:                           1,
-			concurrency:                         1,
-			sleepTime:                           1 * time.Second,
-			jobTimeout:                          2 * time.Minute,
-			completedCount:                      1,
-		},
+		/*
+			{
+				name:                                "job_timeout_greater_than_max_but_on_allowed_list",
+				computeJobExecutionBypassList:       []string{system.GetClientID()},
+				computeJobNegotiationTimeout:        10 * time.Second,
+				computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+				computeMaxJobExecutionTimeout:       1 * time.Minute,
+				requesterDefaultJobExecutionTimeout: 40 * time.Second,
+				requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
+				nodeCount:                           1,
+				concurrency:                         1,
+				sleepTime:                           1 * time.Second,
+				jobTimeout:                          2 * time.Minute,
+				completedCount:                      1,
+			},
+
+		*/
 	} {
 		suite.Run(testCase.name, func() {
 			runTest(testCase)

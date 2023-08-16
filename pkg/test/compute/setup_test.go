@@ -6,9 +6,14 @@ import (
 	"context"
 	"time"
 
+	libp2p2 "github.com/libp2p/go-libp2p"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -18,11 +23,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	repo2 "github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeSuite struct {
@@ -62,10 +66,14 @@ func (s *ComputeSuite) SetupTest() {
 }
 
 func (s *ComputeSuite) setupNode() {
+	repo := repo2.SetupBacalhauRepoForTesting(s.T())
 	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
-	host, err := libp2p.NewHost(libp2pPort)
+	// TODO(forrest) [config] generate a key
+	privKey, err := config.GetLibp2pPrivKey()
+	s.Require().NoError(err)
+	host, err := libp2p.NewHost(libp2pPort, libp2p2.Identity(privKey))
 	s.NoError(err)
 	s.T().Cleanup(func() { _ = host.Close })
 
@@ -87,6 +95,7 @@ func (s *ComputeSuite) setupNode() {
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
+		repo,
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

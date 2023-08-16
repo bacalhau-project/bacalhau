@@ -45,7 +45,6 @@ type ScenarioRunner struct {
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
 
 	s.Ctx = context.Background()
 

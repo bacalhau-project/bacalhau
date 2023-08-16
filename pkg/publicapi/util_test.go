@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const TimeToWaitForServerReply = 10
@@ -21,12 +23,13 @@ func setupNodeForTest(t *testing.T, cm *system.CleanupManager) *APIClient {
 }
 
 func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverConfig APIServerConfig) *APIClient {
-	system.InitConfigForTesting(t)
+	setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
+	// TODO(forrest) [config] generate a key or get it from testing repo
 	libp2pHost, err := libp2p.NewHost(libp2pPort)
 	require.NoError(t, err)
 

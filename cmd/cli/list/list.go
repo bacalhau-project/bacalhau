@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -104,7 +105,7 @@ func NewCmd() *cobra.Command {
 		//nolint:lll // Documentation
 		`Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.`,
 	)
-	listCmd.PersistentFlags().AddFlagSet(flags.OutputFormatFlags(&OL.OutputOpts))
+	listCmd.PersistentFlags().AddFlagSet(cliflags.OutputFormatFlags(&OL.OutputOpts))
 
 	return listCmd
 }

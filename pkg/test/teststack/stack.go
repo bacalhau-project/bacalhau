@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -45,12 +46,12 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	system.InitConfigForTesting(t)
+	fsRepo := setup.SetupBacalhauRepoForTesting(t)
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.Setup(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
+	stack, err := devstack.Setup(ctx, cm, fsRepo, append(testDevStackConfig().Options(), opts...)...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)
 	}

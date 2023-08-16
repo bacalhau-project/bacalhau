@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -99,7 +100,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
+	IPFSSwarmAddrs := os.Getenv(config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses))
 	if IPFSSwarmAddrs == "" {
 		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
@@ -131,16 +132,9 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.GetAPIHost()
-	apiPort := config.GetAPIPort()
-	if apiHost == "" {
-		apiHost = system.Envs[system.GetEnvironment()].APIHost
-	}
-	if apiPort == nil {
-		defaultPort := system.Envs[system.GetEnvironment()].APIPort
-		apiPort = &defaultPort
-	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+	apiHost := config.APIHost()
+	apiPort := config.APIPort()
+	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

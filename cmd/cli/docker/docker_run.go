@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -51,12 +51,12 @@ type DockerRunOptions struct {
 	Entrypoint       []string
 	WorkingDirectory string // Working directory for docker
 
-	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   *flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings *flags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       *flags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    *flags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   *flags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *cliflags.SpecFlagSettings       // Setting for top level job spec fields.
+	ResourceSettings   *cliflags.ResourceUsageSettings  // Settings for the jobs resource requirements.
+	NetworkingSettings *cliflags.NetworkingFlagSettings // Settings for the jobs networking.
+	DealSettings       *cliflags.DealFlagSettings       // Settings for the jobs deal.
+	RunTimeSettings    *cliflags.RunTimeSettings        // Settings for running the job.
+	DownloadSettings   *cliflags.DownloaderSettings     // Settings for running Download.
 
 }
 
@@ -69,12 +69,12 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Entrypoint:       nil,
 		WorkingDirectory: "",
 
-		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   flags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: flags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       flags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   flags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    flags.NewDefaultRunTimeSettings(),
+		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
+		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
+		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
+		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
+		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:    cliflags.NewDefaultRunTimeSettings(),
 	}
 }
 
@@ -116,12 +116,12 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Override the default ENTRYPOINT of the image`,
 	)
 
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(opts.DealSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(opts.DownloadSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(opts.NetworkingSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(opts.ResourceSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	return dockerRunCmd
 }

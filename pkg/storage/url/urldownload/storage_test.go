@@ -11,11 +11,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -27,13 +31,14 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
+	err := config.SetViperDefaults(configenv.Local)
+	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }
 
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {

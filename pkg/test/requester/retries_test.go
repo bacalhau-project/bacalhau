@@ -13,17 +13,18 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
@@ -43,7 +44,7 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	nodeOverrides := []node.NodeConfig{
 		{
