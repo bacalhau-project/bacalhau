@@ -32,19 +32,23 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 		field := t.Field(i)
 		tag := field.Tag.Get("config")
 		newPrefix := prefix
-		newPath := append(path, field.Name)
+		newPath := make([]string, len(path))
+		copy(newPath, path)
+		newPath = append(newPath, field.Name)
 
 		if tag != "" {
+			// If there's a tag, we use it as the new prefix, discarding the old one
 			newPrefix = tag
 		} else if field.Anonymous {
+			// For anonymous fields, keep the existing prefix
 			newPrefix = prefix
 		} else {
-			// Special handling for "Node" within "Node"
-			if prefix == "Node" && field.Name == "Node" {
-				newPrefix = prefix
-			} else {
-				newPrefix = prefix + "." + field.Name
+			// If prefix is empty, just use the field name. Otherwise, concatenate with "."
+			newPrefix = prefix
+			if newPrefix != "" {
+				newPrefix += "."
 			}
+			newPrefix += field.Name
 		}
 
 		fieldValue := value.Field(i)
@@ -53,7 +57,7 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 			// Inserting the viper.SetDefault for the nested struct path.
 			constantNameForStruct := strings.ReplaceAll(newPrefix, ".", "")
 			defaultValueForStruct := "cfg." + strings.Join(newPath, ".")
-			fmt.Fprintf(writer, "viper.SetDefault(%s, %s)\n", constantNameForStruct, defaultValueForStruct)
+			fmt.Fprintf(writer, "\tviper.SetDefault(%s, %s)\n", constantNameForStruct, defaultValueForStruct)
 
 			generateSetDefaults(field.Type, newPrefix, newPath, fieldValue, writer)
 		} else {
@@ -67,7 +71,7 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 				defaultValue = "cfg." + constantPath + ".String()"
 			}
 
-			fmt.Fprintf(writer, "viper.SetDefault(%s, %s)\n", constantName, defaultValue)
+			fmt.Fprintf(writer, "\tviper.SetDefault(%s, %s)\n", constantName, defaultValue)
 		}
 	}
 }
@@ -87,7 +91,7 @@ func main() {
 	fmt.Fprintf(file, "import \"github.com/spf13/viper\"\n\n")
 	fmt.Fprintf(file, "func SetDefaults(cfg BacalhauConfig) {\n")
 
-	generateSetDefaults(reflect.TypeOf(defaultConfig), "Node", []string{}, reflect.ValueOf(defaultConfig), file)
+	generateSetDefaults(reflect.TypeOf(defaultConfig), "", []string{}, reflect.ValueOf(defaultConfig), file)
 
 	fmt.Fprintf(file, "}\n")
 }

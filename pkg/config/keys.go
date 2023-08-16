@@ -78,7 +78,7 @@ func encodePublicKey(key *rsa.PublicKey) string {
 
 // loadUserIDKey loads the user ID key from whatever source is configured.
 func loadUserIDKey() (*rsa.PrivateKey, error) {
-	keyFile := viper.GetString(types.NodeUserUserKeyPath)
+	keyFile := viper.GetString(types.UserUserKeyPath)
 	if keyFile == "" {
 		return nil, fmt.Errorf("config error: user-id-key not set")
 	}
@@ -120,7 +120,7 @@ func GetLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
 }
 
 func loadLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
-	keyFile := viper.GetString(types.NodeUserLibp2pKeyPath)
+	keyFile := viper.GetString(types.UserLibp2pKeyPath)
 	if keyFile == "" {
 		return nil, fmt.Errorf("config error: libp2p private key not set")
 	}

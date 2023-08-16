@@ -31,7 +31,7 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
-	err := config.SetViperDefaults(configenv.Local)
+	err := config.Set(configenv.Local)
 	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }

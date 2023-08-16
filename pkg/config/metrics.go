@@ -9,9 +9,9 @@ import (
 // TODO ensure these exists or return an error
 
 func GetLibp2pTracerPath() string {
-	return viper.GetString(types.NodeMetricsLibp2pTracerPath)
+	return viper.GetString(types.MetricsLibp2pTracerPath)
 }
 
 func GetEventTracerPath() string {
-	return viper.GetString(types.NodeMetricsEventTracerPath)
+	return viper.GetString(types.MetricsEventTracerPath)
 }

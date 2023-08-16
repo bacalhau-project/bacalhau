@@ -37,16 +37,18 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 		newPrefix := prefix
 
 		if tag != "" {
+			// If there's a tag, we use it as the new prefix, discarding the old one
 			newPrefix = tag
 		} else if field.Anonymous {
-			newPrefix = prefix // Keep the existing prefix
+			// For anonymous fields, keep the existing prefix
+			newPrefix = prefix
 		} else {
-			// Special handling for "Node" within "Node"
-			if prefix == "Node" && field.Name == "Node" {
-				newPrefix = prefix
-			} else {
-				newPrefix = prefix + "." + field.Name
+			// If prefix is empty, just use the field name. Otherwise, concatenate with "."
+			newPrefix = prefix
+			if newPrefix != "" {
+				newPrefix += "."
 			}
+			newPrefix += field.Name
 		}
 
 		if field.Type.Kind() == reflect.Struct {
@@ -77,5 +79,5 @@ func main() {
 	// Write the package declaration
 	fmt.Fprintln(file, "package types")
 
-	generateConstants(reflect.TypeOf(config), "Node", file)
+	generateConstants(reflect.TypeOf(config), "", file)
 }

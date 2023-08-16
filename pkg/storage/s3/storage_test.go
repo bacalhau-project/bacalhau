@@ -28,7 +28,7 @@ type StorageTestSuite struct {
 }
 
 func (s *StorageTestSuite) SetupSuite() {
-	s.Require().NoError(config.SetViperDefaults(configenv.Local))
+	s.Require().NoError(config.Set(configenv.Local))
 	cfg, err := s3helper.DefaultAWSConfig()
 	s.Require().NoError(err)
 	if !s3helper.HasValidCredentials(cfg) {

@@ -10,15 +10,15 @@ var DisabledFeatureFlags = []Definition{
 		Description:  "Engine types to disable",
 	},
 	{
-		FlagName:     types.NodeDisabledFeaturesPublishers,
-		ConfigPath:   "Node.DisabledFeature.Publishers",
+		FlagName:     "disabled-publisher",
+		ConfigPath:   types.NodeDisabledFeaturesPublishers,
 		DefaultValue: Default.Node.DisabledFeatures.Publishers,
-		Description:  "Engine types to disable",
+		Description:  "Publisher types to disable",
 	},
 	{
 		FlagName:     "disable-storage",
 		ConfigPath:   types.NodeDisabledFeaturesStorages,
 		DefaultValue: Default.Node.DisabledFeatures.Storages,
-		Description:  "Engine types to disable",
+		Description:  "Storage types to disable",
 	},
 }

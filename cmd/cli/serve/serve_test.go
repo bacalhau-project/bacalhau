@@ -227,7 +227,7 @@ func (s *ServeSuite) TestGetPeers() {
 		}
 
 		// this is required for the below line to succeed as environment is being deprecated.
-		config.SetViperDefaults(configenv.Testing)
+		config.Set(configenv.Testing)
 		peers, err = serve.GetPeers("env")
 		s.NoError(err)
 		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")

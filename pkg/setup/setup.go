@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -117,14 +116,10 @@ func SetupBacalhauRepo(repoDir string) (string, error) {
 	case EnvironmentLocal:
 		bacalhauConfig = configenv.Local
 	default:
-		// this would indicate an error in the above logic
+		// this would indicate an error in the above logic of `getEnvironment()`
 		bacalhauConfig = configenv.Local
 	}
 
-	// set the default configuration based on the environment
-	if err := config.SetViperDefaults(bacalhauConfig); err != nil {
-		return "", fmt.Errorf("fialed to set up default config values: %w", err)
-	}
 	if repoDir == "" {
 		var err error
 		repoDir, err = getBacalhauRepoPath()
@@ -133,36 +128,39 @@ func SetupBacalhauRepo(repoDir string) (string, error) {
 		}
 	}
 
-	fsRepo, err := setupRepo(repoDir)
+	fsRepo, err := setupRepo(repoDir, &bacalhauConfig)
 	if err != nil {
 		return "", err
 	}
 	return fsRepo.Path()
 }
 
-func setupRepo(path string) (*repo.FsRepo, error) {
+func setupRepo(path string, cfg *types.BacalhauConfig) (*repo.FsRepo, error) {
 	fsRepo, err := repo.NewFS(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}
-	if err := fsRepo.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initalize repo: %w", err)
+	if exists, err := fsRepo.Exists(); err != nil {
+		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
+	} else if !exists {
+		if err := fsRepo.Init(cfg); err != nil {
+			return nil, fmt.Errorf("failed to initalize repo: %w", err)
+		}
+	} else {
+		if err := fsRepo.Open(); err != nil {
+			return nil, fmt.Errorf("failed to open repo: %w", err)
+		}
 	}
 	return fsRepo, nil
-
 }
 
 func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	viper.Reset()
-	// TODO pass a testing config
-	// set the default configuration
-	if err := config.SetViperDefaults(configenv.Local); err != nil {
-		t.Fatal(fmt.Sprintf("fialed to set up default config values: %s", err))
-	}
 
 	path := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()))
 	t.Logf("creating repo for testing at: %s", path)
-	fsRepo, err := setupRepo(path)
+	// TODO pass a testing config
+	fsRepo, err := setupRepo(path, &configenv.Local)
 	if err != nil {
 		t.Fatal(err)
 	}

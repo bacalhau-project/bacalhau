@@ -150,7 +150,7 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if err := fsRepo.Init(); err != nil {
+	if err := fsRepo.Open(); err != nil {
 		return err
 	}
 

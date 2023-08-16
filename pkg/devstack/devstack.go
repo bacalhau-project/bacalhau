@@ -304,6 +304,9 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupMana
 	if err != nil {
 		return "", err
 	}
+	if err := fsRepo.Open(); err != nil {
+		return "", err
+	}
 
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
