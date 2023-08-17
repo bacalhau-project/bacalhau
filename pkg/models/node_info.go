@@ -1,4 +1,4 @@
-//go:generate stringer -type=NodeType -trimprefix=NodeType -output=nodeinfo_string.go
+//go:generate stringer -type=NodeType -trimprefix=NodeType -output=node_info_string.go
 package models
 
 import (

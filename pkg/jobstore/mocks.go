@@ -8,7 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -181,10 +180,10 @@ func (mr *MockStoreMockRecorder) GetJob(ctx, id interface{}) *gomock.Call {
 }
 
 // GetJobHistory mocks base method.
-func (m *MockStore) GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error) {
+func (m *MockStore) GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJobHistory", ctx, jobID, options)
-	ret0, _ := ret[0].([]model.JobHistory)
+	ret0, _ := ret[0].([]models.JobHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

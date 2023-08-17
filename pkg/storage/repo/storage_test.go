@@ -108,7 +108,7 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	sp, err := NewStorage(cm, storage, "")
 	require.NoError(s.T(), err, "failed to create storage provider")
 
-	spec := models.Artifact{
+	spec := models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceRepoClone,
 			Params: Source{
@@ -141,8 +141,8 @@ func (s *StorageSuite) TestCloneRepo() {
 	}
 	// Rewrite this test replacing it with the clone part
 	filetypeCases := []repostruct{
-		{Site: "github", URL: "https://github.com/bacalhau-project/bacalhau.git",
-			repoName: "bacalhau-project/bacalhau",
+		{Site: "github", URL: "https://github.com/bacalhau-project/get.bacalhau.org.git",
+			repoName: "bacalhau-project/get.bacalhau.org",
 		}}
 
 	for _, ftc := range filetypeCases {
@@ -160,7 +160,7 @@ func (s *StorageSuite) TestCloneRepo() {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}
 
-			spec := models.Artifact{
+			spec := models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceRepoClone,
 					Params: Source{

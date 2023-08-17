@@ -22,7 +22,10 @@ func NewMaxUsageNodeRanker() *MaxUsageNodeRanker {
 // - Rank 0: Node MaxJobRequirements are not set, or the node was discovered not through nodeInfoPublisher (e.g. identity protocol)
 func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
-	jobResourceUsage := job.Task().Resources
+	jobResourceUsage, err := job.Task().ResourcesConfig.ToResources()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert job resources config to resources: %w", err)
+	}
 	jobResourceUsageSet := !jobResourceUsage.IsZero()
 	for i, node := range nodes {
 		rank := orchestrator.RankPossible
@@ -35,8 +38,8 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, node
 				rank = orchestrator.RankUnsuitable
 				reason = fmt.Sprintf(
 					"job requires more resources %s than are available per job %s",
-					jobResourceUsage,
-					node.ComputeNodeInfo.MaxJobRequirements,
+					jobResourceUsage.String(),
+					node.ComputeNodeInfo.MaxJobRequirements.String(),
 				)
 			}
 		}

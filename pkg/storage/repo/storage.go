@@ -65,17 +65,17 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, models.Artifact) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return false, nil
 }
 
 // Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-func (sp *StorageProvider) GetVolumeSize(context.Context, models.Artifact) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
 	return 0, nil
 }
 
 //nolint:gocyclo
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.Artifact) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 
@@ -92,7 +92,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 
 	// # create a tmp directory
 	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
-	log.Ctx(ctx).Debug().Str("Output Path", outputPath).Msg("created temp folder for repo")
+	log.Ctx(ctx).Debug().Str("Output ResultPath", outputPath).Msg("created temp folder for repo")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -159,14 +159,14 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (models
 
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ models.Artifact,
+	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
 	defer span.End()
 
 	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
+	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
 }
 

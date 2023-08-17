@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -34,8 +34,8 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(
 			node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality: semantic.Anywhere,
 				},
 			}),
 		),

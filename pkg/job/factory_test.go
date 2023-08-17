@@ -5,11 +5,11 @@ package job
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // In order for 'go test' to run this suite, we need to create

@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -27,7 +29,7 @@ func RunTestCase(
 	spec := testCase.Spec
 
 	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
-	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine())
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine().String())
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
@@ -39,14 +41,16 @@ func RunTestCase(
 			return []model.StorageSpec{}
 		}
 
-		storageList, stErr := getStorage(ctx,
-			model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
+		storageList, stErr := getStorage(ctx, model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
-			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, storageSpec.StorageSource)
+			inputSource, err := legacy.FromLegacyStorageSpecToInputSource(storageSpec)
 			require.NoError(t, err)
-			hasStorage, stErr := strger.HasStorageLocally(ctx, storageSpec)
+
+			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, storageSpec.StorageSource.String())
+			require.NoError(t, err)
+			hasStorage, stErr := strger.HasStorageLocally(ctx, *inputSource)
 			require.NoError(t, stErr)
 			require.True(t, hasStorage)
 		}
@@ -70,11 +74,16 @@ func RunTestCase(
 		Spec: spec,
 	}
 
+	newJob, err := legacy.FromLegacyJob(&job)
+	require.NoError(t, err)
+	execution := mock.ExecutionForJob(newJob)
+	execution.AllocateResources(newJob.Task().Name, models.Resources{CPU: 1, Memory: 1})
+
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
 	runCommandCleanup := system.NewCleanupManager()
-	execution := store.NewLocalState("test-execution", job, "res-requesterID", model.ResourceUsageData{})
-	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, *execution, resultsDirectory, runCommandCleanup)
+
+	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, execution, resultsDirectory, runCommandCleanup)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		runCommandCleanup.Cleanup(ctx)

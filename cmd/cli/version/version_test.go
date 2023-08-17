@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 

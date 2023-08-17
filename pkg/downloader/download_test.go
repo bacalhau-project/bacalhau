@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
@@ -68,8 +69,8 @@ func (ds *DownloaderSuite) SetupTest() {
 	}
 
 	ds.downloadProvider = provider.NewMappedProvider(
-		map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
+		map[string]Downloader{
+			model.StorageSourceIPFS.String(): ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
 		},
 	)
 }

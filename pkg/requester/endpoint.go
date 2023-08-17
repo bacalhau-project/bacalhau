@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -41,11 +42,11 @@ type BaseEndpoint struct {
 	eventEmitter     orchestrator.EventEmitter
 	computesvc       compute.Endpoint
 	transforms       []jobtransform.Transformer
+	postTransforms   []jobtransform.PostTransformer
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
-		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
@@ -54,12 +55,17 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		// jobtransform.DockerImageDigest(),
 	}
 
+	postTransforms := []jobtransform.PostTransformer{
+		jobtransform.NewInlineStoragePinner(params.StorageProviders),
+	}
+
 	return &BaseEndpoint{
 		id:               params.ID,
 		evaluationBroker: params.EvaluationBroker,
 		computesvc:       params.ComputeEndpoint,
 		store:            params.Store,
 		transforms:       transforms,
+		postTransforms:   postTransforms,
 		eventEmitter:     params.EventEmitter,
 	}
 }
@@ -92,7 +98,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 	// defer span.End()
 
 	now := time.Now().UTC()
-	job := &model.Job{
+	legacyJob := &model.Job{
 		APIVersion: data.APIVersion,
 		Metadata: model.Metadata{
 			ID:        jobID,
@@ -103,25 +109,38 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 	}
 
 	for _, transform := range e.transforms {
+		_, err = transform(ctx, legacyJob)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// convert to new job model
+	job, err := legacy.FromLegacyJob(legacyJob)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, transform := range e.postTransforms {
 		_, err = transform(ctx, job)
 		if err != nil {
-			return job, err
+			return nil, err
 		}
 	}
 
 	err = e.store.CreateJob(ctx, *job)
 	if err != nil {
-		return job, err
+		return nil, err
 	}
 
 	eval := &models.Evaluation{
 		ID:          uuid.NewString(),
-		JobID:       job.ID(),
+		JobID:       job.ID,
 		TriggeredBy: models.EvalTriggerJobRegister,
-		Type:        job.Type(),
+		Type:        job.Type,
 		Status:      models.EvalStatusPending,
-		CreateTime:  job.Metadata.CreatedAt.UnixNano(),
-		ModifyTime:  job.Metadata.CreatedAt.UnixNano(),
+		CreateTime:  job.CreateTime,
+		ModifyTime:  job.CreateTime,
 	}
 
 	// TODO(ross): How can we create this evaluation in the same transaction that the CreateJob
@@ -129,16 +148,16 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 	err = e.store.CreateEvaluation(ctx, *eval)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for job %s", jobID)
-		return job, err
+		return nil, err
 	}
 
 	err = e.evaluationBroker.Enqueue(eval)
 	if err != nil {
-		return job, err
+		return nil, err
 	}
 
 	e.eventEmitter.EmitJobCreated(ctx, *job)
-	return job, nil
+	return legacyJob, nil
 }
 
 func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
@@ -146,16 +165,12 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 	if err != nil {
 		return CancelJobResult{}, err
 	}
-	existingJobState, err := e.store.GetJobState(ctx, request.JobID)
-	if err != nil {
-		return CancelJobResult{}, err
-	}
-	if existingJobState.State == model.JobStateCancelled {
-		// no need to cancel a job that is already canceled
+	switch job.State.StateType {
+	case models.JobStateTypeStopped:
+		// no need to cancel a job that is already stopped
 		return CancelJobResult{}, nil
-	}
-	if existingJobState.State == model.JobStateCompleted {
-		return CancelJobResult{}, fmt.Errorf("cannot cancel job in state %s", existingJobState.State)
+	case models.JobStateTypeCompleted:
+		return CancelJobResult{}, fmt.Errorf("cannot cancel job in state %s", job.State.StateType)
 	}
 
 	// update the job state, except if the job is already completed
@@ -163,11 +178,11 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 	err = e.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 		JobID: request.JobID,
 		Condition: jobstore.UpdateJobCondition{
-			UnexpectedStates: []model.JobStateType{
-				model.JobStateCompleted,
+			UnexpectedStates: []models.JobStateType{
+				models.JobStateTypeCompleted,
 			},
 		},
-		NewState: model.JobStateCancelled,
+		NewState: models.JobStateTypeStopped,
 		Comment:  "job canceled by user",
 	})
 	if err != nil {
@@ -176,13 +191,13 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 
 	// enqueue evaluation to allow the scheduler to cancel existing executions
 	// if the job is not terminal already, such as failed
-	if !existingJobState.State.IsTerminal() {
+	if !job.IsTerminal() {
 		now := time.Now().UTC().UnixNano()
 		eval := &models.Evaluation{
 			ID:          uuid.NewString(),
 			JobID:       request.JobID,
 			TriggeredBy: models.EvalTriggerJobCancel,
-			Type:        job.Type(),
+			Type:        job.Type,
 			Status:      models.EvalStatusPending,
 			CreateTime:  now,
 			ModifyTime:  now,
@@ -212,19 +227,14 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
 	emptyResponse := ReadLogsResponse{}
 
-	jobstate, err := e.store.GetJobState(ctx, request.JobID)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	job, err := e.store.GetJob(ctx, request.JobID)
+	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
 		return emptyResponse, err
 	}
 
 	nodeID := ""
-	for _, e := range jobstate.Executions {
-		if e.ComputeReference == request.ExecutionID {
+	for _, e := range executions {
+		if e.ID == request.ExecutionID {
 			nodeID = e.NodeID
 			break
 		}
@@ -236,7 +246,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (R
 
 	req := compute.ExecutionLogsRequest{
 		RoutingMetadata: compute.RoutingMetadata{
-			SourcePeerID: job.Metadata.Requester.RequesterNodeID,
+			SourcePeerID: e.id,
 			TargetPeerID: nodeID,
 		},
 		ExecutionID: request.ExecutionID,
@@ -262,26 +272,22 @@ func (e *BaseEndpoint) OnBidComplete(ctx context.Context, response compute.BidRe
 	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
 	updateRequest := jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
-			JobID:       response.JobID,
-			NodeID:      response.SourcePeerID,
-			ExecutionID: response.ExecutionID,
-		},
+		ExecutionID: response.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedStates: []model.ExecutionStateType{
-				model.ExecutionStateAskForBid,
-				model.ExecutionStateNew, // in case the compute node responded before the compute_forwarder updated the execution state
+			ExpectedStates: []models.ExecutionStateType{
+				models.ExecutionStateAskForBid,
+				models.ExecutionStateNew, // in case the compute node responded before the compute_forwarder updated the execution state
 			},
 		},
-		NewValues: model.ExecutionState{
-			State:  model.ExecutionStateAskForBidAccepted,
-			Status: response.Reason,
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).WithMessage(response.Reason),
 		},
 	}
 
 	if !response.Accepted {
-		updateRequest.NewValues.State = model.ExecutionStateAskForBidRejected
-		updateRequest.NewValues.DesiredState = model.ExecutionDesiredStateStopped
+		updateRequest.NewValues.ComputeState.StateType = models.ExecutionStateAskForBidRejected
+		updateRequest.NewValues.DesiredState =
+			models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("bid rejected")
 	}
 	err := e.store.UpdateExecution(ctx, updateRequest)
 	if err != nil {
@@ -304,26 +310,22 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 
 	// update execution state
 	err := e.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
-			JobID:       result.JobID,
-			NodeID:      result.SourcePeerID,
-			ExecutionID: result.ExecutionID,
-		},
+		ExecutionID: result.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedStates: []model.ExecutionStateType{
+			ExpectedStates: []models.ExecutionStateType{
 				// usual expected state
-				model.ExecutionStateBidAccepted,
+				models.ExecutionStateBidAccepted,
 				// in case of approval is required, and the compute node responded before the compute_forwarder updated the execution state
-				model.ExecutionStateAskForBidAccepted,
+				models.ExecutionStateAskForBidAccepted,
 				// in case of approval is not required, and the compute node responded before the compute_forwarder updated the execution state
-				model.ExecutionStateNew,
+				models.ExecutionStateNew,
 			},
 		},
-		NewValues: model.ExecutionState{
+		NewValues: models.Execution{
 			PublishedResult: result.PublishResult,
 			RunOutput:       result.RunCommandResult,
-			State:           model.ExecutionStateCompleted,
-			DesiredState:    model.ExecutionDesiredStateStopped,
+			ComputeState:    models.NewExecutionState(models.ExecutionStateCompleted),
+			DesiredState:    models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution completed"),
 		},
 	})
 	if err != nil {
@@ -345,23 +347,17 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 		e.id, result.ExecutionID, result.SourcePeerID)
 
 	// update execution state
-	executionID := model.ExecutionID{
-		JobID:       result.JobID,
-		NodeID:      result.SourcePeerID,
-		ExecutionID: result.ExecutionID,
-	}
 	err := e.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: executionID,
+		ExecutionID: result.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
-			UnexpectedStates: []model.ExecutionStateType{
-				model.ExecutionStateCompleted,
-				model.ExecutionStateCancelled,
+			UnexpectedStates: []models.ExecutionStateType{
+				models.ExecutionStateCompleted,
+				models.ExecutionStateCancelled,
 			},
 		},
-		NewValues: model.ExecutionState{
-			State:        model.ExecutionStateFailed,
-			DesiredState: model.ExecutionDesiredStateStopped,
-			Status:       result.Error(),
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(result.Error()),
+			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution failed"),
 		},
 	})
 	if err != nil {
@@ -371,7 +367,7 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 
 	// enqueue evaluation to allow the scheduler find other nodes, or mark the job as failed
 	e.enqueueEvaluation(ctx, result.JobID, "OnComputeFailure")
-	e.eventEmitter.EmitComputeFailure(ctx, executionID, result)
+	e.eventEmitter.EmitComputeFailure(ctx, result.ExecutionID, result)
 }
 
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node
@@ -387,7 +383,7 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 		ID:          uuid.NewString(),
 		JobID:       jobID,
 		TriggeredBy: models.EvalTriggerExecUpdate,
-		Type:        job.Type(),
+		Type:        job.Type,
 		Status:      models.EvalStatusPending,
 		CreateTime:  now,
 		ModifyTime:  now,

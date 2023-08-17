@@ -3,6 +3,7 @@ package downloader
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -19,5 +20,5 @@ type Downloader interface {
 }
 
 type DownloaderProvider interface {
-	provider.Provider[model.StorageSourceType, Downloader]
+	provider.Provider[Downloader]
 }

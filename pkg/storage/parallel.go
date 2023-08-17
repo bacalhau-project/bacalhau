@@ -10,7 +10,7 @@ import (
 )
 
 type PreparedStorage struct {
-	Artifact models.Artifact
+	Artifact models.InputSource
 	Volume   StorageVolume
 }
 
@@ -20,11 +20,11 @@ type PreparedStorage struct {
 func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	specs ...*models.Artifact,
+	specs ...*models.InputSource,
 ) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
 
-	addStorageSpec := func(idx int, input models.Artifact, output []PreparedStorage) error {
+	addStorageSpec := func(idx int, input models.InputSource, output []PreparedStorage) error {
 		storageProvider, err := provider.Get(ctx, input.Source.Type)
 		if err != nil {
 			return err

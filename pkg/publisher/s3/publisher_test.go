@@ -78,18 +78,18 @@ func (s *PublisherTestSuite) TestIsInstalled() {
 func (s *PublisherTestSuite) TestValidateJob() {
 	for _, tc := range []struct {
 		name    string
-		config  Params
+		config  s3helper.PublisherSpec
 		invalid bool
 	}{
 		{
 			name: "valid",
-			config: Params{
+			config: s3helper.PublisherSpec{
 				Bucket: bucket,
 				Key:    prefix + uuid.New().String(),
 			},
 		}, {
 			name: "valid with endpoint and region",
-			config: Params{
+			config: s3helper.PublisherSpec{
 				Bucket:   bucket,
 				Key:      prefix + uuid.New().String(),
 				Endpoint: "http://localhost:4566",
@@ -98,14 +98,14 @@ func (s *PublisherTestSuite) TestValidateJob() {
 		},
 		{
 			name: "invalid bucket",
-			config: Params{
+			config: s3helper.PublisherSpec{
 				Bucket: "",
 				Key:    prefix + uuid.New().String(),
 			},
 			invalid: true,
 		}, {
 			name: "invalid key",
-			config: Params{
+			config: s3helper.PublisherSpec{
 				Bucket: bucket,
 				Key:    "",
 			},
@@ -114,6 +114,7 @@ func (s *PublisherTestSuite) TestValidateJob() {
 	} {
 		s.Run(tc.name, func() {
 			job := mock.Job()
+			job.ID = jobID
 			job.Task().Publisher = &models.SpecConfig{
 				Type:   models.PublisherS3,
 				Params: tc.config.ToMap(),
@@ -132,8 +133,8 @@ func (s *PublisherTestSuite) TestValidateJob() {
 func (s *PublisherTestSuite) TestInvalidValidateJobType() {
 	job := mock.Job()
 	job.Task().Publisher = &models.SpecConfig{
-		Type: models.PublisherS3,
-		Params: Params{
+		Type: "notS3",
+		Params: s3helper.PublisherSpec{
 			Bucket: bucket,
 			Key:    prefix + uuid.New().String(),
 		}.ToMap(),
@@ -223,7 +224,7 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.T().Skip(skipMessage)
 			}
 			ctx := context.Background()
-			params := Params{
+			params := s3helper.PublisherSpec{
 				Bucket:   bucket,
 				Key:      tc.key,
 				Compress: tc.archived,
@@ -248,33 +249,36 @@ func (s *PublisherTestSuite) TestPublish() {
 			}
 			s.Require().NoError(err)
 
-			s.Equal(tc.expectedKey, storageSpec.Params["Key"])
-			s.Equal(bucket, storageSpec.Params["Bucket"])
-			s.Equal(params.Region, storageSpec.Params["Region"])
-			s.Equal(params.Endpoint, storageSpec.Params["Endpoint"])
+			sourceSpec, err := s3helper.DecodeSourceSpec(&storageSpec)
+			s.Require().NoError(err)
+
+			s.Equal(tc.expectedKey, sourceSpec.Key)
+			s.Equal(bucket, sourceSpec.Bucket)
+			s.Equal(params.Region, sourceSpec.Region)
+			s.Equal(params.Endpoint, sourceSpec.Endpoint)
 
 			if tc.archived {
-				s.NotEmptyf(storageSpec.Params["ChecksumSHA256"], "ChecksumSHA256 should not be empty")
-				s.NotEmptyf(storageSpec.Params["VersionID"], "VersionID should not be empty")
-				dir := s.decompress(storageSpec)
+				s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
+				s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
+				dir := s.decompress(sourceSpec)
 				s.equalLocalContent("1", filepath.Join(dir, "1.txt"))
 				s.equalLocalContent("2", filepath.Join(dir, "2.txt"))
 				s.equalLocalContent("3", filepath.Join(dir, "nested", "3.txt"))
 				s.equalLocalContent("4", filepath.Join(dir, "nested", "4.txt"))
 
 			} else {
-				s.Empty(storageSpec.Params["ChecksumSHA256"], "ChecksumSHA256 should be empty")
-				s.Empty(storageSpec.Params["VersionID"], "VersionID should be empty")
-				s.equalS3Content("1", storageSpec, "1.txt")
-				s.equalS3Content("2", storageSpec, "2.txt")
-				s.equalS3Content("3", storageSpec, "nested/3.txt")
-				s.equalS3Content("4", storageSpec, "nested/4.txt")
+				s.Empty(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should be empty")
+				s.Empty(sourceSpec.VersionID, "VersionID should be empty")
+				s.equalS3Content("1", sourceSpec, "1.txt")
+				s.equalS3Content("2", sourceSpec, "2.txt")
+				s.equalS3Content("3", sourceSpec, "nested/3.txt")
+				s.equalS3Content("4", sourceSpec, "nested/4.txt")
 			}
 		})
 	}
 }
 
-func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (models.SpecConfig, error) {
+func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig s3helper.PublisherSpec) (models.SpecConfig, error) {
 	resultPath, err := os.MkdirTemp(s.tempDir, "")
 	s.Require().NoError(err)
 
@@ -293,6 +297,7 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params
 	}
 
 	job := mock.Job()
+	job.ID = jobID
 	job.Task().Publisher = &models.SpecConfig{
 		Type:   models.PublisherS3,
 		Params: publisherConfig.ToMap(),
@@ -300,18 +305,18 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params
 	return s.publisher.PublishResult(ctx, executionID, *job, resultPath)
 }
 
-func (s *PublisherTestSuite) equalS3Content(expected string, uploaded models.SpecConfig, suffix string) {
+func (s *PublisherTestSuite) equalS3Content(expected string, uploaded s3helper.SourceSpec, suffix string) {
 	ctx := context.Background()
 	client := s.publisher.clientProvider.GetClient("", region)
 	resp, err := client.S3.GetObject(ctx, &s3.GetObjectInput{
-		Bucket:       aws.String(uploaded.Params["Bucket"].(string)),
-		Key:          aws.String(uploaded.Params["Key"].(string) + suffix),
+		Bucket:       aws.String(uploaded.Bucket),
+		Key:          aws.String(uploaded.Key + suffix),
 		ChecksumMode: types.ChecksumModeEnabled,
 	})
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	if uploaded.Params["ChecksumSHA256"] != "" {
-		s.Equal(uploaded.Params["ChecksumSHA256"], aws.ToString(resp.ChecksumSHA256))
+	if uploaded.ChecksumSHA256 != "" {
+		s.Equal(uploaded.ChecksumSHA256, aws.ToString(resp.ChecksumSHA256))
 	}
 
 	// Read the object body into a byte buffer
@@ -327,15 +332,15 @@ func (s *PublisherTestSuite) equalLocalContent(expected string, path string) {
 	s.Equal(expected, string(bytes))
 }
 
-func (s *PublisherTestSuite) decompress(uploaded models.SpecConfig) string {
+func (s *PublisherTestSuite) decompress(uploaded s3helper.SourceSpec) string {
 	outputFile, err := os.CreateTemp(s.tempDir, "")
 	s.Require().NoError(err)
 	defer outputFile.Close()
 
 	_, err = s.publisher.clientProvider.GetClient("", region).Downloader.Download(context.Background(),
 		outputFile, &s3.GetObjectInput{
-			Bucket: aws.String(uploaded.Params["Bucket"].(string)),
-			Key:    aws.String(uploaded.Params["Key"].(string)),
+			Bucket: aws.String(uploaded.Bucket),
+			Key:    aws.String(uploaded.Key),
 		})
 	s.Require().NoError(err)
 

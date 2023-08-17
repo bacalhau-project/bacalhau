@@ -65,7 +65,7 @@ func (s *ParallelStorageSuite) TearDownSuite() {
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
-	artifact := models.Artifact{
+	artifact := &models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceIPFS,
 			Params: map[string]interface{}{
@@ -102,7 +102,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 	}))
 	defer ts.Close()
 
-	artifact := models.Artifact{
+	artifact := &models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceURL,
 			Params: map[string]interface{}{

@@ -11,7 +11,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 
@@ -57,14 +58,10 @@ func (s *BidderSuite) SetupTest() {
 
 func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 	ctx := context.Background()
-	job, err := models.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
 	askForBidRequest := compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			JobID:       job.ID(),
-			ExecutionID: uuid.NewString(),
-		},
-		Job:             *job,
+		Execution:       execution,
 		WaitForApproval: true,
 	}
 
@@ -150,7 +147,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 			tt.mockExpectations()
 			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.ExecutionID)
+			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
 				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
 			} else {
@@ -162,14 +159,8 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 	ctx := context.Background()
-	job, err := models.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
 	askForBidRequest := compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			JobID:       job.ID(),
-			ExecutionID: uuid.NewString(),
-		},
-		Job:             *job,
+		Execution:       mock.ExecutionForJob(mock.Job()),
 		WaitForApproval: false,
 	}
 
@@ -255,7 +246,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 			tt.mockExpectations()
 			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.ExecutionID)
+			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
 				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
 			} else {

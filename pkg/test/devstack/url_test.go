@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -51,8 +52,8 @@ func runURLTest(
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality: semantic.Anywhere,
 				},
 			}),
 		},
@@ -220,8 +221,8 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality: semantic.Anywhere,
 				},
 			}),
 		},

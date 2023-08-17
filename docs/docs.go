@@ -1599,7 +1599,7 @@ const docTemplate = `{
                 "PublisherSpec": {
                     "$ref": "#/definitions/model.PublisherSpec"
                 },
-                "Resources": {
+                "TotalAllocatedResources": {
                     "description": "the compute (cpu, ram) resources this job requires",
                     "allOf": [
                         {

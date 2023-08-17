@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-type Artifact struct {
+type InputSource struct {
 	// Source is the source of the artifact to be downloaded, e.g a URL, S3 bucket, etc.
 	Source *SpecConfig
 
@@ -18,7 +18,7 @@ type Artifact struct {
 }
 
 // Normalize normalizes the artifact's source and target
-func (a *Artifact) Normalize() {
+func (a *InputSource) Normalize() {
 	if a.Source == nil {
 		return
 	}
@@ -28,18 +28,18 @@ func (a *Artifact) Normalize() {
 }
 
 // Copy returns a deep copy of the artifact
-func (a *Artifact) Copy() *Artifact {
+func (a *InputSource) Copy() *InputSource {
 	if a == nil {
 		return nil
 	}
-	return &Artifact{
+	return &InputSource{
 		Source: a.Source.Copy(),
 		Target: a.Target,
 	}
 }
 
 // Validate validates the artifact's source and target
-func (a *Artifact) Validate() error {
+func (a *InputSource) Validate() error {
 	if a == nil {
 		return nil
 	}

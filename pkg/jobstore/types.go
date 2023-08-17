@@ -4,20 +4,19 @@ package jobstore
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
-	ID          string              `json:"id"`
-	ClientID    string              `json:"clientID"`
-	IncludeTags []model.IncludedTag `json:"include_tags"`
-	ExcludeTags []model.ExcludedTag `json:"exclude_tags"`
-	Limit       int                 `json:"limit"`
-	Offset      int                 `json:"offset"`
-	ReturnAll   bool                `json:"return_all"`
-	SortBy      string              `json:"sort_by"`
-	SortReverse bool                `json:"sort_reverse"`
+	ID          string   `json:"id"`
+	Namespace   string   `json:"namespace"`
+	IncludeTags []string `json:"include_tags"`
+	ExcludeTags []string `json:"exclude_tags"`
+	Limit       int      `json:"limit"`
+	Offset      int      `json:"offset"`
+	ReturnAll   bool     `json:"return_all"`
+	SortBy      string   `json:"sort_by"`
+	SortReverse bool     `json:"sort_reverse"`
 }
 
 // A Store will persist jobs and their state to the underlying storage.
@@ -52,7 +51,7 @@ type Store interface {
 	// GetJobHistory retrieves the history for the specified job.  The
 	// history returned is filtered by the contents of the provided
 	// [JobHistoryFilterOptions].
-	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error)
+	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error)
 
 	// CreateJob will create a new job and persist it in the store.
 	CreateJob(ctx context.Context, j models.Job) error

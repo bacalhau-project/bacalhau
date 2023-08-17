@@ -15,13 +15,6 @@ type Source struct {
 	ReadWrite  bool
 }
 
-func (c Source) Validate() error {
-	if c.SourcePath == "" {
-		return errors.New("invalid local directory params: source path cannot be empty")
-	}
-	return nil
-}
-
 func (c Source) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }
@@ -45,7 +38,7 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 		return c, err
 	}
 
-	return c, c.Validate()
+	return c, nil
 }
 
 type AllowedPath struct {

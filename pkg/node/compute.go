@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -43,7 +44,7 @@ type Compute struct {
 	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
-	computeInfoProvider model.ComputeNodeInfoProvider
+	computeInfoProvider models.ComputeNodeInfoProvider
 }
 
 //nolint:funlen
@@ -154,7 +155,7 @@ func NewComputeNode(
 			}),
 			semantic.NewProviderInstalledStrategy(
 				publishers,
-				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
+				func(j *models.Job) string { return j.Task().Publisher.Type },
 			),
 			semantic.NewStorageInstalledBidStrategy(storages),
 			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{

@@ -7,49 +7,44 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 var (
-	OneStorageSpec []model.StorageSpec = []model.StorageSpec{
-		{StorageSource: model.StorageSourceIPFS},
+	OneStorageSpec []*models.InputSource = []*models.InputSource{
+		{
+			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
+			Target: "target",
+		},
 	}
 )
 
 var (
-	EmptySpec       model.Spec
-	SpecWithInputs  model.Spec
-	SpecWithOutputs model.Spec
-	SpecWithWasm    model.Spec
+	EmptySpec      *models.Task
+	SpecWithInputs *models.Task
+	SpecWithWasm   *models.Task
 )
 
 func init() {
-	EmptySpec = model.Spec{}
-	SpecWithInputs = model.Spec{Inputs: OneStorageSpec}
-	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-
-	var err error
-	SpecWithWasm, err = job.MakeSpec(
-		job.WithEngineSpec(
-			model.NewWasmEngineBuilder(OneStorageSpec[0]).Build(),
-		),
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to make spec for testing: %s", err))
-	}
+	EmptySpec = &models.Task{}
+	SpecWithInputs = &models.Task{InputSources: OneStorageSpec}
+	SpecWithWasm = mock.Task()
+	SpecWithWasm.Engine = models.NewSpecConfig(models.EngineWasm).WithParam(model.EngineKeyEntryModuleWasm, OneStorageSpec)
 }
 
 func TestStorageBidStrategy(t *testing.T) {
 	testCases := []struct {
 		name      string
-		spec      model.Spec
+		spec      *models.Task
 		installed bool
 		check     func(require.TestingT, bool, ...any)
 	}{
@@ -57,8 +52,6 @@ func TestStorageBidStrategy(t *testing.T) {
 		{"no storage with nothing installed", EmptySpec, false, require.True},
 		{"uninstalled storage/Inputs", SpecWithInputs, false, require.False},
 		{"installed storage/Inputs", SpecWithInputs, true, require.True},
-		{"uninstalled storage/Outputs", SpecWithOutputs, false, require.False},
-		{"installed storage/Outputs", SpecWithOutputs, true, require.True},
 		{"uninstalled storage/Wasm", SpecWithWasm, false, require.False},
 		{"installed storage/Wasm", SpecWithWasm, true, require.True},
 	}
@@ -72,12 +65,12 @@ func TestStorageBidStrategy(t *testing.T) {
 					},
 				},
 			})
-			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop_storage)
+			provider := provider.NewNoopProvider[storage.Storage](noop_storage)
 			strategy := semantic.NewStorageInstalledBidStrategy(provider)
 
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: model.Job{
-					Spec: testCase.spec,
+				Job: models.Job{
+					Tasks: []*models.Task{testCase.spec},
 				},
 			})
 			require.NoError(t, err)

@@ -47,7 +47,7 @@ func TestGetVolumeSize(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), storage.ipfsClient)
 			require.NoError(t, err)
 
-			result, err := storage.GetVolumeSize(ctx, models.Artifact{
+			result, err := storage.GetVolumeSize(ctx, models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -76,7 +76,7 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			_, err = storage.PrepareStorage(ctx, models.Artifact{
+			_, err = storage.PrepareStorage(ctx, models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -103,7 +103,7 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx = config.SetVolumeSizeRequestTimeout(ctx, testDuration)
-			_, err = storage.GetVolumeSize(ctx, models.Artifact{
+			_, err = storage.GetVolumeSize(ctx, models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{

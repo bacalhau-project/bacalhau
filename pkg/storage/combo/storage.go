@@ -9,7 +9,7 @@ import (
 )
 
 type AllProviderFetcher func(ctx context.Context) ([]storage.Storage, error)
-type ReadProviderFetcher func(ctx context.Context, spec models.Artifact) (storage.Storage, error)
+type ReadProviderFetcher func(ctx context.Context, spec models.InputSource) (storage.Storage, error)
 type WriteProviderFetcher func(ctx context.Context) (storage.Storage, error)
 
 type ComboStorageProvider struct {
@@ -49,7 +49,7 @@ func (driver *ComboStorageProvider) IsInstalled(ctx context.Context) (bool, erro
 	return true, nil
 }
 
-func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, storageSpec models.Artifact) (bool, error) {
+func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, storageSpec models.InputSource) (bool, error) {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
 	if err != nil {
 		return false, err
@@ -57,7 +57,7 @@ func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, stora
 	return provider.HasStorageLocally(ctx, storageSpec)
 }
 
-func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.Artifact) (uint64, error) {
+func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.InputSource) (uint64, error) {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
 	if err != nil {
 		return 0, err
@@ -67,7 +67,7 @@ func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSp
 
 func (driver *ComboStorageProvider) PrepareStorage(
 	ctx context.Context,
-	storageSpec models.Artifact,
+	storageSpec models.InputSource,
 ) (storage.StorageVolume, error) {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
 	if err != nil {
@@ -78,7 +78,7 @@ func (driver *ComboStorageProvider) PrepareStorage(
 
 func (driver *ComboStorageProvider) CleanupStorage(
 	ctx context.Context,
-	storageSpec models.Artifact,
+	storageSpec models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
@@ -99,7 +99,7 @@ func (driver *ComboStorageProvider) Upload(
 	return provider.Upload(ctx, localPath)
 }
 
-func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec models.Artifact) (storage.Storage, error) {
+func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec models.InputSource) (storage.Storage, error) {
 	return driver.ReadFetcher(ctx, spec)
 }
 

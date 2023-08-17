@@ -33,13 +33,14 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (Lo
 	return activeExecution, nil
 }
 
-func ValidateNewExecution(execution LocalState) error {
+func ValidateNewExecution(localExecutionState LocalState) error {
 	// state must be either created, or bid accepted if the execution is pre-approved
-	if execution.State != ExecutionStateCreated && execution.State != ExecutionStateBidAccepted {
-		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated, ExecutionStateBidAccepted)
+	if localExecutionState.State != ExecutionStateCreated && localExecutionState.State != ExecutionStateBidAccepted {
+		return NewErrInvalidExecutionState(
+			localExecutionState.Execution.ID, localExecutionState.State, ExecutionStateCreated, ExecutionStateBidAccepted)
 	}
-	if execution.Version != 1 {
-		return NewErrInvalidExecutionVersion(execution.ID, execution.Version, 1)
+	if localExecutionState.Version != 1 {
+		return NewErrInvalidExecutionVersion(localExecutionState.Execution.ID, localExecutionState.Version, 1)
 	}
 
 	return nil

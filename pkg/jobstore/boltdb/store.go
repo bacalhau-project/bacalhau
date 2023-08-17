@@ -3,16 +3,15 @@ package boltjobstore
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
@@ -23,7 +22,6 @@ import (
 
 const (
 	BucketJobs             = "jobs"
-	BucketJobState         = "state"
 	BucketJobExecutions    = "executions"
 	BucketJobEvaluations   = "evaluations"
 	BucketJobHistory       = "job_history"
@@ -31,14 +29,14 @@ const (
 
 	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
-	BucketClientsIndex     = "idx_clients"     // client-id -> Job id
+	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
+	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
 
 	newJobComment = "Job created"
 )
 
 var SpecKey = []byte("spec")
-var StateKey = []byte("state")
 
 type BoltJobStore struct {
 	database    *bolt.DB
@@ -47,8 +45,9 @@ type BoltJobStore struct {
 	watcherLock sync.Mutex
 
 	inProgressIndex  *Index
-	clientsIndex     *Index
+	namespacesIndex  *Index
 	tagsIndex        *Index
+	executionsIndex  *Index
 	evaluationsIndex *Index
 }
 
@@ -76,9 +75,10 @@ func WithClock(clock clock.Clock) Option {
 //
 // Indexes are structured as :
 //
-//	TagsIndex =  tag -> Job id
-//	ProgressIndex = job-id -> {}
-//	ClientsIndex     =  client-id -> Job id
+//	TagsIndex        = tag -> Job id
+//	ProgressIndex    = job-id -> {}
+//	NamespacesIndex  = namespace -> Job id
+//	ExecutionsIndex  = execution-id -> Job id
 //	EvaluationsIndex = evaluation-id -> Job id
 func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	db, err := GetDatabase(dbPath)
@@ -108,7 +108,9 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		indexBuckets := []string{
 			BucketTagsIndex,
 			BucketProgressIndex,
-			BucketClientsIndex,
+			BucketNamespacesIndex,
+			BucketExecutionsIndex,
+			BucketEvaluationsIndex,
 		}
 		for _, ib := range indexBuckets {
 			_, err = tx.CreateBucketIfNotExists([]byte(ib))
@@ -123,8 +125,9 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	log.Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
 
 	store.inProgressIndex = NewIndex(BucketProgressIndex)
-	store.clientsIndex = NewIndex(BucketClientsIndex)
+	store.namespacesIndex = NewIndex(BucketNamespacesIndex)
 	store.tagsIndex = NewIndex(BucketTagsIndex)
+	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
 
 	return store, err
@@ -156,17 +159,18 @@ func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.Stor
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
 // return an indicating the error.
-func (b *BoltJobStore) GetJob(ctx context.Context, id string) (model.Job, error) {
-	var job model.Job
+func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error) {
+	var job models.Job
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		job, err = b.getJob(tx, id)
 		return
 	})
+	job.Normalize()
 	return job, err
 }
 
-func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (model.Job, error) {
-	var job model.Job
+func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (models.Job, error) {
+	var job models.Job
 
 	data := GetBucketData(tx, NewBucketPath(BucketJobs, id), SpecKey)
 	if data == nil {
@@ -177,34 +181,60 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (model.Job, error) {
 	return job, err
 }
 
-func (b *BoltJobStore) getExecution(tx *bolt.Tx, executionID model.ExecutionID) (model.ExecutionState, error) {
-	var exec model.ExecutionState
+func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, error) {
+	var exec models.Execution
 
-	path := NewBucketPath(BucketJobs, executionID.JobID, BucketJobExecutions)
-	data := GetBucketData(tx, path, []byte(executionID.String()))
-	if data == nil {
-		return exec, jobstore.NewErrExecutionNotFound(executionID)
+	key, err := b.getExecutionJobID(tx, id)
+	if err != nil {
+		return exec, err
 	}
 
-	err := json.Unmarshal(data, &exec)
-	return exec, err
+	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobExecutions).Get(tx, false); err != nil {
+		return exec, err
+	} else {
+		data := bkt.Get([]byte(id))
+		if data == nil {
+			return exec, jobstore.NewErrExecutionNotFound(id)
+		}
+
+		err = json.Unmarshal(data, &exec)
+		if err != nil {
+			return exec, err
+		}
+	}
+
+	return exec, nil
 }
 
-func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]model.ExecutionState, error) {
+func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error) {
+	keys, err := b.executionsIndex.List(tx, []byte(id))
+	if err != nil {
+		return "", err
+	}
+
+	if len(keys) != 1 {
+		return "", fmt.Errorf("too many leaf nodes in execution index")
+	}
+
+	return string(keys[0]), nil
+}
+
+func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]models.Execution, error) {
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return nil, err
 	}
 
-	var execs []model.ExecutionState
+	var execs []models.Execution
 
 	err = bkt.ForEach(func(_ []byte, v []byte) error {
-		var es model.ExecutionState
+		var es models.Execution
 		err = json.Unmarshal(v, &es)
 		if err != nil {
 			return err
 		}
 
+		es.Normalize()
 		execs = append(execs, es)
 		return nil
 	})
@@ -218,8 +248,8 @@ func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
 }
 
 // GetJobs returns all Jobs that match the provided query
-func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]model.Job, error) {
-	var jobs []model.Job
+func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]models.Job, error) {
+	var jobs []models.Job
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		jobs, err = b.getJobs(tx, query)
 		return
@@ -227,10 +257,10 @@ func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]
 	return jobs, err
 }
 
-func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Job, error) {
+func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]models.Job, error) {
 	if query.ID != "" {
 		job, err := b.getJob(tx, query.ID)
-		return []model.Job{job}, err
+		return []models.Job{job}, err
 	}
 
 	jobSet, err := b.getJobsInitialSet(tx, query)
@@ -261,7 +291,7 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (map[string]struct{}, error) {
 	jobSet := make(map[string]struct{})
 
-	if query.ReturnAll || query.ClientID == "" {
+	if query.ReturnAll || query.Namespace == "" {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
 			return nil, err
@@ -275,7 +305,7 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 			return nil, err
 		}
 	} else {
-		ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
+		ids, err := b.namespacesIndex.List(tx, []byte(query.Namespace))
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +319,7 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 }
 
 // getJobsIncludeTags filters out jobs that don't have ANY of the tags specified in the query.
-func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []model.IncludedTag) (map[string]struct{}, error) {
+func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
 	if len(tags) == 0 {
 		return jobSet, nil
 	}
@@ -317,7 +347,7 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 }
 
 // getJobsExcludeTags filters out jobs that have ANY of the tags specified in the query.
-func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []model.ExcludedTag) (map[string]struct{}, error) {
+func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
 	if len(tags) == 0 {
 		return jobSet, nil
 	}
@@ -336,11 +366,11 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 	return jobSet, nil
 }
 
-func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{}, query jobstore.JobQuery) ([]model.Job, error) {
-	var result []model.Job
+func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{}, query jobstore.JobQuery) ([]models.Job, error) {
+	var result []models.Job
 
 	for key := range jobSet {
-		var job model.Job
+		var job models.Job
 
 		path := NewBucketPath(BucketJobs, key)
 		data := GetBucketData(tx, path, SpecKey)
@@ -357,7 +387,7 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 	return result, nil
 }
 
-func (b *BoltJobStore) getJobsWithinLimit(jobs []model.Job, query jobstore.JobQuery) []model.Job {
+func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) []models.Job {
 	limit := query.Limit
 	if limit == 0 {
 		limit = len(jobs)
@@ -368,21 +398,21 @@ func (b *BoltJobStore) getJobsWithinLimit(jobs []model.Job, query jobstore.JobQu
 	return jobs[query.Offset:limit]
 }
 
-func (b *BoltJobStore) getListSorter(jobs []model.Job, query jobstore.JobQuery) func(i, j int) bool {
+func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery) func(i, j int) bool {
 	return func(i, j int) bool {
 		switch query.SortBy {
 		case "id":
 			if query.SortReverse {
 				// what does it mean to sort by ID?
-				return jobs[i].Metadata.ID > jobs[j].Metadata.ID
+				return jobs[i].ID > jobs[j].ID
 			} else {
-				return jobs[i].Metadata.ID < jobs[j].Metadata.ID
+				return jobs[i].ID < jobs[j].ID
 			}
 		case "created_at":
 			if query.SortReverse {
-				return jobs[i].Metadata.CreatedAt.UTC().Unix() > jobs[j].Metadata.CreatedAt.UTC().Unix()
+				return jobs[i].CreateTime > jobs[j].CreateTime
 			} else {
-				return jobs[i].Metadata.CreatedAt.UTC().Unix() < jobs[j].Metadata.CreatedAt.UTC().Unix()
+				return jobs[i].CreateTime < jobs[j].CreateTime
 			}
 		default:
 			return false
@@ -390,46 +420,21 @@ func (b *BoltJobStore) getListSorter(jobs []model.Job, query jobstore.JobQuery) 
 	}
 }
 
-// GetJobState returns the current job state for the provided job id
-func (b *BoltJobStore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-	var state model.JobState
+// GetExecutions returns the current job state for the provided job id
+func (b *BoltJobStore) GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error) {
+	var state []models.Execution
 
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		state, err = b.getJobState(tx, jobID)
+		state, err = b.getExecutions(tx, jobID)
 		return
 	})
 
 	return state, err
 }
 
-func (b *BoltJobStore) getJobState(tx *bolt.Tx, jobID string) (model.JobState, error) {
-	var state model.JobState
-
-	path := NewBucketPath(BucketJobs, jobID)
-	data := GetBucketData(tx, path, StateKey)
-	if data == nil {
-		return state, bacerrors.NewJobNotFound(jobID)
-	}
-
-	err := json.Unmarshal(data, &state)
-	if err != nil {
-		return state, err
-	}
-
-	// Get the executions for this job and insert them into the jobstate
-	execs, err := b.getExecutions(tx, jobID)
-	if err != nil {
-		return state, err
-	}
-
-	state.Executions = append(state.Executions, execs...)
-
-	return state, err
-}
-
 // GetInProgressJobs gets a list of the currently in-progress jobs
-func (b *BoltJobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
-	var infos []model.JobWithInfo
+func (b *BoltJobStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
+	var infos []models.Job
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		infos, err = b.getInProgressJobs(tx)
 		return
@@ -437,8 +442,8 @@ func (b *BoltJobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithIn
 	return infos, err
 }
 
-func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, error) {
-	var infos []model.JobWithInfo
+func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
+	var infos []models.Job
 	var keys [][]byte
 
 	keys, err := b.inProgressIndex.List(tx)
@@ -447,35 +452,11 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, erro
 	}
 
 	for _, jobIDKey := range keys {
-		var job model.Job
-		var jobState model.JobState
-
-		path := NewBucketPath(BucketJobs, string(jobIDKey))
-
-		dataJob := GetBucketData(tx, path, SpecKey)
-		dataState := GetBucketData(tx, path, StateKey)
-
-		err = json.Unmarshal(dataJob, &job)
+		job, err := b.getJob(tx, string(jobIDKey))
 		if err != nil {
 			return nil, err
 		}
-
-		err = json.Unmarshal(dataState, &jobState)
-		if err != nil {
-			return nil, err
-		}
-
-		execs, err := b.getExecutions(tx, string(jobIDKey))
-		if err != nil {
-			return nil, err
-		}
-		jobState.Executions = append(jobState.Executions, execs...)
-
-		info := model.JobWithInfo{
-			Job:   job,
-			State: jobState,
-		}
-		infos = append(infos, info)
+		infos = append(infos, job)
 	}
 
 	return infos, nil
@@ -484,8 +465,8 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, erro
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
-	var history []model.JobHistory
+	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	var history []models.JobHistory
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
 		return
@@ -495,15 +476,15 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 }
 
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
-	var history []model.JobHistory
+	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	var history []models.JobHistory
 
 	if !options.ExcludeJobLevel {
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
 			err = bkt.ForEach(func(key []byte, data []byte) error {
-				var item model.JobHistory
+				var item models.JobHistory
 
 				err := json.Unmarshal(data, &item)
 				if err != nil {
@@ -526,7 +507,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 			return nil, err
 		} else {
 			err = bkt.ForEach(func(key []byte, data []byte) error {
-				var item model.JobHistory
+				var item models.JobHistory
 
 				err := json.Unmarshal(data, &item)
 				if err != nil {
@@ -544,7 +525,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	}
 
 	// Filter out anything before the specified Since time
-	history = lo.Filter(history, func(item model.JobHistory, index int) bool {
+	history = lo.Filter(history, func(item models.JobHistory, index int) bool {
 		return item.Time.Unix() >= options.Since
 	})
 
@@ -554,43 +535,34 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 }
 
 // CreateJob creates a new record of a job in the data store
-func (b *BoltJobStore) CreateJob(ctx context.Context, job model.Job) error {
+func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
+	job.State = models.NewJobState(models.JobStateTypePending)
+	job.Revision = 1
+	job.CreateTime = b.clock.Now().UTC().UnixNano()
+	job.ModifyTime = b.clock.Now().UTC().UnixNano()
+	job.Normalize()
+	err := job.Validate()
+	if err != nil {
+		return err
+	}
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
 		return b.createJob(tx, job)
 	})
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
-	if b.jobExists(tx, job.ID()) {
-		return jobstore.NewErrJobAlreadyExists(job.Metadata.ID)
+func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
+	if b.jobExists(tx, job.ID) {
+		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
 
 	tx.OnCommit(func() {
 		b.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, job)
 	})
 
-	jobIDKey := []byte(job.Metadata.ID)
-
-	jobState := model.JobState{
-		JobID:      job.Metadata.ID,
-		State:      model.JobStateNew,
-		Version:    1,
-		CreateTime: b.clock.Now().UTC(),
-		UpdateTime: b.clock.Now().UTC(),
-	}
-	data, err := json.Marshal(jobState)
-	if err != nil {
-		return err
-	}
-
-	// Write the JobState to the state bucket
-	if bkt, err := NewBucketPath(BucketJobs, job.ID()).Get(tx, true); err != nil {
+	jobIDKey := []byte(job.ID)
+	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, true); err != nil {
 		return err
 	} else {
-		if err = bkt.Put(StateKey, data); err != nil {
-			return err
-		}
-
 		// Create the evaluations and executions buckets and so forth
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobExecutions)); err != nil {
 			return err
@@ -613,7 +585,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		return err
 	}
 
-	if bkt, err := NewBucketPath(BucketJobs, job.ID()).Get(tx, false); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
 		return err
 	} else {
 		if err = bkt.Put(SpecKey, jobData); err != nil {
@@ -625,23 +597,19 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		return err
 	}
 
-	if job.Metadata.ClientID == "" {
-		return errors.New("job is missing a client id")
-	}
-
-	if err = b.clientsIndex.Add(tx, jobIDKey, []byte(job.Metadata.ClientID)); err != nil {
+	if err = b.namespacesIndex.Add(tx, jobIDKey, []byte(job.Namespace)); err != nil {
 		return err
 	}
 
 	// Write sentinels keys for specific tags
-	for _, tag := range job.Spec.Annotations {
+	for tag := range job.Labels {
 		tagBytes := []byte(strings.ToLower(tag))
 		if err = b.tagsIndex.Add(tx, jobIDKey, tagBytes); err != nil {
 			return err
 		}
 	}
 
-	return b.appendJobHistory(tx, jobState, model.JobStateNew, newJobComment)
+	return b.appendJobHistory(tx, job, models.JobStateTypePending, newJobComment)
 }
 
 // DeleteJob removes the specified job from the system entirely
@@ -676,12 +644,12 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		return err
 	}
 
-	if err = b.clientsIndex.Remove(tx, jobIDKey, []byte(job.Metadata.ClientID)); err != nil {
+	if err = b.namespacesIndex.Remove(tx, jobIDKey, []byte(job.Namespace)); err != nil {
 		return err
 	}
 
 	// Delete sentinels keys for specific tags
-	for _, tag := range job.Spec.Annotations {
+	for tag := range job.Labels {
 		tagBytes := []byte(strings.ToLower(tag))
 		if err = b.tagsIndex.Remove(tx, jobIDKey, tagBytes); err != nil {
 			return err
@@ -705,76 +673,70 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		return err
 	}
 
-	data := bucket.Get(StateKey)
-	if data == nil {
-		return jobstore.NewErrJobNotFound(request.JobID)
-	}
-
-	var jobState model.JobState
-	err = json.Unmarshal(data, &jobState)
+	job, err := b.getJob(tx, request.JobID)
 	if err != nil {
 		return err
 	}
 
 	// check the expected state
-	if err := request.Condition.Validate(jobState); err != nil {
+	if err := request.Condition.Validate(job); err != nil {
 		return err
 	}
 
-	if jobState.State.IsTerminal() {
-		return jobstore.NewErrJobAlreadyTerminal(request.JobID, jobState.State, request.NewState)
+	if job.IsTerminal() {
+		return jobstore.NewErrJobAlreadyTerminal(request.JobID, job.State.StateType, request.NewState)
 	}
 
 	// Setup an oncommit handler after the obvious errors/checks
 	tx.OnCommit(func() {
-		b.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobState)
+		b.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, job)
 	})
 
 	// update the job state
-	previousState := jobState.State
-	jobState.State = request.NewState
-	jobState.Version++
-	jobState.UpdateTime = b.clock.Now().UTC()
+	previousState := job.State.StateType
+	job.State.StateType = request.NewState
+	job.Revision++
+	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 
-	jobStateData, err := json.Marshal(jobState)
+	jobStateData, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 
 	// Re-write the state
-	err = bucket.Put(StateKey, jobStateData)
+	err = bucket.Put(SpecKey, jobStateData)
 	if err != nil {
 		return err
 	}
 
-	if request.NewState.IsTerminal() {
+	if job.IsTerminal() {
 		err = b.inProgressIndex.Remove(tx, []byte(request.JobID))
 		if err != nil {
 			return err
 		}
 	}
 
-	return b.appendJobHistory(tx, jobState, previousState, request.Comment)
+	return b.appendJobHistory(tx, job, previousState, request.Comment)
 }
 
-func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob model.JobState, previousState model.JobStateType, comment string) error {
-	historyEntry := model.JobHistory{
-		Type:  model.JobHistoryTypeJobLevel,
-		JobID: updateJob.JobID,
-		JobState: &model.StateChange[model.JobStateType]{
+func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, comment string) error {
+	historyEntry := models.JobHistory{
+		Type:  models.JobHistoryTypeJobLevel,
+		JobID: updateJob.ID,
+		JobState: &models.StateChange[models.JobStateType]{
 			Previous: previousState,
-			New:      updateJob.State,
+			New:      updateJob.State.StateType,
 		},
-		NewVersion: updateJob.Version,
-		Comment:    comment,
-		Time:       updateJob.UpdateTime,
+		NewRevision: updateJob.Revision,
+		Comment:     comment,
+		Time:        time.Unix(0, updateJob.ModifyTime),
 	}
 	data, err := json.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
 
-	if bkt, err := NewBucketPath(BucketJobs, updateJob.JobID, BucketJobHistory).Get(tx, true); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, updateJob.ID, BucketJobHistory).Get(tx, true); err != nil {
 		return err
 	} else {
 		seq := BucketSequenceString(tx, bkt)
@@ -787,29 +749,32 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob model.JobState, p
 }
 
 // CreateExecution creates a record of a new execution
-func (b *BoltJobStore) CreateExecution(ctx context.Context, execution model.ExecutionState) error {
+func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+	if execution.CreateTime == 0 {
+		execution.CreateTime = b.clock.Now().UTC().UnixNano()
+	}
+	if execution.ModifyTime == 0 {
+		execution.ModifyTime = execution.CreateTime
+	}
+	if execution.Revision == 0 {
+		execution.Revision = 1
+	}
+	execution.Normalize()
+	err := execution.Validate()
+	if err != nil {
+		return err
+	}
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
 		return b.createExecution(tx, execution)
 	})
 }
 
-func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionState) error {
+func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) error {
 	if !b.jobExists(tx, execution.JobID) {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
 
-	execID := []byte(execution.ID().String())
-
-	if execution.CreateTime.IsZero() {
-		execution.CreateTime = b.clock.Now().UTC()
-	}
-	if execution.UpdateTime.IsZero() {
-		execution.UpdateTime = execution.CreateTime
-	}
-	if execution.Version == 0 {
-		execution.Version = 1
-	}
-
+	execID := []byte(execution.ID)
 	tx.OnCommit(func() {
 		b.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, execution)
 	})
@@ -822,9 +787,9 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 	if bucket, err := NewBucketPath(BucketJobs, execution.JobID, BucketJobExecutions).Get(tx, true); err != nil {
 		return err
 	} else {
-		_, err := b.getExecution(tx, execution.ID())
+		_, err = b.getExecution(tx, execution.ID)
 		if err == nil {
-			return jobstore.NewErrExecutionAlreadyExists(execution.ID())
+			return jobstore.NewErrExecutionAlreadyExists(execution.ID)
 		}
 
 		if data, err := json.Marshal(execution); err != nil {
@@ -835,9 +800,14 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 				return err
 			}
 		}
+
+		// Add an index for the execution ID to the job id
+		if err = b.executionsIndex.Add(tx, []byte(execution.JobID), []byte(execution.ID)); err != nil {
+			return err
+		}
 	}
 
-	return b.appendExecutionHistory(tx, execution, model.ExecutionStateNew, "")
+	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, "")
 }
 
 // UpdateExecution updates the state of a single execution by loading from storage,
@@ -858,21 +828,21 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	if err := request.Condition.Validate(existingExecution); err != nil {
 		return err
 	}
-	if existingExecution.State.IsTerminal() {
-		return jobstore.NewErrExecutionAlreadyTerminal(request.ExecutionID, existingExecution.State, request.NewValues.State)
+	if existingExecution.IsTerminalComputeState() {
+		return jobstore.NewErrExecutionAlreadyTerminal(
+			request.ExecutionID, existingExecution.ComputeState.StateType, request.NewValues.ComputeState.StateType)
 	}
 
-	// populate default values
+	// populate default values, maintain existing execution createTime
 	newExecution := request.NewValues
-	if newExecution.CreateTime.IsZero() {
-		newExecution.CreateTime = existingExecution.CreateTime
-	}
-	if newExecution.UpdateTime.IsZero() {
-		newExecution.UpdateTime = b.clock.Now().UTC()
+	newExecution.CreateTime = existingExecution.CreateTime
+	if newExecution.ModifyTime == 0 {
+		newExecution.ModifyTime = b.clock.Now().UTC().UnixNano()
 	}
 	if newExecution.Revision == 0 {
-		newExecution.Revision = existingExecution.Version + 1
+		newExecution.Revision = existingExecution.Revision + 1
 	}
+	newExecution.Normalize()
 
 	err = mergo.Merge(&newExecution, existingExecution)
 	if err != nil {
@@ -892,29 +862,29 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	if err != nil {
 		return err
 	} else {
-		err = bucket.Put([]byte(newExecution.ID().String()), data)
+		err = bucket.Put([]byte(newExecution.ID), data)
 		if err != nil {
 			return err
 		}
 	}
 
-	return b.appendExecutionHistory(tx, newExecution, existingExecution.State, request.Comment)
+	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Comment)
 }
 
-func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.ExecutionState,
-	previous model.ExecutionStateType, cmt string) error {
-	historyEntry := model.JobHistory{
-		Type:             model.JobHistoryTypeExecutionLevel,
-		JobID:            updated.JobID,
-		NodeID:           updated.NodeID,
-		ComputeReference: updated.ComputeReference,
-		ExecutionState: &model.StateChange[model.ExecutionStateType]{
+func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
+	previous models.ExecutionStateType, cmt string) error {
+	historyEntry := models.JobHistory{
+		Type:        models.JobHistoryTypeExecutionLevel,
+		JobID:       updated.JobID,
+		NodeID:      updated.NodeID,
+		ExecutionID: updated.ID,
+		ExecutionState: &models.StateChange[models.ExecutionStateType]{
 			Previous: previous,
-			New:      updated.State,
+			New:      updated.ComputeState.StateType,
 		},
-		NewVersion: updated.Version,
-		Comment:    cmt,
-		Time:       updated.UpdateTime,
+		NewRevision: updated.Revision,
+		Comment:     cmt,
+		Time:        time.Unix(0, updated.ModifyTime),
 	}
 
 	data, err := json.Marshal(historyEntry)

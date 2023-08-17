@@ -67,7 +67,7 @@ func TestSchedulerTestSuite(t *testing.T) {
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
-	executions = []*models.Execution{} // no executions yet
+	executions = []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
 
@@ -170,7 +170,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 func (s *BatchJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
-	executions = []*models.Execution{} // no executions yet
+	executions = []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
 
@@ -319,13 +319,15 @@ func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfo
 	s.nodeRanker.EXPECT().RankNodes(gomock.Any(), *job, nodeInfos).Return(nodeRanks, nil)
 }
 
-func mockJob() (*models.Job, []*models.Execution, *models.Evaluation) {
+func mockJob() (*models.Job, []models.Execution, *models.Evaluation) {
 	job := mock.Job()
 	job.Count = 3
 
-	executions := mock.Executions(job, 5)
-	for i := 0; i < 5; i++ {
-		executions[i].NodeID = nodeIDs[i]
+	executionCount := 5
+	executions := make([]models.Execution, executionCount)
+	for i, e := range mock.Executions(job, executionCount) {
+		e.NodeID = nodeIDs[i]
+		executions[i] = *e
 	}
 	executions[execAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBid)
 	executions[execBidAccepted].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)

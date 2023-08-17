@@ -4,17 +4,18 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
 type LoggingSensorParams struct {
-	InfoProvider models.DebugInfoProvider
+	InfoProvider model.DebugInfoProvider
 	Interval     time.Duration
 }
 
 // LoggingSensor is a sensor that periodically logs the debug info
 type LoggingSensor struct {
-	infoProvider models.DebugInfoProvider
+	infoProvider model.DebugInfoProvider
 	interval     time.Duration
 }
 

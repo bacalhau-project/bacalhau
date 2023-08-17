@@ -99,23 +99,6 @@ type NodeRanker interface {
 	RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]NodeRank, error)
 }
 
-// NodeSelector chooses appropriate nodes for to execute a job.
-type NodeSelector interface {
-	// SelectNodes returns the nodes that should be used to execute the passed job.
-	SelectNodes(context.Context, *models.Job) ([]models.NodeInfo, error)
-	// SelectNodesForRetry returns the nodes that should be used to retry the
-	// passed failed executions in the context of the passed job. If no nodes
-	// are returned, the executions do not need to be retried just yet.
-	SelectNodesForRetry(context.Context, *models.Job, *models.JobState) ([]models.NodeInfo, error)
-	// SelectBids returns the pending bids on the passed job that should be
-	// accepted or rejected.
-	SelectBids(context.Context, *models.Job, *models.JobState) (accept, reject []models.Execution)
-	// CanCompleteJob returns whether the passed job is ready to be declared
-	// complete. The returned job state should be used to update the state of
-	// the job, and may be JobStateTypeCompleted or JobStateTypeCompletedPartially.
-	CanCompleteJob(context.Context, *models.Job, *models.JobState) (bool, models.JobStateType)
-}
-
 type RetryStrategy interface {
 	// ShouldRetry returns true if the job can be retried.
 	ShouldRetry(ctx context.Context, request RetryRequest) bool

@@ -3,6 +3,7 @@ package capacity
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
@@ -33,7 +34,7 @@ func (t *LocalTracker) AddIfHasCapacity(ctx context.Context, usage models.Resour
 
 	newUsedCapacity := t.usedCapacity.Add(usage)
 	if newUsedCapacity.LessThanEq(t.maxCapacity) {
-		t.usedCapacity = newUsedCapacity
+		t.usedCapacity = *newUsedCapacity
 		return true
 	}
 	return false
@@ -42,7 +43,7 @@ func (t *LocalTracker) AddIfHasCapacity(ctx context.Context, usage models.Resour
 func (t *LocalTracker) GetAvailableCapacity(ctx context.Context) models.Resources {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return t.maxCapacity.Sub(t.usedCapacity)
+	return *t.maxCapacity.Sub(t.usedCapacity)
 }
 
 func (t *LocalTracker) GetMaxCapacity(ctx context.Context) models.Resources {
@@ -52,7 +53,7 @@ func (t *LocalTracker) GetMaxCapacity(ctx context.Context) models.Resources {
 func (t *LocalTracker) Remove(ctx context.Context, usage models.Resources) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.usedCapacity = t.usedCapacity.Sub(usage)
+	t.usedCapacity = *t.usedCapacity.Sub(usage)
 }
 
 // compile-time check that LocalTracker implements Tracker

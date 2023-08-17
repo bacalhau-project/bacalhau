@@ -104,6 +104,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 	for _, node := range nodes {
 		execution := &models.Execution{
 			JobID:        job.ID,
+			Job:          job,
 			ID:           "e-" + uuid.NewString(),
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),

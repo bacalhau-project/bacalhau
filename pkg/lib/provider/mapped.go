@@ -54,6 +54,17 @@ func (provider *MappedProvider[Value]) Has(ctx context.Context, key string) bool
 	return err == nil
 }
 
+func (provider *MappedProvider[Value]) Keys(ctx context.Context) (keys []string) {
+	provider.providables.Range(func(k, _ any) bool {
+		key := k.(string)
+		if provider.Has(ctx, key) {
+			keys = append(keys, key)
+		}
+		return true
+	})
+	return
+}
+
 func NewMappedProvider[Value Providable](providables map[string]Value) *MappedProvider[Value] {
 	return &MappedProvider[Value]{
 		providables:    generic.SyncMapFromMap(providables),

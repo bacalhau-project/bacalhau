@@ -32,7 +32,7 @@ func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return len(driver.allowedPaths) > 0, nil
 }
 
-func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume models.Artifact) (bool, error) {
+func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume models.InputSource) (bool, error) {
 	source, err := DecodeSpec(volume.Source)
 	if err != nil {
 		return false, err
@@ -47,7 +47,7 @@ func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model
 	return true, nil
 }
 
-func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.Artifact) (uint64, error) {
+func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(volume.Source)
 	if err != nil {
 		return 0, err
@@ -66,7 +66,7 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.Ar
 
 func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
-	storageSpec models.Artifact,
+	storageSpec models.InputSource,
 ) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
@@ -83,7 +83,7 @@ func (driver *StorageProvider) PrepareStorage(
 	}, nil
 }
 
-func (driver *StorageProvider) CleanupStorage(context.Context, models.Artifact, storage.StorageVolume) error {
+func (driver *StorageProvider) CleanupStorage(context.Context, models.InputSource, storage.StorageVolume) error {
 	return nil
 }
 

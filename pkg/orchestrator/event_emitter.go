@@ -6,6 +6,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,10 +32,10 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 
 func (e EventEmitter) EmitJobCreated(
 	ctx context.Context, job models.Job) {
-	event := models.JobEvent{
-		JobID:        job.Metadata.ID,
-		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
-		EventName:    models.JobEventCreated,
+	event := model.JobEvent{
+		JobID:        job.ID,
+		SourceNodeID: job.Meta[models.MetaRequesterID],
+		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
 	}
 	e.EmitEventSilently(ctx, event)
@@ -41,31 +43,29 @@ func (e EventEmitter) EmitJobCreated(
 
 func (e EventEmitter) EmitBidReceived(
 	ctx context.Context, result compute.BidResult) {
-	e.EmitEventSilently(ctx, e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, models.JobEventBid))
+	e.EmitEventSilently(ctx, e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, model.JobEventBid))
 }
 
 func (e EventEmitter) EmitBidAccepted(
 	ctx context.Context, request compute.BidAcceptedRequest, response compute.BidAcceptedResponse) {
-	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, models.JobEventBidAccepted))
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidAccepted))
 }
 
 func (e EventEmitter) EmitBidRejected(
 	ctx context.Context, request compute.BidRejectedRequest, response compute.BidRejectedResponse) {
-	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, models.JobEventBidRejected))
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidRejected))
 }
 
 func (e EventEmitter) EmitRunComplete(ctx context.Context, response compute.RunResult) {
-	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, models.JobEventResultsProposed))
+	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsProposed))
 }
 
 func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID string, err error) {
-	event := models.JobEvent{
-		SourceNodeID: executionID.NodeID,
-		JobID:        executionID.JobID,
-		ExecutionID:  executionID.ExecutionID,
-		EventName:    models.JobEventComputeError,
-		Status:       err.Error(),
-		EventTime:    time.Now(),
+	event := model.JobEvent{
+		ExecutionID: executionID,
+		EventName:   model.JobEventComputeError,
+		Status:      err.Error(),
+		EventTime:   time.Now(),
 	}
 	e.EmitEventSilently(ctx, event)
 }
@@ -73,8 +73,8 @@ func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID string
 func (e EventEmitter) constructEvent(
 	routingMetadata compute.RoutingMetadata,
 	executionMetadata compute.ExecutionMetadata,
-	eventName models.JobEventType) models.JobEvent {
-	return models.JobEvent{
+	eventName model.JobEventType) model.JobEvent {
+	return model.JobEvent{
 		TargetNodeID: routingMetadata.TargetPeerID,
 		SourceNodeID: routingMetadata.SourcePeerID,
 		JobID:        executionMetadata.JobID,
@@ -84,11 +84,11 @@ func (e EventEmitter) constructEvent(
 	}
 }
 
-func (e EventEmitter) EmitEvent(ctx context.Context, event models.JobEvent) error {
+func (e EventEmitter) EmitEvent(ctx context.Context, event model.JobEvent) error {
 	return e.eventConsumer.HandleJobEvent(ctx, event)
 }
 
-func (e EventEmitter) EmitEventSilently(ctx context.Context, event models.JobEvent) {
+func (e EventEmitter) EmitEventSilently(ctx context.Context, event model.JobEvent) {
 	err := e.EmitEvent(ctx, event)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to emit event %+v", event)

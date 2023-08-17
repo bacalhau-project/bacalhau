@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -56,63 +57,63 @@ func (s *UtilsSuite) TestVersionCheck() {
 	system.InitConfigForTesting(s.T())
 
 	// OK: Normal operation
-	err := EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err := EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: invalid semver
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "not-a-sem-ver",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: nil semver
-	err = EnsureValidVersion(context.TODO(), nil, &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), nil, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: development version
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: version.DevelopmentGitVersion,
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: development version
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: version.DevelopmentGitVersion,
 	})
 	require.NoError(s.T(), err)
 
 	// NOT OK: server is newer
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.4",
 	})
 	require.Error(s.T(), err)
 
 	// NOT OK: client is newer
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.4",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.Error(s.T(), err)
 
 	// https://github.com/bacalhau-project/bacalhau/issues/495
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v0.1.37",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v0.1.36",
 	})
 	require.Error(s.T(), err)

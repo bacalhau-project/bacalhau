@@ -247,15 +247,15 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 
 }
 
-func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) models.Artifact {
+func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) models.InputSource {
 	readWrite := false
 	if strings.HasSuffix(sourcePath, ":rw") {
 		readWrite = true
 		sourcePath = strings.TrimSuffix(sourcePath, ":rw")
 	}
-	return models.Artifact{
+	return models.InputSource{
 		Source: &models.SpecConfig{
-			Type: models.StorageSourceInline,
+			Type: models.StorageSourceLocalDirectory,
 			Params: Source{
 				SourcePath: sourcePath,
 				ReadWrite:  readWrite,

@@ -3,6 +3,7 @@ package semantic
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	modelsutils "github.com/bacalhau-project/bacalhau/pkg/models/utils"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
@@ -10,7 +11,7 @@ func NewStorageInstalledBidStrategy(storages storage.StorageProvider) bidstrateg
 	return NewProviderInstalledArrayStrategy(
 		storages,
 		func(j *models.Job) []string {
-			return j.AllStorageTypes()
+			return modelsutils.AllInputSourcesTypes(j)
 		},
 	)
 }

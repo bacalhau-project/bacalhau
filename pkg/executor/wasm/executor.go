@@ -2,7 +2,6 @@ package wasm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/c2h5oh/datasize"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
@@ -24,6 +23,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -71,13 +71,13 @@ func (e *Executor) makeFsFromStorage(
 	ctx context.Context,
 	jobResultsDir string,
 	volumes []storage.PreparedStorage,
-	outputs []models.StorageSpec) (fs.FS, error) {
+	outputs []*models.ResultPath) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
 	for _, v := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", v.Artifact.Path).
+			Str("input", v.Artifact.Target).
 			Str("source", v.Volume.Source).
 			Msg("Using input")
 
@@ -94,7 +94,7 @@ func (e *Executor) makeFsFromStorage(
 			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(v.Artifact.Path, inputFs)
+		err = rootFs.Mount(v.Artifact.Target, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -129,22 +129,6 @@ func (e *Executor) makeFsFromStorage(
 	return rootFs, nil
 }
 
-type Arguments struct {
-	EntryPoint           string
-	Parameters           []string
-	EnvironmentVariables map[string]string
-	EntryModule          storage.PreparedStorage
-	ImportModules        []storage.PreparedStorage
-}
-
-func DecodeArguments(args *executor.Arguments) (*Arguments, error) {
-	out := new(Arguments)
-	if err := json.Unmarshal(args.Params, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 //nolint:funlen
 func (e *Executor) Run(
 	ctx context.Context,
@@ -163,7 +147,7 @@ func (e *Executor) Run(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
-	engineParams, err := DecodeArguments(request.EngineParams)
+	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
 	if err != nil {
 		return nil, fmt.Errorf("decoding wasm arguments: %w", err)
 	}
@@ -173,14 +157,9 @@ func (e *Executor) Run(
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
-	if request.Resources.Memory != "" {
-		memoryLimit, err := datasize.ParseString(request.Resources.Memory)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-
+	if request.Resources.Memory > 0 {
 		const pageSize = 65536
-		pageLimit := memoryLimit.Bytes()/pageSize + math.Min(memoryLimit.Bytes()%pageSize, 1)
+		pageLimit := request.Resources.Memory/pageSize + math.Min(request.Resources.Memory%pageSize, 1)
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(pageLimit))
 	}
 
@@ -213,7 +192,7 @@ func (e *Executor) Run(
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
-	args := append([]string{engineParams.EntryModule.Artifact.Name}, engineParams.Parameters...)
+	args := append([]string{}, engineParams.Parameters...)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).

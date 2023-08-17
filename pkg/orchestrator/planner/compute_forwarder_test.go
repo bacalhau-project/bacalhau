@@ -51,6 +51,8 @@ func (suite *ComputeForwarderSuite) SetupTest() {
 func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAskForBid() {
 	plan := mock.Plan()
 	execution1, execution2 := mockCreateExecutions(plan)
+	execution1.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)
+	execution2.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)
 
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution1)).Times(1)
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution2)).Times(1)
@@ -133,7 +135,7 @@ func (suite *ComputeForwarderSuite) TestProcess_OnNotifyFailure_NoStateUpdate() 
 }
 
 func (suite *ComputeForwarderSuite) mockUpdateExecution(plan *models.Plan, id string, desiredState models.ExecutionDesiredStateType, currentState models.ExecutionStateType) *models.PlanExecutionDesiredUpdate {
-	execution := mock.Execution(plan.Job)
+	execution := mock.ExecutionForJob(plan.Job)
 	execution.ID = id
 	execution.ComputeState = models.NewExecutionState(currentState)
 	update := &models.PlanExecutionDesiredUpdate{

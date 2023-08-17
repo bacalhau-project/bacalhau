@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -35,24 +34,11 @@ type Executor interface {
 type RunCommandRequest struct {
 	JobID        string
 	ExecutionID  string
-	Resources    models.Resources
-	Network      models.NetworkConfig
-	Outputs      []models.Path
+	Resources    *models.Resources
+	Network      *models.NetworkConfig
+	Outputs      []*models.ResultPath
 	Inputs       []storage.PreparedStorage
 	ResultsDir   string
-	EngineParams *Arguments
+	EngineParams *models.SpecConfig
 	OutputLimits OutputLimits
-}
-
-// ExecutorParams is a stub for pluggable engines
-type Arguments struct {
-	Params []byte
-}
-
-func EncodeArguments(in interface{}) (*Arguments, error) {
-	b, err := json.Marshal(in)
-	if err != nil {
-		return nil, err
-	}
-	return &Arguments{Params: b}, nil
 }

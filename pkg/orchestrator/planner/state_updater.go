@@ -46,7 +46,6 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 					Message:   u.Comment,
 				},
 			},
-			Comment: u.Comment,
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedRevision: u.Execution.Revision,
 			},
@@ -63,7 +62,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			NewState: plan.DesiredJobState,
 			Comment:  plan.Comment,
 			Condition: jobstore.UpdateJobCondition{
-				ExpectedRevision: plan.JobStateRevision,
+				ExpectedRevision: plan.Job.Revision,
 			},
 		})
 		if err != nil {

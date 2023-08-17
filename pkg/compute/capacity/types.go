@@ -16,9 +16,9 @@ type Tracker interface {
 	// AddIfHasCapacity atomically adds the given resource usage to the tracker if the compute node has capacity for it.
 	AddIfHasCapacity(ctx context.Context, usage models.Resources) bool
 	// GetAvailableCapacity returns the available capacity of the compute node.
-	GetAvailableCapacity(ctx context.Context) *models.Resources
+	GetAvailableCapacity(ctx context.Context) models.Resources
 	// GetMaxCapacity returns the total capacity of the compute node.
-	GetMaxCapacity(ctx context.Context) *models.Resources
+	GetMaxCapacity(ctx context.Context) models.Resources
 	// Remove removes the given resource usage from the tracker.
 	Remove(ctx context.Context, usage models.Resources)
 }
@@ -26,7 +26,7 @@ type Tracker interface {
 // UsageCalculator calculates the resource usage of a job.
 // Can also be used to populate the resource usage of a job with default values if not defined
 type UsageCalculator interface {
-	Calculate(ctx context.Context, job models.Job, parsedUsage models.Resources) (models.Resources, error)
+	Calculate(ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error)
 }
 
 // Provider returns the available capacity of a compute node.

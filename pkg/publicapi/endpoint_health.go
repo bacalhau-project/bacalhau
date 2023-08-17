@@ -3,6 +3,7 @@ package publicapi
 import (
 	"net/http"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )

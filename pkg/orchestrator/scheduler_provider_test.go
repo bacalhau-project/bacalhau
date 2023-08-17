@@ -5,6 +5,7 @@ package orchestrator
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )

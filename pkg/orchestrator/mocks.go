@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 	time "time"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -353,89 +352,6 @@ func (m *MockNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []
 func (mr *MockNodeRankerMockRecorder) RankNodes(ctx, job, nodes interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RankNodes", reflect.TypeOf((*MockNodeRanker)(nil).RankNodes), ctx, job, nodes)
-}
-
-// MockNodeSelector is a mock of NodeSelector interface.
-type MockNodeSelector struct {
-	ctrl     *gomock.Controller
-	recorder *MockNodeSelectorMockRecorder
-}
-
-// MockNodeSelectorMockRecorder is the mock recorder for MockNodeSelector.
-type MockNodeSelectorMockRecorder struct {
-	mock *MockNodeSelector
-}
-
-// NewMockNodeSelector creates a new mock instance.
-func NewMockNodeSelector(ctrl *gomock.Controller) *MockNodeSelector {
-	mock := &MockNodeSelector{ctrl: ctrl}
-	mock.recorder = &MockNodeSelectorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockNodeSelector) EXPECT() *MockNodeSelectorMockRecorder {
-	return m.recorder
-}
-
-// CanCompleteJob mocks base method.
-func (m *MockNodeSelector) CanCompleteJob(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) (bool, models.JobStateType) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CanCompleteJob", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(models.JobStateType)
-	return ret0, ret1
-}
-
-// CanCompleteJob indicates an expected call of CanCompleteJob.
-func (mr *MockNodeSelectorMockRecorder) CanCompleteJob(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanCompleteJob", reflect.TypeOf((*MockNodeSelector)(nil).CanCompleteJob), arg0, arg1, arg2)
-}
-
-// SelectBids mocks base method.
-func (m *MockNodeSelector) SelectBids(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) ([]models.Execution, []models.Execution) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectBids", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]models.Execution)
-	ret1, _ := ret[1].([]models.Execution)
-	return ret0, ret1
-}
-
-// SelectBids indicates an expected call of SelectBids.
-func (mr *MockNodeSelectorMockRecorder) SelectBids(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBids", reflect.TypeOf((*MockNodeSelector)(nil).SelectBids), arg0, arg1, arg2)
-}
-
-// SelectNodes mocks base method.
-func (m *MockNodeSelector) SelectNodes(arg0 context.Context, arg1 *models.Job) ([]models.NodeInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectNodes", arg0, arg1)
-	ret0, _ := ret[0].([]models.NodeInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectNodes indicates an expected call of SelectNodes.
-func (mr *MockNodeSelectorMockRecorder) SelectNodes(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectNodes", reflect.TypeOf((*MockNodeSelector)(nil).SelectNodes), arg0, arg1)
-}
-
-// SelectNodesForRetry mocks base method.
-func (m *MockNodeSelector) SelectNodesForRetry(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) ([]models.NodeInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectNodesForRetry", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]models.NodeInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectNodesForRetry indicates an expected call of SelectNodesForRetry.
-func (mr *MockNodeSelectorMockRecorder) SelectNodesForRetry(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectNodesForRetry", reflect.TypeOf((*MockNodeSelector)(nil).SelectNodesForRetry), arg0, arg1, arg2)
 }
 
 // MockRetryStrategy is a mock of RetryStrategy interface.

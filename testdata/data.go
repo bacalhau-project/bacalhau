@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
 

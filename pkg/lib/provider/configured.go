@@ -34,5 +34,14 @@ func (c *ConfiguredProvider[Value]) Has(ctx context.Context, key string) bool {
 	}
 }
 
+func (c *ConfiguredProvider[Value]) Keys(ctx context.Context) (keys []string) {
+	for _, key := range c.inner.Keys(ctx) {
+		if !slices.Contains(c.disabled, key) {
+			keys = append(keys, key)
+		}
+	}
+	return
+}
+
 // compile-time check that we implement the interface
 var _ Provider[Providable] = &ConfiguredProvider[Providable]{}

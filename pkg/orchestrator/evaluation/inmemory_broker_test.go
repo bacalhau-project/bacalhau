@@ -262,15 +262,14 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	ns1 := "namespace-one"
 	ns2 := "namespace-two"
 	jobID := "example"
-	now := time.Now().UnixNano()
 
 	newEval := func(idx int64, ns string) *models.Evaluation {
 		eval := mock.Eval()
 		eval.ID = fmt.Sprintf("eval:%d", idx)
 		eval.JobID = jobID
 		eval.Namespace = ns
-		eval.CreateTime = now + idx
-		eval.ModifyTime = now + idx
+		eval.CreateTime = idx
+		eval.ModifyTime = idx
 		s.Require().NoError(s.broker.Enqueue(eval))
 		return eval
 	}
@@ -489,7 +488,7 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_FIFO() {
 
 	for i := 1; i < NUM; i++ {
 		out1, _, _ := s.broker.Dequeue(defaultSched, time.Second)
-		s.Require().Equal(uint64(i), out1.CreateTime,
+		s.Require().Equal(int64(i), out1.CreateTime,
 			"eval was not FIFO by CreateTime",
 		)
 	}

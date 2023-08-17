@@ -11,8 +11,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -20,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 )
@@ -40,7 +40,7 @@ type ComputeSuite struct {
 
 func (s *ComputeSuite) SetupSuite() {
 	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits: model.ResourceUsageData{
+		TotalResourceLimits: models.Resources{
 			CPU: 2,
 		},
 	})
@@ -84,9 +84,9 @@ func (s *ComputeSuite) setupNode() {
 		host,
 		apiServer,
 		s.config,
-		provider.NewSingletonProvider[model.StorageSourceType, storage.Storage](noopstorage),
-		provider.NewSingletonProvider[model.Engine, executor.Executor](s.executor),
-		provider.NewSingletonProvider[model.Publisher, publisher.Publisher](s.publisher),
+		provider.NewNoopProvider[storage.Storage](noopstorage),
+		provider.NewNoopProvider[executor.Executor](s.executor),
+		provider.NewNoopProvider[publisher.Publisher](s.publisher),
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
@@ -107,17 +107,13 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { close(s.bidChannel) })
 }
 
-func (s *ComputeSuite) askForBid(ctx context.Context, job model.Job) compute.BidResult {
+func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) compute.BidResult {
 	_, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			JobID:       job.Metadata.ID,
-			ExecutionID: uuid.NewString(),
-		},
 		RoutingMetadata: compute.RoutingMetadata{
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},
-		Job:             job,
+		Execution:       execution,
 		WaitForApproval: true,
 	})
 	s.NoError(err)
@@ -131,14 +127,14 @@ func (s *ComputeSuite) askForBid(ctx context.Context, job model.Job) compute.Bid
 	}
 }
 
-func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
-	result := s.askForBid(ctx, job)
+func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, execution *models.Execution) string {
+	result := s.askForBid(ctx, execution)
 	s.True(result.Accepted)
 	return result.ExecutionID
 }
 
-func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string {
-	executionID := s.prepareAndAskForBid(ctx, job)
+func (s *ComputeSuite) prepareAndRun(ctx context.Context, execution *models.Execution) string {
+	executionID := s.prepareAndAskForBid(ctx, execution)
 
 	// run the job
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})

@@ -93,17 +93,17 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, models.Artifact) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(context.Context, models.Artifact) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
 	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 	return 0, nil
 }
 
 // PrepareStorage will download the file from the URL
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.Artifact) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -224,11 +224,11 @@ func filenameFromDisposition(contentDispositionHdr string) string {
 
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ models.Artifact,
+	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
+	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
 }
 

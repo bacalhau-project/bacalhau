@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 
 	"github.com/stretchr/testify/suite"
@@ -46,7 +47,7 @@ func TestStorageTestSuite(t *testing.T) {
 
 func (s *StorageTestSuite) TestHasStorageLocally() {
 	ctx := context.Background()
-	res, err := s.storage.HasStorageLocally(ctx, models.Artifact{})
+	res, err := s.storage.HasStorageLocally(ctx, models.InputSource{})
 	s.Require().NoError(err)
 	s.False(res)
 }
@@ -192,14 +193,16 @@ func (s *StorageTestSuite) TestStorage() {
 	} {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			storageSpec := models.Artifact{
-				StorageSource: models.StorageSourceS3,
-				S3: &models.S3StorageSpec{
-					Bucket:         bucket,
-					Key:            tc.key,
-					Region:         region,
-					ChecksumSHA256: tc.checksum,
-					VersionID:      tc.versionID,
+			storageSpec := models.InputSource{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceS3,
+					Params: s3helper.SourceSpec{
+						Bucket:         bucket,
+						Key:            tc.key,
+						Region:         region,
+						ChecksumSHA256: tc.checksum,
+						VersionID:      tc.versionID,
+					}.ToMap(),
 				},
 			}
 			size, err := s.storage.GetVolumeSize(ctx, storageSpec)
@@ -234,12 +237,14 @@ func (s *StorageTestSuite) TestStorage() {
 
 func (s *StorageTestSuite) TestNotFound() {
 	ctx := context.Background()
-	storageSpec := models.Artifact{
-		StorageSource: models.StorageSourceS3,
-		S3: &models.S3StorageSpec{
-			Bucket: bucket,
-			Key:    prefix1 + "00",
-			Region: region,
+	storageSpec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceS3,
+			Params: s3helper.SourceSpec{
+				Bucket: bucket,
+				Key:    prefix1 + "00",
+				Region: region,
+			}.ToMap(),
 		},
 	}
 

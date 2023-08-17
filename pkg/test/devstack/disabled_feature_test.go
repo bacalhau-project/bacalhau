@@ -5,6 +5,7 @@ package devstack
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -46,14 +47,14 @@ func (s *DisabledFeatureTestSuite) TestNothingDisabled() {
 
 func (s *DisabledFeatureTestSuite) TestDisabledEngine() {
 	testCase := disabledTestSpec(s.T())
-	testCase.Stack.DevStackOptions.DisabledFeatures.Engines = []model.Engine{model.EngineWasm}
+	testCase.Stack.DevStackOptions.DisabledFeatures.Engines = []string{models.EngineWasm}
 
 	s.RunScenario(testCase)
 }
 
 func (s *DisabledFeatureTestSuite) TestDisabledStorage() {
 	testCase := disabledTestSpec(s.T())
-	testCase.Stack.DevStackOptions.DisabledFeatures.Storages = []model.StorageSourceType{model.StorageSourceInline}
+	testCase.Stack.DevStackOptions.DisabledFeatures.Storages = []string{models.StorageSourceInline}
 
 	s.RunScenario(testCase)
 }
@@ -61,7 +62,7 @@ func (s *DisabledFeatureTestSuite) TestDisabledStorage() {
 func (s *DisabledFeatureTestSuite) TestDisabledPublisher() {
 	testCase := disabledTestSpec(s.T())
 	testCase.Spec.Publisher = model.PublisherIpfs
-	testCase.Stack.DevStackOptions.DisabledFeatures.Publishers = []model.Publisher{model.PublisherIpfs}
+	testCase.Stack.DevStackOptions.DisabledFeatures.Publishers = []string{models.PublisherIPFS}
 
 	s.RunScenario(testCase)
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -68,7 +69,7 @@ func (s *AsyncBidSuite) TestAsyncReject() {
 }
 
 func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
-	job := generateJob(s.T())
+	exec := mock.Execution()
 
 	// override execution store create method so that we may wait for async execution creation after `AskForBid`
 	executionCreatedWg := sync.WaitGroup{}
@@ -95,19 +96,15 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 		case result := <-s.bidChannel:
 			s.True(expectingResponse, "received result before it was expected")
 			s.Equal(shouldBid, result.Accepted)
-			s.Equal(job.Metadata.ID, result.JobID)
+			s.Equal(exec.JobID, result.JobID)
 		case <-time.After(2 * time.Second):
 			s.FailNow("did not receive a bid response")
 		}
 	}()
 
 	resp, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			ExecutionID: "testing-execution-id_" + s.T().Name(),
-			JobID:       job.ID(),
-		},
 		RoutingMetadata: compute.RoutingMetadata{TargetPeerID: s.node.ID, SourcePeerID: s.node.ID},
-		Job:             job,
+		Execution:       exec,
 		WaitForApproval: true,
 	})
 	s.NoError(err)

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -265,7 +266,11 @@ func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, e
 	if err != nil {
 		return nil, err
 	}
-	return &inlineData, nil
+	legacyInlineData, err := legacy.ToLegacyStorageSpec(&inlineData)
+	if err != nil {
+		return nil, err
+	}
+	return &legacyInlineData, nil
 }
 
 func newValidateCmd() *cobra.Command {

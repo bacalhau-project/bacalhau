@@ -9,11 +9,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
-type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume models.StorageSpec) (bool, error)
-type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume models.StorageSpec) (uint64, error)
+type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume models.InputSource) (bool, error)
+type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume models.InputSource) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
 type ExecutorHandlerJobHandler func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error)
 

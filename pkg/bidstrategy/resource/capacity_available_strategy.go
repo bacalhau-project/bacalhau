@@ -29,8 +29,10 @@ func NewAvailableCapacityStrategy(ctx context.Context, params AvailableCapacityS
 func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
-	availableCapacity := s.runningCapacityTracker.GetAvailableCapacity(ctx).Add(s.enqueuedCapacityTracker.GetAvailableCapacity(ctx))
-	if !usage.LessThanEq(*availableCapacity) {
+	runningCapacity := s.runningCapacityTracker.GetAvailableCapacity(ctx)
+	enqueuedCapacity := s.enqueuedCapacityTracker.GetAvailableCapacity(ctx)
+	totalCapacity := runningCapacity.Add(enqueuedCapacity)
+	if !usage.LessThanEq(*totalCapacity) {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    "not enough capacity available",

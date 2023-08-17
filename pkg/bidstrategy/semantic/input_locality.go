@@ -38,7 +38,7 @@ func (s *InputLocalityStrategy) ShouldBid(
 	}
 
 	foundInputs := 0
-	for _, input := range request.Job.Task().Artifacts {
+	for _, input := range request.Job.Task().InputSources {
 		// see if the storage engine reports that we have the resource locally
 		strg, err := s.storages.Get(ctx, input.Source.Type)
 		if err != nil {
@@ -53,7 +53,7 @@ func (s *InputLocalityStrategy) ShouldBid(
 		}
 	}
 
-	if foundInputs >= len(request.Job.Task().Artifacts) {
+	if foundInputs >= len(request.Job.Task().InputSources) {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 	return bidstrategy.BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil

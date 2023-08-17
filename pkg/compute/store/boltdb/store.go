@@ -144,6 +144,7 @@ func (s *Store) GetExecution(ctx context.Context, executionID string) (store.Loc
 		return
 	})
 
+	execution.Normalize()
 	return execution, err
 }
 
@@ -180,6 +181,9 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalS
 		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
 	})
 
+	for _, execution := range executions {
+		execution.Normalize()
+	}
 	return executions, nil
 }
 
@@ -257,57 +261,58 @@ func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.Lo
 
 // CreateExecution creates a new execution in the database and also sets up the
 // relevant index entry for the new execution.
-func (s *Store) CreateExecution(ctx context.Context, execution store.LocalState) error {
+func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalState) error {
 	log.Ctx(ctx).Trace().
-		Str("ExecutionID", execution.ID).
+		Str("ExecutionID", localExecutionState.Execution.ID).
 		Msg("boltdb.CreateExecution")
 
-	if err := store.ValidateNewExecution(execution); err != nil {
+	localExecutionState.Normalize()
+	if err := store.ValidateNewExecution(localExecutionState); err != nil {
 		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
-		err = s.createExecution(tx, execution)
+		err = s.createExecution(tx, localExecutionState)
 		if err == nil {
 			// If we are confident that the value was written without error
 			// and we won't rollback
-			s.stateCounter.IncrementState(execution.State, 1)
+			s.stateCounter.IncrementState(localExecutionState.State, 1)
 		}
 		return
 	})
 }
 
-func (s *Store) createExecution(tx *bolt.Tx, execution store.LocalState) error {
-	_, err := s.getExecution(tx, execution.ID)
+func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalState) error {
+	_, err := s.getExecution(tx, localExecutionState.Execution.ID)
 	if err == nil { // deliberate, we require an err to continue
-		return store.NewErrExecutionAlreadyExists(execution.ID)
+		return store.NewErrExecutionAlreadyExists(localExecutionState.Execution.ID)
 	}
 
 	// Write the execution to the executions bucket
-	executionData, err := json.Marshal(execution)
+	executionData, err := json.Marshal(localExecutionState)
 	if err != nil {
 		return err
 	}
 
 	executionsBucket := s.getExecutionsBucket(tx)
-	err = executionsBucket.Put([]byte(execution.ID), executionData)
+	err = executionsBucket.Put([]byte(localExecutionState.Execution.ID), executionData)
 	if err != nil {
 		return err
 	}
 
 	// Create the job bucket in the job index if it does not already exist
 	jobIndexBucket := s.getJobIndexBucket(tx)
-	jobBucket, err := jobIndexBucket.CreateBucketIfNotExists([]byte(execution.Job.ID()))
+	jobBucket, err := jobIndexBucket.CreateBucketIfNotExists([]byte(localExecutionState.Execution.JobID))
 	if err != nil {
 		return err
 	}
 
-	err = jobBucket.Put([]byte(execution.ID), nil)
+	err = jobBucket.Put([]byte(localExecutionState.Execution.ID), nil)
 	if err != nil {
 		return err
 	}
 
-	return s.appendHistory(tx, execution, store.ExecutionStateUndefined, newExecutionComment)
+	return s.appendHistory(tx, localExecutionState, store.ExecutionStateUndefined, newExecutionComment)
 }
 
 // UpdateExecutionState updates the current state of the execution
@@ -329,43 +334,43 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.LocalStateType, error) {
 	emptyState := store.ExecutionStateUndefined
 
-	execution, err := s.getExecution(tx, request.ExecutionID)
+	localExecutionState, err := s.getExecution(tx, request.ExecutionID)
 	if err != nil {
 		return emptyState, store.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
-	if request.ExpectedState != store.ExecutionStateUndefined && execution.State != request.ExpectedState {
-		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, execution.State, request.ExpectedState)
+	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
+		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
 	}
 
-	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
-		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
+	if request.ExpectedVersion != 0 && localExecutionState.Version != request.ExpectedVersion {
+		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
 	}
 
-	if execution.State.IsTerminal() {
-		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, execution.State, request.NewState)
+	if localExecutionState.State.IsTerminal() {
+		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)
 	}
 
-	previousState := execution.State
-	execution.State = request.NewState
-	execution.Version += 1
-	execution.UpdateTime = time.Now()
+	previousState := localExecutionState.State
+	localExecutionState.State = request.NewState
+	localExecutionState.Version += 1
+	localExecutionState.UpdateTime = time.Now()
 
 	// Having modified the execution, we're going to write it back over the top of the previous entry
 	// before appending a copy of the history to the history bucket
 
-	data, err := json.Marshal(execution)
+	data, err := json.Marshal(localExecutionState)
 	if err != nil {
 		return emptyState, err
 	}
 
 	executionsBucket := s.getExecutionsBucket(tx)
-	err = executionsBucket.Put([]byte(execution.ID), data)
+	err = executionsBucket.Put([]byte(localExecutionState.Execution.ID), data)
 	if err != nil {
 		return emptyState, err
 	}
 
-	return previousState, s.appendHistory(tx, execution, previousState, request.Comment)
+	return previousState, s.appendHistory(tx, localExecutionState, previousState, request.Comment)
 }
 
 // Must be called where tx is a write transaction and adds a new history entry
@@ -378,13 +383,13 @@ func (s *Store) appendHistory(
 	updatedExecution store.LocalState,
 	previousState store.LocalStateType, comment string) error {
 	historyBucket := s.getHistoryBucket(tx)
-	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.ID))
+	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.Execution.ID))
 	if err != nil {
 		return err
 	}
 
 	historyEntry := store.LocalStateHistory{
-		ExecutionID:   updatedExecution.ID,
+		ExecutionID:   updatedExecution.Execution.ID,
 		PreviousState: previousState,
 		NewState:      updatedExecution.State,
 		NewVersion:    updatedExecution.Version,
@@ -420,7 +425,7 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 }
 
 func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
-	execution, err := s.getExecution(tx, executionID)
+	localExecutionState, err := s.getExecution(tx, executionID)
 	if err != nil {
 		return err
 	}
@@ -434,7 +439,7 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 
 	// Delete from job index
 	jobIndexBucket := s.getJobIndexBucket(tx)
-	jobBucket := jobIndexBucket.Bucket([]byte(execution.Job.ID()))
+	jobBucket := jobIndexBucket.Bucket([]byte(localExecutionState.Execution.JobID))
 	if jobBucket != nil {
 		err = jobBucket.Delete([]byte(executionID))
 		if err != nil {

@@ -20,14 +20,14 @@ func TestParamsTestSuite(t *testing.T) {
 }
 
 func (s *ParamsTestSuite) TestDecodeMap() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
 		Compress: true,
 	}
-	decoded, err := DecodeSpec(&models.SpecConfig{
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
 		Params: expected.ToMap(),
 	})
@@ -36,7 +36,7 @@ func (s *ParamsTestSuite) TestDecodeMap() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInterface() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -50,7 +50,7 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 		"Region":   expected.Region,
 		"Compress": "true",
 	}
-	decoded, err := DecodeSpec(&models.SpecConfig{
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
 		Params: params,
 	})
@@ -59,7 +59,7 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -73,7 +73,7 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 		"region":   expected.Region,
 		"compress": "true",
 	}
-	decoded, err := DecodeSpec(&models.SpecConfig{
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
 		Params: params,
 	})
@@ -82,7 +82,7 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 }
 
 func (s *ParamsTestSuite) TestDecodeJson() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -99,7 +99,7 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 	if err != nil {
 		return
 	}
-	decoded, err := DecodeSpec(&models.SpecConfig{
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
 		Params: unmarshalled,
 	})
@@ -108,7 +108,7 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInvalidType() {
-	_, err := DecodeSpec(&models.SpecConfig{
+	_, err := DecodePublisherSpec(&models.SpecConfig{
 		Type: models.PublisherIPFS,
 	})
 	s.Require().Error(err)
@@ -141,7 +141,7 @@ func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 		},
 	} {
 		s.Run(tc.name, func() {
-			_, err := DecodeSpec(tc.spec)
+			_, err := DecodePublisherSpec(tc.spec)
 			s.Require().Error(err)
 		})
 	}

@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"golang.org/x/exp/maps"
@@ -36,6 +37,11 @@ func (s *SpecConfig) Normalize() {
 	if s == nil {
 		return
 	}
+
+	// make types case in-sensitive
+	s.Type = strings.ToLower(s.Type)
+	s.Type = strings.TrimSpace(s.Type)
+
 	// Ensure that an empty and nil map are treated the same
 	if len(s.Params) == 0 {
 		s.Params = make(map[string]interface{})

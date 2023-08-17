@@ -4,6 +4,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
@@ -68,6 +69,10 @@ type Job struct {
 	// Meta is used to associate arbitrary metadata with this job.
 	Meta map[string]string
 
+	// Labels is used to associate arbitrary labels with this job, which can be used
+	// for filtering.
+	Labels map[string]string
+
 	Tasks []*Task
 
 	// State is the current state of the job.
@@ -83,6 +88,10 @@ type Job struct {
 
 	CreateTime int64
 	ModifyTime int64
+}
+
+func (j *Job) String() string {
+	return j.ID
 }
 
 // NamespacedID returns the namespaced id useful for logging
@@ -106,6 +115,18 @@ func (j *Job) Normalize() {
 		j.Meta = make(map[string]string)
 	}
 
+	if j.Labels == nil {
+		j.Labels = make(map[string]string)
+	}
+
+	if j.Constraints == nil {
+		j.Constraints = make([]*LabelSelectorRequirement, 0)
+	}
+
+	if j.Tasks == nil {
+		j.Tasks = make([]*Task, 0)
+	}
+
 	// Ensure the job is in a namespace.
 	if j.Namespace == "" {
 		j.Namespace = DefaultNamespace
@@ -116,7 +137,7 @@ func (j *Job) Normalize() {
 	}
 
 	for _, task := range j.Tasks {
-		task.Normalize(j)
+		task.Normalize()
 	}
 }
 
@@ -183,7 +204,7 @@ func (j *Job) Validate() error {
 
 	// Validate the task group
 	for _, task := range j.Tasks {
-		if err := task.Validate(j); err != nil {
+		if err := task.Validate(); err != nil {
 			outer := fmt.Errorf("task %s validation failed: %v", task.Name, err)
 			mErr.Errors = append(mErr.Errors, outer)
 		}
@@ -209,6 +230,16 @@ func (j *Job) Task() *Task {
 		return nil
 	}
 	return j.Tasks[0]
+}
+
+// GetCreateTime returns the creation time
+func (j *Job) GetCreateTime() time.Time {
+	return time.Unix(0, j.CreateTime).UTC()
+}
+
+// GetModifyTime returns the modify time
+func (j *Job) GetModifyTime() time.Time {
+	return time.Unix(0, j.ModifyTime).UTC()
 }
 
 // AllStorageTypes returns keys of all storage types required by the job

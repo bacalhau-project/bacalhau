@@ -116,6 +116,7 @@ func (b *BatchJobScheduler) createMissingExecs(
 	for i := 0; i < remainingExecutionCount; i++ {
 		execution := &models.Execution{
 			JobID:        job.ID,
+			Job:          job,
 			ID:           "e-" + uuid.NewString(),
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),

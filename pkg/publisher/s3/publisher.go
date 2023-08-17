@@ -42,7 +42,7 @@ func (publisher *Publisher) IsInstalled(_ context.Context) (bool, error) {
 
 // ValidateJob validates the job spec and returns an error if the job is invalid.
 func (publisher *Publisher) ValidateJob(_ context.Context, j models.Job) error {
-	_, err := DecodeSpec(j.Task().Publisher)
+	_, err := s3helper.DecodePublisherSpec(j.Task().Publisher)
 	return err
 }
 
@@ -52,7 +52,7 @@ func (publisher *Publisher) PublishResult(
 	j models.Job,
 	resultPath string,
 ) (models.SpecConfig, error) {
-	spec, err := DecodeSpec(j.Task().Publisher)
+	spec, err := s3helper.DecodePublisherSpec(j.Task().Publisher)
 	if err != nil {
 		return models.SpecConfig{}, err
 	}
@@ -65,7 +65,7 @@ func (publisher *Publisher) PublishResult(
 
 func (publisher *Publisher) publishArchive(
 	ctx context.Context,
-	spec Params,
+	spec s3helper.PublisherSpec,
 	executionID string,
 	j models.Job,
 	resultPath string,
@@ -106,20 +106,20 @@ func (publisher *Publisher) publishArchive(
 
 	return models.SpecConfig{
 		Type: models.StorageSourceS3,
-		Params: map[string]interface{}{
-			"Bucket":         spec.Bucket,
-			"Key":            key,
-			"Endpoint":       spec.Endpoint,
-			"Region":         spec.Region,
-			"ChecksumSHA256": aws.ToString(res.ChecksumSHA256),
-			"VersionID":      aws.ToString(res.VersionID),
-		},
+		Params: s3helper.SourceSpec{
+			Bucket:         spec.Bucket,
+			Key:            key,
+			Endpoint:       spec.Endpoint,
+			Region:         spec.Region,
+			ChecksumSHA256: aws.ToString(res.ChecksumSHA256),
+			VersionID:      aws.ToString(res.VersionID),
+		}.ToMap(),
 	}, nil
 }
 
 func (publisher *Publisher) publishDirectory(
 	ctx context.Context,
-	spec Params,
+	spec s3helper.PublisherSpec,
 	executionID string,
 	j models.Job,
 	resultPath string,
@@ -166,11 +166,11 @@ func (publisher *Publisher) publishDirectory(
 
 	return models.SpecConfig{
 		Type: models.StorageSourceS3,
-		Params: map[string]interface{}{
-			"Bucket":   spec.Bucket,
-			"Key":      key,
-			"Endpoint": spec.Endpoint,
-			"Region":   spec.Region,
-		},
+		Params: s3helper.SourceSpec{
+			Bucket:   spec.Bucket,
+			Key:      key,
+			Region:   spec.Region,
+			Endpoint: spec.Endpoint,
+		}.ToMap(),
 	}, nil
 }

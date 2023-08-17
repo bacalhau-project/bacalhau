@@ -2,6 +2,13 @@
 //go:generate stringer -type=ExecutionDesiredStateType --trimprefix=ExecutionDesiredState --output execution_desired_state_string.go
 package models
 
+import (
+	"errors"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/hashicorp/go-multierror"
+)
+
 // ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
 // A compute node can have multiple executions for the same job due to retries, but there can only be a single active execution
 // per node at any given time.
@@ -103,25 +110,35 @@ type Execution struct {
 	ModifyTime int64
 }
 
-func (a *Execution) JobNamespacedID() NamespacedID {
-	return NewNamespacedID(a.JobID, a.Namespace)
+func (e *Execution) String() string {
+	return e.ID
+}
+
+func (e *Execution) JobNamespacedID() NamespacedID {
+	return NewNamespacedID(e.JobID, e.Namespace)
 }
 
 // Normalize Allocation to ensure fields are initialized to the expectations
-// of this version of Nomad. Should be called when restoring persisted
-// Allocations or receiving Allocations from Nomad agents potentially on an
-// older version of Nomad.
-func (a *Execution) Normalize() {
-	a.Job.Normalize()
+// of this version of Bacalhau. Should be called when restoring persisted
+// Executions or receiving Executions from Bacalhau clients potentially on an
+// older version of Bacalhau.
+func (e *Execution) Normalize() {
+	if e == nil {
+		return
+	}
+	if e.AllocatedResources == nil {
+		e.AllocatedResources = &AllocatedResources{}
+	}
+	e.Job.Normalize()
 }
 
 // Copy provides a copy of the allocation and deep copies the job
-func (a *Execution) Copy() *Execution {
-	if a == nil {
+func (e *Execution) Copy() *Execution {
+	if e == nil {
 		return nil
 	}
 	na := new(Execution)
-	*na = *a
+	*na = *e
 
 	na.Job = na.Job.Copy()
 	na.AllocatedResources = na.AllocatedResources.Copy()
@@ -129,19 +146,38 @@ func (a *Execution) Copy() *Execution {
 	return na
 }
 
+// Validate is used to check a job for reasonable configuration
+func (e *Execution) Validate() error {
+	var mErr multierror.Error
+	if validate.IsBlank(e.ID) {
+		mErr.Errors = append(mErr.Errors, errors.New("missing execution ID"))
+	} else if validate.ContainsSpaces(e.ID) {
+		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a space"))
+	} else if validate.ContainsNull(e.ID) {
+		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a null character"))
+	}
+	if validate.IsBlank(e.Namespace) {
+		mErr.Errors = append(mErr.Errors, errors.New("execution must be in a namespace"))
+	}
+	if validate.IsBlank(e.JobID) {
+		mErr.Errors = append(mErr.Errors, errors.New("missing execution job ID"))
+	}
+	return mErr.ErrorOrNil()
+}
+
 // IsTerminalState returns true if the execution desired of observed state is terminal
-func (a *Execution) IsTerminalState() bool {
-	return a.IsTerminalDesiredState() || a.IsTerminalComputeState()
+func (e *Execution) IsTerminalState() bool {
+	return e.IsTerminalDesiredState() || e.IsTerminalComputeState()
 }
 
 // IsTerminalDesiredState returns true if the execution desired state is terminal
-func (a *Execution) IsTerminalDesiredState() bool {
-	return a.DesiredState.StateType == ExecutionDesiredStateStopped
+func (e *Execution) IsTerminalDesiredState() bool {
+	return e.DesiredState.StateType == ExecutionDesiredStateStopped
 }
 
 // IsTerminalComputeState returns true if the execution observed state is terminal
-func (a *Execution) IsTerminalComputeState() bool {
-	switch a.ComputeState.StateType {
+func (e *Execution) IsTerminalComputeState() bool {
+	switch e.ComputeState.StateType {
 	case ExecutionStateCompleted, ExecutionStateFailed, ExecutionStateCancelled, ExecutionStateAskForBidRejected, ExecutionStateBidRejected:
 		return true
 	default:
@@ -150,13 +186,27 @@ func (a *Execution) IsTerminalComputeState() bool {
 }
 
 // IsDiscarded returns true if the execution has failed, been cancelled or rejected.
-func (a *Execution) IsDiscarded() bool {
-	switch a.ComputeState.StateType {
+func (e *Execution) IsDiscarded() bool {
+	switch e.ComputeState.StateType {
 	case ExecutionStateAskForBidRejected, ExecutionStateBidRejected, ExecutionStateCancelled, ExecutionStateFailed:
 		return true
 	default:
 		return false
 	}
+}
+
+// AllocateResources allocates resources to a task
+func (e *Execution) AllocateResources(taskID string, resources Resources) {
+	if e.AllocatedResources == nil {
+		e.AllocatedResources = &AllocatedResources{
+			Tasks: make(map[string]*Resources),
+		}
+	}
+	e.AllocatedResources.Tasks[taskID] = resources.Copy()
+}
+
+func (e *Execution) TotalAllocatedResources() *Resources {
+	return e.AllocatedResources.Total()
 }
 
 type RunCommandResult struct {

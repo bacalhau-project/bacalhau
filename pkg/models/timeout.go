@@ -11,9 +11,14 @@ import (
 // TimeoutConfig is the configuration for timeout related settings,
 // such as execution and shutdown timeouts.
 type TimeoutConfig struct {
-	// ExecutionTimeout is the maximum amount of time a task is allowed to run.
+	// ExecutionTimeout is the maximum amount of time a task is allowed to run in seconds.
 	// Zero means no timeout, such as for a daemon task.
-	ExecutionTimeout time.Duration
+	ExecutionTimeout int64
+}
+
+// GetExecutionTimeout returns the execution timeout duration
+func (t *TimeoutConfig) GetExecutionTimeout() time.Duration {
+	return time.Duration(t.ExecutionTimeout) * time.Second
 }
 
 // Copy returns a deep copy of the timeout config.
@@ -32,7 +37,7 @@ func (t *TimeoutConfig) Validate() error {
 	}
 	var mErr multierror.Error
 	if t.ExecutionTimeout < 0 {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid execution timeout value: %s", t.ExecutionTimeout))
+		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid execution timeout value: %s", t.GetExecutionTimeout()))
 	}
 	return mErr.ErrorOrNil()
 }

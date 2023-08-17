@@ -63,16 +63,16 @@ func (s *StorageProvider) IsInstalled(_ context.Context) (bool, error) {
 }
 
 // HasStorageLocally checks if the requested content is hosted locally.
-func (s *StorageProvider) HasStorageLocally(_ context.Context, _ models.Artifact) (bool, error) {
+func (s *StorageProvider) HasStorageLocally(_ context.Context, _ models.InputSource) (bool, error) {
 	// TODO: return true if the content is on the same AZ or datacenter as the host
 	return false, nil
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Artifact) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
 	defer cancel()
 
-	source, err := DecodeSpec(volume.Source)
+	source, err := s3helper.DecodeSourceSpec(volume.Source)
 	if err != nil {
 		return 0, err
 	}
@@ -89,8 +89,8 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Artif
 	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.Artifact) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(storageSpec.Source)
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+	source, err := s3helper.DecodeSourceSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -129,7 +129,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models
 // downloadObject downloads a single object from S3 to local disk
 func (s *StorageProvider) downloadObject(ctx context.Context,
 	client *s3helper.ClientWrapper,
-	source Source,
+	source s3helper.SourceSpec,
 	object s3ObjectSummary,
 	parentDir string,
 	prefixTokens []string) error {
@@ -175,7 +175,7 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	return err
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.Artifact, volume storage.StorageVolume) error {
+func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
 	return os.RemoveAll(volume.Source)
 }
 
@@ -184,7 +184,7 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 }
 
 func (s *StorageProvider) explodeKey(
-	ctx context.Context, client *s3helper.ClientWrapper, storageSpec Source) ([]s3ObjectSummary, error) {
+	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
 	if !strings.HasSuffix(storageSpec.Key, "*") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),

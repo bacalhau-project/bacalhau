@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc/proto"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.

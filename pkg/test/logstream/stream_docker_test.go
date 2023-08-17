@@ -6,24 +6,21 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	docker.MustHaveDocker(s.T())
 
 	node := s.stack.Nodes[0]
-	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
-	require.NoError(s.T(), err)
 
 	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
 	defer cancelFunc()
@@ -31,34 +28,37 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	job := testutils.MakeJobWithOpts(s.T(),
-		jobutils.WithEngineSpec(
-			model.NewDockerEngineBuilder("ubuntu:latest").
-				WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
-				Build(),
-		),
-	)
-	job.Metadata.ID = "logstreamtest-docker"
+	task := mock.TaskBuilder().
+		Engine(dockermodels.NewDockerEngineBuilder("ubuntu:latest").
+			WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+			Build()).
+		BuildOrDie()
+	job := mock.Job()
+	job.Tasks[0] = task
 
-	require.NoError(s.T(), node.RequesterNode.JobStore.CreateJob(ctx, job))
-	executionID := uuid.New().String()
+	execution := mock.ExecutionForJob(job)
+	execution.AllocateResources(task.Name, models.Resources{CPU: 1, Memory: 1})
+
+	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
+	require.NoError(s.T(), err)
+
+	exec, err := node.ComputeNode.Executors.Get(s.ctx, models.EngineDocker)
+	require.NoError(s.T(), err)
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		engineBytes, err := job.Spec.EngineSpec.Serialize()
-		require.NoError(s.T(), err)
 		exec.Run(
 			ctx,
 			&executor.RunCommandRequest{
-				JobID:        job.ID(),
-				ExecutionID:  executionID,
-				Resources:    job.Spec.Resources,
-				Network:      job.Spec.Network,
-				Outputs:      job.Spec.Outputs,
+				JobID:        job.ID,
+				ExecutionID:  execution.ID,
+				Resources:    execution.TotalAllocatedResources(),
+				Network:      task.Network,
+				Outputs:      task.ResultPaths,
 				Inputs:       nil,
 				ResultsDir:   "/tmp",
-				EngineParams: &executor.Arguments{Params: engineBytes},
+				EngineParams: task.Engine,
 				OutputLimits: executor.OutputLimits{
 					MaxStdoutFileLength:   system.MaxStdoutFileLength,
 					MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -73,7 +73,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	go func() {
 		// TODO(forrest): [correctness] we need to wait a little for the container to become active.
 		time.Sleep(time.Second * 3)
-		reader, err := waitForOutputStream(ctx, executionID, true, true, exec)
+		reader, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
 

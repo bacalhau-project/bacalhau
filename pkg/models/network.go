@@ -201,3 +201,43 @@ func matchDomain(left, right string) (diff int) {
 	// in all components or one of them is a wildcard.
 	return 0
 }
+
+type NetworkConfigBuilder struct {
+	network *NetworkConfig
+}
+
+func NewNetworkConfigBuilder() *NetworkConfigBuilder {
+	return &NetworkConfigBuilder{
+		network: &NetworkConfig{},
+	}
+}
+
+func NewNetworkConfigBuilderFromNetwork(network *NetworkConfig) *NetworkConfigBuilder {
+	return &NetworkConfigBuilder{
+		network: network,
+	}
+}
+
+func (b *NetworkConfigBuilder) Type(typ Network) *NetworkConfigBuilder {
+	b.network.Type = typ
+	return b
+}
+
+func (b *NetworkConfigBuilder) Domains(domains ...string) *NetworkConfigBuilder {
+	b.network.Domains = domains
+	return b
+}
+
+func (b *NetworkConfigBuilder) Build() (*NetworkConfig, error) {
+	b.network.Normalize()
+	return b.network, b.network.Validate()
+}
+
+// BuildOrDie is a helper that wraps Build and panics on error.
+func (b *NetworkConfigBuilder) BuildOrDie() *NetworkConfig {
+	network, err := b.Build()
+	if err != nil {
+		panic(err)
+	}
+	return network
+}

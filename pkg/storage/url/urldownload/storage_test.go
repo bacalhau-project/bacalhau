@@ -56,7 +56,7 @@ func (s *StorageSuite) TestNewStorageProvider() {
 func (s *StorageSuite) TestHasStorageLocally() {
 	sp := newStorage(s.T().TempDir())
 
-	spec := models.Artifact{
+	spec := models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceURL,
 			Params: Source{
@@ -320,7 +320,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			subject := newStorage(s.T().TempDir())
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
-			spec := models.Artifact{
+			spec := models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceURL,
 					Params: Source{

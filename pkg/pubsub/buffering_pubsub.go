@@ -7,6 +7,7 @@ import (
 	realsync "sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"

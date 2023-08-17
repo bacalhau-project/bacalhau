@@ -15,7 +15,7 @@ import (
 )
 
 type specSize struct {
-	artifact *models.Artifact
+	artifact *models.InputSource
 	size     datasize.ByteSize
 }
 
@@ -33,7 +33,7 @@ type specSize struct {
 func CopyOversize(
 	ctx context.Context,
 	provider storage.StorageProvider,
-	specs []*models.Artifact,
+	specs []*models.InputSource,
 	srcType, dstType string,
 	maxSingle, maxTotal datasize.ByteSize,
 ) (modified bool, err error) {
@@ -88,20 +88,20 @@ func CopyOversize(
 func Copy(
 	ctx context.Context,
 	provider storage.StorageProvider,
-	spec models.Artifact,
+	spec models.InputSource,
 	destination string,
-) (models.Artifact, error) {
+) (models.InputSource, error) {
 	srcStorage, srcErr := provider.Get(ctx, spec.Source.Type)
 	dstStorage, dstErr := provider.Get(ctx, destination)
 	err := multierr.Append(srcErr, dstErr)
 	if err != nil {
-		return models.Artifact{}, err
+		return models.InputSource{}, err
 	}
 
 	volume, err := srcStorage.PrepareStorage(ctx, spec)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to prepare %s spec", spec.Source.Type)
-		return models.Artifact{}, err
+		return models.InputSource{}, err
 	}
 	defer srcStorage.CleanupStorage(ctx, spec, volume) //nolint:errcheck
 
@@ -111,7 +111,7 @@ func Copy(
 		err = errors.Wrapf(err, "failed to save %s spec to %s", spec.Source.Type, destination)
 	}
 
-	return models.Artifact{
+	return models.InputSource{
 		Source: &newSpec,
 		Target: spec.Target,
 	}, err

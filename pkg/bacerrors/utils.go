@@ -1,6 +1,7 @@
 package bacerrors
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 )
 

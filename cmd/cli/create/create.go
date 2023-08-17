@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"

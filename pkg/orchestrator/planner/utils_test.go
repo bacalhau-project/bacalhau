@@ -13,8 +13,8 @@ import (
 )
 
 func mockCreateExecutions(plan *models.Plan) (*models.Execution, *models.Execution) {
-	execution1 := mock.Execution(plan.Job)
-	execution2 := mock.Execution(plan.Job)
+	execution1 := mock.ExecutionForJob(plan.Job)
+	execution2 := mock.ExecutionForJob(plan.Job)
 	execution1.ID = "NewExec1"
 	execution2.ID = "NewExec2"
 	plan.NewExecutions = []*models.Execution{execution1, execution2}
@@ -22,8 +22,8 @@ func mockCreateExecutions(plan *models.Plan) (*models.Execution, *models.Executi
 }
 
 func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate, *models.PlanExecutionDesiredUpdate) {
-	execution1 := mock.Execution(plan.Job)
-	execution2 := mock.Execution(plan.Job)
+	execution1 := mock.ExecutionForJob(plan.Job)
+	execution2 := mock.ExecutionForJob(plan.Job)
 	execution1.ID = "UpdatedExec1"
 	execution2.ID = "UpdatedExec2"
 	update1 := &models.PlanExecutionDesiredUpdate{
@@ -43,40 +43,43 @@ func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate
 
 // UpdateExecutionMatcher is a matcher for the UpdateExecutionState method of the JobStore interface.
 type UpdateExecutionMatcher struct {
-	t                *testing.T
-	execution        *models.Execution
-	newState         models.ExecutionStateType
-	newDesiredState  models.ExecutionDesiredStateType
-	comment          string
-	expectedState    models.ExecutionStateType
-	expectedRevision uint64
+	t                   *testing.T
+	execution           *models.Execution
+	newState            models.ExecutionStateType
+	newDesiredState     models.ExecutionDesiredStateType
+	newStateComment     string
+	desiredStateComment string
+	expectedState       models.ExecutionStateType
+	expectedRevision    uint64
 }
 
 type UpdateExecutionMatcherParams struct {
-	NewState         models.ExecutionStateType
-	NewDesiredState  models.ExecutionDesiredStateType
-	Comment          string
-	ExpectedState    models.ExecutionStateType
-	ExpectedRevision uint64
+	NewState            models.ExecutionStateType
+	NewDesiredState     models.ExecutionDesiredStateType
+	NewStateComment     string
+	DesiredStateComment string
+	ExpectedState       models.ExecutionStateType
+	ExpectedRevision    uint64
 }
 
 func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params UpdateExecutionMatcherParams) *UpdateExecutionMatcher {
 	return &UpdateExecutionMatcher{
-		t:                t,
-		execution:        execution,
-		newState:         params.NewState,
-		newDesiredState:  params.NewDesiredState,
-		comment:          params.Comment,
-		expectedState:    params.ExpectedState,
-		expectedRevision: params.ExpectedRevision,
+		t:                   t,
+		execution:           execution,
+		newState:            params.NewState,
+		newDesiredState:     params.NewDesiredState,
+		newStateComment:     params.NewStateComment,
+		desiredStateComment: params.DesiredStateComment,
+		expectedState:       params.ExpectedState,
+		expectedRevision:    params.ExpectedRevision,
 	}
 }
 
 func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanExecutionDesiredUpdate) *UpdateExecutionMatcher {
 	return NewUpdateExecutionMatcher(t, update.Execution, UpdateExecutionMatcherParams{
-		NewDesiredState:  update.DesiredState,
-		Comment:          update.Comment,
-		ExpectedRevision: update.Execution.Revision,
+		NewDesiredState:     update.DesiredState,
+		DesiredStateComment: update.Comment,
+		ExpectedRevision:    update.Execution.Revision,
 	})
 }
 
@@ -90,13 +93,12 @@ func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 	expectedRequest := jobstore.UpdateExecutionRequest{
 		ExecutionID: m.execution.ID,
 		NewValues: models.Execution{
-			ComputeState: models.NewExecutionState(m.newState).WithMessage(m.comment),
-			DesiredState: models.NewExecutionDesiredState(m.newDesiredState),
+			ComputeState: models.NewExecutionState(m.newState).WithMessage(m.newStateComment),
+			DesiredState: models.NewExecutionDesiredState(m.newDesiredState).WithMessage(m.desiredStateComment),
 		},
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedRevision: m.expectedRevision,
 		},
-		Comment: m.comment,
 	}
 
 	// set expected state if present
@@ -108,7 +110,8 @@ func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 }
 
 func (m *UpdateExecutionMatcher) String() string {
-	return fmt.Sprintf("{Execution: %s}", m.execution)
+	return fmt.Sprintf("{ExecutionForJob: %s, NewState: {%s %s}, DesiredState: {%s %s}",
+		m.execution, m.newState, m.newStateComment, m.newDesiredState, m.newDesiredState)
 }
 
 // UpdateJobMatcher is a matcher for the UpdateJobState method of the JobStore interface.
@@ -140,7 +143,7 @@ func NewUpdateJobMatcherFromPlanUpdate(t *testing.T, plan *models.Plan) *UpdateJ
 	return NewUpdateJobMatcher(t, plan.Job, UpdateJobMatcherParams{
 		NewState:         plan.DesiredJobState,
 		Comment:          plan.Comment,
-		ExpectedRevision: plan.JobStateRevision,
+		ExpectedRevision: plan.Job.Revision,
 	})
 }
 

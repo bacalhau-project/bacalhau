@@ -29,28 +29,28 @@ func (t *tracingStorage) IsInstalled(ctx context.Context) (bool, error) {
 	return t.delegate.IsInstalled(ctx)
 }
 
-func (t *tracingStorage) HasStorageLocally(ctx context.Context, spec models.Artifact) (bool, error) {
+func (t *tracingStorage) HasStorageLocally(ctx context.Context, spec models.InputSource) (bool, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.HasStorageLocally", t.name))
 	defer span.End()
 
 	return t.delegate.HasStorageLocally(ctx, spec)
 }
 
-func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.Artifact) (uint64, error) {
+func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.InputSource) (uint64, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.GetVolumeSize", t.name))
 	defer span.End()
 
 	return t.delegate.GetVolumeSize(ctx, spec)
 }
 
-func (t *tracingStorage) PrepareStorage(ctx context.Context, spec models.Artifact) (storage.StorageVolume, error) {
+func (t *tracingStorage) PrepareStorage(ctx context.Context, spec models.InputSource) (storage.StorageVolume, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
 	defer span.End()
 
 	return t.delegate.PrepareStorage(ctx, spec)
 }
 
-func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.Artifact, volume storage.StorageVolume) error {
+func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSource, volume storage.StorageVolume) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.CleanupStorage", t.name))
 	defer span.End()
 

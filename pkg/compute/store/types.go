@@ -5,25 +5,37 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type LocalState struct {
-	Execution     *models.Execution
-	State         LocalStateType
-	Version       int
-	CreateTime    time.Time
-	UpdateTime    time.Time
-	LatestComment string
+	Execution       *models.Execution
+	RequesterNodeID string
+	State           LocalStateType
+	Version         int
+	CreateTime      time.Time
+	UpdateTime      time.Time
+	LatestComment   string
 }
 
-func NewLocalState(execution *models.Execution) *LocalState {
+func NewLocalState(execution *models.Execution, requesterNodeID string) *LocalState {
 	return &LocalState{
-		Execution:  execution,
-		State:      ExecutionStateCreated,
-		Version:    1,
-		CreateTime: time.Now().UTC(),
-		UpdateTime: time.Now().UTC(),
+		Execution:       execution,
+		RequesterNodeID: requesterNodeID,
+		State:           ExecutionStateCreated,
+		Version:         1,
+		CreateTime:      time.Now().UTC(),
+		UpdateTime:      time.Now().UTC(),
 	}
+}
+
+// Normalize normalizes the execution state
+func (e *LocalState) Normalize() {
+	if e.Execution == nil {
+		return
+	}
+	e.Execution.Normalize()
 }
 
 // string returns a string representation of the execution

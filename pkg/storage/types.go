@@ -13,14 +13,14 @@ type StorageProvider = provider.Provider[Storage]
 type Storage interface {
 	provider.Providable
 
-	HasStorageLocally(context.Context, models.Artifact) (bool, error)
+	HasStorageLocally(context.Context, models.InputSource) (bool, error)
 
 	// how big is the given volume in terms of resource consumption?
-	GetVolumeSize(context.Context, models.Artifact) (uint64, error)
+	GetVolumeSize(context.Context, models.InputSource) (uint64, error)
 
-	PrepareStorage(context.Context, models.Artifact) (StorageVolume, error)
+	PrepareStorage(context.Context, models.InputSource) (StorageVolume, error)
 
-	CleanupStorage(context.Context, models.Artifact, StorageVolume) error
+	CleanupStorage(context.Context, models.InputSource, StorageVolume) error
 
 	// given a local file path - "store" it and return a SpecConfig
 	Upload(context.Context, string) (models.SpecConfig, error)

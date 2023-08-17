@@ -206,7 +206,7 @@ type Spec struct {
 	Wasm JobSpecWasm `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
-	Resources ResourceUsageConfig `json:"Resources,omitempty"`
+	Resources ResourceUsageConfig `json:"TotalAllocatedResources,omitempty"`
 
 	// The type of networking access that the job needs
 	Network NetworkConfig `json:"Network,omitempty"`

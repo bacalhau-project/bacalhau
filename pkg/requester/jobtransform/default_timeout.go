@@ -10,8 +10,8 @@ import (
 // Sets a default timeout value if one is not passed or below an acceptable value
 func NewTimeoutApplier(minTimeout, defaultTimeout time.Duration) Transformer {
 	return func(ctx context.Context, job *model.Job) (modified bool, err error) {
-		if job.Task().Timeouts.ExecutionTimeout <= minTimeout {
-			job.Task().Timeouts.ExecutionTimeout = int64(defaultTimeout.Seconds())
+		if job.Spec.GetTimeout() <= minTimeout {
+			job.Spec.Timeout = int64(defaultTimeout.Seconds())
 			return true, nil
 		}
 		return

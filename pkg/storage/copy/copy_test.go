@@ -18,7 +18,7 @@ import (
 
 type copyOversizeTestCase struct {
 	name     string
-	specs    []*models.Artifact
+	specs    []*models.InputSource
 	modified bool
 }
 
@@ -32,12 +32,12 @@ const (
 var copyOversizeTestCases = []copyOversizeTestCase{
 	{
 		name:     "non specs are unchanged",
-		specs:    []*models.Artifact{{Source: &models.SpecConfig{Type: dstType}}},
+		specs:    []*models.InputSource{{Source: &models.SpecConfig{Type: dstType}}},
 		modified: false,
 	},
 	{
 		name: "small specs are unchanged",
-		specs: []*models.Artifact{{
+		specs: []*models.InputSource{{
 			Source: &models.SpecConfig{
 				Type: srcType,
 				Params: map[string]interface{}{
@@ -50,7 +50,7 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 	},
 	{
 		name: "large specs are changed",
-		specs: []*models.Artifact{{
+		specs: []*models.InputSource{{
 			Source: &models.SpecConfig{
 				Type: srcType,
 				Params: map[string]interface{}{
@@ -63,7 +63,7 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 	},
 	{
 		name: "multiple small specs below threshold are unchanged",
-		specs: []*models.Artifact{{
+		specs: []*models.InputSource{{
 			Source: &models.SpecConfig{
 				Type: srcType,
 				Params: map[string]interface{}{
@@ -84,7 +84,7 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 	},
 	{
 		name: "multiple small specs above threshold are changed",
-		specs: []*models.Artifact{{
+		specs: []*models.InputSource{{
 			Source: &models.SpecConfig{
 				Type: srcType,
 				Params: map[string]interface{}{
@@ -121,8 +121,8 @@ func TestCopyOversize(t *testing.T) {
 			didUpload := false
 			noopStorage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
-					GetVolumeSize: func(ctx context.Context, volume models.Artifact) (uint64, error) {
-						return uint64(len(volume.Source.Type)), nil
+					GetVolumeSize: func(ctx context.Context, volume models.InputSource) (uint64, error) {
+						return uint64(len(volume.Source.Params["URL"].(string))), nil
 					},
 					Upload: func(ctx context.Context, localPath string) (models.SpecConfig, error) {
 						didUpload = true
@@ -131,7 +131,7 @@ func TestCopyOversize(t *testing.T) {
 				},
 			})
 
-			provider := provider.NewSingletonProvider[storage.Storage](noopStorage)
+			provider := provider.NewNoopProvider[storage.Storage](noopStorage)
 			modified, err := CopyOversize(
 				context.Background(),
 				provider,
@@ -142,8 +142,8 @@ func TestCopyOversize(t *testing.T) {
 				maxTotal,
 			)
 			require.NoError(t, err)
-			require.Equal(t, modified, testCase.modified)
-			require.Equal(t, modified, didUpload)
+			require.Equal(t, testCase.modified, modified)
+			require.Equal(t, didUpload, modified)
 
 			newSpecs := preserveSlice(testCase.specs)
 			if modified {
@@ -154,8 +154,8 @@ func TestCopyOversize(t *testing.T) {
 				require.Subset(t, newSpecs, originals)
 			}
 
-			oldPaths := lo.Map(originals, func(s models.Artifact, _ int) string { return s.Target })
-			newPaths := lo.Map(newSpecs, func(s models.Artifact, _ int) string { return s.Target })
+			oldPaths := lo.Map(originals, func(s models.InputSource, _ int) string { return s.Target })
+			newPaths := lo.Map(newSpecs, func(s models.InputSource, _ int) string { return s.Target })
 			require.ElementsMatch(t, oldPaths, newPaths)
 		})
 	}

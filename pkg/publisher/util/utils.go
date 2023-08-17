@@ -105,5 +105,5 @@ func NewNoopPublishers(
 	config noop.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisherWithConfig(config)
-	return provider.NewSingletonProvider[publisher.Publisher](noopPublisher), nil
+	return provider.NewNoopProvider[publisher.Publisher](noopPublisher), nil
 }

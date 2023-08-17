@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -20,12 +22,10 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -84,7 +84,7 @@ func (e *Executor) ShouldBid(
 func (e *Executor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	usage model.ResourceUsageData,
+	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// TODO(forrest): should this just return true always?
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
@@ -94,7 +94,7 @@ func (e *Executor) ShouldBidBasedOnUsage(
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
-) (*model.RunCommandResult, error) {
+) (*models.RunCommandResult, error) {
 
 	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
 	ctx, cancel := context.WithCancel(ctx)
@@ -111,11 +111,7 @@ func (e *Executor) Run(
 	defer span.End()
 	defer e.cleanupExecution(ctx, request.ExecutionID)
 
-	engineSpec, err := model.DeserializeEngineSpec(request.EngineParams.Params)
-	if err != nil {
-		return nil, err
-	}
-	dockerArgs, err := model.DecodeEngineSpec[model.DockerEngineSpec](engineSpec)
+	dockerArgs, err := dockermodels.DecodeSpec(request.EngineParams)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +123,7 @@ func (e *Executor) Run(
 	var mounts []mount.Mount
 	for _, input := range request.Inputs {
 		if input.Volume.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Spec, input.Volume)
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Artifact, input.Volume)
 
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,
@@ -151,7 +147,7 @@ func (e *Executor) Run(
 		}
 
 		if output.Path == "" {
-			err = fmt.Errorf("output volume has no path: %+v", output)
+			err = fmt.Errorf("output volume has no Location: %+v", output)
 			return executor.FailResult(err)
 		}
 
@@ -198,25 +194,23 @@ func (e *Executor) Run(
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacity.ParseResourceUsageConfig(request.Resources)
-
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
-	if resourceRequirements.GPU > 0 {
+	if request.Resources.GPU > 0 {
 		deviceRequests = append(deviceRequests,
 			container.DeviceRequest{
 				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
 				Capabilities: [][]string{{"gpu"}},
 			},
 		)
-		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
+		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", request.Resources.GPU)
 	}
 
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 		Resources: container.Resources{
-			Memory:         int64(resourceRequirements.Memory),
-			NanoCPUs:       int64(resourceRequirements.CPU * NanoCPUCoefficient),
+			Memory:         int64(request.Resources.Memory),
+			NanoCPUs:       int64(request.Resources.CPU * NanoCPUCoefficient),
 			DeviceRequests: deviceRequests,
 		},
 	}

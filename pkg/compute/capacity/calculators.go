@@ -2,6 +2,8 @@ package capacity
 
 import (
 	"context"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type DefaultsUsageCalculatorParams struct {
@@ -19,8 +21,8 @@ func NewDefaultsUsageCalculator(params DefaultsUsageCalculatorParams) *DefaultsU
 }
 
 func (c *DefaultsUsageCalculator) Calculate(
-	ctx context.Context, job models.Job, parsedUsage models.Resources) (models.Resources, error) {
-	return parsedUsage.Intersect(c.defaults), nil
+	ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+	return parsedUsage.Merge(c.defaults), nil
 }
 
 type ChainedUsageCalculatorParams struct {
@@ -38,14 +40,14 @@ func NewChainedUsageCalculator(params ChainedUsageCalculatorParams) *ChainedUsag
 }
 
 func (c *ChainedUsageCalculator) Calculate(
-	ctx context.Context, job models.Job, parsedUsage models.Resources) (models.Resources, error) {
-	aggregatedUsage := parsedUsage
+	ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+	aggregatedUsage := &parsedUsage
 	for _, calculator := range c.calculators {
 		calculatedUsage, err := calculator.Calculate(ctx, job, parsedUsage)
 		if err != nil {
-			return models.Resources{}, err
+			return nil, err
 		}
-		aggregatedUsage = aggregatedUsage.Max(calculatedUsage)
+		aggregatedUsage = aggregatedUsage.Max(*calculatedUsage)
 	}
 	return aggregatedUsage, nil
 }

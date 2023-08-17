@@ -5,6 +5,7 @@ package devstack
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -31,7 +32,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	type TestCase struct {
 		name            string
-		policy          model.JobSelectionPolicy
+		policy          node.JobSelectionPolicy
 		nodeCount       int
 		addFilesCount   int
 		expectedAccepts int
@@ -71,7 +72,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		{
 			name:            "all nodes added files, all nodes ran job",
-			policy:          model.NewDefaultJobSelectionPolicy(),
+			policy:          node.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
 			addFilesCount:   3,
 			expectedAccepts: 3,
@@ -80,7 +81,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		// check we get only 2 when we've only added data to 2
 		{
 			name:            "only nodes we added data to ran the job",
-			policy:          model.NewDefaultJobSelectionPolicy(),
+			policy:          node.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
 			addFilesCount:   2,
 			expectedAccepts: 2,
@@ -89,8 +90,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		// check we run on all 3 nodes even though we only added data to 1
 		{
 			name: "only added files to 1 node but all 3 run it",
-			policy: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			policy: node.JobSelectionPolicy{
+				Locality: semantic.Anywhere,
 			},
 			nodeCount:       3,
 			addFilesCount:   1,

@@ -25,7 +25,7 @@ type InputLocalityStrategySuite struct {
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
 	job := mock.Job()
-	job.Task().Artifacts = []*models.Artifact{
+	job.Task().InputSources = []*models.InputSource{
 		{
 			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
 			Target: "target",
@@ -103,12 +103,12 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 	for _, test := range testCases {
 		s.Run(test.name, func() {
 			fakeStorage := noop.NewNoopStorage()
-			fakeStorage.Config.ExternalHooks.HasStorageLocally = func(ctx context.Context, volume models.Artifact) (bool, error) {
+			fakeStorage.Config.ExternalHooks.HasStorageLocally = func(ctx context.Context, volume models.InputSource) (bool, error) {
 				return test.hasStorageLocally, nil
 			}
 			params := semantic.InputLocalityStrategyParams{
 				Locality: test.policy,
-				Storages: provider.NewSingletonProvider[storage.Storage](fakeStorage),
+				Storages: provider.NewNoopProvider[storage.Storage](fakeStorage),
 			}
 			strategy := semantic.NewInputLocalityStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), test.request)

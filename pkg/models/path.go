@@ -5,38 +5,46 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/hashicorp/go-multierror"
 )
 
-type Path struct {
+type ResultPath struct {
+	// Name
+	Name string
 	// The path to the file/dir
-	Location string
+	Path string
 }
 
 // Normalize normalizes the path to a canonical form
-func (p *Path) Normalize() {
+func (p *ResultPath) Normalize() {
 	if p == nil {
 		return
 	}
-	p.Location = strings.TrimSpace(p.Location)
+	p.Name = strings.TrimSpace(p.Name)
+	p.Path = strings.TrimSpace(p.Path)
 }
 
 // Copy returns a copy of the path
-func (p *Path) Copy() *Path {
+func (p *ResultPath) Copy() *ResultPath {
 	if p == nil {
 		return nil
 	}
-	return &Path{
-		Location: p.Location,
+	return &ResultPath{
+		Path: p.Path,
 	}
 }
 
 // Validate validates the path
-func (p *Path) Validate() error {
+func (p *ResultPath) Validate() error {
 	if p == nil {
 		return errors.New("path is nil")
 	}
-	if validate.IsBlank(p.Location) {
-		return errors.New("path is blank")
+	var mErr multierror.Error
+	if validate.IsBlank(p.Path) {
+		mErr.Errors = append(mErr.Errors, errors.New("path is blank"))
 	}
-	return nil
+	if validate.IsBlank(p.Name) {
+		mErr.Errors = append(mErr.Errors, errors.New("name is blank"))
+	}
+	return mErr.ErrorOrNil()
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -28,9 +29,9 @@ type Endpoint interface {
 // Implementations can be synchronous or asynchronous by using Callbacks.
 type Executor interface {
 	// Run triggers the execution of a job.
-	Run(ctx context.Context, execution store.LocalState) error
+	Run(ctx context.Context, localExecutionState store.LocalState) error
 	// Cancel cancels the execution of a job.
-	Cancel(ctx context.Context, execution store.LocalState) error
+	Cancel(ctx context.Context, localExecutionState store.LocalState) error
 }
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
@@ -55,10 +56,10 @@ type ExecutionMetadata struct {
 	JobID       string
 }
 
-func NewExecutionMetadata(execution store.LocalState) ExecutionMetadata {
+func NewExecutionMetadata(execution *models.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
-		JobID:       execution.Job.Metadata.ID,
+		JobID:       execution.Job.ID,
 	}
 }
 
@@ -136,7 +137,7 @@ type BidResult struct {
 type RunResult struct {
 	RoutingMetadata
 	ExecutionMetadata
-	PublishResult    models.StorageSpec
+	PublishResult    *models.SpecConfig
 	RunCommandResult *models.RunCommandResult
 }
 

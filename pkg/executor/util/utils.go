@@ -11,6 +11,8 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
@@ -71,9 +73,9 @@ func NewStandardStorageProvider(
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	return provider.NewMappedProvider(map[models.StorageSourceType]storage.Storage{
+	return provider.NewMappedProvider(map[string]storage.Storage{
 		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
-		models.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
+		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
 		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
 		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
 		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
@@ -115,7 +117,7 @@ func NewNoopStorageProvider(
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
 	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
-	return provider.NewSingletonProvider[models.StorageSourceType, storage.Storage](noopStorage), nil
+	return provider.NewNoopProvider[storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
@@ -133,7 +135,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	return provider.NewMappedProvider(map[models.Engine]executor.Executor{
+	return provider.NewMappedProvider(map[string]executor.Executor{
 		models.EngineDocker: dockerExecutor,
 		models.EngineWasm:   wasmExecutor,
 	}), nil
@@ -142,7 +144,7 @@ func NewStandardExecutorProvider(
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return provider.NewSingletonProvider[models.Engine, executor.Executor](noopExecutor)
+	return provider.NewNoopProvider[executor.Executor](noopExecutor)
 }
 
 type PluginExecutorOptions struct {

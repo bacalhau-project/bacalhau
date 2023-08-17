@@ -30,11 +30,12 @@ const (
 )
 
 const (
+	StorageSourceNoop           = "noop"
 	StorageSourceIPFS           = "ipfs"
 	StorageSourceRepoClone      = "repoClone"
 	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceEstuary        = "estuary"
-	StorageSourceURL            = "url"
+	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
 	StorageSourceInline         = "inline"
 	StorageSourceLocalDirectory = "localDirectory"
@@ -48,11 +49,20 @@ const (
 )
 
 const (
-const (
 	DownloadFilenameStdout   = "stdout"
 	DownloadFilenameStderr   = "stderr"
 	DownloadFilenameExitCode = "exitCode"
 	DownloadCIDsFolderName   = "raw"
 	DownloadFolderPerm       = 0755
 	DownloadFilePerm         = 0644
+)
+
+const (
+	MetaRequesterID        = "bacalhau.org/requester.id"
+	MetaRequesterPublicKey = "bacalhau.org/requester.publicKey"
+	MetaClientID           = "bacalhau.org/client.id"
+)
+
+const (
+	ShortIDLength = 8
 )

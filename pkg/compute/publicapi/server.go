@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 )
 
@@ -16,14 +17,14 @@ type ComputeAPIServerParams struct {
 	APIServer          *publicapi.APIServer
 	Bidder             compute.Bidder
 	Store              store.ExecutionStore
-	DebugInfoProviders []models.DebugInfoProvider
+	DebugInfoProviders []model.DebugInfoProvider
 }
 
 type ComputeAPIServer struct {
 	apiServer          *publicapi.APIServer
 	bidder             compute.Bidder
 	store              store.ExecutionStore
-	debugInfoProviders []models.DebugInfoProvider
+	debugInfoProviders []model.DebugInfoProvider
 }
 
 func NewComputeAPIServer(params ComputeAPIServerParams) *ComputeAPIServer {

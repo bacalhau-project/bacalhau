@@ -47,7 +47,7 @@ func TestOpsJobSchedulerTestSuite(t *testing.T) {
 func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	ctx := context.Background()
 	job, executions, evaluation := mockOpsJob()
-	executions = []*models.Execution{}
+	executions = []models.Execution{}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
 
@@ -156,7 +156,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTer
 func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	ctx := context.Background()
 	job, executions, evaluation := mockOpsJob()
-	executions = []*models.Execution{} // no executions yet
+	executions = []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
 	s.mockNodeSelection(job, []models.NodeInfo{})
@@ -182,12 +182,16 @@ func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos 
 	s.nodeRanker.EXPECT().RankNodes(gomock.Any(), *job, nodeInfos).Return(nodeRanks, nil)
 }
 
-func mockOpsJob() (*models.Job, []*models.Execution, *models.Evaluation) {
+func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {
 	job := mock.Job()
-	executions := mock.Executions(job, 2)
-	for i := 0; i < 2; i++ {
-		executions[i].NodeID = nodeIDs[i]
+
+	executionCount := 2
+	executions := make([]models.Execution, executionCount)
+	for i, e := range mock.Executions(job, executionCount) {
+		e.NodeID = nodeIDs[i]
+		executions[i] = *e
 	}
+
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
 

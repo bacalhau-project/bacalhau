@@ -57,13 +57,13 @@ func NewStorage() *InlineStorage {
 
 // As PrepareStorage writes the data to the local filesystem, CleanupStorage
 // just needs to remove that temporary directory.
-func (i *InlineStorage) CleanupStorage(_ context.Context, _ models.Artifact, vol storage.StorageVolume) error {
+func (i *InlineStorage) CleanupStorage(_ context.Context, _ models.InputSource, vol storage.StorageVolume) error {
 	return os.RemoveAll(vol.Source)
 }
 
 // For an inline storage, we define the volume size as uncompressed data size,
 // as this is how much resource using the storage will take up.
-func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.Artifact) (uint64, error) {
+func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(spec.Source)
 	if err != nil {
 		return 0, err
@@ -82,7 +82,7 @@ func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.Artifact) (
 }
 
 // The storage is always local because it is contained with the SpecConfig.
-func (*InlineStorage) HasStorageLocally(context.Context, models.Artifact) (bool, error) {
+func (*InlineStorage) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return true, nil
 }
 
@@ -94,7 +94,7 @@ func (*InlineStorage) IsInstalled(context.Context) (bool, error) {
 // PrepareStorage extracts the data from the "data:" URL and writes it to a
 // temporary directory. If the data was a compressed tarball, it decompresses it
 // into a directory structure.
-func (i *InlineStorage) PrepareStorage(_ context.Context, spec models.Artifact) (storage.StorageVolume, error) {
+func (i *InlineStorage) PrepareStorage(_ context.Context, spec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(spec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err

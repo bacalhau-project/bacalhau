@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -13,7 +13,7 @@ type VersionRequest struct {
 }
 
 type VersionResponse struct {
-	VersionInfo *model.BuildVersionInfo `json:"build_version_info"`
+	VersionInfo *models.BuildVersionInfo `json:"build_version_info"`
 }
 
 // version godoc

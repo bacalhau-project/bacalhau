@@ -84,6 +84,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_NoOp() {
 func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultiOp() {
 	plan := mock.Plan()
 	execution1, execution2 := mockCreateExecutions(plan)
+
 	update1, update2 := mockUpdateExecutions(plan)
 	plan.DesiredJobState = models.JobStateTypeCompleted
 	plan.Comment = "update job state"

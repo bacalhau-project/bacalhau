@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
@@ -40,9 +41,9 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNodeInfo {
 	return models.ComputeNodeInfo{
-		ExecutionEngines:   models.InstalledTypes(ctx, n.executors, models.EngineTypes()),
-		Publishers:         models.InstalledTypes(ctx, n.publishers, models.PublisherTypes()),
-		StorageSources:     models.InstalledTypes(ctx, n.storages, models.StorageSourceTypes()),
+		ExecutionEngines:   n.executors.Keys(ctx),
+		Publishers:         n.publishers.Keys(ctx),
+		StorageSources:     n.storages.Keys(ctx),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,

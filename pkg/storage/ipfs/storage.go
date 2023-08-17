@@ -52,7 +52,7 @@ func (s *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.Artifact) (bool, error) {
+func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.InputSource) (bool, error) {
 	source, err := DecodeSpec(volume.Source)
 	if err != nil {
 		return false, err
@@ -60,7 +60,7 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.A
 	return s.ipfsClient.HasCID(ctx, source.CID)
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Artifact) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
 	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
 	defer cancel()
@@ -73,7 +73,7 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Artif
 	return s.ipfsClient.GetCidSize(ctx, source.CID)
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.Artifact) (storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -96,7 +96,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models
 	return volume, nil
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.Artifact, _ storage.StorageVolume) error {
+func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, _ storage.StorageVolume) error {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return err

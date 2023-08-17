@@ -1,12 +1,12 @@
 package publicapi
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
@@ -56,9 +56,9 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	// We can compare the payload's client ID against the existing job's metadata
 	// as we have confirmed the public key that the request was signed with matches
 	// the client ID the request claims.
-	if job.Metadata.ClientID != jobCancelPayload.ClientID {
+	if job.Namespace != jobCancelPayload.ClientID {
 		err = fmt.Errorf("mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
-			job.Metadata.ClientID, jobCancelPayload.ClientID)
+			job.Namespace, jobCancelPayload.ClientID)
 		publicapi.HTTPError(ctx, res, err, http.StatusUnauthorized)
 		return
 	}
@@ -73,7 +73,7 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	jobState, err := getJobStateFromJobID(ctx, s, jobCancelPayload.JobID)
+	jobState, err := legacy.GetJobState(ctx, s.jobStore, jobCancelPayload.JobID)
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
@@ -89,8 +89,4 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
 	}
-}
-
-func getJobStateFromJobID(ctx context.Context, apiServer *RequesterAPIServer, jobID string) (model.JobState, error) {
-	return apiServer.jobStore.GetJobState(ctx, jobID)
 }

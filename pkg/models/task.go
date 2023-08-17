@@ -23,38 +23,51 @@ type Task struct {
 	// Meta is used to associate arbitrary metadata with this task.
 	Meta map[string]string
 
-	// Artifacts is a list of remote artifacts to be downloaded before running the task
+	// InputSources is a list of remote artifacts to be downloaded before running the task
 	// and mounted into the task.
-	Artifacts []*Artifact
-
-	// Volumes is a list of volumes to be mounted into the task.
-	Volumes []*SpecConfig
+	InputSources []*InputSource
 
 	// ResultPaths is a list of task volumes to be included in the task's published result
-	ResultPaths []*Path
+	ResultPaths []*ResultPath
 
-	// Resources is the resources needed by this task
-	Resources *Resources
+	// ResourcesConfig is the resources needed by this task
+	ResourcesConfig *ResourcesConfig
 
 	Network *NetworkConfig
 
 	Timeouts *TimeoutConfig
 }
 
-func (t *Task) Normalize(*Job) {
+func (t *Task) Normalize() {
 	// Ensure that an empty and nil map are treated the same
-	if len(t.Meta) == 0 {
+	if t.Meta == nil {
 		t.Meta = make(map[string]string)
 	}
-	if len(t.Env) == 0 {
+	if t.Env == nil {
 		t.Env = make(map[string]string)
+	}
+	if t.InputSources == nil {
+		t.InputSources = make([]*InputSource, 0)
+	}
+	if t.ResultPaths == nil {
+		t.ResultPaths = make([]*ResultPath, 0)
+	}
+	if t.ResourcesConfig == nil {
+		t.ResourcesConfig = &ResourcesConfig{}
+	}
+	if t.Network == nil {
+		t.Network = &NetworkConfig{}
+	}
+	if t.Timeouts == nil {
+		t.Timeouts = &TimeoutConfig{}
 	}
 	t.Engine.Normalize()
 	t.Publisher.Normalize()
-	NormalizeSlice(t.Artifacts)
-	NormalizeSlice(t.Volumes)
+	t.ResourcesConfig.Normalize()
+	NormalizeSlice(t.InputSources)
 	NormalizeSlice(t.ResultPaths)
 	t.Network.Normalize()
+	t.ResourcesConfig.Normalize()
 }
 
 func (t *Task) Copy() *Task {
@@ -65,9 +78,8 @@ func (t *Task) Copy() *Task {
 	*nt = *t
 	nt.Engine = t.Engine.Copy()
 	nt.Publisher = t.Publisher.Copy()
-	nt.Resources = t.Resources.Copy()
-	nt.Artifacts = CopySlice(t.Artifacts)
-	nt.Volumes = CopySlice(t.Volumes)
+	nt.ResourcesConfig = t.ResourcesConfig.Copy()
+	nt.InputSources = CopySlice(t.InputSources)
 	nt.ResultPaths = CopySlice(t.ResultPaths)
 	nt.Meta = maps.Clone(t.Meta)
 	nt.Env = maps.Clone(t.Env)
@@ -76,7 +88,7 @@ func (t *Task) Copy() *Task {
 	return nt
 }
 
-func (t *Task) Validate(j *Job) error {
+func (t *Task) Validate() error {
 	var mErr multierror.Error
 	if validate.IsBlank(t.Name) {
 		mErr.Errors = append(mErr.Errors, errors.New("missing task name"))
@@ -89,16 +101,13 @@ func (t *Task) Validate(j *Job) error {
 	if err := t.Publisher.Validate(); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("publisher validation failed: %v", err))
 	}
-	if err := ValidateSlice(t.Artifacts); err != nil {
+	if err := ValidateSlice(t.InputSources); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("artifact validation failed: %v", err))
-	}
-	if err := ValidateSlice(t.Volumes); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
 	}
 	if err := ValidateSlice(t.ResultPaths); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
 	}
-	if err := t.Resources.Validate(); err != nil {
+	if err := t.ResourcesConfig.Validate(); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("task resources validation failed: %v", err))
 	}
 	if err := t.Timeouts.Validate(); err != nil {
@@ -108,9 +117,14 @@ func (t *Task) Validate(j *Job) error {
 	return mErr.ErrorOrNil()
 }
 
+// ToBuilder returns a new task builder with the same values as the task
+func (t *Task) ToBuilder() *TaskBuilder {
+	return NewTaskBuilderFromTask(t)
+}
+
 func (t *Task) AllStorageTypes() []string {
 	var types []string
-	for _, a := range t.Artifacts {
+	for _, a := range t.InputSources {
 		types = append(types, a.Source.Type)
 	}
 	return types
