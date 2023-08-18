@@ -1,4 +1,10 @@
-# Production-grade Deployment
+<!-- https://docs.flyte.org/en/latest/deployment/deployment/cloud_simple.html -->
+
+
+<!-- https://github.com/davidmirror-ops/flyte-the-hard-way/blob/main/docs/03-roles-service-accounts.md -->
+
+
+<!-- # Production-grade Deployment
 
 This page contains complimentary steps for the [official GCP (GKE) setup](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html); please make sure you have the all the prerequistes in place and grab a cup of good coffee :coffee:.
 For a additional production-grade steps you may also want to take a look at [this page](https://docs.flyte.org/en/latest/deployment/deployment/cloud_production.html).
@@ -588,4 +594,4 @@ $ curl -GET \
 ## Side notes
 
 - `<HOSTNAME>` must be a FQDN and registered as a valid domain 
-- CloudFlare: https://docs.flyte.org/en/v1.0.0/community/troubleshoot.html#troubles-with-flytectl-commands-with-cloudflare-dns
+- CloudFlare: https://docs.flyte.org/en/v1.0.0/community/troubleshoot.html#troubles-with-flytectl-commands-with-cloudflare-dns -->

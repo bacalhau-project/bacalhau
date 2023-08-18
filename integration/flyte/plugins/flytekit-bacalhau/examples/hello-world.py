@@ -39,7 +39,7 @@ def wf():
         ),
     )
     print(type(a))
-    print(a.interface.outputs)
+    print(a)
 
 if __name__ == "__main__":
     wf()
