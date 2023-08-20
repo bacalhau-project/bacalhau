@@ -26,7 +26,7 @@ func (c Source) ToMap() map[string]interface{} {
 }
 
 func DecodeSpec(spec *models.SpecConfig) (Source, error) {
-	if spec.Type != models.StorageSourceInline {
+	if !spec.IsType(models.StorageSourceInline) {
 		return Source{}, fmt.Errorf("invalid storage source type. expected %s, but received: %s",
 			models.StorageSourceInline, spec.Type)
 	}

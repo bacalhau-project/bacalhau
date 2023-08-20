@@ -3,6 +3,7 @@ package ranking
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	modelsutils "github.com/bacalhau-project/bacalhau/pkg/models/utils"
@@ -59,7 +60,7 @@ func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, 
 	for _, requiredKey := range requiredKeys {
 		found := false
 		for _, providedKey := range providedKeys {
-			if providedKey == requiredKey {
+			if strings.EqualFold(providedKey, requiredKey) {
 				found = true
 				break
 			}

@@ -1,7 +1,7 @@
 APIVersion: v1beta1
 Spec:
-  Engine: Docker
-  Publisher: Estuary
+  Engine: docker
+  Publisher: estuary
   Docker:
     Image: ubuntu
     Entrypoint:
@@ -9,7 +9,7 @@ Spec:
       - -c
       - echo 15
   Outputs:
-    - StorageSource: IPFS
+    - StorageSource: ipfs
       Name: output_custom
       Path: /output_custom
   Deal:

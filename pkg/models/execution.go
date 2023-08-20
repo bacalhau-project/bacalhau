@@ -127,7 +127,9 @@ func (e *Execution) Normalize() {
 		return
 	}
 	if e.AllocatedResources == nil {
-		e.AllocatedResources = &AllocatedResources{}
+		e.AllocatedResources = &AllocatedResources{
+			Tasks: make(map[string]*Resources),
+		}
 	}
 	e.Job.Normalize()
 }
@@ -197,11 +199,6 @@ func (e *Execution) IsDiscarded() bool {
 
 // AllocateResources allocates resources to a task
 func (e *Execution) AllocateResources(taskID string, resources Resources) {
-	if e.AllocatedResources == nil {
-		e.AllocatedResources = &AllocatedResources{
-			Tasks: make(map[string]*Resources),
-		}
-	}
 	e.AllocatedResources.Tasks[taskID] = resources.Copy()
 }
 

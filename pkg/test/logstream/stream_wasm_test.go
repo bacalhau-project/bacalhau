@@ -31,22 +31,27 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 	fail := make(chan bool, 1)
 
 	task := mock.TaskBuilder().
-		Engine(wasmmodels.NewWasmEngineBuilder(storage.PreparedStorage{
-			Artifact: models.InputSource{
-				Source: &models.SpecConfig{
-					Type: models.StorageSourceInline,
-					Params: inline.Source{
-						URL: dataurl.EncodeBytes(cat.Program()),
-					}.ToMap(),
-				},
+		Engine(&models.SpecConfig{
+			Type: models.EngineWasm,
+			Params: wasmmodels.EngineArguments{
+				EntryModule: storage.PreparedStorage{
+					InputSource: models.InputSource{
+						Source: &models.SpecConfig{
+							Type: models.StorageSourceInline,
+							Params: inline.Source{
+								URL: dataurl.EncodeBytes(cat.Program()),
+							}.ToMap(),
+						},
+					}},
+				EntryPoint: "_start",
 			},
-		}).WithEntrypoint("_start").Build()).
+		}.ToMap()).
 		BuildOrDie()
 	job := mock.Job()
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.AllocateResources(task.Name, models.Resources{CPU: 1, Memory: 1})
+	execution.AllocateResources(task.Name, models.Resources{})
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
 	require.NoError(s.T(), err)

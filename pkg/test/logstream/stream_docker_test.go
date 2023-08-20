@@ -37,10 +37,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.AllocateResources(task.Name, models.Resources{CPU: 1, Memory: 1})
-
-	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
-	require.NoError(s.T(), err)
+	execution.AllocateResources(task.Name, models.Resources{})
 
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, models.EngineDocker)
 	require.NoError(s.T(), err)

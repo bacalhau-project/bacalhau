@@ -1,9 +1,9 @@
 APIVersion: v1beta1
 Spec:
-  Engine: Noop
-  Publisher: Noop
+  Engine: noop
+  Publisher: noop
   Outputs:
-    - StorageSource: IPFS
+    - StorageSource: ipfs
       Name: output_custom
       Path: /output_custom
   Deal:

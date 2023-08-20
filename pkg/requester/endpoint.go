@@ -56,6 +56,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	}
 
 	postTransforms := []jobtransform.PostTransformer{
+		jobtransform.NewWasmStorageSpecConverter(),
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 	}
 

@@ -22,7 +22,7 @@ func (p *NoopProvider[Value]) Has(ctx context.Context, key string) bool {
 
 // Keys implements Provider
 func (p *NoopProvider[Value]) Keys(context.Context) []string {
-	return []string{"Noop"}
+	return []string{"noop"}
 }
 
 func NewNoopProvider[Value Providable](providable Value) Provider[Value] {

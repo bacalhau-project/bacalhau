@@ -47,7 +47,7 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (e *estuaryPublisher) ValidateJob(ctx context.Context, j models.Job) error {
-	if j.Task().Publisher.Type != models.PublisherEstuary {
+	if !j.Task().Publisher.IsType(models.PublisherEstuary) {
 		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
 			models.PublisherEstuary, j.Task().Publisher.Type)
 	}

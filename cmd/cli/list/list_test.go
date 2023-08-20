@@ -148,20 +148,20 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 
 	for _, tag := range list.DefaultExcludedTags {
 		testCases = append(testCases, testCase{
-			fmt.Sprintf("%s filtered by default", string(tag)),
-			[]string{string(tag)},
-			[]string{string(tag)},
+			fmt.Sprintf("%s filtered by default", tag),
+			[]string{tag},
+			[]string{tag},
 			false,
-			true,
+			false,
 			false,
 		})
 		testCases = append(testCases, testCase{
-			fmt.Sprintf("%s excluded with other tags", string(tag)),
-			[]string{string(tag)},
+			fmt.Sprintf("%s excluded with other tags", tag),
+			[]string{tag},
 			[]string{"test"},
 			false,
 			false,
-			false,
+			true,
 		})
 	}
 

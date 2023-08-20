@@ -30,7 +30,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.AllocateResources(task.Name, models.Resources{CPU: 1, Memory: 1})
+	execution.NodeID = node.Host.ID().Pretty()
+	execution.AllocateResources(task.Name, models.Resources{})
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
 	require.NoError(s.T(), err)
@@ -41,7 +42,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		exec.Run(
+		_, err = exec.Run(
 			s.ctx,
 			&executor.RunCommandRequest{
 				JobID:        job.ID,
@@ -60,6 +61,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 				},
 			},
 		)
+		s.NoError(err)
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when

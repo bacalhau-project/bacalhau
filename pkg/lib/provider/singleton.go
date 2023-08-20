@@ -13,6 +13,7 @@ type SingletonProvider[Value Providable] struct {
 
 // Get implements Provider
 func (p *SingletonProvider[Value]) Get(ctx context.Context, key string) (v Value, err error) {
+	key = sanitizeKey(key)
 	if key != p.key {
 		err = fmt.Errorf("SingletonProvider only provides %s, but was asked for %s", p.key, key)
 		return
@@ -22,6 +23,7 @@ func (p *SingletonProvider[Value]) Get(ctx context.Context, key string) (v Value
 
 // Has implements Provider
 func (p *SingletonProvider[Value]) Has(ctx context.Context, key string) bool {
+	key = sanitizeKey(key)
 	if key != p.key {
 		return false
 	}
@@ -35,6 +37,7 @@ func (p *SingletonProvider[Value]) Keys(context.Context) []string {
 }
 
 func NewSingletonProvider[Value Providable](key string, providable Value) Provider[Value] {
+	key = sanitizeKey(key)
 	return &SingletonProvider[Value]{
 		key:        key,
 		providable: providable,

@@ -37,12 +37,15 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
+	// Timeout will be multiplied by 1000000000 (time.Second) when it gets
+	// converted to a time.Duration (which is an int64 underneath), so make sure
+	// that it can fit into it.
 	var maxTimeout = int64(model.NoJobTimeout.Seconds())
 	if request.Job.Task().Timeouts.ExecutionTimeout > maxTimeout {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
 			Reason: fmt.Sprintf("job timeout %d exceeds maximum possible value %d",
-				request.Job.Task().Timeouts.GetExecutionTimeout(), model.NoJobTimeout),
+				request.Job.Task().Timeouts.ExecutionTimeout, maxTimeout),
 		}, nil
 	}
 

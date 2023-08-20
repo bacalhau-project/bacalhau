@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	OneStorageSpec []*models.InputSource = []*models.InputSource{
+	OneStorageSpec = []*models.InputSource{
 		{
 			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
 			Target: "target",
@@ -35,10 +35,15 @@ var (
 )
 
 func init() {
-	EmptySpec = &models.Task{}
-	SpecWithInputs = &models.Task{InputSources: OneStorageSpec}
+	EmptySpec = mock.Task()
+	EmptySpec.InputSources = make([]*models.InputSource, 0)
+
+	SpecWithInputs = mock.Task()
+	SpecWithInputs.InputSources = OneStorageSpec
+
 	SpecWithWasm = mock.Task()
-	SpecWithWasm.Engine = models.NewSpecConfig(models.EngineWasm).WithParam(model.EngineKeyEntryModuleWasm, OneStorageSpec)
+	SpecWithWasm.InputSources = make([]*models.InputSource, 0)
+	SpecWithWasm.Engine = models.NewSpecConfig(models.EngineWasm).WithParam(model.EngineKeyEntryModuleWasm, OneStorageSpec[0])
 }
 
 func TestStorageBidStrategy(t *testing.T) {

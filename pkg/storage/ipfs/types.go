@@ -24,7 +24,7 @@ func (c Source) ToMap() map[string]interface{} {
 }
 
 func DecodeSpec(spec *models.SpecConfig) (Source, error) {
-	if spec.Type != models.StorageSourceIPFS {
+	if !spec.IsType(models.StorageSourceIPFS) {
 		return Source{}, fmt.Errorf("invalid storage source type. expected %s, but received: %s",
 			models.StorageSourceIPFS, spec.Type)
 	}

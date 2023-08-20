@@ -44,6 +44,8 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert input: %w", err)
 		}
+		source.Path = input.Target
+		source.Name = input.Alias
 		inputs = append(inputs, source)
 	}
 
@@ -250,17 +252,22 @@ func ToLegacyJobHistory(history *models.JobHistory) *model.JobHistory {
 		JobID:            history.JobID,
 		NodeID:           history.NodeID,
 		ComputeReference: history.ExecutionID,
-		JobState: &model.StateChange[model.JobStateType]{
-			Previous: ToLegacyJobStateType(history.JobState.Previous),
-			New:      ToLegacyJobStateType(history.JobState.New),
-		},
-		ExecutionState: &model.StateChange[model.ExecutionStateType]{
-			Previous: ToLegacyExecutionStateType(history.ExecutionState.Previous),
-			New:      ToLegacyExecutionStateType(history.ExecutionState.New),
-		},
+		JobState:         ToLegacyStateChange[models.JobStateType, model.JobStateType](history.JobState, ToLegacyJobStateType),
+		ExecutionState: ToLegacyStateChange[models.ExecutionStateType, model.ExecutionStateType](
+			history.ExecutionState, ToLegacyExecutionStateType),
 		NewVersion: int(history.NewRevision),
 		Comment:    history.Comment,
 		Time:       history.Time,
+	}
+}
+
+func ToLegacyStateChange[From any, To any](state *models.StateChange[From], converter func(From) To) *model.StateChange[To] {
+	if state == nil {
+		return nil
+	}
+	return &model.StateChange[To]{
+		Previous: converter(state.Previous),
+		New:      converter(state.New),
 	}
 }
 

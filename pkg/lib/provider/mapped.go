@@ -20,14 +20,15 @@ type MappedProvider[Value Providable] struct {
 }
 
 func (provider *MappedProvider[Value]) Add(key string, value Value) {
-	provider.providables.Put(key, value)
+	provider.providables.Put(sanitizeKey(key), value)
 }
 
 // Get implements Provider
 func (provider *MappedProvider[Value]) Get(ctx context.Context, key string) (v Value, err error) {
+	key = sanitizeKey(key)
 	providable, ok := provider.providables.Get(key)
 	if !ok {
-		return v, fmt.Errorf("no matching %T found on this server: %s", key, key)
+		return v, fmt.Errorf("no matching key found on this server: %s. Only supports %s", key, provider.providables.Keys())
 	}
 
 	// cache it being installed so we're not hammering it. TODO: we should evict
@@ -42,7 +43,7 @@ func (provider *MappedProvider[Value]) Get(ctx context.Context, key string) (v V
 	}
 
 	if !installed {
-		return v, fmt.Errorf("%T is not installed: %s", key, key)
+		return v, fmt.Errorf("key is not installed: %s", key)
 	}
 
 	return providable, nil
@@ -50,7 +51,7 @@ func (provider *MappedProvider[Value]) Get(ctx context.Context, key string) (v V
 
 // Has implements Provider
 func (provider *MappedProvider[Value]) Has(ctx context.Context, key string) bool {
-	_, err := provider.Get(ctx, key)
+	_, err := provider.Get(ctx, sanitizeKey(key))
 	return err == nil
 }
 
@@ -66,10 +67,14 @@ func (provider *MappedProvider[Value]) Keys(ctx context.Context) (keys []string)
 }
 
 func NewMappedProvider[Value Providable](providables map[string]Value) *MappedProvider[Value] {
-	return &MappedProvider[Value]{
-		providables:    generic.SyncMapFromMap(providables),
+	p := &MappedProvider[Value]{
+		providables:    &generic.SyncMap[string, Value]{},
 		installedCache: &generic.SyncMap[string, bool]{},
 	}
+	for k, v := range providables {
+		p.Add(k, v)
+	}
+	return p
 }
 
 // compile-time check that we implement the interface

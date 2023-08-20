@@ -92,7 +92,7 @@ func PrepareRunArguments(
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
 		provides more context on the need for the change).
 	*/
-	if execution.Job.Task().Engine.Type == models.EngineWasm {
+	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
 		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
 		if err != nil {
 			return nil, err
@@ -118,12 +118,10 @@ func PrepareRunArguments(
 			}
 			return nil
 		})
-		engineArgs = wasmmodels.NewWasmEngineBuilder(entryModuleVolumes[0]).
-			WithEntrypoint(wasmEngine.Entrypoint).
-			WithParameters(wasmEngine.Parameters...).
-			WithEnvironmentVariables(wasmEngine.EnvironmentVariables).
-			WithImportModules(importModuleVolumes...).
-			Build()
+		engineArgs = &models.SpecConfig{
+			Type:   models.EngineWasm,
+			Params: wasmEngine.ToArguments(entryModuleVolumes[0], importModuleVolumes...).ToMap(),
+		}
 	} else {
 		engineArgs = execution.Job.Task().Engine
 	}

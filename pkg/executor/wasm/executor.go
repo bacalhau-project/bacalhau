@@ -77,7 +77,7 @@ func (e *Executor) makeFsFromStorage(
 
 	for _, v := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", v.Artifact.Target).
+			Str("input", v.InputSource.Target).
 			Str("source", v.Volume.Source).
 			Msg("Using input")
 
@@ -94,7 +94,7 @@ func (e *Executor) makeFsFromStorage(
 			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(v.Artifact.Target, inputFs)
+		err = rootFs.Mount(v.InputSource.Target, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +192,7 @@ func (e *Executor) Run(
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
-	args := append([]string{}, engineParams.Parameters...)
+	args := append([]string{""}, engineParams.Parameters...)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).

@@ -32,7 +32,7 @@ const (
 const (
 	StorageSourceNoop           = "noop"
 	StorageSourceIPFS           = "ipfs"
-	StorageSourceRepoClone      = "repoClone"
+	StorageSourceRepoClone      = "repoclone"
 	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceEstuary        = "estuary"
 	StorageSourceURL            = "urlDownload"

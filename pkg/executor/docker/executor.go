@@ -95,7 +95,6 @@ func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
 ) (*models.RunCommandResult, error) {
-
 	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
 	ctx, cancel := context.WithCancel(ctx)
 	e.cancellers.Put(request.ExecutionID, cancel)
@@ -123,7 +122,7 @@ func (e *Executor) Run(
 	var mounts []mount.Mount
 	for _, input := range request.Inputs {
 		if input.Volume.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Artifact, input.Volume)
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.InputSource, input.Volume)
 
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,

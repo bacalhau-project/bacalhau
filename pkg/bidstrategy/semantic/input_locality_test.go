@@ -24,16 +24,22 @@ type InputLocalityStrategySuite struct {
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
-	job := mock.Job()
-	job.Task().InputSources = []*models.InputSource{
+	statefulJob := mock.Job()
+	statefulJob.Task().InputSources = []*models.InputSource{
 		{
 			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
 			Target: "target",
 		},
 	}
-	s.statelessJob = bidstrategy.BidStrategyRequest{}
+
+	statelessJob := mock.Job()
+	statelessJob.Task().InputSources = []*models.InputSource{}
+
+	s.statelessJob = bidstrategy.BidStrategyRequest{
+		Job: *statelessJob,
+	}
 	s.statefulJob = bidstrategy.BidStrategyRequest{
-		Job: *job,
+		Job: *statefulJob,
 	}
 }
 

@@ -80,10 +80,11 @@ func Execution() *models.Execution {
 
 func ExecutionForJob(job *models.Job) *models.Execution {
 	execution := &models.Execution{
-		JobID:  job.ID,
-		Job:    job,
-		NodeID: uuid.NewString(),
-		ID:     uuid.NewString(),
+		JobID:     job.ID,
+		Job:       job,
+		NodeID:    uuid.NewString(),
+		ID:        uuid.NewString(),
+		Namespace: job.Namespace,
 		ComputeState: models.State[models.ExecutionStateType]{
 			StateType: models.ExecutionStateNew,
 		},

@@ -1,12 +1,13 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
-	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -43,7 +44,7 @@ func (c EngineSpec) ToMap() map[string]interface{} {
 }
 
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
-	if spec.Type != models.EngineDocker {
+	if !spec.IsType(models.EngineDocker) {
 		return EngineSpec{}, errors.New("invalid docker engine type. expected " + models.EngineDocker + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params
@@ -51,12 +52,17 @@ func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 		return EngineSpec{}, errors.New("invalid docker engine params. cannot be nil")
 	}
 
-	var c EngineSpec
-	if err := mapstructure.Decode(spec.Params, &c); err != nil {
-		return c, err
+	paramsBytes, err := json.Marshal(inputParams)
+	if err != nil {
+		return EngineSpec{}, fmt.Errorf("failed to encode docker engine specs. %w", err)
 	}
 
-	return c, c.Validate()
+	var c *EngineSpec
+	err = json.Unmarshal(paramsBytes, &c)
+	if err != nil {
+		return EngineSpec{}, fmt.Errorf("failed to decode docker engine specs. %w", err)
+	}
+	return *c, c.Validate()
 }
 
 // DockerEngineBuilder is a struct that is used for constructing an EngineSpec object

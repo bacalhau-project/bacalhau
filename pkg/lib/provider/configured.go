@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 )
 
@@ -15,10 +16,14 @@ type ConfiguredProvider[Value Providable] struct {
 }
 
 func NewConfiguredProvider[Value Providable](inner Provider[Value], disabled []string) Provider[Value] {
+	disabled = lo.Map(disabled, func(d string, _ int) string {
+		return sanitizeKey(d)
+	})
 	return &ConfiguredProvider[Value]{inner: inner, disabled: disabled}
 }
 
 func (c *ConfiguredProvider[Value]) Get(ctx context.Context, key string) (v Value, err error) {
+	key = sanitizeKey(key)
 	if !slices.Contains(c.disabled, key) {
 		return c.inner.Get(ctx, key)
 	} else {
@@ -27,6 +32,7 @@ func (c *ConfiguredProvider[Value]) Get(ctx context.Context, key string) (v Valu
 }
 
 func (c *ConfiguredProvider[Value]) Has(ctx context.Context, key string) bool {
+	key = sanitizeKey(key)
 	if !slices.Contains(c.disabled, key) {
 		return c.inner.Has(ctx, key)
 	} else {

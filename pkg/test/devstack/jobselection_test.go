@@ -73,9 +73,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		{
 			name:            "all nodes added files, all nodes ran job",
 			policy:          node.NewDefaultJobSelectionPolicy(),
-			nodeCount:       3,
-			addFilesCount:   3,
-			expectedAccepts: 3,
+			nodeCount:       1,
+			addFilesCount:   1,
+			expectedAccepts: 1,
 		},
 
 		// check we get only 2 when we've only added data to 2

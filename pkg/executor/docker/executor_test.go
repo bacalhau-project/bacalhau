@@ -17,7 +17,6 @@ import (
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -124,7 +123,7 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 		ctx,
 		&executor.RunCommandRequest{
 			JobID:        j.ID,
-			ExecutionID:  uuid.NewString(),
+			ExecutionID:  name,
 			Resources:    resources,
 			Network:      spec.Network,
 			Outputs:      spec.ResultPaths,
@@ -391,7 +390,6 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
-	done := make(chan bool, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -405,7 +403,6 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	go func() {
 		_, _ = s.runJobWithContext(ctx, task, id)
-		done <- true
 	}()
 
 	// Give docker time to start the container, otherwise there

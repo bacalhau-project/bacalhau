@@ -13,6 +13,10 @@ type InputSource struct {
 	// Source is the source of the artifact to be downloaded, e.g a URL, S3 bucket, etc.
 	Source *SpecConfig
 
+	// Alias is an optional reference to this input source that can be used for
+	// dynamic linking to this input. (e.g. dynamic import in wasm by alias)
+	Alias string
+
 	// Target is the path where the artifact should be mounted on
 	Target string
 }
@@ -24,7 +28,8 @@ func (a *InputSource) Normalize() {
 	}
 
 	a.Source.Normalize()
-	strings.TrimSpace(a.Target)
+	a.Alias = strings.TrimSpace(a.Alias)
+	a.Target = strings.TrimSpace(a.Target)
 }
 
 // Copy returns a deep copy of the artifact

@@ -1,6 +1,6 @@
 {
     "with": "",
-    "do": "Noop",
+    "do": "noop",
     "inputs": {},
     "meta": {
         "bacalhau/config": {

@@ -38,8 +38,6 @@ func (s *SpecConfig) Normalize() {
 		return
 	}
 
-	// make types case in-sensitive
-	s.Type = strings.ToLower(s.Type)
 	s.Type = strings.TrimSpace(s.Type)
 
 	// Ensure that an empty and nil map are treated the same
@@ -68,4 +66,10 @@ func (s *SpecConfig) Validate() error {
 		return errors.New("missing spec type")
 	}
 	return nil
+}
+
+// IsType returns true if the current SpecConfig
+func (s *SpecConfig) IsType(t string) bool {
+	t = strings.TrimSpace(t)
+	return strings.EqualFold(s.Type, t)
 }

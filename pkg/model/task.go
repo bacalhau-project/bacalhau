@@ -15,7 +15,7 @@ type TaskType string
 const (
 	TaskTypeDocker TaskType = "docker/run"
 	TaskTypeWasm   TaskType = "wasm32-wasi/run"
-	TaskTypeNoop   TaskType = "Noop"
+	TaskTypeNoop   TaskType = "noop"
 )
 
 type Task struct {

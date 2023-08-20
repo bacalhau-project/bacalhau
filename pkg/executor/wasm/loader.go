@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -105,9 +106,10 @@ func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedSt
 // instantiated and is ready to use.
 func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m storage.PreparedStorage) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
+	span.SetAttributes(attribute.String("ModuleName", m.InputSource.Alias))
 	defer span.End()
 
-	if module := loader.runtime.Module(m.Artifact.Target); module != nil {
+	if module := loader.runtime.Module(m.InputSource.Alias); module != nil {
 		// Module already instantiated.
 		return module, nil
 	}
@@ -135,10 +137,10 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 	loader.mtx.Lock()
 	defer loader.mtx.Unlock()
 
-	if module := loader.runtime.Module(m.Artifact.Target); module != nil {
+	if module := loader.runtime.Module(m.InputSource.Alias); module != nil {
 		return module, nil
 	}
-	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(m.Artifact.Target))
+	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(m.InputSource.Alias))
 }
 
 func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
@@ -164,12 +166,12 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 		return module, err
 	}
 
-	//// check if the module we are dynamically linking was specific in as an input to the job.
-	//for _, s := range loader.storages {
-	//	if moduleName == s.Artifact.CID || moduleName == s.Artifact.URL {
-	//		return loader.InstantiateRemoteModule(ctx, s)
-	//	}
-	//}
+	// check if the module we are dynamically linking was specific in as an input to the job.
+	for _, s := range loader.storages {
+		if s.InputSource.Source.IsType(models.StorageSourceIPFS) || s.InputSource.Source.IsType(models.StorageSourceURL) {
+			return loader.InstantiateRemoteModule(ctx, s)
+		}
+	}
 
 	return nil, fmt.Errorf("loading module with name %s", moduleName)
 }

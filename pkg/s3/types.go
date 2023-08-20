@@ -42,7 +42,7 @@ type PublisherSpec struct {
 }
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
-	if spec.Type != models.StorageSourceS3 {
+	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, errors.New("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params
@@ -59,7 +59,7 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 }
 
 func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
-	if spec.Type != models.PublisherS3 {
+	if !spec.IsType(models.PublisherS3) {
 		return PublisherSpec{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
 			models.PublisherS3, spec.Type)
 	}

@@ -67,18 +67,19 @@ func FromLegacyJobSpec(legacy model.Spec) (*models.Task, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert input %d: %w", i, err)
 		}
-		inputs[i] = &models.InputSource{
+		inputs = append(inputs, &models.InputSource{
 			Source: source,
+			Alias:  input.Name,
 			Target: input.Path,
-		}
+		})
 	}
 
 	outputs := make([]*models.ResultPath, 0, len(legacy.Outputs))
-	for i, output := range legacy.Outputs {
-		outputs[i] = &models.ResultPath{
+	for _, output := range legacy.Outputs {
+		outputs = append(outputs, &models.ResultPath{
 			Name: output.Name,
 			Path: output.Path,
-		}
+		})
 	}
 
 	network, err := FromLegacyNetworkConfig(legacy.Network)
@@ -183,6 +184,7 @@ func FromLegacyStorageSpecToInputSource(spec model.StorageSpec) (*models.InputSo
 
 	return &models.InputSource{
 		Source: source,
+		Alias:  spec.Name,
 		Target: spec.Path,
 	}, nil
 }

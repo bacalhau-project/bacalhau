@@ -17,12 +17,12 @@ func TestSpecConfigNormalize(t *testing.T) {
 		{
 			name:   "nil map",
 			params: nil,
-			want:   nil,
+			want:   map[string]interface{}{},
 		},
 		{
 			name:   "empty map",
 			params: map[string]interface{}{},
-			want:   nil,
+			want:   map[string]interface{}{},
 		},
 		{
 			name:   "non-empty map",

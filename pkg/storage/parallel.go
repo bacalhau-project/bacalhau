@@ -10,8 +10,8 @@ import (
 )
 
 type PreparedStorage struct {
-	Artifact models.InputSource
-	Volume   StorageVolume
+	InputSource models.InputSource
+	Volume      StorageVolume
 }
 
 // ParallelPrepareStorage downloads all of the data necessary for the passed
@@ -36,8 +36,8 @@ func ParallelPrepareStorage(
 		}
 
 		output[idx] = PreparedStorage{
-			Artifact: input,
-			Volume:   volumeMount,
+			InputSource: input,
+			Volume:      volumeMount,
 		}
 		return nil
 	}
@@ -66,21 +66,21 @@ func ParallelCleanStorage(
 	var rootErr error
 
 	for _, s := range storages {
-		storage, err := provider.Get(ctx, s.Artifact.Source.Type)
+		storage, err := provider.Get(ctx, s.InputSource.Source.Type)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Str("Source", s.Artifact.Source.Type).
+				Str("Source", s.InputSource.Source.Type).
 				Msg("failed to get storage provider in cleanup")
 			rootErr = errors.Join(rootErr, err)
 			continue
 		}
 
-		err = storage.CleanupStorage(ctx, s.Artifact, s.Volume)
+		err = storage.CleanupStorage(ctx, s.InputSource, s.Volume)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Str("Source", s.Artifact.Source.Type).
+				Str("Source", s.InputSource.Source.Type).
 				Msg("failed to cleanup volume")
 			rootErr = errors.Join(rootErr, err)
 		}

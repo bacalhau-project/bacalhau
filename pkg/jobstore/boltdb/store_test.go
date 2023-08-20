@@ -401,12 +401,9 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 
 	s.Run("execution create event", func() {
 		s.clock.Add(1 * time.Second)
-		execution = models.Execution{
-			JobID:        "10",
-			NodeID:       "nodeid",
-			ID:           "e-computeRef",
-			ComputeState: models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew},
-		}
+		execution = *mock.Execution()
+		execution.JobID = "10"
+		execution.ComputeState = models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew}
 		err := s.store.CreateExecution(s.ctx, execution)
 		s.NoError(err)
 

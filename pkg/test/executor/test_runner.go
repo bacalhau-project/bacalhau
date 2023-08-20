@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
@@ -77,7 +78,18 @@ func RunTestCase(
 	newJob, err := legacy.FromLegacyJob(&job)
 	require.NoError(t, err)
 	execution := mock.ExecutionForJob(newJob)
-	execution.AllocateResources(newJob.Task().Name, models.Resources{CPU: 1, Memory: 1})
+	execution.AllocateResources(newJob.Task().Name, models.Resources{})
+
+	// Since we are submitting jobs directly to the executor, we need to
+	// transform wasm storage specs, which is currently handled by the
+	// requester's endpoint
+	jobTransformers := []jobtransform.PostTransformer{
+		jobtransform.NewWasmStorageSpecConverter(),
+	}
+	for _, transformer := range jobTransformers {
+		_, err = transformer(ctx, newJob)
+		require.NoError(t, err)
+	}
 
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages

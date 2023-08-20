@@ -32,9 +32,9 @@ type BacalhauConfig struct {
 }
 
 type Publisher enum {
-    | Noop ("1")
-    | IPFS ("2")
-    | Estuary ("3")
+    | noop ("1")
+    | ipfs ("2")
+    | estuary ("3")
 } representation int
 
 type ResourceSpec struct {

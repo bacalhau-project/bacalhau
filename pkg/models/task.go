@@ -114,6 +114,14 @@ func (t *Task) Validate() error {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("task timeouts validation failed: %v", err))
 	}
 
+	seenInputAliases := make(map[string]bool)
+	for _, input := range t.InputSources {
+		if input.Alias != "" && seenInputAliases[input.Alias] {
+			mErr.Errors = append(mErr.Errors, fmt.Errorf("input source with alias %s already exist", input.Alias))
+		}
+		seenInputAliases[input.Alias] = true
+	}
+
 	return mErr.ErrorOrNil()
 }
 

@@ -1,20 +1,15 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/fatih/structs"
-	"github.com/mitchellh/mapstructure"
-)
-
-const (
-	EngineKeyEntryModuleWasm          = "EntryModule"
-	EngineKeyEntrypointWasm           = "Entrypoint"
-	EngineKeyParametersWasm           = "Parameters"
-	EngineKeyEnvironmentVariablesWasm = "EnvironmentVariables"
-	EngineKeyImportModulesWasm        = "ImportModules"
 )
 
 // EngineSpec contains necessary parameters to execute a wasm job.
@@ -42,30 +37,111 @@ func (c EngineSpec) Validate() error {
 	if c.EntryModule == nil {
 		return errors.New("invalid wasm engine entry module. cannot be nil")
 	}
+	if c.EntryModule.Source == nil {
+		return errors.New("invalid wasm engine entry module. source cannot be nil")
+	}
 	return nil
+}
+
+// ToArguments returns EngineArguments from the spec
+func (c EngineSpec) ToArguments(entryModule storage.PreparedStorage, importModules ...storage.PreparedStorage) EngineArguments {
+	return EngineArguments{
+		EntryModule:          entryModule,
+		EntryPoint:           c.Entrypoint,
+		Parameters:           c.Parameters,
+		EnvironmentVariables: c.EnvironmentVariables,
+		ImportModules:        importModules,
+	}
 }
 
 func (c EngineSpec) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }
 
+// legacyEngineSpec is first used to decode the passed spec with legacy model.StorageSpec,
+// and then converted to EngineSpec with models.InputSource
+type legacyEngineSpec struct {
+	EntryModule          model.StorageSpec
+	Entrypoint           string
+	Parameters           []string
+	EnvironmentVariables map[string]string
+	ImportModules        []model.StorageSpec
+}
+
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
-	if spec.Type != models.EngineWasm {
+	if !spec.IsType(models.EngineWasm) {
 		return EngineSpec{}, errors.New("invalid wasm engine type. expected " + models.EngineWasm + ", but received: " + spec.Type)
 	}
+
 	inputParams := spec.Params
 	if inputParams == nil {
 		return EngineSpec{}, errors.New("invalid wasm engine params. cannot be nil")
 	}
 
-	var c EngineSpec
-	if err := mapstructure.Decode(spec.Params, &c); err != nil {
-		return c, err
+	paramsBytes, err := json.Marshal(inputParams)
+	if err != nil {
+		return EngineSpec{}, fmt.Errorf("failed to encode wasm engine specs. %w", err)
 	}
 
-	return c, c.Validate()
+	var c *EngineSpec
+	err = json.Unmarshal(paramsBytes, &c)
+	if err != nil {
+		return EngineSpec{}, err
+	}
+
+	return *c, c.Validate()
 }
 
+func DecodeLegacySpec(spec *models.SpecConfig) (EngineSpec, error) {
+	if !spec.IsType(models.EngineWasm) {
+		return EngineSpec{}, errors.New("invalid wasm engine type. expected " + models.EngineWasm + ", but received: " + spec.Type)
+	}
+
+	inputParams := spec.Params
+	if inputParams == nil {
+		return EngineSpec{}, errors.New("invalid wasm engine params. cannot be nil")
+	}
+
+	paramsBytes, err := json.Marshal(inputParams)
+	if err != nil {
+		return EngineSpec{}, fmt.Errorf("failed to encode wasm engine specs. %w", err)
+	}
+
+	var c *legacyEngineSpec
+	err = json.Unmarshal(paramsBytes, &c)
+	if err != nil {
+		return EngineSpec{}, err
+	}
+
+	entryModule, err := legacy.FromLegacyStorageSpecToInputSource(c.EntryModule)
+	if err != nil {
+		return EngineSpec{}, err
+	}
+
+	importModules := make([]*models.InputSource, 0, len(c.ImportModules))
+	for _, module := range c.ImportModules {
+		newModule, err := legacy.FromLegacyStorageSpecToInputSource(module)
+		if err != nil {
+			return EngineSpec{}, err
+		}
+		importModules = append(importModules, newModule)
+	}
+
+	engineSpec := EngineSpec{
+		EntryModule:          entryModule,
+		Entrypoint:           c.Entrypoint,
+		Parameters:           c.Parameters,
+		EnvironmentVariables: c.EnvironmentVariables,
+		ImportModules:        importModules,
+	}
+	return engineSpec, engineSpec.Validate()
+}
+
+// EngineArguments is used to pass pre-processed engine specs to the executor.
+// Currently used to pre-fetch entry and import modules remote resources by the compute
+// node before triggering the executor.
+// TODO: deprecate these arguments once we move remote resources from the engine spec to
+// the upper layer
 type EngineArguments struct {
 	EntryPoint           string
 	Parameters           []string
@@ -74,8 +150,22 @@ type EngineArguments struct {
 	ImportModules        []storage.PreparedStorage
 }
 
+func (c EngineArguments) Validate() error {
+	if (c.EntryModule.InputSource == models.InputSource{}) {
+		return errors.New("invalid wasm engine entry module. cannot be empty")
+	}
+	if c.EntryModule.InputSource.Source == nil {
+		return errors.New("invalid wasm engine entry module. source cannot be nil")
+	}
+	return nil
+}
+
+func (c EngineArguments) ToMap() map[string]interface{} {
+	return structs.Map(c)
+}
+
 func DecodeArguments(spec *models.SpecConfig) (*EngineArguments, error) {
-	if spec.Type != models.EngineWasm {
+	if !spec.IsType(models.EngineWasm) {
 		return nil, errors.New("invalid wasm engine type. expected " + models.EngineWasm + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params
@@ -83,58 +173,15 @@ func DecodeArguments(spec *models.SpecConfig) (*EngineArguments, error) {
 		return nil, errors.New("invalid wasm engine params. cannot be nil")
 	}
 
-	var c *EngineArguments
-	if err := mapstructure.Decode(spec.Params, c); err != nil {
-		return c, err
+	paramsBytes, err := json.Marshal(inputParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode wasm engine specs. %w", err)
 	}
 
-	return c, nil
-}
-
-// WasmEngineBuilder is a struct used for constructing an EngineSpec object
-// specifically for WebAssembly (Wasm) engines using the Builder pattern.
-// It embeds an EngineBuilder object for handling the common builder methods.
-type WasmEngineBuilder struct {
-	eb *models.SpecConfig
-}
-
-// NewWasmEngineBuilder function initializes a new WasmEngineBuilder instance.
-// It sets the engine type to engine.EngineWasm.String() and entry module as per the input argument.
-func NewWasmEngineBuilder(entryModule storage.PreparedStorage) *WasmEngineBuilder {
-	eb := models.NewSpecConfig(models.EngineWasm)
-	eb.WithParam(EngineKeyEntryModuleWasm, entryModule)
-	return &WasmEngineBuilder{eb: eb}
-}
-
-// WithEntrypoint is a builder method that sets the WebAssembly engine's entrypoint.
-// It returns the WasmEngineBuilder for further chaining of builder methods.
-func (b *WasmEngineBuilder) WithEntrypoint(e string) *WasmEngineBuilder {
-	b.eb.WithParam(EngineKeyEntrypointWasm, e)
-	return b
-}
-
-// WithParameters is a builder method that sets the WebAssembly engine's parameters.
-// It returns the WasmEngineBuilder for further chaining of builder methods.
-func (b *WasmEngineBuilder) WithParameters(e ...string) *WasmEngineBuilder {
-	b.eb.WithParam(EngineKeyParametersWasm, e)
-	return b
-}
-
-// WithEnvironmentVariables is a builder method that sets the WebAssembly engine's environment variables.
-// It returns the WasmEngineBuilder for further chaining of builder methods.
-func (b *WasmEngineBuilder) WithEnvironmentVariables(e map[string]string) *WasmEngineBuilder {
-	b.eb.WithParam(EngineKeyEnvironmentVariablesWasm, e)
-	return b
-}
-
-// WithImportModules is a builder method that sets the WebAssembly engine's import modules.
-// It returns the WasmEngineBuilder for further chaining of builder methods.
-func (b *WasmEngineBuilder) WithImportModules(e ...storage.PreparedStorage) *WasmEngineBuilder {
-	b.eb.WithParam(EngineKeyImportModulesWasm, e)
-	return b
-}
-
-// Build method constructs the final SpecConfig object by calling the embedded EngineBuilder's Build method.
-func (b *WasmEngineBuilder) Build() *models.SpecConfig {
-	return b.eb
+	var c *EngineArguments
+	err = json.Unmarshal(paramsBytes, &c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode wasm engine specs. %w", err)
+	}
+	return c, c.Validate()
 }
