@@ -142,12 +142,7 @@ def test_sign_for_client():
     from Crypto.Hash import SHA256
     from Crypto.Signature import pkcs1_15
 
-    from bacalhau_sdk.config import (
-        get_client_id,
-        get_user_id_key,
-        init_config,
-        sign_for_client,
-    )
+    from bacalhau_sdk.config import get_client_id, get_user_id_key, init_config, sign_for_client
 
     _ = init_config()
 
