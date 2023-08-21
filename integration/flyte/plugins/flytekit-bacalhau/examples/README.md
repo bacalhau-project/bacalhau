@@ -2,7 +2,7 @@
 
 Prerequisite: build the provided Docker container locally with `make docker-build`.
 
-## Hello World 🌍
+## 🌍 Hello World
 
 Print a sample string to stdout. 
 See the [full source code here](./hello-world.py).
@@ -19,7 +19,7 @@ QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
 
 https://ipfs.io/ipfs/QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1/
 
-## Chain jobs together ⛓️
+## 🧑‍🤝‍🧑 Chain jobs together
 
 Pipe task's A output into a downstream task B's input and have B process that.
 See the [full source code here](./chained-jobs.py).
