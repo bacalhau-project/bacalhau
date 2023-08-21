@@ -1,27 +1,23 @@
 """
 The Bacalhau task of this workflow prints out "Flyte is awesome!" to stdout.
-As simple as that.
+As simple as that!
+
+https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/basics/basic_workflow.html#how-does-a-flyte-workflow-work
 """
 
-from flytekit import workflow, task
+from flytekit import workflow, task, kwtypes
 
 from flytekitplugins.bacalhau import BacalhauTask
-from flytekit import kwtypes
 
 
 bacalhau_task = BacalhauTask(
-        name="hello_world",
-        inputs=kwtypes(
-                spec=dict,
-                api_version=str,
-        )
-    )
+    name="hello_world",
+    inputs=kwtypes(
+        spec=dict,
+        api_version=str,
+    ),
+)
 
-# https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/basics/basic_workflow.html#how-does-a-flyte-workflow-work
-@task
-def print_cid(bac_task: str) -> str:
-    print(f"Your Bacalhau's output CID: {bac_task}")
-    return bac_task
 
 @workflow
 def wf() -> str:
@@ -39,17 +35,16 @@ def wf() -> str:
             wasm=None,
             resources=None,
             timeout=1800,
-            outputs=[{
+            outputs=[
+                {
                     "storage_source": "IPFS",
                     "name": "outputs",
                     "path": "/outputs",
-            }],
+                }
+            ],
             deal={"concurrency": 1},
         ),
     )
-    
-    #return 
-    #print_cid(bac_task=bac_task)
     return bac_task
 
 
