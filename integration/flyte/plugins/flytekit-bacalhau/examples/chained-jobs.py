@@ -12,8 +12,8 @@ from flytekit import workflow, task, dynamic, kwtypes
 from flytekitplugins.bacalhau import BacalhauTask
 
 
-bacalhau_task = BacalhauTask(
-    name="hello_world",
+bacalhau_task_1 = BacalhauTask(
+    name="upstream_task",
     inputs=kwtypes(
         spec=dict,
         api_version=str,
@@ -22,7 +22,7 @@ bacalhau_task = BacalhauTask(
 
 
 bacalhau_task_2 = BacalhauTask(
-    name="second_hello_world",
+    name="downstream_task",
     inputs=kwtypes(
         spec=dict,
         api_version=str,
@@ -31,8 +31,8 @@ bacalhau_task_2 = BacalhauTask(
 
 
 @task
-def second_task(bac_task: str) -> str:
-    bac_task_2 = bacalhau_task_2(
+def resolve_task(bac_task: str) -> str:
+    task_2 = bacalhau_task_2(
         api_version="V1beta1",
         spec=dict(
             engine="Docker",
@@ -65,12 +65,12 @@ def second_task(bac_task: str) -> str:
         ),
     )
 
-    return bac_task_2
+    return task_2
 
 
 @dynamic
-def chained_job() -> str:
-    bac_task_1 = bacalhau_task(
+def chain_jobs() -> str:
+    task_1 = bacalhau_task_1(
         api_version="V1beta1",
         spec=dict(
             engine="Docker",
@@ -78,7 +78,7 @@ def chained_job() -> str:
             PublisherSpec={"type": "IPFS"},
             docker={
                 "image": "ubuntu",
-                "entrypoint": ["echo", "Flyte is awesome!"],
+                "entrypoint": ["echo", "Flyte is awesome and with Bacalhau it's even better!"],
             },
             language={"job_context": None},
             wasm=None,
@@ -95,14 +95,12 @@ def chained_job() -> str:
         ),
     )
 
-    return second_task(bac_task=bac_task_1)
+    return resolve_task(bac_task=task_1)
 
 
 @workflow
-def wf() -> str:
-    res = chained_job()
-    return res
-
+def wf():
+    chain_jobs()
 
 if __name__ == "__main__":
     wf()

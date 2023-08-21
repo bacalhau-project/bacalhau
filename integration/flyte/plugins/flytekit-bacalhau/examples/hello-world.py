@@ -20,7 +20,7 @@ bacalhau_task = BacalhauTask(
 
 
 @workflow
-def wf() -> str:
+def wf():
     bac_task = bacalhau_task(
         api_version="V1beta1",
         spec=dict(
@@ -45,7 +45,6 @@ def wf() -> str:
             deal={"concurrency": 1},
         ),
     )
-    return bac_task
 
 
 if __name__ == "__main__":

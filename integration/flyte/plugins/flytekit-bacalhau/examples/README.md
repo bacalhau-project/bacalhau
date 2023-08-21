@@ -17,7 +17,8 @@ $ docker run --rm -v $(pwd):/examples \
 	winderresearch/flytekit-bacalhau-examples:latest \
 	pyflyte run ./hello-world.py wf
 
-QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
+executing BacalhauTask with name: hello_world
+job_id: c636e309-5d0c-4919-ad60-64ae82819bac resulted in cid: QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
 ```
 
 https://ipfs.io/ipfs/QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1/
@@ -34,7 +35,10 @@ $ docker run --rm -v $(pwd):/examples \
 	winderresearch/flytekit-bacalhau-examples:latest \
 	pyflyte run ./chained-jobs.py wf
 
-QmceCcBFqstn37YpJe4VMazYTEJ8moctdDXxqcDU9eFeMM
+executing BacalhauTask with name: upstream_task
+executing BacalhauTask with name: downstream_task
+job_id: e6175184-1263-4f8e-a7c3-e47e7c72a0eb resulted in cid: QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
+job_id: 7a58c39c-1652-4c00-bafc-e0984bf6d87b resulted in cid: QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
 ```
 
 https://ipfs.io/ipfs/QmceCcBFqstn37YpJe4VMazYTEJ8moctdDXxqcDU9eFeMM/

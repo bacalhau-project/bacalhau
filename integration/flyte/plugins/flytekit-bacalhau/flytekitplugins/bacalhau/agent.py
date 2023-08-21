@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import asdict, dataclass
 from typing import Optional
 
@@ -118,6 +119,7 @@ class BacalhauAgent(AgentBase):
         
         state = SUCCEEDED
         resulting_cid = baclhau_response.results[0].data.cid
+        print(f"job_id: {metadata.job_id} resulted in cid: {resulting_cid}")
         ctx = FlyteContextManager.current_context()
         res = literals.LiteralMap(
             {
