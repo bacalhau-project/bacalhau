@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +31,6 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		NumberOfBadRequesterActors: 0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		DisabledFeatures:           node.FeatureConfig{},
@@ -118,16 +119,16 @@ func (m *mixedExecutorFactory) Get(
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
+	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop.String())
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.ChainedProvider[model.Engine, executor.Executor]{
-		Providers: []model.Provider[model.Engine, executor.Executor]{
+	return &provider.ChainedProvider[executor.Executor]{
+		Providers: []provider.Provider[executor.Executor]{
 			stdProvider,
-			model.NewMappedProvider(map[model.Engine]executor.Executor{
-				model.EngineNoop: noopExecutor,
+			provider.NewMappedProvider(map[string]executor.Executor{
+				models.EngineNoop: noopExecutor,
 			}),
 		},
 	}, nil

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog/log"
@@ -32,23 +32,31 @@ func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return len(driver.allowedPaths) > 0, nil
 }
 
-func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model.StorageSpec) (bool, error) {
-	if !driver.isInAllowedPaths(volume) {
+func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume models.InputSource) (bool, error) {
+	source, err := DecodeSpec(volume.Source)
+	if err != nil {
+		return false, err
+	}
+	if !driver.isInAllowedPaths(source) {
 		return false, nil
 	}
 
-	if _, err := os.Stat(volume.SourcePath); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(source.SourcePath); errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 	return true, nil
 }
 
-func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.StorageSpec) (uint64, error) {
-	if !driver.isInAllowedPaths(volume) {
+func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.InputSource) (uint64, error) {
+	source, err := DecodeSpec(volume.Source)
+	if err != nil {
+		return 0, err
+	}
+	if !driver.isInAllowedPaths(source) {
 		return 0, errors.New("volume not in allowed paths")
 	}
 	// check if the volume exists
-	if _, err := os.Stat(volume.SourcePath); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(source.SourcePath); errors.Is(err, os.ErrNotExist) {
 		return 0, errors.New("volume does not exist")
 	}
 	// We only query the volume size to make sure we have enough disk space to pull mount the volume locally from a remote location.
@@ -58,28 +66,32 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.Sto
 
 func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
-	storageSpec model.StorageSpec,
+	storageSpec models.InputSource,
 ) (storage.StorageVolume, error) {
-	if !driver.isInAllowedPaths(storageSpec) {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	if !driver.isInAllowedPaths(source) {
 		return storage.StorageVolume{}, errors.New("volume not in allowed paths")
 	}
 	return storage.StorageVolume{
 		Type:     storage.StorageVolumeConnectorBind,
-		ReadOnly: !storageSpec.ReadWrite,
-		Source:   storageSpec.SourcePath,
-		Target:   storageSpec.Path,
+		ReadOnly: !source.ReadWrite,
+		Source:   source.SourcePath,
+		Target:   storageSpec.Target,
 	}, nil
 }
 
-func (driver *StorageProvider) CleanupStorage(context.Context, model.StorageSpec, storage.StorageVolume) error {
+func (driver *StorageProvider) CleanupStorage(context.Context, models.InputSource, storage.StorageVolume) error {
 	return nil
 }
 
-func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
-	return model.StorageSpec{}, fmt.Errorf("not implemented")
+func (driver *StorageProvider) Upload(context.Context, string) (models.SpecConfig, error) {
+	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) isInAllowedPaths(storageSpec model.StorageSpec) bool {
+func (driver *StorageProvider) isInAllowedPaths(storageSpec Source) bool {
 	for _, allowedPath := range driver.allowedPaths {
 		if storageSpec.ReadWrite && !allowedPath.ReadWrite {
 			continue

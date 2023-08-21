@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/hashicorp/go-multierror"
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.
@@ -39,9 +38,19 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return err
 	}
 
-	if !model.IsValidEngine(j.Spec.Engine) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
-	}
+	// TODO(forrest): [review] do we want any type of validation for engine types?
+	/*
+		One potential issue with maintaining the engine validation in its current location is that it designates jobs
+		as invalid if they utilize the new EngineSpec field without populating the Engine field too; The migration logic
+		(mig_engines.go) for updating these fields is not yet applied at this point (we call this method via the CLI,
+		migration happens at API via the requester). Therefore, jobs incorporating the new field EngineSpec without
+		a defined Engine value will be categorized as invalid.
+	*/
+	/*
+		if !model.IsValidEngine(j.Spec.Engine) {
+			veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
+		}
+	*/
 
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))

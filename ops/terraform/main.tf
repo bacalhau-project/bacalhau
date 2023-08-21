@@ -73,7 +73,6 @@ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=${terraform.workspace}"
 export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"
 export SECRETS_GRAFANA_CLOUD_TEMPO_API_KEY="${var.grafana_cloud_tempo_api_key}"
 export SECRETS_GRAFANA_CLOUD_LOKI_API_KEY="${var.grafana_cloud_loki_api_key}"
-export SECRETS_ESTUARY_API_KEY="${var.estuary_api_key}"
 export SECRETS_AWS_ACCESS_KEY_ID="${var.aws_access_key_id}"
 export SECRETS_AWS_SECRET_ACCESS_KEY="${var.aws_secret_access_key}"
 export SECRETS_DOCKER_USERNAME="${var.docker_username}"
@@ -222,7 +221,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
   zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
-  size     = count.index == 4  ? 1000 : var.volume_size_gb
+  size     = count.index == 4 ? 1000 : var.volume_size_gb
   snapshot = count.index == 4 ? "bacalhau-disk-4-migration" : var.restore_from_backup
   lifecycle {
     prevent_destroy = true
@@ -235,7 +234,7 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
   count    = var.protect_resources ? 0 : var.instance_count
   type     = "pd-ssd"
   zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
-  size     = count.index == 4 ? 1000 : var.volume_size_gb 
+  size     = count.index == 4 ? 1000 : var.volume_size_gb
   snapshot = var.restore_from_backup
 }
 
@@ -292,7 +291,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "4001",  // ipfs swarm
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
-      "13133",  // otel collector health_check extension
+      "13133", // otel collector health_check extension
       "55679", // otel collector zpages extension
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts

@@ -52,14 +52,14 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 	}
 
 	j, err := s.requester.SubmitJob(ctx, jobCreatePayload)
-	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
-	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
-	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
-
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
 	}
+
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
+	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(submitResponse{Job: j})

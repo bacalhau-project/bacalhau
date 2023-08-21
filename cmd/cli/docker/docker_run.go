@@ -133,7 +133,9 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
-	j, err := CreateJob(ctx, cmdArgs, opts)
+	image := cmdArgs[0]
+	parameters := cmdArgs[1:]
+	j, err := CreateJob(ctx, image, parameters, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
 	}
@@ -165,7 +167,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 
 	if err := jobutils.VerifyJob(ctx, j); err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
+			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", image)
 		} else {
 			return fmt.Errorf("verifying job: %s", err)
 		}
@@ -173,7 +175,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 
 	quiet := opts.RunTimeSettings.PrintJobIDOnly
 	if !quiet {
-		containsTag := dockerImageContainsTag(j.Spec.Docker.Image)
+		containsTag := dockerImageContainsTag(image)
 		if !containsTag {
 			cmd.PrintErrln("Using default tag: latest. Please specify a tag/digest for better reproducibility.")
 		}
@@ -199,10 +201,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
-	image := cmdArgs[0]
-	parameters := cmdArgs[1:]
-
+func CreateJob(ctx context.Context, image string, parameters []string, opts *DockerRunOptions) (*model.Job, error) {
 	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
 	if err != nil {
 		return nil, err

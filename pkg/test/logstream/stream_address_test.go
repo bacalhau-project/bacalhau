@@ -3,12 +3,15 @@
 package logstream
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -18,45 +21,38 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.JobSpecDocker{
-		Image:      "bash",
-		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
-	})
+	task := mock.TaskBuilder().
+		Engine(dockermodels.NewDockerEngineBuilder("bash").
+			WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+			Build()).
+		BuildOrDie()
+	job := mock.Job()
+	job.Tasks[0] = task
 
-	execution := newTestExecution("test-execution", job)
+	execution := mock.ExecutionForJob(job)
+	execution.NodeID = node.Host.ID().Pretty()
+	execution.AllocateResources(task.Name, models.Resources{})
 
-	err := node.RequesterNode.JobStore.CreateJob(s.ctx, job)
+	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
 	require.NoError(s.T(), err)
 
-	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
+	exec, err := node.ComputeNode.Executors.Get(s.ctx, models.EngineDocker)
 	require.NoError(s.T(), err)
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		var args *executor.Arguments
-		if job.Spec.Engine == model.EngineDocker {
-			args, err = executor.EncodeArguments(job.Spec.Docker)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineWasm {
-			args, err = executor.EncodeArguments(job.Spec.Wasm)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineNoop {
-			args = &executor.Arguments{Params: []byte{}}
-		}
 		exec.Run(
 			s.ctx,
 			&executor.RunCommandRequest{
-				JobID:        job.ID(),
+				JobID:        job.ID,
 				ExecutionID:  execution.ID,
-				Resources:    job.Spec.Resources,
-				Network:      job.Spec.Network,
-				Outputs:      job.Spec.Outputs,
+				Resources:    execution.TotalAllocatedResources(),
+				Network:      task.Network,
+				Outputs:      task.ResultPaths,
 				Inputs:       nil,
 				ResultsDir:   "/tmp",
-				EngineParams: args,
+				EngineParams: task.Engine,
 				OutputLimits: executor.OutputLimits{
 					MaxStdoutFileLength:   system.MaxStdoutFileLength,
 					MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -73,17 +69,15 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
-	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
-	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
-		State:            model.ExecutionStateBidAccepted,
-		JobID:            job.ID(),
-		ComputeReference: execution.ID,
-		NodeID:           node.Host.ID().Pretty(),
-	})
+	localExecutionState := store.NewLocalExecutionState(execution, "nodeID")
+	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, *localExecutionState)
+
+	execution.ComputeState.StateType = models.ExecutionStateBidAccepted
+	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution)
 	require.NoError(s.T(), err)
 
 	logRequest := requester.ReadLogsRequest{
-		JobID:       job.ID(),
+		JobID:       job.ID,
 		ExecutionID: execution.ID,
 		WithHistory: true,
 		Follow:      true}

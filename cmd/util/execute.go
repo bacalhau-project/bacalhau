@@ -3,10 +3,11 @@ package util
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -28,11 +29,11 @@ func ExecuteJob(ctx context.Context,
 			devstack.WithNumberOfHybridNodes(1),
 			devstack.WithPublicIPFSMode(true),
 			devstack.WithComputeConfig(node.ComputeConfig{
-				TotalResourceLimits: model.ResourceUsageData{
-					GPU: capacity.ConvertGPUString(j.Spec.Resources.GPU),
+				TotalResourceLimits: models.Resources{
+					GPU: model.ConvertGPUString(j.Spec.Resources.GPU),
 				},
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality:            model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality:            semantic.Anywhere,
 					RejectStatelessJobs: true,
 				},
 			}),

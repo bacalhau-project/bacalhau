@@ -10,13 +10,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata"
@@ -66,6 +66,18 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 				Fixture: testdata.TaskWasmJson,
 			},
 		*/
+		{
+			Name:    "docker engine spec json",
+			Fixture: testdata.JsonJobDockerEngineSpec,
+		},
+		{
+			Name:    "docker engine spec yaml",
+			Fixture: testdata.YamlJobDockerEngineSpec,
+		},
+		{
+			Name:    "wasm engine spec json",
+			Fixture: testdata.JsonJobWasmEngineSpec,
+		},
 	}
 
 	for _, tc := range tests {
@@ -138,7 +150,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 
 	errorOutputMap := make(map[string]interface{})
 	for _, o := range strings.Split(commandReturnValue.out, "\n") {
-		err := model.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
+		err := marshaller.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
 		if err != nil {
 			continue
 		}

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -60,7 +60,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateExecutions_Succes
 
 func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateJobState_Success() {
 	plan := mock.Plan()
-	plan.DesiredJobState = model.JobStateCompleted
+	plan.DesiredJobState = models.JobStateTypeCompleted
 	plan.Comment = "update job state"
 
 	suite.mockStore.EXPECT().UpdateJobState(suite.ctx, NewUpdateJobMatcherFromPlanUpdate(suite.T(), plan)).Times(1)
@@ -69,7 +69,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateJobState_Success(
 
 func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateJobState_Error() {
 	plan := mock.Plan()
-	plan.DesiredJobState = model.JobStateCompleted
+	plan.DesiredJobState = models.JobStateTypeCompleted
 	plan.Comment = "update job state"
 
 	suite.mockStore.EXPECT().UpdateJobState(suite.ctx, NewUpdateJobMatcherFromPlanUpdate(suite.T(), plan)).Return(errors.New("create error")).Times(1)
@@ -84,8 +84,9 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_NoOp() {
 func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultiOp() {
 	plan := mock.Plan()
 	execution1, execution2 := mockCreateExecutions(plan)
+
 	update1, update2 := mockUpdateExecutions(plan)
-	plan.DesiredJobState = model.JobStateCompleted
+	plan.DesiredJobState = models.JobStateTypeCompleted
 	plan.Comment = "update job state"
 
 	suite.mockStore.EXPECT().CreateExecution(suite.ctx, *execution1).Times(1)

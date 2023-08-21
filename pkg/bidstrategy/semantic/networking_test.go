@@ -7,16 +7,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type networkingStrategyTestCase struct {
 	accept         bool
-	job_networking model.NetworkConfig
+	job_networking models.NetworkConfig
 	should_bid     bool
 }
 
@@ -30,20 +31,18 @@ func (test networkingStrategyTestCase) String() string {
 }
 
 var networkingStrategyTestCases = []networkingStrategyTestCase{
-	{false, model.NetworkConfig{Type: model.NetworkNone}, true},
-	{false, model.NetworkConfig{Type: model.NetworkFull}, false},
-	{true, model.NetworkConfig{Type: model.NetworkNone}, true},
-	{true, model.NetworkConfig{Type: model.NetworkFull}, true},
+	{false, models.NetworkConfig{Type: models.NetworkNone}, true},
+	{false, models.NetworkConfig{Type: models.NetworkFull}, false},
+	{true, models.NetworkConfig{Type: models.NetworkNone}, true},
+	{true, models.NetworkConfig{Type: models.NetworkFull}, true},
 }
 
 func TestNetworkingStrategy(t *testing.T) {
 	for _, test := range networkingStrategyTestCases {
+		job := mock.Job()
+		job.Task().Network = &test.job_networking
 		strategy := semantic.NewNetworkingStrategy(test.accept)
-		request := bidstrategy.BidStrategyRequest{
-			Job: model.Job{
-				Spec: model.Spec{Network: test.job_networking},
-			},
-		}
+		request := bidstrategy.BidStrategyRequest{Job: *job}
 
 		t.Run("ShouldBid/"+test.String(), func(t *testing.T) {
 			response, err := strategy.ShouldBid(context.Background(), request)

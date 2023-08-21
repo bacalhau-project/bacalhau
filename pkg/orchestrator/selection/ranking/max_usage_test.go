@@ -6,7 +6,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -14,23 +15,23 @@ import (
 type MaxUsageNodeRankerSuite struct {
 	suite.Suite
 	MaxUsageNodeRanker *MaxUsageNodeRanker
-	smallPeer          model.NodeInfo
-	medPeer            model.NodeInfo
-	largePeer          model.NodeInfo
+	smallPeer          models.NodeInfo
+	medPeer            models.NodeInfo
+	largePeer          models.NodeInfo
 }
 
 func (s *MaxUsageNodeRankerSuite) SetupSuite() {
-	s.smallPeer = model.NodeInfo{
+	s.smallPeer = models.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("small")},
-		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 1}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1}},
 	}
-	s.medPeer = model.NodeInfo{
+	s.medPeer = models.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("med")},
-		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 2}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2}},
 	}
-	s.largePeer = model.NodeInfo{
+	s.largePeer = models.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("large")},
-		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 3}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3}},
 	}
 }
 
@@ -43,9 +44,10 @@ func TestMaxUsageNodeRankerSuite(t *testing.T) {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodes_VerySmallJob() {
-	job := model.Job{Spec: model.Spec{Resources: model.ResourceUsageConfig{CPU: "0.1"}}}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "0.1"}
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 10)
@@ -54,9 +56,10 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_VerySmallJob() {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodes_SmallJob() {
-	job := model.Job{Spec: model.Spec{Resources: model.ResourceUsageConfig{CPU: "1"}}}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "1"}
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 10)
@@ -65,9 +68,10 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_SmallJob() {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodes_MedJob() {
-	job := model.Job{Spec: model.Spec{Resources: model.ResourceUsageConfig{CPU: "2"}}}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "2"}
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1)
@@ -76,9 +80,10 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_MedJob() {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodes_LargeJob() {
-	job := model.Job{Spec: model.Spec{Resources: model.ResourceUsageConfig{CPU: "3"}}}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3"}
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1)
@@ -87,9 +92,11 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_LargeJob() {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodes_VeryLargeJob() {
-	job := model.Job{Spec: model.Spec{Resources: model.ResourceUsageConfig{CPU: "3.1"}}}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3.1"}
+
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1)
@@ -98,9 +105,10 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_VeryLargeJob() {
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodesUnknownJob() {
-	job := model.Job{}
-	nodes := []model.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), job, nodes)
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{}
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 0)

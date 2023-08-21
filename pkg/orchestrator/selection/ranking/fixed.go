@@ -3,7 +3,7 @@ package ranking
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
@@ -18,7 +18,7 @@ func NewFixedRanker(ranks ...int) *fixedRanker {
 	}
 }
 
-func (f *fixedRanker) RankNodes(_ context.Context, _ model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (f *fixedRanker) RankNodes(_ context.Context, _ models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	for i, rank := range f.ranks {
 		ranks[i] = orchestrator.NodeRank{

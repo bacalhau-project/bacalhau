@@ -55,7 +55,7 @@ type JobType interface {
 type NoopTask struct{}
 
 func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
+	spec.EngineSpec.Type = EngineNoop.String()
 	return nil
 }
 

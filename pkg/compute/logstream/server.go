@@ -7,10 +7,11 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/multiformats/go-multiaddr"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -72,41 +73,41 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 
 	log.Ctx(s.ctx).Debug().Msgf("Logserver read log header: %+v", request)
 
-	execution, err := s.executionStore.GetExecution(s.ctx, request.ExecutionID)
+	localExecutionState, err := s.executionStore.GetExecution(s.ctx, request.ExecutionID)
 	if err != nil {
 		log.Ctx(s.ctx).Error().Msgf("error retrieving execution: %s", request.ExecutionID)
 		_ = stream.Reset()
 		return
 	}
 
-	log.Ctx(s.ctx).Debug().Msgf("Logserver checking execution state: %+v", execution)
+	log.Ctx(s.ctx).Debug().Msgf("Logserver checking execution state: %+v", localExecutionState)
 
-	if execution.State.IsTerminal() {
+	if localExecutionState.State.IsTerminal() {
 		// If the execution is already complete, possibly an error or possibly
 		// just a really fast task, then we have to resort to reading the output
 		// from the job. We will send the stdout/stderr that it did collect whilst
 		// execution and will send stdout followed by stderr rather than the usual
 		// interleaved dataframes.
-		log.Ctx(s.ctx).Error().Msgf("execution was already terminated: %s", execution.ID)
+		log.Ctx(s.ctx).Error().Msgf("execution was already terminated: %s", localExecutionState.Execution.ID)
 		_ = stream.Reset()
 		return
 	}
 
-	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %+v", execution.Job.Spec.Engine)
+	engineType := localExecutionState.Execution.Job.Task().Engine.Type
+	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %s", engineType)
 
-	jobSpec := execution.Job.Spec
-	e, err := s.executors.Get(s.ctx, jobSpec.Engine)
+	e, err := s.executors.Get(s.ctx, engineType)
 	if err != nil {
-		log.Ctx(s.ctx).Error().Msgf("failed to find executor for engine: %s", jobSpec.Engine)
+		log.Ctx(s.ctx).Error().Msgf("failed to find executor for engine: %s", engineType)
 		_ = stream.Reset()
 		return
 	}
 
 	log.Ctx(s.ctx).Debug().Msgf("Logserver getting output stream")
 
-	reader, err := e.GetOutputStream(s.ctx, execution.ID, request.WithHistory, request.Follow)
+	reader, err := e.GetOutputStream(s.ctx, localExecutionState.Execution.ID, request.WithHistory, request.Follow)
 	if err != nil {
-		log.Ctx(s.ctx).Error().Msgf("failed to get output streams from job: %s", execution.Job.ID())
+		log.Ctx(s.ctx).Error().Msgf("failed to get output streams from job: %s", localExecutionState.Execution.JobID)
 		_ = stream.Reset()
 		return
 	}

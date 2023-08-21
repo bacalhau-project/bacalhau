@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -58,26 +58,25 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
-		provider, err := executor_util.NewStandardStorageProvider(
+		pr, err := executor_util.NewStandardStorageProvider(
 			ctx,
 			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
-				EstuaryAPIKey:         nodeConfig.EstuaryAPIKey,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
 		if err != nil {
 			return nil, err
 		}
-		return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Storages), err
+		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err
 	})
 }
 
 func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-			provider, err := executor_util.NewStandardExecutorProvider(
+			pr, err := executor_util.NewStandardExecutorProvider(
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
@@ -87,14 +86,14 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
 		})
 }
 
 func NewPluginExecutorFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-			provider, err := executor_util.NewPluginExecutorProvider(
+			pr, err := executor_util.NewPluginExecutorProvider(
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.PluginExecutorOptions{
@@ -120,7 +119,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
 		})
 }
 
@@ -129,15 +128,14 @@ func NewStandardPublishersFactory() PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			provider, err := publisher_util.NewIPFSPublishers(
+			pr, err := publisher_util.NewIPFSPublishers(
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
-				nodeConfig.EstuaryAPIKey,
 			)
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Publishers), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
 		})
 }

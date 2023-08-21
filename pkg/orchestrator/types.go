@@ -1,14 +1,14 @@
 package orchestrator
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog"
 )
 
 // NodeRank represents a node and its rank. The higher the rank, the more preferable a node is to execute the job.
 // A negative rank means the node is not suitable to execute the job.
 type NodeRank struct {
-	NodeInfo model.NodeInfo
+	NodeInfo models.NodeInfo
 	Rank     int
 	Reason   string
 }

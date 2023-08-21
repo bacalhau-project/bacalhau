@@ -55,6 +55,10 @@ fi
 
 BACALHAU_PROBE_EXEC='/terraform_node/apply-http-allowlist.sh'
 
+TRUSTED_CLIENT_IDS="\
+1df7b01ed77ca81bb6d6f06f6cbcd76a6a9e450d175dfac1e4ba70494fddd576,\
+b43517b5449d383ab00ca1d2b1c558d710ba79f51c800fbf4c35ed4d0198aec5"
+
 bacalhau serve \
   --node-type requester,compute \
   --job-selection-data-locality anywhere \
@@ -62,6 +66,7 @@ bacalhau serve \
   --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --max-timeout '60m' \
+  --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
   --swarm-port "${BACALHAU_PORT}" \
   --api-port 1234 \
   --peer "${CONNECT_PEER}" \

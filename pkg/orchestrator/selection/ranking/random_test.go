@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
@@ -25,15 +25,15 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 	nodeCount := 100
 	randomnessRange := 10
 
-	var nodes []model.NodeInfo
+	var nodes []models.NodeInfo
 	for i := 0; i < nodeCount; i++ {
-		nodes = append(nodes, model.NodeInfo{
+		nodes = append(nodes, models.NodeInfo{
 			PeerInfo: peer.AddrInfo{ID: peer.ID(rune(i))},
 		})
 	}
 	s.RandomNodeRanker = NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: randomnessRange})
 
-	ranks, err := s.RandomNodeRanker.RankNodes(context.Background(), model.Job{}, nodes)
+	ranks, err := s.RandomNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 

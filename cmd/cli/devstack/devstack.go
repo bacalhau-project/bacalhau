@@ -48,7 +48,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
@@ -98,7 +97,7 @@ func NewCmd() *cobra.Command {
 		`How many requester nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
-		&IsNoop, "noop", false,
+		&IsNoop, "Noop", false,
 		`Use the noop executor for all jobs`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
@@ -162,7 +161,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		}
 	}
 
-	computeConfig := serve.GetComputeConfig(OS)
+	computeConfig, err := serve.GetComputeConfig(OS)
+	if err != nil {
+		return err
+	}
 	requestorConfig := serve.GetRequesterConfig(OS)
 
 	options := append(ODs.Options(),

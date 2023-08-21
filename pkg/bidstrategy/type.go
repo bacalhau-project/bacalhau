@@ -5,12 +5,12 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type BidStrategyRequest struct {
 	NodeID   string
-	Job      model.Job
+	Job      models.Job
 	Callback *url.URL
 }
 
@@ -36,24 +36,22 @@ type SemanticBidStrategy interface {
 }
 
 type ResourceBidStrategy interface {
-	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error)
+	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage models.Resources) (BidStrategyResponse, error)
 }
 
 // the JSON data we send to http or exec probes
 // TODO: can we just use the BidStrategyRequest struct?
 type JobSelectionPolicyProbeData struct {
-	NodeID   string     `json:"node_id"`
-	JobID    string     `json:"job_id"`
-	Spec     model.Spec `json:"spec"`
-	Callback *url.URL   `json:"callback"`
+	NodeID   string     `json:"NodeID"`
+	Job      models.Job `json:"Job"`
+	Callback *url.URL   `json:"Callback"`
 }
 
 // Return JobSelectionPolicyProbeData for the given request
 func GetJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
 	return JobSelectionPolicyProbeData{
 		NodeID:   request.NodeID,
-		JobID:    request.Job.Metadata.ID,
-		Spec:     request.Job.Spec,
+		Job:      request.Job,
 		Callback: request.Callback,
 	}
 }

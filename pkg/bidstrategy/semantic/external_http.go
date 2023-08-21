@@ -7,11 +7,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -40,7 +40,7 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 	}
 
 	data := bidstrategy.GetJobSelectionPolicyProbeData(request)
-	jsonData, err := model.JSONMarshalWithMax(data)
+	jsonData, err := marshaller.JSONMarshalWithMax(data)
 
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, fmt.Errorf("ExternalHTTPStrategy: error marshaling job selection policy probe data: %w", err)
@@ -70,9 +70,9 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
-	if resp.ContentLength > int64(model.MaxSerializedStringInput) {
+	if resp.ContentLength > int64(marshaller.MaxSerializedStringInput) {
 		return bidstrategy.BidStrategyResponse{},
-			fmt.Errorf("http result too large (%d > %d)", resp.ContentLength, model.MaxSerializedStringInput)
+			fmt.Errorf("http result too large (%d > %d)", resp.ContentLength, marshaller.MaxSerializedStringInput)
 	}
 
 	buf := make([]byte, resp.ContentLength)
@@ -84,7 +84,7 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 	}
 
 	var result bidstrategy.BidStrategyResponse
-	err = model.JSONUnmarshalWithMax(buf, &result)
+	err = marshaller.JSONUnmarshalWithMax(buf, &result)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, errors.Wrap(err, "error unmarshalling http response")
 	}

@@ -11,10 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -48,8 +52,8 @@ func runURLTest(
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality: semantic.Anywhere,
 				},
 			}),
 		},
@@ -64,20 +68,23 @@ func runURLTest(
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),
 		},
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					testCase.mount1,
-					testCase.mount2,
+
+		Spec: testutils.MakeSpecWithOpts(suite.T(),
+			job.WithPublisher(
+				model.PublisherSpec{
+					Type: model.PublisherIpfs,
 				},
-			},
-		},
+			),
+			job.WithEngineSpec(
+				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					WithEntrypoint("_start").
+					WithParameters(
+						testCase.mount1,
+						testCase.mount2,
+					).
+					Build(),
+			),
+		),
 	}
 
 	suite.RunScenario(testScenario)
@@ -214,8 +221,8 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
+				JobSelectionPolicy: node.JobSelectionPolicy{
+					Locality: semantic.Anywhere,
 				},
 			}),
 		},
@@ -223,20 +230,23 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					urlmount,
-					path.Join(ipfsmount, ipfsfile),
+
+		Spec: testutils.MakeSpecWithOpts(s.T(),
+			job.WithPublisher(
+				model.PublisherSpec{
+					Type: model.PublisherIpfs,
 				},
-			},
-		},
+			),
+			job.WithEngineSpec(
+				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					WithEntrypoint("_start").
+					WithParameters(
+						urlmount,
+						path.Join(ipfsmount, ipfsfile),
+					).
+					Build(),
+			),
+		),
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, URLContent+IPFSContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}

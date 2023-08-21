@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -20,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackTimeoutSuite struct {
@@ -66,7 +68,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				}),
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
+						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
 							time.Sleep(testCase.sleepTime)
 							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil, executor.OutputLimits{
 								MaxStdoutFileLength:   system.MaxStdoutFileLength,
@@ -78,13 +80,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					},
 				},
 			},
-			Spec: model.Spec{
-				Engine: model.EngineNoop,
-				PublisherSpec: model.PublisherSpec{
-					Type: model.PublisherIpfs,
-				},
-				Timeout: int64(testCase.jobTimeout.Seconds()),
-			},
+			Spec: testutils.MakeSpecWithOpts(suite.T(),
+				job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
+				job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
+			),
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
 			},

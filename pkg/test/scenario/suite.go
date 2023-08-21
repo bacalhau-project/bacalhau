@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -79,8 +81,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.RequesterConfig = node.NewRequesterConfigWithDefaults()
 	}
 
-	empty := model.ResourceUsageData{}
-	if config.ComputeConfig.TotalResourceLimits == empty {
+	if config.ComputeConfig.TotalResourceLimits.IsZero() {
 		config.ComputeConfig = node.NewComputeConfigWithDefaults()
 	}
 	stack := testutils.Setup(s.Ctx, s.T(),
@@ -100,7 +101,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
@@ -116,7 +117,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Engine()))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
 			Type: model.PublisherIpfs,
@@ -171,8 +172,8 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 		s.Require().NoError(err)
 
-		downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-			model.StorageSourceIPFS: ipfsDownloader,
+		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{
+			models.StorageSourceIPFS: ipfsDownloader,
 		})
 
 		err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)

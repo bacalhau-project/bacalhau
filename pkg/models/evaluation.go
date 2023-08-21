@@ -57,10 +57,6 @@ type Evaluation struct {
 	// repeatedly failing to assess a job.
 	WaitUntil time.Time
 
-	// DB replicated log index
-	CreateIndex uint64
-	ModifyIndex uint64
-
 	CreateTime int64
 	ModifyTime int64
 }

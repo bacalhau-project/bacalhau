@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -16,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
@@ -115,18 +115,18 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	}
 
 	// Do a first pass for parsing to see if it's a Job or JobWithInfo
-	err = model.YAMLUnmarshalWithMax(byteResult, &rawMap)
+	err = marshaller.YAMLUnmarshalWithMax(byteResult, &rawMap)
 	if err != nil {
 		return fmt.Errorf("error parsing file: %w", err)
 	}
 
 	// If it's a JobWithInfo, we need to convert it to a Job
 	if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
-		err = model.YAMLUnmarshalWithMax(byteResult, &jwi)
+		err = marshaller.YAMLUnmarshalWithMax(byteResult, &jwi)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
-		byteResult, err = model.YAMLMarshalWithMax(jwi.Job)
+		byteResult, err = marshaller.YAMLMarshalWithMax(jwi.Job)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
@@ -150,7 +150,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		}
 
 		job.Spec = *spec
-		byteResult, err = model.YAMLMarshalWithMax(job)
+		byteResult, err = marshaller.YAMLMarshalWithMax(job)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
@@ -163,7 +163,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 	// so we can just use that
-	err = model.YAMLUnmarshalWithMax(byteResult, &j)
+	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
@@ -210,11 +210,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
-		} else {
-			return fmt.Errorf("error verifying job: %w", err)
-		}
+		return fmt.Errorf("error verifying job: %w", err)
 	}
 	if OC.RunTimeSettings.DryRun {
 		// Converting job to yaml

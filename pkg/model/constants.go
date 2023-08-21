@@ -26,3 +26,7 @@ const DefaultJobTimeout time.Duration = time.Duration(0)
 // value is the largest possible time.Duration that is a whole number of seconds
 // so conversions into an int64 number of seconds and back again are bijective.
 var NoJobTimeout time.Duration = time.Duration(math.MaxInt64).Truncate(time.Second)
+
+// Unknown constant to represent unknown engines, publishers, storage sources and the more
+// unknowns in this world!
+const Unknown = "unknown"

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
 )
@@ -41,7 +41,7 @@ type ContainsClientID interface {
 }
 
 func SignRequest(reqData any) (req signedRequest, err error) {
-	jsonData, err := model.JSONMarshalWithMax(reqData)
+	jsonData, err := marshaller.JSONMarshalWithMax(reqData)
 	if err != nil {
 		return
 	}

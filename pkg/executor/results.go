@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -84,20 +84,20 @@ type OutputLimits struct {
 	MaxStderrReturnLength datasize.ByteSize
 }
 
-// WriteJobResults produces files and a model.RunCommandResult in the standard
+// WriteJobResults produces files and a models.RunCommandResult in the standard
 // format, including truncating the contents of both where necessary to fit
 // within system-defined limits.
 //
 // It will consume only the bytes from the passed io.Readers that it needs to
 // correctly form job outputs. Once the command returns, the readers can close.
-func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error, limits OutputLimits) (*model.RunCommandResult, error) {
-	result := model.NewRunCommandResult()
+func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error, limits OutputLimits) (*models.RunCommandResult, error) {
+	result := models.NewRunCommandResult()
 
 	outputs := []outputResult{
 		// Standard output
 		{
 			stdout,
-			model.DownloadFilenameStdout,
+			models.DownloadFilenameStdout,
 			limits.MaxStdoutFileLength,
 			&result.STDOUT,
 			limits.MaxStdoutReturnLength,
@@ -106,7 +106,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard error
 		{
 			stderr,
-			model.DownloadFilenameStderr,
+			models.DownloadFilenameStderr,
 			limits.MaxStderrFileLength,
 			&result.STDERR,
 			limits.MaxStderrReturnLength,
@@ -115,7 +115,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Exit code
 		{
 			strings.NewReader(fmt.Sprint(exitcode)),
-			model.DownloadFilenameExitCode,
+			models.DownloadFilenameExitCode,
 			4,
 			nil,
 			4,
@@ -140,6 +140,6 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 	return result, err
 }
 
-func FailResult(err error) (*model.RunCommandResult, error) {
-	return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+func FailResult(err error) (*models.RunCommandResult, error) {
+	return &models.RunCommandResult{ErrorMsg: err.Error()}, err
 }

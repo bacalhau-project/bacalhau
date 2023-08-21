@@ -4,15 +4,17 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 var DefaultComputeConfig = ComputeConfigParams{
 	PhysicalResourcesProvider: compute_system.NewPhysicalCapacityProvider(),
-	DefaultJobResourceLimits: model.ResourceUsageData{
+	DefaultJobResourceLimits: models.Resources{
 		CPU:    0.1,               // 100m
 		Memory: 100 * 1024 * 1024, // 100Mi
 	},
@@ -24,6 +26,7 @@ var DefaultComputeConfig = ComputeConfigParams{
 	DefaultJobExecutionTimeout: model.NoJobTimeout,
 
 	LogRunningExecutionsInterval: 10 * time.Second,
+	JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
@@ -34,7 +37,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
-	MinBacalhauVersion: model.BuildVersionInfo{
+	MinBacalhauVersion: models.BuildVersionInfo{
 		Major: "0", Minor: "3", GitVersion: "v0.3.26",
 	},
 
@@ -57,7 +60,7 @@ var TestRequesterConfig = RequesterConfigParams{
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
-	MinBacalhauVersion: model.BuildVersionInfo{
+	MinBacalhauVersion: models.BuildVersionInfo{
 		Major: "0", Minor: "3", GitVersion: "v0.3.26",
 	},
 
@@ -97,4 +100,10 @@ func GetNodeInfoPublishConfig() routing.NodeInfoPublisherIntervalConfig {
 		return TestNodeInfoPublishConfig
 	}
 	return DefaultNodeInfoPublishConfig
+}
+
+func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
+	return JobSelectionPolicy{
+		Locality: semantic.Anywhere,
+	}
 }

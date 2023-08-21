@@ -6,10 +6,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"testing"
+
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestBufferingLogger_allowsBufferedLogsToBeWritten(t *testing.T) {

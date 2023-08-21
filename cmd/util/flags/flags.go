@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
@@ -219,29 +220,40 @@ func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mode
 	}
 }
 
-func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
-	return &ValueFlag[model.Engine]{
+func strStringer(str *string) string {
+	if str == nil {
+		return ""
+	}
+	return *str
+}
+
+func strParser(str string) (string, error) {
+	return str, nil
+}
+
+func EngineFlag(value *string) *ValueFlag[string] {
+	return &ValueFlag[string]{
 		value:    value,
-		parser:   model.ParseEngine,
-		stringer: func(e *model.Engine) string { return e.String() },
+		parser:   strParser,
+		stringer: strStringer,
 		typeStr:  "engine",
 	}
 }
 
-func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
-	return &ValueFlag[model.Publisher]{
+func PublisherFlag(value *string) *ValueFlag[string] {
+	return &ValueFlag[string]{
 		value:    value,
-		parser:   model.ParsePublisher,
-		stringer: func(p *model.Publisher) string { return p.String() },
+		parser:   strParser,
+		stringer: strStringer,
 		typeStr:  "publisher",
 	}
 }
 
-func StorageSourceFlag(value *model.StorageSourceType) *ValueFlag[model.StorageSourceType] {
-	return &ValueFlag[model.StorageSourceType]{
+func StorageSourceFlag(value *string) *ValueFlag[string] {
+	return &ValueFlag[string]{
 		value:    value,
-		parser:   model.ParseStorageSourceType,
-		stringer: func(s *model.StorageSourceType) string { return s.String() },
+		parser:   strParser,
+		stringer: strStringer,
 		typeStr:  "storage-source",
 	}
 }
@@ -270,11 +282,11 @@ func TargetingFlag(value *model.TargetingMode) *ValueFlag[model.TargetingMode] {
 	}
 }
 
-func DataLocalityFlag(value *model.JobSelectionDataLocality) *ValueFlag[model.JobSelectionDataLocality] {
-	return &ValueFlag[model.JobSelectionDataLocality]{
+func DataLocalityFlag(value *semantic.JobSelectionDataLocality) *ValueFlag[semantic.JobSelectionDataLocality] {
+	return &ValueFlag[semantic.JobSelectionDataLocality]{
 		value:    value,
-		parser:   model.ParseJobSelectionDataLocality,
-		stringer: func(l *model.JobSelectionDataLocality) string { return l.String() },
+		parser:   semantic.ParseJobSelectionDataLocality,
+		stringer: func(l *semantic.JobSelectionDataLocality) string { return l.String() },
 		typeStr:  "local|anywhere",
 	}
 }
@@ -356,7 +368,7 @@ func OutputFormatFlag(value *output.OutputFormat) *ValueFlag[output.OutputFormat
 	}
 }
 
-func JobSelectionCLIFlags(policy *model.JobSelectionPolicy) *pflag.FlagSet {
+func JobSelectionCLIFlags(policy *node.JobSelectionPolicy) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Job Selection Policy", pflag.ContinueOnError)
 
 	flags.Var(

@@ -5,37 +5,36 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
-var noopScenario Scenario = Scenario{
-	Stack: &StackConfig{
-		ExecutorConfig: noop.ExecutorConfig{
-			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
-					return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
-						MaxStdoutFileLength:   system.MaxStdoutFileLength,
-						MaxStdoutReturnLength: system.MaxStdoutReturnLength,
-						MaxStderrFileLength:   system.MaxStderrFileLength,
-						MaxStderrReturnLength: system.MaxStderrReturnLength,
-					})
+func noopScenario(t testing.TB) Scenario {
+	return Scenario{
+		Stack: &StackConfig{
+			ExecutorConfig: noop.ExecutorConfig{
+				ExternalHooks: noop.ExecutorConfigExternalHooks{
+					JobHandler: func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
+						return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
+							MaxStdoutFileLength:   system.MaxStdoutFileLength,
+							MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+							MaxStderrFileLength:   system.MaxStderrFileLength,
+							MaxStderrReturnLength: system.MaxStderrReturnLength,
+						})
+					},
 				},
 			},
 		},
-	},
-	Spec: model.Spec{
-		Engine: model.EngineNoop,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-		},
-	},
-	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
-	JobCheckers:    WaitUntilSuccessful(1),
+		Spec:           testutils.MakeSpecWithOpts(t),
+		ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
+		JobCheckers:    WaitUntilSuccessful(1),
+	}
 }
 
 type NoopTest struct {
@@ -48,5 +47,5 @@ func Example_noop() {
 }
 
 func (suite *NoopTest) TestRunNoop() {
-	suite.RunScenario(noopScenario)
+	suite.RunScenario(noopScenario(suite.T()))
 }

@@ -8,10 +8,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/stretchr/testify/suite"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -34,7 +37,7 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   0,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(0),
@@ -50,7 +53,7 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   1,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{
@@ -71,7 +74,7 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   5,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{
@@ -97,7 +100,7 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
+					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
@@ -112,7 +115,7 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 				},
 			},
 		},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{

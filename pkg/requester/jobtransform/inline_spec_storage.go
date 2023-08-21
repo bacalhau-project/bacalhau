@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	modelsutils "github.com/bacalhau-project/bacalhau/pkg/models/utils"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/copy"
 	"github.com/c2h5oh/datasize"
@@ -22,10 +24,10 @@ const (
 // store their data inline and move any that are too large into IPFS storage. It
 // also limits the total size taken up by inline specs and if this value is
 // exceeded it will move the largest specs into IPFS.
-func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
-	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		hasInline := provider.Has(ctx, model.StorageSourceInline)
-		hasIPFS := provider.Has(ctx, model.StorageSourceIPFS)
+func NewInlineStoragePinner(provider storage.StorageProvider) PostTransformer {
+	return func(ctx context.Context, j *models.Job) (modified bool, err error) {
+		hasInline := provider.Has(ctx, model.StorageSourceInline.String())
+		hasIPFS := provider.Has(ctx, model.StorageSourceIPFS.String())
 		if !hasInline || !hasIPFS {
 			log.Ctx(ctx).Warn().Msg("Skipping inline data transform because storage not installed")
 			return false, nil
@@ -34,9 +36,9 @@ func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
 		return copy.CopyOversize(
 			ctx,
 			provider,
-			j.Spec.AllStorageSpecs(),
-			model.StorageSourceInline,
-			model.StorageSourceIPFS,
+			modelsutils.AllInputSources(j),
+			model.StorageSourceInline.String(),
+			model.StorageSourceIPFS.String(),
 			maximumIndividualSpec,
 			maximumTotalSpec,
 		)

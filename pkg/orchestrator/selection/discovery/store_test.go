@@ -7,8 +7,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
@@ -35,41 +36,42 @@ func TestStoreNodeDiscovererSuite(t *testing.T) {
 
 func (s *StoreNodeDiscovererSuite) TestFindNodes() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineDocker, model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo2 := generateNodeInfo("node2", models.EngineDocker, models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
 	// both nodes are returned when asked for docker nodes
-	job := model.Job{}
-	job.Spec.Engine = model.EngineDocker
-	peerIDs, err := s.discoverer.FindNodes(context.Background(), job)
+	job := mock.Job()
+	job.Task().Engine.Type = models.EngineDocker
+
+	peerIDs, err := s.discoverer.FindNodes(context.Background(), *job)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
 
 	// only node2 is returned when asked for noop nodes
-	job.Spec.Engine = model.EngineNoop
-	peerIDs, err = s.discoverer.FindNodes(context.Background(), job)
+	job2 := mock.Job()
+	peerIDs, err = s.discoverer.FindNodes(context.Background(), *job2)
 	s.NoError(err)
 	s.Empty(peerIDs)
 }
 
 func (s *StoreNodeDiscovererSuite) TestFindNodes_Empty() {
-	peerIDs, err := s.discoverer.FindNodes(context.Background(), model.Job{})
+	peerIDs, err := s.discoverer.FindNodes(context.Background(), *mock.Job())
 	s.NoError(err)
 	s.Empty(peerIDs)
 }
 
-func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
-	return model.NodeInfo{
+func generateNodeInfo(id string, engines ...string) models.NodeInfo {
+	return models.NodeInfo{
 		PeerInfo: peer.AddrInfo{
 			ID: peer.ID(id),
 			Addrs: []multiaddr.Multiaddr{
 				multiaddr.StringCast("/ip4/0.0.0.0/tcp/1234"),
 			},
 		},
-		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: &model.ComputeNodeInfo{
+		NodeType: models.NodeTypeCompute,
+		ComputeNodeInfo: &models.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}
