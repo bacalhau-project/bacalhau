@@ -75,7 +75,7 @@ except ApiException as e:
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
+All URIs are relative to *https://bootstrap.production.bacalhau.org:1234/*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------

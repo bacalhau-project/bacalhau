@@ -63,11 +63,16 @@ def init_config():
     # Parse out defaults and override with environment variables if they exist
     # before setting the configuration host.
     u = urlparse(conf.host)
+    api_scheme: str = "https"
+    scheme: str = os.getenv("BACALHAU_HTTP", "")
+    if scheme:
+        api_scheme = "http"
+
     api_host: str = os.getenv("BACALHAU_API_HOST", u.hostname)
     api_port: str = os.getenv("BACALHAU_API_PORT", str(u.port))
 
     # TODO: Allow TLS and not just http
-    conf.host = "http://{}:{}".format(api_host, api_port)
+    conf.host = "{}://{}:{}".format(api_scheme, api_host, api_port)
     log.debug("Host is set to: %s", conf.host)
 
     # Remove trailing slash from host

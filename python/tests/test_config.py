@@ -100,25 +100,31 @@ def test_init_config():
 
     conf = init_config()
     assert isinstance(conf, Configuration)
+    assert conf.host == "https://bootstrap.production.bacalhau.org:1234"
+
+    os.environ["BACALHAU_HTTP"] = "1"
+    conf = init_config()
+    assert isinstance(conf, Configuration)
     assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
+    del os.environ["BACALHAU_HTTP"]
 
     os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
     os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
     assert isinstance(conf, Configuration)
-    assert conf.host == "http://1.1.1.1:9999"
+    assert conf.host == "https://1.1.1.1:9999"
 
     del os.environ["BACALHAU_API_HOST"]
     os.environ["BACALHAU_API_PORT"] = "4321"
     conf = init_config()
     assert isinstance(conf, Configuration)
-    assert conf.host == "http://bootstrap.production.bacalhau.org:4321"
+    assert conf.host == "https://bootstrap.production.bacalhau.org:4321"
 
     os.environ["BACALHAU_API_HOST"] = "mycluster.com"
     del os.environ["BACALHAU_API_PORT"]
     conf = init_config()
     assert isinstance(conf, Configuration)
-    assert conf.host == "http://mycluster.com:1234"
+    assert conf.host == "https://mycluster.com:1234"
 
 
 def test_sign_for_client():
@@ -136,7 +142,12 @@ def test_sign_for_client():
     from Crypto.Hash import SHA256
     from Crypto.Signature import pkcs1_15
 
-    from bacalhau_sdk.config import get_client_id, get_user_id_key, init_config, sign_for_client
+    from bacalhau_sdk.config import (
+        get_client_id,
+        get_user_id_key,
+        init_config,
+        sign_for_client,
+    )
 
     _ = init_config()
 
