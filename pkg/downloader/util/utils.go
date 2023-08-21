@@ -3,6 +3,7 @@ package util
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -12,7 +13,5 @@ func NewStandardDownloaders(
 	settings *model.DownloaderSettings) downloader.DownloaderProvider {
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
 
-	return model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-		model.StorageSourceIPFS: ipfsDownloader,
-	})
+	return provider.NewSingletonProvider[downloader.Downloader](model.StorageSourceIPFS.String(), ipfsDownloader)
 }

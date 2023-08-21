@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -32,7 +32,7 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *models.BuildVersionInfo) error {
 	if clientVersion == nil {
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil

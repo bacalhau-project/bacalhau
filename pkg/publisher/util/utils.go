@@ -7,7 +7,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
@@ -38,10 +39,10 @@ func NewIPFSPublishers(
 	if err != nil {
 		return nil, err
 	}
-	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop: tracing.Wrap(noopPublisher),
-		model.PublisherIpfs: tracing.Wrap(ipfsPublisher),
-		model.PublisherS3:   tracing.Wrap(s3Publisher),
+	return provider.NewMappedProvider(map[string]publisher.Publisher{
+		models.PublisherNoop: tracing.Wrap(noopPublisher),
+		models.PublisherIPFS: tracing.Wrap(ipfsPublisher),
+		models.PublisherS3:   tracing.Wrap(s3Publisher),
 	}), nil
 }
 
@@ -77,5 +78,5 @@ func NewNoopPublishers(
 	config noop.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisherWithConfig(config)
-	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil
+	return provider.NewNoopProvider[publisher.Publisher](noopPublisher), nil
 }

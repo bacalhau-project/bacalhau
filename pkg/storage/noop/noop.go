@@ -3,17 +3,16 @@ package noop
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type StorageHandlerIsInstalled func(ctx context.Context) (bool, error)
-type StorageHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
-type StorageHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
-type StorageHandlerPrepareStorage func(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error)
-type StorageHandlerCleanupStorage func(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error
-type StorageHandlerUpload func(ctx context.Context, localPath string) (model.StorageSpec, error)
-type StorageHandlerExplode func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error)
+type StorageHandlerHasStorageLocally func(ctx context.Context, volume models.InputSource) (bool, error)
+type StorageHandlerGetVolumeSize func(ctx context.Context, volume models.InputSource) (uint64, error)
+type StorageHandlerPrepareStorage func(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error)
+type StorageHandlerCleanupStorage func(ctx context.Context, storageSpec models.InputSource, volume storage.StorageVolume) error
+type StorageHandlerUpload func(ctx context.Context, localPath string) (models.SpecConfig, error)
 
 type StorageConfigExternalHooks struct {
 	IsInstalled       StorageHandlerIsInstalled
@@ -22,7 +21,6 @@ type StorageConfigExternalHooks struct {
 	PrepareStorage    StorageHandlerPrepareStorage
 	CleanupStorage    StorageHandlerCleanupStorage
 	Upload            StorageHandlerUpload
-	Explode           StorageHandlerExplode
 }
 
 type StorageConfig struct {
@@ -60,7 +58,7 @@ func (s *NoopStorage) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (s *NoopStorage) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (s *NoopStorage) HasStorageLocally(ctx context.Context, volume models.InputSource) (bool, error) {
 	if s.Config.ExternalHooks.HasStorageLocally != nil {
 		handler := s.Config.ExternalHooks.HasStorageLocally
 		return handler(ctx, volume)
@@ -69,7 +67,7 @@ func (s *NoopStorage) HasStorageLocally(ctx context.Context, volume model.Storag
 }
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
-func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	if s.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := s.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)
@@ -77,7 +75,7 @@ func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume model.StorageSpe
 	return 0, nil
 }
 
-func (s *NoopStorage) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+func (s *NoopStorage) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	if s.Config.ExternalHooks.PrepareStorage != nil {
 		handler := s.Config.ExternalHooks.PrepareStorage
 		return handler(ctx, storageSpec)
@@ -89,28 +87,21 @@ func (s *NoopStorage) PrepareStorage(ctx context.Context, storageSpec model.Stor
 	}, nil
 }
 
-func (s *NoopStorage) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (s *NoopStorage) Upload(ctx context.Context, localPath string) (models.SpecConfig, error) {
 	if s.Config.ExternalHooks.Upload != nil {
 		handler := s.Config.ExternalHooks.Upload
 		return handler(ctx, localPath)
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           "test",
-		Path:          "/",
+	return models.SpecConfig{
+		Type: models.StorageSourceIPFS,
+		Params: map[string]interface{}{
+			"CID": "test",
+		},
 	}, nil
 }
 
-func (s *NoopStorage) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	if s.Config.ExternalHooks.Explode != nil {
-		handler := s.Config.ExternalHooks.Explode
-		return handler(ctx, spec)
-	}
-	return []model.StorageSpec{}, nil
-}
-
 //nolint:lll // Exception to the long rule
-func (s *NoopStorage) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+func (s *NoopStorage) CleanupStorage(ctx context.Context, storageSpec models.InputSource, volume storage.StorageVolume) error {
 	if s.Config.ExternalHooks.CleanupStorage != nil {
 		handler := s.Config.ExternalHooks.CleanupStorage
 		return handler(ctx, storageSpec, volume)

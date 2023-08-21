@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,10 +31,10 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 }
 
 func (e EventEmitter) EmitJobCreated(
-	ctx context.Context, job model.Job) {
+	ctx context.Context, job models.Job) {
 	event := model.JobEvent{
-		JobID:        job.Metadata.ID,
-		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
+		JobID:        job.ID,
+		SourceNodeID: job.Meta[models.MetaRequesterID],
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
 	}
@@ -59,14 +60,12 @@ func (e EventEmitter) EmitRunComplete(ctx context.Context, response compute.RunR
 	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsProposed))
 }
 
-func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID model.ExecutionID, err error) {
+func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID string, err error) {
 	event := model.JobEvent{
-		SourceNodeID: executionID.NodeID,
-		JobID:        executionID.JobID,
-		ExecutionID:  executionID.ExecutionID,
-		EventName:    model.JobEventComputeError,
-		Status:       err.Error(),
-		EventTime:    time.Now(),
+		ExecutionID: executionID,
+		EventName:   model.JobEventComputeError,
+		Status:      err.Error(),
+		EventTime:   time.Now(),
 	}
 	e.EmitEventSilently(ctx, event)
 }

@@ -11,14 +11,14 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type BidderSuite struct {
@@ -58,22 +58,18 @@ func (s *BidderSuite) SetupTest() {
 
 func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 	ctx := context.Background()
-	job, err := model.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
 	askForBidRequest := compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			JobID:       job.ID(),
-			ExecutionID: uuid.NewString(),
-		},
-		Job:             *job,
+		Execution:       execution,
 		WaitForApproval: true,
 	}
 
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: model.ResourceUsageData{}})
+	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.ExecutionState
+		expectedExecutionState store.LocalExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -151,7 +147,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 			tt.mockExpectations()
 			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.ExecutionID)
+			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
 				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
 			} else {
@@ -163,22 +159,16 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 	ctx := context.Background()
-	job, err := model.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
 	askForBidRequest := compute.AskForBidRequest{
-		ExecutionMetadata: compute.ExecutionMetadata{
-			JobID:       job.ID(),
-			ExecutionID: uuid.NewString(),
-		},
-		Job:             *job,
+		Execution:       mock.ExecutionForJob(mock.Job()),
 		WaitForApproval: false,
 	}
 
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: model.ResourceUsageData{}})
+	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.ExecutionState
+		expectedExecutionState store.LocalExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -256,7 +246,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 			tt.mockExpectations()
 			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.ExecutionID)
+			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
 				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
 			} else {

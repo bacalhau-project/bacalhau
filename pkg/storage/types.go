@@ -3,26 +3,27 @@ package storage
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // StorageProvider returns a storage that can be used by the job to store data.
-type StorageProvider = model.Provider[model.StorageSourceType, Storage]
+type StorageProvider = provider.Provider[Storage]
 
 type Storage interface {
-	model.Providable
+	provider.Providable
 
-	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
+	HasStorageLocally(context.Context, models.InputSource) (bool, error)
 
 	// how big is the given volume in terms of resource consumption?
-	GetVolumeSize(context.Context, model.StorageSpec) (uint64, error)
+	GetVolumeSize(context.Context, models.InputSource) (uint64, error)
 
-	PrepareStorage(context.Context, model.StorageSpec) (StorageVolume, error)
+	PrepareStorage(context.Context, models.InputSource) (StorageVolume, error)
 
-	CleanupStorage(context.Context, model.StorageSpec, StorageVolume) error
+	CleanupStorage(context.Context, models.InputSource, StorageVolume) error
 
-	// given a local file path - "store" it and return a StorageSpec
-	Upload(context.Context, string) (model.StorageSpec, error)
+	// given a local file path - "store" it and return a SpecConfig
+	Upload(context.Context, string) (models.SpecConfig, error)
 }
 
 // a storage entity that is consumed are produced by a job

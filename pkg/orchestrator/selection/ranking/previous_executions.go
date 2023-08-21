@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
 )
@@ -28,21 +28,21 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // - Rank 0: Node has already executed the job.
 // - Rank -1: Node has executed the job more than once, has rejected a bid, or produced a invalid result
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
-	job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)
-	jobState, err := s.jobStore.GetJobState(ctx, job.ID())
+	executions, err := s.jobStore.GetExecutions(ctx, job.ID)
 	if err == nil {
-		for _, execution := range jobState.Executions {
+		for _, execution := range executions {
 			if _, ok := previousExecutors[execution.NodeID]; !ok {
 				previousExecutors[execution.NodeID] = 0
 			}
 			previousExecutors[execution.NodeID]++
-			if !execution.State.IsDiscarded() {
+			if !execution.IsDiscarded() {
 				toFilterOut[execution.NodeID] = true
 			}
-			if execution.State == model.ExecutionStateAskForBidRejected {
+			if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true
 			}
 		}

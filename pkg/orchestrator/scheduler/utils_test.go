@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
@@ -14,21 +13,21 @@ import (
 
 type PlanMatcher struct {
 	t                         *testing.T
-	JobState                  model.JobStateType
+	JobState                  models.JobStateType
 	Evaluation                *models.Evaluation
 	NewExecutionsNodes        []peer.ID
-	NewExecutionsDesiredState model.ExecutionDesiredState
-	StoppedExecutions         []model.ExecutionID
-	ApprovedExecutions        []model.ExecutionID
+	NewExecutionsDesiredState models.ExecutionDesiredStateType
+	StoppedExecutions         []string
+	ApprovedExecutions        []string
 }
 
 type PlanMatcherParams struct {
-	JobState                 model.JobStateType
+	JobState                 models.JobStateType
 	Evaluation               *models.Evaluation
 	NewExecutionsNodes       []peer.ID
-	NewExecutionDesiredState model.ExecutionDesiredState
-	StoppedExecutions        []model.ExecutionID
-	ApprovedExecutions       []model.ExecutionID
+	NewExecutionDesiredState models.ExecutionDesiredStateType
+	StoppedExecutions        []string
+	ApprovedExecutions       []string
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
@@ -60,9 +59,9 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 	}
 
 	// check new executions match the expected nodes
-	newExecutionNodes := make(map[string]model.ExecutionDesiredState)
+	newExecutionNodes := make(map[string]models.ExecutionDesiredStateType)
 	for _, execution := range plan.NewExecutions {
-		newExecutionNodes[execution.NodeID] = execution.DesiredState
+		newExecutionNodes[execution.NodeID] = execution.DesiredState.StateType
 	}
 	if len(newExecutionNodes) != len(m.NewExecutionsNodes) {
 		m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
@@ -80,14 +79,14 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 		}
 	}
 
-	stoppedExecutions := make(map[model.ExecutionID]struct{})
-	approvedExecutions := make(map[model.ExecutionID]struct{})
+	stoppedExecutions := make(map[string]struct{})
+	approvedExecutions := make(map[string]struct{})
 	for _, execution := range plan.UpdatedExecutions {
-		if execution.DesiredState == model.ExecutionDesiredStateStopped {
-			stoppedExecutions[execution.Execution.ID()] = struct{}{}
+		if execution.DesiredState == models.ExecutionDesiredStateStopped {
+			stoppedExecutions[execution.Execution.ID] = struct{}{}
 		}
-		if execution.DesiredState == model.ExecutionDesiredStateRunning {
-			approvedExecutions[execution.Execution.ID()] = struct{}{}
+		if execution.DesiredState == models.ExecutionDesiredStateRunning {
+			approvedExecutions[execution.Execution.ID] = struct{}{}
 		}
 	}
 
@@ -123,10 +122,10 @@ func (m PlanMatcher) String() string {
 		m.JobState, m.Evaluation, m.NewExecutionsNodes, m.StoppedExecutions, m.ApprovedExecutions)
 }
 
-func mockNodeInfo(t *testing.T, nodeID string) *model.NodeInfo {
+func mockNodeInfo(t *testing.T, nodeID string) *models.NodeInfo {
 	id, err := peer.Decode(nodeID)
 	require.NoError(t, err)
-	return &model.NodeInfo{
+	return &models.NodeInfo{
 		PeerInfo: peer.AddrInfo{
 			ID: id,
 		},

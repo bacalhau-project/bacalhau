@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
@@ -48,145 +47,143 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 	// TODO: notifying nodes for the same plan can be done in parallel, but we should limit
 	//  the total number of concurrent notifications across plans to avoid overloading the network.
 	for _, exec := range plan.NewExecutions {
-		waitForApproval := exec.DesiredState == model.ExecutionDesiredStatePending
-		s.doNotifyAskForBid(ctx, *plan.Job, exec.ID(), waitForApproval)
+		waitForApproval := exec.DesiredState.StateType == models.ExecutionDesiredStatePending
+		s.doNotifyAskForBid(ctx, exec, waitForApproval)
 	}
 	for _, u := range plan.UpdatedExecutions {
-		observedState := u.Execution.State
+		observedState := u.Execution.ComputeState.StateType
 
 		switch u.DesiredState {
-		case model.ExecutionDesiredStatePending:
-			if observedState == model.ExecutionStateNew {
-				s.doNotifyAskForBid(ctx, *plan.Job, u.Execution.ID(), true)
+		case models.ExecutionDesiredStatePending:
+			if observedState == models.ExecutionStateNew {
+				s.doNotifyAskForBid(ctx, u.Execution, true)
 			}
-		case model.ExecutionDesiredStateRunning:
-			if observedState == model.ExecutionStateAskForBidAccepted {
-				s.doNotifyBidAccepted(ctx, u.Execution.ID())
+		case models.ExecutionDesiredStateRunning:
+			if observedState == models.ExecutionStateAskForBidAccepted {
+				s.doNotifyBidAccepted(ctx, u.Execution)
 			}
-			if observedState == model.ExecutionStateNew {
-				s.doNotifyAskForBid(ctx, *plan.Job, u.Execution.ID(), false)
+			if observedState == models.ExecutionStateNew {
+				s.doNotifyAskForBid(ctx, u.Execution, false)
 			}
-		case model.ExecutionDesiredStateStopped:
-			if observedState == model.ExecutionStateAskForBidAccepted {
-				s.doNotifyBidRejected(ctx, u.Execution.ID())
-			} else if !observedState.IsTerminal() {
-				s.notifyCancel(ctx, u.Comment, u.Execution.ID())
+		case models.ExecutionDesiredStateStopped:
+			if observedState == models.ExecutionStateAskForBidAccepted {
+				s.doNotifyBidRejected(ctx, u.Execution)
+			} else if !u.Execution.IsTerminalComputeState() {
+				s.notifyCancel(ctx, u.Comment, u.Execution)
 			}
 		}
 	}
 }
 
 // doNotifyAskForBid notifies the target node to bid for the given execution.
-func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job, executionID model.ExecutionID, waitForApproval bool) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s asking node %s to bid with executionID %s",
-		s.id, executionID.NodeID, executionID.ExecutionID)
+func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, execution *models.Execution, waitForApproval bool) {
+	log.Ctx(ctx).Debug().Msgf("Requester node %s asking node %s to bid with execution %s",
+		s.id, execution.NodeID, execution.ID)
 
 	// Notify the compute node
 	request := compute.AskForBidRequest{
-		Job:             job,
+		Execution:       execution,
 		WaitForApproval: waitForApproval,
-		ExecutionMetadata: compute.ExecutionMetadata{
-			ExecutionID: executionID.ExecutionID,
-			JobID:       executionID.JobID,
-		},
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: executionID.NodeID,
+			TargetPeerID: execution.NodeID,
 		},
 	}
 	_, err := s.computeService.AskForBid(ctx, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s to bid for execution %s",
-			executionID.NodeID, executionID.ExecutionID)
+			execution.NodeID, execution.ID)
 		return
 	}
 
 	// Update the execution state if the notification was successful
-	newState := model.ExecutionStateAskForBid
+	newState := models.ExecutionStateAskForBid
 	if !waitForApproval {
-		newState = model.ExecutionStateBidAccepted
+		newState = models.ExecutionStateBidAccepted
 	}
-	s.updateExecutionState(ctx, executionID, newState, model.ExecutionStateNew)
+	s.updateExecutionState(ctx, execution, newState, models.ExecutionStateNew)
 }
 
 // doNotifyBidAccepted notifies the target node that the bid was accepted.
-func (s *ComputeForwarder) doNotifyBidAccepted(ctx context.Context, executionID model.ExecutionID) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidAccepted for bid: %s", s.id, executionID.ExecutionID)
+func (s *ComputeForwarder) doNotifyBidAccepted(ctx context.Context, execution *models.Execution) {
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidAccepted for bid: %s", s.id, execution.ID)
 	request := compute.BidAcceptedRequest{
-		ExecutionID: executionID.ExecutionID,
+		ExecutionID: execution.ID,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: executionID.NodeID,
+			TargetPeerID: execution.NodeID,
 		},
 	}
 	_, err := s.computeService.BidAccepted(ctx, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that bid %s was accepted",
-			executionID.NodeID, executionID.ExecutionID)
+			execution.NodeID, execution.ID)
 		return
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidAccepted, model.ExecutionStateAskForBidAccepted)
+	s.updateExecutionState(ctx, execution, models.ExecutionStateBidAccepted, models.ExecutionStateAskForBidAccepted)
 }
 
 // doNotifyBidRejected notifies the target node that the bid was rejected.
-func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, executionID model.ExecutionID) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidRejected for bid: %s", s.id, executionID.ExecutionID)
+func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, execution *models.Execution) {
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidRejected for bid: %s", s.id, execution.ID)
 	request := compute.BidRejectedRequest{
-		ExecutionID: executionID.ExecutionID,
+		ExecutionID: execution.ID,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: executionID.NodeID,
+			TargetPeerID: execution.NodeID,
 		},
 	}
 	_, err := s.computeService.BidRejected(ctx, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that bid %s was rejected",
-			executionID.NodeID, executionID.ExecutionID)
+			execution.NodeID, execution.ID)
 		return
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
+	s.updateExecutionState(ctx, execution, models.ExecutionStateBidRejected, models.ExecutionStateAskForBidAccepted)
 }
 
 // notifyCancel notifies the target node that the execution was canceled.
-func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, executionID model.ExecutionID) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, executionID.ExecutionID)
+func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, execution *models.Execution) {
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, execution.ID)
 
 	request := compute.CancelExecutionRequest{
-		ExecutionID:   executionID.ExecutionID,
+		ExecutionID:   execution.ID,
 		Justification: message,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: executionID.NodeID,
+			TargetPeerID: execution.NodeID,
 		},
 	}
 	_, err := s.computeService.CancelExecution(ctx, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was canceled",
-			executionID.NodeID, executionID.ExecutionID)
+			execution.NodeID, execution.ID)
 		return
 	}
 
 	// Update the execution state even if the notification failed
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateCancelled)
+	s.updateExecutionState(ctx, execution, models.ExecutionStateCancelled)
 }
 
 // updateExecutionState updates the execution state in the job store.
-func (s *ComputeForwarder) updateExecutionState(ctx context.Context, executionID model.ExecutionID,
-	newState model.ExecutionStateType, expectedStates ...model.ExecutionStateType) {
+func (s *ComputeForwarder) updateExecutionState(ctx context.Context, execution *models.Execution,
+	newState models.ExecutionStateType, expectedStates ...models.ExecutionStateType) {
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: executionID,
-		NewValues: model.ExecutionState{
-			State: newState,
+		ExecutionID: execution.ID,
+		NewValues: models.Execution{
+			ComputeState: models.State[models.ExecutionStateType]{
+				StateType: newState,
+			},
 		},
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedStates: expectedStates,
 		},
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("Failed to update execution %s to state %s", executionID.ExecutionID, newState)
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to update execution %s to state %s", execution.ID, newState)
 	}
 }

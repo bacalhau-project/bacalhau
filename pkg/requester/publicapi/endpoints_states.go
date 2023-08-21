@@ -1,11 +1,11 @@
 package publicapi
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -43,7 +43,7 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
-	js, err := getJobStateFromRequest(ctx, s, stateReq)
+	js, err := legacy.GetJobState(ctx, s.jobStore, stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,8 +57,4 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (model.JobState, error) {
-	return apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,7 +30,7 @@ var (
 )
 
 // Get returns the overall codebase version. It's for detecting what code a binary was built from.
-func Get() *model.BuildVersionInfo {
+func Get() *models.BuildVersionInfo {
 	revision, revisionTime, err := getBuildInformation()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not build client information")
@@ -41,7 +41,7 @@ func Get() *model.BuildVersionInfo {
 		log.Fatal().Msgf("Could not parse GITVERSION during build - %s", GITVERSION)
 	}
 
-	versionInfo := &model.BuildVersionInfo{
+	versionInfo := &models.BuildVersionInfo{
 		Major:      strconv.FormatInt(s.Major(), 10), //nolint:gomnd // base10, magic number appropriate
 		Minor:      strconv.FormatInt(s.Minor(), 10), //nolint:gomnd // base10, magic number appropriate
 		GitVersion: GITVERSION,

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -34,14 +34,14 @@ func (n NodeInfoPublisherIntervalConfig) IsEagerPublishEnabled() bool {
 }
 
 type NodeInfoPublisherParams struct {
-	PubSub           pubsub.Publisher[model.NodeInfo]
-	NodeInfoProvider model.NodeInfoProvider
+	PubSub           pubsub.Publisher[models.NodeInfo]
+	NodeInfoProvider models.NodeInfoProvider
 	IntervalConfig   NodeInfoPublisherIntervalConfig
 }
 
 type NodeInfoPublisher struct {
-	pubSub           pubsub.Publisher[model.NodeInfo]
-	nodeInfoProvider model.NodeInfoProvider
+	pubSub           pubsub.Publisher[models.NodeInfo]
+	nodeInfoProvider models.NodeInfoProvider
 	intervalConfig   NodeInfoPublisherIntervalConfig
 	stopped          bool
 	stopChannel      chan struct{}

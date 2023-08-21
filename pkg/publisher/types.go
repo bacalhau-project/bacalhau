@@ -3,20 +3,21 @@ package publisher
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // PublisherProvider returns a publisher for the given publisher type
-type PublisherProvider = model.Provider[model.Publisher, Publisher]
+type PublisherProvider = provider.Provider[Publisher]
 
 // Publisher is the interface for publishing results of a job
 // The job spec will choose which publisher(s) it wants to use
 // (there can be multiple publishers configured)
 type Publisher interface {
-	model.Providable
+	provider.Providable
 
 	// Validate the job's publisher configuration
-	ValidateJob(ctx context.Context, j model.Job) error
+	ValidateJob(ctx context.Context, j models.Job) error
 
 	// compute node
 	//
@@ -30,7 +31,7 @@ type Publisher interface {
 	PublishResult(
 		ctx context.Context,
 		executionID string,
-		job model.Job,
+		job models.Job,
 		resultPath string,
-	) (model.StorageSpec, error)
+	) (models.SpecConfig, error)
 }

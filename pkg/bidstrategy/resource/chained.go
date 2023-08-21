@@ -4,10 +4,10 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ChainedResourceBidStrategy struct {
@@ -26,7 +26,7 @@ func (c *ChainedResourceBidStrategy) AddStrategy(strategy bidstrategy.ResourceBi
 // ShouldBidBasedOnUsage Iterate over all strategies, and return shouldBid if no error is thrown
 // and none of the strategies return should not bid.
 func (c *ChainedResourceBidStrategy) ShouldBidBasedOnUsage(
-	ctx context.Context, request bidstrategy.BidStrategyRequest, usage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	return c.delegate(ctx, func(strategy bidstrategy.ResourceBidStrategy) (bidstrategy.BidStrategyResponse, error) {
 		return strategy.ShouldBidBasedOnUsage(ctx, request, usage)
 	})

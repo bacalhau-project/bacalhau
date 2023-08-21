@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -29,9 +29,9 @@ const JobInfoTopic = "bacalhau-job-info"
 const NodeInfoTopic = "bacalhau-node-info"
 
 type FeatureConfig struct {
-	Engines    []model.Engine
-	Publishers []model.Publisher
-	Storages   []model.StorageSourceType
+	Engines    []string
+	Publishers []string
+	Storages   []string
 }
 
 // Node configuration
@@ -136,7 +136,7 @@ func NewNode(
 	}
 
 	// PubSub to publish node info to the network
-	nodeInfoPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
+	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeInfo](libp2p.PubSubParams{
 		Host:      config.Host,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
@@ -170,8 +170,8 @@ func NewNode(
 	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
 
 	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
 	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
 		return nil, err

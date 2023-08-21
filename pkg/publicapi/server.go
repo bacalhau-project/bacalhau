@@ -10,7 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/docs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -60,7 +60,7 @@ type APIServerParams struct {
 	Address          string
 	Port             uint16
 	Host             host.Host
-	NodeInfoProvider model.NodeInfoProvider
+	NodeInfoProvider models.NodeInfoProvider
 	Config           APIServerConfig
 }
 
@@ -69,7 +69,7 @@ type APIServer struct {
 	Address          string
 	Port             uint16
 	host             host.Host
-	nodeInfoProvider model.NodeInfoProvider
+	nodeInfoProvider models.NodeInfoProvider
 	config           APIServerConfig
 	handlers         map[string]http.Handler
 	handlersMu       sync.Mutex

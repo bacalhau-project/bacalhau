@@ -42,6 +42,15 @@ func (m *SyncMap[K, V]) Iter(ranger func(key K, value V) bool) {
 	})
 }
 
+func (m *SyncMap[K, V]) Keys() []K {
+	var keys []K
+	m.Iter(func(key K, value V) bool {
+		keys = append(keys, key)
+		return true
+	})
+	return keys
+}
+
 func (m *SyncMap[K, V]) String() string {
 	var sb strings.Builder
 	sb.Write([]byte(`{`))

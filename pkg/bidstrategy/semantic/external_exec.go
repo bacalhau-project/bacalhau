@@ -8,11 +8,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ExternalCommandStrategyParams struct {
@@ -42,7 +42,7 @@ func (s *ExternalCommandStrategy) ShouldBid(
 	// TODO: Use context to trace exec call
 
 	data := bidstrategy.GetJobSelectionPolicyProbeData(request)
-	jsonData, err := model.JSONMarshalWithMax(data)
+	jsonData, err := marshaller.JSONMarshalWithMax(data)
 
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{},

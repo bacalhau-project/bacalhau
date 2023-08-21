@@ -8,12 +8,12 @@ set -euxo pipefail
 
 ALLOWLIST=./http-domain-allowlist.txt
 
-TYPE=$(echo "$BACALHAU_JOB_SELECTION_PROBE_DATA" | jq -r '.spec.Network.Type')
+TYPE=$(echo "$BACALHAU_JOB_SELECTION_PROBE_DATA" | jq -r '.Job.Tasks[0].Network.Type')
 test "$TYPE" = 'HTTP' || test "$TYPE" = 'None'
 
 cd "$(dirname $0)"
 MISSING=$(comm -13 \
     <(cat "$ALLOWLIST" | grep -v '#' | sort) \
-    <(echo "$BACALHAU_JOB_SELECTION_PROBE_DATA" | jq -r '.spec.Network.Domains[]' | sort))
+    <(echo "$BACALHAU_JOB_SELECTION_PROBE_DATA" | jq -r '.Job.Tasks[0].Network.Domains[]' | sort))
 
 test -z "$MISSING"

@@ -33,7 +33,7 @@ func NewTimeoutStrategy(params TimeoutStrategyParams) *TimeoutStrategy {
 }
 
 func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Spec.Timeout <= 0 {
+	if request.Job.Task().Timeouts.ExecutionTimeout <= 0 {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
@@ -41,30 +41,33 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 	// converted to a time.Duration (which is an int64 underneath), so make sure
 	// that it can fit into it.
 	var maxTimeout = int64(model.NoJobTimeout.Seconds())
-	if request.Job.Spec.Timeout > maxTimeout {
+	if request.Job.Task().Timeouts.ExecutionTimeout > maxTimeout {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    fmt.Sprintf("job timeout %d exceeds maximum possible value %d", request.Job.Spec.Timeout, maxTimeout),
+			Reason: fmt.Sprintf("job timeout %d exceeds maximum possible value %d",
+				request.Job.Task().Timeouts.ExecutionTimeout, maxTimeout),
 		}, nil
 	}
 
 	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
-		if request.Job.Metadata.ClientID == clientID {
+		if request.Job.Namespace == clientID {
 			return bidstrategy.NewShouldBidResponse(), nil
 		}
 	}
 
 	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
-	if s.maxJobExecutionTimeout > 0 && request.Job.Spec.GetTimeout() > s.maxJobExecutionTimeout {
+	if s.maxJobExecutionTimeout > 0 && request.Job.Task().Timeouts.GetExecutionTimeout() > s.maxJobExecutionTimeout {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    fmt.Sprintf("job timeout %s exceeds maximum allowed %s", request.Job.Spec.GetTimeout(), s.maxJobExecutionTimeout),
+			Reason: fmt.Sprintf("job timeout %s exceeds maximum allowed %s",
+				request.Job.Task().Timeouts.GetExecutionTimeout(), s.maxJobExecutionTimeout),
 		}, nil
 	}
-	if request.Job.Spec.GetTimeout() < s.minJobExecutionTimeout {
+	if request.Job.Task().Timeouts.GetExecutionTimeout() < s.minJobExecutionTimeout {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    fmt.Sprintf("job timeout %s below minimum allowed %s", request.Job.Spec.GetTimeout(), s.minJobExecutionTimeout),
+			Reason: fmt.Sprintf("job timeout %s below minimum allowed %s",
+				request.Job.Task().Timeouts.GetExecutionTimeout(), s.minJobExecutionTimeout),
 		}, nil
 	}
 	return bidstrategy.NewShouldBidResponse(), nil

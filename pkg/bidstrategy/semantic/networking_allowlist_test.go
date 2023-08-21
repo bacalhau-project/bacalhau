@@ -9,15 +9,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type networkAllowlistTestCase struct {
-	Type      model.Network
+	Type      models.Network
 	Domains   []string
 	ShouldBid bool
 }
@@ -32,15 +33,15 @@ func (tc networkAllowlistTestCase) String() string {
 }
 
 var networkAllowlistTestCases []networkAllowlistTestCase = []networkAllowlistTestCase{
-	{model.NetworkNone, []string{}, true},
-	{model.NetworkFull, []string{}, false},
-	{model.NetworkHTTP, []string{}, true},
-	{model.NetworkHTTP, []string{"example.com"}, true},
-	{model.NetworkFull, []string{"example.com"}, false},
-	{model.NetworkHTTP, []string{"malware.com"}, false},
-	{model.NetworkFull, []string{"malware.com"}, false},
-	{model.NetworkHTTP, []string{"example.com", "proxy.golang.org"}, true},
-	{model.NetworkHTTP, []string{"malware.com", "proxy.golang.org"}, false},
+	{models.NetworkNone, []string{}, true},
+	{models.NetworkFull, []string{}, false},
+	{models.NetworkHTTP, []string{}, true},
+	{models.NetworkHTTP, []string{"example.com"}, true},
+	{models.NetworkFull, []string{"example.com"}, false},
+	{models.NetworkHTTP, []string{"malware.com"}, false},
+	{models.NetworkFull, []string{"malware.com"}, false},
+	{models.NetworkHTTP, []string{"example.com", "proxy.golang.org"}, true},
+	{models.NetworkHTTP, []string{"malware.com", "proxy.golang.org"}, false},
 }
 
 func TestNetworkAllowlistStrategyFiltersDomains(t *testing.T) {
@@ -52,15 +53,13 @@ func TestNetworkAllowlistStrategyFiltersDomains(t *testing.T) {
 
 	for _, testCase := range networkAllowlistTestCases {
 		t.Run(testCase.String(), func(t *testing.T) {
+			job := mock.Job()
+			job.Task().Network = &models.NetworkConfig{
+				Type:    testCase.Type,
+				Domains: testCase.Domains,
+			}
 			resp, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: model.Job{
-					Spec: model.Spec{
-						Network: model.NetworkConfig{
-							Type:    testCase.Type,
-							Domains: testCase.Domains,
-						},
-					},
-				},
+				Job: *job,
 			})
 
 			require.NoError(t, err)

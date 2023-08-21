@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -58,11 +59,11 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
-	execution store.Execution,
+	execution *models.Execution,
 	resultsDir string,
 	cleanup *system.CleanupManager,
 ) (*executor.RunCommandRequest, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Inputs...)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
 	}
@@ -74,7 +75,7 @@ func PrepareRunArguments(
 		return nil
 	})
 
-	var engineArgs *executor.Arguments
+	var engineArgs *models.SpecConfig
 	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
 	// download them before passing it to the wasm executor
 	/*
@@ -91,8 +92,8 @@ func PrepareRunArguments(
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
 		provides more context on the need for the change).
 	*/
-	if execution.Job.Spec.EngineSpec.Engine() == model.EngineWasm {
-		wasmEngine, err := model.DecodeEngineSpec[model.WasmEngineSpec](execution.Job.Spec.EngineSpec)
+	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
+		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
 		if err != nil {
 			return nil, err
 		}
@@ -117,32 +118,19 @@ func PrepareRunArguments(
 			}
 			return nil
 		})
-		engineArgs, err = executor.EncodeArguments(&wasm.Arguments{
-			EntryPoint:           wasmEngine.Entrypoint,
-			Parameters:           wasmEngine.Parameters,
-			EnvironmentVariables: wasmEngine.EnvironmentVariables,
-			EntryModule:          entryModuleVolumes[0],
-			ImportModules:        importModuleVolumes,
-		})
-		if err != nil {
-			return nil, err
+		engineArgs = &models.SpecConfig{
+			Type:   models.EngineWasm,
+			Params: wasmEngine.ToArguments(entryModuleVolumes[0], importModuleVolumes...).ToMap(),
 		}
 	} else {
-		args, err := execution.Job.Spec.EngineSpec.Serialize()
-		if err != nil {
-			return nil, err
-		}
-
-		engineArgs = &executor.Arguments{
-			Params: args,
-		}
+		engineArgs = execution.Job.Task().Engine
 	}
 	return &executor.RunCommandRequest{
-		JobID:        execution.Job.ID(),
+		JobID:        execution.Job.ID,
 		ExecutionID:  execution.ID,
-		Resources:    execution.Job.Spec.Resources,
-		Network:      execution.Job.Spec.Network,
-		Outputs:      execution.Job.Spec.Outputs,
+		Resources:    execution.TotalAllocatedResources(),
+		Network:      execution.Job.Task().Network,
+		Outputs:      execution.Job.Task().ResultPaths,
 		Inputs:       inputVolumes,
 		ResultsDir:   resultsDir,
 		EngineParams: engineArgs,
@@ -156,9 +144,10 @@ func PrepareRunArguments(
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
+	execution := localExecutionState.Execution
 	ctx = log.Ctx(ctx).With().
-		Str("job", execution.Job.ID()).
+		Str("job", execution.Job.ID).
 		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
@@ -174,7 +163,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	operation := "Running"
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, execution, err, operation)
+			e.handleFailure(ctx, localExecutionState, err, operation)
 		}
 	}()
 
@@ -192,9 +181,9 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return fmt.Errorf("failed to get result path: %w", err)
 	}
 
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.EngineSpec.Engine())
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.EngineSpec, err)
+		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
 	}
 
 	if e.failureInjection.IsBadActor {
@@ -225,20 +214,21 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	}
 
 	operation = "Publishing"
-	return e.publish(ctx, execution, resultFolder, runCommandResult)
+	return e.publish(ctx, localExecutionState, resultFolder, runCommandResult)
 }
 
 // Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
-	resultFolder string, result *model.RunCommandResult) (err error) {
+func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
+	resultFolder string, result *models.RunCommandResult) (err error) {
+	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
-	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
 	if err != nil {
-		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 		return
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, execution.Job, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to publish result: %w", err)
 		return
@@ -246,7 +236,6 @@ func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
 
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
-		Str("cid", publishedResult.CID).
 		Msg("Execution published")
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
@@ -268,19 +257,20 @@ func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: execution.RequesterNodeID,
+			TargetPeerID: localExecutionState.RequesterNodeID,
 		},
-		PublishResult:    publishedResult,
+		PublishResult:    &publishedResult,
 		RunCommandResult: result,
 	})
 	return err
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
+	execution := localExecutionState.Execution
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, execution, err, "Canceling")
+			e.handleFailure(ctx, localExecutionState, err, "Canceling")
 		}
 	}()
 
@@ -294,13 +284,14 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (e
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: execution.RequesterNodeID,
+			TargetPeerID: localExecutionState.RequesterNodeID,
 		},
 	})
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState store.LocalExecutionState, err error, operation string) {
+	execution := localExecutionState.Execution
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,
@@ -315,7 +306,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execut
 			ExecutionMetadata: NewExecutionMetadata(execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: e.ID,
-				TargetPeerID: execution.RequesterNodeID,
+				TargetPeerID: localExecutionState.RequesterNodeID,
 			},
 			Err: err.Error(),
 		})

@@ -8,8 +8,6 @@ import (
 // e.g. ipfs / S3 are storage sources
 // there can be multiple drivers for the same source
 // e.g. ipfs fuse vs ipfs api copy
-//
-//go:generate stringer -type=StorageSourceType --trimprefix=StorageSource
 type StorageSourceType int
 
 const (
@@ -24,6 +22,17 @@ const (
 	StorageSourceS3
 	storageSourceDone // must be last
 )
+
+var storageSourceNames = map[StorageSourceType]string{
+	StorageSourceIPFS:           "ipfs",
+	StorageSourceRepoClone:      "repoClone",
+	StorageSourceRepoCloneLFS:   "repoCloneLFS",
+	StorageSourceURLDownload:    "urlDownload",
+	StorageSourceEstuary:        "estuary",
+	StorageSourceInline:         "inline",
+	StorageSourceLocalDirectory: "localDirectory",
+	StorageSourceS3:             "s3",
+}
 
 func ParseStorageSourceType(str string) (StorageSourceType, error) {
 	for typ := storageSourceUnknown + 1; typ < storageSourceDone; typ++ {
@@ -56,6 +65,15 @@ func StorageSourceNames() []string {
 	}
 	return names
 }
+
+func (ss StorageSourceType) String() string {
+	value, ok := storageSourceNames[ss]
+	if !ok {
+		return Unknown
+	}
+	return value
+}
+
 func (ss StorageSourceType) MarshalText() ([]byte, error) {
 	return []byte(ss.String()), nil
 }

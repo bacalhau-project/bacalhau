@@ -14,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
@@ -22,11 +21,17 @@ import (
 const newJobComment = "Job created"
 
 type InMemoryJobStore struct {
-	// we keep pointers to these things because we will update them partially
-	jobs        map[string]model.Job
-	states      map[string]model.JobState
-	history     map[string][]model.JobHistory
-	inprogress  map[string]struct{}
+	// jobs is a map of job ID to job
+	jobs map[string]models.Job
+	// executions is map of execution ID to execution
+	executions map[string]models.Execution
+	// jobExecutions is a map of job ID to list of execution IDs
+	jobExecutions map[string][]string
+	// history is a map of job ID to job history
+	history map[string][]models.JobHistory
+	// inProgress is a set of job IDs that are in progress
+	inProgress map[string]struct{}
+	// evaluations is a map of evaluation ID to evaluation
 	evaluations map[string]models.Evaluation
 	watchers    []jobstore.Watcher
 	watcherLock sync.Mutex
@@ -44,13 +49,14 @@ func WithClock(clock clock.Clock) Option {
 
 func NewInMemoryJobStore(options ...Option) *InMemoryJobStore {
 	res := &InMemoryJobStore{
-		jobs:        make(map[string]model.Job),
-		states:      make(map[string]model.JobState),
-		history:     make(map[string][]model.JobHistory),
-		inprogress:  make(map[string]struct{}),
-		evaluations: make(map[string]models.Evaluation),
-		watchers:    make([]jobstore.Watcher, 1),
-		clock:       clock.New(),
+		jobs:          make(map[string]models.Job),
+		executions:    make(map[string]models.Execution),
+		jobExecutions: make(map[string][]string),
+		history:       make(map[string][]models.JobHistory),
+		inProgress:    make(map[string]struct{}),
+		evaluations:   make(map[string]models.Evaluation),
+		watchers:      make([]jobstore.Watcher, 1),
+		clock:         clock.New(),
 	}
 	for _, opt := range options {
 		opt(res)
@@ -92,23 +98,23 @@ func (d *InMemoryJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.
 // Errors:
 //
 //   - error-job-not-found        		  -- if the job is not found
-func (d *InMemoryJobStore) GetJob(_ context.Context, id string) (model.Job, error) {
+func (d *InMemoryJobStore) GetJob(_ context.Context, id string) (models.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	return d.getJob(id)
 }
 
-func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]model.Job, error) {
+func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]models.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	var result []model.Job
+	var result []models.Job
 
 	if query.ID != "" {
 		j, err := d.getJob(query.ID)
 		if err != nil {
 			return nil, err
 		}
-		return []model.Job{j}, nil
+		return []models.Job{j}, nil
 	}
 
 	for _, j := range maps.Values(d.jobs) {
@@ -116,20 +122,19 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 			break
 		}
 
-		if !query.ReturnAll && query.ClientID != "" && query.ClientID != j.Metadata.ClientID {
+		if !query.ReturnAll && query.Namespace != "" && query.Namespace != j.Namespace {
 			// Job is not for the requesting client, so ignore it.
 			continue
 		}
 
 		// If we are not using include tags, by default every job is included.
-		// If a job is specifically included, that overrides it being excluded.
+		// If a job is specifically excluded, that overrides it being included.
 		included := len(query.IncludeTags) == 0
-		for _, tag := range j.Spec.Annotations {
-			if slices.Contains(query.IncludeTags, model.IncludedTag(tag)) {
+		for tag := range j.Labels {
+			if slices.Contains(query.IncludeTags, tag) {
 				included = true
-				break
 			}
-			if slices.Contains(query.ExcludeTags, model.ExcludedTag(tag)) {
+			if slices.Contains(query.ExcludeTags, tag) {
 				included = false
 				break
 			}
@@ -147,15 +152,15 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 		case "id":
 			if query.SortReverse {
 				// what does it mean to sort by ID?
-				return result[i].Metadata.ID > result[j].Metadata.ID
+				return result[i].ID > result[j].ID
 			} else {
-				return result[i].Metadata.ID < result[j].Metadata.ID
+				return result[i].ID < result[j].ID
 			}
 		case "created_at":
 			if query.SortReverse {
-				return result[i].Metadata.CreatedAt.UTC().Unix() > result[j].Metadata.CreatedAt.UTC().Unix()
+				return result[i].CreateTime > result[j].CreateTime
 			} else {
-				return result[i].Metadata.CreatedAt.UTC().Unix() < result[j].Metadata.CreatedAt.UTC().Unix()
+				return result[i].CreateTime < result[j].CreateTime
 			}
 		default:
 			return false
@@ -165,31 +170,32 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 	return result, nil
 }
 
-func (d *InMemoryJobStore) GetJobState(_ context.Context, jobID string) (model.JobState, error) {
+func (d *InMemoryJobStore) GetExecutions(_ context.Context, jobID string) ([]models.Execution, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	state, ok := d.states[jobID]
+	executionIDs, ok := d.jobExecutions[jobID]
 	if !ok {
-		return model.JobState{}, bacerrors.NewJobNotFound(jobID)
+		return nil, bacerrors.NewJobNotFound(jobID)
 	}
-	return state, nil
+	result := make([]models.Execution, 0, len(executionIDs))
+	for _, id := range executionIDs {
+		result = append(result, d.executions[id])
+	}
+	return result, nil
 }
 
-func (d *InMemoryJobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
+func (d *InMemoryJobStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	var result []model.JobWithInfo
-	for id := range d.inprogress {
-		result = append(result, model.JobWithInfo{
-			Job:   d.jobs[id],
-			State: d.states[id],
-		})
+	var result []models.Job
+	for id := range d.inProgress {
+		result = append(result, d.jobs[id])
 	}
 	return result, nil
 }
 
 func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
+	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	history, ok := d.history[jobID]
@@ -199,13 +205,13 @@ func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
 
 	// We want to filter events to only those that happened after the timestamp provided
 	sinceTime := options.Since
-	eventList := make([]model.JobHistory, 0, len(history))
+	eventList := make([]models.JobHistory, 0, len(history))
 	for _, event := range history {
-		if options.ExcludeExecutionLevel && event.Type == model.JobHistoryTypeExecutionLevel {
+		if options.ExcludeExecutionLevel && event.Type == models.JobHistoryTypeExecutionLevel {
 			continue
 		}
 
-		if options.ExcludeJobLevel && event.Type == model.JobHistoryTypeJobLevel {
+		if options.ExcludeJobLevel && event.Type == models.JobHistoryTypeJobLevel {
 			continue
 		}
 
@@ -220,26 +226,29 @@ func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
 	return history, nil
 }
 
-func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
+func (d *InMemoryJobStore) CreateJob(_ context.Context, job models.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	existingJob, ok := d.jobs[job.Metadata.ID]
+	existingJob, ok := d.jobs[job.ID]
 	if ok {
-		return jobstore.NewErrJobAlreadyExists(existingJob.Metadata.ID)
+		return jobstore.NewErrJobAlreadyExists(existingJob.ID)
 	}
-	d.jobs[job.Metadata.ID] = job
+	job.State = models.NewJobState(models.JobStateTypePending)
+	job.Revision = 1
+	job.CreateTime = d.clock.Now().UTC().UnixNano()
+	job.ModifyTime = d.clock.Now().UTC().UnixNano()
+	job.Normalize()
+
+	err := job.Validate()
+	if err != nil {
+		return err
+	}
+	d.jobs[job.ID] = job
 
 	// populate job state
-	jobState := model.JobState{
-		JobID:      job.Metadata.ID,
-		State:      model.JobStateNew,
-		Version:    1,
-		CreateTime: d.clock.Now().UTC(),
-		UpdateTime: d.clock.Now().UTC(),
-	}
-	d.states[job.Metadata.ID] = jobState
-	d.inprogress[job.Metadata.ID] = struct{}{}
-	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
+	d.jobExecutions[job.ID] = []string{}
+	d.inProgress[job.ID] = struct{}{}
+	d.appendJobHistory(job, models.JobStateTypePending, newJobComment)
 
 	d.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, job)
 
@@ -251,8 +260,8 @@ func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
 	job := d.jobs[jobID]
 
 	delete(d.jobs, jobID)
-	delete(d.states, jobID)
-	delete(d.inprogress, jobID)
+	delete(d.jobExecutions, jobID)
+	delete(d.inProgress, jobID)
 	delete(d.history, jobID)
 
 	d.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, job)
@@ -262,9 +271,9 @@ func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
 // helper method to read a single job from memory. This is used by both GetJob and GetJobs.
 // It is important that we don't attempt to acquire a lock inside this method to avoid deadlocks since
 // the callers are expected to be holding a lock, and golang doesn't support reentrant locks.
-func (d *InMemoryJobStore) getJob(id string) (model.Job, error) {
-	if len(id) < model.ShortIDLength {
-		return model.Job{}, bacerrors.NewJobNotFound(id)
+func (d *InMemoryJobStore) getJob(id string) (models.Job, error) {
+	if len(id) < models.ShortIDLength {
+		return models.Job{}, bacerrors.NewJobNotFound(id)
 	}
 
 	// support for short job IDs
@@ -281,7 +290,7 @@ func (d *InMemoryJobStore) getJob(id string) (model.Job, error) {
 	j, ok := d.jobs[id]
 	if !ok {
 		returnError := bacerrors.NewJobNotFound(id)
-		return model.Job{}, returnError
+		return models.Job{}, returnError
 	}
 
 	return j, nil
@@ -292,59 +301,57 @@ func (d *InMemoryJobStore) UpdateJobState(_ context.Context, request jobstore.Up
 	defer d.mtx.Unlock()
 
 	// get the existing job state
-	jobState, ok := d.states[request.JobID]
+	job, ok := d.jobs[request.JobID]
 	if !ok {
 		return jobstore.NewErrJobNotFound(request.JobID)
 	}
 
 	// check the expected state
-	if err := request.Condition.Validate(jobState); err != nil {
+	if err := request.Condition.Validate(job); err != nil {
 		return err
 	}
-	if jobState.State.IsTerminal() {
-		return jobstore.NewErrJobAlreadyTerminal(request.JobID, jobState.State, request.NewState)
+	if job.IsTerminal() {
+		return jobstore.NewErrJobAlreadyTerminal(request.JobID, job.State.StateType, request.NewState)
 	}
 
 	// update the job state
-	previousState := jobState.State
-	jobState.State = request.NewState
-	jobState.Version++
-	jobState.UpdateTime = d.clock.Now().UTC()
-	d.states[request.JobID] = jobState
-	if request.NewState.IsTerminal() {
-		delete(d.inprogress, request.JobID)
+	previousState := job.State.StateType
+	job.State.StateType = request.NewState
+	job.Revision++
+	job.ModifyTime = d.clock.Now().UTC().UnixNano()
+	d.jobs[request.JobID] = job
+	if job.IsTerminal() {
+		delete(d.inProgress, request.JobID)
 	}
-	d.appendJobHistory(jobState, previousState, request.Comment)
+	d.appendJobHistory(job, previousState, request.Comment)
 
-	d.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobState)
+	d.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, job)
 
 	return nil
 }
 
-func (d *InMemoryJobStore) CreateExecution(_ context.Context, execution model.ExecutionState) error {
+func (d *InMemoryJobStore) CreateExecution(_ context.Context, execution models.Execution) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	jobState, ok := d.states[execution.JobID]
-	if !ok {
+	if _, ok := d.jobs[execution.JobID]; !ok {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
-	for _, e := range jobState.Executions {
-		if e.ID() == execution.ID() {
-			return jobstore.NewErrExecutionAlreadyExists(execution.ID())
-		}
+	if _, ok := d.executions[execution.ID]; ok {
+		return jobstore.NewErrExecutionAlreadyExists(execution.ID)
 	}
-	if execution.CreateTime.IsZero() {
-		execution.CreateTime = d.clock.Now().UTC()
+	if execution.CreateTime == 0 {
+		execution.CreateTime = d.clock.Now().UTC().UnixNano()
 	}
-	if execution.UpdateTime.IsZero() {
-		execution.UpdateTime = execution.CreateTime
+	if execution.ModifyTime == 0 {
+		execution.ModifyTime = execution.CreateTime
 	}
-	if execution.Version == 0 {
-		execution.Version = 1
+	if execution.Revision == 0 {
+		execution.Revision = 1
 	}
-	jobState.Executions = append(jobState.Executions, execution)
-	d.states[execution.JobID] = jobState
-	d.appendExecutionHistory(execution, model.ExecutionStateNew, "")
+	execution.Normalize()
+	d.executions[execution.ID] = execution
+	d.jobExecutions[execution.JobID] = append(d.jobExecutions[execution.JobID], execution.ID)
+	d.appendExecutionHistory(execution, models.ExecutionStateNew, "")
 
 	d.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, execution)
 
@@ -356,20 +363,8 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	defer d.mtx.Unlock()
 
 	// find the existing execution
-	jobState, ok := d.states[request.ExecutionID.JobID]
+	existingExecution, ok := d.executions[request.ExecutionID]
 	if !ok {
-		return jobstore.NewErrJobNotFound(request.ExecutionID.JobID)
-	}
-	var existingExecution model.ExecutionState
-	executionIndex := -1
-	for i, e := range jobState.Executions {
-		if e.ID() == request.ExecutionID {
-			existingExecution = e
-			executionIndex = i
-			break
-		}
-	}
-	if executionIndex == -1 {
 		return jobstore.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
@@ -377,21 +372,21 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	if err := request.Condition.Validate(existingExecution); err != nil {
 		return err
 	}
-	if existingExecution.State.IsTerminal() {
-		return jobstore.NewErrExecutionAlreadyTerminal(request.ExecutionID, existingExecution.State, request.NewValues.State)
+	if existingExecution.IsTerminalComputeState() {
+		return jobstore.NewErrExecutionAlreadyTerminal(
+			request.ExecutionID, existingExecution.ComputeState.StateType, request.NewValues.ComputeState.StateType)
 	}
 
-	// populate default values
+	// populate default values, maintain existing execution createTime
 	newExecution := request.NewValues
-	if newExecution.CreateTime.IsZero() {
-		newExecution.CreateTime = existingExecution.CreateTime
+	newExecution.CreateTime = existingExecution.CreateTime
+	if newExecution.ModifyTime == 0 {
+		newExecution.ModifyTime = d.clock.Now().UTC().UnixNano()
 	}
-	if newExecution.UpdateTime.IsZero() {
-		newExecution.UpdateTime = d.clock.Now().UTC()
+	if newExecution.Revision == 0 {
+		newExecution.Revision = existingExecution.Revision + 1
 	}
-	if newExecution.Version == 0 {
-		newExecution.Version = existingExecution.Version + 1
-	}
+	newExecution.Normalize()
 
 	err := mergo.Merge(&newExecution, existingExecution)
 	if err != nil {
@@ -399,9 +394,8 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	}
 
 	// update the execution
-	previousState := existingExecution.State
-	jobState.Executions[executionIndex] = newExecution
-	d.states[newExecution.JobID] = jobState
+	previousState := existingExecution.ComputeState.StateType
+	d.executions[existingExecution.ID] = newExecution
 	d.appendExecutionHistory(newExecution, previousState, request.Comment)
 
 	d.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, newExecution)
@@ -460,35 +454,35 @@ func (d *InMemoryJobStore) Close(_ context.Context) error {
 	return nil
 }
 
-func (d *InMemoryJobStore) appendJobHistory(updateJob model.JobState, previousState model.JobStateType, comment string) {
-	historyEntry := model.JobHistory{
-		Type:  model.JobHistoryTypeJobLevel,
-		JobID: updateJob.JobID,
-		JobState: &model.StateChange[model.JobStateType]{
+func (d *InMemoryJobStore) appendJobHistory(updateJob models.Job, previousState models.JobStateType, comment string) {
+	historyEntry := models.JobHistory{
+		Type:  models.JobHistoryTypeJobLevel,
+		JobID: updateJob.ID,
+		JobState: &models.StateChange[models.JobStateType]{
 			Previous: previousState,
-			New:      updateJob.State,
+			New:      updateJob.State.StateType,
 		},
-		NewVersion: updateJob.Version,
-		Comment:    comment,
-		Time:       updateJob.UpdateTime,
+		NewRevision: updateJob.Revision,
+		Comment:     comment,
+		Time:        time.Unix(0, updateJob.ModifyTime),
 	}
-	d.history[updateJob.JobID] = append(d.history[updateJob.JobID], historyEntry)
+	d.history[updateJob.ID] = append(d.history[updateJob.ID], historyEntry)
 }
 
-func (d *InMemoryJobStore) appendExecutionHistory(updatedExecution model.ExecutionState,
-	previousState model.ExecutionStateType, comment string) {
-	historyEntry := model.JobHistory{
-		Type:             model.JobHistoryTypeExecutionLevel,
-		JobID:            updatedExecution.JobID,
-		NodeID:           updatedExecution.NodeID,
-		ComputeReference: updatedExecution.ComputeReference,
-		ExecutionState: &model.StateChange[model.ExecutionStateType]{
+func (d *InMemoryJobStore) appendExecutionHistory(updatedExecution models.Execution,
+	previousState models.ExecutionStateType, comment string) {
+	historyEntry := models.JobHistory{
+		Type:        models.JobHistoryTypeExecutionLevel,
+		JobID:       updatedExecution.JobID,
+		NodeID:      updatedExecution.NodeID,
+		ExecutionID: updatedExecution.ID,
+		ExecutionState: &models.StateChange[models.ExecutionStateType]{
 			Previous: previousState,
-			New:      updatedExecution.State,
+			New:      updatedExecution.ComputeState.StateType,
 		},
-		NewVersion: updatedExecution.Version,
-		Comment:    comment,
-		Time:       updatedExecution.UpdateTime,
+		NewRevision: updatedExecution.Revision,
+		Comment:     comment,
+		Time:        time.Unix(0, updatedExecution.ModifyTime),
 	}
 	d.history[updatedExecution.JobID] = append(d.history[updatedExecution.JobID], historyEntry)
 }

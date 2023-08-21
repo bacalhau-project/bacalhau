@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -51,7 +51,7 @@ func (mr *MockBidStrategyMockRecorder) ShouldBid(ctx, request interface{}) *gomo
 }
 
 // ShouldBidBasedOnUsage mocks base method.
-func (m *MockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
+func (m *MockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage models.Resources) (BidStrategyResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShouldBidBasedOnUsage", ctx, request, usage)
 	ret0, _ := ret[0].(BidStrategyResponse)
@@ -127,7 +127,7 @@ func (m *MockResourceBidStrategy) EXPECT() *MockResourceBidStrategyMockRecorder 
 }
 
 // ShouldBidBasedOnUsage mocks base method.
-func (m *MockResourceBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
+func (m *MockResourceBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage models.Resources) (BidStrategyResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShouldBidBasedOnUsage", ctx, request, usage)
 	ret0, _ := ret[0].(BidStrategyResponse)

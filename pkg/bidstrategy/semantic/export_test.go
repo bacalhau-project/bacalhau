@@ -6,32 +6,24 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
-	spec, err := job.MakeSpec()
-	if err != nil {
-		t.Fatalf("failed to make spec: %s", err)
-	}
+	job := mock.Job()
 	return bidstrategy.BidStrategyRequest{
 		NodeID: "node-id",
-		Job: model.Job{
-			Metadata: model.Metadata{
-				ID: "job-id",
-			},
-			Spec: spec,
-		},
+		Job:    *job,
 	}
 }
 
 func getBidStrategyRequestWithInput(t testing.TB) bidstrategy.BidStrategyRequest {
 	request := getBidStrategyRequest(t)
-	request.Job.Spec.Inputs = []model.StorageSpec{
+	request.Job.Task().InputSources = []*models.InputSource{
 		{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           "volume-id",
+			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
+			Target: "target",
 		},
 	}
 	return request

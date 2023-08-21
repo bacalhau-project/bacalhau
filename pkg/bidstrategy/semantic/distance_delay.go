@@ -42,7 +42,7 @@ func (s DistanceDelayStrategy) ShouldBid(
 	}
 
 	if jobNodeDistanceDelayMs > 0 {
-		log.Ctx(ctx).Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, request.Job.Metadata.ID)
+		log.Ctx(ctx).Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, request.Job.ID)
 		time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
 	}
 
@@ -62,7 +62,7 @@ func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context
 	// This will decrease overall network traffic, improving CPU and memory
 	// usage in large clusters.
 	nodeHash := hash(request.NodeID)
-	jobHash := hash(request.Job.Metadata.ID)
+	jobHash := hash(request.Job.ID)
 	// Range: 0 through 4,294,967,295. (4 billion)
 	distance := diff(nodeHash, jobHash)
 	// scale distance per chunk by concurrency (so that many nodes bid on a job
@@ -70,7 +70,7 @@ func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context
 	// If concurrency=3 and network size=3, there'll only be one piece and
 	// everyone will bid. If concurrency=1 and network size=1 million, there
 	// will be a million slices of the hash space.
-	concurrency := math.Max(1, request.Job.Spec.Deal.Concurrency)
+	concurrency := math.Max(1, request.Job.Count)
 	chunk := int((float32(concurrency) / float32(s.networkSize)) * 4294967295) //nolint:gomnd
 	// wait 1 second per chunk distance. So, if we land in exactly the same
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
@@ -78,7 +78,7 @@ func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context
 	delay := (distance / chunk) * 1000 //nolint:gomnd
 	log.Ctx(ctx).Trace().Msgf(
 		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
-		request.NodeID, request.Job.Metadata.ID, nodeHash, jobHash, distance, chunk, delay,
+		request.NodeID, request.Job.ID, nodeHash, jobHash, distance, chunk, delay,
 	)
 	shouldRun := true
 	// if delay is too high, just exit immediately.
@@ -87,7 +87,7 @@ func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context
 		shouldRun = false
 		log.Ctx(ctx).Warn().Msgf(
 			"dropped job: node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
-			request.NodeID, request.Job.Metadata.ID, nodeHash, jobHash, distance, chunk, delay,
+			request.NodeID, request.Job.ID, nodeHash, jobHash, distance, chunk, delay,
 		)
 	}
 	return delay, shouldRun

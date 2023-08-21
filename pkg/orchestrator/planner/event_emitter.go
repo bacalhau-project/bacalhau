@@ -33,16 +33,16 @@ func NewEventEmitter(params EventEmitterParams) *EventEmitter {
 func (s *EventEmitter) Process(ctx context.Context, plan *models.Plan) error {
 	var eventName model.JobEventType
 	switch plan.DesiredJobState {
-	case model.JobStateCompleted:
+	case models.JobStateTypeCompleted:
 		eventName = model.JobEventCompleted
-	case model.JobStateError:
+	case models.JobStateTypeFailed:
 		eventName = model.JobEventError
 	default:
 	}
 	if !eventName.IsUndefined() {
 		s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 			SourceNodeID: s.id,
-			JobID:        plan.Job.ID(),
+			JobID:        plan.Job.ID,
 			Status:       plan.Comment,
 			EventName:    eventName,
 			EventTime:    time.Now(),

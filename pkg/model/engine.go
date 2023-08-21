@@ -6,7 +6,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-//go:generate stringer -type=Engine --trimprefix=Engine
 type Engine int
 
 const (
@@ -16,6 +15,12 @@ const (
 	EngineWasm
 	engineDone // must be last
 )
+
+var engineNames = map[Engine]string{
+	EngineNoop:   "noop",
+	EngineDocker: "docker",
+	EngineWasm:   "wasm",
+}
 
 func IsValidEngine(e Engine) bool {
 	return e > engineUnknown && e < engineDone
@@ -49,6 +54,16 @@ func EngineNames() []string {
 		names = append(names, typ.String())
 	}
 	return names
+}
+
+// String returns string representation of the engine type.
+// Don't use stringer tool as it doesn't generate camel-case strings
+func (e Engine) String() string {
+	value, ok := engineNames[e]
+	if !ok {
+		return Unknown
+	}
+	return value
 }
 
 func (e Engine) MarshalText() ([]byte, error) {
