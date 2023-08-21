@@ -1,3 +1,9 @@
+"""
+The first Bacalhau task of this workflow prints out "Flyte is awesome!" to stdout,
+The second Bacalhau task is configured to take the output of the first Bacalhau task as input
+and simply print that out.
+"""
+
 from flytekit import workflow, task, dynamic
 
 from flytekitplugins.bacalhau import BacalhauTask
@@ -68,7 +74,7 @@ def chained_job() -> str:
             PublisherSpec={"type": "IPFS"},
             docker={
                 "image": "ubuntu",
-                "entrypoint": ["echo", "Flyte is awesome! (I did say that first!)"],
+                "entrypoint": ["echo", "Flyte is awesome!"],
             },
             language={"job_context": None},
             wasm=None,

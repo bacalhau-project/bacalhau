@@ -1,3 +1,8 @@
+"""
+The Bacalhau task of this workflow prints out "Flyte is awesome!" to stdout.
+As simple as that.
+"""
+
 from flytekit import workflow, task
 
 from flytekitplugins.bacalhau import BacalhauTask
