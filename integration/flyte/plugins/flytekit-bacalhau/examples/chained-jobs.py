@@ -1,4 +1,4 @@
-from flytekit import workflow, task
+from flytekit import workflow, task, dynamic
 
 from flytekitplugins.bacalhau import BacalhauTask
 from flytekit import kwtypes
@@ -12,6 +12,7 @@ bacalhau_task = BacalhauTask(
         )
     )
 
+
 bacalhau_task_2 = BacalhauTask(
         name="second_hello_world",
         inputs=kwtypes(
@@ -20,37 +21,11 @@ bacalhau_task_2 = BacalhauTask(
         )
     )
 
-# https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/basics/basic_workflow.html#how-does-a-flyte-workflow-work
+
 @task
-def print_cid(bac_task: str) -> str:
-    print(f"Your Bacalhau's output CID: {bac_task}")
-    return bac_task
-
-@workflow
-def wf():
-    bac_task_1 = bacalhau_task(
-        api_version="V1beta1",
-        spec=dict(
-            engine="Docker",
-            verifier="Noop",
-            PublisherSpec={"type": "IPFS"},
-            docker={
-                "image": "ubuntu",
-                "entrypoint": ["echo", "Flyte is awesome!"],
-            },
-            language={"job_context": None},
-            wasm=None,
-            resources=None,
-            timeout=1800,
-            outputs=[{
-                    "storage_source": "IPFS",
-                    "name": "outputs",
-                    "path": "/outputs",
-            }],
-            deal={"concurrency": 1},
-        ),
-    )
-
+def second_task(bac_task: str) -> str:
+    # print("first CID is:")
+    # print(bac_task)
     bac_task_2 = bacalhau_task_2(
         api_version="V1beta1",
         spec=dict(
@@ -59,7 +34,7 @@ def wf():
             PublisherSpec={"type": "IPFS"},
             docker={
                 "image": "ubuntu",
-                "entrypoint": ["echo", "Flyte is awesome!"],
+                "entrypoint": ["cat", "/myinputs/stdout"],
             },
             language={"job_context": None},
             wasm=None,
@@ -71,17 +46,49 @@ def wf():
                     "path": "/outputs",
             }],
             inputs=[{
+                'cid': bac_task,
+                'name': 'myinputs',
+                'path': '/myinputs',
+                'storageSource': 'IPFS',
+            }],
+            deal={"concurrency": 1},
+        ),
+    )
+
+    return bac_task_2
+
+# https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/control_flow/dynamics.html
+@dynamic
+def chained_job() -> str:
+    bac_task_1 = bacalhau_task(
+        api_version="V1beta1",
+        spec=dict(
+            engine="Docker",
+            verifier="Noop",
+            PublisherSpec={"type": "IPFS"},
+            docker={
+                "image": "ubuntu",
+                "entrypoint": ["echo", "Flyte is awesome! (I did say that first!)"],
+            },
+            language={"job_context": None},
+            wasm=None,
+            resources=None,
+            timeout=1800,
+            outputs=[{
                     "storage_source": "IPFS",
-                    "cid": bac_task_1,
-                    "name": "myinputs",
-                    "path": "/myinputs",
+                    "name": "outputs",
+                    "path": "/outputs",
             }],
             deal={"concurrency": 1},
         ),
     )
     
-    print_cid(bac_task=bac_task_2)
+    return second_task(bac_task=bac_task_1)
 
+@workflow
+def wf() -> str:
+    res = chained_job()
+    return res
 
 if __name__ == "__main__":
     wf()

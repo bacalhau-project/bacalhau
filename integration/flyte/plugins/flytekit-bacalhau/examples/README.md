@@ -13,5 +13,5 @@ $ docker run --rm -v $(pwd):/examples \
         -w /examples \
         -a stdout -a stderr \
 		winderresearch/flytekit-bacalhau-examples:latest \
-		pyflyte run --verbose ./chained-jobs.py wf
+		pyflyte --verbose run ./chained-jobs.py wf
 ```
