@@ -21,8 +21,7 @@ Examples:
 
 func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 	return &SpecFlagSettings{
-		// TODO most users would probably prefer IPFS
-		Publisher:     opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
+		Publisher:     opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherIpfs}),
 		Inputs:        opts.StorageOpt{},
 		OutputVolumes: []string{"outputs:/outputs"},
 		EnvVar:        []string{},

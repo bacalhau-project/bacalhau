@@ -34,7 +34,6 @@ const (
 	StorageSourceIPFS           = "ipfs"
 	StorageSourceRepoClone      = "repoclone"
 	StorageSourceRepoCloneLFS   = "repoCloneLFS"
-	StorageSourceEstuary        = "estuary"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
 	StorageSourceInline         = "inline"
@@ -42,10 +41,9 @@ const (
 )
 
 const (
-	PublisherNoop    = "noop"
-	PublisherIPFS    = "ipfs"
-	PublisherEstuary = "estuary"
-	PublisherS3      = "s3"
+	PublisherNoop = "noop"
+	PublisherIPFS = "ipfs"
+	PublisherS3   = "s3"
 )
 
 const (

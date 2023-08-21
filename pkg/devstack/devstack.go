@@ -32,7 +32,6 @@ type DevStackOptions struct {
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
 	PublicIPFSMode             bool   // Use public IPFS nodes
-	EstuaryAPIKey              string
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
@@ -50,7 +49,6 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithNumberOfBadRequesterActors(o.NumberOfBadRequesterActors),
 		WithPeer(o.Peer),
 		WithPublicIPFSMode(o.PublicIPFSMode),
-		WithEstuaryAPIKey(o.EstuaryAPIKey),
 		WithCPUProfilingFile(o.CPUProfilingFile),
 		WithMemoryProfilingFile(o.MemoryProfilingFile),
 		WithDisabledFeatures(o.DisabledFeatures),
@@ -194,7 +192,6 @@ func Setup(
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
 			Host:                libp2pHost,
-			EstuaryAPIKey:       stackConfig.EstuaryAPIKey,
 			HostAddress:         "0.0.0.0",
 			APIPort:             apiPort,
 			ComputeConfig:       stackConfig.ComputeConfig,

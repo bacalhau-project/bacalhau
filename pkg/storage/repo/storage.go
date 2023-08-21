@@ -18,7 +18,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -29,13 +28,12 @@ type Response struct {
 }
 
 type StorageProvider struct {
-	LocalDir      string
-	EstuaryAPIKey string
-	CloneClient   *clone.Clone
-	IPFSClient    *apicopy.StorageProvider
+	LocalDir    string
+	CloneClient *clone.Clone
+	IPFSClient  *apicopy.StorageProvider
 }
 
-func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvider, EstuaryAPIKey string) (*StorageProvider, error) {
+func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvider) (*StorageProvider, error) {
 	c, err := clone.NewCloneClient()
 	if err != nil {
 		return nil, err
@@ -51,10 +49,9 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 		return nil
 	})
 	storageHandler := &StorageProvider{
-		LocalDir:      dir,
-		EstuaryAPIKey: EstuaryAPIKey,
-		IPFSClient:    IPFSapiclient,
-		CloneClient:   c,
+		LocalDir:    dir,
+		IPFSClient:  IPFSapiclient,
+		CloneClient: c,
 	}
 	log.Debug().Msgf("Repo download driver created with output dir: %s", dir)
 	return storageHandler, nil
@@ -123,15 +120,6 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	cid := outputConfig.Params["CID"].(string)
 	// Update the KV store
 	SHA1HASH, _ := urltoLatestCommitHash(ctx, repoURL)
-	envkey := os.Getenv("ESTUARY_API_KEY")
-	if envkey != "" {
-		log.Ctx(ctx).Debug().Str("CID", cid).Msg("Pinning CID to estuary")
-		err := estuary.PinToIPFSViaEstuary(ctx, envkey, cid)
-		if err != nil {
-			return storage.StorageVolume{}, err
-		}
-		log.Ctx(ctx).Debug().Str("CID", cid).Msg("successfully pinned to estuary")
-	}
 
 	data := url.Values{}
 	data.Set("key", SHA1HASH)

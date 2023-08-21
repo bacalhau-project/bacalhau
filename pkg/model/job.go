@@ -78,7 +78,7 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 				Type: EngineNoop.String(),
 			},
 			PublisherSpec: PublisherSpec{
-				Type: PublisherEstuary,
+				Type: PublisherIpfs,
 			},
 			Deal: Deal{
 				Concurrency: 1,

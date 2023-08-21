@@ -48,7 +48,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,

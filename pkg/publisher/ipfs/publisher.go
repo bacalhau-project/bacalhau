@@ -34,7 +34,7 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 
 func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j models.Job) error {
 	switch j.Task().Publisher.Type {
-	case models.PublisherIPFS, models.PublisherEstuary:
+	case models.PublisherIPFS:
 		return nil
 	default:
 		return fmt.Errorf("invalid publisher type: %s", j.Task().Publisher.Type)

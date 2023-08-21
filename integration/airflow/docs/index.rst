@@ -29,7 +29,7 @@ This package contains the python Bacalhau Airflow Provider named `bacalhau_airfl
          api_version="V1beta1",
          job_spec=dict(
                engine="Docker",
-               publisher="Estuary",
+               publisher="IPFS",
                docker=dict(
                   image="ubuntu",
                   entrypoint=["echo", "Hello"],

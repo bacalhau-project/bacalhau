@@ -63,7 +63,6 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
-				EstuaryAPIKey:         nodeConfig.EstuaryAPIKey,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
@@ -133,7 +132,6 @@ func NewStandardPublishersFactory() PublishersFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
-				nodeConfig.EstuaryAPIKey,
 			)
 			if err != nil {
 				return nil, err

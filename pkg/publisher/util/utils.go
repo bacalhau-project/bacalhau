@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/fanout"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
@@ -22,9 +19,7 @@ import (
 )
 
 /* TODO(forrest): Fix me(!):
-- method has wrong name, this make S3 publisher, estuary, and noop, in addition to IPFS
-- is assigning estuary publisher as IPFS publisher and registering it even when not setup
-  - I think this will result in the estuary publisher being listed as installed, but really its just IPFS
+- method has wrong name, this make S3 publisher, and noop, in addition to IPFS
 Issue: https://github.com/bacalhau-project/bacalhau/issues/2555
 
 */
@@ -33,32 +28,11 @@ func NewIPFSPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	cl ipfsClient.Client,
-	estuaryAPIKey string,
 ) (publisher.PublisherProvider, error) {
-	defaultPriorityPublisherTimeout := time.Second * 2
 	noopPublisher := noop.NewNoopPublisher()
 	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
 	if err != nil {
 		return nil, err
-	}
-
-	// we don't want to enforce that every compute node needs to have an estuary API key
-	// and so let's only add the
-	// TODO(forrest): this seems like bug, we should not register an estuary publisher if there isn't a key
-	// see issue: https://github.com/bacalhau-project/bacalhau/issues/2555
-	var estuaryPublisher publisher.Publisher = ipfsPublisher
-	if estuaryAPIKey != "" {
-		estuaryPublisher = fanout.NewFanoutPublisher(
-			[]publisher.Publisher{
-				estuary.NewEstuaryPublisher(estuary.EstuaryPublisherConfig{APIKey: estuaryAPIKey}),
-				ipfsPublisher,
-			},
-			fanout.WithPrioritization(),
-			fanout.WithTimeout(defaultPriorityPublisherTimeout),
-		)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	s3Publisher, err := configureS3Publisher(cm)
@@ -66,10 +40,9 @@ func NewIPFSPublishers(
 		return nil, err
 	}
 	return provider.NewMappedProvider(map[string]publisher.Publisher{
-		models.PublisherNoop:    tracing.Wrap(noopPublisher),
-		models.PublisherIPFS:    tracing.Wrap(ipfsPublisher),
-		models.PublisherS3:      tracing.Wrap(s3Publisher),
-		models.PublisherEstuary: tracing.Wrap(estuaryPublisher),
+		models.PublisherNoop: tracing.Wrap(noopPublisher),
+		models.PublisherIPFS: tracing.Wrap(ipfsPublisher),
+		models.PublisherS3:   tracing.Wrap(s3Publisher),
 	}), nil
 }
 

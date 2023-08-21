@@ -118,13 +118,6 @@ func TestParsePublisherString(t *testing.T) {
 			},
 		},
 		{
-			name:         "estuary",
-			publisherURI: "estuary",
-			expected: model.PublisherSpec{
-				Type: model.PublisherEstuary,
-			},
-		},
-		{
 			name:         "s3",
 			publisherURI: "s3://myBucket/dir/file-001.txt",
 			expected: model.PublisherSpec{
