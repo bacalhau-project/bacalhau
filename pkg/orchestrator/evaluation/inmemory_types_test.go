@@ -15,12 +15,12 @@ func TestReadyEvals_Ordering(t *testing.T) {
 
 	ready := ReadyEvaluations{}
 
-	newEval := func(jobID, evalID string, priority int, index uint64) *models.Evaluation {
+	newEval := func(jobID, evalID string, priority int, index int64) *models.Evaluation {
 		eval := mock.Eval()
 		eval.JobID = jobID
 		eval.ID = evalID
 		eval.Priority = priority
-		eval.CreateIndex = uint64(index)
+		eval.CreateTime = index
 		return eval
 	}
 
@@ -36,24 +36,24 @@ func TestReadyEvals_Ordering(t *testing.T) {
 
 	next = heap.Pop(&ready).(*models.Evaluation)
 	require.Equal(t, "eval01", next.ID,
-		"expected oldest CreateIndex to be next ready")
+		"expected oldest CreateTime to be next ready")
 
 	heap.Push(&ready, newEval("example4", "eval04", 50, 4))
 
 	next = heap.Pop(&ready).(*models.Evaluation)
 	require.Equal(t, "eval02", next.ID,
-		"expected oldest CreateIndex to be next ready")
+		"expected oldest CreateTime to be next ready")
 
 }
 
 func TestPendingEval_Ordering(t *testing.T) {
 	pending := PendingEvaluations{}
 
-	newEval := func(evalID string, priority int, index uint64) *models.Evaluation {
+	newEval := func(evalID string, priority int, index int64) *models.Evaluation {
 		eval := mock.Eval()
 		eval.ID = evalID
 		eval.Priority = priority
-		eval.ModifyIndex = uint64(index)
+		eval.ModifyTime = index
 		return eval
 	}
 
@@ -86,8 +86,8 @@ func TestPendingEvals_MarkForCancel(t *testing.T) {
 	for i := 100; i > 0; i -= 10 {
 		eval := mock.Eval()
 		eval.JobID = "example"
-		eval.CreateIndex = uint64(i)
-		eval.ModifyIndex = uint64(i)
+		eval.CreateTime = int64(i)
+		eval.ModifyTime = int64(i)
 		heap.Push(&pending, eval)
 	}
 
@@ -98,5 +98,5 @@ func TestPendingEvals_MarkForCancel(t *testing.T) {
 	raw := heap.Pop(&pending)
 	require.NotNil(t, raw)
 	eval := raw.(*models.Evaluation)
-	require.EqualValues(t, 100, eval.ModifyIndex)
+	require.EqualValues(t, 100, eval.ModifyTime)
 }

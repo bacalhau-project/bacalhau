@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -52,7 +53,7 @@ var errorLogsTestCase = scenario.Scenario{
 	Stack: &scenario.StackConfig{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
 						MaxStdoutFileLength:   system.MaxStdoutFileLength,
 						MaxStdoutReturnLength: system.MaxStdoutReturnLength,

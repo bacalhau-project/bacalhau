@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
 
@@ -128,7 +129,7 @@ func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
 
 func NewSpecFixture(data []byte) *Fixture {
 	var out model.Job
-	if err := model.YAMLUnmarshalWithMax(data, &out); err != nil {
+	if err := marshaller.YAMLUnmarshalWithMax(data, &out); err != nil {
 		panic(err)
 	}
 

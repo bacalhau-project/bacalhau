@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 // existingNodeInfos returns a map of nodeID to NodeInfo for all the nodes that have executions for this job
 func existingNodeInfos(
-	ctx context.Context, nodeDiscoverer orchestrator.NodeDiscoverer, existingExecutions execSet) (map[string]*model.NodeInfo, error) {
-	out := make(map[string]*model.NodeInfo)
+	ctx context.Context, nodeDiscoverer orchestrator.NodeDiscoverer, existingExecutions execSet) (map[string]*models.NodeInfo, error) {
+	out := make(map[string]*models.NodeInfo)
 	if len(existingExecutions) == 0 {
 		return out, nil
 	}
 	checked := make(map[string]struct{})
 
 	// TODO: implement a better way to retrieve node info instead of listing all nodes
-	nodesMap := make(map[string]*model.NodeInfo)
+	nodesMap := make(map[string]*models.NodeInfo)
 	discoveredNodes, err := nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)

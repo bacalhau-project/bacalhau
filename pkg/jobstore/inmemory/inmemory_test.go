@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -17,11 +18,8 @@ import (
 
 	"github.com/benbjohnson/clock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type InMemoryTestSuite struct {
@@ -45,30 +43,30 @@ func (s *InMemoryTestSuite) SetupTest() {
 	jobFixtures := []struct {
 		id              string
 		client          string
-		tags            []string
-		jobStates       []model.JobStateType
-		executionStates []model.ExecutionStateType
+		tags            map[string]string
+		jobStates       []models.JobStateType
+		executionStates []models.ExecutionStateType
 	}{
 		{
 			id:              uuid.New().String(),
 			client:          "client1",
-			tags:            []string{"gpu", "fast"},
-			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
+			tags:            map[string]string{"gpu": "true", "fast": "true"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
 			id:              uuid.New().String(),
 			client:          "client2",
-			tags:            []string{},
-			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
+			tags:            map[string]string{},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
 			id:              uuid.New().String(),
 			client:          "client3",
-			tags:            []string{"slow"},
-			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted},
+			tags:            map[string]string{"slow": "true"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 	}
 
@@ -77,29 +75,25 @@ func (s *InMemoryTestSuite) SetupTest() {
 
 		s.clock.Add(1 * time.Second)
 		job := makeDockerEngineJob(
-			s.T(),
-			model.PublisherNoop,
 			[]string{"bash", "-c", "echo hello"})
-		job.Spec.Annotations = fixture.tags
-		job.Metadata.ID = fixture.id
-		job.Metadata.ClientID = fixture.client
+
+		job.ID = fixture.id
+		job.Labels = fixture.tags
+		job.Namespace = fixture.client
+
 		err := s.store.CreateJob(s.ctx, *job)
 		s.NoError(err)
 
 		s.clock.Add(1 * time.Second)
-		execution := model.ExecutionState{
-			JobID:            fixture.id,
-			NodeID:           "nodeid",
-			ComputeReference: "e-computeRef",
-			State:            model.ExecutionStateNew,
-		}
-		err = s.store.CreateExecution(s.ctx, execution)
+
+		execution := mock.ExecutionForJob(job)
+		err = s.store.CreateExecution(s.ctx, *execution)
 		s.NoError(err)
 
 		for i, state := range fixture.jobStates {
 			s.clock.Add(1 * time.Second)
 
-			oldState := model.JobStateNew
+			oldState := models.JobStateTypePending
 			if i > 0 {
 				oldState = fixture.jobStates[i-1]
 			}
@@ -108,8 +102,8 @@ func (s *InMemoryTestSuite) SetupTest() {
 				JobID:    fixture.id,
 				NewState: state,
 				Condition: jobstore.UpdateJobCondition{
-					ExpectedState:   oldState,
-					ExpectedVersion: i + 1,
+					ExpectedState:    oldState,
+					ExpectedRevision: uint64(i + 1),
 				},
 				Comment: fmt.Sprintf("moved to %+v", state),
 			}
@@ -120,22 +114,22 @@ func (s *InMemoryTestSuite) SetupTest() {
 		for i, state := range fixture.executionStates {
 			s.clock.Add(1 * time.Second)
 
-			oldState := model.ExecutionStateNew
+			oldState := models.ExecutionStateNew
 			if i > 0 {
 				oldState = fixture.executionStates[i-1]
 			}
 
 			// We are pretending this is a new execution struct
-			execution.State = state
-			execution.UpdateTime = s.clock.Now()
+			execution.ComputeState.StateType = state
+			execution.ModifyTime = s.clock.Now().UTC().UnixNano()
 
 			request := jobstore.UpdateExecutionRequest{
-				ExecutionID: execution.ID(),
+				ExecutionID: execution.ID,
 				Condition: jobstore.UpdateExecutionCondition{
-					ExpectedStates:  []model.ExecutionStateType{oldState},
-					ExpectedVersion: i + 1,
+					ExpectedStates:   []models.ExecutionStateType{oldState},
+					ExpectedRevision: uint64(i + 1),
 				},
-				NewValues: execution,
+				NewValues: *execution,
 				Comment:   fmt.Sprintf("exec update to %+v", state),
 			}
 
@@ -195,10 +189,10 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobOptions)
 	s.NoError(err, "failed to get job history")
 	s.Equal(4, len(history))
-	s.Equal(model.JobStateQueued, history[1].JobState.New)
+	s.Equal(models.JobStateTypePending, history[1].JobState.New)
 
-	count := lo.Reduce(history, func(agg int, item model.JobHistory, _ int) int {
-		if item.Type == model.JobHistoryTypeJobLevel {
+	count := lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+		if item.Type == models.JobHistoryTypeJobLevel {
 			return agg + 1
 		}
 		return agg
@@ -208,10 +202,10 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	history, err = s.store.GetJobHistory(s.ctx, s.ids[0], execOptions)
 	s.NoError(err, "failed to get job history")
 	s.Equal(4, len(history))
-	s.Equal(model.ExecutionStateAskForBid, history[1].ExecutionState.New)
+	s.Equal(models.ExecutionStateAskForBid, history[1].ExecutionState.New)
 
-	count = lo.Reduce(history, func(agg int, item model.JobHistory, _ int) int {
-		if item.Type == model.JobHistoryTypeExecutionLevel {
+	count = lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+		if item.Type == models.JobHistoryTypeExecutionLevel {
 			return agg + 1
 		}
 		return agg
@@ -222,7 +216,7 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 func (s *InMemoryTestSuite) TestSearchJobs() {
 	s.T().Run("by client ID", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ClientID: "client1",
+			Namespace: "client1",
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
@@ -230,14 +224,14 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 
 	s.T().Run("by client ID and included tags", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ClientID:    "client1",
-			IncludeTags: []model.IncludedTag{"fast", "slow"},
+			Namespace:   "client1",
+			IncludeTags: []string{"fast", "slow"},
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, "client1", jobs[0].Metadata.ClientID)
-		require.Contains(t, jobs[0].Spec.Annotations, "fast")
-		require.NotContains(t, jobs[0].Spec.Annotations, "slow")
+		require.Equal(t, "client1", jobs[0].Namespace)
+		require.Contains(t, jobs[0].Labels, "fast")
+		require.NotContains(t, jobs[0].Labels, "slow")
 	})
 
 	s.T().Run("everything sorted by id", func(t *testing.T) {
@@ -257,8 +251,8 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		require.NoError(t, err)
 		require.Equal(t, 3, len(jobs))
 
-		ids := lo.Map(jobs, func(item model.Job, _ int) string {
-			return item.ID()
+		ids := lo.Map(jobs, func(item models.Job, _ int) string {
+			return item.ID
 		})
 		require.EqualValues(t, sorted_ids, ids)
 
@@ -270,8 +264,8 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		require.NoError(t, err)
 		require.Equal(t, 3, len(jobs))
 
-		ids = lo.Map(jobs, func(item model.Job, _ int) string {
-			return item.ID()
+		ids = lo.Map(jobs, func(item models.Job, _ int) string {
+			return item.ID
 		})
 
 		require.EqualValues(t, reverse_sorted_ids, ids)
@@ -304,17 +298,17 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 
 	s.T().Run("include tags", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			IncludeTags: []model.IncludedTag{"gpu"},
+			IncludeTags: []string{"gpu"},
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID())
+		require.Equal(t, s.ids[0], jobs[0].ID)
 	})
 
 	s.T().Run("all but exclude tags", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
-			ExcludeTags: []model.ExcludedTag{"fast"},
+			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
 		require.Equal(t, 2, len(jobs))
@@ -322,14 +316,11 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 
 	s.T().Run("include-exclude same tag", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			IncludeTags: []model.IncludedTag{"gpu"},
-			ExcludeTags: []model.ExcludedTag{"fast"},
+			IncludeTags: []string{"gpu"},
+			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		// TODO: It looks like in the inmemory store, if a job is included
-		// then it is not checked for exclusion. So this returns the first
-		// inclusion
-		require.Equal(t, 1, len(jobs))
+		require.Equal(t, 0, len(jobs))
 	})
 
 	s.T().Run("by id", func(t *testing.T) {
@@ -338,22 +329,20 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID())
+		require.Equal(t, s.ids[0], jobs[0].ID)
 	})
 }
 
 func (s *InMemoryTestSuite) TestDeleteJob() {
 	job := makeDockerEngineJob(
-		s.T(),
-		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
-	job.Spec.Annotations = []string{"tag"}
-	job.Metadata.ID = "deleteme"
-	job.Metadata.ClientID = "client1"
+	job.Labels = map[string]string{"tag": "value"}
+	job.ID = "deleteme"
+	job.Namespace = "client1"
 	err := s.store.CreateJob(s.ctx, *job)
 	s.NoError(err)
 
-	err = s.store.DeleteJob(s.ctx, job.Metadata.ID)
+	err = s.store.DeleteJob(s.ctx, job.ID)
 	s.NoError(err)
 }
 
@@ -366,26 +355,26 @@ func (s *InMemoryTestSuite) TestGetJob() {
 	s.Error(err)
 }
 
-func (s *InMemoryTestSuite) TestGetJobState() {
+func (s *InMemoryTestSuite) TestGetExecutions() {
 	id := s.ids[0]
 	_, err := s.store.GetJob(s.ctx, id)
 	s.NoError(err)
 
-	state, err := s.store.GetJobState(s.ctx, id)
+	state, err := s.store.GetExecutions(s.ctx, id)
 	s.NoError(err)
 	s.NotNil(state)
-	s.Greater(len(state.Executions), 0)
+	s.Greater(len(state), 0)
 
-	_, err = s.store.GetJobState(s.ctx, uuid.New().String())
+	_, err = s.store.GetExecutions(s.ctx, uuid.New().String())
 	s.Error(err)
 }
 
 func (s *InMemoryTestSuite) TestInProgressJobs() {
-	infos, err := s.store.GetInProgressJobs(s.ctx)
+	jobs, err := s.store.GetInProgressJobs(s.ctx)
 	s.NoError(err)
-	s.Equal(1, len(infos))
+	s.Equal(1, len(jobs))
 	last_id := s.ids[2]
-	s.Equal(last_id, infos[0].Job.ID())
+	s.Equal(last_id, jobs[0].ID)
 }
 
 func (s *InMemoryTestSuite) TestEvents() {
@@ -395,13 +384,11 @@ func (s *InMemoryTestSuite) TestEvents() {
 	)
 
 	job := makeDockerEngineJob(
-		s.T(),
-		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
-	job.Metadata.ID = "10"
-	job.Metadata.ClientID = "1"
+	job.ID = "10"
+	job.Namespace = "1"
 
-	var execution model.ExecutionState
+	var execution models.Execution
 
 	s.Run("job create event", func() {
 		err := s.store.CreateJob(s.ctx, *job)
@@ -412,24 +399,24 @@ func (s *InMemoryTestSuite) TestEvents() {
 		s.Equal(ev.Event, jobstore.CreateEvent)
 		s.Equal(ev.Kind, jobstore.JobWatcher)
 
-		var decodedJob model.Job
+		var decodedJob models.Job
 		err = json.Unmarshal(ev.Object, &decodedJob)
 		s.NoError(err)
-		s.Equal(decodedJob.ID(), job.ID())
+		s.Equal(decodedJob.ID, job.ID)
 	})
 
 	s.Run("execution create event", func() {
 		s.clock.Add(1 * time.Second)
-		execution = model.ExecutionState{
-			JobID:            "10",
-			NodeID:           "nodeid",
-			ComputeReference: "e-computeRef",
-			State:            model.ExecutionStateNew,
+		execution = models.Execution{
+			JobID:        "10",
+			NodeID:       "nodeid",
+			ID:           "e-computeRef",
+			ComputeState: models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew},
 		}
 		err := s.store.CreateExecution(s.ctx, execution)
 		s.NoError(err)
 
-		// Read an event, it should be a Execution Create
+		// Read an event, it should be a ExecutionForJob Create
 		ev := <-ch
 		s.Equal(ev.Event, jobstore.CreateEvent)
 		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
@@ -438,9 +425,9 @@ func (s *InMemoryTestSuite) TestEvents() {
 	s.Run("update job state event", func() {
 		request := jobstore.UpdateJobStateRequest{
 			JobID:    "10",
-			NewState: model.JobStateInProgress,
+			NewState: models.JobStateTypeRunning,
 			Condition: jobstore.UpdateJobCondition{
-				ExpectedState: model.JobStateNew,
+				ExpectedState: models.JobStateTypePending,
 			},
 			Comment: "event test",
 		}
@@ -451,12 +438,12 @@ func (s *InMemoryTestSuite) TestEvents() {
 	})
 
 	s.Run("update execution state event", func() {
-		execution.State = model.ExecutionStateAskForBid
-		execution.UpdateTime = s.clock.Now()
+		execution.ComputeState.StateType = models.ExecutionStateAskForBid
+		execution.ModifyTime = s.clock.Now().UTC().UnixNano()
 		s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
-			ExecutionID: execution.ID(),
+			ExecutionID: execution.ID,
 			Condition: jobstore.UpdateExecutionCondition{
-				ExpectedStates: []model.ExecutionStateType{model.ExecutionStateNew},
+				ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 			},
 			NewValues: execution,
 			Comment:   "event test",
@@ -465,14 +452,14 @@ func (s *InMemoryTestSuite) TestEvents() {
 		s.Equal(ev.Event, jobstore.UpdateEvent)
 		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
 
-		var decodedExecution model.ExecutionState
+		var decodedExecution models.Execution
 		err := json.Unmarshal(ev.Object, &decodedExecution)
 		s.NoError(err)
-		s.Equal(decodedExecution.ID(), execution.ID())
+		s.Equal(decodedExecution.ID, execution.ID)
 	})
 
 	s.Run("delete job event", func() {
-		_ = s.store.DeleteJob(s.ctx, job.ID())
+		_ = s.store.DeleteJob(s.ctx, job.ID)
 		ev := <-ch
 		s.Equal(ev.Event, jobstore.DeleteEvent)
 		s.Equal(ev.Kind, jobstore.JobWatcher)
@@ -506,18 +493,14 @@ func (s *InMemoryTestSuite) TestEvaluations() {
 	s.NoError(err)
 }
 
-func makeDockerEngineJob(
-	t testing.TB,
-	publisherType model.Publisher,
-	entrypointArray []string) *model.Job {
-
-	j := testutils.MakeJobWithOpts(t,
-		job.WithEngineSpec(
-			model.NewDockerEngineBuilder("ubuntu:latest").
-				WithEntrypoint(entrypointArray...).
-				Build(),
-		),
-		job.WithPublisher(model.PublisherSpec{Type: publisherType}),
-	)
-	return &j
+func makeDockerEngineJob(entrypointArray []string) *models.Job {
+	j := mock.Job()
+	j.Task().Engine = &models.SpecConfig{
+		Type: models.EngineDocker,
+		Params: map[string]interface{}{
+			"Image":      "ubuntu:latest",
+			"Entrypoint": entrypointArray,
+		},
+	}
+	return j
 }

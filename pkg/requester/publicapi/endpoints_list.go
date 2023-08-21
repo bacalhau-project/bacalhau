@@ -8,19 +8,20 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/rs/zerolog/log"
 )
 
 type listRequest struct {
-	JobID       string              `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	ClientID    string              `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	IncludeTags []model.IncludedTag `json:"include_tags" example:"['any-tag']"`
-	ExcludeTags []model.ExcludedTag `json:"exclude_tags" example:"['any-tag']"`
-	MaxJobs     int                 `json:"max_jobs" example:"10"`
-	ReturnAll   bool                `json:"return_all" `
-	SortBy      string              `json:"sort_by" example:"created_at"`
-	SortReverse bool                `json:"sort_reverse"`
+	JobID       string   `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ClientID    string   `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	IncludeTags []string `json:"include_tags" example:"['any-tag']"`
+	ExcludeTags []string `json:"exclude_tags" example:"['any-tag']"`
+	MaxJobs     int      `json:"max_jobs" example:"10"`
+	ReturnAll   bool     `json:"return_all" `
+	SortBy      string   `json:"sort_by" example:"created_at"`
+	SortReverse bool     `json:"sort_reverse"`
 }
 
 type ListRequest = listRequest
@@ -67,7 +68,7 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	jobWithInfos := make([]*model.JobWithInfo, len(jobList))
 	for i, job := range jobList {
-		jobState, innerErr := s.jobStore.GetJobState(ctx, job.Metadata.ID)
+		jobState, innerErr := legacy.GetJobState(ctx, s.jobStore, job.ID())
 		if innerErr != nil {
 			log.Ctx(ctx).Error().Err(innerErr).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -90,7 +91,7 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 
 func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]model.Job, error) {
 	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
-		ClientID:    listReq.ClientID,
+		Namespace:   listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
 		IncludeTags: listReq.IncludeTags,
@@ -102,5 +103,13 @@ func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListReques
 	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	res := make([]model.Job, len(list))
+	for i := range list {
+		legacyJob, err := legacy.ToLegacyJob(&list[i])
+		if err != nil {
+			return nil, err
+		}
+		res[i] = *legacyJob
+	}
+	return res, nil
 }

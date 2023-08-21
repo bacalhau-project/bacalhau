@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
@@ -124,7 +124,7 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-func (f *fanoutPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+func (f *fanoutPublisher) ValidateJob(ctx context.Context, j models.Job) error {
 	for _, p := range f.publishers {
 		if err := p.ValidateJob(ctx, j); err != nil {
 			return err
@@ -137,18 +137,18 @@ func (f *fanoutPublisher) ValidateJob(ctx context.Context, j model.Job) error {
 func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,
 	executionID string,
-	job model.Job,
+	job models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (models.SpecConfig, error) {
 	var err error
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
-	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
+	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (models.SpecConfig, error) {
 		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)
-	results := map[publisher.Publisher]model.StorageSpec{}
+	results := map[publisher.Publisher]models.SpecConfig{}
 
 loop:
 	for {
@@ -195,7 +195,7 @@ loop:
 		}
 	}
 
-	return model.StorageSpec{}, err
+	return models.SpecConfig{}, err
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)

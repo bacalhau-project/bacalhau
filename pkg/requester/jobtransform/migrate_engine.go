@@ -12,6 +12,7 @@ func NewEngineMigrator() Transformer {
 	return func(ctx context.Context, job *model.Job) (bool, error) {
 		// if we received an "old" job that doesn't use the new model.EngineSpec field
 		// migrate it to populate the model.EngineSpec fields.
+		//nolint:staticcheck
 		if model.IsValidEngine(job.Spec.Engine) {
 			return migrateForward(job)
 		}
@@ -22,6 +23,8 @@ func NewEngineMigrator() Transformer {
 }
 
 // migrateForward populates the model.EngineSpec field iff the engine is a known type.
+//
+//nolint:staticcheck
 func migrateForward(job *model.Job) (bool, error) {
 	switch job.Spec.Engine {
 	case model.EngineNoop:
@@ -52,6 +55,8 @@ func migrateForward(job *model.Job) (bool, error) {
 
 // migrateBack populates deprecated model.Spec engine fields iff the engine is a known type, else
 // no change is made.
+//
+//nolint:staticcheck
 func migrateBack(job *model.Job) (bool, error) {
 	// check if it's a know engine type and populate the deprecated fields.
 	switch job.Spec.EngineSpec.Engine() {

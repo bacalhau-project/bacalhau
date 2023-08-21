@@ -49,7 +49,7 @@ func (mr *MockExecutionStoreMockRecorder) Close(ctx interface{}) *gomock.Call {
 }
 
 // CreateExecution mocks base method.
-func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution Execution) error {
+func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution LocalExecutionState) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
 	ret0, _ := ret[0].(error)
@@ -77,10 +77,10 @@ func (mr *MockExecutionStoreMockRecorder) DeleteExecution(ctx, id interface{}) *
 }
 
 // GetExecution mocks base method.
-func (m *MockExecutionStore) GetExecution(ctx context.Context, id string) (Execution, error) {
+func (m *MockExecutionStore) GetExecution(ctx context.Context, id string) (LocalExecutionState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecution", ctx, id)
-	ret0, _ := ret[0].(Execution)
+	ret0, _ := ret[0].(LocalExecutionState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -92,7 +92,7 @@ func (mr *MockExecutionStoreMockRecorder) GetExecution(ctx, id interface{}) *gom
 }
 
 // GetExecutionCount mocks base method.
-func (m *MockExecutionStore) GetExecutionCount(ctx context.Context, state ExecutionState) (uint64, error) {
+func (m *MockExecutionStore) GetExecutionCount(ctx context.Context, state LocalExecutionStateType) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecutionCount", ctx, state)
 	ret0, _ := ret[0].(uint64)
@@ -107,10 +107,10 @@ func (mr *MockExecutionStoreMockRecorder) GetExecutionCount(ctx, state interface
 }
 
 // GetExecutionHistory mocks base method.
-func (m *MockExecutionStore) GetExecutionHistory(ctx context.Context, id string) ([]ExecutionHistory, error) {
+func (m *MockExecutionStore) GetExecutionHistory(ctx context.Context, id string) ([]LocalStateHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecutionHistory", ctx, id)
-	ret0, _ := ret[0].([]ExecutionHistory)
+	ret0, _ := ret[0].([]LocalStateHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -122,10 +122,10 @@ func (mr *MockExecutionStoreMockRecorder) GetExecutionHistory(ctx, id interface{
 }
 
 // GetExecutions mocks base method.
-func (m *MockExecutionStore) GetExecutions(ctx context.Context, jobID string) ([]Execution, error) {
+func (m *MockExecutionStore) GetExecutions(ctx context.Context, jobID string) ([]LocalExecutionState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecutions", ctx, jobID)
-	ret0, _ := ret[0].([]Execution)
+	ret0, _ := ret[0].([]LocalExecutionState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

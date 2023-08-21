@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -19,7 +20,7 @@ func noopScenario(t testing.TB) Scenario {
 		Stack: &StackConfig{
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
+					JobHandler: func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
 						return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
 							MaxStdoutFileLength:   system.MaxStdoutFileLength,
 							MaxStdoutReturnLength: system.MaxStdoutReturnLength,

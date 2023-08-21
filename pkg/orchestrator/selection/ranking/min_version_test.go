@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,7 +18,7 @@ type MinVersionNodeRankerSuite struct {
 
 func (s *MinVersionNodeRankerSuite) SetupTest() {
 	s.MinVersionNodeRanker = NewMinVersionNodeRanker(MinVersionNodeRankerParams{
-		MinVersion: model.BuildVersionInfo{
+		MinVersion: models.BuildVersionInfo{
 			Major:      "1",
 			Minor:      "3",
 			GitVersion: "v1.3.12",
@@ -34,48 +34,48 @@ func TestMinVersionNodeRankerSuite(t *testing.T) {
 type minVersionNodeRankerTestCase struct {
 	name     string
 	expected int
-	version  model.BuildVersionInfo
+	version  models.BuildVersionInfo
 }
 
 var minVersionNodeRankerTestCases = []minVersionNodeRankerTestCase{
 	{
 		name:     "oldMajor",
-		version:  model.BuildVersionInfo{Major: "0", Minor: "9"},
+		version:  models.BuildVersionInfo{Major: "0", Minor: "9"},
 		expected: -1,
 	},
 	{
 		name:     "oldMinor",
-		version:  model.BuildVersionInfo{Major: "1", Minor: "2"},
+		version:  models.BuildVersionInfo{Major: "1", Minor: "2"},
 		expected: -1,
 	},
 	{
 		name:     "oldGitVersion",
-		version:  model.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.11"},
+		version:  models.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.11"},
 		expected: -1,
 	},
 	{
 		name:     "nilVersion",
-		version:  model.BuildVersionInfo{},
+		version:  models.BuildVersionInfo{},
 		expected: 0,
 	},
 	{
 		name:     "match",
-		version:  model.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.12"},
+		version:  models.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.12"},
 		expected: 10,
 	},
 	{
 		name:     "newMajor",
-		version:  model.BuildVersionInfo{Major: "4", Minor: "0"},
+		version:  models.BuildVersionInfo{Major: "4", Minor: "0"},
 		expected: 10,
 	},
 	{
 		name:     "newMinor",
-		version:  model.BuildVersionInfo{Major: "1", Minor: "4"},
+		version:  models.BuildVersionInfo{Major: "1", Minor: "4"},
 		expected: 10,
 	},
 	{
 		name:     "newGitVersion",
-		version:  model.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.13"},
+		version:  models.BuildVersionInfo{Major: "1", Minor: "3", GitVersion: "v1.3.13"},
 		expected: 10,
 	},
 	{
@@ -86,15 +86,15 @@ var minVersionNodeRankerTestCases = []minVersionNodeRankerTestCase{
 }
 
 func (s *MinVersionNodeRankerSuite) TestRankNodes() {
-	var nodes []model.NodeInfo
+	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
-		nodes = append(nodes, model.NodeInfo{
+		nodes = append(nodes, models.NodeInfo{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
 			BacalhauVersion: t.version,
 		})
 	}
 
-	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), model.Job{}, nodes)
+	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	for _, t := range minVersionNodeRankerTestCases {
@@ -105,17 +105,17 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes() {
 // if nil version is passed to the ranker, it should accept all nodes
 func (s *MinVersionNodeRankerSuite) TestRankNodes_NilMinVersion() {
 	s.MinVersionNodeRanker = NewMinVersionNodeRanker(MinVersionNodeRankerParams{
-		MinVersion: model.BuildVersionInfo{},
+		MinVersion: models.BuildVersionInfo{},
 	})
-	var nodes []model.NodeInfo
+	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
-		nodes = append(nodes, model.NodeInfo{
+		nodes = append(nodes, models.NodeInfo{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
 			BacalhauVersion: t.version,
 		})
 	}
 
-	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), model.Job{}, nodes)
+	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	for _, t := range minVersionNodeRankerTestCases {

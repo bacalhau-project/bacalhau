@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -153,7 +154,7 @@ func (s *ServeSuite) TestHealthcheck() {
 	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
-	s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
+	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
 }
 

@@ -81,7 +81,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 
 	if settings.SingleFile != "" {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
 			if err != nil {
 				return err
 			}
@@ -128,7 +128,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 		}
 	} else {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
 			if err != nil {
 				return err
 			}

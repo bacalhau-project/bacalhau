@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -93,18 +93,22 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
 	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 	return 0, nil
 }
 
 // PrepareStorage will download the file from the URL
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	u, err := IsURLSupported(storageSpec.URL)
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	u, err := IsURLSupported(source.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -135,7 +139,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	defer closer.DrainAndCloseWithLogOnError(ctx, "response", res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, res.Status)
+		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", source.URL, res.Status)
 	}
 
 	// Reset previous redirect handler
@@ -175,7 +179,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %w", filePath, err)
 	}
 
-	targetPath := filepath.Join(storageSpec.Path, fileName)
+	targetPath := filepath.Join(storageSpec.Target, fileName)
 
 	log.Ctx(ctx).Debug().
 		Stringer("url", u).
@@ -220,30 +224,17 @@ func filenameFromDisposition(contentDispositionHdr string) string {
 
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ model.StorageSpec,
+	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
+	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
 }
 
-func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(context.Context, string) (models.SpecConfig, error) {
 	// we don't "upload" anything to a URL
-	return model.StorageSpec{}, fmt.Errorf("not implemented")
-}
-
-func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	// for the url download - explode will always result in a single item
-	// mounted at the path specified in the spec
-	return []model.StorageSpec{
-		{
-			Name:          spec.Name,
-			StorageSource: model.StorageSourceURLDownload,
-			Path:          spec.Path,
-			URL:           spec.URL,
-		},
-	}, nil
+	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
 func IsURLSupported(rawURL string) (*url.URL, error) {

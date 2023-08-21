@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
@@ -27,14 +27,14 @@ func (c *Chain) Add(discoverer ...orchestrator.NodeDiscoverer) {
 	c.discoverers = append(c.discoverers, discoverer...)
 }
 
-func (c *Chain) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
-	return c.chainDiscovery(ctx, "FindNodes", func(r orchestrator.NodeDiscoverer) ([]model.NodeInfo, error) {
+func (c *Chain) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
+	return c.chainDiscovery(ctx, "FindNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
 		return r.FindNodes(ctx, job)
 	})
 }
 
-func (c *Chain) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
-	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]model.NodeInfo, error) {
+func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
+	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
 		return r.ListNodes(ctx)
 	})
 }
@@ -42,10 +42,10 @@ func (c *Chain) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
 func (c *Chain) chainDiscovery(
 	ctx context.Context,
 	caller string,
-	getNodes func(orchestrator.NodeDiscoverer) ([]model.NodeInfo, error),
-) ([]model.NodeInfo, error) {
+	getNodes func(orchestrator.NodeDiscoverer) ([]models.NodeInfo, error),
+) ([]models.NodeInfo, error) {
 	var err error
-	uniqueNodes := make(map[peer.ID]model.NodeInfo, 0)
+	uniqueNodes := make(map[peer.ID]models.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
 		nodeInfos, discoverErr := getNodes(discoverer)
 		err = multierr.Append(err, errors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))

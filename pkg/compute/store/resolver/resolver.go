@@ -48,14 +48,14 @@ func (r *StateResolver) Wait(
 		MaxAttempts: r.maxWaitAttempts,
 		Delay:       r.waitDelay,
 		Handler: func() (bool, error) {
-			execution, err := r.executionStore.GetExecution(ctx, executionID)
+			localExecutionState, err := r.executionStore.GetExecution(ctx, executionID)
 			if err != nil {
 				return false, err
 			}
 
 			allOK := true
 			for _, checkFunction := range checkStateFunctions {
-				stepOK, stepErr := checkFunction(execution)
+				stepOK, stepErr := checkFunction(localExecutionState)
 				if stepErr != nil {
 					return false, stepErr
 				}
@@ -66,13 +66,14 @@ func (r *StateResolver) Wait(
 				return true, nil
 			}
 
-			allTerminal, err := CheckForTerminalStates()(execution)
+			allTerminal, err := CheckForTerminalStates()(localExecutionState)
 			if err != nil {
 				return false, err
 			}
 			if allTerminal {
 				return false, fmt.Errorf(
-					"execution reached a terminal state before meeting the resolver's conditions: %s", execution)
+					"execution reached a terminal state before meeting the resolver's conditions: %v",
+					localExecutionState)
 			}
 			return false, nil
 		},

@@ -66,9 +66,12 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			returnedJob, err := client.Submit(s.ctx, testJob)
 			s.Require().NoError(err)
 
-			jobState, err := client.GetJobState(s.ctx, returnedJob.ID())
-			s.Require().NoError(err)
-			s.Require().Equal(jobState.State, model.JobStateError)
+			s.Eventually(func() bool {
+				jobState, err := client.GetJobState(s.ctx, returnedJob.ID())
+				s.Require().NoError(err)
+				s.Require().Equal(model.JobStateError.String(), jobState.State.String())
+				return true
+			}, 5*time.Second, 50*time.Millisecond)
 		})
 	}
 }

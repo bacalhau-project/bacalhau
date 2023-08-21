@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/c2h5oh/datasize"
@@ -123,9 +123,9 @@ func TestJobResult(t *testing.T) {
 	require.Equal(t, "", result.ErrorMsg)
 
 	for filename, expectedContents := range map[string]string{
-		model.DownloadFilenameStdout:   "standard output",
-		model.DownloadFilenameStderr:   "standard error",
-		model.DownloadFilenameExitCode: "123",
+		models.DownloadFilenameStdout:   "standard output",
+		models.DownloadFilenameStderr:   "standard error",
+		models.DownloadFilenameExitCode: "123",
 	} {
 		actualContents, err := os.ReadFile(filepath.Join(tempDir, filename))
 		require.NoError(t, err)

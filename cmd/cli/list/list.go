@@ -35,15 +35,15 @@ var (
 
 	// The tags that will be excluded by default, if the user does not pass any
 	// others to the list command.
-	DefaultExcludedTags = []model.ExcludedTag{
+	DefaultExcludedTags = []string{
 		"canary",
 	}
 )
 
 type ListOptions struct {
 	IDFilter    string               // Filter by Job List to IDs matching substring.
-	IncludeTags []model.IncludedTag  // Only return jobs with these annotations
-	ExcludeTags []model.ExcludedTag  // Only return jobs without these annotations
+	IncludeTags []string             // Only return jobs with these annotations
+	ExcludeTags []string             // Only return jobs without these annotations
 	MaxJobs     int                  // Print the first NUM jobs instead of the first 10.
 	OutputOpts  output.OutputOptions // The output format for the list of jobs (json or text)
 	SortReverse bool                 // Reverse order of table - for time sorting, this will be newest first.
@@ -81,9 +81,9 @@ func NewCmd() *cobra.Command {
 	}
 
 	listCmd.PersistentFlags().StringVar(&OL.IDFilter, "id-filter", OL.IDFilter, `filter by Job List to IDs matching substring.`)
-	listCmd.PersistentFlags().Var(flags.IncludedTagFlag(&OL.IncludeTags), "include-tag",
+	listCmd.PersistentFlags().StringSliceVar(&OL.IncludeTags, "include-tag", OL.IncludeTags,
 		`Only return jobs that have the passed tag in their annotations`)
-	listCmd.PersistentFlags().Var(flags.ExcludedTagFlag(&OL.ExcludeTags), "exclude-tag",
+	listCmd.PersistentFlags().StringSliceVar(&OL.ExcludeTags, "exclude-tag", OL.ExcludeTags,
 		`Only return jobs that do not have the passed tag in their annotations`)
 	listCmd.PersistentFlags().IntVarP(
 		&OL.MaxJobs, "number", "n", OL.MaxJobs,

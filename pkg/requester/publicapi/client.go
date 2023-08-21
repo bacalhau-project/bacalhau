@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
@@ -45,8 +46,8 @@ func NewRequesterAPIClientFromClient(baseClient *publicapi.APIClient) *Requester
 func (apiClient *RequesterAPIClient) List(
 	ctx context.Context,
 	idFilter string,
-	includeTags []model.IncludedTag,
-	excludeTags []model.ExcludedTag,
+	includeTags []string,
+	excludeTags []string,
 	maxJobs int,
 	returnAll bool,
 	sortBy string,
@@ -76,11 +77,11 @@ func (apiClient *RequesterAPIClient) List(
 	return res.Jobs, nil
 }
 
-func (apiClient *RequesterAPIClient) Nodes(ctx context.Context) ([]model.NodeInfo, error) {
+func (apiClient *RequesterAPIClient) Nodes(ctx context.Context) ([]models.NodeInfo, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Nodes")
 	defer span.End()
 
-	var nodes []model.NodeInfo
+	var nodes []models.NodeInfo
 	err := apiClient.APIClient.Get(ctx, APIPrefix+"nodes", &nodes)
 	if err != nil {
 		return nil, err

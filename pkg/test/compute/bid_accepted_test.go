@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
@@ -24,7 +25,7 @@ func TestBidAcceptedSuite(t *testing.T) {
 
 func (s *BidAcceptedSuite) TestBidAccepted() {
 	ctx := context.Background()
-	executionID := s.prepareAndAskForBid(ctx, generateJob(s.T()))
+	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
@@ -42,12 +43,12 @@ func (s *BidAcceptedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
-	for _, state := range []store.ExecutionState{
+	for _, state := range []store.LocalExecutionStateType{
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,
 	} {
-		executionID := s.prepareAndAskForBid(ctx, generateJob(s.T()))
+		executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID: executionID,
 			NewState:    state,

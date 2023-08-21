@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
@@ -59,7 +59,7 @@ type FakePublisher struct {
 	isInstalled        bool
 	isInstalledErr     error
 	ValidateJobErr     error
-	PublishedResult    model.StorageSpec
+	PublishedResult    models.SpecConfig
 	PublishedResultErr error
 	// TODO(forrest): use a mockable clock to avoid test flakes
 	sleepTime time.Duration
@@ -72,13 +72,13 @@ func (m *FakePublisher) IsInstalled(context.Context) (bool, error) {
 }
 
 // ValidateJob implements publisher.Publisher
-func (m *FakePublisher) ValidateJob(context.Context, model.Job) error {
+func (m *FakePublisher) ValidateJob(context.Context, models.Job) error {
 	time.Sleep(m.sleepTime)
 	return m.ValidateJobErr
 }
 
 // PublishResult implements publisher.Publisher
-func (m *FakePublisher) PublishResult(context.Context, string, model.Job, string) (model.StorageSpec, error) {
+func (m *FakePublisher) PublishResult(context.Context, string, models.Job, string) (models.SpecConfig, error) {
 	time.Sleep(m.sleepTime)
 	return m.PublishedResult, m.PublishedResultErr
 }
@@ -91,10 +91,15 @@ type fanoutTestCase struct {
 }
 
 var sleepyPublisher = FakePublisher{
-	isInstalled:     true,
-	ValidateJobErr:  nil,
-	PublishedResult: model.StorageSpec{CID: "123"},
-	sleepTime:       50 * time.Millisecond,
+	isInstalled:    true,
+	ValidateJobErr: nil,
+	PublishedResult: models.SpecConfig{
+		Type: models.StorageSourceIPFS,
+		Params: map[string]interface{}{
+			"CID": "123",
+		},
+	},
+	sleepTime: 50 * time.Millisecond,
 }
 
 var uninstalledPublisher = FakePublisher{
@@ -105,8 +110,13 @@ var uninstalledPublisher = FakePublisher{
 }
 
 var healthyPublisher = FakePublisher{
-	isInstalled:     true,
-	PublishedResult: model.StorageSpec{Name: "test output"},
+	isInstalled: true,
+	PublishedResult: models.SpecConfig{
+		Type: models.StorageSourceIPFS,
+		Params: map[string]interface{}{
+			"CID": "123",
+		},
+	},
 }
 
 var errorPublisher = FakePublisher{
@@ -121,7 +131,7 @@ func runTestCase(t *testing.T, name string, testCase fanoutTestCase) {
 		require.Equal(t, testCase.expectPublisher.isInstalled, result)
 	})
 	t.Run(name+"/PublishResult", func(t *testing.T) {
-		result, err := testCase.publisher.PublishResult(context.Background(), "", model.Job{}, "")
+		result, err := testCase.publisher.PublishResult(context.Background(), "", models.Job{}, "")
 		require.Equal(t, testCase.expectPublisher.PublishedResultErr == nil, err == nil, err)
 		require.Equal(t, testCase.expectPublisher.PublishedResult, result)
 	})

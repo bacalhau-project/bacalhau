@@ -9,6 +9,6 @@ type (
 
 // Set of annotations that will not do any filtering of jobs.
 var (
-	IncludeAny  []IncludedTag = []IncludedTag{}
-	ExcludeNone []ExcludedTag = []ExcludedTag{}
+	IncludeAny  = make([]string, 0)
+	ExcludeNone = make([]string, 0)
 )

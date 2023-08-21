@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -33,26 +32,31 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j model.Job) error {
-	switch j.Spec.PublisherSpec.Type {
-	case model.PublisherIpfs:
+func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j models.Job) error {
+	switch j.Task().Publisher.Type {
+	case models.PublisherIPFS:
 		return nil
 	default:
-		return fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type)
+		return fmt.Errorf("invalid publisher type: %s", j.Task().Publisher.Type)
 	}
 }
 
 func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
 	executionID string,
-	j model.Job,
+	j models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (models.SpecConfig, error) {
 	cid, err := publisher.IPFSClient.Put(ctx, resultPath)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
-	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
+	return models.SpecConfig{
+		Type: models.StorageSourceIPFS,
+		Params: map[string]interface{}{
+			"CID": cid,
+		},
+	}, nil
 }
 
 // Compile-time check that publisher implements the correct interface:

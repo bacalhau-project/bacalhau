@@ -7,11 +7,9 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/hashicorp/go-plugin"
-
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/hashicorp/go-plugin"
 )
 
 func NewPluginExecutorManager() *PluginExecutorManager {
@@ -26,18 +24,30 @@ type PluginExecutorManager struct {
 	active     map[string]*activeExecutor
 }
 
-func (e *PluginExecutorManager) Get(ctx context.Context, key model.Engine) (executor.Executor, error) {
-	engine, ok := e.active[key.String()]
+func (e *PluginExecutorManager) Get(ctx context.Context, key string) (executor.Executor, error) {
+	engine, ok := e.active[key]
 	if !ok {
 		return nil, fmt.Errorf("pluging %s not found", key)
 	}
 	return engine.Impl, nil
 }
 
-func (e *PluginExecutorManager) Has(ctx context.Context, key model.Engine) bool {
-	_, ok := e.active[key.String()]
+func (e *PluginExecutorManager) Has(ctx context.Context, key string) bool {
+	_, ok := e.active[key]
 	return ok
 }
+
+// Keys returns the keys of the registered executors
+func (e *PluginExecutorManager) Keys(ctx context.Context) []string {
+	keys := make([]string, 0, len(e.active))
+	for k := range e.active {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// compile-time check that PluginExecutorManager implements ExecutorProvider
+var _ executor.ExecutorProvider = (*PluginExecutorManager)(nil)
 
 type activeExecutor struct {
 	Impl   executor.Executor

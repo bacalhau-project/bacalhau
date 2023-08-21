@@ -15,7 +15,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/spf13/viper"
@@ -117,7 +118,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 	return res.StatusCode == http.StatusOK, nil
 }
 
-func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
+func (apiClient *APIClient) Version(ctx context.Context) (*models.BuildVersionInfo, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Version")
 	defer span.End()
 
@@ -209,7 +210,7 @@ func (apiClient *APIClient) Do(ctx context.Context, req *http.Request, resData a
 		}
 
 		var serverError *bacerrors.ErrorResponse
-		if err = model.JSONUnmarshalWithMax(responseBody, &serverError); err != nil {
+		if err = marshaller.JSONUnmarshalWithMax(responseBody, &serverError); err != nil {
 			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v",
 				string(responseBody)))
 		}

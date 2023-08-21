@@ -3,7 +3,7 @@ package bidstrategy
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type waitingStrategy struct {
@@ -32,7 +32,7 @@ func (s *waitingStrategy) ShouldBid(ctx context.Context, request BidStrategyRequ
 func (s *waitingStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request BidStrategyRequest,
-	resourceUsage model.ResourceUsageData,
+	resourceUsage models.Resources,
 ) (BidStrategyResponse, error) {
 	resp, err := s.underlying.ShouldBidBasedOnUsage(ctx, request, resourceUsage)
 	if (resp.ShouldBid && s.waitOnBid) || (!resp.ShouldBid && s.waitOnNoBid) {

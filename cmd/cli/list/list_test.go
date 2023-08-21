@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -118,7 +119,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	// parse response
 	response := publicapi.ListResponse{}
-	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+	err = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem model.Job
 	for _, v := range response.Jobs {
@@ -150,20 +151,20 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 
 	for _, tag := range list.DefaultExcludedTags {
 		testCases = append(testCases, testCase{
-			fmt.Sprintf("%s filtered by default", string(tag)),
-			[]string{string(tag)},
-			[]string{string(tag)},
+			fmt.Sprintf("%s filtered by default", tag),
+			[]string{tag},
+			[]string{tag},
 			false,
-			true,
+			false,
 			false,
 		})
 		testCases = append(testCases, testCase{
-			fmt.Sprintf("%s excluded with other tags", string(tag)),
-			[]string{string(tag)},
+			fmt.Sprintf("%s excluded with other tags", tag),
+			[]string{tag},
 			[]string{"test"},
 			false,
 			false,
-			false,
+			true,
 		})
 	}
 
@@ -193,7 +194,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				require.NoError(suite.T(), err)
 
 				response := publicapi.ListResponse{}
-				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				_ = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
 					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)

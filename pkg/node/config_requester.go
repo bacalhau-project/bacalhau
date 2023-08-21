@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
@@ -19,12 +20,12 @@ type RequesterConfigParams struct {
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
 	OverAskForBidsFactor               uint
-	JobSelectionPolicy                 model.JobSelectionPolicy
+	JobSelectionPolicy                 JobSelectionPolicy
 	ExternalValidatorWebhook           *url.URL
 	FailureInjectionConfig             model.FailureInjectionRequesterConfig
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
-	MinBacalhauVersion model.BuildVersionInfo
+	MinBacalhauVersion models.BuildVersionInfo
 
 	RetryStrategy orchestrator.RetryStrategy
 

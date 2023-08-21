@@ -12,12 +12,12 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	// git "github.com/gogs/git-module"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -62,29 +62,34 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return false, nil
 }
 
 // Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
 	return 0, nil
 }
 
 //nolint:gocyclo
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 
-	repoURL := storageSpec.Repo
-	_, err := clone.IsValidGitRepoURL(repoURL)
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+
+	repoURL := source.Repo
+	_, err = clone.IsValidGitRepoURL(repoURL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
 	// # create a tmp directory
 	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
-	log.Ctx(ctx).Debug().Str("Output Path", outputPath).Msg("created temp folder for repo")
+	log.Ctx(ctx).Debug().Str("Output ResultPath", outputPath).Msg("created temp folder for repo")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -107,17 +112,18 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	filename := strings.Split(filepath.Path, ".")[0]
 	targetPath := "/inputs" + filename
 
-	CIDSpec, err := sp.Upload(ctx, outputPath)
+	outputConfig, err := sp.Upload(ctx, outputPath)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
+	cid := outputConfig.Params["CID"].(string)
 	// Update the KV store
 	SHA1HASH, _ := urltoLatestCommitHash(ctx, repoURL)
 
 	data := url.Values{}
 	data.Set("key", SHA1HASH)
-	data.Set("value", CIDSpec.CID)
+	data.Set("value", cid)
 
 	err = createSHA1CIDPair(ctx, data)
 	if err != nil {
@@ -135,46 +141,21 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	return volume, nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/repo/apicopy.Upload")
-	defer span.End()
-
-	cid, err := sp.IPFSClient.Upload(ctx, localPath)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("repo provider failed to upload to IPFS")
-		return model.StorageSpec{}, err
-	}
-
-	log.Ctx(ctx).Debug().Str("CID", cid.CID).Msg("repo provider uploaded to ipfs")
-
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid.CID,
-	}, nil
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (models.SpecConfig, error) {
+	return sp.IPFSClient.Upload(ctx, localPath)
 }
 
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ model.StorageSpec,
+	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
 	defer span.End()
 
 	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
+	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
-}
-
-func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	return []model.StorageSpec{
-		{
-			Name:          spec.Name,
-			StorageSource: model.StorageSourceRepoClone,
-			Path:          spec.Path,
-			Repo:          spec.Repo,
-		},
-	}, nil
 }
 
 func createSHA1CIDPair(ctx context.Context, data url.Values) error {

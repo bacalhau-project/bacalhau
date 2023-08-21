@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 	time "time"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -288,10 +287,10 @@ func (m *MockNodeDiscoverer) EXPECT() *MockNodeDiscovererMockRecorder {
 }
 
 // FindNodes mocks base method.
-func (m *MockNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (m *MockNodeDiscoverer) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindNodes", ctx, job)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -303,10 +302,10 @@ func (mr *MockNodeDiscovererMockRecorder) FindNodes(ctx, job interface{}) *gomoc
 }
 
 // ListNodes mocks base method.
-func (m *MockNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
+func (m *MockNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListNodes", ctx)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -341,7 +340,7 @@ func (m *MockNodeRanker) EXPECT() *MockNodeRankerMockRecorder {
 }
 
 // RankNodes mocks base method.
-func (m *MockNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]NodeRank, error) {
+func (m *MockNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]NodeRank, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RankNodes", ctx, job, nodes)
 	ret0, _ := ret[0].([]NodeRank)
@@ -353,89 +352,6 @@ func (m *MockNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []m
 func (mr *MockNodeRankerMockRecorder) RankNodes(ctx, job, nodes interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RankNodes", reflect.TypeOf((*MockNodeRanker)(nil).RankNodes), ctx, job, nodes)
-}
-
-// MockNodeSelector is a mock of NodeSelector interface.
-type MockNodeSelector struct {
-	ctrl     *gomock.Controller
-	recorder *MockNodeSelectorMockRecorder
-}
-
-// MockNodeSelectorMockRecorder is the mock recorder for MockNodeSelector.
-type MockNodeSelectorMockRecorder struct {
-	mock *MockNodeSelector
-}
-
-// NewMockNodeSelector creates a new mock instance.
-func NewMockNodeSelector(ctrl *gomock.Controller) *MockNodeSelector {
-	mock := &MockNodeSelector{ctrl: ctrl}
-	mock.recorder = &MockNodeSelectorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockNodeSelector) EXPECT() *MockNodeSelectorMockRecorder {
-	return m.recorder
-}
-
-// CanCompleteJob mocks base method.
-func (m *MockNodeSelector) CanCompleteJob(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) (bool, model.JobStateType) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CanCompleteJob", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(model.JobStateType)
-	return ret0, ret1
-}
-
-// CanCompleteJob indicates an expected call of CanCompleteJob.
-func (mr *MockNodeSelectorMockRecorder) CanCompleteJob(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanCompleteJob", reflect.TypeOf((*MockNodeSelector)(nil).CanCompleteJob), arg0, arg1, arg2)
-}
-
-// SelectBids mocks base method.
-func (m *MockNodeSelector) SelectBids(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) ([]model.ExecutionState, []model.ExecutionState) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectBids", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]model.ExecutionState)
-	ret1, _ := ret[1].([]model.ExecutionState)
-	return ret0, ret1
-}
-
-// SelectBids indicates an expected call of SelectBids.
-func (mr *MockNodeSelectorMockRecorder) SelectBids(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBids", reflect.TypeOf((*MockNodeSelector)(nil).SelectBids), arg0, arg1, arg2)
-}
-
-// SelectNodes mocks base method.
-func (m *MockNodeSelector) SelectNodes(arg0 context.Context, arg1 *model.Job) ([]model.NodeInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectNodes", arg0, arg1)
-	ret0, _ := ret[0].([]model.NodeInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectNodes indicates an expected call of SelectNodes.
-func (mr *MockNodeSelectorMockRecorder) SelectNodes(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectNodes", reflect.TypeOf((*MockNodeSelector)(nil).SelectNodes), arg0, arg1)
-}
-
-// SelectNodesForRetry mocks base method.
-func (m *MockNodeSelector) SelectNodesForRetry(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) ([]model.NodeInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectNodesForRetry", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]model.NodeInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectNodesForRetry indicates an expected call of SelectNodesForRetry.
-func (mr *MockNodeSelectorMockRecorder) SelectNodesForRetry(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectNodesForRetry", reflect.TypeOf((*MockNodeSelector)(nil).SelectNodesForRetry), arg0, arg1, arg2)
 }
 
 // MockRetryStrategy is a mock of RetryStrategy interface.

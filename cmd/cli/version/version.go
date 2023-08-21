@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -33,8 +33,8 @@ import (
 
 // Versions is a struct for version information
 type Versions struct {
-	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty"`
-	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty"`
+	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
 // VersionOptions is a struct to support version command

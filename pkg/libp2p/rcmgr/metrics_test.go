@@ -6,6 +6,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"testing"
+	"time"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -19,9 +23,6 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"golang.org/x/exp/slices"
-	"io"
-	"testing"
-	"time"
 )
 
 func TestMetricsReporter(t *testing.T) {

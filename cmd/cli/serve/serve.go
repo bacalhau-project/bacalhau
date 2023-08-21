@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -66,29 +66,29 @@ var (
 
 //nolint:lll // Documentation
 type ServeOptions struct {
-	NodeType                              []string                 // "compute", "requester" node or both
-	PeerConnect                           string                   // The libp2p multiaddress to connect to.
-	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
-	HostAddress                           string                   // The host address to listen on.
-	SwarmPort                             int                      // The host port for libp2p network.
-	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
-	ExternalVerifierHook                  *url.URL                 // Where to send external verification requests to.
+	NodeType                              []string                // "compute", "requester" node or both
+	PeerConnect                           string                  // The libp2p multiaddress to connect to.
+	IPFSConnect                           string                  // The multiaddress to connect to for IPFS.
+	HostAddress                           string                  // The host address to listen on.
+	SwarmPort                             int                     // The host port for libp2p network.
+	JobSelectionPolicy                    node.JobSelectionPolicy // How the node decides what jobs to run.
+	ExternalVerifierHook                  *url.URL                // Where to send external verification requests to.
 	AutoCert                              string                   // Specifies the domains names that this instance should obtain certs for
 	TLSCert                               string                   // Local server certificate - DO NOT SHARE
 	TLSKey                                string                   // Local server key - DO NOT SHARE
-	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                      string                   // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                         string                   // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                           string                   // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
-	MaxJobExecutionTimeout                time.Duration            // The maximum time a job can execute for.
-	DisabledFeatures                      node.FeatureConfig       // What feautres should not be enbaled even if installed
-	JobExecutionTimeoutClientIDBypassList []string                 // IDs of clients that can submit jobs more than the configured job execution timeout
-	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
-	IPFSSwarmAddresses                    []string                 // IPFS multiaddresses that the in-process IPFS should connect to
-	PrivateInternalIPFS                   bool                     // Whether the in-process IPFS should automatically discover other IPFS nodes
-	AllowListedLocalPaths                 []string                 // Local paths that are allowed to be mounted into jobs
+	LimitTotalCPU                         string                  // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                      string                  // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                         string                  // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                           string                  // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                        string                  // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                           string                  // The amount of GPU the system can be using at one time for a single job.
+	MaxJobExecutionTimeout                time.Duration           // The maximum time a job can execute for.
+	DisabledFeatures                      node.FeatureConfig      // What feautres should not be enbaled even if installed
+	JobExecutionTimeoutClientIDBypassList []string                // IDs of clients that can submit jobs more than the configured job execution timeout
+	Labels                                map[string]string       // Labels to apply to the node that can be used for node selection and filtering
+	IPFSSwarmAddresses                    []string                // IPFS multiaddresses that the in-process IPFS should connect to
+	PrivateInternalIPFS                   bool                    // Whether the in-process IPFS should automatically discover other IPFS nodes
+	AllowListedLocalPaths                 []string                // Local paths that are allowed to be mounted into jobs
 }
 
 func NewServeOptions() *ServeOptions {
@@ -98,7 +98,7 @@ func NewServeOptions() *ServeOptions {
 		IPFSConnect:            "",
 		HostAddress:            "0.0.0.0",
 		SwarmPort:              DefaultSwarmPort,
-		JobSelectionPolicy:     model.NewDefaultJobSelectionPolicy(),
+		JobSelectionPolicy:     node.NewDefaultJobSelectionPolicy(),
 		LimitTotalCPU:          "",
 		LimitTotalMemory:       "",
 		LimitTotalGPU:          "",
@@ -195,23 +195,37 @@ func GetPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	return peers, nil
 }
 
-func GetComputeConfig(OS *ServeOptions) node.ComputeConfig {
+func GetComputeConfig(OS *ServeOptions) (node.ComputeConfig, error) {
+	totalResourcLimitsConfig := models.ResourcesConfig{
+		CPU:    OS.LimitTotalCPU,
+		Memory: OS.LimitTotalMemory,
+		GPU:    OS.LimitTotalGPU,
+	}
+
+	jobResourcesLimitsConfig := models.ResourcesConfig{
+		CPU:    OS.LimitJobCPU,
+		Memory: OS.LimitJobMemory,
+		GPU:    OS.LimitJobGPU,
+	}
+
+	parsedTotalLimits, err := totalResourcLimitsConfig.ToResources()
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+
+	parsedLimits, err := jobResourcesLimitsConfig.ToResources()
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy: OS.JobSelectionPolicy,
-		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
-			CPU:    OS.LimitTotalCPU,
-			Memory: OS.LimitTotalMemory,
-			GPU:    OS.LimitTotalGPU,
-		}),
-		JobResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
-			CPU:    OS.LimitJobCPU,
-			Memory: OS.LimitJobMemory,
-			GPU:    OS.LimitJobGPU,
-		}),
+		JobSelectionPolicy:                    OS.JobSelectionPolicy,
+		TotalResourceLimits:                   *parsedTotalLimits,
+		JobResourceLimits:                     *parsedLimits,
 		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
 		MaxJobExecutionTimeout:                OS.MaxJobExecutionTimeout,
 		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
-	})
+	}), nil
 }
 
 func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
@@ -330,6 +344,12 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	for key, value := range OS.Labels {
 		combinedMap[key] = value
 	}
+
+	computeConfig, err := GetComputeConfig(OS)
+	if err != nil {
+		return err
+	}
+
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		IPFSClient:            ipfsClient,
@@ -338,7 +358,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
 		APIPort:               util.GetAPIPort(ctx),
-		ComputeConfig:         GetComputeConfig(OS),
+		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   GetRequesterConfig(OS),
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,

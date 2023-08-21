@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
 	"github.com/google/uuid"
 
@@ -116,7 +117,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 }
 
 func (s *DockerRunSuite) TestRun_GPURequests() {
-	if !s.Node.ComputeNode.Capacity.IsWithinLimits(context.Background(), model.ResourceUsageData{GPU: 1}) {
+	if !s.Node.ComputeNode.Capacity.IsWithinLimits(context.Background(), models.Resources{GPU: 1}) {
 		s.T().Skip("Skipping test as no GPU is available in current host")
 	}
 	tests := []struct {

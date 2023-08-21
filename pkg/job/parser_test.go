@@ -5,10 +5,9 @@ package job
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func TestParseStorageString(t *testing.T) {
