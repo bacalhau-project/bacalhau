@@ -9,10 +9,10 @@ import (
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
-const newExecutionComment = "LocalState created"
+const newExecutionComment = "LocalExecutionState created"
 
 type Store struct {
-	executionMap map[string]store.LocalState
+	executionMap map[string]store.LocalExecutionState
 	jobMap       map[string][]string
 	history      map[string][]store.LocalStateHistory
 	mu           sync.RWMutex
@@ -20,7 +20,7 @@ type Store struct {
 
 func NewStore() *Store {
 	res := &Store{
-		executionMap: make(map[string]store.LocalState),
+		executionMap: make(map[string]store.LocalExecutionState),
 		jobMap:       make(map[string][]string),
 		history:      make(map[string][]store.LocalStateHistory),
 	}
@@ -31,7 +31,7 @@ func NewStore() *Store {
 	return res
 }
 
-func (s *Store) GetExecution(ctx context.Context, id string) (store.LocalState, error) {
+func (s *Store) GetExecution(ctx context.Context, id string) (store.LocalExecutionState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	execution, ok := s.executionMap[id]
@@ -41,14 +41,14 @@ func (s *Store) GetExecution(ctx context.Context, id string) (store.LocalState, 
 	return execution, nil
 }
 
-func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalState, error) {
+func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalExecutionState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	executionIDs, ok := s.jobMap[jobID]
 	if !ok {
-		return []store.LocalState{}, store.NewErrExecutionsNotFoundForJob(jobID)
+		return []store.LocalExecutionState{}, store.NewErrExecutionsNotFoundForJob(jobID)
 	}
-	executions := make([]store.LocalState, len(executionIDs))
+	executions := make([]store.LocalExecutionState, len(executionIDs))
 	for i, id := range executionIDs {
 		executions[i] = s.executionMap[id]
 	}
@@ -65,7 +65,7 @@ func (s *Store) GetExecutionHistory(ctx context.Context, id string) ([]store.Loc
 	return history, nil
 }
 
-func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalState) error {
+func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalExecutionState) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	execution := localExecutionState.Execution
@@ -107,7 +107,7 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	return nil
 }
 
-func (s *Store) appendHistory(updatedExecution store.LocalState, previousState store.LocalStateType, comment string) {
+func (s *Store) appendHistory(updatedExecution store.LocalExecutionState, previousState store.LocalExecutionStateType, comment string) {
 	historyEntry := store.LocalStateHistory{
 		ExecutionID:   updatedExecution.Execution.ID,
 		PreviousState: previousState,
@@ -142,7 +142,7 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalStateType) (uint64, error) {
+func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalExecutionStateType) (uint64, error) {
 	var counter uint64
 	for _, execution := range s.executionMap {
 		if execution.State == state {

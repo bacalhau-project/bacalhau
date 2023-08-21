@@ -43,7 +43,7 @@ func (s *BidAcceptedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
-	for _, state := range []store.LocalStateType{
+	for _, state := range []store.LocalExecutionStateType{
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,

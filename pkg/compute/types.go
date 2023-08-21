@@ -29,9 +29,9 @@ type Endpoint interface {
 // Implementations can be synchronous or asynchronous by using Callbacks.
 type Executor interface {
 	// Run triggers the execution of a job.
-	Run(ctx context.Context, localExecutionState store.LocalState) error
+	Run(ctx context.Context, localExecutionState store.LocalExecutionState) error
 	// Cancel cancels the execution of a job.
-	Cancel(ctx context.Context, localExecutionState store.LocalState) error
+	Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) error
 }
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.

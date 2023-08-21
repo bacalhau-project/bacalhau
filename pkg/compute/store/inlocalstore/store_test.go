@@ -44,7 +44,7 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 	s.Equal(uint64(0), count)
 	//create execution
 	execution := mock.ExecutionForJob(mock.Job())
-	executionState := *store.NewLocalState(execution, "nodeID")
+	executionState := *store.NewLocalExecutionState(execution, "nodeID")
 	err = s.proxy.CreateExecution(context.Background(), executionState)
 	s.NoError(err)
 	err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
@@ -65,7 +65,7 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 		s.Equal(uint64(index), count)
 
 		execution := mock.ExecutionForJob(job)
-		executionState := *store.NewLocalState(execution, "nodeID")
+		executionState := *store.NewLocalExecutionState(execution, "nodeID")
 		err = s.proxy.CreateExecution(context.Background(), executionState)
 		s.NoError(err)
 		err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
@@ -83,7 +83,7 @@ func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
 		}
 		s.Run(executionStateType.String(), func() {
 			execution := mock.ExecutionForJob(mock.Job())
-			executionState := *store.NewLocalState(execution, "nodeID")
+			executionState := *store.NewLocalExecutionState(execution, "nodeID")
 			err := s.proxy.CreateExecution(context.Background(), executionState)
 			s.NoError(err)
 			err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{

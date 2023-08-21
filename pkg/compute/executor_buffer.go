@@ -14,11 +14,11 @@ import (
 )
 
 type bufferTask struct {
-	localExecutionState store.LocalState
+	localExecutionState store.LocalExecutionState
 	enqueuedAt          time.Time
 }
 
-func newBufferTask(execution store.LocalState) *bufferTask {
+func newBufferTask(execution store.LocalExecutionState) *bufferTask {
 	return &bufferTask{
 		localExecutionState: execution,
 		enqueuedAt:          time.Now(),
@@ -79,7 +79,7 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalState) (err error) {
+func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	execution := localExecutionState.Execution
@@ -194,7 +194,7 @@ func (s *ExecutorBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalState) error {
+func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalExecutionState) error {
 	// TODO: Enqueue cancel tasks
 	execution := localExecutionState.Execution
 	go func() {
@@ -216,19 +216,19 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.Loc
 }
 
 // RunningExecutions return list of running executions
-func (s *ExecutorBuffer) RunningExecutions() []store.LocalState {
+func (s *ExecutorBuffer) RunningExecutions() []store.LocalExecutionState {
 	return s.mapValues(s.running)
 }
 
 // EnqueuedExecutions return list of enqueued executions
-func (s *ExecutorBuffer) EnqueuedExecutions() []store.LocalState {
+func (s *ExecutorBuffer) EnqueuedExecutions() []store.LocalExecutionState {
 	return s.mapValues(s.enqueued)
 }
 
-func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalState {
+func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalExecutionState {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	executions := make([]store.LocalState, 0, len(m))
+	executions := make([]store.LocalExecutionState, 0, len(m))
 	for _, v := range m {
 		executions = append(executions, v.localExecutionState)
 	}

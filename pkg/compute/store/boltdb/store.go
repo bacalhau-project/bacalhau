@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	newExecutionComment = "LocalState created"
+	newExecutionComment = "LocalExecutionState created"
 
 	DefaultSliceRetrievalCapacity = 10
 
@@ -34,9 +34,9 @@ const (
 // an execution ID and the value is the JSON representation.
 //
 // execution
-//     |--> <execution-id> -> {store.LocalState}
+//     |--> <execution-id> -> {store.LocalExecutionState}
 //
-// * LocalState history is stored in a bucket called `history`. Each execution
+// * LocalExecutionState history is stored in a bucket called `history`. Each execution
 // that has history is stored in a sub-bucket, whose name is the execution ID.
 // Within the execution id bucket, each key is a sequential value for the
 // history item being written so they are returned in write-order
@@ -132,13 +132,13 @@ func (s *Store) getJobIndexBucket(tx *bolt.Tx) *bolt.Bucket {
 	return tx.Bucket([]byte(BucketJobIndexName))
 }
 
-// GetExecution returns the stored LocalState structure for the provided execution ID.
-func (s *Store) GetExecution(ctx context.Context, executionID string) (store.LocalState, error) {
+// GetExecution returns the stored LocalExecutionState structure for the provided execution ID.
+func (s *Store) GetExecution(ctx context.Context, executionID string) (store.LocalExecutionState, error) {
 	log.Ctx(ctx).Trace().
 		Str("ExecutionID", executionID).
 		Msg("boltdb.GetExecution")
 
-	var execution store.LocalState
+	var execution store.LocalExecutionState
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		execution, err = s.getExecution(tx, executionID)
 		return
@@ -148,8 +148,8 @@ func (s *Store) GetExecution(ctx context.Context, executionID string) (store.Loc
 	return execution, err
 }
 
-func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.LocalState, error) {
-	var execution store.LocalState
+func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.LocalExecutionState, error) {
+	var execution store.LocalExecutionState
 
 	executionsBucket := tx.Bucket([]byte(BucketExecutionsName))
 	data := executionsBucket.Get([]byte(executionID))
@@ -163,12 +163,12 @@ func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.LocalState,
 
 // GetExecutions retrieves akk if the executions from the job-index bucket for the
 // provided Job ID.
-func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalState, error) {
+func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalExecutionState, error) {
 	log.Ctx(ctx).Trace().
 		Str("JobID", jobID).
 		Msg("boltdb.GetExecutions")
 
-	var executions []store.LocalState
+	var executions []store.LocalExecutionState
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		executions, err = s.getExecutions(tx, jobID)
 		return
@@ -187,14 +187,14 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalS
 	return executions, nil
 }
 
-func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.LocalState, error) {
+func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.LocalExecutionState, error) {
 	jobIndexBucket := s.getJobIndexBucket(tx)
 	jobBucket := jobIndexBucket.Bucket([]byte(jobID))
 	if jobBucket == nil {
 		return nil, store.NewErrJobNotFound(jobID)
 	}
 
-	executions := make([]store.LocalState, 0, DefaultSliceRetrievalCapacity)
+	executions := make([]store.LocalExecutionState, 0, DefaultSliceRetrievalCapacity)
 
 	// List all of the keys in the bucket which all have nil values, and are
 	// used only as markers to point to the actual execution in the relevant
@@ -261,7 +261,7 @@ func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.Lo
 
 // CreateExecution creates a new execution in the database and also sets up the
 // relevant index entry for the new execution.
-func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalState) error {
+func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalExecutionState) error {
 	log.Ctx(ctx).Trace().
 		Str("ExecutionID", localExecutionState.Execution.ID).
 		Msg("boltdb.CreateExecution")
@@ -282,7 +282,7 @@ func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.L
 	})
 }
 
-func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalState) error {
+func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalExecutionState) error {
 	_, err := s.getExecution(tx, localExecutionState.Execution.ID)
 	if err == nil { // deliberate, we require an err to continue
 		return store.NewErrExecutionAlreadyExists(localExecutionState.Execution.ID)
@@ -331,7 +331,7 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	})
 }
 
-func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.LocalStateType, error) {
+func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.LocalExecutionStateType, error) {
 	emptyState := store.ExecutionStateUndefined
 
 	localExecutionState, err := s.getExecution(tx, request.ExecutionID)
@@ -380,8 +380,8 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 // number as bucket traversals happen in lexicographical order.
 func (s *Store) appendHistory(
 	tx *bolt.Tx,
-	updatedExecution store.LocalState,
-	previousState store.LocalStateType, comment string) error {
+	updatedExecution store.LocalExecutionState,
+	previousState store.LocalExecutionStateType, comment string) error {
 	historyBucket := s.getHistoryBucket(tx)
 	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.Execution.ID))
 	if err != nil {
@@ -462,7 +462,7 @@ func (s *Store) Close(ctx context.Context) error {
 	return s.database.Close()
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalStateType) (uint64, error) {
+func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalExecutionStateType) (uint64, error) {
 	log.Ctx(ctx).Trace().
 		Msg("boltdb.GetExecutionCount")
 
@@ -484,7 +484,7 @@ func (s *Store) populateStateCounter(ctx context.Context) {
 				continue
 			}
 
-			var entry store.LocalState
+			var entry store.LocalExecutionState
 			err = json.Unmarshal(v, &entry)
 			if err != nil {
 				return

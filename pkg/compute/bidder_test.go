@@ -69,7 +69,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalStateType
+		expectedExecutionState store.LocalExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -168,7 +168,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalStateType
+		expectedExecutionState store.LocalExecutionStateType
 		mockExpectations       func()
 	}{
 		{

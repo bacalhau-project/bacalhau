@@ -90,7 +90,7 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 				Err:               fmt.Sprintf("Job rejected: %s", response.Reason),
 			})
 		} else {
-			execution := store.NewLocalState(request.Execution, request.SourcePeerID)
+			execution := store.NewLocalExecutionState(request.Execution, request.SourcePeerID)
 			execution.State = store.ExecutionStateBidAccepted
 			if err := b.store.CreateExecution(ctx, *execution); err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
@@ -114,7 +114,7 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 
 	// if we are bidding or waiting create an execution
 	if response.ShouldWait || response.ShouldBid {
-		execution := store.NewLocalState(request.Execution, request.SourcePeerID)
+		execution := store.NewLocalExecutionState(request.Execution, request.SourcePeerID)
 		if err := b.store.CreateExecution(ctx, *execution); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
 			return
@@ -133,7 +133,8 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 	}
 }
 
-func (b Bidder) ReturnBidResult(ctx context.Context, localExecutionState store.LocalState, response *bidstrategy.BidStrategyResponse) {
+func (b Bidder) ReturnBidResult(
+	ctx context.Context, localExecutionState store.LocalExecutionState, response *bidstrategy.BidStrategyResponse) {
 	if response.ShouldWait {
 		return
 	}

@@ -22,7 +22,7 @@ type Suite struct {
 	ctx                 context.Context
 	dbFile              string
 	executionStore      store.ExecutionStore
-	localExecutionState store.LocalState
+	localExecutionState store.LocalExecutionState
 	execution           *models.Execution
 }
 
@@ -34,7 +34,7 @@ func (s *Suite) SetupTest() {
 
 	s.executionStore, _ = boltdb.NewStore(s.ctx, s.dbFile)
 	s.execution = mock.ExecutionForJob(mock.Job())
-	s.localExecutionState = *store.NewLocalState(s.execution, "nodeID-1")
+	s.localExecutionState = *store.NewLocalExecutionState(s.execution, "nodeID-1")
 }
 
 func (s *Suite) TearDownTest() {
@@ -61,7 +61,7 @@ func (s *Suite) TestGetActiveExecution_Multiple() {
 	newerExecution.ID = uuid.NewString()
 	newerExecution.ModifyTime = s.execution.ModifyTime + 1
 
-	newerExecutionState := *store.NewLocalState(newerExecution, "nodeID-1")
+	newerExecutionState := *store.NewLocalExecutionState(newerExecution, "nodeID-1")
 
 	err := s.executionStore.CreateExecution(s.ctx, s.localExecutionState)
 	s.NoError(err)

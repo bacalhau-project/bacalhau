@@ -6,10 +6,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
-type CheckStateFunction func(store.LocalState) (bool, error)
+type CheckStateFunction func(store.LocalExecutionState) (bool, error)
 
 func CheckForTerminalStates() CheckStateFunction {
-	return func(execution store.LocalState) (bool, error) {
+	return func(execution store.LocalExecutionState) (bool, error) {
 		if execution.State.IsTerminal() {
 			return true, nil
 		}
@@ -17,8 +17,8 @@ func CheckForTerminalStates() CheckStateFunction {
 	}
 }
 
-func CheckForState(expectedStates ...store.LocalStateType) CheckStateFunction {
-	return func(execution store.LocalState) (bool, error) {
+func CheckForState(expectedStates ...store.LocalExecutionStateType) CheckStateFunction {
+	return func(execution store.LocalExecutionState) (bool, error) {
 		for _, expectedState := range expectedStates {
 			if execution.State == expectedState {
 				return true, nil
@@ -28,8 +28,8 @@ func CheckForState(expectedStates ...store.LocalStateType) CheckStateFunction {
 	}
 }
 
-func CheckForUnexpectedState(expectedStates ...store.LocalStateType) CheckStateFunction {
-	return func(execution store.LocalState) (bool, error) {
+func CheckForUnexpectedState(expectedStates ...store.LocalExecutionStateType) CheckStateFunction {
+	return func(execution store.LocalExecutionState) (bool, error) {
 		for _, expectedState := range expectedStates {
 			if execution.State == expectedState {
 				return false, fmt.Errorf("unexpected state: %s", execution.State)

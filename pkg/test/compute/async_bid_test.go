@@ -74,7 +74,7 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 	// override execution store create method so that we may wait for async execution creation after `AskForBid`
 	executionCreatedWg := sync.WaitGroup{}
 	executionCreatedWg.Add(1)
-	s.callbackStore.CreateExecutionFn = func(ctx context.Context, execution store.LocalState) error {
+	s.callbackStore.CreateExecutionFn = func(ctx context.Context, execution store.LocalExecutionState) error {
 		defer executionCreatedWg.Done()
 		return s.store.CreateExecution(ctx, execution)
 	}

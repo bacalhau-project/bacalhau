@@ -29,7 +29,7 @@ func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 	assert.ErrorAs(t, err, &ErrInvalidExecutionVersion{})
 }
 
-func newExecution() LocalState {
+func newExecution() LocalExecutionState {
 	execution := mock.ExecutionForJob(mock.Job())
-	return *NewLocalState(execution, "nodeID-1")
+	return *NewLocalExecutionState(execution, "nodeID-1")
 }

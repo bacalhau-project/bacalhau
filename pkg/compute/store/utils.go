@@ -8,13 +8,13 @@ import (
 
 // GetActiveExecution returns the active execution for a given job.
 // In case of a bug where we have more than a single active execution, the latest one is returned
-func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (LocalState, error) {
+func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (LocalExecutionState, error) {
 	executions, err := s.GetExecutions(ctx, jobID)
 	if err != nil {
-		return LocalState{}, err
+		return LocalExecutionState{}, err
 	}
 
-	var activeExecution LocalState
+	var activeExecution LocalExecutionState
 	var activeExecutionsCount int
 	for _, execution := range executions {
 		if execution.State.IsActive() {
@@ -33,7 +33,7 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (Lo
 	return activeExecution, nil
 }
 
-func ValidateNewExecution(localExecutionState LocalState) error {
+func ValidateNewExecution(localExecutionState LocalExecutionState) error {
 	// state must be either created, or bid accepted if the execution is pre-approved
 	if localExecutionState.State != ExecutionStateCreated && localExecutionState.State != ExecutionStateBidAccepted {
 		return NewErrInvalidExecutionState(

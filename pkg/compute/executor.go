@@ -144,7 +144,7 @@ func PrepareRunArguments(
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalState) (err error) {
+func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
 	execution := localExecutionState.Execution
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID).
@@ -218,7 +218,7 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalS
 }
 
 // Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalState,
+func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
 	resultFolder string, result *models.RunCommandResult) (err error) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
@@ -266,7 +266,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.LocalState) (err error) {
+func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
 	execution := localExecutionState.Execution
 	defer func() {
 		if err != nil {
@@ -290,7 +290,7 @@ func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.Loc
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState store.LocalState, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState store.LocalExecutionState, err error, operation string) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
