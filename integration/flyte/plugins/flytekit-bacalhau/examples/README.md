@@ -24,7 +24,7 @@ https://ipfs.io/ipfs/QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1/
 
 ## 🧑‍🤝‍🧑 Chain jobs together
 
-Pipe task's A output into a downstream task B's input and have B process that.
+Pipe task A's output into a downstream task B's input and have B process that.
 See the [full source code here](./chained-jobs.py).
 
 ```shell
