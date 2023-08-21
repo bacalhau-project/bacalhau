@@ -766,7 +766,7 @@ const docTemplate = `{
                 "ExecutionEngines": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Engine"
+                        "type": "string"
                     }
                 },
                 "MaxCapacity": {
@@ -778,7 +778,7 @@ const docTemplate = `{
                 "Publishers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Publisher"
+                        "type": "string"
                     }
                 },
                 "RunningExecutions": {
@@ -787,7 +787,7 @@ const docTemplate = `{
                 "StorageSources": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.StorageSourceType"
+                        "type": "string"
                     }
                 }
             }
@@ -1599,17 +1599,17 @@ const docTemplate = `{
                 "PublisherSpec": {
                     "$ref": "#/definitions/model.PublisherSpec"
                 },
-                "Resourcesmae": {
+                "Timeout": {
+                    "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
+                    "type": "integer"
+                },
+                "TotalAllocatedResources": {
                     "description": "the compute (cpu, ram) resources this job requires",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.ResourceUsageConfig"
                         }
                     ]
-                },
-                "Timeout": {
-                    "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
-                    "type": "integer"
                 },
                 "Wasm": {
                     "description": "Deprecated: use EngineSpec.",
@@ -1727,6 +1727,39 @@ const docTemplate = `{
                 }
             }
         },
+        "models.BuildVersionInfo": {
+            "type": "object",
+            "properties": {
+                "builddate": {
+                    "type": "string",
+                    "example": "2022-11-16T14:03:31Z"
+                },
+                "gitcommit": {
+                    "type": "string",
+                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                },
+                "gitversion": {
+                    "type": "string",
+                    "example": "v0.3.12"
+                },
+                "goarch": {
+                    "type": "string",
+                    "example": "amd64"
+                },
+                "goos": {
+                    "type": "string",
+                    "example": "linux"
+                },
+                "major": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "minor": {
+                    "type": "string",
+                    "example": "3"
+                }
+            }
+        },
         "peer.AddrInfo": {
             "type": "object",
             "properties": {
@@ -1766,7 +1799,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "build_version_info": {
-                    "$ref": "#/definitions/model.BuildVersionInfo"
+                    "$ref": "#/definitions/models.BuildVersionInfo"
                 }
             }
         },
