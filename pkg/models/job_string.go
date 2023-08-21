@@ -16,9 +16,9 @@ func _() {
 	_ = x[JobStateTypeStopped-5]
 }
 
-const _JobStateType_name = "UnknownPendingRunningCompletedFailedStopped"
+const _JobStateType_name = "UndefinedPendingRunningCompletedFailedStopped"
 
-var _JobStateType_index = [...]uint8{0, 7, 14, 21, 30, 36, 43}
+var _JobStateType_index = [...]uint8{0, 9, 16, 23, 32, 38, 45}
 
 func (i JobStateType) String() string {
 	if i < 0 || i >= JobStateType(len(_JobStateType_index)-1) {

@@ -1,4 +1,4 @@
-//go:generate stringer -type=ExecutionState --trimprefix=ExecutionState --output state_string.go
+//go:generate stringer -type=LocalStateType --trimprefix=ExecutionState --output state_string.go
 package store
 
 type LocalStateType int

@@ -134,40 +134,40 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Cancel mocks base method.
-func (m *MockExecutor) Cancel(ctx context.Context, execution store.LocalState) error {
+func (m *MockExecutor) Cancel(ctx context.Context, localExecutionState store.LocalState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cancel", ctx, execution)
+	ret := m.ctrl.Call(m, "Cancel", ctx, localExecutionState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Cancel indicates an expected call of Cancel.
-func (mr *MockExecutorMockRecorder) Cancel(ctx, execution interface{}) *gomock.Call {
+func (mr *MockExecutorMockRecorder) Cancel(ctx, localExecutionState interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockExecutor)(nil).Cancel), ctx, execution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockExecutor)(nil).Cancel), ctx, localExecutionState)
 }
 
 // Run mocks base method.
-func (m *MockExecutor) Run(ctx context.Context, execution store.LocalState) error {
+func (m *MockExecutor) Run(ctx context.Context, localExecutionState store.LocalState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Run", ctx, execution)
+	ret := m.ctrl.Call(m, "Run", ctx, localExecutionState)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockExecutorMockRecorder) Run(ctx, execution interface{}) *gomock.Call {
+func (mr *MockExecutorMockRecorder) Run(ctx, localExecutionState interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockExecutor)(nil).Run), ctx, execution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockExecutor)(nil).Run), ctx, localExecutionState)
 }
 
-// MockCallbackTestify is a mock of Callback interface.
+// MockCallback is a mock of Callback interface.
 type MockCallback struct {
 	ctrl     *gomock.Controller
 	recorder *MockCallbackMockRecorder
 }
 
-// MockCallbackMockRecorder is the mock recorder for MockCallbackTestify.
+// MockCallbackMockRecorder is the mock recorder for MockCallback.
 type MockCallbackMockRecorder struct {
 	mock *MockCallback
 }
