@@ -42,7 +42,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, err = exec.Run(
+		exec.Run(
 			s.ctx,
 			&executor.RunCommandRequest{
 				JobID:        job.ID,
@@ -61,7 +61,6 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 				},
 			},
 		)
-		s.NoError(err)
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when
