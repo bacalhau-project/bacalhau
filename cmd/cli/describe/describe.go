@@ -121,7 +121,6 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		jobDesc.History = jobEvents
 	}
 
-	//b, err := marshaller.JSONMarshalIndentWithMax(jobDesc, 3)
 	b, err := json.Marshal(jobDesc)
 	if err != nil {
 		return fmt.Errorf("failure marshaling job description '%s': %w", j.Job.Metadata.ID, err)
