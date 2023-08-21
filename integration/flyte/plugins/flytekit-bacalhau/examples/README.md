@@ -9,10 +9,11 @@ Print a sample string to stdout.
 ```shell
 $ docker run --rm -v $(pwd):/examples \
         -w /examples \
+		-a stdout -a stderr \
 		winderresearch/flytekit-bacalhau-examples:latest \
 		pyflyte run ./hello-world.py wf
 
-Your Bacalhau's output CID: QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
+QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
 ```
 
 https://ipfs.io/ipfs/QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1/

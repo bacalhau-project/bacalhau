@@ -24,7 +24,7 @@ def print_cid(bac_task: str) -> str:
     return bac_task
 
 @workflow
-def wf():
+def wf() -> str:
     bac_task = bacalhau_task(
         api_version="V1beta1",
         spec=dict(
@@ -48,7 +48,9 @@ def wf():
         ),
     )
     
-    print_cid(bac_task=bac_task)
+    #return 
+    #print_cid(bac_task=bac_task)
+    return bac_task
 
 
 if __name__ == "__main__":
