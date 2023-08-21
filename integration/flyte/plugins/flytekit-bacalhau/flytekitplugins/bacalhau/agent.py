@@ -90,13 +90,12 @@ class BacalhauAgent(AgentBase):
         else:
             inputs_dict["spec"]["annotations"] = ["flytekitplugins-bacalhau"]
 
-        self._logger.debug(f"creagte inputs_dict: {inputs_dict}")
-
         submit_data = dict(
                 APIVersion=inputs_dict["api_version"],
                 ClientID=inputs_dict["client_id"],
                 Spec=inputs_dict["spec"],
         )
+        self._logger.debug(f"submit_data: {submit_data}")
         res = submit(submit_data)
 
         if not res:
