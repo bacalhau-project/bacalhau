@@ -18,7 +18,7 @@ For further details regarding the `api_version` and `spec` parameters, please ch
 Run it with: `pyflyte run my-wf-file.py my_workflow`.
 
 ```python
-from flytekit import workflow, kwtypes
+from flytekit import workflow, task, kwtypes
 from flytekitplugins.bacalhau import BacalhauTask
 
 bacalhau_task = BacalhauTask(
@@ -29,10 +29,9 @@ bacalhau_task = BacalhauTask(
     ),
 )
 
-
 @workflow
-def my_workflow():
-    my_bacalhau_task = bacalhau_task(
+def wf():
+    bac_task = bacalhau_task(
         api_version="V1beta1",
         spec=dict(
             engine="Docker",
@@ -54,10 +53,8 @@ def my_workflow():
                 }
             ],
             deal={"concurrency": 1},
-            do_not_track=False,
         ),
     )
-    print(my_bacalhau_task)
 ```
 
 Curious to see more complex workflows 🧐?
