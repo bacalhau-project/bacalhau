@@ -1,6 +1,9 @@
 # flytekit-bacalhau examples
 
-Prerequisite: build the provided Docker container locally with `make docker-build`.
+## Prerequisite\
+
+If you have pip-installed `flytekitplugins-bacalhau` you should be able to run the examples directly with `pyflyte`.
+However, for better reproducibility we provide a containerized environment you'd need to build first by executing `make docker-build`.
 
 ## 🌍 Hello World
 
