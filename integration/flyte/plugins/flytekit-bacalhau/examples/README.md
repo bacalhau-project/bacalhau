@@ -9,10 +9,10 @@ See the [full source code here](./hello-world.py).
 
 ```shell
 $ docker run --rm -v $(pwd):/examples \
-        -w /examples \
-		-a stdout -a stderr \
-		winderresearch/flytekit-bacalhau-examples:latest \
-		pyflyte run ./hello-world.py wf
+	-w /examples \
+	-a stdout -a stderr \
+	winderresearch/flytekit-bacalhau-examples:latest \
+	pyflyte run ./hello-world.py wf
 
 QmcQnaoVtTaSBFukXD9yF8xfNYgQ8Yrf6UoxakpBBXZpd1
 ```
@@ -26,10 +26,10 @@ See the [full source code here](./chained-jobs.py).
 
 ```shell
 $ docker run --rm -v $(pwd):/examples \
-        -w /examples \
-        -a stdout -a stderr \
-		winderresearch/flytekit-bacalhau-examples:latest \
-		pyflyte run ./chained-jobs.py wf
+	-w /examples \
+	-a stdout -a stderr \
+	winderresearch/flytekit-bacalhau-examples:latest \
+	pyflyte run ./chained-jobs.py wf
 
 QmceCcBFqstn37YpJe4VMazYTEJ8moctdDXxqcDU9eFeMM
 ```
