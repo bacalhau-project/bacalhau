@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
@@ -59,9 +60,9 @@ func (s *Suite) TestGetActiveExecution_Multiple() {
 	// create a newer execution with same job as the previous one
 	newerExecution := s.execution.Copy()
 	newerExecution.ID = uuid.NewString()
-	newerExecution.ModifyTime = s.execution.ModifyTime + 1
 
 	newerExecutionState := *store.NewLocalExecutionState(newerExecution, "nodeID-1")
+	newerExecutionState.UpdateTime = s.localExecutionState.UpdateTime.Add(time.Second)
 
 	err := s.executionStore.CreateExecution(s.ctx, s.localExecutionState)
 	s.NoError(err)
