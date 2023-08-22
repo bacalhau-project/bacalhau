@@ -6,7 +6,6 @@ import (
 	"context"
 	"time"
 
-	libp2p2 "github.com/libp2p/go-libp2p"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
@@ -70,10 +69,9 @@ func (s *ComputeSuite) setupNode() {
 	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
-	// TODO(forrest) [config] generate a key
 	privKey, err := config.GetLibp2pPrivKey()
 	s.Require().NoError(err)
-	host, err := libp2p.NewHost(libp2pPort, libp2p2.Identity(privKey))
+	host, err := libp2p.NewHost(libp2pPort, privKey)
 	s.NoError(err)
 	s.T().Cleanup(func() { _ = host.Close })
 

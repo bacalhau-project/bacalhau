@@ -2,15 +2,12 @@ package devstack
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -163,11 +160,11 @@ func Setup(
 		// rather than rely on global values and one off key gen via the config.
 
 		// Creates a new RSA key pair for this host.
-		privKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+		privKey, err := bac_libp2p.GeneratePrivateKey(2048)
 		if err != nil {
 			return nil, err
 		}
-		libp2pHost, err := bac_libp2p.NewHost(libp2pPort, libp2p.Identity(privKey))
+		libp2pHost, err := bac_libp2p.NewHost(libp2pPort, privKey)
 		if err != nil {
 			return nil, err
 		}

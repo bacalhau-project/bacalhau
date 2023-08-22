@@ -190,13 +190,6 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	// TODO (forrest): [ux] in the future we should make this configurable to users.
-	autoLabel := true
-	labelsMap, err := getNodeLabels(autoLabel)
-	if err != nil {
-		return err
-	}
-
 	computeConfig, err := GetComputeConfig()
 	if err != nil {
 		return err
@@ -214,6 +207,8 @@ func serve(cmd *cobra.Command) error {
 
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
+	// TODO (forrest): [ux] in the future we should make this configurable to users.
+	autoLabel := true
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		CleanupManager:        cm,
@@ -226,7 +221,7 @@ func serve(cmd *cobra.Command) error {
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
-		Labels:                labelsMap,
+		Labels:                getNodeLabels(autoLabel),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}

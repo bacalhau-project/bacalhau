@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -99,14 +98,11 @@ func getNodeType() (requester, compute bool, err error) {
 }
 
 func setupLibp2pHost(cfg types.Libp2pConfig) (host.Host, error) {
-
 	privKey, err := config.GetLibp2pPrivKey()
 	if err != nil {
 		return nil, err
 	}
-	var libp2pOpts []libp2p.Option
-	libp2pOpts = append(libp2pOpts, rcmgr.DefaultResourceManager, libp2p.Identity(privKey))
-	libp2pHost, err := bac_libp2p.NewHost(cfg.SwarmPort, libp2pOpts...)
+	libp2pHost, err := bac_libp2p.NewHost(cfg.SwarmPort, privKey, rcmgr.DefaultResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("error creating libp2p host: %w", err)
 	}
@@ -163,7 +159,7 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
-func getNodeLabels(autoLabel bool) (map[string]string, error) {
+func getNodeLabels(autoLabel bool) map[string]string {
 	labelConfig := config.GetStringMapString(types.NodeLabels)
 	labelMap := make(map[string]string)
 	if autoLabel {
@@ -177,7 +173,7 @@ func getNodeLabels(autoLabel bool) (map[string]string, error) {
 		labelMap[key] = value
 	}
 
-	return labelMap, nil
+	return labelMap
 }
 
 func getDisabledFeatures() (node.FeatureConfig, error) {

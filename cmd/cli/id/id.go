@@ -4,8 +4,6 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/libp2p/go-libp2p"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -77,7 +75,7 @@ func id(cmd *cobra.Command, outputOpts output.OutputOptions) error {
 		return err
 	}
 
-	libp2pHost, err := bac_libp2p.NewHost(libp2pCfg.SwarmPort, libp2p.Identity(privKey))
+	libp2pHost, err := bac_libp2p.NewHost(libp2pCfg.SwarmPort, privKey)
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -29,8 +30,9 @@ func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverC
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	// TODO(forrest) [config] generate a key or get it from testing repo
-	libp2pHost, err := libp2p.NewHost(libp2pPort)
+	privKey, err := config.GetLibp2pPrivKey()
+	require.NoError(t, err)
+	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
 	require.NoError(t, err)
 
 	apiServer, err := NewAPIServer(APIServerParams{

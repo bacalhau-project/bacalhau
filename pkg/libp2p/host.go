@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -23,7 +24,7 @@ const continuouslyConnectPeersLoopDelay = 10 * time.Second
 
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
-func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
+func NewHost(port int, privKey crypto.PrivKey, opts ...libp2p.Option) (host.Host, error) {
 	addrs := []string{
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
 		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
@@ -39,7 +40,7 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		addrs = append(addrs, newAddress)
 	}
 
-	opts = append(opts, libp2p.ListenAddrStrings(addrs...))
+	opts = append(opts, libp2p.ListenAddrStrings(addrs...), libp2p.Identity(privKey))
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err

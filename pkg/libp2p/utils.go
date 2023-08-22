@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 
-	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -35,7 +34,7 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 	if err != nil {
 		return nil, err
 	}
-	h, err := NewHost(port, libp2p.Identity(privKey))
+	h, err := NewHost(port, privKey)
 	if err != nil {
 		return nil, err
 	}
