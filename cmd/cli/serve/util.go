@@ -10,12 +10,14 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -26,10 +28,10 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		return node.ComputeConfig{}, err
 	}
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits:                   capacity.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits),
-		QueueResourceLimits:                   capacity.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits),
-		JobResourceLimits:                     capacity.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits),
-		DefaultJobResourceLimits:              capacity.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits),
+		TotalResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits)),
+		QueueResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits)),
+		JobResourceLimits:                     models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)),
+		DefaultJobResourceLimits:              models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)),
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
 		ExecutorBufferBackoffDuration:         time.Duration(cfg.Queue.ExecutorBufferBackoffDuration),
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
@@ -37,8 +39,14 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),
 		DefaultJobExecutionTimeout:            time.Duration(cfg.JobTimeouts.DefaultJobExecutionTimeout),
 		JobExecutionTimeoutClientIDBypassList: cfg.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
-		JobSelectionPolicy:                    cfg.JobSelection,
-		LogRunningExecutionsInterval:          time.Duration(cfg.Logging.LogRunningExecutionsInterval),
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality:            semantic.JobSelectionDataLocality(cfg.JobSelection.Locality),
+			RejectStatelessJobs: cfg.JobSelection.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobSelection.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobSelection.ProbeHTTP,
+			ProbeExec:           cfg.JobSelection.ProbeExec,
+		},
+		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
 	}), nil
 }
 
@@ -53,16 +61,22 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
 		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               cfg.OverAskForBidsFactor,
-		JobSelectionPolicy:                 cfg.JobSelectionPolicy,
-		FailureInjectionConfig:             cfg.FailureInjectionConfig,
-		EvalBrokerVisibilityTimeout:        time.Duration(cfg.EvaluationBroker.EvalBrokerVisibilityTimeout),
-		EvalBrokerInitialRetryDelay:        time.Duration(cfg.EvaluationBroker.EvalBrokerInitialRetryDelay),
-		EvalBrokerSubsequentRetryDelay:     time.Duration(cfg.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
-		EvalBrokerMaxRetryCount:            cfg.EvaluationBroker.EvalBrokerMaxRetryCount,
-		WorkerCount:                        cfg.Worker.WorkerCount,
-		WorkerEvalDequeueTimeout:           time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
-		WorkerEvalDequeueBaseBackoff:       time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
-		WorkerEvalDequeueMaxBackoff:        time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality:            semantic.JobSelectionDataLocality(cfg.JobSelectionPolicy.Locality),
+			RejectStatelessJobs: cfg.JobSelectionPolicy.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobSelectionPolicy.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobSelectionPolicy.ProbeHTTP,
+			ProbeExec:           cfg.JobSelectionPolicy.ProbeExec,
+		},
+		FailureInjectionConfig:         cfg.FailureInjectionConfig,
+		EvalBrokerVisibilityTimeout:    time.Duration(cfg.EvaluationBroker.EvalBrokerVisibilityTimeout),
+		EvalBrokerInitialRetryDelay:    time.Duration(cfg.EvaluationBroker.EvalBrokerInitialRetryDelay),
+		EvalBrokerSubsequentRetryDelay: time.Duration(cfg.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
+		EvalBrokerMaxRetryCount:        cfg.EvaluationBroker.EvalBrokerMaxRetryCount,
+		WorkerCount:                    cfg.Worker.WorkerCount,
+		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
+		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
+		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
 	}), nil
 }
 
