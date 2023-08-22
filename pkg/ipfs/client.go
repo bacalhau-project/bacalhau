@@ -28,13 +28,22 @@ import (
 // Client instances manually by connecting to an ipfs node's API multiaddr using NewClientUsingRemoteHandler,
 // or automatically from an active Node instance using NewClient.
 type Client struct {
-	API  icore.CoreAPI
-	addr string
+	API     icore.CoreAPI
+	addr    string
+	autoPin bool
+}
+
+type IPFSClientOption func(c *Client)
+
+func WithNoPin() IPFSClientOption {
+	return func(c *Client) {
+		c.autoPin = false
+	}
 }
 
 // NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
 // NOTE: the API address is _not_ the same as the swarm address
-func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, error) {
+func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string, options ...IPFSClientOption) (Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
@@ -59,8 +68,13 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 	}
 
 	client := Client{
-		API:  api,
-		addr: apiAddr,
+		API:     api,
+		addr:    apiAddr,
+		autoPin: true,
+	}
+
+	for _, opt := range options {
+		opt(&client)
 	}
 
 	id, err := client.ID(ctx)
@@ -73,11 +87,15 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 
 const MagicInternalIPFSAddress = "memory://in-memory-node/"
 
-func NewClient(api icore.CoreAPI) Client {
-	return Client{
+func NewClient(api icore.CoreAPI, options ...IPFSClientOption) Client {
+	c := Client{
 		API:  api,
 		addr: MagicInternalIPFSAddress,
 	}
+	for _, opt := range options {
+		opt(&c)
+	}
+	return c
 }
 
 // ID returns the node's ipfs ID.
@@ -176,7 +194,7 @@ func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
 
 	// Pin uploaded file/directory to local storage to prevent deletion by GC.
 	addOptions := []icoreoptions.UnixfsAddOption{
-		icoreoptions.Unixfs.Pin(true),
+		icoreoptions.Unixfs.Pin(cl.autoPin),
 	}
 
 	ipfsPath, err := cl.API.Unixfs().Add(ctx, node, addOptions...)

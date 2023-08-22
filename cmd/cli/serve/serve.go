@@ -66,6 +66,7 @@ type ServeOptions struct {
 	NodeType                              []string                 // "compute", "requester" node or both
 	PeerConnect                           string                   // The libp2p multiaddress to connect to.
 	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
+	IPFSSkipPinning                       bool                     // Skips pinning when putting files into IPFS
 	HostAddress                           string                   // The host address to listen on.
 	SwarmPort                             int                      // The host port for libp2p network.
 	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
@@ -90,6 +91,7 @@ func NewServeOptions() *ServeOptions {
 		NodeType:               []string{"requester"},
 		PeerConnect:            DefaultPeerConnect,
 		IPFSConnect:            "",
+		IPFSSkipPinning:        false,
 		HostAddress:            "0.0.0.0",
 		SwarmPort:              DefaultSwarmPort,
 		JobSelectionPolicy:     model.NewDefaultJobSelectionPolicy(),
@@ -232,6 +234,10 @@ func NewCmd() *cobra.Command {
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
+	)
+	serveCmd.PersistentFlags().BoolVar(
+		&OS.IPFSSkipPinning, "ipfs-skip-pinning", OS.IPFSSkipPinning,
+		`Whether putting a file onto IPFS should skip pinning it to that node`,
 	)
 	serveCmd.PersistentFlags().StringSliceVar(
 		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
@@ -470,7 +476,13 @@ func IpfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		return client, nil
 	}
 
-	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect)
+	// Skip pinning if the user specified no pinning
+	options := []ipfs.IPFSClientOption{}
+	if OS.IPFSSkipPinning {
+		options = append(options, ipfs.WithNoPin())
+	}
+
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect, options...)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
 	}

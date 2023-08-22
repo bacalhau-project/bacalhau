@@ -62,6 +62,8 @@ type Node struct {
 	APIPort int
 
 	apiAddresses []string
+
+	pinObjects bool
 }
 
 // NodeMode configures how the node treats the public IPFS network.
@@ -91,6 +93,10 @@ type Config struct {
 	// KeypairSize is the number of bits to use for the node's repo keypair. If
 	// nil, then a default value of 2048 is used.
 	KeypairSize int
+
+	// PinObjects configures the Client for this node to pin, or not pin, objects
+	// it uploads.
+	PinObjects bool
 }
 
 func (cfg *Config) getKeypairSize() int {
@@ -108,17 +114,17 @@ func (cfg *Config) getMode() NodeMode {
 // NewNode creates a new IPFS node in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
-func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeDefault)
+func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, pinObjects bool) (*Node, error) {
+	return newNode(ctx, cm, peerAddrs, ModeDefault, pinObjects)
 }
 
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeLocal)
+func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, pinObjects bool) (*Node, error) {
+	return newNode(ctx, cm, peerAddrs, ModeLocal, pinObjects)
 }
 
-func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
+func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode, pinObjects bool) (*Node, error) {
 	// filter out any empty peer addresses
 	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
 	for _, addr := range peerAddrs {
@@ -127,8 +133,9 @@ func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string,
 		}
 	}
 	return newNodeWithConfig(ctx, cm, Config{
-		Mode:      mode,
-		PeerAddrs: filteredPeerAddrs,
+		Mode:       mode,
+		PeerAddrs:  filteredPeerAddrs,
+		PinObjects: pinObjects,
 	})
 }
 
@@ -171,11 +178,12 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	}
 
 	n := Node{
-		api:      api,
-		ipfsNode: ipfsNode,
-		Mode:     cfg.getMode(),
-		RepoPath: repoPath,
-		APIPort:  apiPort,
+		api:        api,
+		ipfsNode:   ipfsNode,
+		Mode:       cfg.getMode(),
+		RepoPath:   repoPath,
+		APIPort:    apiPort,
+		pinObjects: cfg.PinObjects,
 	}
 
 	cm.RegisterCallbackWithContext(n.Close)
@@ -222,7 +230,11 @@ func (n *Node) LogDetails() {
 
 // Client returns an API client for interacting with the node.
 func (n *Node) Client() Client {
-	return NewClient(n.api)
+	options := []IPFSClientOption{}
+	if !n.pinObjects {
+		options = append(options, WithNoPin())
+	}
+	return NewClient(n.api, options...)
 }
 
 func (n *Node) Close(ctx context.Context) error {
