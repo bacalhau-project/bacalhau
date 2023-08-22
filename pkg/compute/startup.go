@@ -47,13 +47,13 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 	}
 
 	for idx := range executions {
-		execution := executions[idx]
+		localExecution := executions[idx]
 
-		switch execution.Job.Type() {
+		switch localExecution.Execution.Job.Type {
 		case model.JobTypeService, model.JobTypeSystem, model.JobTypeOps:
 			{
 				// Service and System jobs are long running jobs and so we need to make sure it is running
-				err = s.runExecution(ctx, execution)
+				err = s.runExecution(ctx, localExecution)
 				if err != nil {
 					return err
 				}
@@ -62,7 +62,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 			{
 				// Batch and Ops jobs should be failed as we don't know if they had any
 				// side-effects (particularly for ops jobs).
-				err = s.failExecution(ctx, execution)
+				err = s.failExecution(ctx, localExecution)
 				if err != nil {
 					return err
 				}
@@ -73,7 +73,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 	return nil
 }
 
-func (s *Startup) failExecution(ctx context.Context, execution store.Execution) error {
+func (s *Startup) failExecution(ctx context.Context, execution store.LocalExecutionState) error {
 	// Calling cancel with the execute buffer will update our local state, and
 	// then when it calls the underlying baseexecutor, that will inform the requester
 	// node. We really want to _Fail_ the execution, but that's currently only possible
@@ -86,7 +86,7 @@ func (s *Startup) failExecution(ctx context.Context, execution store.Execution) 
 	return err
 }
 
-func (s *Startup) runExecution(ctx context.Context, execution store.Execution) error {
+func (s *Startup) runExecution(ctx context.Context, execution store.LocalExecutionState) error {
 	// We want to ensure this execution is running.  If we just call .Run, there's a
 	// chance we'll end up with two copies running if the previous version is alive
 	// for whatever reason.  We'll call Cancel here so that we can be sure that it
@@ -96,6 +96,6 @@ func (s *Startup) runExecution(ctx context.Context, execution store.Execution) e
 	// * Have .Run be idempotent for the execution id without relying on the store.
 	_ = s.execBuffer.Cancel(ctx, execution)
 
-	log.Ctx(ctx).Info().Msgf("Re-running execution %s after restart", execution.ID)
+	log.Ctx(ctx).Info().Msgf("Re-running execution %s after restart", execution.Execution.ID)
 	return s.execBuffer.Run(ctx, execution)
 }

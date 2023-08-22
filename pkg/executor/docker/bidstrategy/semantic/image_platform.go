@@ -3,6 +3,8 @@ package semantic
 import (
 	"context"
 
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"go.uber.org/multierr"
 
 	"github.com/rs/zerolog/log"
@@ -11,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const oneDayInSeconds = int64(86400)
@@ -33,7 +34,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Spec.EngineSpec.Engine() != model.EngineDocker {
+	if request.Job.Task().Engine.Type != models.EngineDocker {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
@@ -42,7 +43,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	var ierr error = nil
 	var manifest docker.ImageManifest
 
-	dockerEngine, err := model.DecodeEngineSpec[model.DockerEngineSpec](request.Job.Spec.EngineSpec)
+	dockerEngine, err := dockermodels.DecodeSpec(request.Job.Task().Engine)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid:  false,

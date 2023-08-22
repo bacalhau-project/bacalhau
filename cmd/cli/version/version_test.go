@@ -19,13 +19,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -58,7 +58,7 @@ func (suite *VersionSuite) TestVersionJSONOutput() {
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
 	jsonDoc := &version.Versions{}
-	err = model.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
+	err = marshaller.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
 	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 }
@@ -72,7 +72,7 @@ func (suite *VersionSuite) TestVersionYAMLOutput() {
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
 	yamlDoc := &version.Versions{}
-	err = model.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
 	require.NoError(suite.T(), err, "Could not unmarshall the output into yaml - %+v", err)
 	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
 

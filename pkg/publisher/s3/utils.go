@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func ParsePublishedKey(key string, executionID string, job model.Job, archive bool) string {
+func ParsePublishedKey(key string, executionID string, job models.Job, archive bool) string {
 	if archive && !strings.HasSuffix(key, ".tar.gz") {
 		key = key + ".tar.gz"
 	}
@@ -20,7 +20,7 @@ func ParsePublishedKey(key string, executionID string, job model.Job, archive bo
 		key = key + "/"
 	}
 	key = strings.ReplaceAll(key, "{executionID}", executionID)
-	key = strings.ReplaceAll(key, "{jobID}", job.ID())
+	key = strings.ReplaceAll(key, "{jobID}", job.ID)
 	key = strings.ReplaceAll(key, "{date}", time.Now().Format("YYYYMMDD"))
 	key = strings.ReplaceAll(key, "{time}", time.Now().Format("HHMMSS"))
 	return key

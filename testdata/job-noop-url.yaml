@@ -1,13 +1,13 @@
 APIVersion: v1beta1
 Spec:
-  Engine: Noop
-  Publisher: Noop
+  Engine: noop
+  Publisher: noop
   Inputs:
-    - StorageSource: URLDownload
+    - StorageSource: urlDownload
       URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
       Path: /app/foo_data_1.txt
   Outputs:
-    - StorageSource: IPFS
+    - StorageSource: ipfs
       Name: output_custom
       Path: /output_custom
   Deal:

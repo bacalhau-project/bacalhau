@@ -5,6 +5,7 @@ package describe_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 						j := testutils.MakeJobWithOpts(s.T(),
 							jobutils.WithEngineSpec(
 								model.NewEngineBuilder().
-									WithType(model.EngineNoop.String()).
+									WithType(strings.ToLower(model.EngineNoop.String())).
 									WithParam("Entrypoint-Unique-Array", uuid.NewString()).
 									Build(),
 							),
@@ -93,7 +94,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 				s.Require().Equal(
 					submittedJobEngineSpec,
 					returnedJobEngineSpec,
-					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+					fmt.Sprintf("Submitted job entrypoints not the same as the description. expected: %+v, recevied: %+v",
+						submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec))
 
 				// Job Id in the middle
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
@@ -212,7 +214,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					j := testutils.MakeJobWithOpts(s.T(),
 						jobutils.WithEngineSpec(
 							model.NewEngineBuilder().
-								WithType(model.EngineNoop.String()).
+								WithType(strings.ToLower(model.EngineNoop.String())).
 								WithParam("Entrypoint-Unique-Array", uuid.NewString()).
 								Build(),
 						),

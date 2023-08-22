@@ -18,3 +18,7 @@ func (pk *PublicKey) UnmarshalText(text []byte) error {
 	*pk = ba
 	return nil
 }
+
+func (pk PublicKey) String() string {
+	return base64.StdEncoding.EncodeToString(pk)
+}

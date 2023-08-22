@@ -6,17 +6,37 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+// JobSelectionPolicy describe the rules for how a compute node selects an incoming job
+type JobSelectionPolicy struct {
+	// this describes if we should run a job based on
+	// where the data is located - i.e. if the data is "local"
+	// or if the data is "anywhere"
+	Locality semantic.JobSelectionDataLocality `json:"locality"`
+	// should we reject jobs that don't specify any data
+	// the default is "accept"
+	RejectStatelessJobs bool `json:"reject_stateless_jobs"`
+	// should we accept jobs that specify networking
+	// the default is "reject"
+	AcceptNetworkedJobs bool `json:"accept_networked_jobs"`
+	// external hooks that decide if we should take on the job or not
+	// if either of these are given they will override the data locality settings
+	ProbeHTTP string `json:"probe_http,omitempty"`
+	ProbeExec string `json:"probe_exec,omitempty"`
+}
 
 type ComputeConfigParams struct {
 	// Capacity config
-	TotalResourceLimits          model.ResourceUsageData
-	QueueResourceLimits          model.ResourceUsageData
-	JobResourceLimits            model.ResourceUsageData
-	DefaultJobResourceLimits     model.ResourceUsageData
+	TotalResourceLimits          models.Resources
+	QueueResourceLimits          models.Resources
+	JobResourceLimits            models.Resources
+	DefaultJobResourceLimits     models.Resources
 	PhysicalResourcesProvider    capacity.Provider
 	IgnorePhysicalResourceLimits bool
 
@@ -31,7 +51,7 @@ type ComputeConfigParams struct {
 	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
-	JobSelectionPolicy model.JobSelectionPolicy
+	JobSelectionPolicy JobSelectionPolicy
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
@@ -45,10 +65,10 @@ type ComputeConfigParams struct {
 
 type ComputeConfig struct {
 	// Capacity config
-	TotalResourceLimits          model.ResourceUsageData
-	QueueResourceLimits          model.ResourceUsageData
-	JobResourceLimits            model.ResourceUsageData
-	DefaultJobResourceLimits     model.ResourceUsageData
+	TotalResourceLimits          models.Resources
+	QueueResourceLimits          models.Resources
+	JobResourceLimits            models.Resources
+	DefaultJobResourceLimits     models.Resources
 	IgnorePhysicalResourceLimits bool
 
 	// How long the buffer would backoff before polling the queue again for new jobs
@@ -71,7 +91,7 @@ type ComputeConfig struct {
 	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
-	JobSelectionPolicy model.JobSelectionPolicy
+	JobSelectionPolicy JobSelectionPolicy
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
@@ -127,29 +147,29 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	}
 	// populate total resource limits with default values and physical resources if not set
 	totalResourceLimits := params.TotalResourceLimits.
-		Intersect(DefaultComputeConfig.TotalResourceLimits).
-		Intersect(physicalResources)
+		Merge(DefaultComputeConfig.TotalResourceLimits).
+		Merge(physicalResources)
 
 	// populate job resource limits with default values and total resource limits if not set
 	jobResourceLimits := params.JobResourceLimits.
-		Intersect(DefaultComputeConfig.JobResourceLimits).
-		Intersect(totalResourceLimits)
+		Merge(DefaultComputeConfig.JobResourceLimits).
+		Merge(*totalResourceLimits)
 
 	// by default set the queue size to the total resource limits, which allows the node overcommit to double of the total resource limits.
 	// i.e. total resource limits can be busy in running state, and enqueue up to the total resource limits in the queue.
 	if params.QueueResourceLimits.IsZero() {
-		params.QueueResourceLimits = totalResourceLimits
+		params.QueueResourceLimits = *totalResourceLimits
 	}
 
 	// populate default job resource limits with default values and job resource limits if not set
 	defaultJobResourceLimits := params.DefaultJobResourceLimits.
-		Intersect(DefaultComputeConfig.DefaultJobResourceLimits)
+		Merge(DefaultComputeConfig.DefaultJobResourceLimits)
 
 	config = ComputeConfig{
-		TotalResourceLimits:           totalResourceLimits,
+		TotalResourceLimits:           *totalResourceLimits,
 		QueueResourceLimits:           params.QueueResourceLimits,
-		JobResourceLimits:             jobResourceLimits,
-		DefaultJobResourceLimits:      defaultJobResourceLimits,
+		JobResourceLimits:             *jobResourceLimits,
+		DefaultJobResourceLimits:      *defaultJobResourceLimits,
 		IgnorePhysicalResourceLimits:  params.IgnorePhysicalResourceLimits,
 		ExecutorBufferBackoffDuration: params.ExecutorBufferBackoffDuration,
 
@@ -172,7 +192,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	return config
 }
 
-func validateConfig(config ComputeConfig, physicalResources model.ResourceUsageData) {
+func validateConfig(config ComputeConfig, physicalResources models.Resources) {
 	var err error
 	defer func() {
 		if err != nil {

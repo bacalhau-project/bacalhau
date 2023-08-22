@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -46,11 +47,25 @@ func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
-	stateResolver := jobstore.GetStateResolver(s.jobStore)
-	results, err := stateResolver.GetResults(ctx, stateReq.JobID)
+	executions, err := s.jobStore.GetExecutions(ctx, stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	results := make([]model.PublishedResult, 0)
+	for _, execution := range executions {
+		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
+			storageConfig, err := legacy.ToLegacyStorageSpec(execution.PublishedResult)
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			results = append(results, model.PublishedResult{
+				NodeID: execution.NodeID,
+				Data:   storageConfig,
+			})
+		}
 	}
 
 	res.WriteHeader(http.StatusOK)

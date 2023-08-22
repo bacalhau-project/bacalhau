@@ -1,7 +1,7 @@
 package bacerrors
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 )
 
@@ -59,7 +59,7 @@ func ErrorToErrorResponseObject(err error) *ErrorResponse {
 }
 
 func ConvertErrorToText(err *ErrorResponse) string {
-	str, marshalError := model.JSONMarshalWithMax(err)
+	str, marshalError := marshaller.JSONMarshalWithMax(err)
 	if marshalError != nil {
 		msg := "error converting BacalhauError to JSON"
 		log.Error().Err(marshalError).Msg(msg)

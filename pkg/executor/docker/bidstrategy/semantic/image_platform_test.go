@@ -6,6 +6,9 @@ import (
 	"context"
 	"testing"
 
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -13,17 +16,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache/fake"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
-func jobForDockerImage(t testing.TB, imageID string) model.Job {
-	return testutils.MakeJobWithOpts(t,
-		job.WithEngineSpec(
-			model.NewDockerEngineBuilder(imageID).Build(),
-		),
-	)
+func jobForDockerImage(t testing.TB, imageID string) models.Job {
+	job := mock.Job()
+	job.Task().Engine = dockermodels.NewDockerEngineBuilder(imageID).Build()
+	return *job
 }
 
 func TestBidsBasedOnImagePlatform(t *testing.T) {

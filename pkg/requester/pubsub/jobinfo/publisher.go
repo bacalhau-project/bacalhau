@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 )
 
@@ -40,23 +41,26 @@ func (p Publisher) HandleJobEvent(ctx context.Context, event model.JobEvent) err
 			return err
 		}
 
-		jobState, err := p.jobStore.GetJobState(ctx, event.JobID)
+		legacyJob, err := legacy.ToLegacyJob(&job)
 		if err != nil {
 			return err
 		}
 
-		history, err := p.jobStore.GetJobHistory(ctx, event.JobID, jobstore.JobHistoryFilterOptions{})
+		executions, err := p.jobStore.GetExecutions(ctx, event.JobID)
 		if err != nil {
 			return err
 		}
-
+		jobState, err := legacy.ToLegacyJobStatus(job, executions)
+		if err != nil {
+			return err
+		}
+		// TODO: bring back job history in the envelope
 		envelope := Envelope{
-			APIVersion: job.APIVersion,
-			ID:         job.ID(),
+			APIVersion: legacyJob.APIVersion,
+			ID:         legacyJob.ID(),
 			Info: model.JobWithInfo{
-				Job:     job,
-				State:   jobState,
-				History: history,
+				Job:   *legacyJob,
+				State: *jobState,
 			},
 		}
 

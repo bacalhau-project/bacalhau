@@ -1,16 +1,15 @@
-package capacity
+package model
 
 import (
 	"strconv"
 	"strings"
 
 	"github.com/BTBurke/k8sresource"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
 )
 
-func ParseResourceUsageConfig(usage model.ResourceUsageConfig) model.ResourceUsageData {
-	return model.ResourceUsageData{
+func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
+	return ResourceUsageData{
 		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertBytesString(usage.Memory),
 		Disk:   ConvertBytesString(usage.Disk),

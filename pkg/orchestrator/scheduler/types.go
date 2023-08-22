@@ -5,28 +5,27 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
 // execSet is a set of executions with a series of helper functions defined
 // that help reconcile state.
-type execSet map[string]*model.ExecutionState
+type execSet map[string]*models.Execution
 
 //nolint:unused
-func execSetFromSlice(executions []*model.ExecutionState) execSet {
+func execSetFromSlice(executions []*models.Execution) execSet {
 	set := execSet{}
 	for _, exec := range executions {
-		set[exec.ComputeReference] = exec
+		set[exec.ID] = exec
 	}
 	return set
 }
 
-func execSetFromSliceOfValues(executions []model.ExecutionState) execSet {
+func execSetFromSliceOfValues(executions []models.Execution) execSet {
 	set := execSet{}
 	for i, exec := range executions {
-		set[exec.ComputeReference] = &executions[i]
+		set[exec.ID] = &executions[i]
 	}
 	return set
 }
@@ -40,7 +39,7 @@ func (set execSet) String() string {
 	start := fmt.Sprintf("len(%d) [", len(set))
 	var s []string
 	for k, v := range set {
-		s = append(s, fmt.Sprintf("%q: %v", k, v.ComputeReference))
+		s = append(s, fmt.Sprintf("%q: %v", k, v.ID))
 	}
 	return start + strings.Join(s, ", ") + "]"
 }
@@ -63,13 +62,13 @@ func (set execSet) keys() []string {
 }
 
 // ordered returns the executions in the set ordered by update time
-func (set execSet) ordered() []*model.ExecutionState {
-	execs := make([]*model.ExecutionState, 0, len(set))
+func (set execSet) ordered() []*models.Execution {
+	execs := make([]*models.Execution, 0, len(set))
 	for _, alloc := range set {
 		execs = append(execs, alloc)
 	}
 	sort.Slice(execs, func(i, j int) bool {
-		return execs[i].UpdateTime.Before(execs[j].UpdateTime)
+		return execs[i].ModifyTime < execs[j].ModifyTime
 	})
 	return execs
 }
@@ -78,19 +77,19 @@ func (set execSet) ordered() []*model.ExecutionState {
 func (set execSet) filterNonTerminal() execSet {
 	filtered := execSet{}
 	for _, exec := range set {
-		if !exec.State.IsTerminal() {
-			filtered[exec.ComputeReference] = exec
+		if !exec.IsTerminalComputeState() {
+			filtered[exec.ID] = exec
 		}
 	}
 	return filtered
 }
 
 // filterByState filters out execs that are not in the given state
-func (set execSet) filterByState(state model.ExecutionStateType) execSet {
+func (set execSet) filterByState(state models.ExecutionStateType) execSet {
 	filtered := execSet{}
 	for _, exec := range set {
-		if exec.State == state {
-			filtered[exec.ComputeReference] = exec
+		if exec.ComputeState.StateType == state {
+			filtered[exec.ID] = exec
 		}
 	}
 	return filtered
@@ -98,12 +97,12 @@ func (set execSet) filterByState(state model.ExecutionStateType) execSet {
 
 // filterRunning filters out non-running executions.
 func (set execSet) filterRunning() execSet {
-	return set.filterByState(model.ExecutionStateBidAccepted)
+	return set.filterByState(models.ExecutionStateBidAccepted)
 }
 
 // filterFailed filters out non-failed executions.
 func (set execSet) filterFailed() execSet {
-	return set.filterByState(model.ExecutionStateFailed)
+	return set.filterByState(models.ExecutionStateFailed)
 }
 
 // filterOverSubscriptions partitions executions based on if they are more than the desired count.
@@ -113,9 +112,9 @@ func (set execSet) filterByOverSubscriptions(desiredCount int) (remaining execSe
 	count := 0
 	for _, exec := range set.ordered() {
 		if count >= desiredCount {
-			overSubscriptions[exec.ComputeReference] = exec
+			overSubscriptions[exec.ID] = exec
 		} else {
-			remaining[exec.ComputeReference] = exec
+			remaining[exec.ID] = exec
 		}
 		count++
 	}
@@ -123,15 +122,15 @@ func (set execSet) filterByOverSubscriptions(desiredCount int) (remaining execSe
 }
 
 // filterByNodeHealth partitions executions based on their node's health status.
-func (set execSet) filterByNodeHealth(nodeInfos map[string]*model.NodeInfo) (healthy execSet, lost execSet) {
+func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (healthy execSet, lost execSet) {
 	healthy = make(execSet)
 	lost = make(execSet)
 	for _, exec := range set {
 		if _, ok := nodeInfos[exec.NodeID]; !ok {
-			lost[exec.ComputeReference] = exec
-			log.Debug().Msgf("Execution %s is running on node %s which is not healthy", exec.ComputeReference, exec.NodeID)
+			lost[exec.ID] = exec
+			log.Debug().Msgf("Execution %s is running on node %s which is not healthy", exec.ID, exec.NodeID)
 		} else {
-			healthy[exec.ComputeReference] = exec
+			healthy[exec.ID] = exec
 		}
 	}
 	return healthy, lost
@@ -168,21 +167,21 @@ func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApproval
 		if (len(running) + len(toApprove)) >= desiredCount {
 			break
 		}
-		if exec.State == model.ExecutionStateAskForBidAccepted {
-			toApprove[exec.ComputeReference] = exec
+		if exec.ComputeState.StateType == models.ExecutionStateAskForBidAccepted {
+			toApprove[exec.ID] = exec
 		}
 	}
 
 	// reject the rest
 	totalRunningCount := len(running) + len(toApprove)
 	for _, exec := range orderedExecs {
-		if running.has(exec.ComputeReference) || toApprove.has(exec.ComputeReference) {
+		if running.has(exec.ID) || toApprove.has(exec.ID) {
 			continue
 		}
 		if totalRunningCount >= desiredCount {
-			toReject[exec.ComputeReference] = exec
+			toReject[exec.ID] = exec
 		} else {
-			pending[exec.ComputeReference] = exec
+			pending[exec.ID] = exec
 		}
 	}
 	return executionsByApprovalStatus{
@@ -211,19 +210,19 @@ func (set execSet) markApproved(plan *models.Plan) {
 func (set execSet) union(other execSet) execSet {
 	union := execSet{}
 	for _, exec := range set {
-		union[exec.ComputeReference] = exec
+		union[exec.ID] = exec
 	}
 	for _, exec := range other {
-		union[exec.ComputeReference] = exec
+		union[exec.ID] = exec
 	}
 	return union
 }
 
 // latest returns the latest execution in the set by the time it was last updated.
-func (set execSet) latest() *model.ExecutionState {
-	var latest *model.ExecutionState
+func (set execSet) latest() *models.Execution {
+	var latest *models.Execution
 	for _, exec := range set {
-		if latest == nil || exec.UpdateTime.After(latest.UpdateTime) {
+		if latest == nil || exec.ModifyTime > latest.ModifyTime {
 			latest = exec
 		}
 	}
@@ -231,15 +230,15 @@ func (set execSet) latest() *model.ExecutionState {
 }
 
 // countByState counts the number of executions in each state.
-func (set execSet) countByState() map[model.ExecutionStateType]int {
-	counts := map[model.ExecutionStateType]int{}
+func (set execSet) countByState() map[models.ExecutionStateType]int {
+	counts := map[models.ExecutionStateType]int{}
 	for _, exec := range set {
-		counts[exec.State]++
+		counts[exec.ComputeState.StateType]++
 	}
 	return counts
 }
 
 // countCompleted counts the number of completed executions.
 func (set execSet) countCompleted() int {
-	return set.countByState()[model.ExecutionStateCompleted]
+	return set.countByState()[models.ExecutionStateCompleted]
 }

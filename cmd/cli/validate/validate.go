@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
@@ -126,7 +127,7 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) error {
 
 		if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
 			// Yaml can parse json
-			err = model.YAMLUnmarshalWithMax(byteResult, &j)
+			err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
 			if err != nil {
 				return fmt.Errorf("error unmarshaling yaml from file (%s): %w", OV.Filename, err)
 			}
@@ -168,7 +169,7 @@ func GenerateJobJSONSchema() ([]byte, error) {
 	// Find key in a json document in Golang
 	// https://stackoverflow.com/questions/52953282/how-to-find-a-key-in-a-json-document
 
-	jsonSchemaData, err := model.JSONMarshalIndentWithMax(s, 2)
+	jsonSchemaData, err := marshaller.JSONMarshalIndentWithMax(s, 2)
 	if err != nil {
 		return nil, fmt.Errorf("error indenting %s", err)
 	}

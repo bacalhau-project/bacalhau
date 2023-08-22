@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -79,12 +80,14 @@ func (s *StartupTestSuite) TestLongRunning() {
 				j.Spec.Deal.TargetingMode = model.TargetAll
 			}
 
-			exec := store.NewExecution(tc.ID, j, "req", model.ResourceUsageData{})
+			execution := mock.ExecutionForJob(mock.Job())
+			execution.ID = tc.ID
+			exec := store.NewLocalExecutionState(execution, "req")
 			err := database.CreateExecution(s.ctx, *exec)
 			s.Require().NoError(err)
 
 			err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
-				ExecutionID: exec.ID,
+				ExecutionID: execution.ID,
 				NewState:    store.ExecutionStateRunning,
 			})
 			s.Require().NoError(err)

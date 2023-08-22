@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,12 +27,12 @@ func NewLabelsNodeRanker() *LabelsNodeRanker {
 // - Rank 10: Selectors match node labels.
 // - Rank -1: Selectors don't match node labels.
 // - Rank 0: Job selectors are not set.
-func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	mustSelector := labels.NewSelector()
 	favourSelector := labels.NewSelector()
-	if len(job.Spec.NodeSelectors) > 0 {
-		requirements, err := model.FromLabelSelectorRequirements(job.Spec.NodeSelectors...)
+	if len(job.Constraints) > 0 {
+		requirements, err := models.FromLabelSelectorRequirements(job.Constraints...)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,7 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 				reason = "match for required selector"
 			} else {
 				rank = orchestrator.RankUnsuitable
-				reason = fmt.Sprintf("labels %s don't match required selectors %s", node.Labels, job.Spec.NodeSelectors)
+				reason = fmt.Sprintf("labels %s don't match required selectors %s", node.Labels, job.Constraints)
 			}
 		}
 		ranks[i] = orchestrator.NodeRank{

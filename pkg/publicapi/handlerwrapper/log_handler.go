@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -17,7 +17,7 @@ func NewJSONLogHandler() *JSONLogHandler {
 }
 
 func (h *JSONLogHandler) Handle(ctx context.Context, ri *HTTPRequestInfo) {
-	jsonBytes, err := model.JSONMarshalWithMax(ri)
+	jsonBytes, err := marshaller.JSONMarshalWithMax(ri)
 	if err != nil {
 		log.Ctx(ctx).Info().Err(err).Msgf("failed to marshal request info %+v", ri)
 	}

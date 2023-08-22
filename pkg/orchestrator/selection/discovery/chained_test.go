@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -15,15 +15,15 @@ import (
 type ChainedSuite struct {
 	suite.Suite
 	chain   *Chain
-	peerID1 model.NodeInfo
-	peerID2 model.NodeInfo
-	peerID3 model.NodeInfo
+	peerID1 models.NodeInfo
+	peerID2 models.NodeInfo
+	peerID3 models.NodeInfo
 }
 
 func (s *ChainedSuite) SetupSuite() {
-	s.peerID1 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID1")}}
-	s.peerID2 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID2")}}
-	s.peerID3 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID3")}}
+	s.peerID1 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID1")}}
+	s.peerID2 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID2")}}
+	s.peerID3 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID3")}}
 }
 
 func (s *ChainedSuite) SetupTest() {
@@ -39,25 +39,25 @@ func (s *ChainedSuite) TestFindNodes() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID2))
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
+	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestFindNodes_Overlap() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(NewFixedDiscoverer(s.peerID2, s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
+	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestHandle_Error() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(newBadDiscoverer())
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
-	_, err := s.chain.FindNodes(context.Background(), model.Job{})
+	_, err := s.chain.FindNodes(context.Background(), models.Job{})
 	s.Error(err)
 }
 
@@ -67,9 +67,9 @@ func (s *ChainedSuite) TestHandle_IgnoreError() {
 	s.chain.Add(newBadDiscoverer())
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
+	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 // node discoverer that always returns an error
@@ -79,10 +79,10 @@ func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
 }
 
-func (b *badDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
+func (b *badDiscoverer) FindNodes(context.Context, models.Job) ([]models.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }
 
-func (b *badDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
+func (b *badDiscoverer) ListNodes(context.Context) ([]models.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }

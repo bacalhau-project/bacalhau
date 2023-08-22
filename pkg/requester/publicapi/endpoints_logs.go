@@ -90,7 +90,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 
 	// Ask the Compute node for a multiaddr where we can connect to a log server
 	logRequest := requester.ReadLogsRequest{
-		JobID:       job.ID(),
+		JobID:       job.ID,
 		ExecutionID: payload.ExecutionID,
 		WithHistory: payload.WithHistory,
 		Follow:      payload.Follow}
@@ -102,7 +102,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if response.ExecutionComplete {
-		s.writeTerminatedJobOutput(ctx, conn, job.ID(), payload.ExecutionID)
+		s.writeTerminatedJobOutput(ctx, conn, job.ID, payload.ExecutionID)
 		return
 	}
 
@@ -171,14 +171,14 @@ func (s *RequesterAPIServer) writeTerminatedJobOutput(
 	conn *websocket.Conn,
 	jobID string,
 	executionID string) {
-	jobState, err := s.jobStore.GetJobState(ctx, jobID)
+	executions, err := s.jobStore.GetExecutions(ctx, jobID)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
 		return
 	}
 
-	for _, exec := range jobState.Executions {
-		if exec.ComputeReference == executionID {
+	for _, exec := range executions {
+		if exec.ID == executionID {
 			if exec.RunOutput.STDOUT != "" {
 				df := logger.DataFrame{
 					Tag:  logger.StdoutStreamTag,

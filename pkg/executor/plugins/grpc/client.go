@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc/proto"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
@@ -44,7 +44,7 @@ func (c *GRPCClient) ShouldBid(ctx context.Context, request bidstrategy.BidStrat
 	return out, nil
 }
 
-func (c *GRPCClient) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, usage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+func (c *GRPCClient) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	reqBytes, err := json.Marshal(request)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
@@ -67,7 +67,7 @@ func (c *GRPCClient) ShouldBidBasedOnUsage(ctx context.Context, request bidstrat
 	return out, nil
 }
 
-func (c *GRPCClient) Run(ctx context.Context, args *executor.RunCommandRequest) (*model.RunCommandResult, error) {
+func (c *GRPCClient) Run(ctx context.Context, args *executor.RunCommandRequest) (*models.RunCommandResult, error) {
 	b, err := json.Marshal(args)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (c *GRPCClient) Run(ctx context.Context, args *executor.RunCommandRequest) 
 	if err != nil {
 		return nil, err
 	}
-	out := new(model.RunCommandResult)
+	out := new(models.RunCommandResult)
 	if err := json.Unmarshal(resp.Params, out); err != nil {
 		return nil, err
 	}

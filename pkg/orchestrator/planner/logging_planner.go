@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
@@ -18,10 +17,10 @@ func NewLoggingPlanner() *LoggingPlanner {
 
 func (s *LoggingPlanner) Process(ctx context.Context, plan *models.Plan) error {
 	switch plan.DesiredJobState {
-	case model.JobStateCompleted:
-		log.Info().Msgf("Job %s completed successfully", plan.Job.ID())
-	case model.JobStateError:
-		log.Error().Msgf("Job %s failed due to `%s`", plan.Job.ID(), plan.Comment)
+	case models.JobStateTypeCompleted:
+		log.Info().Msgf("Job %s completed successfully", plan.Job.ID)
+	case models.JobStateTypeFailed:
+		log.Error().Msgf("Job %s failed due to `%s`", plan.Job.ID, plan.Comment)
 	default:
 	}
 

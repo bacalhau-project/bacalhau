@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,15 +20,15 @@ func TestParamsTestSuite(t *testing.T) {
 }
 
 func (s *ParamsTestSuite) TestDecodeMap() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
 		Compress: true,
 	}
-	decoded, err := DecodeSpec(model.PublisherSpec{
-		Type:   model.PublisherS3,
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
+		Type:   models.PublisherS3,
 		Params: expected.ToMap(),
 	})
 	s.Require().NoError(err)
@@ -36,7 +36,7 @@ func (s *ParamsTestSuite) TestDecodeMap() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInterface() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -50,8 +50,8 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 		"Region":   expected.Region,
 		"Compress": "true",
 	}
-	decoded, err := DecodeSpec(model.PublisherSpec{
-		Type:   model.PublisherS3,
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
+		Type:   models.PublisherS3,
 		Params: params,
 	})
 	s.Require().NoError(err)
@@ -59,7 +59,7 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -73,8 +73,8 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 		"region":   expected.Region,
 		"compress": "true",
 	}
-	decoded, err := DecodeSpec(model.PublisherSpec{
-		Type:   model.PublisherS3,
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
+		Type:   models.PublisherS3,
 		Params: params,
 	})
 	s.Require().NoError(err)
@@ -82,7 +82,7 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 }
 
 func (s *ParamsTestSuite) TestDecodeJson() {
-	expected := Params{
+	expected := PublisherSpec{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
@@ -99,8 +99,8 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 	if err != nil {
 		return
 	}
-	decoded, err := DecodeSpec(model.PublisherSpec{
-		Type:   model.PublisherS3,
+	decoded, err := DecodePublisherSpec(&models.SpecConfig{
+		Type:   models.PublisherS3,
 		Params: unmarshalled,
 	})
 	s.Require().NoError(err)
@@ -108,8 +108,8 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 }
 
 func (s *ParamsTestSuite) TestDecodeInvalidType() {
-	_, err := DecodeSpec(model.PublisherSpec{
-		Type: model.PublisherIpfs,
+	_, err := DecodePublisherSpec(&models.SpecConfig{
+		Type: models.PublisherIPFS,
 	})
 	s.Require().Error(err)
 }
@@ -117,12 +117,12 @@ func (s *ParamsTestSuite) TestDecodeInvalidType() {
 func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 	for _, tc := range []struct {
 		name string
-		spec model.PublisherSpec
+		spec *models.SpecConfig
 	}{
 		{
 			name: "empty bucket",
-			spec: model.PublisherSpec{
-				Type: model.PublisherS3,
+			spec: &models.SpecConfig{
+				Type: models.PublisherS3,
 				Params: map[string]interface{}{
 					"Bucket": "",
 					"Key":    uuid.NewString(),
@@ -131,8 +131,8 @@ func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 		},
 		{
 			name: "empty key",
-			spec: model.PublisherSpec{
-				Type: model.PublisherS3,
+			spec: &models.SpecConfig{
+				Type: models.PublisherS3,
 				Params: map[string]interface{}{
 					"Bucket": "bucket",
 					"Key":    "",
@@ -141,7 +141,7 @@ func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 		},
 	} {
 		s.Run(tc.name, func() {
-			_, err := DecodeSpec(tc.spec)
+			_, err := DecodePublisherSpec(tc.spec)
 			s.Require().Error(err)
 		})
 	}

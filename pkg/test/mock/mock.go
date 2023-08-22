@@ -3,19 +3,17 @@ package mock
 import (
 	"time"
 
-	"github.com/google/uuid"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/google/uuid"
 )
 
 func Eval() *models.Evaluation {
 	now := time.Now().UTC().UnixNano()
 	eval := &models.Evaluation{
 		ID:         uuid.NewString(),
-		Namespace:  model.DefaultNamespace,
+		Namespace:  models.DefaultNamespace,
 		Priority:   50,
-		Type:       model.JobTypeBatch,
+		Type:       models.JobTypeBatch,
 		JobID:      uuid.NewString(),
 		Status:     models.EvalStatusPending,
 		CreateTime: now,
@@ -24,61 +22,95 @@ func Eval() *models.Evaluation {
 	return eval
 }
 
-func Job() *model.Job {
-	engineSpec := model.NewEngineBuilder().
-		WithType(model.EngineDocker.String()).
-		Build()
-	return &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-		Metadata: model.Metadata{
-			ID:        uuid.NewString(),
-			CreatedAt: time.Now().UTC(),
+func Job() *models.Job {
+	job := &models.Job{
+		ID:        uuid.NewString(),
+		Name:      "test-job",
+		Type:      models.JobTypeBatch,
+		Namespace: models.DefaultNamespace,
+		Count:     1,
+		State: models.State[models.JobStateType]{
+			StateType: models.JobStateTypePending,
 		},
-		Spec: model.Spec{
-			EngineSpec: engineSpec,
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherNoop,
-			},
-			Deal: model.Deal{
-				Concurrency: 1,
-			},
-		},
+		Version: 1,
+		Tasks:   []*models.Task{Task()},
 	}
+	job.Normalize()
+	if err := job.Validate(); err != nil {
+		panic(err)
+	}
+	return job
 }
 
-func JobState(jobID string, executionCount int) *model.JobState {
-	now := time.Now().UTC()
-	executions := make([]model.ExecutionState, executionCount)
+func Task() *models.Task {
+	task := &models.Task{
+		Name: "task1",
+		Engine: &models.SpecConfig{
+			Type: "Noop",
+		},
+		Publisher: &models.SpecConfig{
+			Type: "Noop",
+		},
+		ResourcesConfig: &models.ResourcesConfig{
+			CPU:    "0.1",
+			Memory: "100Mi",
+		},
+		Network: &models.NetworkConfig{
+			Type:    models.NetworkNone,
+			Domains: make([]string, 0),
+		},
+		Timeouts: &models.TimeoutConfig{
+			ExecutionTimeout: 30,
+		},
+	}
+	task.Normalize()
+	if err := task.Validate(); err != nil {
+		panic(err)
+	}
+	return task
+}
+
+func TaskBuilder() *models.TaskBuilder {
+	return models.NewTaskBuilderFromTask(Task())
+}
+
+func Execution() *models.Execution {
+	return ExecutionForJob(Job())
+}
+
+func ExecutionForJob(job *models.Job) *models.Execution {
+	execution := &models.Execution{
+		JobID:     job.ID,
+		Job:       job,
+		NodeID:    uuid.NewString(),
+		ID:        uuid.NewString(),
+		Namespace: job.Namespace,
+		ComputeState: models.State[models.ExecutionStateType]{
+			StateType: models.ExecutionStateNew,
+		},
+		DesiredState: models.State[models.ExecutionDesiredStateType]{
+			StateType: models.ExecutionDesiredStatePending,
+		},
+	}
+	execution.Normalize()
+	if err := execution.Validate(); err != nil {
+		panic(err)
+	}
+	return execution
+}
+
+func Executions(job *models.Job, executionCount int) []*models.Execution {
+	executions := make([]*models.Execution, executionCount)
 	for i := 0; i < executionCount; i++ {
-		executions[i] = *ExecutionState(jobID)
+		executions[i] = ExecutionForJob(job)
 	}
-	return &model.JobState{
-		JobID:      jobID,
-		Executions: executions,
-		State:      model.JobStateInProgress,
-		CreateTime: now,
-		UpdateTime: now,
-	}
-}
-
-func ExecutionState(jobID string) *model.ExecutionState {
-	now := time.Now().UTC()
-	return &model.ExecutionState{
-		JobID:            jobID,
-		NodeID:           uuid.NewString(),
-		ComputeReference: uuid.NewString(),
-		State:            model.ExecutionStateBidAccepted,
-		DesiredState:     model.ExecutionDesiredStateRunning,
-		Version:          4,
-		CreateTime:       now,
-		UpdateTime:       now,
-	}
+	return executions
 }
 
 func Plan() *models.Plan {
 	job := Job()
 	eval := Eval()
-	eval.JobID = job.ID()
+	eval.JobID = job.ID
 
 	return &models.Plan{
 		EvalID:            eval.ID,
@@ -86,8 +118,7 @@ func Plan() *models.Plan {
 		Eval:              eval,
 		Priority:          50,
 		Job:               job,
-		JobStateVersion:   1,
-		NewExecutions:     []*model.ExecutionState{},
-		UpdatedExecutions: make(map[model.ExecutionID]*models.PlanExecutionDesiredUpdate),
+		NewExecutions:     []*models.Execution{},
+		UpdatedExecutions: make(map[string]*models.PlanExecutionDesiredUpdate),
 	}
 }

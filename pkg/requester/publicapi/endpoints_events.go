@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 )
 
@@ -53,9 +54,14 @@ func (s *RequesterAPIServer) events(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	legacyEvents := make([]model.JobHistory, len(events))
+	for i := range events {
+		legacyEvents[i] = *legacy.ToLegacyJobHistory(&events[i])
+	}
+
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(eventsResponse{
-		Events: events,
+		Events: legacyEvents,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
 
@@ -140,14 +141,7 @@ func (s *RetriesSuite) SetupSuite() {
 
 	s.requester = stack.Nodes[0]
 	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
-	s.stateResolver = job.NewStateResolver(
-		func(ctx context.Context, id string) (model.Job, error) {
-			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
-		},
-		func(ctx context.Context, id string) (model.JobState, error) {
-			return s.requester.RequesterNode.JobStore.GetJobState(ctx, id)
-		},
-	)
+	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
 }
 

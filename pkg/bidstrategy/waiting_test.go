@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type waitingStrategyTestCase struct {
@@ -67,7 +67,7 @@ func TestWaitsAppropriately(t *testing.T) {
 		})
 
 		t.Run(testCase.Name()+"/ShouldBidBasedOnUsage", func(t *testing.T) {
-			response, err := strategy.ShouldBidBasedOnUsage(context.Background(), bidstrategy.BidStrategyRequest{}, model.ResourceUsageData{})
+			response, err := strategy.ShouldBidBasedOnUsage(context.Background(), bidstrategy.BidStrategyRequest{}, models.Resources{})
 			require.NoError(t, err)
 			require.Equal(t, testCase.expectBid, response.ShouldBid)
 			require.Equal(t, testCase.expectWait, response.ShouldWait)

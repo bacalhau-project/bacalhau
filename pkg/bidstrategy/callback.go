@@ -3,12 +3,12 @@ package bidstrategy
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type CallbackBidStrategy struct {
 	OnShouldBid             func(context.Context, BidStrategyRequest) (BidStrategyResponse, error)
-	OnShouldBidBasedOnUsage func(context.Context, BidStrategyRequest, model.ResourceUsageData) (BidStrategyResponse, error)
+	OnShouldBidBasedOnUsage func(context.Context, BidStrategyRequest, models.Resources) (BidStrategyResponse, error)
 }
 
 // ShouldBid implements BidStrategy
@@ -20,7 +20,7 @@ func (s *CallbackBidStrategy) ShouldBid(ctx context.Context, request BidStrategy
 func (s *CallbackBidStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request BidStrategyRequest,
-	resourceUsage model.ResourceUsageData,
+	resourceUsage models.Resources,
 ) (BidStrategyResponse, error) {
 	return s.OnShouldBidBasedOnUsage(ctx, request, resourceUsage)
 }

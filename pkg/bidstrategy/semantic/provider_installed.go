@@ -5,35 +5,36 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type ProviderInstalledStrategy[K model.ProviderKey, P model.Providable] struct {
-	provider model.Provider[K, P]
-	getter   func(*model.Job) []K
+type ProviderInstalledStrategy[P provider.Providable] struct {
+	provider provider.Provider[P]
+	getter   func(*models.Job) []string
 }
 
-func NewProviderInstalledStrategy[K model.ProviderKey, P model.Providable](
-	provider model.Provider[K, P],
-	getter func(*model.Job) K,
-) *ProviderInstalledStrategy[K, P] {
-	return &ProviderInstalledStrategy[K, P]{
+func NewProviderInstalledStrategy[P provider.Providable](
+	provider provider.Provider[P],
+	getter func(*models.Job) string,
+) *ProviderInstalledStrategy[P] {
+	return &ProviderInstalledStrategy[P]{
 		provider: provider,
-		getter:   func(j *model.Job) []K { return []K{getter(j)} },
+		getter:   func(j *models.Job) []string { return []string{getter(j)} },
 	}
 }
 
-func NewProviderInstalledArrayStrategy[K model.ProviderKey, P model.Providable](
-	provider model.Provider[K, P],
-	getter func(*model.Job) []K,
-) *ProviderInstalledStrategy[K, P] {
-	return &ProviderInstalledStrategy[K, P]{
+func NewProviderInstalledArrayStrategy[P provider.Providable](
+	provider provider.Provider[P],
+	getter func(*models.Job) []string,
+) *ProviderInstalledStrategy[P] {
+	return &ProviderInstalledStrategy[P]{
 		provider: provider,
 		getter:   getter,
 	}
 }
 
-func (s *ProviderInstalledStrategy[K, P]) ShouldBid(
+func (s *ProviderInstalledStrategy[P]) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (resp bidstrategy.BidStrategyResponse, err error) {

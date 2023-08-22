@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	newExecutionComment = "Execution created"
+	newExecutionComment = "LocalExecutionState created"
 
 	DefaultSliceRetrievalCapacity = 10
 
@@ -35,16 +35,16 @@ const (
 // an execution ID and the value is the JSON representation.
 //
 // execution
-//     |--> <execution-id> -> {store.Execution}
+//     |--> <execution-id> -> {store.LocalExecutionState}
 //
-// * Execution history is stored in a bucket called `history`. Each execution
+// * LocalExecutionState history is stored in a bucket called `history`. Each execution
 // that has history is stored in a sub-bucket, whose name is the execution ID.
 // Within the execution id bucket, each key is a sequential value for the
 // history item being written so they are returned in write-order
 //
 // execution-history
 //     |--> execution-id
-//               |-> <seqnum> -> {store.ExecutionHistory}
+//               |-> <seqnum> -> {store.LocalStateHistory}
 //
 // * The job index is stored in a bucket called execution-index where
 // each job is represented by a new bucket, named after the job ID.  Within
@@ -150,23 +150,24 @@ func (s *Store) getLiveIndexBucket(tx *bolt.Tx) *bolt.Bucket {
 	return tx.Bucket([]byte(BucketLiveIndexName))
 }
 
-// GetExecution returns the stored Execution structure for the provided execution ID.
-func (s *Store) GetExecution(ctx context.Context, executionID string) (store.Execution, error) {
+// GetExecution returns the stored LocalExecutionState structure for the provided execution ID.
+func (s *Store) GetExecution(ctx context.Context, executionID string) (store.LocalExecutionState, error) {
 	log.Ctx(ctx).Trace().
 		Str("ExecutionID", executionID).
 		Msg("boltdb.GetExecution")
 
-	var execution store.Execution
+	var execution store.LocalExecutionState
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		execution, err = s.getExecution(tx, executionID)
 		return
 	})
 
+	execution.Normalize()
 	return execution, err
 }
 
-func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.Execution, error) {
-	var execution store.Execution
+func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.LocalExecutionState, error) {
+	var execution store.LocalExecutionState
 
 	executionsBucket := tx.Bucket([]byte(BucketExecutionsName))
 	data := executionsBucket.Get([]byte(executionID))
@@ -180,12 +181,12 @@ func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.Execution, 
 
 // GetExecutions retrieves akk if the executions from the job-index bucket for the
 // provided Job ID.
-func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
+func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalExecutionState, error) {
 	log.Ctx(ctx).Trace().
 		Str("JobID", jobID).
 		Msg("boltdb.GetExecutions")
 
-	var executions []store.Execution
+	var executions []store.LocalExecutionState
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		executions, err = s.getExecutions(tx, jobID)
 		return
@@ -198,17 +199,20 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
 	})
 
+	for _, execution := range executions {
+		execution.Normalize()
+	}
 	return executions, nil
 }
 
-func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.Execution, error) {
+func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.LocalExecutionState, error) {
 	jobIndexBucket := s.getJobIndexBucket(tx)
 	jobBucket := jobIndexBucket.Bucket([]byte(jobID))
 	if jobBucket == nil {
 		return nil, store.NewErrJobNotFound(jobID)
 	}
 
-	executions := make([]store.Execution, 0, DefaultSliceRetrievalCapacity)
+	executions := make([]store.LocalExecutionState, 0, DefaultSliceRetrievalCapacity)
 
 	// List all of the keys in the bucket which all have nil values, and are
 	// used only as markers to point to the actual execution in the relevant
@@ -226,11 +230,11 @@ func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.Execution, err
 	return executions, err
 }
 
-func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.Execution, error) {
+func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionState, error) {
 	log.Ctx(ctx).Trace().
 		Msg("boltdb.GetLiveExecutions")
 
-	var executions []store.Execution
+	var executions []store.LocalExecutionState
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		executions, err = s.getLiveExecutions(tx)
 		return
@@ -246,10 +250,10 @@ func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.Execution, error
 	return executions, nil
 }
 
-func (s *Store) getLiveExecutions(tx *bolt.Tx) ([]store.Execution, error) {
+func (s *Store) getLiveExecutions(tx *bolt.Tx) ([]store.LocalExecutionState, error) {
 	liveIndexBkt := s.getLiveIndexBucket(tx)
 
-	executions := make([]store.Execution, 0, DefaultSliceRetrievalCapacity)
+	executions := make([]store.LocalExecutionState, 0, DefaultSliceRetrievalCapacity)
 
 	// List all of the keys in the live index bucket, and fetch the appropriate
 	// executions
@@ -267,12 +271,12 @@ func (s *Store) getLiveExecutions(tx *bolt.Tx) ([]store.Execution, error) {
 
 // GetExecutionHistory retrieves the execution history for a single execution
 // specified by the executionID parameter.
-func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]store.ExecutionHistory, error) {
+func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]store.LocalStateHistory, error) {
 	log.Ctx(ctx).Trace().
 		Str("ExecutionID", executionID).
 		Msg("boltdb.GetExecutionHistory")
 
-	var history []store.ExecutionHistory
+	var history []store.LocalStateHistory
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
 		history, err = s.getExecutionHistory(tx, executionID)
 		return
@@ -284,7 +288,7 @@ func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]
 	return history, err
 }
 
-func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.ExecutionHistory, error) {
+func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.LocalStateHistory, error) {
 	historyBucket := s.getHistoryBucket(tx)
 
 	executionBucket := historyBucket.Bucket([]byte(executionID))
@@ -292,13 +296,13 @@ func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.Ex
 		return nil, store.NewErrExecutionNotFound(executionID)
 	}
 
-	history := make([]store.ExecutionHistory, 0, DefaultSliceRetrievalCapacity)
+	history := make([]store.LocalStateHistory, 0, DefaultSliceRetrievalCapacity)
 
 	// Iterate all of the key-values in the history/executionID bucket as they
 	// are the history, and are written in sequential order using the bucket
 	// sequence
 	err := executionBucket.ForEach(func(key []byte, data []byte) error {
-		var item store.ExecutionHistory
+		var item store.LocalStateHistory
 
 		err := json.Unmarshal(data, &item)
 		if err != nil {
@@ -314,57 +318,58 @@ func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.Ex
 
 // CreateExecution creates a new execution in the database and also sets up the
 // relevant index entry for the new execution.
-func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) error {
+func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.LocalExecutionState) error {
 	log.Ctx(ctx).Trace().
-		Str("ExecutionID", execution.ID).
+		Str("ExecutionID", localExecutionState.Execution.ID).
 		Msg("boltdb.CreateExecution")
 
-	if err := store.ValidateNewExecution(execution); err != nil {
+	localExecutionState.Normalize()
+	if err := store.ValidateNewExecution(localExecutionState); err != nil {
 		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
-		err = s.createExecution(tx, execution)
+		err = s.createExecution(tx, localExecutionState)
 		if err == nil {
 			// If we are confident that the value was written without error
 			// and we won't rollback
-			s.stateCounter.IncrementState(execution.State, 1)
+			s.stateCounter.IncrementState(localExecutionState.State, 1)
 		}
 		return
 	})
 }
 
-func (s *Store) createExecution(tx *bolt.Tx, execution store.Execution) error {
-	_, err := s.getExecution(tx, execution.ID)
+func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalExecutionState) error {
+	_, err := s.getExecution(tx, localExecutionState.Execution.ID)
 	if err == nil { // deliberate, we require an err to continue
-		return store.NewErrExecutionAlreadyExists(execution.ID)
+		return store.NewErrExecutionAlreadyExists(localExecutionState.Execution.ID)
 	}
 
 	// Write the execution to the executions bucket
-	executionData, err := json.Marshal(execution)
+	executionData, err := json.Marshal(localExecutionState)
 	if err != nil {
 		return err
 	}
 
 	executionsBucket := s.getExecutionsBucket(tx)
-	err = executionsBucket.Put([]byte(execution.ID), executionData)
+	err = executionsBucket.Put([]byte(localExecutionState.Execution.ID), executionData)
 	if err != nil {
 		return err
 	}
 
 	// Create the job bucket in the job index if it does not already exist
 	jobIndexBucket := s.getJobIndexBucket(tx)
-	jobBucket, err := jobIndexBucket.CreateBucketIfNotExists([]byte(execution.Job.ID()))
+	jobBucket, err := jobIndexBucket.CreateBucketIfNotExists([]byte(localExecutionState.Execution.JobID))
 	if err != nil {
 		return err
 	}
 
-	err = jobBucket.Put([]byte(execution.ID), nil)
+	err = jobBucket.Put([]byte(localExecutionState.Execution.ID), nil)
 	if err != nil {
 		return err
 	}
 
-	return s.appendHistory(tx, execution, store.ExecutionStateUndefined, newExecutionComment)
+	return s.appendHistory(tx, localExecutionState, store.ExecutionStateUndefined, newExecutionComment)
 }
 
 // UpdateExecutionState updates the current state of the execution
@@ -383,41 +388,41 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	})
 }
 
-func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.ExecutionState, error) {
+func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.LocalExecutionStateType, error) {
 	emptyState := store.ExecutionStateUndefined
 
-	execution, err := s.getExecution(tx, request.ExecutionID)
+	localExecutionState, err := s.getExecution(tx, request.ExecutionID)
 	if err != nil {
 		return emptyState, store.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
-	if request.ExpectedState != store.ExecutionStateUndefined && execution.State != request.ExpectedState {
-		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, execution.State, request.ExpectedState)
+	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
+		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
 	}
 
-	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
-		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
+	if request.ExpectedVersion != 0 && localExecutionState.Version != request.ExpectedVersion {
+		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
 	}
 
-	if execution.State.IsTerminal() {
-		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, execution.State, request.NewState)
+	if localExecutionState.State.IsTerminal() {
+		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)
 	}
 
-	previousState := execution.State
-	execution.State = request.NewState
-	execution.Version += 1
-	execution.UpdateTime = time.Now()
+	previousState := localExecutionState.State
+	localExecutionState.State = request.NewState
+	localExecutionState.Version += 1
+	localExecutionState.UpdateTime = time.Now()
 
 	// Having modified the execution, we're going to write it back over the top of the previous entry
 	// before appending a copy of the history to the history bucket
 
-	data, err := json.Marshal(execution)
+	data, err := json.Marshal(localExecutionState)
 	if err != nil {
 		return emptyState, err
 	}
 
 	executionsBucket := s.getExecutionsBucket(tx)
-	err = executionsBucket.Put([]byte(execution.ID), data)
+	err = executionsBucket.Put([]byte(localExecutionState.Execution.ID), data)
 	if err != nil {
 		return emptyState, err
 	}
@@ -426,10 +431,10 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 	// at a restart that it should be running. If it is not that, then we should ensure
 	// that the index for live executions does not include this ID.
 	var indexError error
-	indexKey := []byte(execution.ID)
+	indexKey := []byte(localExecutionState.Execution.ID)
 	bkt := s.getLiveIndexBucket(tx)
 
-	if execution.State.IsExecuting() {
+	if localExecutionState.State.IsExecuting() {
 		indexError = bkt.Put(indexKey, []byte{})
 	} else {
 		indexError = bkt.Delete(indexKey)
@@ -440,7 +445,7 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 	}
 
 	// Update the history of the execution
-	historyErr := s.appendHistory(tx, execution, previousState, request.Comment)
+	historyErr := s.appendHistory(tx, localExecutionState, previousState, request.Comment)
 	if historyErr != nil {
 		return previousState, fmt.Errorf("failed to append execution history: %s", historyErr)
 	}
@@ -455,16 +460,16 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 // number as bucket traversals happen in lexicographical order.
 func (s *Store) appendHistory(
 	tx *bolt.Tx,
-	updatedExecution store.Execution,
-	previousState store.ExecutionState, comment string) error {
+	updatedExecution store.LocalExecutionState,
+	previousState store.LocalExecutionStateType, comment string) error {
 	historyBucket := s.getHistoryBucket(tx)
-	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.ID))
+	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.Execution.ID))
 	if err != nil {
 		return err
 	}
 
-	historyEntry := store.ExecutionHistory{
-		ExecutionID:   updatedExecution.ID,
+	historyEntry := store.LocalStateHistory{
+		ExecutionID:   updatedExecution.Execution.ID,
 		PreviousState: previousState,
 		NewState:      updatedExecution.State,
 		NewVersion:    updatedExecution.Version,
@@ -500,7 +505,7 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 }
 
 func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
-	execution, err := s.getExecution(tx, executionID)
+	localExecutionState, err := s.getExecution(tx, executionID)
 	if err != nil {
 		return err
 	}
@@ -514,7 +519,7 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 
 	// Delete from job index
 	jobIndexBucket := s.getJobIndexBucket(tx)
-	jobBucket := jobIndexBucket.Bucket([]byte(execution.Job.ID()))
+	jobBucket := jobIndexBucket.Bucket([]byte(localExecutionState.Execution.JobID))
 	if jobBucket != nil {
 		err = jobBucket.Delete([]byte(executionID))
 		if err != nil {
@@ -537,7 +542,7 @@ func (s *Store) Close(ctx context.Context) error {
 	return s.database.Close()
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint64, error) {
+func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalExecutionStateType) (uint64, error) {
 	log.Ctx(ctx).Trace().
 		Msg("boltdb.GetExecutionCount")
 
@@ -559,7 +564,7 @@ func (s *Store) populateStateCounter(ctx context.Context) {
 				continue
 			}
 
-			var entry store.Execution
+			var entry store.LocalExecutionState
 			err = json.Unmarshal(v, &entry)
 			if err != nil {
 				return
