@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
@@ -48,8 +49,8 @@ type ExecutorBuffer struct {
 	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
-	enqueued                   map[string]*bufferTask
-	enqueuedList               []string
+	queuedTasks                *collections.PriorityQueue[*bufferTask]
+	enqueuedIDs                map[string]struct{}
 	defaultJobExecutionTimeout time.Duration
 	backoffDuration            time.Duration
 	backoffUntil               time.Time
@@ -64,8 +65,8 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
-		enqueued:                   make(map[string]*bufferTask),
-		enqueuedList:               make([]string, 0),
+		queuedTasks:                collections.NewPriorityQueue[*bufferTask](),
+		enqueuedIDs:                make(map[string]struct{}),
 		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
 		backoffDuration:            params.BackoffDuration,
 	}
@@ -103,7 +104,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		err = fmt.Errorf("not enough capacity to run job")
 		return
 	}
-	if _, ok := s.enqueued[execution.ID]; ok {
+	if _, ok := s.enqueuedIDs[execution.ID]; ok {
 		err = fmt.Errorf("execution %s already enqueued", execution.ID)
 		return
 	}
@@ -116,8 +117,8 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		return
 	}
 
-	s.enqueued[execution.ID] = newBufferTask(localExecutionState)
-	s.enqueuedList = append(s.enqueuedList, execution.ID)
+	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), execution.Job.Priority)
+	s.enqueuedIDs[execution.ID] = struct{}{}
 	s.deque()
 	return err
 }
@@ -173,24 +174,38 @@ func (s *ExecutorBuffer) deque() {
 	}
 	ctx := context.Background()
 
-	// We are maintain the order of enqueued executions treat it as a FIFO queue, while allowing to skip over jobs
-	// that require more resources than the current capacity. This is done to improve utilization of compute nodes,
-	// though it might result in starvation and should be re-evaluated in the future.
-	remainingEnqueuedList := make([]string, 0, len(s.enqueuedList))
+	holdingQueue := collections.NewPriorityQueue[*bufferTask]()
 
-	for _, executionID := range s.enqueuedList {
-		task := s.enqueued[executionID]
+	// We know there are len(s.enqueuedList) items to process, so let's dequeue at most
+	// that many entries
+	max := len(s.enqueuedIDs)
+	for i := 0; i < max; i++ {
+		task, prio, err := s.queuedTasks.Dequeue()
+		if err != nil {
+			// TODO: Log error
+			continue
+		}
 
+		execID := task.localExecutionState.Execution.ID
+
+		// We maintain the enqueued execution state as a priority queue, while allowing to skip over jobs
+		// that require more resources than the current capacity. This is done to improve utilization of
+		// compute nodes, though it might result in starvation and should be re-evaluated in the future.
 		if s.runningCapacity.AddIfHasCapacity(ctx, *task.localExecutionState.Execution.TotalAllocatedResources()) {
 			s.enqueuedCapacity.Remove(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
-			delete(s.enqueued, executionID)
-			s.running[executionID] = task
+
+			delete(s.enqueuedIDs, execID)
+			s.running[execID] = task
+
 			go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 		} else {
-			remainingEnqueuedList = append(remainingEnqueuedList, executionID)
+			// We will need to re-enqueue this item as we don't have resources for now
+			holdingQueue.Enqueue(task, prio)
 		}
 	}
-	s.enqueuedList = remainingEnqueuedList
+
+	// Merge the holding queue back into the queued tasks
+	s.queuedTasks.Merge(holdingQueue)
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
@@ -220,9 +235,9 @@ func (s *ExecutorBuffer) RunningExecutions() []store.LocalExecutionState {
 	return s.mapValues(s.running)
 }
 
-// EnqueuedExecutions return list of enqueued executions
-func (s *ExecutorBuffer) EnqueuedExecutions() []store.LocalExecutionState {
-	return s.mapValues(s.enqueued)
+// EnqueuedExecutionsCount return number of items enqueued
+func (s *ExecutorBuffer) EnqueuedExecutionsCount() int {
+	return s.queuedTasks.Len()
 }
 
 func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalExecutionState {
