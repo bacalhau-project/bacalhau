@@ -100,7 +100,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := os.Getenv(config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses))
+	IPFSSwarmAddrs := config.Getenv(types.NodeIPFSSwarmAddresses)
 	if IPFSSwarmAddrs == "" {
 		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}

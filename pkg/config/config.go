@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -74,6 +75,12 @@ func Set(config types.BacalhauConfig) error {
 // Reset clears all configuration, useful for testing.
 func Reset() {
 	viper.Reset()
+}
+
+// Getenv wraps os.Getenv and retrieves the value of the environment variable named by the config key.
+// It returns the value, which will be empty if the variable is not present.
+func Getenv(key string) string {
+	return os.Getenv(KeyAsEnvVar(key))
 }
 
 // KeyAsEnvVar returns the environment variable corresponding to a config key
