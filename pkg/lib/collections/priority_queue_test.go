@@ -66,12 +66,13 @@ func (s *PriorityQueueSuite) TestDequeueWhere() {
 
 	count := pq.Len()
 
-	item, err := pq.DequeueWhere(func(possibleMatch string) bool {
+	item, prio, err := pq.DequeueWhere(func(possibleMatch string) bool {
 		return possibleMatch == "B"
 	})
 
 	s.Require().NoError(err)
 	s.Require().Equal("B", item)
+	s.Require().Equal(3, prio)
 	s.Require().Equal(count-1, pq.Len())
 
 }
@@ -80,7 +81,7 @@ func (s *PriorityQueueSuite) TestDequeueWhereFail() {
 	pq := collections.NewPriorityQueue[string]()
 	pq.Enqueue("A", 4)
 
-	_, err := pq.DequeueWhere(func(possibleMatch string) bool {
+	_, _, err := pq.DequeueWhere(func(possibleMatch string) bool {
 		return possibleMatch == "Z"
 	})
 

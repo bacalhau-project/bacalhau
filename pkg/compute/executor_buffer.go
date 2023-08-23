@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -174,38 +175,37 @@ func (s *ExecutorBuffer) deque() {
 	}
 	ctx := context.Background()
 
-	holdingQueue := collections.NewPriorityQueue[*bufferTask]()
-
-	// We know there are len(s.enqueuedList) items to process, so let's dequeue at most
-	// that many entries
-	max := len(s.enqueuedIDs)
+	// There are at most max matches, so try at most that many times
+	max := s.queuedTasks.Len()
 	for i := 0; i < max; i++ {
-		task, prio, err := s.queuedTasks.Dequeue()
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("executor_buffer failed to obtain task from queue")
-			break
-		}
+		task, _, err := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
+			// If we don't have enough resources to run this task, then we will skip it
+			add := s.runningCapacity.AddIfHasCapacity(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
+			if !add {
+				return false
+			}
 
-		execID := task.localExecutionState.Execution.ID
-
-		// We maintain the enqueued execution state as a priority queue, while allowing to skip over jobs
-		// that require more resources than the current capacity. This is done to improve utilization of
-		// compute nodes, though it might result in starvation and should be re-evaluated in the future.
-		if s.runningCapacity.AddIfHasCapacity(ctx, *task.localExecutionState.Execution.TotalAllocatedResources()) {
+			// Claim the resources now so that we don't count allocated resources
 			s.enqueuedCapacity.Remove(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
+			return true
+		})
 
-			delete(s.enqueuedIDs, execID)
-			s.running[execID] = task
-
-			go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
-		} else {
-			// We will need to re-enqueue this item as we don't have resources for now
-			holdingQueue.Enqueue(task, prio)
+		if err != nil {
+			if errors.Is(err, collections.ErrNoMatch) {
+				break // we're all out of possible matches
+			}
+			log.Ctx(ctx).Error().Err(err).Msg("failed when searching for a task to run")
 		}
+
+		// Move the execution to the running list and remove from the list of enqueued IDs
+		// before we actually run the task
+		execID := task.localExecutionState.Execution.ID
+		s.running[execID] = task
+		delete(s.enqueuedIDs, execID)
+
+		go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 	}
 
-	// Merge the holding queue back into the queued tasks
-	s.queuedTasks.Merge(holdingQueue)
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 

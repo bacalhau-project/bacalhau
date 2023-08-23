@@ -93,11 +93,12 @@ func (pq *PriorityQueue[T]) dequeue() (T, int, error) {
 // time cost as dequeued but non-matching items must be held and requeued once the process
 // is complete.  Luckily, we use the same amount of space (bar a few bytes for the
 // extra PriorityQueue) for the dequeued items.
-func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, error) {
+func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, int, error) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
 	var result T
+	var priority int
 	var found bool
 
 	// Create a new Q to hold items that are not matches, this is suboptimal for time
@@ -112,11 +113,12 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, error)
 	for i := 0; i < max; i++ {
 		item, prio, err := pq.dequeue()
 		if err != nil {
-			return *new(T), err
+			return *new(T), prio, err
 		}
 
 		if matcher(item) {
 			result = item
+			priority = prio
 			found = true
 			break
 		}
@@ -130,10 +132,10 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, error)
 	pq.Merge(newQ)
 
 	if !found {
-		return result, ErrNoMatch
+		return result, priority, ErrNoMatch
 	}
 
-	return result, nil
+	return result, priority, nil
 }
 
 func (pq *PriorityQueue[T]) Merge(other *PriorityQueue[T]) {
