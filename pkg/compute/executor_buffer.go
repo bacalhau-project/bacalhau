@@ -182,8 +182,8 @@ func (s *ExecutorBuffer) deque() {
 	for i := 0; i < max; i++ {
 		task, prio, err := s.queuedTasks.Dequeue()
 		if err != nil {
-			// TODO: Log error
-			continue
+			log.Ctx(ctx).Error().Err(err).Msg("executor_buffer failed to obtain task from queue")
+			break
 		}
 
 		execID := task.localExecutionState.Execution.ID
