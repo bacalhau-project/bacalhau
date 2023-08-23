@@ -4,7 +4,6 @@ package compute_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -13,9 +12,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type StartupTestSuite struct {
@@ -37,10 +35,9 @@ func (s *StartupTestSuite) TestLongRunning() {
 	defer database.Close(s.ctx)
 
 	type testcase struct {
-		ID           string
-		job          model.Job
-		allNodes     bool
-		expectations func(_ *compute.MockExecutor)
+		ID       string
+		job_type string
+		allNodes bool
 	}
 
 	any := gomock.Any()
@@ -48,60 +45,50 @@ func (s *StartupTestSuite) TestLongRunning() {
 	testcases := []testcase{
 		{
 			ID:       "1",
-			job:      *testutils.MakeNoopJob(s.T()),
+			job_type: models.JobTypeBatch,
 			allNodes: false,
-			expectations: func(executor *compute.MockExecutor) {
-				executor.EXPECT().Cancel(any, any).Return(nil)
-			},
 		},
 		{
 			ID:       "2",
-			job:      *testutils.MakeNoopJob(s.T()),
+			job_type: models.JobTypeService,
 			allNodes: true,
-			expectations: func(executor *compute.MockExecutor) {
-				// Need to specify max times to include the call in the next text case,
-				// but isn't clear why given the new controller and mock created in
-				// each test case.
-				executor.EXPECT().Cancel(any, any).Return(nil).MaxTimes(2)
-				executor.EXPECT().Run(any, any).Return(nil)
-			},
 		},
 	}
 
-	for idx, tc := range testcases {
-		s.T().Run(fmt.Sprintf("Test %d", idx+1), func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			mockExecutor := compute.NewMockExecutor(ctrl)
+	// Create jobs and live executions for test cases.
+	for _, tc := range testcases {
+		j := mock.Job()
+		j.ID = tc.ID
+		j.Type = tc.job_type
 
-			tc.expectations(mockExecutor) // check expectations
+		execution := mock.ExecutionForJob(j)
+		execution.ID = tc.ID
+		exec := store.NewLocalExecutionState(execution, "req")
+		err := database.CreateExecution(s.ctx, *exec)
+		s.Require().NoError(err)
 
-			j := tc.job
-			if tc.allNodes {
-				j.Spec.Deal.TargetingMode = model.TargetAll
-			}
-
-			execution := mock.ExecutionForJob(mock.Job())
-			execution.ID = tc.ID
-			exec := store.NewLocalExecutionState(execution, "req")
-			err := database.CreateExecution(s.ctx, *exec)
-			s.Require().NoError(err)
-
-			err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
-				ExecutionID: execution.ID,
-				NewState:    store.ExecutionStateRunning,
-			})
-			s.Require().NoError(err)
-
-			execs, err := database.GetLiveExecutions(s.ctx)
-			s.Require().NoError(err)
-			s.Require().Equal(idx+1, len(execs))
-
-			startup := compute.NewStartup(database, mockExecutor)
-			err = startup.Execute(s.ctx)
-			s.Require().NoError(err)
-
-			// If we get here we're good as mock expectations didn't fail.
-			ctrl.Finish()
+		err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
+			ExecutionID: execution.ID,
+			NewState:    store.ExecutionStateRunning,
 		})
+		s.Require().NoError(err)
+
 	}
+
+	ctrl := gomock.NewController(s.T())
+	mockExecutor := compute.NewMockExecutor(ctrl)
+
+	mockExecutor.EXPECT().Cancel(any, any).Return(nil).MaxTimes(2)
+	mockExecutor.EXPECT().Run(any, any).Return(nil)
+
+	execs, err := database.GetLiveExecutions(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(execs))
+
+	startup := compute.NewStartup(database, mockExecutor)
+	err = startup.Execute(s.ctx)
+	s.Require().NoError(err)
+
+	// If we get here we're good as mock expectations didn't fail.
+	ctrl.Finish()
 }

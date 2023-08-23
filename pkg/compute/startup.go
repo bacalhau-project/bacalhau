@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -41,16 +42,16 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 	// Get a list of the currently live executions and we can check their
 	// status - relying on the changes to the execution state to update
 	// the index.
-	executions, err := s.executionStore.GetLiveExecutions(ctx)
+	localExecStates, err := s.executionStore.GetLiveExecutions(ctx)
 	if err != nil {
 		return err
 	}
 
-	for idx := range executions {
-		localExecution := executions[idx]
+	for idx := range localExecStates {
+		localExecution := localExecStates[idx]
 
 		switch localExecution.Execution.Job.Type {
-		case model.JobTypeService, model.JobTypeSystem, model.JobTypeOps:
+		case models.JobTypeService, models.JobTypeDaemon:
 			{
 				// Service and System jobs are long running jobs and so we need to make sure it is running
 				err = s.runExecution(ctx, localExecution)
@@ -58,7 +59,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 					return err
 				}
 			}
-		case model.JobTypeBatch:
+		case model.JobTypeBatch, models.JobTypeOps:
 			{
 				// Batch and Ops jobs should be failed as we don't know if they had any
 				// side-effects (particularly for ops jobs).
