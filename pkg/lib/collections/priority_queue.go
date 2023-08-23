@@ -127,21 +127,26 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, error)
 
 	// Re-add the items from newQ back onto the main queue after initializing
 	// the new q so we can dequeue in priority order
-	heap.Init(&newQ.internalQueue)
-	for {
-		x, p, e := newQ.dequeue()
-		if e != nil {
-			break
-		}
-
-		pq.enqueue(x, p)
-	}
+	pq.Merge(newQ)
 
 	if !found {
 		return result, ErrNoMatch
 	}
 
 	return result, nil
+}
+
+func (pq *PriorityQueue[T]) Merge(other *PriorityQueue[T]) {
+	heap.Init(&other.internalQueue)
+
+	for {
+		x, p, e := other.dequeue()
+		if e != nil {
+			break // break when the other queue is empty
+		}
+
+		pq.enqueue(x, p)
+	}
 }
 
 // Len returns the number of items currently in the queue
