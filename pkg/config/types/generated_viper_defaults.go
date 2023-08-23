@@ -16,6 +16,7 @@ func SetDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(NodeIPFSConnect, cfg.Node.IPFS.Connect)
 	viper.SetDefault(NodeIPFSPrivateInternal, cfg.Node.IPFS.PrivateInternal)
 	viper.SetDefault(NodeIPFSSwarmAddresses, cfg.Node.IPFS.SwarmAddresses)
+	viper.SetDefault(NodeIPFSServePath, cfg.Node.IPFS.ServePath)
 	viper.SetDefault(NodeCompute, cfg.Node.Compute)
 	viper.SetDefault(NodeComputeCapacity, cfg.Node.Compute.Capacity)
 	viper.SetDefault(NodeComputeCapacityIgnorePhysicalResourceLimits, cfg.Node.Compute.Capacity.IgnorePhysicalResourceLimits)

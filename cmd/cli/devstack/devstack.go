@@ -153,8 +153,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	}
 
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
-		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack")
+	if config.GetServeIPFSPath() != "" {
+		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment " +
+			"and/or --ipfs-serve-path from your flags " +
+			"and/or node.ipfs.servepath from your config " +
+			"to run devstack")
 	}
 
 	cm.RegisterCallback(telemetry.Cleanup)

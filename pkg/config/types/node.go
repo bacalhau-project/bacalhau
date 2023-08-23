@@ -54,6 +54,8 @@ type IpfsConfig struct {
 	PrivateInternal bool
 	// IPFS multiaddresses that the in-process IPFS should connect to
 	SwarmAddresses []string
+	// Path of the IPFS repo
+	ServePath string
 }
 
 type FeatureConfig struct {

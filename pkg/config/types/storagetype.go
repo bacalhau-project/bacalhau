@@ -19,7 +19,7 @@ const (
 )
 
 func (j *StorageType) UnmarshalText(text []byte) error {
-	out, err := ParseJobStoreType(string(text))
+	out, err := ParseStorageType(string(text))
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func (j *StorageType) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func ParseJobStoreType(s string) (ret StorageType, err error) {
+func ParseStorageType(s string) (ret StorageType, err error) {
 	for typ := InMemory; typ <= BoltDB; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil

@@ -31,10 +31,11 @@ import (
 // integrating Cobra and Viper, ensuring that command-line interactions seamlessly
 // reflect and influence the underlying configuration state.
 type Definition struct {
-	FlagName     string
-	ConfigPath   string
-	DefaultValue interface{}
-	Description  string
+	FlagName             string
+	ConfigPath           string
+	DefaultValue         interface{}
+	Description          string
+	EnvironmentVariables []string
 }
 
 // BindFlags binds flags from a command to Viper using the provided definitions.
@@ -42,9 +43,19 @@ type Definition struct {
 func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
 	for _, defs := range register {
 		for _, def := range defs {
+			// set the default value
 			viper.SetDefault(def.ConfigPath, def.DefaultValue)
+
+			// bind the flag to viper
 			if err := viper.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
 				return err
+			}
+
+			// Bind environment variables to viper
+			if len(def.EnvironmentVariables) > 0 {
+				if err := viper.BindEnv(append([]string{def.ConfigPath}, def.EnvironmentVariables...)...); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -77,6 +88,8 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.DurationVar(&v, def.FlagName, v, def.Description)
 			case types.Duration:
 				fset.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
+			case types.StorageType:
+				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
 			default:
 				return fmt.Errorf("unhandled type: %T", v)
 			}

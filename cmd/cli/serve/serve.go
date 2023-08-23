@@ -91,6 +91,8 @@ func NewCmd() *cobra.Command {
 		"labels":           configflags.LabelFlags,
 		"node-type":        configflags.NodeTypeFlags,
 		"list-local":       configflags.AllowListLocalPathsFlags,
+		"compute-store":    configflags.ComputeStorageFlags,
+		"requester-store":  configflags.RequesterJobStorageFlags,
 	}
 
 	serveCmd := &cobra.Command{

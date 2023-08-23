@@ -10,6 +10,13 @@ var CapacityFlags = []Definition{
 		Description:  `List of IDs of clients that are allowed to bypass the job execution timeout check`,
 	},
 	{
+		FlagName:             "ignore-physical-resource-limits",
+		ConfigPath:           types.NodeComputeCapacityIgnorePhysicalResourceLimits,
+		DefaultValue:         Default.Node.Compute.Capacity.IgnorePhysicalResourceLimits,
+		Description:          `When set the compute node will ignore is physical resource limits`,
+		EnvironmentVariables: []string{"BACALHAU_CAPACITY_MANAGER_OVER_COMMIT"},
+	},
+	{
 		FlagName:     "limit-total-cpu",
 		ConfigPath:   types.NodeComputeCapacityTotalResourceLimitsCPU,
 		DefaultValue: Default.Node.Compute.Capacity.TotalResourceLimits.CPU,

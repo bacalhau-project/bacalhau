@@ -37,7 +37,7 @@ var Development = types.BacalhauConfig{
 			PeerConnect: "",
 		},
 		IPFS: types.IpfsConfig{
-			Connect:         "none",
+			Connect:         "",
 			PrivateInternal: true,
 			SwarmAddresses: []string{
 				"/ip4/34.88.135.65/tcp/1235/p2p/QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo",
