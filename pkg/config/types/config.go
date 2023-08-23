@@ -9,7 +9,7 @@ type BacalhauConfig struct {
 }
 
 type UserConfig struct {
-	UserKeyPath   string
+	KeyPath       string
 	Libp2pKeyPath string
 }
 

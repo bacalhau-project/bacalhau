@@ -78,7 +78,7 @@ func encodePublicKey(key *rsa.PublicKey) string {
 
 // loadUserIDKey loads the user ID key from whatever source is configured.
 func loadUserIDKey() (*rsa.PrivateKey, error) {
-	keyFile := viper.GetString(types.UserUserKeyPath)
+	keyFile := viper.GetString(types.UserKeyPath)
 	if keyFile == "" {
 		return nil, fmt.Errorf("config error: user-id-key not set")
 	}

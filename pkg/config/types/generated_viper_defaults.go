@@ -105,7 +105,7 @@ func SetDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(NodeDisabledFeaturesStorages, cfg.Node.DisabledFeatures.Storages)
 	viper.SetDefault(NodeLabels, cfg.Node.Labels)
 	viper.SetDefault(User, cfg.User)
-	viper.SetDefault(UserUserKeyPath, cfg.User.UserKeyPath)
+	viper.SetDefault(UserKeyPath, cfg.User.KeyPath)
 	viper.SetDefault(UserLibp2pKeyPath, cfg.User.Libp2pKeyPath)
 	viper.SetDefault(Metrics, cfg.Metrics)
 	viper.SetDefault(MetricsLibp2pTracerPath, cfg.Metrics.Libp2pTracerPath)

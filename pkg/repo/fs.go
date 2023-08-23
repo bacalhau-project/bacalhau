@@ -68,7 +68,7 @@ func (fsr *FsRepo) Open() error {
 
 	// Using a slice of paths to minimize repetitive checks
 	pathsToCheck := []string{
-		cfg.User.UserKeyPath,
+		cfg.User.KeyPath,
 		cfg.User.Libp2pKeyPath,
 		cfg.Node.ExecutorPluginPath,
 		cfg.Node.ComputeStoragePath,
@@ -118,7 +118,7 @@ func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) error {
 	}
 
 	fieldsToUpdate := []*string{
-		&defaultConfig.User.UserKeyPath,
+		&defaultConfig.User.KeyPath,
 		&defaultConfig.User.Libp2pKeyPath,
 		&defaultConfig.Node.ExecutorPluginPath,
 		&defaultConfig.Node.ComputeStoragePath,
