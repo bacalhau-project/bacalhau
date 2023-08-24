@@ -36,10 +36,10 @@ func (s *PriorityQueueSuite) TestSimple() {
 	}
 
 	for _, tc := range testcases {
-		v, p, e := pq.Dequeue()
-		s.Require().NoError(e)
-		s.Require().Equal(tc.v, v)
-		s.Require().Equal(tc.p, p)
+		qitem := pq.Dequeue()
+		s.Require().NotNil(qitem)
+		s.Require().Equal(tc.v, qitem.Value)
+		s.Require().Equal(tc.p, qitem.Priority)
 	}
 
 	s.Require().True(pq.IsEmpty())
@@ -47,10 +47,8 @@ func (s *PriorityQueueSuite) TestSimple() {
 
 func (s *PriorityQueueSuite) TestEmpty() {
 	pq := collections.NewPriorityQueue[string]()
-	_, p, e := pq.Dequeue()
-	s.Require().Error(e)
-	s.Require().ErrorIs(e, collections.ErrEmptyQueue)
-	s.Require().Zero(p)
+	qitem := pq.Dequeue()
+	s.Require().Nil(qitem)
 	s.Require().True(pq.IsEmpty())
 }
 
@@ -66,13 +64,13 @@ func (s *PriorityQueueSuite) TestDequeueWhere() {
 
 	count := pq.Len()
 
-	item, prio, err := pq.DequeueWhere(func(possibleMatch string) bool {
+	qitem := pq.DequeueWhere(func(possibleMatch string) bool {
 		return possibleMatch == "B"
 	})
 
-	s.Require().NoError(err)
-	s.Require().Equal("B", item)
-	s.Require().Equal(3, prio)
+	s.Require().NotNil(qitem)
+	s.Require().Equal("B", qitem.Value)
+	s.Require().Equal(3, qitem.Priority)
 	s.Require().Equal(count-1, pq.Len())
 
 }
@@ -81,9 +79,9 @@ func (s *PriorityQueueSuite) TestDequeueWhereFail() {
 	pq := collections.NewPriorityQueue[string]()
 	pq.Enqueue("A", 4)
 
-	_, _, err := pq.DequeueWhere(func(possibleMatch string) bool {
+	qitem := pq.DequeueWhere(func(possibleMatch string) bool {
 		return possibleMatch == "Z"
 	})
 
-	s.Require().Error(err)
+	s.Require().Nil(qitem)
 }

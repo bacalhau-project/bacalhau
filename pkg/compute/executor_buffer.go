@@ -2,7 +2,6 @@ package compute
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -178,7 +177,7 @@ func (s *ExecutorBuffer) deque() {
 	// There are at most max matches, so try at most that many times
 	max := s.queuedTasks.Len()
 	for i := 0; i < max; i++ {
-		task, _, err := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
+		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
 			// If we don't have enough resources to run this task, then we will skip it
 			add := s.runningCapacity.AddIfHasCapacity(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
 			if !add {
@@ -190,12 +189,13 @@ func (s *ExecutorBuffer) deque() {
 			return true
 		})
 
-		if err != nil {
-			if errors.Is(err, collections.ErrNoMatch) {
-				break // we're all out of possible matches
-			}
-			log.Ctx(ctx).Error().Err(err).Msg("failed when searching for a task to run")
+		if qitem == nil {
+			// We didn't find anything in the queue that matches our resource availability so we will
+			// break out of this look as there is nothing else to find
+			break
 		}
+
+		task := qitem.Value
 
 		// Move the execution to the running list and remove from the list of enqueued IDs
 		// before we actually run the task

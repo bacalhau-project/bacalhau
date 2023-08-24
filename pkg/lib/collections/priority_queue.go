@@ -23,6 +23,13 @@ type PriorityQueue[T any] struct {
 	mu            sync.Mutex
 }
 
+// QueueItem encapsulates an item in the queue when we return it from
+// the various dequeue methods
+type QueueItem[T any] struct {
+	Value    T
+	Priority int
+}
+
 // MatchingFunction can be used when 'iterating' the priority queue to find
 // items with specific properties.
 type MatchingFunction[T any] func(possibleMatch T) bool
@@ -61,7 +68,7 @@ func (pq *PriorityQueue[T]) enqueue(data T, priority int) {
 // the data Enqueued previously, and the priority with which it was
 // enqueued. An err (ErrEmptyQueue) may be returned if the queue is
 // currently empty.
-func (pq *PriorityQueue[T]) Dequeue() (T, int, error) {
+func (pq *PriorityQueue[T]) Dequeue() *QueueItem[T] {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
@@ -70,22 +77,16 @@ func (pq *PriorityQueue[T]) Dequeue() (T, int, error) {
 
 // dequeue is a lock-free version of Dequeue() for use by internal
 // methods that already have a lock
-func (pq *PriorityQueue[T]) dequeue() (T, int, error) {
+func (pq *PriorityQueue[T]) dequeue() *QueueItem[T] {
 	if pq.IsEmpty() {
-		return *new(T), 0, ErrEmptyQueue
+		return nil
 	}
 
 	internalItem := heap.Pop(&pq.internalQueue)
 	heapItem := internalItem.(*heapItem)
-	item, ok := heapItem.value.(T)
-	if !ok {
-		// Something has gone very, very wrong if the item in the heap
-		// is not a T as our Enqueue method should be the only thing
-		// putting stuff into it.
-		return item, 0, errors.New("priority queue found a bad type in the internal heap")
-	}
+	item, _ := heapItem.value.(T)
 
-	return item, heapItem.priority, nil
+	return &QueueItem[T]{Value: item, Priority: heapItem.priority}
 }
 
 // DequeueWhere allows the caller to iterate through the queue, in priority order, and
@@ -93,13 +94,11 @@ func (pq *PriorityQueue[T]) dequeue() (T, int, error) {
 // time cost as dequeued but non-matching items must be held and requeued once the process
 // is complete.  Luckily, we use the same amount of space (bar a few bytes for the
 // extra PriorityQueue) for the dequeued items.
-func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, int, error) {
+func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem[T] {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
-	var result T
-	var priority int
-	var found bool
+	var result *QueueItem[T] = nil
 
 	// Create a new Q to hold items that are not matches, this is suboptimal for time
 	// but not really an issue for space as we'll be using the same.
@@ -109,45 +108,40 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) (T, int, e
 	// If any match it will be returned after the other items have been requeued.
 	// If any iteration does not generate a match, the item is requeued in a temporary
 	// queue reading for requeueing on this queue later on.
-	max := pq.internalQueue.Len()
-	for i := 0; i < max; i++ {
-		item, prio, err := pq.dequeue()
-		if err != nil {
-			return *new(T), prio, err
+	for pq.internalQueue.Len() > 0 {
+		qitem := pq.dequeue()
+
+		if qitem == nil {
+			return nil
 		}
 
-		if matcher(item) {
-			result = item
-			priority = prio
-			found = true
+		if matcher(qitem.Value) {
+			result = qitem
 			break
 		}
 
 		// Add to the queue
-		newQ.enqueue(item, prio)
+		newQ.enqueue(qitem.Value, qitem.Priority)
 	}
 
 	// Re-add the items from newQ back onto the main queue after initializing
 	// the new q so we can dequeue in priority order
 	pq.Merge(newQ)
 
-	if !found {
-		return result, priority, ErrNoMatch
-	}
-
-	return result, priority, nil
+	// return the result we found, which might still be nil (not found)
+	return result
 }
 
 func (pq *PriorityQueue[T]) Merge(other *PriorityQueue[T]) {
 	heap.Init(&other.internalQueue)
 
 	for {
-		x, p, e := other.dequeue()
-		if e != nil {
+		qitem := other.dequeue()
+		if qitem == nil {
 			break // break when the other queue is empty
 		}
 
-		pq.enqueue(x, p)
+		pq.enqueue(qitem.Value, qitem.Priority)
 	}
 }
 
