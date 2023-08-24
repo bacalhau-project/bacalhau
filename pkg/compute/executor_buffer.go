@@ -49,8 +49,7 @@ type ExecutorBuffer struct {
 	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
-	queuedTasks                *collections.PriorityQueue[*bufferTask]
-	enqueuedIDs                map[string]struct{}
+	queuedTasks                *collections.HashedPriorityQueue[string, *bufferTask]
 	defaultJobExecutionTimeout time.Duration
 	backoffDuration            time.Duration
 	backoffUntil               time.Time
@@ -58,6 +57,10 @@ type ExecutorBuffer struct {
 }
 
 func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
+	indexer := func(b *bufferTask) string {
+		return b.localExecutionState.Execution.ID
+	}
+
 	r := &ExecutorBuffer{
 		ID:                         params.ID,
 		runningCapacity:            params.RunningCapacityTracker,
@@ -65,10 +68,9 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
-		queuedTasks:                collections.NewPriorityQueue[*bufferTask](),
-		enqueuedIDs:                make(map[string]struct{}),
 		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
 		backoffDuration:            params.BackoffDuration,
+		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
 
 	r.mu.EnableTracerWithOpts(sync.Opts{
@@ -104,7 +106,8 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		err = fmt.Errorf("not enough capacity to run job")
 		return
 	}
-	if _, ok := s.enqueuedIDs[execution.ID]; ok {
+
+	if s.queuedTasks.Contains(execution.ID) {
 		err = fmt.Errorf("execution %s already enqueued", execution.ID)
 		return
 	}
@@ -118,7 +121,6 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 	}
 
 	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), execution.Job.Priority)
-	s.enqueuedIDs[execution.ID] = struct{}{}
 	s.deque()
 	return err
 }
@@ -201,7 +203,6 @@ func (s *ExecutorBuffer) deque() {
 		// before we actually run the task
 		execID := task.localExecutionState.Execution.ID
 		s.running[execID] = task
-		delete(s.enqueuedIDs, execID)
 
 		go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 	}

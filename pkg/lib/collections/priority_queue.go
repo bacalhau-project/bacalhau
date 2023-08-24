@@ -4,6 +4,8 @@ import (
 	"container/heap"
 	"errors"
 	"sync"
+
+	"github.com/samber/lo"
 )
 
 const (
@@ -14,6 +16,32 @@ var (
 	ErrEmptyQueue error = errors.New("queue is empty")
 	ErrNoMatch    error = errors.New("no items matched")
 )
+
+type PriorityQueueInterface[T any] interface {
+	// Enqueue will add the item specified by `data` to the queue with the
+	// the priority given by `priority`.
+	Enqueue(data T, priority int)
+
+	// Dequeue returns the next highest priority item, returning both
+	// the data Enqueued previously, and the priority with which it was
+	// enqueued. An err (ErrEmptyQueue) may be returned if the queue is
+	// currently empty.
+	Dequeue() *QueueItem[T]
+
+	// DequeueWhere allows the caller to iterate through the queue, in priority order, and
+	// attempt to match an item using the provided `MatchingFunction`.  This method has a high
+	// time cost as dequeued but non-matching items must be held and requeued once the process
+	// is complete.  Luckily, we use the same amount of space (bar a few bytes for the
+	// extra PriorityQueue) for the dequeued items.
+	DequeueWhere(matcher MatchingFunction[T]) *QueueItem[T]
+
+	// Len returns the number of items currently in the queue
+	Len() int
+
+	// IsEmpty returns a boolean denoting whether the queue is
+	// currently empty or not.
+	IsEmpty() bool
+}
 
 // PriorityQueue contains items of type T, and allows you to enqueue
 // and dequeue items with a specific priority. Items are dequeued in
@@ -100,9 +128,10 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem
 
 	var result *QueueItem[T] = nil
 
-	// Create a new Q to hold items that are not matches, this is suboptimal for time
-	// but not really an issue for space as we'll be using the same.
-	newQ := NewPriorityQueue[T]()
+	// Create a new array to hold items that are not matches, this is suboptimal for time
+	// but not really an issue for space as the items we add here will have been removed
+	// from the queue.
+	unmatched := make([]*QueueItem[T], 0, pq.Len())
 
 	// Keep dequeueing items until one of them matches the function provided.
 	// If any match it will be returned after the other items have been requeued.
@@ -121,12 +150,13 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem
 		}
 
 		// Add to the queue
-		newQ.enqueue(qitem.Value, qitem.Priority)
+		unmatched = append(unmatched, qitem)
 	}
 
-	// Re-add the items from newQ back onto the main queue after initializing
-	// the new q so we can dequeue in priority order
-	pq.Merge(newQ)
+	// Re-add the items that were not matched back onto the Q
+	lo.ForEach(unmatched, func(item *QueueItem[T], _ int) {
+		pq.enqueue(item.Value, item.Priority)
+	})
 
 	// return the result we found, which might still be nil (not found)
 	return result
@@ -197,3 +227,5 @@ func (q queueHeap) Swap(i, j int) {
 	q[i].index = i
 	q[j].index = j
 }
+
+var _ PriorityQueueInterface[struct{}] = (*PriorityQueue[struct{}])(nil)

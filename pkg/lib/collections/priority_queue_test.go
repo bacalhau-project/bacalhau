@@ -22,20 +22,19 @@ func (s *PriorityQueueSuite) TestSimple() {
 		v string
 		p int
 	}
-	testcases := []testcase{
-		{"A", 3},
-		{"A", 3},
-		{"B", 2},
-		{"C", 1},
-		{"C", 1},
+	inputs := []testcase{
+		{"B", 2}, {"A", 3}, {"C", 1}, {"A", 3}, {"C", 1}, {"B", 2},
+	}
+	expected := []testcase{
+		{"A", 3}, {"A", 3}, {"B", 2}, {"B", 2}, {"C", 1}, {"C", 1},
 	}
 
 	pq := collections.NewPriorityQueue[string]()
-	for _, tc := range testcases {
+	for _, tc := range inputs {
 		pq.Enqueue(tc.v, tc.p)
 	}
 
-	for _, tc := range testcases {
+	for _, tc := range expected {
 		qitem := pq.Dequeue()
 		s.Require().NotNil(qitem)
 		s.Require().Equal(tc.v, qitem.Value)
