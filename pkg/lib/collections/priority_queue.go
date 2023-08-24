@@ -162,19 +162,6 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem
 	return result
 }
 
-func (pq *PriorityQueue[T]) Merge(other *PriorityQueue[T]) {
-	heap.Init(&other.internalQueue)
-
-	for {
-		qitem := other.dequeue()
-		if qitem == nil {
-			break // break when the other queue is empty
-		}
-
-		pq.enqueue(qitem.Value, qitem.Priority)
-	}
-}
-
 // Len returns the number of items currently in the queue
 func (pq *PriorityQueue[T]) Len() int {
 	return pq.internalQueue.Len()

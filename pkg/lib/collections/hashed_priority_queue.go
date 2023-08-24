@@ -1,8 +1,11 @@
 package collections
 
+import "sync"
+
 type HashedPriorityQueue[K comparable, T any] struct {
 	identifiers map[K]struct{}
 	queue       *PriorityQueue[T]
+	mu          sync.Mutex
 	indexer     IndexerFunc[K, T]
 }
 
@@ -31,6 +34,9 @@ func (q *HashedPriorityQueue[K, T]) Contains(id K) bool {
 // Enqueue will add the item specified by `data` to the queue with the
 // the priority given by `priority`.
 func (q *HashedPriorityQueue[K, T]) Enqueue(data T, priority int) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	k := q.indexer(data)
 
 	q.identifiers[k] = struct{}{}
@@ -42,6 +48,9 @@ func (q *HashedPriorityQueue[K, T]) Enqueue(data T, priority int) {
 // enqueued. An err (ErrEmptyQueue) may be returned if the queue is
 // currently empty.
 func (q *HashedPriorityQueue[K, T]) Dequeue() *QueueItem[T] {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	item := q.queue.Dequeue()
 	if item == nil {
 		return nil
@@ -59,6 +68,9 @@ func (q *HashedPriorityQueue[K, T]) Dequeue() *QueueItem[T] {
 // is complete.  Luckily, we use the same amount of space (bar a few bytes for the
 // extra PriorityQueue) for the dequeued items.
 func (q *HashedPriorityQueue[K, T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem[T] {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	item := q.queue.DequeueWhere(matcher)
 	if item == nil {
 		return nil
