@@ -26,11 +26,11 @@ func init() {
 	// init system configs and repo.
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Faild to get home dir: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to get home dir: %s", err)
 		os.Exit(1)
 	}
 	if _, err := setup.SetupBacalhauRepo(filepath.Join(home, ".bacalhau_canary")); err != nil {
-		fmt.Fprintf(os.Stderr, "Faild to initalize bacalhau repo: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to initalize bacalhau repo: %s", err)
 		os.Exit(1)
 	}
 }

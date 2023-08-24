@@ -89,6 +89,8 @@ func newStartCmd() *cobra.Command {
 	return cmd
 }
 
+const libp2pPrivateKeyNumBits = 2048
+
 func start(cmd *cobra.Command, options *StartOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
@@ -109,7 +111,7 @@ func start(cmd *cobra.Command, options *StartOptions) error {
 	}
 	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
-	prvKey, err := libp2p.GeneratePrivateKey(2048)
+	prvKey, err := libp2p.GeneratePrivateKey(libp2pPrivateKeyNumBits)
 	if err != nil {
 		return fmt.Errorf("generating libp2p key pair: %w", err)
 	}
