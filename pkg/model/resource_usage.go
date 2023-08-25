@@ -11,13 +11,13 @@ import (
 
 type ResourceUsageConfig struct {
 	// https://github.com/BTBurke/k8sresource string
-	CPU string `json:"CPU,omitempty"`
+	CPU string `json:"CPU,omitempty" yaml:"CPU"`
 	// github.com/c2h5oh/datasize string
-	Memory string `json:"Memory,omitempty"`
+	Memory string `json:"Memory,omitempty" yaml:"Memory"`
 	// github.com/c2h5oh/datasize string
 
-	Disk string `json:"Disk,omitempty"`
-	GPU  string `json:"GPU"` // unsigned integer string
+	Disk string `json:"Disk,omitempty" yaml:"Disk"`
+	GPU  string `json:"GPU" yaml:"GPU"` // unsigned integer string
 
 }
 

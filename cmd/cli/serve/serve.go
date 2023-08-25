@@ -83,6 +83,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"server-api":       configflags.ServerAPIFlags,
 		"libp2p":           configflags.Libp2pFlags,
 		"ipfs":             configflags.IPFSFlags,
 		"capacity":         configflags.CapacityFlags,
@@ -217,8 +218,8 @@ func serve(cmd *cobra.Command) error {
 		IPFSClient:            ipfsClient,
 		Host:                  libp2pHost,
 		DisabledFeatures:      featureConfig,
-		HostAddress:           config.APIHost(),
-		APIPort:               config.APIPort(),
+		HostAddress:           config.ServerAPIHost(),
+		APIPort:               config.ServerAPIPort(),
 		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
@@ -288,13 +289,13 @@ func serve(cmd *cobra.Command) error {
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",
-			config.KeyAsEnvVar(types.NodeAPIHost),
-			config.APIHost(),
+			config.KeyAsEnvVar(types.NodeServerAPIHost),
+			config.ServerAPIHost(),
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%d\n",
-			config.KeyAsEnvVar(types.NodeAPIPort),
-			config.APIPort(),
+			config.KeyAsEnvVar(types.NodeServerAPIPort),
+			config.ServerAPIPort(),
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",

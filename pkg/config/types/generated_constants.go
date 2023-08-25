@@ -3,9 +3,12 @@
 package types
 
 const Node = "Node"
-const NodeAPI = "Node.API"
-const NodeAPIHost = "Node.API.Host"
-const NodeAPIPort = "Node.API.Port"
+const NodeClientAPI = "Node.ClientAPI"
+const NodeClientAPIHost = "Node.ClientAPI.Host"
+const NodeClientAPIPort = "Node.ClientAPI.Port"
+const NodeServerAPI = "Node.ServerAPI"
+const NodeServerAPIHost = "Node.ServerAPI.Host"
+const NodeServerAPIPort = "Node.ServerAPI.Port"
 const NodeLibp2p = "Node.Libp2p"
 const NodeLibp2pSwarmPort = "Node.Libp2p.SwarmPort"
 const NodeLibp2pPeerConnect = "Node.Libp2p.PeerConnect"

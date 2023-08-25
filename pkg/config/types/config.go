@@ -3,17 +3,17 @@ package types
 //go:generate go run gen_paths/generate.go
 //go:generate go run gen_viper/generate.go
 type BacalhauConfig struct {
-	Node    NodeConfig
-	User    UserConfig
-	Metrics MetricsConfig
+	Node    NodeConfig    `yaml:"Node"`
+	User    UserConfig    `yaml:"User"`
+	Metrics MetricsConfig `yaml:"Metrics"`
 }
 
 type UserConfig struct {
-	KeyPath       string
-	Libp2pKeyPath string
+	KeyPath       string `yaml:"KeyPath"`
+	Libp2pKeyPath string `yaml:"Libp2PKeyPath"`
 }
 
 type MetricsConfig struct {
-	Libp2pTracerPath string
-	EventTracerPath  string
+	Libp2pTracerPath string `yaml:"Libp2PTracerPath"`
+	EventTracerPath  string `yaml:"EventTracerPath"`
 }

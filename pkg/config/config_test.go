@@ -27,14 +27,14 @@ func TestConfig(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, expectedConfig.Node, out)
 
-		retrieved, err := Get[string](types.NodeAPIHost)
+		retrieved, err := Get[string](types.NodeServerAPIHost)
 		assert.Nil(t, err)
-		assert.Equal(t, expectedConfig.Node.API.Host, retrieved)
+		assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
 	})
 
 	// Testing KeyAsEnvVar
 	t.Run("KeyAsEnvVar", func(t *testing.T) {
-		assert.Equal(t, "BACALHAU_NODE_API_HOST", KeyAsEnvVar(types.NodeAPIHost))
+		assert.Equal(t, "BACALHAU_NODE_SERVERAPI_HOST", KeyAsEnvVar(types.NodeServerAPIHost))
 	})
 
 	// Testing Init
@@ -44,8 +44,6 @@ func TestConfig(t *testing.T) {
 			configType string
 		}{
 			{"config", "yaml"},
-			{"config", "toml"},
-			{"config", "json"},
 		}
 
 		for _, tc := range testCases {
@@ -62,9 +60,9 @@ func TestConfig(t *testing.T) {
 				assert.Nil(t, err)
 				assert.Equal(t, expectedConfig.Node, out)
 
-				retrieved, err := Get[string](types.NodeAPIHost)
+				retrieved, err := Get[string](types.NodeServerAPIHost)
 				assert.Nil(t, err)
-				assert.Equal(t, expectedConfig.Node.API.Host, retrieved)
+				assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
 			})
 		}
 
@@ -76,8 +74,6 @@ func TestConfig(t *testing.T) {
 			configType string
 		}{
 			{"yaml config type", "yaml"},
-			{"toml config type", "toml"},
-			{"json config type", "json"},
 		}
 
 		for _, tc := range testCases {
@@ -96,17 +92,17 @@ func TestConfig(t *testing.T) {
 				require.NoError(t, err)
 
 				// After loading, compare the loaded configuration with the expected configuration.
-				assert.Equal(t, expectedConfig.Node.API, loadedConfig.Node.API)
+				assert.Equal(t, expectedConfig.Node.ServerAPI, loadedConfig.Node.ServerAPI)
 
 				// Further, test specific parts:
 				var out types.APIConfig
-				err = ForKey(types.NodeAPI, &out)
+				err = ForKey(types.NodeServerAPI, &out)
 				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.API, out)
+				assert.Equal(t, expectedConfig.Node.ServerAPI, out)
 
-				retrieved, err := Get[string](types.NodeAPIHost)
+				retrieved, err := Get[string](types.NodeServerAPIHost)
 				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.API.Host, retrieved)
+				assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
 			})
 		}
 	})

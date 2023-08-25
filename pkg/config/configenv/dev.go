@@ -11,7 +11,11 @@ import (
 
 var Development = types.BacalhauConfig{
 	Node: types.NodeConfig{
-		API: types.APIConfig{
+		ClientAPI: types.APIConfig{
+			Host: "bootstrap.development.bacalhau.org",
+			Port: 1234,
+		},
+		ServerAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",
 			Port: 1234,
 		},

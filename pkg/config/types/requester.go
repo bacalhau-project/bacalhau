@@ -6,36 +6,36 @@ import (
 
 type RequesterConfig struct {
 	// URL where to send external verification requests to.
-	ExternalVerifierHook string
+	ExternalVerifierHook string `yaml:"ExternalVerifierHook"`
 	// How the node decides what jobs to run.
-	JobSelectionPolicy model.JobSelectionPolicy
-	JobStore           StorageConfig
+	JobSelectionPolicy model.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
+	JobStore           StorageConfig            `yaml:"JobStore"`
 
-	HousekeepingBackgroundTaskInterval Duration
-	NodeRankRandomnessRange            int
-	OverAskForBidsFactor               uint
-	FailureInjectionConfig             model.FailureInjectionRequesterConfig
+	HousekeepingBackgroundTaskInterval Duration                              `yaml:"HousekeepingBackgroundTaskInterval"`
+	NodeRankRandomnessRange            int                                   `yaml:"NodeRankRandomnessRange"`
+	OverAskForBidsFactor               uint                                  `yaml:"OverAskForBidsFactor"`
+	FailureInjectionConfig             model.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
 
-	EvaluationBroker EvaluationBrokerConfig
-	Worker           WorkerConfig
-	Timeouts         TimeoutConfig
+	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
+	Worker           WorkerConfig           `yaml:"Worker"`
+	Timeouts         TimeoutConfig          `yaml:"Timeouts"`
 }
 
 type EvaluationBrokerConfig struct {
-	EvalBrokerVisibilityTimeout    Duration
-	EvalBrokerInitialRetryDelay    Duration
-	EvalBrokerSubsequentRetryDelay Duration
-	EvalBrokerMaxRetryCount        int
+	EvalBrokerVisibilityTimeout    Duration `yaml:"EvalBrokerVisibilityTimeout"`
+	EvalBrokerInitialRetryDelay    Duration `yaml:"EvalBrokerInitialRetryDelay"`
+	EvalBrokerSubsequentRetryDelay Duration `yaml:"EvalBrokerSubsequentRetryDelay"`
+	EvalBrokerMaxRetryCount        int      `yaml:"EvalBrokerMaxRetryCount"`
 }
 
 type WorkerConfig struct {
-	WorkerCount                  int
-	WorkerEvalDequeueTimeout     Duration
-	WorkerEvalDequeueBaseBackoff Duration
-	WorkerEvalDequeueMaxBackoff  Duration
+	WorkerCount                  int      `yaml:"WorkerCount"`
+	WorkerEvalDequeueTimeout     Duration `yaml:"WorkerEvalDequeueTimeout"`
+	WorkerEvalDequeueBaseBackoff Duration `yaml:"WorkerEvalDequeueBaseBackoff"`
+	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
 type TimeoutConfig struct {
-	MinJobExecutionTimeout     Duration
-	DefaultJobExecutionTimeout Duration
+	MinJobExecutionTimeout     Duration `yaml:"MinJobExecutionTimeout"`
+	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
 }

@@ -11,7 +11,11 @@ import (
 
 var Testing = types.BacalhauConfig{
 	Node: types.NodeConfig{
-		API: types.APIConfig{
+		ClientAPI: types.APIConfig{
+			Host: "test",
+			Port: 9999,
+		},
+		ServerAPI: types.APIConfig{
 			Host: "test",
 			Port: 9999,
 		},

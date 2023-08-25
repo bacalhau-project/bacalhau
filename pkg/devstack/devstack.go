@@ -397,12 +397,12 @@ export BACALHAU_API_PORT_%d=%d`,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeAPIHost),
+		config.KeyAsEnvVar(types.NodeServerAPIHost),
 		devStackAPIHost,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeAPIPort),
+		config.KeyAsEnvVar(types.NodeServerAPIPort),
 		devStackAPIPort,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(

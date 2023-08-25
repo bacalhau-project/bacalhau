@@ -3,10 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -23,12 +25,54 @@ var (
 	configDecoderHook          = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
+func WriteConfig(fileName string) error {
+	var cfg types.BacalhauConfig
+	if err := viper.Unmarshal(&cfg, configDecoderHook); err != nil {
+		return err
+	}
+
+	cfgBytes, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
+	f, err := os.OpenFile(fileName, flags, os.FileMode(0o644))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err := f.Write(cfgBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func isFileEmpty(filename string) (bool, error) {
+	fileInfo, err := os.Stat(filename)
+	if err != nil {
+		return false, err
+	}
+
+	return fileInfo.Size() == 0, nil
+}
+
+var EmptyConfigErr = fmt.Errorf("config file is empty")
+
+func ReadConfig(fileName string) error {
+	if empty, err := isFileEmpty(fileName); err != nil {
+		return err
+	} else if empty {
+		return EmptyConfigErr
+	}
+	return viper.ReadInConfig()
+}
+
 func Init(defaultConfig *types.BacalhauConfig, path string, fileName, fileType string) (types.BacalhauConfig, error) {
 	return initConfig(initParams{
 		filePath:      path,
 		fileName:      fileName,
 		fileType:      fileType,
-		fileHandler:   viper.SafeWriteConfig,
+		fileHandler:   WriteConfig,
 		defaultConfig: defaultConfig,
 	})
 }
@@ -38,7 +82,7 @@ func Load(path string, fileName, fileType string) (types.BacalhauConfig, error) 
 		filePath:      path,
 		fileName:      fileName,
 		fileType:      fileType,
-		fileHandler:   viper.ReadInConfig,
+		fileHandler:   ReadConfig,
 		defaultConfig: nil,
 	})
 }
@@ -94,7 +138,7 @@ type initParams struct {
 	filePath      string
 	fileName      string
 	fileType      string
-	fileHandler   func() error
+	fileHandler   func(fileName string) error
 	defaultConfig *types.BacalhauConfig
 }
 
@@ -110,7 +154,7 @@ func initConfig(params initParams) (types.BacalhauConfig, error) {
 			return types.BacalhauConfig{}, nil
 		}
 	}
-	if err := params.fileHandler(); err != nil {
+	if err := params.fileHandler(filepath.Join(params.filePath, fmt.Sprintf("%s.%s", params.fileName, params.fileType))); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 	if automaticEnvVar {

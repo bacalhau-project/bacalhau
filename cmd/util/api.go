@@ -8,5 +8,5 @@ import (
 )
 
 func GetAPIClient(ctx context.Context) *publicapi.RequesterAPIClient {
-	return publicapi.NewRequesterAPIClient(config.APIHost(), config.APIPort())
+	return publicapi.NewRequesterAPIClient(config.ClientAPIHost(), config.ClientAPIPort())
 }

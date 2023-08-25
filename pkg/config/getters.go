@@ -12,12 +12,20 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
-func APIPort() uint16 {
-	return uint16(viper.GetInt(types.NodeAPIPort))
+func ClientAPIPort() uint16 {
+	return uint16(viper.GetInt(types.NodeClientAPIPort))
 }
 
-func APIHost() string {
-	return viper.GetString(types.NodeAPIHost)
+func ClientAPIHost() string {
+	return viper.GetString(types.NodeClientAPIHost)
+}
+
+func ServerAPIPort() uint16 {
+	return uint16(viper.GetInt(types.NodeServerAPIPort))
+}
+
+func ServerAPIHost() string {
+	return viper.GetString(types.NodeServerAPIHost)
 }
 
 func DevstackGetShouldPrintInfo() bool {

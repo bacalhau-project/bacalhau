@@ -3,11 +3,13 @@ package types
 import (
 	"fmt"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type StorageConfig struct {
-	Type StorageType
-	Path string
+	Type StorageType `yaml:"Type"`
+	Path string      `yaml:"Path"`
 }
 
 //go:generate stringer -type=StorageType -linecomment
@@ -20,6 +22,19 @@ const (
 
 func (j *StorageType) UnmarshalText(text []byte) error {
 	out, err := ParseStorageType(string(text))
+	if err != nil {
+		return err
+	}
+	*j = out
+	return nil
+}
+
+func (j StorageType) MarshalYAML() (interface{}, error) {
+	return j.String(), nil
+}
+
+func (j *StorageType) UnmarshalYAML(value *yaml.Node) error {
+	out, err := ParseStorageType(value.Value)
 	if err != nil {
 		return err
 	}

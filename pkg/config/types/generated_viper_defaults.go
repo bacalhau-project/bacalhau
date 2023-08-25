@@ -6,9 +6,12 @@ import "github.com/spf13/viper"
 
 func SetDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(Node, cfg.Node)
-	viper.SetDefault(NodeAPI, cfg.Node.API)
-	viper.SetDefault(NodeAPIHost, cfg.Node.API.Host)
-	viper.SetDefault(NodeAPIPort, cfg.Node.API.Port)
+	viper.SetDefault(NodeClientAPI, cfg.Node.ClientAPI)
+	viper.SetDefault(NodeClientAPIHost, cfg.Node.ClientAPI.Host)
+	viper.SetDefault(NodeClientAPIPort, cfg.Node.ClientAPI.Port)
+	viper.SetDefault(NodeServerAPI, cfg.Node.ServerAPI)
+	viper.SetDefault(NodeServerAPIHost, cfg.Node.ServerAPI.Host)
+	viper.SetDefault(NodeServerAPIPort, cfg.Node.ServerAPI.Port)
 	viper.SetDefault(NodeLibp2p, cfg.Node.Libp2p)
 	viper.SetDefault(NodeLibp2pSwarmPort, cfg.Node.Libp2p.SwarmPort)
 	viper.SetDefault(NodeLibp2pPeerConnect, cfg.Node.Libp2p.PeerConnect)

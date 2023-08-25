@@ -26,6 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -34,7 +35,7 @@ import (
 
 func NewRootCmd() *cobra.Command {
 	rootFlags := map[string][]configflags.Definition{
-		"api":     configflags.APIFlags,
+		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
 	}
 	RootCmd := &cobra.Command{
@@ -42,18 +43,14 @@ func NewRootCmd() *cobra.Command {
 		Short: "Compute over data",
 		Long:  `Compute over data`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			repoDirValue := cmd.Flags().Lookup("repo")
-			if repoDirValue == nil {
-				util.Fatal(cmd, fmt.Errorf("failed to get 'repo' flag value"), 1)
+			repoDir, err := config.Get[string]("repo")
+			if err != nil {
+				panic(err)
 			}
-			repoPath := repoDirValue.Value.String() // Get the value of the flag as a string
-			if _, err := setup.SetupBacalhauRepo(repoPath); err != nil {
-				util.Fatal(cmd, fmt.Errorf("failed to initalize bacalhaue repo at '%s': %w", repoPath, err), 1)
+			if _, err := setup.SetupBacalhauRepo(repoDir); err != nil {
+				util.Fatal(cmd, fmt.Errorf("failed to initialize bacalhau repo at '%s': %w", repoDir, err), 1)
 			}
 
-			if err := viper.BindPFlag("repo", repoDirValue); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
 			if err := configflags.BindFlags(cmd, rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
@@ -89,6 +86,12 @@ func NewRootCmd() *cobra.Command {
 		panic(err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
+	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+		util.Fatal(RootCmd, err, 1)
+	}
+	if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
+		util.Fatal(RootCmd, err, 1)
+	}
 
 	if err := configflags.RegisterFlags(RootCmd, rootFlags); err != nil {
 		panic(err)

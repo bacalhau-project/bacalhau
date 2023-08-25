@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -63,7 +64,15 @@ func (fsr *FsRepo) Open() error {
 
 	cfg, err := config.Load(fsr.path, configName, configType)
 	if err != nil {
-		return err
+		if errors.Is(err, config.EmptyConfigErr) {
+			log.Info().Msg("config file is empty, initializing a default config")
+			cfg, err = fsr.initRepo(&configenv.Local)
+			if err != nil {
+				return fmt.Errorf("failed to initialize a default config: %w", err)
+			}
+		} else {
+			return err
+		}
 	}
 
 	// Using a slice of paths to minimize repetitive checks
@@ -92,7 +101,38 @@ const (
 	repoPermission = 0755
 )
 
-func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) error {
+func (fsr *FsRepo) initRepo(defaultConfig *types.BacalhauConfig) (types.BacalhauConfig, error) {
+	// Setting default configurations
+	defaultConfig.Metrics.EventTracerPath = filepath.Join(fsr.path, "bacalhau-event-tracer.json")
+	defaultConfig.Metrics.Libp2pTracerPath = filepath.Join(fsr.path, "bacalhau-libp2p-tracer.json")
+
+	pathsToEnsure := []func(string) (string, error){
+		ensureUserIDKey,
+		ensureLibp2pKey,
+		ensurePluginPath,
+		ensureStoragePath,
+	}
+	//defaultConfig.User.KeyPath, err = ensureUserIDKey(fsr.path)
+
+	fieldsToUpdate := []*string{
+		&defaultConfig.User.KeyPath,
+		&defaultConfig.User.Libp2pKeyPath,
+		&defaultConfig.Node.ExecutorPluginPath,
+		&defaultConfig.Node.ComputeStoragePath,
+	}
+
+	for i, ensureFunc := range pathsToEnsure {
+		path, err := ensureFunc(fsr.path)
+		if err != nil {
+			return types.BacalhauConfig{}, err
+		}
+		*fieldsToUpdate[i] = path
+	}
+
+	return config.Init(defaultConfig, fsr.path, configName, configType)
+}
+
+func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) (initErr error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -239,7 +279,7 @@ func ensureLibp2pKey(configDir string) (string, error) {
 		}
 		log.Debug().Msgf("wrote %s", privKeyPath)
 	} else {
-		return "", err
+		return privKeyPath, err
 	}
 
 	// Now that we've ensured the private key is written to disk, read it! This
