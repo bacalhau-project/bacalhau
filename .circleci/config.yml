@@ -241,6 +241,9 @@ jobs:
       - store_artifacts:
           path: dist/
 
+      - store_artifacts:
+          path: /tmp/public.pem
+
   build_canary:
     parallelism: 1
     environment:
