@@ -63,8 +63,8 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	t.Log("Host set to", host)
 	t.Log("Port set to", port)
 
-	os.Setenv(config.KeyAsEnvVar(types.NodeAPIHost), host)
-	os.Setenv(config.KeyAsEnvVar(types.NodeAPIPort), fmt.Sprint(port))
+	os.Setenv("BACALHAU_HOST", host)
+	os.Setenv("BACALHAU_PORT", fmt.Sprint(port))
 	os.Setenv("BACALHAU_NODE_SELECTORS", "owner=bacalhau")
 
 	for name := range router.TestcasesMap {

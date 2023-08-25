@@ -132,8 +132,8 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.APIHost()
-	apiPort := config.APIPort()
+	apiHost := config.ClientAPIHost()
+	apiPort := config.ClientAPIPort()
 	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
 }
 
