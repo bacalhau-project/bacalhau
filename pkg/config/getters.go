@@ -129,13 +129,11 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 }
 
 func GetStoragePath() string {
-	// TODO make this use the config when we figure out why our tests fail if this is anything but a tempDir
-	// Currently there is a value in the config file for this but we are ignoring it.
-	storagePath := os.Getenv("BACALHAU_STORAGE_PATH")
-	if storagePath == "" {
+	path := viper.GetString(types.NodeComputeStoragePath)
+	if path == "" {
 		return os.TempDir()
 	}
-	return storagePath
+	return path
 }
 
 // PreferredAddress will allow for the specificying of
