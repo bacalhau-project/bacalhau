@@ -23,14 +23,14 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 
 var ServerAPIFlags = []Definition{
 	{
-		FlagName:             "server-api-port",
+		FlagName:             "port",
 		DefaultValue:         Default.Node.ServerAPI.Port,
 		ConfigPath:           types.NodeServerAPIPort,
 		Description:          `The port to server on.`,
 		EnvironmentVariables: []string{"BACALHAU_PORT"},
 	},
 	{
-		FlagName:     "server-api-host",
+		FlagName:     "host",
 		DefaultValue: Default.Node.ServerAPI.Host,
 		ConfigPath:   types.NodeServerAPIHost,
 		Description:  `The host to serve on.`,
