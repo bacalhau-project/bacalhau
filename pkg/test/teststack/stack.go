@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -47,6 +48,11 @@ func Setup(
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
 	fsRepo := setup.SetupBacalhauRepoForTesting(t)
+	repoPath, err := fsRepo.Path()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BACALHAU_DIR", repoPath)
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
