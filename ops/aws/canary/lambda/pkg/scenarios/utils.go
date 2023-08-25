@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -132,9 +133,13 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.ClientAPIHost()
-	apiPort := config.ClientAPIPort()
-	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
+	hostStr := os.Getenv("BACALHAU_HOST")
+	portStr := os.Getenv("BACALHAU_PORT")
+	apiport, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return publicapi.NewRequesterAPIClient(hostStr, uint16(apiport))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

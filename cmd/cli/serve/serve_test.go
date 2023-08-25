@@ -100,7 +100,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		"--repo", s.repoPath,
 		"--peer", serve.DefaultPeerConnect,
 		"--private-internal-ipfs",
-		"--api-port", fmt.Sprint(port),
+		"--server-api-port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
 
