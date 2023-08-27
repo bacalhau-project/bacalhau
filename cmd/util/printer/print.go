@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -19,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -55,7 +56,7 @@ func PrintJobExecution(
 	cmd *cobra.Command,
 	downloadSettings *flags.DownloaderSettings,
 	runtimeSettings *flags.RunTimeSettings,
-	client *publicapi.RequesterAPIClient,
+	client *client.APIClient,
 ) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
@@ -251,7 +252,7 @@ To cancel the job, run:
 	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, apimodels.EventFilterOptions{
 			Since:                 lastSeenTimestamp,
 			ExcludeExecutionLevel: true,
 		})

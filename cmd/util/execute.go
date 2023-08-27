@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
@@ -12,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
 //nolint:funlen,gocyclo // Refactor later
@@ -20,7 +20,7 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings *flags.RunTimeSettings,
 ) (*model.Job, error) {
-	var apiClient *publicapi.RequesterAPIClient
+	var apiClient *client.APIClient
 
 	cm := GetCleanupManager(ctx)
 
@@ -43,7 +43,7 @@ func ExecuteJob(ctx context.Context,
 		}
 
 		apiServer := stack.Nodes[0].APIServer
-		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+		apiClient = client.NewAPIClient(apiServer.Address, apiServer.Port)
 	} else {
 		apiClient = GetAPIClient(ctx)
 	}

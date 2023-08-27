@@ -14,6 +14,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -121,7 +122,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
-			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
+			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/api/v1/livez", port))
 			if string(livezText) == "OK" {
 				return port, nil
 			}
@@ -151,7 +152,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
 
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
-	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
+	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
@@ -160,7 +161,7 @@ func (s *ServeSuite) TestHealthcheck() {
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
 	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
 	s.Require().Contains(actualUrl, expectedURL)
 }
@@ -174,8 +175,8 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
-	client := publicapi.NewRequesterAPIClient("localhost", port)
-	s.Require().NoError(publicapi.WaitForHealthy(s.ctx, client))
+	client := client.NewAPIClient("localhost", port)
+	s.Require().NoError(apitest.WaitForAlive(s.ctx, client))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)

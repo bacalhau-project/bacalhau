@@ -11,6 +11,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
@@ -27,9 +29,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -38,21 +38,19 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint           requester.Endpoint
-	JobStore           jobstore.Store
-	NodeDiscoverer     orchestrator.NodeDiscoverer
-	computeProxy       *bprotocol.ComputeProxy
-	localCallback      compute.Callback
-	requesterAPIServer *requester_publicapi.RequesterAPIServer
-	cleanupFunc        func(ctx context.Context)
+	Endpoint       requester.Endpoint
+	JobStore       jobstore.Store
+	NodeDiscoverer orchestrator.NodeDiscoverer
+	computeProxy   *bprotocol.ComputeProxy
+	localCallback  compute.Callback
+	cleanupFunc    func(ctx context.Context)
 }
 
 //nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
-	cleanupManager *system.CleanupManager,
 	host host.Host,
-	apiServer *publicapi.APIServer,
+	apiServer *publicapi.Server,
 	nodeConfig RequesterConfig,
 	storageProviders storage.StorageProvider,
 	nodeInfoStore routing.NodeInfoStore,
@@ -241,17 +239,13 @@ func NewRequesterNode(
 	}
 
 	// register requester public http apis
-	requesterAPIServer := requester_publicapi.NewRequesterAPIServer(requester_publicapi.RequesterAPIServerParams{
-		APIServer:          apiServer,
+	requesterAPIServer := requester_endpoint.NewEndpoint(requester_endpoint.EndpointParams{
+		Router:             apiServer.Router,
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
 		NodeDiscoverer:     nodeDiscoveryChain,
 	})
-	err = requesterAPIServer.RegisterAllHandlers()
-	if err != nil {
-		return nil, err
-	}
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
@@ -305,13 +299,12 @@ func NewRequesterNode(
 	}
 
 	return &Requester{
-		Endpoint:           endpoint,
-		localCallback:      endpoint,
-		NodeDiscoverer:     nodeDiscoveryChain,
-		JobStore:           jobStore,
-		computeProxy:       computeProxy,
-		cleanupFunc:        cleanupFunc,
-		requesterAPIServer: requesterAPIServer,
+		Endpoint:       endpoint,
+		localCallback:  endpoint,
+		NodeDiscoverer: nodeDiscoveryChain,
+		JobStore:       jobStore,
+		computeProxy:   computeProxy,
+		cleanupFunc:    cleanupFunc,
 	}, nil
 }
 

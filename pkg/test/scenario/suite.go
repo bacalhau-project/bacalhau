@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -16,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -130,7 +130,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	}
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()

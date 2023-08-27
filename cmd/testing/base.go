@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -12,14 +13,13 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type BaseSuite struct {
 	suite.Suite
 	Node   *node.Node
-	Client *publicapi.RequesterAPIClient
+	Client *client.APIClient
 	Host   string
 	Port   uint16
 }
@@ -51,7 +51,7 @@ func (s *BaseSuite) SetupTest() {
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = publicapi.NewRequesterAPIClient(s.Host, s.Port)
+	s.Client = client.NewAPIClient(s.Host, s.Port)
 }
 
 // After each test

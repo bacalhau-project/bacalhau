@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+	"github.com/go-chi/chi/v5"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -15,7 +18,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -44,7 +46,7 @@ type NodeConfig struct {
 	DisabledFeatures          FeatureConfig
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
-	APIServerConfig           publicapi.APIServerConfig
+	APIServerConfig           publicapi.Config
 	IsRequesterNode           bool
 	IsComputeNode             bool
 	Labels                    map[string]string
@@ -79,7 +81,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 
 type Node struct {
 	// Visible for testing
-	APIServer      *publicapi.APIServer
+	APIServer      *publicapi.Server
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	NodeInfoStore  routing.NodeInfoStore
@@ -89,7 +91,7 @@ type Node struct {
 }
 
 func (n *Node) Start(ctx context.Context) error {
-	return n.APIServer.ListenAndServe(ctx, n.CleanupManager)
+	return n.APIServer.ListenAndServe(ctx)
 }
 
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
@@ -102,7 +104,7 @@ func NewNode(
 	identify.ActivationThresh = 2
 
 	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
-	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
+	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -177,17 +179,29 @@ func NewNode(
 		return nil, err
 	}
 
+	// timeoutHandler doesn't implement http.Hijacker, so we need to skip it for websocket endpoints
+	config.APIServerConfig.SkippedTimeoutPaths = append(config.APIServerConfig.SkippedTimeoutPaths, []string{
+		"/api/v1/requester/websocket/events",
+		"/api/v1/requester/logs",
+	}...)
+
 	// public http api server
-	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
-		Address:          config.HostAddress,
-		Port:             config.APIPort,
-		Host:             config.Host,
-		Config:           config.APIServerConfig,
-		NodeInfoProvider: nodeInfoProvider,
+	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
+		Router:  chi.NewRouter(),
+		Address: config.HostAddress,
+		Port:    config.APIPort,
+		Config:  config.APIServerConfig,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	shared.NewEndpoint(shared.EndpointParams{
+		Router:           apiServer.Router,
+		NodeID:           config.Host.ID().String(),
+		PeerStore:        config.Host.Peerstore(),
+		NodeInfoProvider: nodeInfoProvider,
+	})
 
 	var requesterNode *Requester
 	var computeNode *Compute
@@ -196,7 +210,6 @@ func NewNode(
 	if config.IsRequesterNode {
 		requesterNode, err = NewRequesterNode(
 			ctx,
-			config.CleanupManager,
 			routedHost,
 			apiServer,
 			config.RequesterNodeConfig,
@@ -250,6 +263,8 @@ func NewNode(
 
 		cleanupErr = config.Host.Close()
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "host")
+
+		cleanupErr = apiServer.Shutdown(ctx)
 		return cleanupErr
 	})
 

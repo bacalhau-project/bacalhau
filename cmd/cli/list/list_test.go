@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -19,7 +20,6 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -115,7 +115,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	require.NoError(suite.T(), err)
 
 	// parse response
-	response := publicapi.ListResponse{}
+	response := apimodels.ListResponse{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem model.Job
@@ -189,7 +189,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 				require.NoError(suite.T(), err)
 
-				response := publicapi.ListResponse{}
+				response := apimodels.ListResponse{}
 				_ = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)

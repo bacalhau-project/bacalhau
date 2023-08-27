@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -111,7 +110,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *client.APIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	return resolver.Wait(
 		ctx,
@@ -130,7 +129,7 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.RequesterAPIClient {
+func getClient() *client.APIClient {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
@@ -140,7 +139,7 @@ func getClient() *publicapi.RequesterAPIClient {
 		defaultPort := system.Envs[system.GetEnvironment()].APIPort
 		apiPort = &defaultPort
 	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+	return client.NewAPIClient(apiHost, *apiPort)
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

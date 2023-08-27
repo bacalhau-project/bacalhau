@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -114,7 +114,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, apimodels.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}

@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
+func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *client.APIClient, out string) model.Job {
 	jobID := system.FindJobIDInTestOutput(out)
 	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 	require.Regexp(t, uuidRegex, jobID, "Job ID should be a UUID")

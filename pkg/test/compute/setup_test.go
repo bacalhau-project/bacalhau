@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/go-chi/chi/v5"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 )
@@ -69,11 +70,11 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 	s.T().Cleanup(func() { _ = host.Close })
 
-	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
+	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
+		Router:  chi.NewRouter(),
 		Address: "0.0.0.0",
 		Port:    0,
-		Host:    host,
-		Config:  publicapi.DefaultAPIServerConfig,
+		Config:  publicapi.DefaultConfig,
 	})
 	s.NoError(err)
 

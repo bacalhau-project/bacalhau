@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -37,7 +37,7 @@ type RetriesSuite struct {
 	suite.Suite
 	requester     *node.Node
 	computeNodes  []*node.Node
-	client        *publicapi.RequesterAPIClient
+	client        *client.APIClient
 	stateResolver *job.StateResolver
 }
 
@@ -140,7 +140,7 @@ func (s *RetriesSuite) SetupSuite() {
 	)
 
 	s.requester = stack.Nodes[0]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = client.NewAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
 }

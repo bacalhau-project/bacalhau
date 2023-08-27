@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/rs/zerolog/log"
 )
 

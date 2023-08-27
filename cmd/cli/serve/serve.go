@@ -16,7 +16,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -367,7 +366,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 	// only in station logging output
 	if util.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
-		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
+		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
 	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {

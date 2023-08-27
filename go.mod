@@ -14,10 +14,10 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
-	github.com/didip/tollbooth/v7 v7.0.1
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/fatih/structs v1.1.0
-	github.com/felixge/httpsnoop v1.0.3
+	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/render v1.0.3
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.5.0
@@ -87,6 +87,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.13 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.35 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.11 // indirect
@@ -104,6 +105,7 @@ require (
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -180,7 +182,6 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/spec v0.20.7 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/go-pkgz/expirable-cache v1.0.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

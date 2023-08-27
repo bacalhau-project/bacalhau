@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -43,7 +43,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}
