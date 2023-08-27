@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
