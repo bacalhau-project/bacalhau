@@ -54,21 +54,6 @@ func (s *EndpointSuite) TestEndpointVersion() {
 	s.Equal(string(expectedResponse), strings.TrimSpace(rr.Body.String()))
 }
 
-func (s *EndpointSuite) TestEndpointVersionV0() {
-	versionReq := &apimodels.VersionRequest{ClientID: "testClient"}
-	body, _ := json.Marshal(versionReq)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/version", bytes.NewReader(body))
-	rr := httptest.NewRecorder()
-	s.router.ServeHTTP(rr, req)
-
-	expectedVersion := version.Get()
-	expectedResponse, _ := json.Marshal(apimodels.VersionResponse{VersionInfo: expectedVersion})
-
-	s.Equal(http.StatusOK, rr.Code)
-	s.Equal(string(expectedResponse), strings.TrimSpace(rr.Body.String()))
-}
-
 func (s *EndpointSuite) TestEndpointHealthz() {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
 	rr := httptest.NewRecorder()
