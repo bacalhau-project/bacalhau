@@ -21,8 +21,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					listRequest	body		listRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
-//	@Success				200			{object}	listResponse
+//	@Param					ListRequest	body		apimodels.ListRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
+//	@Success				200			{object}	apimodels.ListResponse
 //	@Failure				400			{object}	string
 //	@Failure				500			{object}	string
 //	@Router					/api/v1/requester/list [post]

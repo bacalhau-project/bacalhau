@@ -23,8 +23,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					cancelRequest	body		cancelRequest	true	" "
-//	@Success				200				{object}	cancelResponse
+//	@Param					CancelRequest	body		apimodels.CancelRequest	true	" "
+//	@Success				200				{object}	apimodels.CancelResponse
 //	@Failure				400				{object}	string
 //	@Failure				401				{object}	string
 //	@Failure				403				{object}	string

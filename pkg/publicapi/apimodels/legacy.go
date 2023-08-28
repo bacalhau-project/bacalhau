@@ -6,7 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 )
 
-type CancelRequest = signatures.SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
+type CancelRequest = signatures.SignedRequest[model.JobCancelPayload]
 
 type CancelResponse struct {
 	State *model.JobState `json:"state"`
@@ -57,8 +57,10 @@ type StateResponse struct {
 	State model.JobState `json:"state"`
 }
 
-type SubmitRequest = signatures.SignedRequest[model.JobCreatePayload] //nolint:unused // Swagger wants this
+type SubmitRequest = signatures.SignedRequest[model.JobCreatePayload]
 
 type SubmitResponse struct {
 	Job *model.Job `json:"job"`
 }
+
+type LogRequest = signatures.SignedRequest[model.LogsPayload]

@@ -19,8 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type logRequest = signatures.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
-
 type Msg struct {
 	Tag          uint8
 	Data         string
@@ -35,7 +33,7 @@ type Msg struct {
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					logRequest	body		logRequest	true	" "
+//	@Param					LogRequest	body		apimodels.LogRequest	true	" "
 //	@Success				200			{object}	string
 //	@Failure				400			{object}	string
 //	@Failure				401			{object}	string

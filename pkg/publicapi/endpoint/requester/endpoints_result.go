@@ -20,8 +20,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					stateRequest	body		stateRequest	true	" "
-//	@Success				200				{object}	resultsResponse
+//	@Param					StateRequest	body		apimodels.StateRequest	true	" "
+//	@Success				200				{object}	apimodels.ResultsResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/results [post]

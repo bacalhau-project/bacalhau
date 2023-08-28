@@ -22,8 +22,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					submitRequest	body		submitRequest	true	" "
-//	@Success				200				{object}	submitResponse
+//	@Param					SubmitRequest	body		apimodels.SubmitRequest	true	" "
+//	@Success				200				{object}	apimodels.SubmitResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/submit [post]
