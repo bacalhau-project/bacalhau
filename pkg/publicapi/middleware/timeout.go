@@ -14,25 +14,31 @@ type TimeoutConfig struct {
 }
 
 type TimeoutHandler struct {
-	config         TimeoutConfig
+	timeout        time.Duration
+	message        string
+	skippedPaths   map[string]struct{}
 	nextHandler    http.Handler
 	timeoutHandler http.Handler
 }
 
 func newTimeoutHandler(config TimeoutConfig, next http.Handler) *TimeoutHandler {
+	skippedPaths := make(map[string]struct{})
+	for _, path := range config.SkippedPaths {
+		skippedPaths[path] = struct{}{}
+	}
 	return &TimeoutHandler{
-		config:         config,
+		timeout:        config.Timeout,
+		message:        config.Message,
+		skippedPaths:   skippedPaths,
 		nextHandler:    next,
 		timeoutHandler: http.TimeoutHandler(next, config.Timeout, config.Message),
 	}
 }
 
 func (h *TimeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for _, path := range h.config.SkippedPaths {
-		if r.URL.Path == path {
-			h.nextHandler.ServeHTTP(w, r)
-			return
-		}
+	if _, ok := h.skippedPaths[r.URL.Path]; ok {
+		h.nextHandler.ServeHTTP(w, r)
+		return
 	}
 	h.timeoutHandler.ServeHTTP(w, r)
 }

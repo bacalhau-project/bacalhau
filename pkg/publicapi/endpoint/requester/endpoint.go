@@ -4,6 +4,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/go-chi/chi/v5"
@@ -39,6 +40,20 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		nodeDiscoverer:     params.NodeDiscoverer,
 		websockets:         make(map[string][]*websocket.Conn),
 	}
+
+	// migrate old endpoints to new versioned ones
+	e.router.Use(middleware.PathMigrate(map[string]string{
+		"/requester/list":             "/api/v1/requester/list",
+		"/requester/nodes":            "/api/v1/requester/nodes",
+		"/requester/states":           "/api/v1/requester/states",
+		"/requester/results":          "/api/v1/requester/results",
+		"/requester/events":           "/api/v1/requester/events",
+		"/requester/submit":           "/api/v1/requester/submit",
+		"/requester/cancel":           "/api/v1/requester/cancel",
+		"/requester/debug":            "/api/v1/requester/debug",
+		"/requester/logs":             "/api/v1/requester/logs",
+		"/requester/websocket/events": "/api/v1/requester/websocket/events",
+	}))
 
 	e.router.Route("/api/v1/requester", func(r chi.Router) {
 		r.Use(render.SetContentType(render.ContentTypeJSON))

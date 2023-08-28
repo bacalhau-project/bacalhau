@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -36,6 +37,16 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		peerStore:        params.PeerStore,
 		nodeInfoProvider: params.NodeInfoProvider,
 	}
+
+	// migrate old endpoints to new versioned ones
+	e.router.Use(middleware.PathMigrate(map[string]string{
+		"/peers":     "/api/v1/peers",
+		"/node_info": "/api/v1/node_info",
+		"/version":   "/api/v1/version",
+		"/healthz":   "/api/v1/healthz",
+		"/id":        "/api/v1/id",
+		"/livez":     "/api/v1/livez",
+	}))
 
 	e.router.Route("/api/v1", func(r chi.Router) {
 		// group for JSON endpoints
