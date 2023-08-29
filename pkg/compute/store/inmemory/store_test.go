@@ -4,12 +4,14 @@ package inmemory
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -104,6 +106,76 @@ func (s *Suite) TestGetLiveExecutions() {
 	s.Require().NoError(err)
 	s.Require().Equal(1, len(execs))
 	s.Require().Equal(s.execution.ID, execs[0].Execution.ID)
+}
+
+func (s *Suite) TestGetMultipleLiveExecutions() {
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		exec := mock.ExecutionForJob(mock.Job())
+		exec.ID = fmt.Sprintf("%d", i+1)
+		localExec := store.NewLocalExecutionState(exec, "req1")
+		err := s.executionStore.CreateExecution(ctx, *localExec)
+		s.Require().NoError(err)
+
+		err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			ExecutionID: exec.ID,
+			NewState:    store.ExecutionStateRunning,
+		})
+		s.Require().NoError(err)
+	}
+
+	execs, err := s.executionStore.GetLiveExecutions(ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(3, len(execs))
+
+	ids := lo.Map(execs, func(item store.LocalExecutionState, _ int) string {
+		return item.Execution.ID
+	})
+	s.Require().Equal(ids, []string{"1", "2", "3"})
+}
+
+func (s *Suite) TestFullLiveExecutions() {
+	ctx := context.Background()
+
+	requireLive := func(executionID string) {
+		execs, err := s.executionStore.GetLiveExecutions(ctx)
+		s.Require().NoError(err)
+		s.Require().Equal(1, len(execs))
+		s.Require().Equal(executionID, execs[0].Execution.ID)
+	}
+	requireNotLive := func(executionID string) {
+		execs, err := s.executionStore.GetLiveExecutions(ctx)
+		s.Require().NoError(err)
+		s.Require().Equal([]store.LocalExecutionState{}, execs)
+	}
+
+	localExec := store.NewLocalExecutionState(s.execution, "req1")
+	err := s.executionStore.CreateExecution(ctx, *localExec)
+	s.Require().NoError(err)
+
+	type testdata struct {
+		state       store.LocalExecutionStateType
+		requirement func(string)
+	}
+	testcases := []testdata{
+		{store.ExecutionStateBidAccepted, requireNotLive},
+		{store.ExecutionStateCreated, requireNotLive},
+		{store.ExecutionStateRunning, requireLive},
+		{store.ExecutionStateCancelled, requireNotLive},
+	}
+
+	for _, tc := range testcases {
+		s.T().Run(tc.state.String(), func(t *testing.T) {
+			err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+				ExecutionID: s.execution.ID,
+				NewState:    tc.state,
+			})
+			s.Require().NoError(err)
+
+			tc.requirement(s.execution.ID)
+		})
+	}
 }
 
 func (s *Suite) TestGetExecutions_DoesntExist() {
