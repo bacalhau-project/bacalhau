@@ -17,9 +17,22 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+)
+
+const (
+	// repo versioning
+	RepoVersion1    = 1
+	RepoVersionFile = "repo.version"
+
+	// user key files
+	Libp2pPrivateKeyFileName = "libp2p_private_key"
+	UserPrivateKeyFileName   = "user_id.pem"
+
+	// compute paths
+	ComputeStoragesPath = "executor_storages"
+	PluginsPath         = "plugins"
 )
 
 type FsRepo struct {
@@ -37,6 +50,13 @@ func NewFS(path string) (*FsRepo, error) {
 	}, nil
 }
 
+func (fsr *FsRepo) writeVersion() error {
+	return os.WriteFile(
+		filepath.Join(fsr.path, RepoVersionFile),
+		[]byte(fmt.Sprintf("%d", RepoVersion1)),
+		repoPermission)
+}
+
 func (fsr *FsRepo) Path() (string, error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return "", err
@@ -47,11 +67,19 @@ func (fsr *FsRepo) Path() (string, error) {
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {
+	// check if the path is present
 	if _, err := os.Stat(fsr.path); os.IsNotExist(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err
 	}
+	// check if the repo version file is present
+	if _, err := os.Stat(filepath.Join(fsr.path, RepoVersionFile)); os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	// the version file exists therefore the repo exists.
 	return true, nil
 }
 
@@ -64,15 +92,29 @@ func (fsr *FsRepo) Open() error {
 
 	cfg, err := config.Load(fsr.path, configName, configType)
 	if err != nil {
-		if errors.Is(err, config.EmptyConfigErr) {
-			log.Info().Msg("config file is empty, initializing a default config")
-			cfg, err = fsr.initRepo(&configenv.Local)
-			if err != nil {
-				return fmt.Errorf("failed to initialize a default config: %w", err)
-			}
-		} else {
-			return err
-		}
+		return err
+	}
+
+	if cfg.User.KeyPath == "" {
+		// if the user has not specified the location of their user key via a config file, use the default value
+		cfg.User.KeyPath = filepath.Join(fsr.path, UserPrivateKeyFileName)
+		config.SetUserKey(cfg.User.KeyPath)
+	}
+
+	if cfg.User.Libp2pKeyPath == "" {
+		// if the user has not specified the location of their libp2p key via a config file, use the default value
+		cfg.User.Libp2pKeyPath = filepath.Join(fsr.path, Libp2pPrivateKeyFileName)
+		config.SetLibp2pKey(cfg.User.Libp2pKeyPath)
+	}
+
+	if cfg.Node.ExecutorPluginPath == "" {
+		cfg.Node.ExecutorPluginPath = filepath.Join(fsr.path, PluginsPath)
+		config.SetExecutorPluginPath(cfg.Node.ExecutorPluginPath)
+	}
+
+	if cfg.Node.ComputeStoragePath == "" {
+		cfg.Node.ComputeStoragePath = filepath.Join(fsr.path, ComputeStoragesPath)
+		config.SetComputeStoragesPath(cfg.Node.ComputeStoragePath)
 	}
 
 	// Using a slice of paths to minimize repetitive checks
@@ -101,37 +143,6 @@ const (
 	repoPermission = 0755
 )
 
-func (fsr *FsRepo) initRepo(defaultConfig *types.BacalhauConfig) (types.BacalhauConfig, error) {
-	// Setting default configurations
-	defaultConfig.Metrics.EventTracerPath = filepath.Join(fsr.path, "bacalhau-event-tracer.json")
-	defaultConfig.Metrics.Libp2pTracerPath = filepath.Join(fsr.path, "bacalhau-libp2p-tracer.json")
-
-	pathsToEnsure := []func(string) (string, error){
-		ensureUserIDKey,
-		ensureLibp2pKey,
-		ensurePluginPath,
-		ensureStoragePath,
-	}
-	//defaultConfig.User.KeyPath, err = ensureUserIDKey(fsr.path)
-
-	fieldsToUpdate := []*string{
-		&defaultConfig.User.KeyPath,
-		&defaultConfig.User.Libp2pKeyPath,
-		&defaultConfig.Node.ExecutorPluginPath,
-		&defaultConfig.Node.ComputeStoragePath,
-	}
-
-	for i, ensureFunc := range pathsToEnsure {
-		path, err := ensureFunc(fsr.path)
-		if err != nil {
-			return types.BacalhauConfig{}, err
-		}
-		*fieldsToUpdate[i] = path
-	}
-
-	return config.Init(defaultConfig, fsr.path, configName, configType)
-}
-
 func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) (initErr error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -146,52 +157,35 @@ func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) (initErr error) {
 		return err
 	}
 
-	// Setting default configurations
-	defaultConfig.Metrics.EventTracerPath = filepath.Join(fsr.path, "bacalhau-event-tracer.json")
-	defaultConfig.Metrics.Libp2pTracerPath = filepath.Join(fsr.path, "bacalhau-libp2p-tracer.json")
-
-	pathsToEnsure := []func(string) (string, error){
-		ensureUserIDKey,
-		ensureLibp2pKey,
-		ensurePluginPath,
-		ensureStoragePath,
+	var err error
+	defaultConfig.User.KeyPath, err = fsr.ensureUserIDKey(UserPrivateKeyFileName)
+	if err != nil {
+		return fmt.Errorf("failed to create user key: %w", err)
+	}
+	defaultConfig.User.Libp2pKeyPath, err = fsr.ensureLibp2pKey(Libp2pPrivateKeyFileName)
+	if err != nil {
+		return fmt.Errorf("failed to create libp2p key: %w", err)
+	}
+	defaultConfig.Node.ExecutorPluginPath, err = fsr.ensureDir(PluginsPath)
+	if err != nil {
+		return fmt.Errorf("failed to create plugin dir: %w", err)
+	}
+	defaultConfig.Node.ComputeStoragePath, err = fsr.ensureDir(ComputeStoragesPath)
+	if err != nil {
+		return fmt.Errorf("failed to create executor storage dir: %w", err)
 	}
 
-	fieldsToUpdate := []*string{
-		&defaultConfig.User.KeyPath,
-		&defaultConfig.User.Libp2pKeyPath,
-		&defaultConfig.Node.ExecutorPluginPath,
-		&defaultConfig.Node.ComputeStoragePath,
+	_, err = config.Init(*defaultConfig, fsr.path, configName, configType)
+	if err != nil {
+		return err
 	}
-
-	for i, ensureFunc := range pathsToEnsure {
-		path, err := ensureFunc(fsr.path)
-		if err != nil {
-			return err
-		}
-		*fieldsToUpdate[i] = path
-	}
-
-	_, err := config.Init(defaultConfig, fsr.path, configName, configType)
-	return err
+	return fsr.writeVersion()
 }
 
-const pluginsPath = "plugins"
-
-func ensurePluginPath(configDir string) (string, error) {
-	path := filepath.Join(configDir, pluginsPath)
-	if err := os.MkdirAll(filepath.Join(configDir, pluginsPath), util.OS_USER_RWX); err != nil {
-		return "", fmt.Errorf("failed to create plugin at '%s': %w", path, err)
-	}
-	return path, nil
-}
-
-const storagesPath = "executor_storages"
-
-func ensureStoragePath(configDif string) (string, error) {
-	path := filepath.Join(configDif, storagesPath)
-	if err := os.MkdirAll(filepath.Join(configDif, storagesPath), util.OS_USER_RWX); err != nil {
-		return "", fmt.Errorf("failed to create storage path at '%s': %w", path, err)
+func (fsr *FsRepo) ensureDir(name string) (string, error) {
+	path := filepath.Join(fsr.path, name)
+	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
+		return "", fmt.Errorf("failed to create directory at at '%s': %w", path, err)
 	}
 	return path, nil
 }
@@ -201,8 +195,8 @@ const (
 )
 
 // ensureUserIDKey ensures that a default user ID key exists in the config dir.
-func ensureUserIDKey(configDir string) (string, error) {
-	keyFile := fmt.Sprintf("%s/user_id.pem", configDir)
+func (fsr *FsRepo) ensureUserIDKey(name string) (string, error) {
+	keyFile := filepath.Join(fsr.path, name)
 	if _, err := os.Stat(keyFile); err != nil {
 		if os.IsNotExist(err) {
 			log.Debug().Msgf(
@@ -243,12 +237,11 @@ func ensureUserIDKey(configDir string) (string, error) {
 	return keyFile, nil
 }
 
-func ensureLibp2pKey(configDir string) (string, error) {
-	keyName := "libp2p_private_key"
+func (fsr *FsRepo) ensureLibp2pKey(name string) (string, error) {
 
 	// We include the port in the filename so that in devstack multiple nodes
 	// running on the same host get different identities
-	privKeyPath := filepath.Join(configDir, keyName)
+	privKeyPath := filepath.Join(fsr.path, name)
 
 	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
 		// Private key does not exist - create and write it

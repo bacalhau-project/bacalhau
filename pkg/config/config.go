@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
@@ -47,27 +48,19 @@ func WriteConfig(fileName string) error {
 	return nil
 }
 
-func isFileEmpty(filename string) (bool, error) {
-	fileInfo, err := os.Stat(filename)
-	if err != nil {
-		return false, err
-	}
-
-	return fileInfo.Size() == 0, nil
-}
-
-var EmptyConfigErr = fmt.Errorf("config file is empty")
-
 func ReadConfig(fileName string) error {
-	if empty, err := isFileEmpty(fileName); err != nil {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		// if the config file doesn't exist that's fine, we will just use default configuration values
+		// dictated by the environment
+		return nil
+	} else if err != nil {
 		return err
-	} else if empty {
-		return EmptyConfigErr
 	}
+	// else we will read values set from the config, and accept those over the default values.
 	return viper.ReadInConfig()
 }
 
-func Init(defaultConfig *types.BacalhauConfig, path string, fileName, fileType string) (types.BacalhauConfig, error) {
+func Init(defaultConfig types.BacalhauConfig, path string, fileName, fileType string) (types.BacalhauConfig, error) {
 	return initConfig(initParams{
 		filePath:      path,
 		fileName:      fileName,
@@ -83,7 +76,7 @@ func Load(path string, fileName, fileType string) (types.BacalhauConfig, error) 
 		fileName:      fileName,
 		fileType:      fileType,
 		fileHandler:   ReadConfig,
-		defaultConfig: nil,
+		defaultConfig: ConfigForEnvironment(),
 	})
 }
 
@@ -139,7 +132,26 @@ type initParams struct {
 	fileName      string
 	fileType      string
 	fileHandler   func(fileName string) error
-	defaultConfig *types.BacalhauConfig
+	defaultConfig types.BacalhauConfig
+}
+
+func ConfigForEnvironment() types.BacalhauConfig {
+	env := GetEnvironment()
+	switch env {
+	case EnvironmentProd:
+		return configenv.Production
+	case EnvironmentStaging:
+		return configenv.Staging
+	case EnvironmentDev:
+		return configenv.Development
+	case EnvironmentTest:
+		return configenv.Testing
+	case EnvironmentLocal:
+		return configenv.Local
+	default:
+		// this would indicate an error in the above logic of `GetEnvironment()`
+		return configenv.Local
+	}
 }
 
 func initConfig(params initParams) (types.BacalhauConfig, error) {
@@ -149,10 +161,8 @@ func initConfig(params initParams) (types.BacalhauConfig, error) {
 	viper.SetEnvPrefix(environmentVariablePrefix)
 	viper.SetTypeByDefaultValue(inferConfigTypes)
 	viper.SetEnvKeyReplacer(environmentVariableReplace)
-	if params.defaultConfig != nil {
-		if err := Set(*params.defaultConfig); err != nil {
-			return types.BacalhauConfig{}, nil
-		}
+	if err := Set(params.defaultConfig); err != nil {
+		return types.BacalhauConfig{}, nil
 	}
 	if err := params.fileHandler(filepath.Join(params.filePath, fmt.Sprintf("%s.%s", params.fileName, params.fileType))); err != nil {
 		return types.BacalhauConfig{}, err

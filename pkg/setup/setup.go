@@ -40,7 +40,7 @@ func (e Environment) IsKnown() bool {
 	return false
 }
 
-func getEnvironment() Environment {
+func GetEnvironment() Environment {
 	env := Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
 	if !env.IsKnown() {
 		// Log as trace since we don't want to spam CLI users:
@@ -101,7 +101,7 @@ func getBacalhauRepoPath() (string, error) {
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initalized.
 func SetupBacalhauRepo(repoDir string) (string, error) {
-	env := getEnvironment()
+	env := GetEnvironment()
 
 	var bacalhauConfig types.BacalhauConfig
 	switch env {
@@ -116,7 +116,7 @@ func SetupBacalhauRepo(repoDir string) (string, error) {
 	case EnvironmentLocal:
 		bacalhauConfig = configenv.Local
 	default:
-		// this would indicate an error in the above logic of `getEnvironment()`
+		// this would indicate an error in the above logic of `GetEnvironment()`
 		bacalhauConfig = configenv.Local
 	}
 

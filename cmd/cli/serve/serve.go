@@ -65,6 +65,8 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	if peerConnect == DefaultPeerConnect || peerConnect == "" {
 		return nil, nil
 	} else if peerConnect == "env" {
+		// TODO(forrest): you need to make this work before it can be merged
+		//return system.GetEnvironment()[peerConnect]
 		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")

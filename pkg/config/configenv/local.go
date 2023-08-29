@@ -1,6 +1,7 @@
 package configenv
 
 import (
+	"os"
 	"runtime"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 )
 
 var Local = types.BacalhauConfig{
+	Metrics: types.MetricsConfig{
+		Libp2pTracerPath: os.DevNull,
+		EventTracerPath:  os.DevNull,
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.production.bacalhau.org",
