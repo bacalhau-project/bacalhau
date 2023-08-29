@@ -21,7 +21,7 @@ var Staging = types.BacalhauConfig{
 			Port: 1234,
 		},
 		ServerAPI: types.APIConfig{
-			Host: "bootstrap.staging.bacalhau.org",
+			Host: "0.0.0.0",
 			Port: 1234,
 		},
 		BootstrapAddresses: []string{
