@@ -65,7 +65,7 @@ func (l zeroLogEntry) Write(status, bytes int, header http.Header, elapsed time.
 	if l.formatter.onlyErrorStatuses && status < http.StatusBadRequest {
 		return
 	}
-	l.formatter.logger.Info().Ctx(l.request.Context()).
+	l.formatter.logger.Info().
 		Str("Method", l.request.Method).
 		Str("URI", l.request.URL.String()).
 		Str("RemoteAddr", l.request.RemoteAddr).

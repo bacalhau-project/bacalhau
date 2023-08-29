@@ -76,7 +76,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		chimiddleware.RequestID,
 		chimiddleware.RealIP,
 		chimiddleware.RequestLogger(
-			middleware.NewZeroLogFormatter(middleware.WithOnlyErrorStatuses(logErrorStatusesOnly))),
+			middleware.NewZeroLogFormatter(
+				middleware.WithLogger(log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))),
+				middleware.WithOnlyErrorStatuses(logErrorStatusesOnly)),
+		),
 		middleware.Otel,
 		middleware.PathMigrate(migrations), // after logger and otel to track old paths
 		chimiddleware.Recoverer,
