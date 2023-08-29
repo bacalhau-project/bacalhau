@@ -1,9 +1,9 @@
 package requester
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/render"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,9 +27,5 @@ func (s *Endpoint) debug(res http.ResponseWriter, req *http.Request) {
 		debugInfoMap[debugInfo.Component] = debugInfo.Info
 	}
 
-	res.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(res).Encode(debugInfoMap)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
+	render.JSON(res, req, debugInfoMap)
 }

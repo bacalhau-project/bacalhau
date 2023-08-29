@@ -1,7 +1,6 @@
 package requester
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 )
 
@@ -74,14 +74,10 @@ func (s *Endpoint) cancel(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	response := apimodels.CancelResponse{
+		State: &jobState,
+	}
 	res.Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
 	res.Header().Set(apimodels.HTTPHeaderJobID, jobCancelPayload.JobID)
-	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(apimodels.CancelResponse{
-		State: &jobState,
-	})
-	if err != nil {
-		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
-		return
-	}
+	render.JSON(res, req, response)
 }

@@ -1,8 +1,9 @@
 package requester
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/go-chi/render"
 )
 
 // nodes godoc
@@ -22,9 +23,5 @@ func (s *Endpoint) nodes(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(res).Encode(nodes)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	render.JSON(res, req, nodes)
 }

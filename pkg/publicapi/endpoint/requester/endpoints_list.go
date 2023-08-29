@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -10,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/go-chi/render"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,7 +31,7 @@ import (
 func (s *Endpoint) list(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	var listReq apimodels.ListRequest
-	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
+	if err := render.DecodeJSON(req.Body, &listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -60,14 +60,8 @@ func (s *Endpoint) list(res http.ResponseWriter, req *http.Request) {
 			State: jobState,
 		}
 	}
-	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(apimodels.ListResponse{
-		Jobs: jobWithInfos,
-	})
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+
+	render.JSON(res, req, apimodels.ListResponse{Jobs: jobWithInfos})
 }
 
 func (s *Endpoint) getJobsList(ctx context.Context, listReq apimodels.ListRequest) ([]model.Job, error) {

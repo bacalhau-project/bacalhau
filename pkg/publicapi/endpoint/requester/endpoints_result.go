@@ -1,7 +1,6 @@
 package requester
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -9,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/go-chi/render"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -28,7 +28,7 @@ import (
 func (s *Endpoint) results(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	var stateReq apimodels.StateRequest
-	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
+	if err := render.DecodeJSON(req.Body, &stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -59,12 +59,7 @@ func (s *Endpoint) results(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(apimodels.ResultsResponse{
+	render.JSON(res, req, apimodels.ResultsResponse{
 		Results: results,
 	})
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }

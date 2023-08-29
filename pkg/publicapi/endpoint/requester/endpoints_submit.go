@@ -1,7 +1,6 @@
 package requester
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/go-chi/render"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -56,10 +56,5 @@ func (s *Endpoint) submit(res http.ResponseWriter, req *http.Request) {
 	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
-	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(apimodels.SubmitResponse{Job: j})
-	if err != nil {
-		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
-		return
-	}
+	render.JSON(res, req, apimodels.SubmitResponse{Job: j})
 }

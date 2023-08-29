@@ -1,12 +1,12 @@
 package requester
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/go-chi/render"
 )
 
 // events godoc
@@ -27,7 +27,7 @@ import (
 //nolint:dupl
 func (s *Endpoint) events(res http.ResponseWriter, req *http.Request) {
 	var eventsReq apimodels.EventsRequest
-	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
+	if err := render.DecodeJSON(req.Body, &eventsReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -46,12 +46,8 @@ func (s *Endpoint) events(res http.ResponseWriter, req *http.Request) {
 		legacyEvents[i] = *legacy.ToLegacyJobHistory(&events[i])
 	}
 
-	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(apimodels.EventsResponse{
+	response := apimodels.EventsResponse{
 		Events: legacyEvents,
-	})
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
 	}
+	render.JSON(res, req, response)
 }

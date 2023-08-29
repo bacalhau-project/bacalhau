@@ -190,6 +190,7 @@ func NewNode(
 		Router:  chi.NewRouter(),
 		Address: config.HostAddress,
 		Port:    config.APIPort,
+		HostID:  config.Host.ID().String(),
 		Config:  config.APIServerConfig,
 	})
 	if err != nil {
