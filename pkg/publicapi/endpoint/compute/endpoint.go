@@ -4,19 +4,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
-	Router             chi.Router
+	Router             *echo.Echo
 	Bidder             compute.Bidder
 	Store              store.ExecutionStore
 	DebugInfoProviders []model.DebugInfoProvider
 }
 
 type Endpoint struct {
-	router             chi.Router
+	router             *echo.Echo
 	bidder             compute.Bidder
 	store              store.ExecutionStore
 	debugInfoProviders []model.DebugInfoProvider
@@ -30,10 +30,9 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		debugInfoProviders: params.DebugInfoProviders,
 	}
 
-	e.router.Route("/api/v1/compute", func(r chi.Router) {
-		r.Use(render.SetContentType(render.ContentTypeJSON))
-		r.Post("/debug", e.debug)
-		r.Post("/approve", e.approve)
-	})
+	g := e.router.Group("/api/v1/compute")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.POST("/debug", e.debug)
+	g.POST("/approve", e.approve)
 	return e
 }

@@ -2,8 +2,6 @@ package publicapi
 
 import (
 	"time"
-
-	"github.com/c2h5oh/datasize"
 )
 
 type Config struct {
@@ -26,7 +24,7 @@ type Config struct {
 	SkippedTimeoutPaths []string
 
 	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
-	MaxBytesToReadInBody datasize.ByteSize
+	MaxBytesToReadInBody string
 
 	// ThrottleLimit is the maximum number of requests per second
 	ThrottleLimit int
@@ -42,7 +40,7 @@ var DefaultConfig = Config{
 	WriteTimeout:          45 * time.Second,
 	RequestHandlerTimeout: 30 * time.Second,
 	SkippedTimeoutPaths:   make([]string, 0),
-	MaxBytesToReadInBody:  datasize.MB * 10, // defaulting to 10MB
+	MaxBytesToReadInBody:  "10MB",
 	ThrottleLimit:         1000,
 	Protocol:              "http",
 }
@@ -79,7 +77,7 @@ func WithSkipTimeoutPaths(paths []string) Option {
 	}
 }
 
-func WithMaxBytesToReadInBody(size datasize.ByteSize) Option {
+func WithMaxBytesToReadInBody(size string) Option {
 	return func(c *Config) {
 		c.MaxBytesToReadInBody = size
 	}

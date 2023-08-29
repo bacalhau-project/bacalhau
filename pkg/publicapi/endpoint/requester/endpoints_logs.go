@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -42,17 +43,17 @@ type Msg struct {
 //	@Router					/api/v1/requester/logs [post]
 //
 //nolint:funlen,gocyclo
-func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
+func (s *Endpoint) logs(c echo.Context) error {
 	var upgrader = websocket.Upgrader{}
-	conn, err := upgrader.Upgrade(res, req, nil)
+	conn, err := upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("failed to upgrade websocket connection: %s", err))
-		http.Error(res, errorResponse, http.StatusInternalServerError)
-		return
+		http.Error(c.Response(), errorResponse, http.StatusInternalServerError)
+		return nil
 	}
 	defer conn.Close()
 
-	ctx := req.Context()
+	ctx := c.Request().Context()
 
 	// Rather than have a request body or query parameters, we get the necessary
 	// information we need via the client sending a JSON message.
@@ -61,7 +62,7 @@ func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("error reading signed request: %s", err))
 		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		return nil
 	}
 
 	// This should not marshal badly given we just converted it from bytes
@@ -73,7 +74,7 @@ func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.New("failed to decode request"))
 		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		return nil
 	}
 
 	ctx = system.AddJobIDToBaggage(ctx, payload.ClientID)
@@ -83,7 +84,7 @@ func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("failed to find job: %s", payload.JobID))
 		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		return nil
 	}
 
 	// Ask the Compute node for a multiaddr where we can connect to a log server
@@ -96,27 +97,25 @@ func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("read logs failure: %s", err))
 		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		return nil
 	}
 
 	if response.ExecutionComplete {
 		s.writeTerminatedJobOutput(ctx, conn, job.ID, payload.ExecutionID)
-		return
+		return nil
 	}
 
 	client, err := logstream.NewLogStreamClient(ctx, response.Address)
 	if err != nil {
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err))
-		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		s.writeErrorMessage(ctx, conn, bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err)))
+		return nil
 	}
 	defer client.Close()
 
 	err = client.Connect(ctx, payload.ExecutionID, payload.WithHistory, payload.Follow)
 	if err != nil {
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
-		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
+		s.writeErrorMessage(ctx, conn, bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err)))
+		return nil
 	}
 
 	for {
@@ -138,6 +137,7 @@ func (s *Endpoint) logs(res http.ResponseWriter, req *http.Request) {
 	}
 
 	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	return nil
 }
 
 func (s *Endpoint) writeErrorMessage(ctx context.Context, conn *websocket.Conn, errorMsg string) {

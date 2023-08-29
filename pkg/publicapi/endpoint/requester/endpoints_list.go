@@ -9,7 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,32 +28,29 @@ import (
 //	@Router					/api/v1/requester/list [post]
 //
 //nolint:lll
-func (s *Endpoint) list(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+func (s *Endpoint) list(c echo.Context) error {
 	var listReq apimodels.ListRequest
-	if err := render.DecodeJSON(req.Body, &listReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	res.Header().Set(apimodels.HTTPHeaderClientID, listReq.ClientID)
-	res.Header().Set(apimodels.HTTPHeaderJobID, listReq.JobID)
 
-	jobList, err := s.getJobsList(ctx, listReq)
+	if err := c.Bind(&listReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	jobList, err := s.getJobsList(c.Request().Context(), listReq)
 	if err != nil {
 		_, ok := err.(*bacerrors.JobNotFound)
 		if ok {
-			http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
-			return
+			http.Error(c.Response(), bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+			return nil
 		}
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	jobWithInfos := make([]*model.JobWithInfo, len(jobList))
 	for i, job := range jobList {
-		jobState, innerErr := legacy.GetJobState(ctx, s.jobStore, job.ID())
+		jobState, innerErr := legacy.GetJobState(c.Request().Context(), s.jobStore, job.ID())
 		if innerErr != nil {
-			log.Ctx(ctx).Error().Err(innerErr).Msg("error getting job states")
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
+			log.Ctx(c.Request().Context()).Error().Err(innerErr).Msg("error getting job states")
+			return echo.NewHTTPError(http.StatusInternalServerError, innerErr.Error())
 		}
 		jobWithInfos[i] = &model.JobWithInfo{
 			Job:   job,
@@ -61,7 +58,9 @@ func (s *Endpoint) list(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	render.JSON(res, req, apimodels.ListResponse{Jobs: jobWithInfos})
+	return c.JSON(http.StatusOK, apimodels.ListResponse{
+		Jobs: jobWithInfos,
+	})
 }
 
 func (s *Endpoint) getJobsList(ctx context.Context, listReq apimodels.ListRequest) ([]model.Job, error) {

@@ -6,7 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 )
 
 // states godoc
@@ -22,24 +22,21 @@ import (
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/states [post]
-func (s *Endpoint) states(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+func (s *Endpoint) states(c echo.Context) error {
 	var stateReq apimodels.StateRequest
-	if err := render.DecodeJSON(req.Body, &stateReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+	if err := c.Bind(&stateReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	res.Header().Set(apimodels.HTTPHeaderClientID, stateReq.ClientID)
-	res.Header().Set(apimodels.HTTPHeaderJobID, stateReq.JobID)
+	c.Response().Header().Set(apimodels.HTTPHeaderClientID, stateReq.ClientID)
+	c.Response().Header().Set(apimodels.HTTPHeaderJobID, stateReq.JobID)
+
+	ctx := c.Request().Context()
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
 	js, err := legacy.GetJobState(ctx, s.jobStore, stateReq.JobID)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	render.JSON(res, req, apimodels.StateResponse{
-		State: js,
-	})
+	return c.JSON(http.StatusOK, apimodels.StateResponse{State: js})
 }

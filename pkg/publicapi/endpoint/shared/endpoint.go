@@ -5,25 +5,24 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/docs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type EndpointParams struct {
-	Router           chi.Router
+	Router           *echo.Echo
 	NodeID           string
 	PeerStore        peerstore.Peerstore
 	NodeInfoProvider models.NodeInfoProvider
 }
 
 type Endpoint struct {
-	router           chi.Router
+	router           *echo.Echo
 	nodeID           string
 	peerStore        peerstore.Peerstore
 	nodeInfoProvider models.NodeInfoProvider
@@ -37,28 +36,23 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		nodeInfoProvider: params.NodeInfoProvider,
 	}
 
-	e.router.Route("/api/v1", func(r chi.Router) {
-		// group for JSON endpoints
-		r.Group(func(r chi.Router) {
-			r.Use(render.SetContentType(render.ContentTypeJSON))
-			r.Get("/peers", e.peers)
-			r.Get("/node_info", e.nodeInfo)
-			r.Post("/version", e.version)
-			r.Get("/healthz", e.healthz)
-		})
-		// group for plaintext endpoints
-		r.Group(func(r chi.Router) {
-			r.Use(render.SetContentType(render.ContentTypePlainText))
-			r.Get("/id", e.id)
-			r.Get("/livez", e.livez)
-		})
-	})
+	// JSON group
+	g := e.router.Group("/api/v1")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.GET("/peers", e.peers)
+	g.GET("/node_info", e.nodeInfo)
+	g.POST("/version", e.version)
+	g.GET("/healthz", e.healthz)
 
-	// swagger UI
-	// dynamically write the git tag to the Swagger docs
+	// Plaintext group
+	pt := e.router.Group("/api/v1")
+	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
+	pt.GET("/id", e.id)
+	pt.GET("/livez", e.livez)
+
+	// Swagger UI
 	docs.SwaggerInfo.Version = version.Get().GitVersion
-	// swagger docs at root
-	e.router.Mount("/swagger/", httpSwagger.WrapHandler)
+	e.router.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
 
 	return e
 }
@@ -72,8 +66,8 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@Success	200	{object}	string
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/id [get]
-func (e *Endpoint) id(w http.ResponseWriter, r *http.Request) {
-	render.PlainText(w, r, e.nodeID)
+func (e *Endpoint) id(c echo.Context) error {
+	return c.String(http.StatusOK, e.nodeID)
 }
 
 // peers godoc
@@ -86,12 +80,12 @@ func (e *Endpoint) id(w http.ResponseWriter, r *http.Request) {
 //	@Success				200	{object}	[]peer.AddrInfo
 //	@Failure				500	{object}	string
 //	@Router					/api/v1/peers [get]
-func (e *Endpoint) peers(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) peers(c echo.Context) error {
 	var peerInfos []peer.AddrInfo
 	for _, p := range e.peerStore.Peers() {
 		peerInfos = append(peerInfos, e.peerStore.PeerInfo(p))
 	}
-	render.JSON(w, r, peerInfos)
+	return c.JSON(http.StatusOK, peerInfos)
 }
 
 // nodeInfo godoc
@@ -103,8 +97,8 @@ func (e *Endpoint) peers(w http.ResponseWriter, r *http.Request) {
 //	@Success	200	{object}	models.NodeInfo
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/node_info [get]
-func (e *Endpoint) nodeInfo(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, e.nodeInfoProvider.GetNodeInfo(r.Context()))
+func (e *Endpoint) nodeInfo(c echo.Context) error {
+	return c.JSON(http.StatusOK, e.nodeInfoProvider.GetNodeInfo(c.Request().Context()))
 }
 
 // version godoc
@@ -122,14 +116,13 @@ func (e *Endpoint) nodeInfo(w http.ResponseWriter, r *http.Request) {
 //	@Router			/api/v1/version [post]
 //
 //nolint:lll
-func (e *Endpoint) version(w http.ResponseWriter, r *http.Request) {
-	versionReq := &apimodels.VersionRequest{}
-	if err := render.DecodeJSON(r.Body, versionReq); err != nil {
-		publicapi.HTTPError(r.Context(), w, err, http.StatusBadRequest)
-		return
+func (e *Endpoint) version(c echo.Context) error {
+	var versionReq apimodels.VersionRequest
+	if err := c.Bind(&versionReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	render.JSON(w, r, apimodels.VersionResponse{
+	return c.JSON(http.StatusOK, apimodels.VersionResponse{
 		VersionInfo: version.Get(),
 	})
 }
@@ -141,11 +134,11 @@ func (e *Endpoint) version(w http.ResponseWriter, r *http.Request) {
 //	@Produce	json
 //	@Success	200	{object}	types.HealthInfo
 //	@Router		/api/v1/healthz [get]
-func (e *Endpoint) healthz(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) healthz(c echo.Context) error {
 	// TODO: A list of health information. Should require authing (of some kind)
 	// Ideas:
 	// CPU usage
-	render.JSON(w, r, GenerateHealthData())
+	return c.JSON(http.StatusOK, GenerateHealthData())
 }
 
 // livez godoc
@@ -155,7 +148,7 @@ func (e *Endpoint) healthz(w http.ResponseWriter, r *http.Request) {
 //	@Produce	text/plain
 //	@Success	200	{object}	string	"TODO"
 //	@Router		/api/v1/livez [get]
-func (e *Endpoint) livez(w http.ResponseWriter, r *http.Request) {
+func (e *Endpoint) livez(c echo.Context) error {
 	// Extremely simple liveness check (should be fine to be public / no-auth)
-	render.PlainText(w, r, "OK")
+	return c.String(http.StatusOK, "OK")
 }

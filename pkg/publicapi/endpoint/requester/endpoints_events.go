@@ -6,7 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 )
 
 // events godoc
@@ -25,20 +25,20 @@ import (
 //
 //nolint:lll
 //nolint:dupl
-func (s *Endpoint) events(res http.ResponseWriter, req *http.Request) {
+func (s *Endpoint) events(c echo.Context) error {
 	var eventsReq apimodels.EventsRequest
-	if err := render.DecodeJSON(req.Body, &eventsReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	res.Header().Set(apimodels.HTTPHeaderClientID, eventsReq.ClientID)
-	res.Header().Set(apimodels.HTTPHeaderJobID, eventsReq.JobID)
 
-	ctx := req.Context()
+	if err := c.Bind(&eventsReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	c.Response().Header().Set(apimodels.HTTPHeaderClientID, eventsReq.ClientID)
+	c.Response().Header().Set(apimodels.HTTPHeaderJobID, eventsReq.JobID)
+
+	ctx := c.Request().Context()
 	events, err := s.jobStore.GetJobHistory(ctx, eventsReq.JobID, eventsReq.Options)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	legacyEvents := make([]model.JobHistory, len(events))
@@ -46,8 +46,7 @@ func (s *Endpoint) events(res http.ResponseWriter, req *http.Request) {
 		legacyEvents[i] = *legacy.ToLegacyJobHistory(&events[i])
 	}
 
-	response := apimodels.EventsResponse{
+	return c.JSON(http.StatusOK, apimodels.EventsResponse{
 		Events: legacyEvents,
-	}
-	render.JSON(res, req, response)
+	})
 }

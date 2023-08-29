@@ -10,13 +10,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/labstack/echo/v4"
+	echomiddelware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/time/rate"
 )
 
+const TimeoutMessage = "Server Timeout!"
+
 type ServerParams struct {
-	Router  chi.Router
+	Router  *echo.Echo
 	Address string
 	Port    uint16
 	HostID  string
@@ -25,7 +28,7 @@ type ServerParams struct {
 
 // Server configures a node's public REST API.
 type Server struct {
-	Router  chi.Router
+	Router  *echo.Echo
 	Address string
 	Port    uint16
 
@@ -66,24 +69,18 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		system.GetEnvironment() != system.EnvironmentDev
 
 	// base middleware stack
-	server.Router.Use(
-		middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+	server.Router.Pre(
+		echomiddelware.TimeoutWithConfig(echomiddelware.TimeoutConfig{
 			Timeout:      params.Config.RequestHandlerTimeout,
-			Message:      middleware.DefaultTimeoutMessage,
-			SkippedPaths: params.Config.SkippedTimeoutPaths,
+			ErrorMessage: TimeoutMessage,
+			Skipper:      middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
 		}),
-		chimiddleware.Throttle(params.Config.ThrottleLimit),
-		chimiddleware.RequestID,
-		chimiddleware.RealIP,
-		chimiddleware.RequestLogger(
-			middleware.NewZeroLogFormatter(
-				middleware.WithLogger(log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))),
-				middleware.WithOnlyErrorStatuses(logErrorStatusesOnly)),
-		),
-		middleware.Otel,
-		middleware.PathMigrate(migrations), // after logger and otel to track old paths
-		chimiddleware.Recoverer,
-		chimiddleware.RequestSize(int64(server.config.MaxBytesToReadInBody)),
+		echomiddelware.RateLimiter(echomiddelware.NewRateLimiterMemoryStore(rate.Limit(params.Config.ThrottleLimit))),
+		echomiddelware.RequestID(),
+		middleware.RequestLogger(logErrorStatusesOnly),
+		middleware.Otel(),
+		echomiddelware.Rewrite(migrations), // after logger and otel to track old paths
+		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 	)
 
 	server.httpServer = http.Server{

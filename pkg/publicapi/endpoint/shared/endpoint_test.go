@@ -12,18 +12,18 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
 )
 
 type EndpointSuite struct {
 	suite.Suite
-	router chi.Router
+	router *echo.Echo
 	e      *Endpoint
 }
 
 func (s *EndpointSuite) SetupSuite() {
-	s.router = chi.NewRouter()
+	s.router = echo.New()
 	s.e = NewEndpoint(EndpointParams{
 		Router: s.router,
 		NodeID: "testNodeID",
@@ -44,6 +44,7 @@ func (s *EndpointSuite) TestEndpointVersion() {
 	body, _ := json.Marshal(versionReq)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/version", bytes.NewReader(body))
+	req.Header.Add("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 

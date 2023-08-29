@@ -8,8 +8,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-	"github.com/go-chi/chi/v5"
 	"github.com/imdario/mergo"
+	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
@@ -187,7 +187,7 @@ func NewNode(
 
 	// public http api server
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
-		Router:  chi.NewRouter(),
+		Router:  echo.New(),
 		Address: config.HostAddress,
 		Port:    config.APIPort,
 		HostID:  config.Host.ID().String(),

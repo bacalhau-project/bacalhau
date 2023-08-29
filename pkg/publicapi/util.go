@@ -1,14 +1,14 @@
 package publicapi
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
 
-func HTTPError(ctx context.Context, res http.ResponseWriter, err error, statusCode int) {
-	log.Ctx(ctx).Error().Err(err).Send()
-	http.Error(res, bacerrors.ErrorToErrorResponse(err), statusCode)
+func HTTPError(c echo.Context, err error, statusCode int) {
+	log.Ctx(c.Request().Context()).Error().Err(err).Send()
+	http.Error(c.Response(), bacerrors.ErrorToErrorResponse(err), statusCode)
 }

@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
+	"github.com/labstack/echo/v4"
 )
 
 // approve godoc
@@ -20,27 +20,25 @@ import (
 //	@Failure	403	{object}	string
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/compute/approve [get]
-func (s *Endpoint) approve(res http.ResponseWriter, req *http.Request) {
-	request, err := signatures.UnmarshalSigned[bidstrategy.ModerateJobRequest](req.Context(), req.Body)
+func (s *Endpoint) approve(c echo.Context) error {
+	request, err := signatures.UnmarshalSigned[bidstrategy.ModerateJobRequest](c.Request().Context(), c.Request().Body)
 	if err != nil {
-		publicapi.HTTPError(req.Context(), res, err, http.StatusBadRequest)
-		return
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	approvingClient := os.Getenv("BACALHAU_JOB_APPROVER")
 	if request.ClientID != approvingClient {
-		err := errors.New("approval submitted by unknown client")
-		publicapi.HTTPError(req.Context(), res, err, http.StatusUnauthorized)
-		return
+		return echo.NewHTTPError(http.StatusUnauthorized, errors.New("approval submitted by unknown client"))
 	}
 
-	executions, err := s.store.GetExecutions(req.Context(), request.JobID)
+	executions, err := s.store.GetExecutions(c.Request().Context(), request.JobID)
 	if err != nil {
-		publicapi.HTTPError(req.Context(), res, err, http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	for _, execution := range executions {
-		go s.bidder.ReturnBidResult(req.Context(), execution, &request.Response)
+		go s.bidder.ReturnBidResult(c.Request().Context(), execution, &request.Response)
 	}
+
+	return c.JSON(http.StatusOK, "Job approved.")
 }
