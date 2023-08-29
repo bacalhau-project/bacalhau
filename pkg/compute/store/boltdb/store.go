@@ -435,8 +435,13 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 	bkt := s.getLiveIndexBucket(tx)
 
 	if localExecutionState.State.IsExecuting() {
+		// We can safely add an index key here even if it currently exists, so
+		// we don't need to check the previous states to see if it already
+		// exists.
 		indexError = bkt.Put(indexKey, []byte{})
 	} else {
+		// Removes the index key from the bucket, and if it doesn't exist then
+		// quietly returns nil as expected.
 		indexError = bkt.Delete(indexKey)
 	}
 
