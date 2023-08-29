@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -19,6 +20,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
+
+type RepoVersion struct {
+	Version int
+}
 
 const (
 	// repo versioning
@@ -50,10 +55,24 @@ func NewFS(path string) (*FsRepo, error) {
 }
 
 func (fsr *FsRepo) writeVersion() error {
-	return os.WriteFile(
-		filepath.Join(fsr.path, RepoVersionFile),
-		[]byte(fmt.Sprintf("%d", RepoVersion1)),
-		repoPermission)
+	repoVersion := RepoVersion{Version: RepoVersion1}
+	versionJson, err := json.Marshal(repoVersion)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJson, repoPermission)
+}
+
+func (fsr *FsRepo) readVersion() (int, error) {
+	versionBytes, err := os.ReadFile(filepath.Join(fsr.path, RepoVersionFile))
+	if err != nil {
+		return -1, err
+	}
+	var version RepoVersion
+	if err := json.Unmarshal(versionBytes, &version); err != nil {
+		return -1, err
+	}
+	return version.Version, nil
 }
 
 func (fsr *FsRepo) Path() (string, error) {
@@ -73,12 +92,19 @@ func (fsr *FsRepo) Exists() (bool, error) {
 		return false, err
 	}
 	// check if the repo version file is present
-	if _, err := os.Stat(filepath.Join(fsr.path, RepoVersionFile)); os.IsNotExist(err) {
+	versionPath := filepath.Join(fsr.path, RepoVersionFile)
+	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err
 	}
-	// the version file exists therefore the repo exists.
+	version, err := fsr.readVersion()
+	if err != nil {
+		return false, err
+	}
+	if version != RepoVersion1 {
+		return false, fmt.Errorf("unknown repo version %d", version)
+	}
 	return true, nil
 }
 
