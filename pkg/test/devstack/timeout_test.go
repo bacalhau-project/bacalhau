@@ -8,15 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -99,6 +100,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
+	clientID, err := config.GetClientID()
+	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
 			name:                                "sleep_within_default_timeout",
@@ -191,23 +194,20 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			jobTimeout:                          2 * time.Minute,
 			rejectedCount:                       1,
 		},
-		/*
-			{
-				name:                                "job_timeout_greater_than_max_but_on_allowed_list",
-				computeJobExecutionBypassList:       []string{system.GetClientID()},
-				computeJobNegotiationTimeout:        10 * time.Second,
-				computeMinJobExecutionTimeout:       1 * time.Nanosecond,
-				computeMaxJobExecutionTimeout:       1 * time.Minute,
-				requesterDefaultJobExecutionTimeout: 40 * time.Second,
-				requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
-				nodeCount:                           1,
-				concurrency:                         1,
-				sleepTime:                           1 * time.Second,
-				jobTimeout:                          2 * time.Minute,
-				completedCount:                      1,
-			},
-
-		*/
+		{
+			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
+			computeJobExecutionBypassList:       []string{clientID},
+			computeJobNegotiationTimeout:        10 * time.Second,
+			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+			computeMaxJobExecutionTimeout:       1 * time.Minute,
+			requesterDefaultJobExecutionTimeout: 40 * time.Second,
+			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
+			nodeCount:                           1,
+			concurrency:                         1,
+			sleepTime:                           1 * time.Second,
+			jobTimeout:                          2 * time.Minute,
+			completedCount:                      1,
+		},
 	} {
 		suite.Run(testCase.name, func() {
 			runTest(testCase)

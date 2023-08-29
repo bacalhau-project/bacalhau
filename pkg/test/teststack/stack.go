@@ -4,6 +4,7 @@ package teststack
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -20,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -47,12 +49,21 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	fsRepo := setup.SetupBacalhauRepoForTesting(t)
-	repoPath, err := fsRepo.Path()
-	if err != nil {
-		t.Fatal(err)
+	//NB: if a test suite has defined a repo use it, otherwise make one.
+	repoPath := os.Getenv("BACALHAU_DIR")
+	var fsRepo *repo.FsRepo
+	if repoPath != "" {
+		var err error
+		fsRepo, err = repo.NewFS(repoPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := fsRepo.Open(); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		fsRepo = setup.SetupBacalhauRepoForTesting(t)
 	}
-	t.Setenv("BACALHAU_DIR", repoPath)
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
