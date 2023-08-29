@@ -3,6 +3,7 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -68,6 +69,12 @@ func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionSt
 	for i, id := range liveIDs {
 		executions[i] = s.executionMap[id]
 	}
+
+	// Ensure executions are returned oldest first
+	sort.Slice(executions, func(i, j int) bool {
+		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
+	})
+
 	return executions, nil
 }
 
