@@ -48,7 +48,7 @@ func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNod
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
-		EnqueuedExecutions: len(n.executorBuffer.EnqueuedExecutions()),
+		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
 	}
 }
 
