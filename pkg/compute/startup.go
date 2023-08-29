@@ -74,7 +74,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 		}
 	}
 
-	return errs.Unwrap()
+	return errs.ErrorOrNil()
 }
 
 func (s *Startup) failExecution(ctx context.Context, execution store.LocalExecutionState) error {
