@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 )
 
 func TestNewFS(t *testing.T) {
@@ -25,7 +23,7 @@ func TestNewFS(t *testing.T) {
 	require.Error(t, err)
 
 	// can init a repo
-	err = repo.Init(&configenv.Testing)
+	err = repo.Init()
 	require.NoError(t, err)
 
 	// it better exist now
@@ -38,6 +36,6 @@ func TestNewFS(t *testing.T) {
 	require.NoError(t, err)
 
 	// cannot init an already init'ed repo.
-	err = repo.Init(&configenv.Local)
+	err = repo.Init()
 	require.Error(t, err)
 }

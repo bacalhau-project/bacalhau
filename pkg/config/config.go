@@ -76,7 +76,7 @@ func Load(path string, fileName, fileType string) (types.BacalhauConfig, error) 
 		fileName:      fileName,
 		fileType:      fileType,
 		fileHandler:   ReadConfig,
-		defaultConfig: ConfigForEnvironment(),
+		defaultConfig: ForEnvironment(),
 	})
 }
 
@@ -135,8 +135,8 @@ type initParams struct {
 	defaultConfig types.BacalhauConfig
 }
 
-func ConfigForEnvironment() types.BacalhauConfig {
-	env := GetEnvironment()
+func ForEnvironment() types.BacalhauConfig {
+	env := GetConfigEnvironment()
 	switch env {
 	case EnvironmentProd:
 		return configenv.Production

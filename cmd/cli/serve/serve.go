@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"github.com/spf13/cobra"
@@ -65,9 +66,8 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	if peerConnect == DefaultPeerConnect || peerConnect == "" {
 		return nil, nil
 	} else if peerConnect == "env" {
-		// TODO(forrest): you need to make this work before it can be merged
-		//return system.GetEnvironment()[peerConnect]
-		return config.GetBootstrapPeers()
+		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environemnt
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
 	}

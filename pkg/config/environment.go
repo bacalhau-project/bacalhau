@@ -31,7 +31,7 @@ func (e Environment) IsKnown() bool {
 	return false
 }
 
-func GetEnvironment() Environment {
+func GetConfigEnvironment() Environment {
 	env := Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
 	if !env.IsKnown() {
 		// Log as trace since we don't want to spam CLI users:
@@ -47,8 +47,8 @@ func GetEnvironment() Environment {
 			flag.Lookup("test.run") != nil {
 			env = EnvironmentTest
 		} else {
-			log.Debug().Msgf("Defaulting to local environment: \n os.Args: %v", os.Args)
-			env = EnvironmentLocal
+			log.Debug().Msgf("Defaulting to production environment: \n os.Args: %v", os.Args)
+			env = EnvironmentProd
 		}
 	}
 	return env

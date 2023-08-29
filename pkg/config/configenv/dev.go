@@ -1,6 +1,7 @@
 package configenv
 
 import (
+	"os"
 	"runtime"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 )
 
 var Development = types.BacalhauConfig{
+	Metrics: types.MetricsConfig{
+		Libp2pTracerPath: os.DevNull,
+		EventTracerPath:  os.DevNull,
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",
@@ -38,7 +43,7 @@ var Development = types.BacalhauConfig{
 		},
 		Libp2p: types.Libp2pConfig{
 			SwarmPort:   1235,
-			PeerConnect: "",
+			PeerConnect: "none",
 		},
 		IPFS: types.IpfsConfig{
 			Connect:         "",

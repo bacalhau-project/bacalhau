@@ -52,7 +52,7 @@ func TestConfig(t *testing.T) {
 				expectedConfig := configenv.Testing
 				configPath := t.TempDir()
 
-				_, err := Init(&expectedConfig, configPath, tc.name, tc.configType)
+				_, err := Init(expectedConfig, configPath, tc.name, tc.configType)
 				require.NoError(t, err)
 
 				var out types.NodeConfig
@@ -84,7 +84,7 @@ func TestConfig(t *testing.T) {
 				configPath := t.TempDir()
 				configFile := "config"
 
-				_, err := Init(&expectedConfig, configPath, configFile, tc.configType)
+				_, err := Init(expectedConfig, configPath, configFile, tc.configType)
 				require.NoError(t, err)
 
 				// Now, try to load the configuration we just saved.

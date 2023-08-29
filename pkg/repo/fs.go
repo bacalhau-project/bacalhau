@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
@@ -128,7 +127,7 @@ func (fsr *FsRepo) Open() error {
 	for _, path := range pathsToCheck {
 		if _, err := os.Stat(path); err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("filepath '%s' does not exits", path)
+				return fmt.Errorf("filepath '%s' does not exists", path)
 			}
 			return fmt.Errorf("failed to stat '%s': %w", path, err)
 		}
@@ -143,14 +142,15 @@ const (
 	repoPermission = 0755
 )
 
-func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) (initErr error) {
+func (fsr *FsRepo) Init() error {
+	defaultConfig := config.ForEnvironment()
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
 		return fmt.Errorf("cannot init repo: repo already exists")
 	}
 
-	log.Info().Msgf("Initializing repo at '%s'", fsr.path)
+	log.Info().Msgf("Initializing repo at '%s' for environment '%s'", fsr.path, config.GetConfigEnvironment())
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
@@ -175,7 +175,7 @@ func (fsr *FsRepo) Init(defaultConfig *types.BacalhauConfig) (initErr error) {
 		return fmt.Errorf("failed to create executor storage dir: %w", err)
 	}
 
-	_, err = config.Init(*defaultConfig, fsr.path, configName, configType)
+	_, err = config.Init(defaultConfig, fsr.path, configName, configType)
 	if err != nil {
 		return err
 	}

@@ -1,67 +1,17 @@
 package setup
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
-
-type Environment string
-
-const (
-	// Known environments that are configured in ops/terraform:
-	EnvironmentStaging Environment = "staging"
-	EnvironmentProd    Environment = "production"
-	EnvironmentDev     Environment = "development"
-	EnvironmentTest    Environment = "test"
-	EnvironmentLocal   Environment = "local"
-)
-
-func (e Environment) String() string {
-	return string(e)
-}
-
-func (e Environment) IsKnown() bool {
-	switch e {
-	case EnvironmentStaging, EnvironmentProd, EnvironmentDev, EnvironmentTest, EnvironmentLocal:
-		return true
-	}
-	return false
-}
-
-func GetEnvironment() Environment {
-	env := Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
-	if !env.IsKnown() {
-		// Log as trace since we don't want to spam CLI users:
-		log.Trace().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
-
-		// This usually happens in the case of a short-lived test cluster, in
-		// which case we should default to development. However, we want to
-		// avoid using any environment-specific settings for IPFS swarms
-		// (which are only configured for production and staging)
-		if strings.Contains(os.Args[0], "/_test/") ||
-			strings.HasSuffix(os.Args[0], ".test") ||
-			flag.Lookup("test.v") != nil ||
-			flag.Lookup("test.run") != nil {
-			env = EnvironmentTest
-		} else {
-			log.Debug().Msgf("Defaulting to local environment: \n os.Args: %v", os.Args)
-			env = EnvironmentLocal
-		}
-	}
-	return env
-}
 
 func getBacalhauRepoPath() (string, error) {
 	// BACALHAU_DIR has the highest precedence, if its set, we return it
@@ -101,25 +51,6 @@ func getBacalhauRepoPath() (string, error) {
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initalized.
 func SetupBacalhauRepo(repoDir string) (string, error) {
-	env := GetEnvironment()
-
-	var bacalhauConfig types.BacalhauConfig
-	switch env {
-	case EnvironmentProd:
-		bacalhauConfig = configenv.Production
-	case EnvironmentStaging:
-		bacalhauConfig = configenv.Staging
-	case EnvironmentDev:
-		bacalhauConfig = configenv.Development
-	case EnvironmentTest:
-		bacalhauConfig = configenv.Testing
-	case EnvironmentLocal:
-		bacalhauConfig = configenv.Local
-	default:
-		// this would indicate an error in the above logic of `GetEnvironment()`
-		bacalhauConfig = configenv.Local
-	}
-
 	if repoDir == "" {
 		var err error
 		repoDir, err = getBacalhauRepoPath()
@@ -128,14 +59,14 @@ func SetupBacalhauRepo(repoDir string) (string, error) {
 		}
 	}
 
-	fsRepo, err := setupRepo(repoDir, &bacalhauConfig)
+	fsRepo, err := setupRepo(repoDir)
 	if err != nil {
 		return "", err
 	}
 	return fsRepo.Path()
 }
 
-func setupRepo(path string, cfg *types.BacalhauConfig) (*repo.FsRepo, error) {
+func setupRepo(path string) (*repo.FsRepo, error) {
 	fsRepo, err := repo.NewFS(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
@@ -143,7 +74,7 @@ func setupRepo(path string, cfg *types.BacalhauConfig) (*repo.FsRepo, error) {
 	if exists, err := fsRepo.Exists(); err != nil {
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
-		if err := fsRepo.Init(cfg); err != nil {
+		if err := fsRepo.Init(); err != nil {
 			return nil, fmt.Errorf("failed to initalize repo: %w", err)
 		}
 	} else {
@@ -159,8 +90,8 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 
 	path := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()))
 	t.Logf("creating repo for testing at: %s", path)
-	// TODO pass a testing config
-	fsRepo, err := setupRepo(path, &configenv.Local)
+	t.Setenv("BACALHAU_ENVIRONMENT", "local")
+	fsRepo, err := setupRepo(path)
 	if err != nil {
 		t.Fatal(err)
 	}
