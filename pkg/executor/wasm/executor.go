@@ -134,7 +134,6 @@ func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
 ) (*models.RunCommandResult, error) {
-
 	ctx, cancel := context.WithCancel(ctx)
 	e.cancellers.Put(request.ExecutionID, cancel)
 	defer func() {

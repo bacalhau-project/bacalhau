@@ -21,6 +21,7 @@ const (
 	BucketExecutionsName = "execution"
 	BucketHistoryName    = "execution-history"
 	BucketJobIndexName   = "execution-index"
+	BucketLiveIndexName  = "execution-live-index"
 )
 
 // Store represents an execution store that is backed by a boltdb database
@@ -53,6 +54,13 @@ const (
 // execution-index
 //     |--> job-id
 //               |-> <execution-id> -> {}
+//
+// * The live index is stored in a bucket called execution-live-index where each
+// execution that is in an active state (currently ExecutionStateBidAccepted).
+// This is used at node start to check what nodes _should_ be running.
+//
+// execution-live-index
+//    |-> <execution-id> -> {}
 //
 
 type Store struct {
@@ -100,6 +108,11 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 			return err
 		}
 
+		_, err = tx.CreateBucketIfNotExists([]byte(BucketLiveIndexName))
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -130,6 +143,11 @@ func (s *Store) getHistoryBucket(tx *bolt.Tx) *bolt.Bucket {
 // the supplied transaction.
 func (s *Store) getJobIndexBucket(tx *bolt.Tx) *bolt.Bucket {
 	return tx.Bucket([]byte(BucketJobIndexName))
+}
+
+// getLiveIndexBucket helper gets a reference to the live execution index bucket
+func (s *Store) getLiveIndexBucket(tx *bolt.Tx) *bolt.Bucket {
+	return tx.Bucket([]byte(BucketLiveIndexName))
 }
 
 // GetExecution returns the stored LocalExecutionState structure for the provided execution ID.
@@ -209,6 +227,45 @@ func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.LocalExecution
 		return nil
 	})
 
+	return executions, err
+}
+
+func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionState, error) {
+	log.Ctx(ctx).Trace().
+		Msg("boltdb.GetLiveExecutions")
+
+	var executions []store.LocalExecutionState
+	err := s.database.View(func(tx *bolt.Tx) (err error) {
+		executions, err = s.getLiveExecutions(tx)
+		return
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(executions, func(i, j int) bool {
+		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
+	})
+
+	return executions, nil
+}
+
+func (s *Store) getLiveExecutions(tx *bolt.Tx) ([]store.LocalExecutionState, error) {
+	liveIndexBkt := s.getLiveIndexBucket(tx)
+
+	executions := make([]store.LocalExecutionState, 0, DefaultSliceRetrievalCapacity)
+
+	// List all of the keys in the live index bucket, and fetch the appropriate
+	// executions
+	err := liveIndexBkt.ForEach(func(key []byte, _ []byte) error {
+		execution, err := s.getExecution(tx, string(key))
+		if err != nil {
+			return err
+		}
+		executions = append(executions, execution)
+
+		return nil
+	})
 	return executions, err
 }
 
@@ -370,7 +427,35 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 		return emptyState, err
 	}
 
-	return previousState, s.appendHistory(tx, localExecutionState, previousState, request.Comment)
+	// If this execution is in an active state, then we should index it so that we know
+	// at a restart that it should be running. If it is not that, then we should ensure
+	// that the index for live executions does not include this ID.
+	var indexError error
+	indexKey := []byte(localExecutionState.Execution.ID)
+	bkt := s.getLiveIndexBucket(tx)
+
+	if localExecutionState.State.IsExecuting() {
+		// We can safely add an index key here even if it currently exists, so
+		// we don't need to check the previous states to see if it already
+		// exists.
+		indexError = bkt.Put(indexKey, []byte{})
+	} else {
+		// Removes the index key from the bucket, and if it doesn't exist then
+		// quietly returns nil as expected.
+		indexError = bkt.Delete(indexKey)
+	}
+
+	if indexError != nil {
+		return previousState, fmt.Errorf("failed to process live index: %s", indexError)
+	}
+
+	// Update the history of the execution
+	historyErr := s.appendHistory(tx, localExecutionState, previousState, request.Comment)
+	if historyErr != nil {
+		return previousState, fmt.Errorf("failed to append execution history: %s", historyErr)
+	}
+
+	return previousState, nil
 }
 
 // Must be called where tx is a write transaction and adds a new history entry
