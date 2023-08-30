@@ -91,6 +91,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	path := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()))
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
+	t.Setenv("BACALHAU_DIR", path)
 	fsRepo, err := setupRepo(path)
 	if err != nil {
 		t.Fatal(err)
