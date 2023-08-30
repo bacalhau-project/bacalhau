@@ -60,7 +60,7 @@ func (fsr *FsRepo) writeVersion() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJson, repoPermission)
+	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJson, util.OS_USER_RW)
 }
 
 func (fsr *FsRepo) readVersion() (int, error) {
