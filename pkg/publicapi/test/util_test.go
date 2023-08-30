@@ -3,8 +3,6 @@ package test
 import (
 	"context"
 	"net/http"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -69,13 +67,6 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.Config) (*node.No
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
-	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
-	dbFile := filepath.Join(dir, "testing.db")
-	cm.RegisterCallback(func() error {
-		os.Remove(dbFile)
-		return nil
-	})
-
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
@@ -83,7 +74,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.Config) (*node.No
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
-		CleanupManager:            system.NewCleanupManager(),
+		CleanupManager:            cm,
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
