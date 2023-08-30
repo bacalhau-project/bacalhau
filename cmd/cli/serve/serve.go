@@ -16,6 +16,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -34,7 +35,6 @@ import (
 
 var DefaultSwarmPort = 1235
 
-const NvidiaCLI = "nvidia-container-cli"
 const DefaultPeerConnect = "none"
 
 var (
@@ -508,62 +508,24 @@ func AutoOutputLabels() map[string]string {
 	}
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
-	CLIPATH, _ := exec.LookPath(NvidiaCLI)
-	if CLIPATH != "" {
-		gpuNames, gpuMemory := gpuList()
+
+	gpus, err := system_capacity.GetSystemGPUs()
+	if err != nil {
 		// Print the GPU names
-		for i, name := range gpuNames {
-			name = strings.Replace(name, " ", "-", -1) // Replace spaces with dashes
-			key := fmt.Sprintf("GPU-%d", i)
+		for i, gpu := range gpus {
+			// Model label e.g. GPU-0: Tesla-T1
+			key := fmt.Sprintf("GPU-%d", gpu.Index)
+			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
 			m[key] = name
+
+			// Memory label e.g. GPU-0-Memory: 15360-MiB
 			key = fmt.Sprintf("GPU-%d-Memory", i)
-			memory := strings.Replace(gpuMemory[i], " ", "-", -1) // Replace spaces with dashes
+			memory := strings.Replace(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-", -1) // Replace spaces with dashes
 			m[key] = memory
 		}
 	}
-	// Get list of installed packages (Only works for linux, make it work for every platform)
-	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// var packageList []string
-	// for _, file := range files {
-	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
 
-	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
-	// 	}
-	// }
-	// m["Installed-Packages"] = strings.Join(packageList, ",")
 	return m
-}
-
-func gpuList() ([]string, []string) {
-	// Execute nvidia-smi command to get GPU names
-	cmd := exec.Command("nvidia-smi", "--query-gpu=gpu_name", "--format=csv")
-	output, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
-
-	// Split the output by newline character
-	gpuNames := strings.Split(string(output), "\n")
-
-	// Remove the first and last elements of the slice
-	gpuNames = gpuNames[1 : len(gpuNames)-1]
-
-	cmd1 := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv")
-	output1, err1 := cmd1.Output()
-	if err1 != nil {
-		panic(err1)
-	}
-
-	// Split the output by newline character
-	gpuMemory := strings.Split(string(output1), "\n")
-
-	// Remove the first and last elements of the slice
-	gpuMemory = gpuMemory[1 : len(gpuMemory)-1]
-
-	return gpuNames, gpuMemory
 }
 
 func checkGitLFS() bool {
