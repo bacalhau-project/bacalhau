@@ -31,10 +31,13 @@ type Config struct {
 
 	// Protocol
 	Protocol string
+
+	// LogLevel is the minimum log level to log requests
+	LogLevel string
 }
 
-// DefaultConfig default values for Config
-var DefaultConfig = Config{
+// defaultConfig default values for Config
+var defaultConfig = Config{
 	ReadHeaderTimeout:     5 * time.Second,
 	ReadTimeout:           20 * time.Second,
 	WriteTimeout:          45 * time.Second,
@@ -43,6 +46,12 @@ var DefaultConfig = Config{
 	MaxBytesToReadInBody:  1024 * 1024 * 10, // defaulting to 10MB
 	ThrottleLimit:         1000,
 	Protocol:              "http",
+	LogLevel:              "info",
+}
+
+// DefaultConfig returns the default configuration for the public API server.
+func DefaultConfig() Config {
+	return defaultConfig
 }
 
 type Option func(*Config)
@@ -95,8 +104,14 @@ func WithProtocol(protocol string) Option {
 	}
 }
 
+func WithLogLevel(logLevel string) Option {
+	return func(c *Config) {
+		c.LogLevel = logLevel
+	}
+}
+
 func NewConfig(opts ...Option) *Config {
-	config := DefaultConfig
+	config := DefaultConfig()
 
 	for _, opt := range opts {
 		opt(&config)

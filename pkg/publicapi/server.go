@@ -9,9 +9,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -61,9 +61,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		"/requester/websocket/events": "/api/v1/requester/websocket/events",
 	}
 
-	// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
-	logErrorStatusesOnly := system.GetEnvironment() != system.EnvironmentTest &&
-		system.GetEnvironment() != system.EnvironmentDev
+	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
+	if err != nil {
+		return nil, err
+	}
 
 	// base middleware stack
 	server.Router.Use(
@@ -75,10 +76,9 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		chimiddleware.Throttle(params.Config.ThrottleLimit),
 		chimiddleware.RequestID,
 		chimiddleware.RealIP,
-		chimiddleware.RequestLogger(
-			middleware.NewZeroLogFormatter(
-				middleware.WithLogger(log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))),
-				middleware.WithOnlyErrorStatuses(logErrorStatusesOnly)),
+		chimiddleware.RequestLogger(middleware.NewZeroLogFormatter(
+			middleware.WithLogger(*log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))),
+			middleware.WithLogLevel(logLevel)),
 		),
 		middleware.Otel,
 		middleware.PathMigrate(migrations), // after logger and otel to track old paths

@@ -74,7 +74,7 @@ func (s *ComputeSuite) setupNode() {
 		Router:  chi.NewRouter(),
 		Address: "0.0.0.0",
 		Port:    0,
-		Config:  publicapi.DefaultConfig,
+		Config:  publicapi.DefaultConfig(),
 	})
 	s.NoError(err)
 

@@ -11,23 +11,23 @@ import (
 )
 
 type ZeroLogFormatter struct {
-	logger            *zerolog.Logger
-	onlyErrorStatuses bool
+	logger   zerolog.Logger
+	logLevel zerolog.Level
 }
 
 type ZeroLogFormatterOption func(*ZeroLogFormatter)
 
 // WithLogger sets a logger for the ZeroLogFormatter.
-func WithLogger(logger *zerolog.Logger) ZeroLogFormatterOption {
+func WithLogger(logger zerolog.Logger) ZeroLogFormatterOption {
 	return func(z *ZeroLogFormatter) {
 		z.logger = logger
 	}
 }
 
-// WithOnlyErrorStatuses sets the onlyErrorStatuses flag for the ZeroLogFormatter.
-func WithOnlyErrorStatuses(errorsOnly bool) ZeroLogFormatterOption {
+// WithLogLevel sets a log level for the ZeroLogFormatter.
+func WithLogLevel(logLevel zerolog.Level) ZeroLogFormatterOption {
 	return func(z *ZeroLogFormatter) {
-		z.onlyErrorStatuses = errorsOnly
+		z.logLevel = logLevel
 	}
 }
 
@@ -35,8 +35,8 @@ func WithOnlyErrorStatuses(errorsOnly bool) ZeroLogFormatterOption {
 func NewZeroLogFormatter(options ...ZeroLogFormatterOption) *ZeroLogFormatter {
 	// default values
 	formatter := &ZeroLogFormatter{
-		logger:            &log.Logger,
-		onlyErrorStatuses: true,
+		logger:   log.Logger,
+		logLevel: zerolog.InfoLevel,
 	}
 
 	// apply the options
@@ -62,10 +62,13 @@ type zeroLogEntry struct {
 
 // Write implements the io.Writer interface to write a string to the logger.
 func (l zeroLogEntry) Write(status, bytes int, header http.Header, elapsed time.Duration, extra interface{}) {
-	if l.formatter.onlyErrorStatuses && status < http.StatusBadRequest {
-		return
+	logLevel := l.formatter.logLevel
+	if status >= http.StatusInternalServerError && logLevel < zerolog.ErrorLevel {
+		logLevel = zerolog.ErrorLevel
+	} else if status >= http.StatusBadRequest && logLevel < zerolog.WarnLevel {
+		logLevel = zerolog.WarnLevel
 	}
-	l.formatter.logger.Info().
+	l.formatter.logger.WithLevel(logLevel).
 		Str("Method", l.request.Method).
 		Str("URI", l.request.URL.String()).
 		Str("RemoteAddr", l.request.RemoteAddr).
@@ -81,5 +84,5 @@ func (l zeroLogEntry) Write(status, bytes int, header http.Header, elapsed time.
 
 // Panic implements the LogEntry interface to log a panic occurred during the request.
 func (l zeroLogEntry) Panic(v interface{}, stack []byte) {
-	l.formatter.logger.Error().Msgf("Panic: %v\n%s", v, stack)
+	l.formatter.logger.Error().Bytes("stack", stack).Msgf("Panic: %v", v)
 }
