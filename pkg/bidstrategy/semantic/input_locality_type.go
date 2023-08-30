@@ -4,6 +4,8 @@ package semantic
 import (
 	"fmt"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type JobSelectionDataLocality int64
@@ -21,4 +23,17 @@ func ParseJobSelectionDataLocality(s string) (ret JobSelectionDataLocality, err 
 	}
 
 	return Local, fmt.Errorf("%T: unknown type '%s'", Local, s)
+}
+
+func (i JobSelectionDataLocality) MarshalYAML() (interface{}, error) {
+	return i.String(), nil
+}
+
+func (i *JobSelectionDataLocality) UnmarshalYAML(value *yaml.Node) error {
+	out, err := ParseJobSelectionDataLocality(value.Value)
+	if err != nil {
+		return err
+	}
+	*i = out
+	return nil
 }

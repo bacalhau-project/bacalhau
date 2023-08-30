@@ -1,8 +1,9 @@
-package flags
+package cliflags
 
 import (
 	"github.com/spf13/pflag"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -19,17 +20,17 @@ type NetworkingFlagSettings struct {
 }
 
 func NetworkingFlags(settings *NetworkingFlagSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Networking settings", pflag.ContinueOnError)
-	flags.Var(
-		NetworkFlag(&settings.Network),
+	flagset := pflag.NewFlagSet("Networking settings", pflag.ContinueOnError)
+	flagset.Var(
+		flags.NetworkFlag(&settings.Network),
 		"network",
 		`Networking capability required by the job. None, HTTP, or Full`,
 	)
-	flags.StringArrayVar(
+	flagset.StringArrayVar(
 		&settings.Domains,
 		"domain",
 		settings.Domains,
 		`Domain(s) that the job needs to access (for HTTP networking)`,
 	)
-	return flags
+	return flagset
 }

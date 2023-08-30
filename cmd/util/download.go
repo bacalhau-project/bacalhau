@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
@@ -21,7 +21,7 @@ func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings *flags.DownloaderSettings,
+	downloadSettings *cliflags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
@@ -83,7 +83,7 @@ func DownloadResultsHandler(
 
 	return nil
 }
-func processDownloadSettings(settings *flags.DownloaderSettings, jobID string) (*flags.DownloaderSettings, error) {
+func processDownloadSettings(settings *cliflags.DownloaderSettings, jobID string) (*cliflags.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {

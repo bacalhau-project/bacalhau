@@ -2,7 +2,9 @@ package libp2p
 
 import (
 	"context"
+	"crypto/rand"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -28,7 +30,11 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 		return nil, err
 	}
 
-	h, err := NewHost(port)
+	privKey, err := GeneratePrivateKey(2048)
+	if err != nil {
+		return nil, err
+	}
+	h, err := NewHost(port, privKey)
 	if err != nil {
 		return nil, err
 	}
@@ -57,4 +63,13 @@ func ConnectToPeer(ctx context.Context, h host.Host, peer host.Host) error {
 	}
 
 	return err
+}
+
+func GeneratePrivateKey(numBits int) (crypto.PrivKey, error) {
+	// Creates a new RSA key pair for this host.
+	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, numBits, rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return prvKey, nil
 }

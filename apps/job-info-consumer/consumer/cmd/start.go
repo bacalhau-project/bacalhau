@@ -6,13 +6,14 @@ import (
 	"os/signal"
 	"strconv"
 
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/apps/job-info-consumer/consumer/pkg"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 )
 
 type StartOptions struct {
@@ -88,6 +89,8 @@ func newStartCmd() *cobra.Command {
 	return cmd
 }
 
+const libp2pPrivateKeyNumBits = 2048
+
 func start(cmd *cobra.Command, options *StartOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
@@ -108,7 +111,11 @@ func start(cmd *cobra.Command, options *StartOptions) error {
 	}
 	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
-	libp2pHost, err := libp2p.NewHost(options.swarmPort)
+	prvKey, err := libp2p.GeneratePrivateKey(libp2pPrivateKeyNumBits)
+	if err != nil {
+		return fmt.Errorf("generating libp2p key pair: %w", err)
+	}
+	libp2pHost, err := libp2p.NewHost(options.swarmPort, prvKey)
 	if err != nil {
 		return fmt.Errorf("error creating libp2p host: %w", err)
 	}

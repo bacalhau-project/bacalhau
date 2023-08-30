@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -51,6 +52,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
+	FsRepo                    *repo.FsRepo
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -203,6 +205,7 @@ func NewNode(
 			storageProviders,
 			nodeInfoStore,
 			gossipSub,
+			config.FsRepo,
 		)
 		if err != nil {
 			return nil, err
@@ -220,6 +223,7 @@ func NewNode(
 			storageProviders,
 			executors,
 			publishers,
+			config.FsRepo,
 		)
 		if err != nil {
 			return nil, err

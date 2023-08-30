@@ -1,4 +1,4 @@
-package flags
+package cliflags
 
 import (
 	"github.com/spf13/pflag"

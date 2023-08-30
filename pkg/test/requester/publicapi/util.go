@@ -6,15 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 //nolint:unused // used in tests
@@ -24,8 +26,8 @@ func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterA
 }
 
 //nolint:unused // used in tests
-func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
-	system.InitConfigForTesting(t)
+func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
+	fsRepo := setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	cm := system.NewCleanupManager()
@@ -41,7 +43,9 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	libp2pHost, err := libp2p.NewHost(libp2pPort)
+	privKey, err := config.GetLibp2pPrivKey()
+	require.NoError(t, err)
+	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
@@ -51,11 +55,12 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		APIPort:                   0,
 		ComputeConfig:             node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
-		APIServerConfig:           config,
+		APIServerConfig:           apiCfg,
 		IsRequesterNode:           true,
 		IsComputeNode:             true,
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
+		FsRepo:                    fsRepo,
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)

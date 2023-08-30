@@ -1,14 +1,15 @@
 //go:build unit || !integration
 
-package system
+package job
 
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type SystemScriptCheckerSuite struct {
@@ -24,7 +25,6 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 // Before each test
 func (suite *SystemScriptCheckerSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	InitConfigForTesting(suite.T())
 }
 
 func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {

@@ -2,34 +2,31 @@ package node
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -57,6 +54,7 @@ func NewRequesterNode(
 	storageProviders storage.StorageProvider,
 	nodeInfoStore routing.NodeInfoStore,
 	gossipSub *libp2p_pubsub.PubSub,
+	fsRepo *repo.FsRepo,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
@@ -71,16 +69,9 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	var err error
-	var jobStore jobstore.Store
-	jobStoreConf := cfg.GetJobStoreConfig(host.ID().String())
-	if jobStoreConf.StoreType == cfg.JobStoreBoltDB {
-		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
-		if err != nil {
-			return nil, fmt.Errorf("error creating datastore: %w", err)
-		}
-	} else {
-		jobStore = inmemory.NewInMemoryJobStore()
+	jobStore, err := fsRepo.InitJobStore(host.ID().String())
+	if err != nil {
+		return nil, err
 	}
 
 	// PubSub to publish job events to the network

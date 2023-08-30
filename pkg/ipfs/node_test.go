@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/boxo/coreiface/path"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const testString = "Hello World"
@@ -23,7 +25,7 @@ type NodeSuite struct {
 
 func (s *NodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:

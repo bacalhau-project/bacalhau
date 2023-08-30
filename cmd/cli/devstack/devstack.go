@@ -6,15 +6,17 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -56,24 +58,32 @@ func newDevStackOptions() *devstack.DevStackOptions {
 
 func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
-	OS := serve.NewServeOptions()
-
-	// make sure serve options point to local mode
-	OS.PeerConnect = serve.DefaultPeerConnect
-	OS.PrivateInternalIPFS = true
-
 	IsNoop := false
+	devstackFlags := map[string][]configflags.Definition{
+		"job-selection":    configflags.JobSelectionFlags,
+		"disable-features": configflags.DisabledFeatureFlags,
+		"capacity":         configflags.CapacityFlags,
+	}
 
 	devstackCmd := &cobra.Command{
 		Use:     "devstack",
 		Short:   "Start a cluster of bacalhau nodes for testing and development",
 		Long:    devStackLong,
 		Example: devstackExample,
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := runDevstack(cmd, ODs, OS, IsNoop); err != nil {
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			if err := configflags.BindFlags(cmd, devstackFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
+		Run: func(cmd *cobra.Command, _ []string) {
+			if err := runDevstack(cmd, ODs, IsNoop); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+		},
+	}
+
+	if err := configflags.RegisterFlags(devstackCmd, devstackFlags); err != nil {
+		util.Fatal(devstackCmd, err, 1)
 	}
 
 	devstackCmd.PersistentFlags().IntVar(
@@ -125,22 +135,29 @@ func NewCmd() *cobra.Command {
 		"Will use pluggable executors when set to true",
 	)
 
-	devstackCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
-	devstackCmd.Flags().AddFlagSet(flags.DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
-	serve.SetupCapacityManagerCLIFlags(devstackCmd, OS)
-
 	return devstackCmd
 }
 
 //nolint:gocyclo
-func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.ServeOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
 
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	if err != nil {
+		return err
+	}
+	if err := fsRepo.Open(); err != nil {
+		return err
+	}
+
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
-		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack")
+	if config.GetServeIPFSPath() != "" {
+		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment " +
+			"and/or --ipfs-serve-path from your flags " +
+			"and/or node.ipfs.servepath from your config " +
+			"to run devstack")
 	}
 
 	cm.RegisterCallback(telemetry.Cleanup)
@@ -161,11 +178,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig(OS)
+	computeConfig, err := serve.GetComputeConfig()
 	if err != nil {
 		return err
 	}
-	requestorConfig := serve.GetRequesterConfig(OS)
+	requestorConfig, err := serve.GetRequesterConfig()
+	if err != nil {
+		return err
+	}
 
 	options := append(ODs.Options(),
 		devstack.WithComputeConfig(computeConfig),
@@ -178,7 +198,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	} else {
 		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
-	stack, err := devstack.Setup(ctx, cm, options...)
+	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
 	if err != nil {
 		return err
 	}
@@ -211,7 +231,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
 	}
 
-	if util.LoggingMode == logger.LogModeStation {
+	if config.GetLogMode() == logger.LogModeStation {
 		for _, node := range stack.Nodes {
 			if node.IsComputeNode() {
 				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
