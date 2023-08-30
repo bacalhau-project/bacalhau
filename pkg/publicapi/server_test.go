@@ -28,11 +28,8 @@ func (suite *APIServerTestSuite) SetupTest() {
 	}
 	var err error
 	suite.server, err = NewAPIServer(params)
-	assert.NoError(suite.T(), err)
-}
-
-func (suite *APIServerTestSuite) TestNewAPIServer() {
 	assert.NotNil(suite.T(), suite.server)
+	assert.NoError(suite.T(), err)
 }
 
 func (suite *APIServerTestSuite) TestGetURI() {
@@ -40,7 +37,7 @@ func (suite *APIServerTestSuite) TestGetURI() {
 	assert.NotNil(suite.T(), uri)
 	assert.Equal(suite.T(), "http", uri.Scheme)
 	assert.Equal(suite.T(), "localhost", uri.Hostname())
-	assert.NotEqual(suite.T(), 8080, uri.Port())
+	assert.Equal(suite.T(), "8080", uri.Port())
 }
 
 func (suite *APIServerTestSuite) TestListenAndServe() {
@@ -50,16 +47,33 @@ func (suite *APIServerTestSuite) TestListenAndServe() {
 		assert.NoError(suite.T(), err)
 	}()
 
-	time.Sleep(1 * time.Second) // give it some time to start
+	suite.Eventually(func() bool {
+		resp, err := http.Get(suite.server.GetURI().String())
+		defer func() {
+			if resp != nil {
+				resp.Body.Close()
+			}
+		}()
+		return err == nil && resp != nil && resp.StatusCode == http.StatusNotFound
+	}, 1*time.Second, 50*time.Millisecond) // give it some time to start
 
 	// Make a request to ensure the server is running
 	resp, err := http.Get(suite.server.GetURI().String())
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), resp)
 	resp.Body.Close()
+
+	// shutdown the server
+	err = suite.server.Shutdown(ctx)
+	assert.NoError(suite.T(), err)
+
+	// Make a request to ensure the server is shutdown
+	resp, err = http.Get(suite.server.GetURI().String())
+	assert.Error(suite.T(), err)
 }
 
-func (suite *APIServerTestSuite) TestShutdown() {
+func (suite *APIServerTestSuite) TestShutdownNotRunning() {
+	// shutdown the server when it's not running should not error
 	ctx := context.Background()
 	err := suite.server.Shutdown(ctx)
 	assert.NoError(suite.T(), err)
