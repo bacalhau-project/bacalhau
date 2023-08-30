@@ -16,22 +16,18 @@ The location of the database file (for a single node) can be specified using the
 
 ### Compute node restarts
 
-As compute nodes restart, they will find they have existing state in the boltdb database.
-At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use.  
+At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use, but this is not yet implemented (although the startup stage exists in startup.go).
 
-Currently only batch jobs are possible, and so for each of the listed states below, no action is taken at restart. In future it would make sense to remove records older than a certain age, or moved them to failed, depending on their current state.  For other job types (to be implemented) this may require restarting jobs, resetting jobs, 
+During the restart of the compute node, which may have shut down for various reasons, the compute node will be able to identify some remaining 'live' executions that it thinks are still running. Based on the type of the 'live' execution, we will attempt to put the execution into a valid state. 
 
-|State|Batch jobs|
+|Job Type|Action|
 |--|--|
-|ExecutionStateCreated| No action |
-|ExecutionStateBidAccepted| No action |
-|ExecutionStateRunning| No action |
-|ExecutionStateWaitingVerification| No action |
-|ExecutionStateResultAccepted| No action |
-|ExecutionStatePublishing| No action |
-|ExecutionStateCompleted| No action |
-|ExecutionStateFailed| No action |
-|ExecutionStateCancelled| No action |
+|Batch| Cancel (Fail) |
+|Ops| Cancel (Fail) |
+|Daemon| Recover |
+|Service| Recover |
+
+
 
 
 
