@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
@@ -53,8 +52,11 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 	for idx := range localExecStates {
 		localExecution := localExecStates[idx]
 
-		switch localExecution.Execution.Job.Type {
-		case models.JobTypeService, models.JobTypeDaemon:
+		// Fetch the restart policy for the current task.
+		policy := localExecution.Execution.Job.Task().RestartPolicy
+
+		switch policy {
+		case models.RestartPolicyRecover:
 			{
 				// Service and System jobs are long running jobs and so we need to make sure it is running
 				err = s.runExecution(ctx, localExecution)
@@ -62,7 +64,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 					errs = multierror.Append(errs, err)
 				}
 			}
-		case model.JobTypeBatch, models.JobTypeOps:
+		case models.RestartPolicyFail:
 			{
 				// Batch and Ops jobs should be failed as we don't know if they had any
 				// side-effects (particularly for ops jobs).

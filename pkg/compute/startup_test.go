@@ -60,6 +60,7 @@ func (s *StartupTestSuite) TestLongRunning() {
 		j := mock.Job()
 		j.ID = tc.ID
 		j.Type = tc.job_type
+		j.Tasks = []*models.Task{{RestartPolicy: models.NewRestartPolicy(tc.job_type)}}
 
 		execution := mock.ExecutionForJob(j)
 		execution.ID = tc.ID

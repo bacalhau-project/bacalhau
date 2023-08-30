@@ -35,7 +35,7 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 		labels[v] = ""
 	}
 
-	task, err := FromLegacyJobSpec(legacy.Spec)
+	task, err := FromLegacyJobSpec(legacy.Spec, typ)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 	return job, job.Validate()
 }
 
-func FromLegacyJobSpec(legacy model.Spec) (*models.Task, error) {
+func FromLegacyJobSpec(legacy model.Spec, jobtype string) (*models.Task, error) {
 	inputs := make([]*models.InputSource, 0, len(legacy.Inputs))
 	for i, input := range legacy.Inputs {
 		source, err := FromLegacyStorageSpec(input)
@@ -109,6 +109,7 @@ func FromLegacyJobSpec(legacy model.Spec) (*models.Task, error) {
 		Timeouts: &models.TimeoutConfig{
 			ExecutionTimeout: legacy.Timeout,
 		},
+		RestartPolicy: models.NewRestartPolicy(jobtype),
 	}
 	return task, nil
 }

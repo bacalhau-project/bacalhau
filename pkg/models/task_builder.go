@@ -57,6 +57,11 @@ func (b *TaskBuilder) Timeouts(timeouts *TimeoutConfig) *TaskBuilder {
 	return b
 }
 
+func (b *TaskBuilder) RestartPolicy(policy RestartPolicyType) *TaskBuilder {
+	b.task.RestartPolicy = policy
+	return b
+}
+
 func (b *TaskBuilder) Build() (*Task, error) {
 	b.task.Normalize()
 	return b.task, b.task.Validate()

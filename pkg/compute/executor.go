@@ -126,14 +126,15 @@ func PrepareRunArguments(
 		engineArgs = execution.Job.Task().Engine
 	}
 	return &executor.RunCommandRequest{
-		JobID:        execution.Job.ID,
-		ExecutionID:  execution.ID,
-		Resources:    execution.TotalAllocatedResources(),
-		Network:      execution.Job.Task().Network,
-		Outputs:      execution.Job.Task().ResultPaths,
-		Inputs:       inputVolumes,
-		ResultsDir:   resultsDir,
-		EngineParams: engineArgs,
+		JobID:         execution.Job.ID,
+		ExecutionID:   execution.ID,
+		Resources:     execution.TotalAllocatedResources(),
+		Network:       execution.Job.Task().Network,
+		RestartPolicy: execution.Job.Task().RestartPolicy,
+		Outputs:       execution.Job.Task().ResultPaths,
+		Inputs:        inputVolumes,
+		ResultsDir:    resultsDir,
+		EngineParams:  engineArgs,
 		OutputLimits: executor.OutputLimits{
 			MaxStdoutFileLength:   system.MaxStdoutFileLength,
 			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
