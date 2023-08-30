@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
@@ -44,18 +45,70 @@ type ExecutorConfig struct {
 }
 
 type NoopExecutor struct {
-	Jobs   []string
-	Config ExecutorConfig
+	Jobs     []string
+	Config   ExecutorConfig
+	handlers generic.SyncMap[string, *executionHandler]
+}
+
+type executionHandler struct {
+	jobHandler ExecutorHandlerJobHandler
+	jobID      string
+	resultsDir string
+
+	done chan bool
+
+	result *handlerResult
+}
+
+type handlerResult struct {
+	err    error
+	result *models.RunCommandResult
+}
+
+func (e *executionHandler) run(ctx context.Context) {
+	result, err := e.jobHandler(ctx, e.jobID, e.resultsDir)
+	close(e.done)
+	e.result = &handlerResult{
+		err:    err,
+		result: result,
+	}
 }
 
 func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
-	//TODO implement me
-	panic("implement me")
+	e.Jobs = append(e.Jobs, request.JobID)
+	if e.Config.ExternalHooks.JobHandler != nil {
+		handler := e.Config.ExternalHooks.JobHandler
+		exeHandler := &executionHandler{
+			jobHandler: handler,
+			jobID:      request.JobID,
+			resultsDir: request.ResultsDir,
+			done:       make(chan bool),
+		}
+		e.handlers.Put(request.ExecutionID, exeHandler)
+		go exeHandler.run(ctx)
+		return nil
+	}
+	return nil
 }
 
 func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
-	//TODO implement me
-	panic("implement me")
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return nil, fmt.Errorf("execution (%s) not found", executionID)
+	}
+	ch := make(chan *models.RunCommandResult)
+	go e.doWait(ctx, ch, handler)
+	return ch, nil
+}
+
+func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandResult, handler *executionHandler) {
+	defer close(out)
+	select {
+	case <-ctx.Done():
+		out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
+	case <-handler.done:
+		out <- handler.result.result
+	}
 }
 
 func (e *NoopExecutor) Cancel(ctx context.Context, id string) error {
@@ -118,8 +171,19 @@ func (e *NoopExecutor) Run(
 ) (*models.RunCommandResult, error) {
 	e.Jobs = append(e.Jobs, args.JobID)
 	if e.Config.ExternalHooks.JobHandler != nil {
-		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, args.JobID, args.ResultsDir)
+		if err := e.Start(ctx, args); err != nil {
+			return nil, err
+		}
+		res, err := e.Wait(ctx, args.ExecutionID)
+		if err != nil {
+			return nil, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case out := <-res:
+			return out, nil
+		}
 	}
 	return &models.RunCommandResult{}, nil
 }
