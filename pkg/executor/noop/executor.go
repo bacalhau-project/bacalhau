@@ -48,6 +48,16 @@ type NoopExecutor struct {
 	Config ExecutorConfig
 }
 
+func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (e *NoopExecutor) Cancel(ctx context.Context, id string) error {
 	return nil
 }

@@ -13,9 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/registry"
@@ -30,6 +27,10 @@ import (
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +

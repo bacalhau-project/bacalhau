@@ -10,12 +10,13 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
@@ -38,6 +39,16 @@ import (
 type Executor struct {
 	logManagers generic.SyncMap[string, *wasmlogs.LogManager]
 	cancellers  generic.SyncMap[string, context.CancelFunc]
+}
+
+func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func NewExecutor() (*Executor, error) {

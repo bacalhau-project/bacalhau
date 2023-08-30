@@ -28,6 +28,8 @@ type Executor interface {
 	// Details in: https://github.com/bacalhau-project/bacalhau/issues/2702
 
 	Run(ctx context.Context, Args *RunCommandRequest) (*models.RunCommandResult, error)
+	Start(ctx context.Context, request *RunCommandRequest) error
+	Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error)
 	Cancel(ctx context.Context, id string) error
 }
 

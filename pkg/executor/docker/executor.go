@@ -6,19 +6,20 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 	"go.uber.org/multierr"
+
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -43,10 +44,14 @@ const (
 
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
-	ID          string
+	ID string
+
+	handlers generic.SyncMap[string, *executionHandler]
+
 	activeFlags map[string]chan struct{}
+	complete    map[string]chan struct{}
 	client      *docker.Client
-	cancellers  generic.SyncMap[string, context.CancelFunc]
+	results     generic.SyncMap[string, *models.RunCommandResult]
 }
 
 func NewExecutor(
@@ -63,6 +68,7 @@ func NewExecutor(
 		ID:          id,
 		client:      dockerClient,
 		activeFlags: make(map[string]chan struct{}),
+		complete:    make(map[string]chan struct{}),
 	}
 
 	cm.RegisterCallbackWithContext(de.cleanupAll)
@@ -95,173 +101,161 @@ func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
 ) (*models.RunCommandResult, error) {
-	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
-	ctx, cancel := context.WithCancel(ctx)
-	e.cancellers.Put(request.ExecutionID, cancel)
-	defer func() {
-		if cancelFn, found := e.cancellers.Get(request.ExecutionID); found {
-			e.cancellers.Delete(request.ExecutionID)
-			cancelFn()
-		}
-	}()
-
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
-	defer span.End()
-	defer e.cleanupExecution(ctx, request.ExecutionID)
-
-	dockerArgs, err := dockermodels.DecodeSpec(request.EngineParams)
+	if err := e.Start(ctx, request); err != nil {
+		return nil, err
+	}
+	res, err := e.Wait(ctx, request.ExecutionID)
 	if err != nil {
 		return nil, err
 	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case out := <-res:
+		return out, nil
+	}
+}
 
-	e.activeFlags[request.ExecutionID] = make(chan struct{}, 1)
+func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+	log.Ctx(ctx).Info().
+		Str("executionID", request.ExecutionID).
+		Str("jobID", request.JobID).
+		Msg("starting execution")
 
-	// the actual mounts we will give to the container
-	// these are paths for both input and output data
-	var mounts []mount.Mount
-	for _, input := range request.Inputs {
-		if input.Volume.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.InputSource, input.Volume)
-
-			mounts = append(mounts, mount.Mount{
-				Type:     mount.TypeBind,
-				ReadOnly: input.Volume.ReadOnly,
-				Source:   input.Volume.Source,
-				Target:   input.Volume.Target,
-			})
+	if handler, found := e.handlers.Get(request.ExecutionID); found {
+		if handler.active() {
+			// TODO we can make this method idempotent by not returning an error here if the execution is already active
+			return fmt.Errorf("execution (%s) already started", request.ExecutionID)
 		} else {
-			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", input.Volume.Type))
+			// TODO what should we do if an execution has already completed and we try to start it again? Just rerun it?
+			return fmt.Errorf("execution (%s) already completed", request.ExecutionID)
 		}
 	}
 
-	// for this phase of the outputs we ignore the engine because it's just about collecting the
-	// data from the job and keeping it locally
-	// the engine property of the output storage spec is how we will "publish" the output volume
-	// if and when the deal is settled
-	for _, output := range request.Outputs {
-		if output.Name == "" {
-			err = fmt.Errorf("output volume has no name: %+v", output)
-			return executor.FailResult(err)
-		}
-
-		if output.Path == "" {
-			err = fmt.Errorf("output volume has no Location: %+v", output)
-			return executor.FailResult(err)
-		}
-
-		srcd := filepath.Join(request.ResultsDir, output.Name)
-		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-
-		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
-
-		// create a mount so the output data does not need to be copied back to the host
-		mounts = append(mounts, mount.Mount{
-
-			Type: mount.TypeBind,
-			// this is an output volume so can be written to
-			ReadOnly: false,
-
-			// we create a named folder in the job results folder for this output
-			Source: srcd,
-
-			// the path of the output volume is from the perspective of inside the container
-			Target: output.Path,
-		})
+	jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
+		ExecutionID:   request.ExecutionID,
+		JobID:         request.JobID,
+		EngineSpec:    request.EngineParams,
+		NetworkConfig: request.Network,
+		Resources:     request.Resources,
+		Inputs:        request.Inputs,
+		Outputs:       request.Outputs,
+		ResultsDir:    request.ResultsDir,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create docker job container: %w", err)
 	}
 
-	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, dockerArgs.Image)
-			return executor.FailResult(pullErr)
-		}
+	handler := &executionHandler{
+		client: e.client,
+		logger: log.With().
+			Str("container", jobContainer.ID).
+			Str("execution", request.ExecutionID).
+			Str("job", request.JobID).
+			Logger(),
+		executionID: request.ExecutionID,
+		containerID: jobContainer.ID,
+		resultsDir:  request.ResultsDir,
+		limits:      request.OutputLimits,
+		waitCh:      make(chan bool),
+		activeCh:    make(chan bool),
+		running:     atomic.NewBool(false),
 	}
 
-	containerConfig := &container.Config{
-		Image:      dockerArgs.Image,
-		Tty:        false,
-		Env:        dockerArgs.EnvironmentVariables,
-		Entrypoint: dockerArgs.Entrypoint,
-		Cmd:        dockerArgs.Parameters,
-		Labels:     e.containerLabels(request.ExecutionID, request.JobID),
-		WorkingDir: dockerArgs.WorkingDirectory,
+	// register the handler for this executionID
+	e.handlers.Put(request.ExecutionID, handler)
+	// run the container.
+	go handler.run(ctx)
+	return nil
+}
+
+func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return nil, fmt.Errorf("execution (%s) not found", executionID)
 	}
+	ch := make(chan *models.RunCommandResult)
+	go e.doWait(ctx, ch, handler)
+	return ch, nil
+}
 
-	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
+func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
+	defer close(out)
+	select {
+	/*
+		case <-ctx.Done():
+			out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
 
-	// Create GPU request if the job requests it
-	var deviceRequests []container.DeviceRequest
-	if request.Resources.GPU > 0 {
-		deviceRequests = append(deviceRequests,
-			container.DeviceRequest{
-				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
-				Capabilities: [][]string{{"gpu"}},
-			},
+	*/
+	case <-handle.waitCh:
+		// FIXME: don't return an error from this method and instead populate the error from the returned structure,
+		// which the method already does internally.
+		res, err := executor.WriteJobResults(
+			handle.resultsDir,
+			handle.result.stdOut,
+			handle.result.stdErr,
+			int(handle.result.exitcode),
+			handle.result.err,
+			handle.limits,
 		)
-		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", request.Resources.GPU)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to write job results TODO FIX ME")
+		}
+		out <- res
 	}
+}
 
-	hostConfig := &container.HostConfig{
-		Mounts: mounts,
-		Resources: container.Resources{
-			Memory:         int64(request.Resources.Memory),
-			NanoCPUs:       int64(request.Resources.CPU * NanoCPUCoefficient),
-			DeviceRequests: deviceRequests,
-		},
+func (e *Executor) Cancel(ctx context.Context, executionID string) error {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return fmt.Errorf("execution (%s) not found", executionID)
 	}
+	return handler.kill(ctx)
+}
 
-	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, request.JobID, request.ExecutionID, request.Network, containerConfig, hostConfig)
-	if err != nil {
-		return executor.FailResult(err)
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return nil, fmt.Errorf("execution (%s) not found", executionID)
 	}
+	return handler.outputStream(ctx, withHistory, found)
+}
 
-	jobContainer, err := e.client.ContainerCreate(
-		ctx,
-		containerConfig,
-		hostConfig,
-		nil,
-		nil,
-		e.containerName(request.ExecutionID, request.JobID),
-	)
-	if err != nil {
-		return executor.FailResult(errors.Wrap(err, "failed to create container"))
-	}
+func (e *Executor) run(ctx context.Context, executionID string, containerID string, resultsDir string, limits executor.OutputLimits) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.run")
+	defer func() {
+		// the execution is now complete
+		e.complete[executionID] <- struct{}{}
+		e.cleanupExecution(ctx, executionID)
 
-	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
+		span.End()
+	}()
+	// the execution is now active.
+	e.activeFlags[executionID] <- struct{}{}
 
-	e.activeFlags[request.ExecutionID] <- struct{}{}
+	ctx = log.Ctx(ctx).With().Str("Container", containerID).Logger().WithContext(ctx)
 
-	containerStartError := e.client.ContainerStart(
-		ctx,
-		jobContainer.ID,
-		dockertypes.ContainerStartOptions{},
-	)
-	if containerStartError != nil {
+	// start the container
+	if err := e.client.ContainerStart(ctx, containerID, dockertypes.ContainerStartOptions{}); err != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container"
-		if strings.Contains(containerStartError.Error(), "executable file not found") {
-			internalContainerStartErrorMsg = "Executable file not found"
+		if strings.Contains(err.Error(), "executable file not found") {
+			internalContainerStartErrorMsg = "executable file not found"
 		}
-		internalContainerStartError := errors.Wrap(containerStartError, internalContainerStartErrorMsg)
-		return executor.FailResult(internalContainerStartError)
+		startError := errors.Wrap(err, internalContainerStartErrorMsg)
+		err = fmt.Errorf("failed to start container: %w", startError)
+		e.results.Put(executionID, &models.RunCommandResult{ErrorMsg: err.Error()})
+		return
 	}
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
 	var containerError error
 	var containerExitStatusCode int64
-	statusCh, errCh := e.client.ContainerWait(
-		ctx,
-		jobContainer.ID,
-		container.WaitConditionNotRunning,
-	)
+	statusCh, errCh := e.client.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 	select {
-	case err = <-errCh:
+	case err := <-errCh:
 		containerError = err
 	case exitStatus := <-statusCh:
 		containerExitStatusCode = exitStatus.StatusCode
@@ -273,64 +267,162 @@ func (e *Executor) Run(
 	// Can't use the original context as it may have already been timed out
 	detachedContext, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 3*time.Second)
 	defer cancel()
-	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
+	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, containerID)
 
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
-	return executor.WriteJobResults(
-		request.ResultsDir,
+	results, err := executor.WriteJobResults(
+		resultsDir,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),
 		multierr.Combine(containerError, logsErr),
-		request.OutputLimits,
+		limits,
 	)
+	if err != nil {
+		e.results.Put(executionID, &models.RunCommandResult{ErrorMsg: err.Error()})
+	} else {
+		e.results.Put(executionID, results)
+	}
+
+	return
 }
 
-func (e *Executor) Cancel(ctx context.Context, id string) error {
-	log.Ctx(ctx).Trace().Msgf("canceling execution %s", id)
-	if cancel, found := e.cancellers.Get(id); found {
-		e.cancellers.Delete(id)
-		cancel()
-	}
-	log.Ctx(ctx).Debug().Msgf("canceled execution %s", id)
-
-	return nil
+type dockerJobContainerParams struct {
+	ExecutionID   string
+	JobID         string
+	EngineSpec    *models.SpecConfig
+	NetworkConfig *models.NetworkConfig
+	Resources     *models.Resources
+	Inputs        []storage.PreparedStorage
+	Outputs       []*models.ResultPath
+	ResultsDir    string
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	// We have to wait until the condition is met otherwise we may be here too early and
-	// the container isn't created yet. The channel in the activeFlags map will either have
-	// a value waiting, or have one written to it shortly
-	c, present := e.activeFlags[executionID]
-	if present {
-		log.Ctx(ctx).Debug().Msg("waiting for container to be created to read logs")
-		<-c
-
-		// Delete the channel from the map, any further followers will skip this section
-		// as the absence of the channel suggests the container is already created.
-		delete(e.activeFlags, executionID)
-	}
-
-	ctrID, err := e.client.FindContainer(ctx, labelExecutionID, e.labelExecutionValue(executionID))
+func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobContainerParams) (container.CreateResponse, error) {
+	// decode the request arguments, bail if they are invalid.
+	dockerArgs, err := dockermodels.DecodeSpec(params.EngineSpec)
 	if err != nil {
-		return nil, err
+		return container.CreateResponse{}, fmt.Errorf("decoding engine spec: %w", err)
+	}
+	containerConfig := &container.Config{
+		Image:      dockerArgs.Image,
+		Tty:        false,
+		Env:        dockerArgs.EnvironmentVariables,
+		Entrypoint: dockerArgs.Entrypoint,
+		Cmd:        dockerArgs.Parameters,
+		Labels:     e.containerLabels(params.ExecutionID, params.JobID),
+		WorkingDir: dockerArgs.WorkingDirectory,
 	}
 
-	since := strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
-	if withHistory {
-		since = "1"
-	}
-
-	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
-	// If we want everything, we specify 1, a timestamp which we are confident we don't have
-	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	reader, err := e.client.GetOutputStream(ctx, ctrID, since, follow)
+	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, params.ResultsDir)
 	if err != nil {
-		return nil, err
+		return container.CreateResponse{}, fmt.Errorf("creating container mounts: %w", err)
 	}
 
-	return reader, nil
+	// Create GPU request if the job requests it
+	// TODO we need to use the resource units requested by for the GPU.
+	var deviceRequests []container.DeviceRequest
+	if params.Resources.GPU > 0 {
+		deviceRequests = append(deviceRequests,
+			container.DeviceRequest{
+				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
+				Capabilities: [][]string{{"gpu"}},
+			},
+		)
+		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
+	}
+
+	hostConfig := &container.HostConfig{
+		Mounts: mounts,
+		Resources: container.Resources{
+			Memory:         int64(params.Resources.Memory),
+			NanoCPUs:       int64(params.Resources.CPU * NanoCPUCoefficient),
+			DeviceRequests: deviceRequests,
+		},
+	}
+
+	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
+		dockerCreds := config.GetDockerCredentials()
+		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, dockerArgs.Image)
+			return container.CreateResponse{}, fmt.Errorf("failed to pull docker image: %w", pullErr)
+		}
+	}
+	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
+	// Create a network if the job requests it, modifying the containerConfig and hostConfig.
+	err = e.setupNetworkForJob(ctx, params.JobID, params.ExecutionID, params.NetworkConfig, containerConfig, hostConfig)
+	if err != nil {
+		return container.CreateResponse{}, fmt.Errorf("setting up network: %w", err)
+	}
+
+	// create the docker container (but don't start it)
+	jobContainer, err := e.client.ContainerCreate(
+		ctx,
+		containerConfig,
+		hostConfig,
+		nil,
+		nil,
+		e.containerName(params.ExecutionID, params.JobID),
+	)
+	if err != nil {
+		return container.CreateResponse{}, fmt.Errorf("creating container: %w", err)
+	}
+	return jobContainer, nil
+}
+
+func makeContainerMounts(ctx context.Context, inputs []storage.PreparedStorage, outputs []*models.ResultPath, resultsDir string) ([]mount.Mount, error) {
+	// the actual mounts we will give to the container
+	// these are paths for both input and output data
+	var mounts []mount.Mount
+	for _, input := range inputs {
+		if input.Volume.Type == storage.StorageVolumeConnectorBind {
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.InputSource, input.Volume)
+
+			mounts = append(mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				ReadOnly: input.Volume.ReadOnly,
+				Source:   input.Volume.Source,
+				Target:   input.Volume.Target,
+			})
+		} else {
+			return nil, fmt.Errorf("unknown storage volume type: %s", input.Volume.Type)
+		}
+	}
+
+	// for this phase of the outputs we ignore the engine because it's just about collecting the
+	// data from the job and keeping it locally
+	// the engine property of the output storage spec is how we will "publish" the output volume
+	// if and when the deal is settled
+	for _, output := range outputs {
+		if output.Name == "" {
+			return nil, fmt.Errorf("output volume has no name: %+v", output)
+		}
+
+		if output.Path == "" {
+			return nil, fmt.Errorf("output volume has no Location: %+v", output)
+		}
+
+		srcd := filepath.Join(resultsDir, output.Name)
+		if err := os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
+			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
+
+		}
+
+		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
+
+		// create a mount so the output data does not need to be copied back to the host
+		mounts = append(mounts, mount.Mount{
+			Type: mount.TypeBind,
+			// this is an output volume so can be written to
+			ReadOnly: false,
+			// we create a named folder in the job results folder for this output
+			Source: srcd,
+			// the path of the output volume is from the perspective of inside the container
+			Target: output.Path,
+		})
+	}
+	return mounts, nil
 }
 
 func (e *Executor) cleanupExecution(ctx context.Context, executionID string) {
@@ -378,7 +470,7 @@ func (e *Executor) containerName(executionID string, jobID string) string {
 	return e.dockerObjectName(executionID, jobID, "executor")
 }
 
-func (e *Executor) containerLabels(executionID string, jobID string) map[string]string {
+func (e *Executor) containerLabels(executionID, jobID string) map[string]string {
 	return map[string]string{
 		labelExecutorName: e.ID,
 		labelJobName:      e.labelJobValue(jobID),

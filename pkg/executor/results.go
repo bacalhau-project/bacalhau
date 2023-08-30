@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -134,6 +135,9 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader,
 		})
 	}
 
+	// TODO why bother returning an error here if we are just going to include it in the returned structure?
+	// FIXME: don't return an error from this method and instead populate the error from the returned strucutre.
+	// Im not fixing this now becasue this method is called in lots of tests.
 	err = multierr.Append(err, wg.Wait())
 	if err != nil {
 		result.ErrorMsg = err.Error()

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -86,7 +87,7 @@ func PrepareRunArguments(
 		inputs via their arguments - docker image comes to mind as a potential candidate).
 
 		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
-		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		before passing it to the executor. Previously executors were responsible for downloading their inputs to
 		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
 		plugins to handle the download of different storage specs seems impractical
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
@@ -151,15 +152,6 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
-	ctx, cancel := context.WithCancel(ctx)
-	e.cancellers.Put(execution.ID, cancel)
-	defer func() {
-		if cancel, found := e.cancellers.Get(execution.ID); found {
-			e.cancellers.Delete(execution.ID)
-			cancel()
-		}
-	}()
-
 	operation := "Running"
 	defer func() {
 		if err != nil {
@@ -197,12 +189,42 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 	}
 	defer runCommandCleanup.Cleanup(ctx)
 
-	runCommandResult, err := jobExecutor.Run(ctx, runCommandArguments)
-	if err != nil {
+	if err := jobExecutor.Start(ctx, runCommandArguments); err != nil {
 		jobsFailed.Add(ctx, 1)
-		log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
 		return err
 	}
+
+	waitCh, err := jobExecutor.Wait(ctx, runCommandArguments.ExecutionID)
+	if err != nil {
+		jobsFailed.Add(ctx, 1)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
+		return err
+	}
+	var runCommandResult *models.RunCommandResult
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case res := <-waitCh:
+		runCommandResult = &models.RunCommandResult{
+			STDOUT:          res.STDOUT,
+			StdoutTruncated: res.StdoutTruncated,
+			STDERR:          res.STDERR,
+			StderrTruncated: res.StderrTruncated,
+			ExitCode:        res.ExitCode,
+			ErrorMsg:        res.ErrorMsg,
+		}
+	}
+
+	/*
+		runCommandResult, err := jobExecutor.Run(ctx, runCommandArguments)
+		if err != nil {
+			jobsFailed.Add(ctx, 1)
+			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
+			return err
+		}
+
+	*/
 	jobsCompleted.Add(ctx, 1)
 
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
@@ -275,9 +297,14 @@ func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.Loc
 	}()
 
 	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
-	if cancel, found := e.cancellers.Get(execution.ID); found {
-		e.cancellers.Delete(execution.ID)
-		cancel()
+
+	// TODO is returning the error the correct behaviour here?
+	exe, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		return err
+	}
+	if err := exe.Cancel(ctx, execution.ID); err != nil {
+		return err
 	}
 
 	e.callback.OnCancelComplete(ctx, CancelResult{
