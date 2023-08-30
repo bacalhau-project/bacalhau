@@ -35,7 +35,7 @@ type Task struct {
 
 	Network *NetworkConfig
 
-	RestartPolicy RestartPolicyType
+	RestartPolicy *RestartPolicy
 
 	Timeouts *TimeoutConfig
 }
@@ -63,8 +63,8 @@ func (t *Task) Normalize() {
 	if t.Timeouts == nil {
 		t.Timeouts = &TimeoutConfig{}
 	}
-	if t.RestartPolicy == restartPolicyUndefined {
-		t.RestartPolicy = RestartPolicyFail
+	if t.RestartPolicy == nil {
+		t.RestartPolicy = NewDefaultRestartPolicy()
 	}
 
 	t.Engine.Normalize()

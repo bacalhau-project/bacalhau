@@ -396,6 +396,12 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 		return emptyState, store.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
+	retryAttempts := localExecutionState.Execution.Job.Task().RestartPolicy.Attempts
+
+	if request.NewState == store.ExecutionStateRunning && retryAttempts == 0 {
+		return emptyState, store.NewErrExecutionRetriesExceeded(request.ExecutionID)
+	}
+
 	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
 		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
 	}
@@ -404,7 +410,9 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
 	}
 
-	if localExecutionState.State.IsTerminal() {
+	// We can exit a terminal state if we are attempting to Run and we have at least 1 retry attempt
+	canExitTerminalState := request.NewState == store.ExecutionStateRunning && retryAttempts > 0
+	if localExecutionState.State.IsTerminal() && !canExitTerminalState {
 		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)
 	}
 
@@ -412,6 +420,11 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 	localExecutionState.State = request.NewState
 	localExecutionState.Version += 1
 	localExecutionState.UpdateTime = time.Now()
+
+	// Each time we move into the running state, we want to use up one of the restart attempts
+	if request.NewState == store.ExecutionStateRunning {
+		localExecutionState.Execution.Job.Task().RestartPolicy.Attempts = retryAttempts - 1
+	}
 
 	// Having modified the execution, we're going to write it back over the top of the previous entry
 	// before appending a copy of the history to the history bucket

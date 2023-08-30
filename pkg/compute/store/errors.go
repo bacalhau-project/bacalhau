@@ -124,3 +124,16 @@ func (e ErrExecutionAlreadyTerminal) Error() string {
 	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
 		e.ExecutionID, e.Actual.String(), e.NewState.String())
 }
+
+// ErrExecutionRetriesExceeded is returned when an execution has run out of restart attempts
+type ErrExecutionRetriesExceeded struct {
+	ExecutionID string
+}
+
+func NewErrExecutionRetriesExceeded(id string) ErrExecutionRetriesExceeded {
+	return ErrExecutionRetriesExceeded{ExecutionID: id}
+}
+
+func (e ErrExecutionRetriesExceeded) Error() string {
+	return fmt.Sprintf("execution %s is has exceeded its restart policy", e.ExecutionID)
+}

@@ -126,15 +126,14 @@ func PrepareRunArguments(
 		engineArgs = execution.Job.Task().Engine
 	}
 	return &executor.RunCommandRequest{
-		JobID:         execution.Job.ID,
-		ExecutionID:   execution.ID,
-		Resources:     execution.TotalAllocatedResources(),
-		Network:       execution.Job.Task().Network,
-		RestartPolicy: execution.Job.Task().RestartPolicy,
-		Outputs:       execution.Job.Task().ResultPaths,
-		Inputs:        inputVolumes,
-		ResultsDir:    resultsDir,
-		EngineParams:  engineArgs,
+		JobID:        execution.Job.ID,
+		ExecutionID:  execution.ID,
+		Resources:    execution.TotalAllocatedResources(),
+		Network:      execution.Job.Task().Network,
+		Outputs:      execution.Job.Task().ResultPaths,
+		Inputs:       inputVolumes,
+		ResultsDir:   resultsDir,
+		EngineParams: engineArgs,
 		OutputLimits: executor.OutputLimits{
 			MaxStdoutFileLength:   system.MaxStdoutFileLength,
 			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -168,10 +167,18 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 		}
 	}()
 
+	// We expect the current state to be BidAccepted but in some cases we will be restarting
+	// a failed job which will be in the Cancelled state (although this may later be upgraded
+	// to a FailedState).
+	expectedState := store.ExecutionStateBidAccepted
+	if localExecutionState.State == store.ExecutionStateCancelled {
+		expectedState = store.ExecutionStateCancelled
+	}
+
 	log.Ctx(ctx).Debug().Msg("Running execution")
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateBidAccepted,
+		ExpectedState: expectedState,
 		NewState:      store.ExecutionStateRunning,
 	}); err != nil {
 		return err

@@ -57,7 +57,7 @@ func (b *TaskBuilder) Timeouts(timeouts *TimeoutConfig) *TaskBuilder {
 	return b
 }
 
-func (b *TaskBuilder) RestartPolicy(policy RestartPolicyType) *TaskBuilder {
+func (b *TaskBuilder) RestartPolicy(policy *RestartPolicy) *TaskBuilder {
 	b.task.RestartPolicy = policy
 	return b
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 )
@@ -55,23 +54,18 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 		// Fetch the restart policy for the current task.
 		policy := localExecution.Execution.Job.Task().RestartPolicy
 
-		switch policy {
-		case models.RestartPolicyRecover:
-			{
-				// Service and System jobs are long running jobs and so we need to make sure it is running
-				err = s.runExecution(ctx, localExecution)
-				if err != nil {
-					errs = multierror.Append(errs, err)
-				}
+		if policy.Attempts > 0 {
+			// Service and System jobs are long running jobs and so we need to make sure it is running
+			err = s.runExecution(ctx, localExecution)
+			if err != nil {
+				errs = multierror.Append(errs, err)
 			}
-		case models.RestartPolicyFail:
-			{
-				// Batch and Ops jobs should be failed as we don't know if they had any
-				// side-effects (particularly for ops jobs).
-				err = s.failExecution(ctx, localExecution)
-				if err != nil {
-					errs = multierror.Append(errs, err)
-				}
+		} else {
+			// Batch and Ops jobs should be failed as we don't know if they had any
+			// side-effects (particularly for ops jobs).
+			err = s.failExecution(ctx, localExecution)
+			if err != nil {
+				errs = multierror.Append(errs, err)
 			}
 		}
 	}

@@ -30,7 +30,6 @@ func (s *StartupTestSuite) SetupTest() {
 }
 
 func (s *StartupTestSuite) TestLongRunning() {
-
 	database := inmemory.NewStore()
 	defer database.Close(s.ctx)
 
@@ -92,4 +91,44 @@ func (s *StartupTestSuite) TestLongRunning() {
 
 	// If we get here we're good as mock expectations didn't fail.
 	ctrl.Finish()
+}
+
+func (s *StartupTestSuite) TestRestartPolicy() {
+	database := inmemory.NewStore()
+	defer database.Close(s.ctx)
+
+	j := mock.Job()
+	j.ID = "123"
+	j.Type = "batch"
+	j.Tasks = []*models.Task{{RestartPolicy: models.NewRestartPolicy("batch")}}
+
+	execution := mock.ExecutionForJob(j)
+	execution.ID = "123"
+	exec := store.NewLocalExecutionState(execution, "req")
+	err := database.CreateExecution(s.ctx, *exec)
+	s.Require().NoError(err)
+
+	err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
+		ExecutionID: "123",
+		NewState:    store.ExecutionStateRunning,
+	})
+	s.Require().NoError(err)
+
+	// Simulate a cancel to get into a terminal state
+	err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
+		ExecutionID:   "123",
+		ExpectedState: store.ExecutionStateRunning,
+		NewState:      store.ExecutionStateCancelled,
+	})
+	s.Require().NoError(err)
+
+	// Try and run the execution again
+	err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
+		ExecutionID:   "123",
+		ExpectedState: store.ExecutionStateCancelled,
+		NewState:      store.ExecutionStateRunning,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, store.NewErrExecutionRetriesExceeded("123"))
+
 }

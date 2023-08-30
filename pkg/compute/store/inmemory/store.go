@@ -112,13 +112,23 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	if !ok {
 		return store.NewErrExecutionNotFound(request.ExecutionID)
 	}
+
+	retryAttempts := localExecutionState.Execution.Job.Task().RestartPolicy.Attempts
+
+	if request.NewState == store.ExecutionStateRunning && retryAttempts == 0 {
+		return store.NewErrExecutionRetriesExceeded(request.ExecutionID)
+	}
+
 	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
 		return store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
 	}
 	if request.ExpectedVersion != 0 && localExecutionState.Version != request.ExpectedVersion {
 		return store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
 	}
-	if localExecutionState.State.IsTerminal() {
+
+	// We can exit a terminal state if we are attempting to Run and we have at least 1 retry attempt
+	canExitTerminalState := request.NewState == store.ExecutionStateRunning && retryAttempts > 0
+	if localExecutionState.State.IsTerminal() && !canExitTerminalState {
 		return store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)
 	}
 
@@ -126,6 +136,12 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	localExecutionState.State = request.NewState
 	localExecutionState.Version += 1
 	localExecutionState.UpdateTime = time.Now()
+
+	// Each time we move into the running state, we want to use up one of the restart attempts
+	if request.NewState == store.ExecutionStateRunning {
+		localExecutionState.Execution.Job.Task().RestartPolicy.Attempts = retryAttempts - 1
+	}
+
 	s.executionMap[localExecutionState.Execution.ID] = localExecutionState
 	s.appendHistory(localExecutionState, previousState, request.Comment)
 

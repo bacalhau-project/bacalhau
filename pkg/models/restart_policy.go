@@ -1,24 +1,35 @@
-//go:generate stringer -type=RestartPolicyType --trimprefix=RestartPolicy --output restart_policy_string.go
 package models
 
-type RestartPolicyType int
+import (
+	"math"
 
-const (
-	restartPolicyUndefined RestartPolicyType = iota
-
-	// Attempt to recover the current task if the compute node believes it was
-	// executing during a compute node restart
-	RestartPolicyRecover
-
-	// When restarting the compute node fail the task
-	RestartPolicyFail
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-func NewRestartPolicy(typ string) RestartPolicyType {
+type RestartPolicy struct {
+	Attempts int
+}
+
+// NewRestartPolicy creates a restart policy based on the provided jobtype
+// which can be used by the compute node to retry jobs locally in the
+// case of failure.
+func NewRestartPolicy(typ string) *RestartPolicy {
+	var attempts int
+
 	switch typ {
 	case JobTypeService, JobTypeDaemon:
-		return RestartPolicyRecover
+		attempts = math.MaxInt
 	default: // JobTypeBatch, JobTypeOps
-		return RestartPolicyFail
+		attempts = 1
 	}
+
+	return &RestartPolicy{
+		Attempts: attempts,
+	}
+}
+
+// NewDefaultRestartPolicy returns a default restart policy, which is one
+// attempt at executing, and then fail.
+func NewDefaultRestartPolicy() *RestartPolicy {
+	return NewRestartPolicy(model.JobTypeBatch)
 }

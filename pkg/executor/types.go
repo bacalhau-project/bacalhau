@@ -32,14 +32,13 @@ type Executor interface {
 }
 
 type RunCommandRequest struct {
-	JobID         string
-	ExecutionID   string
-	Resources     *models.Resources
-	Network       *models.NetworkConfig
-	Outputs       []*models.ResultPath
-	Inputs        []storage.PreparedStorage
-	ResultsDir    string
-	EngineParams  *models.SpecConfig
-	OutputLimits  OutputLimits
-	RestartPolicy models.RestartPolicyType
+	JobID        string
+	ExecutionID  string
+	Resources    *models.Resources
+	Network      *models.NetworkConfig
+	Outputs      []*models.ResultPath
+	Inputs       []storage.PreparedStorage
+	ResultsDir   string
+	EngineParams *models.SpecConfig
+	OutputLimits OutputLimits
 }
