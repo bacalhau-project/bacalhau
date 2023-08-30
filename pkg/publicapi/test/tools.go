@@ -28,6 +28,8 @@ func WaitFor(ctx context.Context, c *client.APIClient, condition func(context.Co
 		return nil
 	case <-time.After(TimeToWaitForServerReply):
 		return fmt.Errorf("server did not become heal after %s", TimeToWaitForServerReply)
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
