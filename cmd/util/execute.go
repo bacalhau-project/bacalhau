@@ -15,7 +15,6 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings *cliflags.RunTimeSettings,
 ) (*model.Job, error) {
-
 	err := job.VerifyJob(ctx, j)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Job failed to validate.")
