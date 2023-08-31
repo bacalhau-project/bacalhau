@@ -49,11 +49,7 @@ type JobSelectionPolicyProbeData struct {
 
 // Return JobSelectionPolicyProbeData for the given request
 func GetJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
-	return JobSelectionPolicyProbeData{
-		NodeID:   request.NodeID,
-		Job:      request.Job,
-		Callback: request.Callback,
-	}
+	return JobSelectionPolicyProbeData(request)
 }
 
 type ModerateJobRequest struct {

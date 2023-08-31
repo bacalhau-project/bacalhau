@@ -37,7 +37,7 @@ func WriteConfig(fileName string) error {
 		return err
 	}
 	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
-	f, err := os.OpenFile(fileName, flags, os.FileMode(0o644))
+	f, err := os.OpenFile(fileName, flags, os.FileMode(0o644)) //nolint:gomnd
 	if err != nil {
 		return err
 	}

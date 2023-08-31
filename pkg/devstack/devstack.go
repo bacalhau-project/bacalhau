@@ -26,6 +26,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
+const (
+	DefaultLibp2pKeySize = 2048
+)
+
 type DevStackOptions struct {
 	NumberOfHybridNodes        int    // Number of nodes to start in the cluster
 	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
@@ -160,7 +164,7 @@ func Setup(
 		// rather than rely on global values and one off key gen via the config.
 
 		// Creates a new RSA key pair for this host.
-		privKey, err := bac_libp2p.GeneratePrivateKey(2048)
+		privKey, err := bac_libp2p.GeneratePrivateKey(DefaultLibp2pKeySize)
 		if err != nil {
 			return nil, err
 		}
