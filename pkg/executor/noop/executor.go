@@ -54,6 +54,7 @@ type executionHandler struct {
 	jobHandler ExecutorHandlerJobHandler
 	jobID      string
 	resultsDir string
+	isEmpty    bool
 
 	done chan bool
 
@@ -66,6 +67,10 @@ type handlerResult struct {
 }
 
 func (e *executionHandler) run(ctx context.Context) {
+	if e.isEmpty {
+		close(e.done)
+		return
+	}
 	result, err := e.jobHandler(ctx, e.jobID, e.resultsDir)
 	close(e.done)
 	e.result = &handlerResult{
@@ -80,6 +85,7 @@ func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRe
 		handler := e.Config.ExternalHooks.JobHandler
 		exeHandler := &executionHandler{
 			jobHandler: handler,
+			isEmpty:    false,
 			jobID:      request.JobID,
 			resultsDir: request.ResultsDir,
 			done:       make(chan bool),
@@ -88,6 +94,9 @@ func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRe
 		go exeHandler.run(ctx)
 		return nil
 	}
+	handler := &executionHandler{isEmpty: true, done: make(chan bool)}
+	e.handlers.Put(request.ExecutionID, handler)
+	go handler.run(ctx)
 	return nil
 }
 
@@ -107,6 +116,10 @@ func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandRe
 	case <-ctx.Done():
 		out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
 	case <-handler.done:
+		if handler.isEmpty {
+			out <- &models.RunCommandResult{}
+			return
+		}
 		out <- handler.result.result
 	}
 }

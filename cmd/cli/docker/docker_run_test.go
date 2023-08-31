@@ -762,8 +762,8 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		errStringContains string
 	}{
 		"good-image-good-executable": {
-			imageName:         "ubuntu:latest", // Good image
-			executable:        "ls",            // Good executable
+			imageName:         "ubuntu", // Good image // TODO we consider an untagged image poor practice, fix this
+			executable:        "ls",     // Good executable
 			isValid:           true,
 			errStringContains: "",
 		},
@@ -774,7 +774,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			errStringContains: "Error submitting job",
 		},
 		"good-image-bad-executable": {
-			imageName:         "ubuntu:latest", // Good image
+			imageName:         "ubuntu",        // Good image // TODO we consider an untagged image poor practice, fix this
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
 			errStringContains: "Error submitting job",
