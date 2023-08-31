@@ -66,7 +66,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	if peerConnect == DefaultPeerConnect || peerConnect == "" {
 		return nil, nil
 	} else if peerConnect == "env" {
-		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environemnt
+		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environment
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
@@ -327,7 +327,6 @@ func serve(cmd *cobra.Command) error {
 		cm.RegisterCallback(func() error {
 			return os.Remove(ripath)
 		})
-
 	}
 
 	<-ctx.Done() // block until killed

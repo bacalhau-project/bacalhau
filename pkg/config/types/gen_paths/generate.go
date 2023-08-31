@@ -34,7 +34,7 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		tag := field.Tag.Get("config")
-		newPrefix := prefix
+		newPrefix := ""
 
 		if tag != "" {
 			// If there's a tag, we use it as the new prefix, discarding the old one

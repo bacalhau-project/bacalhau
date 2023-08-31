@@ -33,6 +33,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
+//nolint:funlen
 func NewRootCmd() *cobra.Command {
 	rootFlags := map[string][]configflags.Definition{
 		"api":     configflags.ClientAPIFlags,
@@ -73,7 +74,6 @@ func NewRootCmd() *cobra.Command {
 			ctx = context.WithValue(ctx, spanKey, span)
 
 			cmd.SetContext(ctx)
-
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()

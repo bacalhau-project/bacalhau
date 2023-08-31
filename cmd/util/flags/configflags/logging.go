@@ -8,7 +8,7 @@ import (
 var LogFlags = []Definition{
 	{
 		FlagName:     "log-mode",
-		DefaultValue: logger.LogMode(logger.LogModeDefault),
+		DefaultValue: logger.LogModeDefault,
 		ConfigPath:   types.NodeLoggingMode,
 		Description:  `Log format: 'default','station','json','combined','event'`,
 	},

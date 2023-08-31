@@ -31,7 +31,7 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		tag := field.Tag.Get("config")
-		newPrefix := prefix
+		newPrefix := ""
 		newPath := make([]string, len(path))
 		copy(newPath, path)
 		newPath = append(newPath, field.Name)

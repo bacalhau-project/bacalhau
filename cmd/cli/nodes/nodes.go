@@ -49,12 +49,6 @@ func NewCmd() *cobra.Command {
 	return nodesCmd
 }
 
-func stringerizeEnum[T fmt.Stringer](val []T) string {
-	return strings.Join(lo.Map[T, string](val, func(item T, _ int) string {
-		return item.String()
-	}), " ")
-}
-
 func maxLen(val []string) int {
 	return lo.Max(lo.Map[string, int](val, func(item string, index int) int { return len(item) })) + 1
 }
