@@ -15,8 +15,9 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -25,14 +26,15 @@ type executionHandler struct {
 	// runtime configured with resource-limits
 	runtime wazero.Runtime
 	// arguments used to instantiate and run the wasm module
-	arguments *models.EngineArguments
+	arguments *wasmmodels.EngineArguments
 	// virtual filesystem exposed to wasm module
 	fs fs.FS
 	// wasm modules imported by main wasm module
 	inputs []storage.PreparedStorage
 
-	resultsDir string
-	limits     executor.OutputLimits
+	executionID string
+	resultsDir  string
+	limits      executor.OutputLimits
 
 	// cancellation
 	cancel func()
@@ -52,14 +54,7 @@ type executionHandler struct {
 	running *atomic.Bool
 
 	// results
-	result *handlerResult
-}
-
-type handlerResult struct {
-	err      error
-	exitcode int64
-	stdOut   io.Reader
-	stdErr   io.Reader
+	result *models.RunCommandResult
 }
 
 func (h *executionHandler) run(ctx context.Context) {
@@ -114,10 +109,9 @@ func (h *executionHandler) run(ctx context.Context) {
 				Str("volume_source", importModule.Volume.Source).
 				Str("volume_target", importModule.Volume.Target).
 				Msg("failed to instantiate import module")
-			h.result = &handlerResult{
-				err:      err,
-				exitcode: -1,
-			}
+			h.result = executor.NewFailedResult(
+				fmt.Errorf("failed to instantiate import module (%s): %w",
+					importModule.InputSource.Source.Type, err).Error())
 			return
 		}
 	}
@@ -134,10 +128,9 @@ func (h *executionHandler) run(ctx context.Context) {
 			Str("volume_source", entryModule.Volume.Source).
 			Str("volume_target", entryModule.Volume.Target).
 			Msg("failed to instantiate entry module")
-		h.result = &handlerResult{
-			err:      err,
-			exitcode: -1,
-		}
+		h.result = executor.NewFailedResult(
+			fmt.Errorf("failed to instantiate entry module module (%s): %w",
+				entryModule.InputSource.Source.Type, err).Error())
 		return
 	}
 
@@ -169,12 +162,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	h.logManager.Drain()
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
 
-	h.result = &handlerResult{
-		err:      wasmErr,
-		exitcode: exitCode,
-		stdOut:   stdoutReader,
-		stdErr:   stderrReader,
-	}
+	h.result = executor.WriteJobResults(h.resultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.limits)
 }
 
 func (h *executionHandler) active() bool {

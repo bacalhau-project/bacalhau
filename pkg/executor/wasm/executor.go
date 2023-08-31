@@ -98,12 +98,13 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	}
 
 	handler := &executionHandler{
-		runtime:    wazero.NewRuntimeWithConfig(ctx, engineConfig),
-		arguments:  engineParams,
-		fs:         rootFs,
-		inputs:     request.Inputs,
-		resultsDir: request.ResultsDir,
-		limits:     request.OutputLimits,
+		runtime:     wazero.NewRuntimeWithConfig(ctx, engineConfig),
+		arguments:   engineParams,
+		fs:          rootFs,
+		inputs:      request.Inputs,
+		executionID: request.ExecutionID,
+		resultsDir:  request.ResultsDir,
+		limits:      request.OutputLimits,
 		logger: log.With().
 			Str("execution", request.ExecutionID).
 			Str("job", request.JobID).
@@ -134,23 +135,11 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
 	defer close(out)
 	select {
-	/*
-		case <-ctx.Done():
-			out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
-
-	*/
+	case <-ctx.Done():
+		out <- executor.NewFailedResult(fmt.Sprintf("context canceled while waiting for execution: %s", ctx.Err()))
 	case <-handle.waitCh:
-		// FIXME: don't return an error from this method and instead populate the error from the returned structure,
-		// which the method already does internally.
-		res := executor.WriteJobResults(
-			handle.resultsDir,
-			handle.result.stdOut,
-			handle.result.stdErr,
-			int(handle.result.exitcode),
-			handle.result.err,
-			handle.limits,
-		)
-		out <- res
+		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
+		out <- handle.result
 	}
 }
 

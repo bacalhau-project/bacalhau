@@ -150,7 +150,7 @@ func WriteJobResults(
 }
 
 func NewFailedResult(reason string) *models.RunCommandResult {
-	return &models.RunCommandResult{ErrorMsg: reason}
+	return &models.RunCommandResult{ErrorMsg: reason, ExitCode: -1}
 }
 
 func FailResult(err error) (*models.RunCommandResult, error) {
