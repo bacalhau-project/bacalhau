@@ -223,6 +223,9 @@ func (e *BaseExecutor) Wait(ctx context.Context, localExecutionState store.Local
 	case res := <-waitCh:
 		runCommandResult = res
 	}
+	if runCommandResult.ErrorMsg != "" {
+		return fmt.Errorf("result returned from wait contains error: %s", runCommandResult.ErrorMsg)
+	}
 
 	jobsCompleted.Add(ctx, 1)
 
