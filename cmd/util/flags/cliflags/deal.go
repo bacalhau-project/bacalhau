@@ -1,8 +1,9 @@
-package flags
+package cliflags
 
 import (
 	"github.com/spf13/pflag"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -19,14 +20,14 @@ type DealFlagSettings struct {
 }
 
 func DealFlags(settings *DealFlagSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Deal settings", pflag.ContinueOnError)
-	flags.IntVar(
+	flagset := pflag.NewFlagSet("Deal settings", pflag.ContinueOnError)
+	flagset.IntVar(
 		&settings.Concurrency,
 		"concurrency",
 		settings.Concurrency,
 		`How many nodes should run the job`,
 	)
-	flags.Var(TargetingFlag(&settings.TargetingMode), "target",
+	flagset.Var(flags.TargetingFlag(&settings.TargetingMode), "target",
 		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all")`)
-	return flags
+	return flagset
 }

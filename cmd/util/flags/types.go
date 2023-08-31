@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
@@ -297,6 +299,15 @@ func LoggingFlag(value *logger.LogMode) *ValueFlag[logger.LogMode] {
 		parser:   logger.ParseLogMode,
 		stringer: func(p *logger.LogMode) string { return string(*p) },
 		typeStr:  "logging-mode",
+	}
+}
+
+func StorageTypeFlag(value *types.StorageType) *ValueFlag[types.StorageType] {
+	return &ValueFlag[types.StorageType]{
+		value:    value,
+		parser:   types.ParseStorageType,
+		stringer: func(p *types.StorageType) string { return p.String() },
+		typeStr:  "storage-type",
 	}
 }
 

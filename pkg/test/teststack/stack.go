@@ -4,13 +4,17 @@ package teststack
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -45,12 +49,26 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	system.InitConfigForTesting(t)
+	//NB: if a test suite has defined a repo use it, otherwise make one.
+	repoPath := os.Getenv("BACALHAU_DIR")
+	var fsRepo *repo.FsRepo
+	if repoPath != "" {
+		var err error
+		fsRepo, err = repo.NewFS(repoPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := fsRepo.Open(); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		fsRepo = setup.SetupBacalhauRepoForTesting(t)
+	}
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.Setup(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
+	stack, err := devstack.Setup(ctx, cm, fsRepo, append(testDevStackConfig().Options(), opts...)...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)
 	}

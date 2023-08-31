@@ -84,6 +84,9 @@ type ExecutionStore interface {
 	GetExecution(ctx context.Context, id string) (LocalExecutionState, error)
 	// GetExecutions returns all the executions for a given job
 	GetExecutions(ctx context.Context, jobID string) ([]LocalExecutionState, error)
+	// GetLiveExecutions gets an array of the executions currently in the
+	// active state (ExecutionStateBidAccepted)
+	GetLiveExecutions(ctx context.Context) ([]LocalExecutionState, error)
 	// GetExecutionHistory returns the history of an execution
 	GetExecutionHistory(ctx context.Context, id string) ([]LocalStateHistory, error)
 	// CreateExecution creates a new execution for a given job

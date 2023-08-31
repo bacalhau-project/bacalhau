@@ -2,9 +2,8 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -19,14 +18,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
@@ -56,12 +52,14 @@ func NewComputeNode(
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	publishers publisher.PublisherProvider) (*Compute, error) {
+	publishers publisher.PublisherProvider,
+	fsRepo *repo.FsRepo,
+) (*Compute, error) {
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(ctx, host)
+		executionStore, err = fsRepo.InitExecutionStore(ctx, host.ID().String())
 		if err != nil {
 			return nil, err
 		}
@@ -241,6 +239,12 @@ func NewComputeNode(
 		sensors.NewCompletedJobs(executionStore),
 	}
 
+	startup := compute.NewStartup(executionStore, bufferRunner)
+	startupErr := startup.Execute(ctx)
+	if startupErr != nil {
+		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
+	}
+
 	// register compute public http apis
 	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
 		Router:             apiServer.Router,
@@ -272,36 +276,6 @@ func NewComputeNode(
 
 func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
-}
-
-func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
-	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
-	// e.g. when running tests or when running devstack
-	configDir, err := system.EnsureConfigDir()
-	if err != nil {
-		return nil, err
-	}
-	stateRootDir := filepath.Join(configDir, "execution-state-"+host.ID().String())
-	err = os.MkdirAll(stateRootDir, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-
-	var store store.ExecutionStore
-	storageConfig := config.GetComputeStorageConfig(host.ID().Pretty())
-	if storageConfig.StoreType == config.ExecutionStoreBoltDB {
-		store, err = boltdb.NewStore(ctx, storageConfig.Location)
-		if err != nil {
-			return nil, err
-		}
-	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
-		store = inmemory.NewStore()
-	}
-
-	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   store,
-		RootDir: stateRootDir,
-	})
 }
 
 func (c *Compute) cleanup(ctx context.Context) {

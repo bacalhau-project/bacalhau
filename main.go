@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
+	"os/signal"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func main() {
@@ -29,10 +30,9 @@ func main() {
 		_ = godotenv.Overload(devstackEnvFile)
 	}
 
-	if err := system.InitConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize config: %s\n", err)
-		os.Exit(1)
-	}
+	// Ensure commands are able to stop cleanly if someone presses ctrl+c
+	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
+	defer cancel()
 
-	cli.Execute()
+	cli.Execute(ctx)
 }

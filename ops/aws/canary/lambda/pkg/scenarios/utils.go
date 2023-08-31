@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
@@ -99,7 +101,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
+	IPFSSwarmAddrs := config.Getenv(types.NodeIPFSSwarmAddresses)
 	if IPFSSwarmAddrs == "" {
 		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
@@ -131,16 +133,13 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *client.APIClient {
-	apiHost := config.GetAPIHost()
-	apiPort := config.GetAPIPort()
-	if apiHost == "" {
-		apiHost = system.Envs[system.GetEnvironment()].APIHost
+	hostStr := os.Getenv("BACALHAU_HOST")
+	portStr := os.Getenv("BACALHAU_PORT")
+	apiport, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		panic(err)
 	}
-	if apiPort == nil {
-		defaultPort := system.Envs[system.GetEnvironment()].APIPort
-		apiPort = &defaultPort
-	}
-	return client.NewAPIClient(apiHost, *apiPort)
+	return client.NewAPIClient(hostStr, uint16(apiport))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
