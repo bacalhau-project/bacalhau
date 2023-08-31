@@ -15,9 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
 	"github.com/google/uuid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -761,8 +762,8 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		errStringContains string
 	}{
 		"good-image-good-executable": {
-			imageName:         "ubuntu", // Good image
-			executable:        "ls",     // Good executable
+			imageName:         "ubuntu:latest", // Good image
+			executable:        "ls",            // Good executable
 			isValid:           true,
 			errStringContains: "",
 		},
@@ -773,7 +774,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			errStringContains: "Error submitting job",
 		},
 		"good-image-bad-executable": {
-			imageName:         "ubuntu",        // Good image
+			imageName:         "ubuntu:latest", // Good image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
 			errStringContains: "Error submitting job",

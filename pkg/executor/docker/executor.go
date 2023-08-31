@@ -7,19 +7,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
-	"go.uber.org/multierr"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -29,8 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -56,7 +52,6 @@ type Executor struct {
 
 func NewExecutor(
 	_ context.Context,
-	cm *system.CleanupManager,
 	id string,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
@@ -71,8 +66,22 @@ func NewExecutor(
 		complete:    make(map[string]chan struct{}),
 	}
 
-	cm.RegisterCallbackWithContext(de.cleanupAll)
 	return de, nil
+}
+
+func (e *Executor) Shutdown(ctx context.Context) error {
+	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// canceled and so would prevent us from performing any cleanup work.
+	safeCtx := pkgUtil.NewDetachedContext(ctx)
+	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
+		return nil
+	}
+
+	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
+	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
+	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
+
+	return nil
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -116,6 +125,8 @@ func (e *Executor) Run(
 	}
 }
 
+// TODO need a better name as this starts an execution for the request, not the actual executor this method is on.
+// Launc, Exec, Dispatch?
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	log.Ctx(ctx).Info().
 		Str("executionID", request.ExecutionID).
@@ -153,10 +164,12 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 			Str("execution", request.ExecutionID).
 			Str("job", request.JobID).
 			Logger(),
+		ID:          e.ID,
 		executionID: request.ExecutionID,
 		containerID: jobContainer.ID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
+		keepStack:   config.ShouldKeepStack(),
 		waitCh:      make(chan bool),
 		activeCh:    make(chan bool),
 		running:     atomic.NewBool(false),
@@ -180,28 +193,14 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 }
 
 func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
+	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
 	defer close(out)
 	select {
-	/*
-		case <-ctx.Done():
-			out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
-
-	*/
+	case <-ctx.Done():
+		out <- executor.NewFailedResult(fmt.Sprintf("context canceled while waiting for execution: %s", ctx.Err()))
 	case <-handle.waitCh:
-		// FIXME: don't return an error from this method and instead populate the error from the returned structure,
-		// which the method already does internally.
-		res, err := executor.WriteJobResults(
-			handle.resultsDir,
-			handle.result.stdOut,
-			handle.result.stdErr,
-			int(handle.result.exitcode),
-			handle.result.err,
-			handle.limits,
-		)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to write job results TODO FIX ME")
-		}
-		out <- res
+		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
+		out <- handle.result
 	}
 }
 
@@ -219,73 +218,6 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 		return nil, fmt.Errorf("execution (%s) not found", executionID)
 	}
 	return handler.outputStream(ctx, withHistory, found)
-}
-
-func (e *Executor) run(ctx context.Context, executionID string, containerID string, resultsDir string, limits executor.OutputLimits) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.run")
-	defer func() {
-		// the execution is now complete
-		e.complete[executionID] <- struct{}{}
-		e.cleanupExecution(ctx, executionID)
-
-		span.End()
-	}()
-	// the execution is now active.
-	e.activeFlags[executionID] <- struct{}{}
-
-	ctx = log.Ctx(ctx).With().Str("Container", containerID).Logger().WithContext(ctx)
-
-	// start the container
-	if err := e.client.ContainerStart(ctx, containerID, dockertypes.ContainerStartOptions{}); err != nil {
-		// Special error to alert people about bad executable
-		internalContainerStartErrorMsg := "failed to start container"
-		if strings.Contains(err.Error(), "executable file not found") {
-			internalContainerStartErrorMsg = "executable file not found"
-		}
-		startError := errors.Wrap(err, internalContainerStartErrorMsg)
-		err = fmt.Errorf("failed to start container: %w", startError)
-		e.results.Put(executionID, &models.RunCommandResult{ErrorMsg: err.Error()})
-		return
-	}
-
-	// the idea here is even if the container errors
-	// we want to capture stdout, stderr and feed it back to the user
-	var containerError error
-	var containerExitStatusCode int64
-	statusCh, errCh := e.client.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		containerError = err
-	case exitStatus := <-statusCh:
-		containerExitStatusCode = exitStatus.StatusCode
-		if exitStatus.Error != nil {
-			containerError = errors.New(exitStatus.Error.Message)
-		}
-	}
-
-	// Can't use the original context as it may have already been timed out
-	detachedContext, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 3*time.Second)
-	defer cancel()
-	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, containerID)
-
-	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
-
-	results, err := executor.WriteJobResults(
-		resultsDir,
-		stdoutPipe,
-		stderrPipe,
-		int(containerExitStatusCode),
-		multierr.Combine(containerError, logsErr),
-		limits,
-	)
-	if err != nil {
-		e.results.Put(executionID, &models.RunCommandResult{ErrorMsg: err.Error()})
-	} else {
-		e.results.Put(executionID, results)
-	}
-
-	return
 }
 
 type dockerJobContainerParams struct {
@@ -425,41 +357,6 @@ func makeContainerMounts(ctx context.Context, inputs []storage.PreparedStorage, 
 	return mounts, nil
 }
 
-func (e *Executor) cleanupExecution(ctx context.Context, executionID string) {
-	// Use a detached context in case the current one has already been canceled
-	separateCtx, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 1*time.Minute)
-	defer cancel()
-	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
-		return
-	}
-
-	// Attempt to delete the channel that was used to mark that the container exists
-	c, present := e.activeFlags[executionID]
-	if present {
-		close(c)
-		delete(e.activeFlags, executionID)
-	}
-
-	err := e.client.RemoveObjectsWithLabel(separateCtx, labelExecutionID, e.labelExecutionValue(executionID))
-	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
-	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
-}
-
-func (e *Executor) cleanupAll(ctx context.Context) error {
-	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
-	// canceled and so would prevent us from performing any cleanup work.
-	safeCtx := pkgUtil.NewDetachedContext(ctx)
-	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
-		return nil
-	}
-
-	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
-	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
-	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
-
-	return nil
-}
-
 func (e *Executor) dockerObjectName(executionID string, jobID string, parts ...string) string {
 	strs := []string{"bacalhau", e.ID, jobID, executionID}
 	strs = append(strs, parts...)
@@ -474,7 +371,7 @@ func (e *Executor) containerLabels(executionID, jobID string) map[string]string 
 	return map[string]string{
 		labelExecutorName: e.ID,
 		labelJobName:      e.labelJobValue(jobID),
-		labelExecutionID:  e.labelExecutionValue(executionID),
+		labelExecutionID:  labelExecutionValue(e.ID, executionID),
 	}
 }
 
@@ -482,8 +379,8 @@ func (e *Executor) labelJobValue(jobID string) string {
 	return e.ID + jobID
 }
 
-func (e *Executor) labelExecutionValue(executionID string) string {
-	return e.ID + executionID
+func labelExecutionValue(executorID string, executionID string) string {
+	return executorID + executionID
 }
 
 // Compile-time interface check:

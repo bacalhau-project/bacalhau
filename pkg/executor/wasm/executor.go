@@ -142,7 +142,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	case <-handle.waitCh:
 		// FIXME: don't return an error from this method and instead populate the error from the returned structure,
 		// which the method already does internally.
-		res, err := executor.WriteJobResults(
+		res := executor.WriteJobResults(
 			handle.resultsDir,
 			handle.result.stdOut,
 			handle.result.stdErr,
@@ -150,9 +150,6 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 			handle.result.err,
 			handle.limits,
 		)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to write job results TODO FIX ME")
-		}
 		out <- res
 	}
 }

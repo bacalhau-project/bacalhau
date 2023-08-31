@@ -100,7 +100,7 @@ func TestWriteResultHandlesNilPointers(t *testing.T) {
 
 func TestJobResult(t *testing.T) {
 	tempDir := t.TempDir()
-	result, err := WriteJobResults(
+	result := WriteJobResults(
 		tempDir,
 		strings.NewReader("standard output"),
 		strings.NewReader("standard error"),
@@ -114,7 +114,6 @@ func TestJobResult(t *testing.T) {
 		},
 	)
 
-	require.NoError(t, err)
 	require.Equal(t, "standard output", result.STDOUT)
 	require.Equal(t, false, result.StdoutTruncated)
 	require.Equal(t, "standard error", result.STDERR)

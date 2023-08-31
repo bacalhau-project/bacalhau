@@ -12,18 +12,18 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -55,10 +55,14 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	s.executor, err = NewExecutor(
 		context.Background(),
-		s.cm,
-		"bacalhau-executor-unittest",
+		"bacalhau-executor-unit-test",
 	)
 	require.NoError(s.T(), err)
+	s.T().Cleanup(func() {
+		if err := s.executor.Shutdown(context.Background()); err != nil {
+			s.T().Logf("failed to shutdown executor: %s", err)
+		}
+	})
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Path))
@@ -107,8 +111,44 @@ func (s *ExecutorTestSuite) curlTask() *models.SpecConfig {
 		Build()
 }
 
-func (s *ExecutorTestSuite) runJob(spec *models.Task) (*models.RunCommandResult, error) {
-	return s.runJobWithContext(context.Background(), spec, "test")
+func (s *ExecutorTestSuite) runJob(spec *models.Task, executionID string) (*models.RunCommandResult, error) {
+	return s.runJobWithContext(context.Background(), spec, executionID)
+}
+
+func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
+	result := s.T().TempDir()
+	j := mock.Job()
+	j.ID = name
+	j.Tasks = []*models.Task{spec}
+
+	resources, err := spec.ResourcesConfig.ToResources()
+	require.NoError(s.T(), err)
+
+	s.Require().NoError(s.executor.Start(
+		context.Background(),
+		&executor.RunCommandRequest{
+			JobID:        j.ID,
+			ExecutionID:  name,
+			Resources:    resources,
+			Network:      spec.Network,
+			Outputs:      spec.ResultPaths,
+			Inputs:       nil,
+			ResultsDir:   result,
+			EngineParams: spec.Engine,
+			OutputLimits: executor.OutputLimits{
+				MaxStdoutFileLength:   system.MaxStdoutFileLength,
+				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+				MaxStderrFileLength:   system.MaxStderrFileLength,
+				MaxStderrReturnLength: system.MaxStderrReturnLength,
+			},
+		},
+	))
+}
+
+func (s *ExecutorTestSuite) waitExecution(executionID string) <-chan *models.RunCommandResult {
+	waitCh, err := s.executor.Wait(context.Background(), executionID)
+	s.Require().NoError(err)
+	return waitCh
 }
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
@@ -142,17 +182,13 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 	res, err := s.executor.Wait(ctx, name)
 	s.Require().NoError(err)
 	select {
-	/*
-		case <-ctx.Done():
-			return nil, ctx.Err()
-	*/
 	case out := <-res:
 		return out, nil
 	}
 }
 
-func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task) (string, error) {
-	runnerOutput, runErr := s.runJob(spec)
+func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID string) (string, error) {
+	runnerOutput, runErr := s.runJob(spec, executionID)
 	return runnerOutput.STDOUT, runErr
 }
 
@@ -180,7 +216,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
-	result, err := s.runJobGetStdout(task)
+	result, err := s.runJobGetStdout(task, uuid.New().String())
 	require.NoError(s.T(), err)
 
 	values := strings.Fields(result)
@@ -217,7 +253,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
-	result, err := s.runJobGetStdout(task)
+	result, err := s.runJobGetStdout(task, uuid.New().String())
 	require.NoError(s.T(), err)
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
@@ -233,7 +269,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -247,7 +283,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)
 	require.Empty(s.T(), result.STDOUT)
 	require.NotEmpty(s.T(), result.STDERR)
@@ -263,7 +299,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -278,7 +314,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -297,7 +333,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -312,7 +348,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
 	require.NotZero(s.T(), result.ExitCode)
@@ -330,7 +366,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 			Build()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	result, err := s.runJob(task, uuid.New().String())
 
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -348,11 +384,13 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 		Engine(s.curlTask()).
 		BuildOrDie()
 
-	result, err := s.runJob(task)
+	executionID := uuid.New().String()
+	result, err := s.runJob(task, executionID)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), "test", result.STDOUT, result.STDOUT)
+	require.Equal(s.T(), executionID, result.STDOUT, result.STDOUT)
 }
 
+/*
 func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	s.T().Skip("We cannot timeout our docker executor with a context.")
 	expected := "message after sleep"
@@ -374,6 +412,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	s.NotEmpty(result.ErrorMsg)
 	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
 }
+*/
 
 func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	id := "streams-fail"
@@ -403,8 +442,6 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	task := mock.TaskBuilder().
 		Engine(
@@ -414,15 +451,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
-	go func() {
-		_, _ = s.runJobWithContext(ctx, task, id)
-	}()
+	s.startJob(task, id)
 
-	// Give docker time to start the container, otherwise there
-	// be nothing to retrieve the output from.
-	time.Sleep(time.Duration(500) * time.Millisecond)
-
-	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
+	reader, err := s.executor.GetOutputStream(context.Background(), id, true, true)
 
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)

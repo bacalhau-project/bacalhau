@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -76,7 +77,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 								MaxStderrFileLength:   system.MaxStderrFileLength,
 								MaxStderrReturnLength: system.MaxStderrReturnLength,
-							})
+							}), nil
 						},
 					},
 				},

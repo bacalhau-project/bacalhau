@@ -124,7 +124,7 @@ func NewStandardExecutorProvider(
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID)
+	dockerExecutor, err := docker.NewExecutor(ctx, executorOptions.DockerID)
 	if err != nil {
 		return nil, err
 	}
