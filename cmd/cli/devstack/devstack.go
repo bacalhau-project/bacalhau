@@ -143,12 +143,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	cm := util.GetCleanupManager(ctx)
 
+	// We need to clean up the repo when the node shuts down, but we can ONLY
+	// do this because we know it is a temporary directory.
 	repoPath, _ := os.MkdirTemp("", "")
-	cm.RegisterCallback(func() error {
-		// We need to clean up the repo when the node shuts down, but we can ONLY
-		// do this because we know it is a temporary directory.
-		return os.RemoveAll(repoPath)
-	})
+	defer os.RemoveAll(repoPath)
 
 	fsRepo, err := repo.NewFS(repoPath)
 	if err != nil {
