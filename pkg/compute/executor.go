@@ -144,9 +144,8 @@ func PrepareRunArguments(
 	}, nil
 }
 
-// Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionState) (err error) {
+	execution := state.Execution
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID).
 		Str("execution", execution.ID).
@@ -155,7 +154,7 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 	operation := "Running"
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, localExecutionState, err, operation)
+			e.handleFailure(ctx, state, err, operation)
 		}
 	}()
 
@@ -194,8 +193,24 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
 		return err
 	}
+	return nil
+}
 
-	waitCh, err := jobExecutor.Wait(ctx, runCommandArguments.ExecutionID)
+func (e *BaseExecutor) Wait(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
+	operation := "Publishing"
+	defer func() {
+		if err != nil {
+			// TODO this needs to consider the case that an execution was canceled rather than failed.
+			e.handleFailure(ctx, localExecutionState, err, operation)
+		}
+	}()
+	execution := localExecutionState.Execution
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
+	}
+
+	waitCh, err := jobExecutor.Wait(ctx, execution.ID)
 	if err != nil {
 		jobsFailed.Add(ctx, 1)
 		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
@@ -206,25 +221,9 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 	case <-ctx.Done():
 		return ctx.Err()
 	case res := <-waitCh:
-		runCommandResult = &models.RunCommandResult{
-			STDOUT:          res.STDOUT,
-			StdoutTruncated: res.StdoutTruncated,
-			STDERR:          res.STDERR,
-			StderrTruncated: res.StderrTruncated,
-			ExitCode:        res.ExitCode,
-			ErrorMsg:        res.ErrorMsg,
-		}
+		runCommandResult = res
 	}
 
-	/*
-		runCommandResult, err := jobExecutor.Run(ctx, runCommandArguments)
-		if err != nil {
-			jobsFailed.Add(ctx, 1)
-			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
-			return err
-		}
-
-	*/
 	jobsCompleted.Add(ctx, 1)
 
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
@@ -235,8 +234,23 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 		return err
 	}
 
-	operation = "Publishing"
-	return e.publish(ctx, localExecutionState, resultFolder, runCommandResult)
+	resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
+	if err != nil {
+		return err
+	}
+	return e.publish(ctx, localExecutionState, resultsDir, runCommandResult)
+
+}
+
+// Run the execution after it has been accepted, and propose a result to the requester to be verified.
+func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
+	if err := e.Start(ctx, localExecutionState); err != nil {
+		return err
+	}
+	if err := e.Wait(ctx, localExecutionState); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Publish the result of an execution after it has been verified.

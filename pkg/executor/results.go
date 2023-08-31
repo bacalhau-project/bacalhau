@@ -137,9 +137,6 @@ func WriteJobResults(
 		})
 	}
 
-	// TODO why bother returning an error here if we are just going to include it in the returned structure?
-	// FIXME: don't return an error from this method and instead populate the error from the returned strucutre.
-	// Im not fixing this now becasue this method is called in lots of tests.
 	err = multierr.Append(err, wg.Wait())
 	if err != nil {
 		result.ErrorMsg = err.Error()
