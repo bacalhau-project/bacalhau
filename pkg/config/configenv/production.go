@@ -89,7 +89,7 @@ var ProductionComputeConfig = types.ComputeConfig{
 		},
 	},
 	ExecutionStore: types.StorageConfig{
-		Type: types.InMemory,
+		Type: types.BoltDB,
 		Path: "",
 	},
 	JobTimeouts: types.JobTimeoutConfig{
@@ -124,7 +124,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		ProbeExec:           "",
 	},
 	JobStore: types.StorageConfig{
-		Type: types.InMemory,
+		Type: types.BoltDB,
 		Path: "",
 	},
 	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),

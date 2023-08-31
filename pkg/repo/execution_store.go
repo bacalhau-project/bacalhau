@@ -14,14 +14,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-// InitExecutionStore must be called after Init
+// InitExecutionStore must be called after Init and uses the configuration to create a
+// new ExecutionStore.  Where BoltDB is chosen, and no path is specified, then the database
+// will be created in the repo in a folder labeledafter the node ID.  For example:
+// `~/.bacalhau/Qmd1BEyR4RsLdYTEym1YxxaeXFdwWCMANYN7XCcpPYbTRs-compute/executions.db`
 func (fsr *FsRepo) InitExecutionStore(ctx context.Context, nodeID string) (store.ExecutionStore, error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
 		return nil, fmt.Errorf("repo is uninitialized, cannot create ExecutionStore")
 	}
-	stateRootDir := filepath.Join(fsr.path, fmt.Sprintf("execution-state-%s", nodeID))
+	stateRootDir := filepath.Join(fsr.path, fmt.Sprintf("%s-compute", nodeID))
 	if err := os.MkdirAll(stateRootDir, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -38,8 +41,9 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, nodeID string) (store
 	case types.BoltDB:
 		path := storeCfg.Path
 		if path == "" {
-			path = filepath.Join(stateRootDir, fmt.Sprintf("%s-compute.db", nodeID))
+			path = filepath.Join(stateRootDir, "executions.db")
 		}
+
 		store, err = boltdb.NewStore(ctx, path)
 		if err != nil {
 			return nil, err

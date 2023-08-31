@@ -264,7 +264,6 @@ func (fsr *FsRepo) ensureUserIDKey(name string) (string, error) {
 }
 
 func (fsr *FsRepo) ensureLibp2pKey(name string) (string, error) {
-
 	// We include the port in the filename so that in devstack multiple nodes
 	// running on the same host get different identities
 	privKeyPath := filepath.Join(fsr.path, name)
@@ -360,7 +359,7 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	return runInfoPath, nil
-	// TODO previous behaviour put it in these places, we may consider creating a symlink later
+	// TODO previous behavior put it in these places, we may consider creating a symlink later
 	/*
 		if writeable, _ := filefs.IsWritable("/run"); writeable {
 			writePath = "/run" // Linux

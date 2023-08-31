@@ -49,7 +49,7 @@ func getBacalhauRepoPath() (string, error) {
 	return repoDir, nil
 }
 
-// SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initalized.
+// SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initializedd.
 func SetupBacalhauRepo(repoDir string) (string, error) {
 	if repoDir == "" {
 		var err error
@@ -75,7 +75,7 @@ func setupRepo(path string) (*repo.FsRepo, error) {
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
 		if err := fsRepo.Init(); err != nil {
-			return nil, fmt.Errorf("failed to initalize repo: %w", err)
+			return nil, fmt.Errorf("failed to initializee repo: %w", err)
 		}
 	} else {
 		if err := fsRepo.Open(); err != nil {
