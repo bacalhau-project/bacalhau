@@ -186,7 +186,8 @@ func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionStat
 	if err != nil {
 		return err
 	}
-	defer runCommandCleanup.Cleanup(ctx)
+	// TODO this fucks everything up
+	//defer runCommandCleanup.Cleanup(ctx)
 
 	if err := jobExecutor.Start(ctx, runCommandArguments); err != nil {
 		jobsFailed.Add(ctx, 1)
