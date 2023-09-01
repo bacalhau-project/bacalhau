@@ -39,7 +39,7 @@ func (s *Endpoint) results(c echo.Context) error {
 
 	executions, err := s.jobStore.GetExecutions(ctx, stateReq.JobID)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	results := make([]model.PublishedResult, 0)
@@ -47,7 +47,7 @@ func (s *Endpoint) results(c echo.Context) error {
 		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
 			storageConfig, err := legacy.ToLegacyStorageSpec(execution.PublishedResult)
 			if err != nil {
-				return c.String(http.StatusInternalServerError, err.Error())
+				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 			results = append(results, model.PublishedResult{
 				NodeID: execution.NodeID,
