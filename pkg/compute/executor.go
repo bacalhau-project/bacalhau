@@ -176,7 +176,88 @@ func PrepareRunArguments(
 		}, nil
 }
 
-func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionState) (err error) {
+type StartResult struct {
+	cleanup func(ctx context.Context) error
+	Err     error
+}
+
+func (r *StartResult) Cleanup(ctx context.Context) error {
+	if r.cleanup != nil {
+		return r.cleanup(ctx)
+	}
+	return nil
+}
+
+func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (result *StartResult) {
+	result = new(StartResult)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		result.Err = fmt.Errorf("getting executor %s: %w", execution.Job.Task().Engine, err)
+		return
+	}
+
+	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
+	if err != nil {
+		result.Err = fmt.Errorf("preparing results path: %w", err)
+		return
+	}
+
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
+	result.cleanup = cleanup
+	if err != nil {
+		result.Err = fmt.Errorf("preparing arguments: %w", err)
+		return
+	}
+
+	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		ExecutionID:   execution.ID,
+		ExpectedState: store.ExecutionStateBidAccepted,
+		NewState:      store.ExecutionStateRunning,
+	}); err != nil {
+		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
+		return
+	}
+
+	log.Ctx(ctx).Debug().Msg("starting execution")
+
+	if e.failureInjection.IsBadActor {
+		result.Err = fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
+		return
+	}
+
+	if err := jobExecutor.Start(ctx, args); err != nil {
+		jobsFailed.Add(ctx, 1)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
+		result.Err = err
+	}
+
+	return
+}
+
+func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState) (*models.RunCommandResult, error) {
+	execution := state.Execution
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
+	}
+
+	waitCh, err := jobExecutor.Wait(ctx, execution.ID)
+	if err != nil {
+		jobsFailed.Add(ctx, 1)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
+		return nil, err
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-waitCh:
+		return res, nil
+	}
+
+}
+
+// Run the execution after it has been accepted, and propose a result to the requester to be verified.
+func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState) (err error) {
 	execution := state.Execution
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID).
@@ -190,129 +271,46 @@ func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionStat
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Msg("Running execution")
-	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateBidAccepted,
-		NewState:      store.ExecutionStateRunning,
-	}); err != nil {
-		return err
-	}
-
-	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get result path: %w", err)
-	}
-
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
-	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
-	}
-
-	if e.failureInjection.IsBadActor {
-		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
-	}
-
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
-	if err != nil {
-		return err
-	}
-
-	if err := jobExecutor.Start(ctx, args); err != nil {
-		jobsFailed.Add(ctx, 1)
-		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
-		return err
-	}
-	go func() {
-		// wait until the job completes before releasing the filesystem resources associated with its arguments
-		waitCh, err := jobExecutor.Wait(ctx, execution.ID)
-		if err != nil {
-			// the docker and wasm executors will only error if wait is called on an execution that DNE. This should be
-			// impossible here
-			log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
-				Msg("failed to wait on execution for cleanup")
-		}
-		select {
-		case <-waitCh:
-			if err := cleanup(ctx); err != nil {
-				log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
-					Msg("failed to clean up execution after waiting completed")
-			}
-		case <-ctx.Done():
-			// TODO what should we do for this case, still attempt to cleanup?
-			if err := cleanup(ctx); err != nil {
-				log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
-					Msg("failed to clean up execution after start context canceled")
-			}
-		}
-	}()
-	return nil
-}
-
-func (e *BaseExecutor) Wait(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	operation := "Publishing"
+	res := e.Start(ctx, execution)
 	defer func() {
-		if err != nil {
-			// TODO this needs to consider the case that an execution was canceled rather than failed.
-			e.handleFailure(ctx, localExecutionState, err, operation)
+		if err := res.Cleanup(ctx); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
 		}
 	}()
-	execution := localExecutionState.Execution
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
-	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
-	}
-
-	waitCh, err := jobExecutor.Wait(ctx, execution.ID)
-	if err != nil {
-		jobsFailed.Add(ctx, 1)
-		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
+	if err := res.Err; err != nil {
 		return err
 	}
-	var runCommandResult *models.RunCommandResult
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case res := <-waitCh:
-		runCommandResult = res
-	}
-	if runCommandResult.ErrorMsg != "" {
-		return fmt.Errorf("result returned from wait contains error: %s", runCommandResult.ErrorMsg)
-	}
 
+	result, err := e.Wait(ctx, state)
+	if err != nil {
+		return err
+	}
 	jobsCompleted.Add(ctx, 1)
 
+	operation = "Publishing"
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
+		ExecutionID:   state.Execution.ID,
 		ExpectedState: store.ExecutionStateRunning,
 		NewState:      store.ExecutionStatePublishing,
 	}); err != nil {
 		return err
 	}
 
-	resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
+	resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
 	if err != nil {
 		return err
 	}
-	return e.publish(ctx, localExecutionState, resultsDir, runCommandResult)
-
-}
-
-// Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	if err := e.Start(ctx, localExecutionState); err != nil {
-		return err
-	}
-	if err := e.Wait(ctx, localExecutionState); err != nil {
-		return err
-	}
-	return nil
+	return e.publish(ctx, state, resultsDir, result)
 }
 
 // Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
-	resultFolder string, result *models.RunCommandResult) (err error) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) publish(
+	ctx context.Context,
+	state store.LocalExecutionState,
+	resultFolder string,
+	result *models.RunCommandResult,
+) (err error) {
+	execution := state.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
@@ -349,7 +347,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 		PublishResult:    &publishedResult,
 		RunCommandResult: result,
@@ -358,11 +356,11 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionState) (err error) {
+	execution := state.Execution
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, localExecutionState, err, "Canceling")
+			e.handleFailure(ctx, state, err, "Canceling")
 		}
 	}()
 
@@ -381,14 +379,14 @@ func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.Loc
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 	})
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState store.LocalExecutionState, err error, operation string) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
+	execution := state.Execution
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,
@@ -403,7 +401,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState st
 			ExecutionMetadata: NewExecutionMetadata(execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: e.ID,
-				TargetPeerID: localExecutionState.RequesterNodeID,
+				TargetPeerID: state.RequesterNodeID,
 			},
 			Err: err.Error(),
 		})
