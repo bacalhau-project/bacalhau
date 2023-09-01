@@ -6,6 +6,8 @@ import (
 	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -14,13 +16,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -48,7 +48,7 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
-	apiServer *publicapi.APIServer,
+	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
@@ -215,7 +215,7 @@ func NewComputeNode(
 		Callback:         computeCallback,
 		Executor:         bufferRunner,
 		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
+			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
 		},
 	})
 
@@ -246,16 +246,12 @@ func NewComputeNode(
 	}
 
 	// register compute public http apis
-	computeAPIServer := compute_publicapi.NewComputeAPIServer(compute_publicapi.ComputeAPIServerParams{
-		APIServer:          apiServer,
+	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
+		Router:             apiServer.Router,
 		Bidder:             bidder,
 		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
-	err = computeAPIServer.RegisterAllHandlers()
-	if err != nil {
-		return nil, err
-	}
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {

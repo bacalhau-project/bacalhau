@@ -9,7 +9,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 )
 
 var (
@@ -52,8 +53,8 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			port, err := s.serve(args...)
 			s.Require().NoError(err)
 
-			client := publicapi.NewRequesterAPIClient("localhost", port)
-			s.Require().NoError(publicapi.WaitForHealthy(s.ctx, client))
+			client := client.NewAPIClient("localhost", port)
+			s.Require().NoError(apitest.WaitForAlive(s.ctx, client))
 
 			testJob := model.NewJob()
 			specOpts := []job.SpecOpt{}
