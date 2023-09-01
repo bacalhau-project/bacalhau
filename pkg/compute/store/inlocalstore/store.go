@@ -127,7 +127,7 @@ func (proxy *PersistentExecutionStore) UpdateExecutionState(ctx context.Context,
 }
 
 func (proxy *PersistentExecutionStore) Close(ctx context.Context) error {
-	return nil
+	return proxy.store.Close(ctx)
 }
 
 func writeCounter(filepath string, count uint64) error {

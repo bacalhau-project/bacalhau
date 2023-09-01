@@ -183,8 +183,8 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 		OL.SortBy.String(),
 		OL.SortReverse,
 	)
+
 	if err != nil {
-		util.Fatal(cmd, err, 1)
 		return err
 	}
 

@@ -1,6 +1,8 @@
 package boltjobstore
 
 import (
+	"errors"
+
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -47,11 +49,17 @@ func (i *Index) Add(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error {
 
 func (i *Index) List(tx *bolt.Tx, subpath ...[]byte) ([][]byte, error) {
 	bkt, err := i.rootBucketPath.Sub(subpath...).Get(tx, false)
-	if err != nil {
+	if err != nil && !errors.Is(err, bolt.ErrBucketNotFound) {
 		return nil, err
 	}
 
 	result := make([][]byte, 0, DefaultBucketSearchSliceSize)
+	if bkt == nil {
+		// If the bucket we are looking to list does not exist, then
+		// return the empty results
+		return result, nil
+	}
+
 	err = bkt.ForEach(func(k []byte, _ []byte) error {
 		result = append(result, k)
 		return nil
