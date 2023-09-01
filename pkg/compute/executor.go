@@ -285,6 +285,9 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	if err != nil {
 		return err
 	}
+	if result.ErrorMsg != "" {
+		return fmt.Errorf("execution error: %s", result.ErrorMsg)
+	}
 	jobsCompleted.Add(ctx, 1)
 
 	operation = "Publishing"

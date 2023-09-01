@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -69,6 +71,17 @@ type handlerResult struct {
 func (e *executionHandler) run(ctx context.Context) {
 	if e.isEmpty {
 		close(e.done)
+		e.result = &handlerResult{
+			err: nil,
+			result: &models.RunCommandResult{
+				STDOUT:          "",
+				StdoutTruncated: false,
+				STDERR:          "",
+				StderrTruncated: false,
+				ExitCode:        0,
+				ErrorMsg:        "",
+			},
+		}
 		return
 	}
 	result, err := e.jobHandler(ctx, e.jobID, e.resultsDir)
@@ -80,6 +93,7 @@ func (e *executionHandler) run(ctx context.Context) {
 }
 
 func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+	log.Info().Msg("starting execution")
 	e.Jobs = append(e.Jobs, request.JobID)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
@@ -120,11 +134,23 @@ func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandRe
 			out <- &models.RunCommandResult{}
 			return
 		}
-		out <- handler.result.result
+		if handler.result.err != nil {
+			out <- &models.RunCommandResult{
+				STDOUT:          "",
+				StdoutTruncated: false,
+				STDERR:          "",
+				StderrTruncated: false,
+				ExitCode:        0,
+				ErrorMsg:        handler.result.err.Error(),
+			}
+		} else {
+			out <- &models.RunCommandResult{}
+		}
 	}
 }
 
 func (e *NoopExecutor) Cancel(ctx context.Context, id string) error {
+	log.Info().Msg("cancel execution")
 	return nil
 }
 

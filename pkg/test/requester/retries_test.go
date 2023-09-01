@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
@@ -275,6 +277,7 @@ func (s *RetriesSuite) TestRetry() {
 	}
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			ctx := context.Background()
 			j := makeBadTargetingJob(s.T(), tc.nodes)
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
