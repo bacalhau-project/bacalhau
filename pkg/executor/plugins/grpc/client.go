@@ -44,7 +44,10 @@ func (c *GRPCClient) ShouldBid(ctx context.Context, request bidstrategy.BidStrat
 	return out, nil
 }
 
-func (c *GRPCClient) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
+func (c *GRPCClient) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	reqBytes, err := json.Marshal(request)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err

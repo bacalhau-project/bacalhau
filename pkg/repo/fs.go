@@ -56,11 +56,11 @@ func NewFS(path string) (*FsRepo, error) {
 
 func (fsr *FsRepo) writeVersion() error {
 	repoVersion := RepoVersion{Version: RepoVersion1}
-	versionJson, err := json.Marshal(repoVersion)
+	versionJSON, err := json.Marshal(repoVersion)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJson, util.OS_USER_RW)
+	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJSON, util.OS_USER_RW)
 }
 
 func (fsr *FsRepo) readVersion() (int, error) {

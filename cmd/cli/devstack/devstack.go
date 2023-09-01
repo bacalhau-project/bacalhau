@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -138,14 +137,22 @@ func NewCmd() *cobra.Command {
 	return devstackCmd
 }
 
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
 
-	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	// We need to clean up the repo when the node shuts down, but we can ONLY
+	// do this because we know it is a temporary directory.
+	repoPath, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(repoPath)
+
+	fsRepo, err := repo.NewFS(repoPath)
 	if err != nil {
+		return err
+	}
+	if err = fsRepo.Init(); err != nil {
 		return err
 	}
 	if err := fsRepo.Open(); err != nil {

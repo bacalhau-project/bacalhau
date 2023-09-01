@@ -12,6 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const DefaultKeySize = 2048
+
 func encapsulateP2pAddrs(peerInfo peer.AddrInfo) ([]multiaddr.Multiaddr, error) {
 	var allAddrs []multiaddr.Multiaddr
 	for _, peerAddrs := range peerInfo.Addrs {
@@ -30,7 +32,7 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 		return nil, err
 	}
 
-	privKey, err := GeneratePrivateKey(2048)
+	privKey, err := GeneratePrivateKey(DefaultKeySize)
 	if err != nil {
 		return nil, err
 	}
