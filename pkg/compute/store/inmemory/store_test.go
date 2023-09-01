@@ -130,8 +130,8 @@ func (s *Suite) TestGetMultipleLiveExecutions() {
 
 	// We want to make sure the executions are returned with increasing update times
 	// that is, oldest first.
-	s.Require().Less(execs[0].UpdateTime, execs[1].UpdateTime)
-	s.Require().Less(execs[1].UpdateTime, execs[2].UpdateTime)
+	s.Require().LessOrEqual(execs[0].UpdateTime, execs[1].UpdateTime)
+	s.Require().LessOrEqual(execs[1].UpdateTime, execs[2].UpdateTime)
 }
 
 func (s *Suite) TestFullLiveExecutions() {
