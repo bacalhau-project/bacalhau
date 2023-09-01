@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -187,10 +186,11 @@ func (s *Suite) TestGetMultipleLiveExecutions() {
 	s.Require().NoError(err)
 	s.Require().Equal(3, len(execs))
 
-	ids := lo.Map(execs, func(item store.LocalExecutionState, _ int) string {
-		return item.Execution.ID
-	})
-	s.Require().Equal(ids, []string{"1", "2", "3"})
+	// We want to make sure the executions are returned with increasing update times
+	// that is, oldest first. On windows, the Update times are the same and so we
+	// allow them to compare as <=.
+	s.Require().LessOrEqual(execs[0].UpdateTime, execs[1].UpdateTime)
+	s.Require().LessOrEqual(execs[1].UpdateTime, execs[2].UpdateTime)
 }
 
 func (s *Suite) TestGetExecutions_DoesntExist() {

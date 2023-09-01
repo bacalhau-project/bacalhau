@@ -86,7 +86,7 @@ var TestingComputeConfig = types.ComputeConfig{
 		},
 	},
 	ExecutionStore: types.StorageConfig{
-		Type: types.InMemory,
+		Type: types.BoltDB,
 		Path: "",
 	},
 	JobTimeouts: types.JobTimeoutConfig{
@@ -121,7 +121,7 @@ var TestingRequesterConfig = types.RequesterConfig{
 		ProbeExec:           "",
 	},
 	JobStore: types.StorageConfig{
-		Type: types.InMemory,
+		Type: types.BoltDB,
 		Path: "",
 	},
 	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),

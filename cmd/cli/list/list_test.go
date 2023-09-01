@@ -84,7 +84,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		j := testutils.MakeNoopJob(suite.T())
 		j, err = suite.Client.Submit(ctx, j)
 		jobIds = append(jobIds, system.GetShortID(j.Metadata.ID))
-		jobLongIds = append(jobIds, j.Metadata.ID)
+		jobLongIds = append(jobLongIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("list",

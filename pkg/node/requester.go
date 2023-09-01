@@ -268,13 +268,7 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		// Close the jobstore after the evaluation broker is disabled
-		cleanupErr := jobStore.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
-		}
-
-		cleanupErr = jobInfoPubSub.Close(ctx)
+		cleanupErr := jobInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown job info pubsub")
 		}
@@ -286,6 +280,12 @@ func NewRequesterNode(
 		cleanupErr = eventTracer.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
+		}
+
+		// Close the jobstore after the evaluation broker is disabled
+		cleanupErr = jobStore.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
 		}
 	}
 

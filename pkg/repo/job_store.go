@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -11,7 +12,11 @@ import (
 	memjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 )
 
-// InitJobStore must be called after Init
+// InitJobStore must be called after Init and uses the configuration to create a
+// new JobStore for the requester node.  Where BoltDB is chosen, and no path is specified,
+// then the database will be created in the repo in a folder labeledafter the node ID.
+// For example:
+// `~/.bacalhau/Qmd1BEyR4RsLdYTEym1YxxaeXFdwWCMANYN7XCcpPYbTRs-requester/jobs.db`
 func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
@@ -27,7 +32,12 @@ func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
 	case types.BoltDB:
 		path := storeCfg.Path
 		if path == "" {
-			path = filepath.Join(fsr.path, fmt.Sprintf("%s-requester.db", prefix))
+			directory := filepath.Join(fsr.path, fmt.Sprintf("%s-requester", prefix))
+			if err := os.MkdirAll(directory, os.ModePerm); err != nil {
+				return nil, err
+			}
+
+			path = filepath.Join(directory, "jobs.db")
 		}
 		return boltjobstore.NewBoltJobStore(path)
 	case types.InMemory:
