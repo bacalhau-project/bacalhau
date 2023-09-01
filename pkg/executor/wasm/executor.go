@@ -138,7 +138,6 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	case <-ctx.Done():
 		out <- executor.NewFailedResult(fmt.Sprintf("context canceled while waiting for execution: %s", ctx.Err()))
 	case <-handle.waitCh:
-		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
 		out <- handle.result
 	}
 }

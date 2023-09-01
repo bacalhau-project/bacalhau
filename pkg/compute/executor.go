@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -57,26 +58,58 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
+func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) ([]storage.PreparedStorage, func(context.Context) error, error) {
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return inputVolumes, func(ctx context.Context) error {
+		return storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes)
+	}, nil
+}
+
+func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (map[string][]storage.PreparedStorage, func(context.Context) error, error) {
+	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	volumes := map[string][]storage.PreparedStorage{
+		"importModules": importModuleVolumes,
+		"entryModules":  entryModuleVolumes,
+	}
+
+	cleanup := func(ctx context.Context) error {
+		err1 := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes)
+		err2 := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes)
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
+		}
+		return nil
+	}
+
+	return volumes, cleanup, nil
+}
+
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	execution *models.Execution,
 	resultsDir string,
-	cleanup *system.CleanupManager,
-) (*executor.RunCommandRequest, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Task().InputSources...)
+) (*executor.RunCommandRequest, func(context.Context) error, error) {
+	var cleanupFuncs []func(context.Context) error
+
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, execution.Job.Task().InputSources...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
+		return nil, nil, err
 	}
+	cleanupFuncs = append(cleanupFuncs, inputCleanup)
 
-	cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-		if err := storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes); err != nil {
-			return fmt.Errorf("cleaning up job inputs: %w", err)
-		}
-		return nil
-	})
-
-	var engineArgs *models.SpecConfig
 	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
 	// download them before passing it to the wasm executor
 	/*
@@ -93,55 +126,54 @@ func PrepareRunArguments(
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
 		provides more context on the need for the change).
 	*/
+	var engineArgs *models.SpecConfig
 	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
 		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
-		if err != nil {
-			return nil, err
-		}
-		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if err := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes); err != nil {
-				return fmt.Errorf("cleaning up wasm import modules: %w", err)
-			}
-			return nil
-		})
 
-		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, wasmEngine)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if err := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes); err != nil {
-				return fmt.Errorf("cleaning up wasm entry modules: %w", err)
-			}
-			return nil
-		})
+
+		cleanupFuncs = append(cleanupFuncs, wasmCleanup)
+
 		engineArgs = &models.SpecConfig{
 			Type:   models.EngineWasm,
-			Params: wasmEngine.ToArguments(entryModuleVolumes[0], importModuleVolumes...).ToMap(),
+			Params: wasmEngine.ToArguments(volumes["entryModules"][0], volumes["importModules"]...).ToMap(),
 		}
 	} else {
 		engineArgs = execution.Job.Task().Engine
 	}
+
 	return &executor.RunCommandRequest{
-		JobID:        execution.Job.ID,
-		ExecutionID:  execution.ID,
-		Resources:    execution.TotalAllocatedResources(),
-		Network:      execution.Job.Task().Network,
-		Outputs:      execution.Job.Task().ResultPaths,
-		Inputs:       inputVolumes,
-		ResultsDir:   resultsDir,
-		EngineParams: engineArgs,
-		OutputLimits: executor.OutputLimits{
-			MaxStdoutFileLength:   system.MaxStdoutFileLength,
-			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
-			MaxStderrFileLength:   system.MaxStderrFileLength,
-			MaxStderrReturnLength: system.MaxStderrReturnLength,
-		},
-	}, nil
+			JobID:        execution.Job.ID,
+			ExecutionID:  execution.ID,
+			Resources:    execution.TotalAllocatedResources(),
+			Network:      execution.Job.Task().Network,
+			Outputs:      execution.Job.Task().ResultPaths,
+			Inputs:       inputVolumes,
+			ResultsDir:   resultsDir,
+			EngineParams: engineArgs,
+			OutputLimits: executor.OutputLimits{
+				MaxStdoutFileLength:   system.MaxStdoutFileLength,
+				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+				MaxStderrFileLength:   system.MaxStderrFileLength,
+				MaxStderrReturnLength: system.MaxStderrReturnLength,
+			},
+		}, func(ctx context.Context) error {
+			log.Ctx(ctx).Info().Str("execution", execution.ID).Msg("cleaning up execution")
+			cleanupErr := new(multierror.Error)
+			for _, cleanupFunc := range cleanupFuncs {
+				if err := cleanupFunc(ctx); err != nil {
+					log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).Msg("cleaning up execution")
+					cleanupErr = multierror.Append(cleanupErr, err)
+				}
+			}
+			return cleanupErr.ErrorOrNil()
+		}, nil
 }
 
 func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionState) (err error) {
@@ -181,19 +213,39 @@ func (e *BaseExecutor) Start(ctx context.Context, state store.LocalExecutionStat
 		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
 	}
 
-	runCommandCleanup := system.NewCleanupManager()
-	runCommandArguments, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder, runCommandCleanup)
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
 	if err != nil {
 		return err
 	}
-	// TODO this fucks everything up
-	//defer runCommandCleanup.Cleanup(ctx)
 
-	if err := jobExecutor.Start(ctx, runCommandArguments); err != nil {
+	if err := jobExecutor.Start(ctx, args); err != nil {
 		jobsFailed.Add(ctx, 1)
 		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
 		return err
 	}
+	go func() {
+		// wait until the job completes before releasing the filesystem resources associated with its arguments
+		waitCh, err := jobExecutor.Wait(ctx, execution.ID)
+		if err != nil {
+			// the docker and wasm executors will only error if wait is called on an execution that DNE. This should be
+			// impossible here
+			log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
+				Msg("failed to wait on execution for cleanup")
+		}
+		select {
+		case <-waitCh:
+			if err := cleanup(ctx); err != nil {
+				log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
+					Msg("failed to clean up execution after waiting completed")
+			}
+		case <-ctx.Done():
+			// TODO what should we do for this case, still attempt to cleanup?
+			if err := cleanup(ctx); err != nil {
+				log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).
+					Msg("failed to clean up execution after start context canceled")
+			}
+		}
+	}()
 	return nil
 }
 

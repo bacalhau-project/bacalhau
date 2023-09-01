@@ -67,6 +67,7 @@ func (h *executionHandler) run(ctx context.Context) {
 			h.result = &models.RunCommandResult{}
 		}
 	}()
+
 	var wasmCtx context.Context
 	wasmCtx, h.cancel = context.WithCancel(ctx)
 	defer func() {
@@ -115,12 +116,10 @@ func (h *executionHandler) run(ctx context.Context) {
 				Str("volume_target", importModule.Volume.Target).
 				Msg("failed to instantiate import module")
 			// lets just ignore the error like we have always done!
-			/*
-				h.result = executor.NewFailedResult(
-					fmt.Errorf("failed to instantiate import module (%s): %w",
-						importModule.InputSource.Source.Type, err).Error())
-				return
-			*/
+			h.result = executor.NewFailedResult(
+				fmt.Errorf("failed to instantiate import module (%s): %w",
+					importModule.InputSource.Source.Type, err).Error())
+			return
 		}
 	}
 

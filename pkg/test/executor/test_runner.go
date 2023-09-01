@@ -5,17 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
@@ -93,12 +93,13 @@ func RunTestCase(
 
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
-	runCommandCleanup := system.NewCleanupManager()
 
-	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, execution, resultsDirectory, runCommandCleanup)
+	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, strgProvider, execution, resultsDirectory)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		runCommandCleanup.Cleanup(ctx)
+		if err := cleanup(ctx); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	_, err = executor.Run(ctx, runCommandArguments)
