@@ -1,368 +1,286 @@
 package config
 
 import (
-	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/rs/zerolog/log"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 const (
-	maxUInt16              uint16 = 0xFFFF
-	minUInt16              uint16 = 0x0000
-	DefaultRunInfoFilename        = "bacalhau.run"
-	RunInfoFilePermissions        = 0400
+	environmentVariablePrefix = "BACALHAU"
+	inferConfigTypes          = true
+	automaticEnvVar           = true
 )
 
-var RunInfoFilePath = ""
+var (
+	environmentVariableReplace = strings.NewReplacer(".", "_")
+	configDecoderHook          = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
+)
 
-func DevstackGetShouldPrintInfo() bool {
-	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
-}
-
-func DevstackSetShouldPrintInfo() {
-	os.Setenv("DEVSTACK_PRINT_INFO", "1")
-}
-
-func DevstackEnvFile() string {
-	return os.Getenv("DEVSTACK_ENV_FILE")
-}
-
-// WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
-func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
-	writePath := ""
-	if writeable, _ := filefs.IsWritable("/run"); writeable {
-		writePath = "/run" // Linux
-	} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
-		writePath = "/var/run" // Older Linux
-	} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
-		writePath = "/private/var/run" // MacOS
-	} else {
-		// otherwise write to the user's dir, which should be available on all systems
-		userDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
-			return nil
-		}
-		log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
-			"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
-		writePath = userDir
+func WriteConfig(fileName string) error {
+	var cfg types.BacalhauConfig
+	if err := viper.Unmarshal(&cfg, configDecoderHook); err != nil {
+		return err
 	}
 
-	RunInfoFilePath = DevstackEnvFile()
-	if RunInfoFilePath == "" {
-		RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
-	}
-
-	// Use os.Create to truncate the file if it already exists
-	f, err := os.Create(RunInfoFilePath)
-	defer func() {
-		err = f.Close()
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msgf("Failed to close file %s", RunInfoFilePath)
-		}
-	}()
-
+	cfgBytes, err := yaml.Marshal(cfg)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFilePath)
-		return nil // Not a fatal error to not write the file
+		return err
 	}
-
-	// Set permissions to constant for read read/write only by user
-	err = f.Chmod(RunInfoFilePermissions)
+	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
+	f, err := os.OpenFile(fileName, flags, os.FileMode(0o644)) //nolint:gomnd
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFilePath)
-		return nil // Not a fatal error to not write the file
+		return err
 	}
-	_, err = f.Write([]byte(summaryShellVariablesString))
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
-		return nil // Not a fatal error to not write the file
+	defer f.Close()
+	if _, err := f.Write(cfgBytes); err != nil {
+		return err
 	}
 	return nil
 }
 
-func CleanupRunInfoFile() error {
-	return os.Remove(RunInfoFilePath)
-}
-
-func GetRunInfoFilePath() string {
-	return RunInfoFilePath
-}
-
-func ShouldKeepStack() bool {
-	return os.Getenv("KEEP_STACK") != ""
-}
-
-func GetStoragePath() string {
-	storagePath := os.Getenv("BACALHAU_STORAGE_PATH")
-	if storagePath == "" {
-		storagePath = os.TempDir()
+func ReadConfig(fileName string) error {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		// if the config file doesn't exist that's fine, we will just use default configuration values
+		// dictated by the environment
+		return nil
+	} else if err != nil {
+		return err
 	}
-	return storagePath
+	// else we will read values set from the config, and accept those over the default values.
+	return viper.ReadInConfig()
 }
 
-func GetAPIHost() string {
-	return os.Getenv("BACALHAU_HOST")
+func Init(defaultConfig types.BacalhauConfig, path string, fileName, fileType string) (types.BacalhauConfig, error) {
+	return initConfig(initParams{
+		filePath:      path,
+		fileName:      fileName,
+		fileType:      fileType,
+		fileHandler:   WriteConfig,
+		defaultConfig: defaultConfig,
+	})
 }
 
-func GetAPIPort() *uint16 {
-	portStr, found := os.LookupEnv("BACALHAU_PORT")
-	if !found {
+func Load(path string, fileName, fileType string) (types.BacalhauConfig, error) {
+	return initConfig(initParams{
+		filePath:      path,
+		fileName:      fileName,
+		fileType:      fileType,
+		fileHandler:   ReadConfig,
+		defaultConfig: ForEnvironment(),
+	})
+}
+
+func Get[T any](key string) (T, error) {
+	raw := viper.Get(key)
+	if raw == nil {
+		return zeroValue[T](), fmt.Errorf("value not found for %s", key)
+	}
+
+	val, ok := raw.(T)
+	if !ok {
+		return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T", raw)
+	}
+
+	return val, nil
+}
+
+func GetStringMapString(key string) map[string]string {
+	return viper.GetStringMapString(key)
+}
+
+func zeroValue[T any]() T {
+	var zero T
+	return zero
+}
+
+// Set sets the current configuration to `config`, useful for testing.
+func Set(config types.BacalhauConfig) error {
+	types.SetDefaults(config)
+	return nil
+}
+
+// Reset clears all configuration, useful for testing.
+func Reset() {
+	viper.Reset()
+}
+
+// Getenv wraps os.Getenv and retrieves the value of the environment variable named by the config key.
+// It returns the value, which will be empty if the variable is not present.
+func Getenv(key string) string {
+	return os.Getenv(KeyAsEnvVar(key))
+}
+
+// KeyAsEnvVar returns the environment variable corresponding to a config key
+func KeyAsEnvVar(key string) string {
+	return strings.ToUpper(
+		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
+	)
+}
+
+type initParams struct {
+	filePath      string
+	fileName      string
+	fileType      string
+	fileHandler   func(fileName string) error
+	defaultConfig types.BacalhauConfig
+}
+
+func ForEnvironment() types.BacalhauConfig {
+	env := GetConfigEnvironment()
+	switch env {
+	case EnvironmentProd:
+		return configenv.Production
+	case EnvironmentStaging:
+		return configenv.Staging
+	case EnvironmentDev:
+		return configenv.Development
+	case EnvironmentTest:
+		return configenv.Testing
+	case EnvironmentLocal:
+		return configenv.Local
+	default:
+		// this would indicate an error in the above logic of `GetEnvironment()`
+		return configenv.Local
+	}
+}
+
+func initConfig(params initParams) (types.BacalhauConfig, error) {
+	viper.AddConfigPath(params.filePath)
+	viper.SetConfigName(params.fileName)
+	viper.SetConfigType(params.fileType)
+	viper.SetEnvPrefix(environmentVariablePrefix)
+	viper.SetTypeByDefaultValue(inferConfigTypes)
+	viper.SetEnvKeyReplacer(environmentVariableReplace)
+	if err := Set(params.defaultConfig); err != nil {
+		return types.BacalhauConfig{}, nil
+	}
+	if err := params.fileHandler(filepath.Join(params.filePath, fmt.Sprintf("%s.%s", params.fileName, params.fileType))); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+	if automaticEnvVar {
+		viper.AutomaticEnv()
+	}
+
+	var out types.BacalhauConfig
+	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	// TODO this should be a part of the config.
+	telemetry.SetupFromEnvs()
+
+	return out, nil
+}
+
+// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
+// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
+// nested sub-keys are correctly populated into the cfg structure.
+//
+// Parameters:
+//   - key: The configuration key to retrieve values for.
+//   - cfg: The structure into which the configuration values will be unmarshaled.
+//
+// Returns:
+//   - An error if any occurred during unmarshaling; otherwise, nil.
+func ForKey(key string, cfg interface{}) error {
+	return unmarshalCompositeKey(key, cfg)
+}
+
+// unmarshalCompositeKey takes a key and an output structure to unmarshal into. It gets the
+// composite value associated with the given key and decodes it into the provided output structure.
+// It's especially useful when the desired value is not directly associated with the key, but
+// instead is spread across various nested sub-keys within the configuration.
+func unmarshalCompositeKey(key string, output interface{}) error {
+	compositeValue, err := getCompositeValue(key)
+	if err != nil {
+		return err
+	}
+	decoderConfig := &mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.TextUnmarshallerHookFunc(),
+		Result:     output,
+		TagName:    "mapstructure", // This is the default struct tag name used by Viper.
+	}
+
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(compositeValue)
+}
+
+// getCompositeValue constructs a composite value for a given key. If the key directly corresponds
+// to a set value in Viper, it returns that. Otherwise, it collects all nested values under that
+// key and returns them as a nested map.
+func getCompositeValue(key string) (map[string]interface{}, error) {
+	var compositeValue map[string]interface{}
+
+	// Fetch directly if the exact key exists
+	if viper.IsSet(key) {
+		rawValue := viper.Get(key)
+		switch v := rawValue.(type) {
+		case map[string]interface{}:
+			compositeValue = v
+		default:
+			return map[string]interface{}{
+				key: rawValue,
+			}, nil
+		}
+	} else {
+		compositeValue = make(map[string]interface{})
+	}
+
+	lowerKey := strings.ToLower(key)
+
+	// Prepare a map for faster key lookup.
+	viperKeys := viper.AllKeys()
+	keyMap := make(map[string]string, len(viperKeys))
+	for _, k := range viperKeys {
+		keyMap[strings.ToLower(k)] = k
+	}
+
+	// Build a composite map of values for keys nested under the provided key.
+	for lowerK, originalK := range keyMap {
+		if strings.HasPrefix(lowerK, lowerKey+".") {
+			parts := strings.Split(lowerK[len(lowerKey)+1:], ".")
+			if err := setNested(compositeValue, parts, viper.Get(originalK)); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return compositeValue, nil
+}
+
+// setNested is a recursive helper function that sets a value in a nested map based on a slice of keys.
+// It goes through each key, creating maps for each level as needed, and ultimately sets the value
+// in the innermost map.
+func setNested(m map[string]interface{}, keys []string, value interface{}) error {
+	if len(keys) == 1 {
+		m[keys[0]] = value
 		return nil
 	}
 
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		panic(fmt.Sprintf("must be uint16 (%d-%d): %s", minUInt16, maxUInt16, portStr))
-	}
-	smallPort := uint16(port)
-	return &smallPort
-}
-
-type contextKey int
-
-const (
-	getVolumeSizeRequestTimeoutKey contextKey = iota
-)
-
-const (
-	// by default we wait 2 minutes for the IPFS network to resolve a CID
-	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	getVolumeSizeRequestTimeout = 2 * time.Minute
-)
-
-// how long do we wait for a volume size request to timeout
-// if a non-existing cid is asked for - the dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
-// function will hang for a long time - so we wrap that call in a timeout
-// for tests - we only want to wait for 2 seconds because everything is on a local network
-// in prod - we want to wait longer because we might be running a job that is
-// using non-local CIDs
-// the tests are expected to call SetVolumeSizeRequestTimeout to reduce this timeout
-func GetVolumeSizeRequestTimeout(ctx context.Context) time.Duration {
-	value := ctx.Value(getVolumeSizeRequestTimeoutKey)
-	if value == nil {
-		value = getVolumeSizeRequestTimeout
-	}
-	return value.(time.Duration)
-}
-
-func SetVolumeSizeRequestTimeout(ctx context.Context, value time.Duration) context.Context {
-	return context.WithValue(ctx, getVolumeSizeRequestTimeoutKey, value)
-}
-
-// by default we wait 5 minutes for a URL to download
-// tests will override this using config.SetDownloadURLRequestTimeoutSeconds(2)
-var downloadURLRequestTimeoutSeconds int64 = 300
-
-// how long do we wait for a URL to download
-func GetDownloadURLRequestTimeout() time.Duration {
-	return time.Duration(downloadURLRequestTimeoutSeconds) * time.Second
-}
-
-// how many times do we try to download a URL
-var downloadURLRequestRetries = 3
-
-// how long do we wait for a URL to download
-func GetDownloadURLRequestRetries() int {
-	return downloadURLRequestRetries
-}
-
-func GetLibp2pTracerPath() string {
-	configPath := GetConfigPath()
-	return filepath.Join(configPath, "bacalhau-libp2p-tracer.json")
-}
-
-func GetEventTracerPath() string {
-	configPath := GetConfigPath()
-	return filepath.Join(configPath, "bacalhau-event-tracer.json")
-}
-
-func GetConfigPath() string {
-	suffix := ".bacalhau"
-	env := os.Getenv("BACALHAU_PATH")
-	var d string
-	if env == "" {
-		// e.g. /home/francesca/.bacalhau
-		dirname, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-		d = filepath.Join(dirname, suffix)
-	} else {
-		// e.g. /data/.bacalhau
-		d = filepath.Join(env, suffix)
-	}
-	// create dir if not exists
-	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	return d
-}
-
-const BitsForKeyPair = 2048
-
-func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
-	configPath := GetConfigPath()
-
-	// We include the port in the filename so that in devstack multiple nodes
-	// running on the same host get different identities
-	privKeyPath := filepath.Join(configPath, keyName)
-
-	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
-		// Private key does not exist - create and write it
-
-		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
-		if err != nil {
-			log.Error().Err(err)
-			return nil, err
-		}
-
-		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, util.OS_USER_RW)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
-		}
-		privBytes, err := crypto.MarshalPrivateKey(prvKey)
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal private key: %v", err)
-		}
-		// base64 encode privBytes
-		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		_, err = keyOut.WriteString(b64 + "\n")
-		if err != nil {
-			return nil, fmt.Errorf("failed to write to key file: %v", err)
-		}
-		if err := keyOut.Close(); err != nil {
-			return nil, fmt.Errorf("error closing key file: %v", err)
-		}
-		log.Debug().Msgf("wrote %s", privKeyPath)
+	// If the next map level doesn't exist, create it.
+	if m[keys[0]] == nil {
+		m[keys[0]] = make(map[string]interface{})
 	}
 
-	// Now that we've ensured the private key is written to disk, read it! This
-	// ensures that loading it works even in the case where we've just created
-	// it.
-
-	// read the private key
-	keyBytes, err := os.ReadFile(privKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %v", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %v", err)
-	}
-	// parse the private key
-	prvKey, err := crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	// Cast the nested level to a map and return an error if the type assertion fails.
+	nestedMap, ok := m[keys[0]].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("key %s is not of type map[string]interface{}", keys[0])
 	}
 
-	return prvKey, nil
-}
-
-type DockerCredentials struct {
-	Username string
-	Password string
-}
-
-func (d *DockerCredentials) IsValid() bool {
-	return d.Username != "" && d.Password != ""
-}
-
-func GetDockerCredentials() DockerCredentials {
-	return DockerCredentials{
-		Username: os.Getenv("DOCKER_USERNAME"),
-		Password: os.Getenv("DOCKER_PASSWORD"),
-	}
-}
-
-// PreferredAddress will allow for the specificying of
-// the preferred address to listen on for cases where it
-// is not clear, or where the address does not appear when
-// using 0.0.0.0
-func PreferredAddress() string {
-	return os.Getenv("BACALHAU_PREFERRED_ADDRESS")
-}
-
-type ExecutionStoreType = int
-
-const (
-	ExecutionStoreInMemory = iota
-	ExecutionStoreBoltDB
-)
-
-type ComputeStorageConfig struct {
-	StoreType ExecutionStoreType
-	Location  string
-}
-
-func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
-	c := ComputeStorageConfig{}
-
-	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE_TYPE"))
-	if computeStore == "boltdb" {
-		c.StoreType = ExecutionStoreBoltDB
-	} else {
-		c.StoreType = ExecutionStoreInMemory
-	}
-
-	// Either, the user has specified the full path to the file in
-	// an environment variable, or we will derive the filename ourselves
-	// from the node id.
-	path := os.Getenv("BACALHAU_COMPUTE_STORE_PATH")
-	if path == "" {
-		f := fmt.Sprintf("%s-compute.db", nodeID)
-		path = filepath.Join(GetConfigPath(), f)
-	}
-	c.Location = path
-
-	return c
-}
-
-type JobStoreType = int
-
-const (
-	JobStoreInMemory = iota
-	JobStoreBoltDB
-)
-
-type JobStoreConfig struct {
-	StoreType JobStoreType
-	Location  string
-}
-
-func GetJobStoreConfig(nodeID string) JobStoreConfig {
-	c := JobStoreConfig{}
-
-	jobStore := strings.ToLower(os.Getenv("BACALHAU_JOB_STORE_TYPE"))
-	if jobStore == "boltdb" {
-		c.StoreType = JobStoreBoltDB
-	} else {
-		c.StoreType = JobStoreInMemory
-	}
-
-	// Either, the user has specified the full path to the file in
-	// an environment variable, or we will derive the filename ourselves
-	// from the node id.
-	path := os.Getenv("BACALHAU_JOB_STORE_PATH")
-	if path == "" {
-		f := fmt.Sprintf("%s-requester.db", nodeID)
-		path = filepath.Join(GetConfigPath(), f)
-	}
-	c.Location = path
-
-	return c
+	return setNested(nestedMap, keys[1:], value)
 }

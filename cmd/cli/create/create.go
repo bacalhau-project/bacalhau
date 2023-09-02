@@ -8,14 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -39,18 +40,18 @@ var (
 )
 
 type CreateOptions struct {
-	Filename        string                    // Filename for job (can be .json or .yaml)
-	Concurrency     int                       // Number of concurrent jobs to run
-	RunTimeSettings *flags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
-	DownloadFlags   *flags.DownloaderSettings // Settings for running Download
+	Filename        string                       // Filename for job (can be .json or .yaml)
+	Concurrency     int                          // Number of concurrent jobs to run
+	RunTimeSettings *cliflags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadFlags   *cliflags.DownloaderSettings // Settings for running Download
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
 		Filename:        "",
 		Concurrency:     1,
-		DownloadFlags:   flags.NewDefaultDownloaderSettings(),
-		RunTimeSettings: flags.NewDefaultRunTimeSettings(),
+		DownloadFlags:   cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings: cliflags.NewDefaultRunTimeSettings(),
 	}
 }
 
@@ -71,8 +72,8 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	createCmd.Flags().AddFlagSet(flags.NewDownloadFlags(OC.DownloadFlags))
-	createCmd.Flags().AddFlagSet(flags.NewRunTimeSettingsFlags(OC.RunTimeSettings))
+	createCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(OC.DownloadFlags))
+	createCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(OC.RunTimeSettings))
 
 	return createCmd
 }

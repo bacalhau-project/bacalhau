@@ -9,7 +9,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -29,12 +29,12 @@ var (
 )
 
 type GetOptions struct {
-	DownloadSettings *flags.DownloaderSettings
+	DownloadSettings *cliflags.DownloaderSettings
 }
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		DownloadSettings: flags.NewDefaultDownloaderSettings(),
+		DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
 	}
 }
 
@@ -55,7 +55,7 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	getCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(OG.DownloadSettings))
+	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
 
 	return getCmd
 }

@@ -4,12 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -18,6 +12,14 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 )
 
 func NewCmd() *cobra.Command {
@@ -42,15 +44,9 @@ func NewCmd() *cobra.Command {
 	nodesCmd.Flags().StringSliceVar(&showColumnGroups, "show", showColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
 
-	nodesCmd.Flags().AddFlagSet(flags.OutputFormatFlags(&outputFormat))
+	nodesCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&outputFormat))
 
 	return nodesCmd
-}
-
-func stringerizeEnum[T fmt.Stringer](val []T) string {
-	return strings.Join(lo.Map[T, string](val, func(item T, _ int) string {
-		return item.String()
-	}), " ")
 }
 
 func maxLen(val []string) int {

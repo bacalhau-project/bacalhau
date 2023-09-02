@@ -2,9 +2,7 @@ package node
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
@@ -22,13 +20,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -55,6 +52,7 @@ func NewRequesterNode(
 	storageProviders storage.StorageProvider,
 	nodeInfoStore routing.NodeInfoStore,
 	gossipSub *libp2p_pubsub.PubSub,
+	fsRepo *repo.FsRepo,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
@@ -69,16 +67,9 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	var err error
-	var jobStore jobstore.Store
-	jobStoreConf := cfg.GetJobStoreConfig(host.ID().String())
-	if jobStoreConf.StoreType == cfg.JobStoreBoltDB {
-		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
-		if err != nil {
-			return nil, fmt.Errorf("error creating datastore: %w", err)
-		}
-	} else {
-		jobStore = inmemory.NewInMemoryJobStore()
+	jobStore, err := fsRepo.InitJobStore(host.ID().String())
+	if err != nil {
+		return nil, err
 	}
 
 	// PubSub to publish job events to the network
@@ -277,13 +268,7 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		// Close the jobstore after the evaluation broker is disabled
-		cleanupErr := jobStore.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
-		}
-
-		cleanupErr = jobInfoPubSub.Close(ctx)
+		cleanupErr := jobInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown job info pubsub")
 		}
@@ -295,6 +280,12 @@ func NewRequesterNode(
 		cleanupErr = eventTracer.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
+		}
+
+		// Close the jobstore after the evaluation broker is disabled
+		cleanupErr = jobStore.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
 		}
 	}
 

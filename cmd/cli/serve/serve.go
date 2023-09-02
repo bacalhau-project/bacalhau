@@ -1,39 +1,34 @@
 package serve
 
 import (
-	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var DefaultSwarmPort = 1235
 
-const NvidiaCLI = "nvidia-container-cli"
 const DefaultPeerConnect = "none"
 
 var (
@@ -60,109 +55,20 @@ var (
 `))
 )
 
-//nolint:lll // Documentation
-type ServeOptions struct {
-	NodeType                              []string                // "compute", "requester" node or both
-	PeerConnect                           string                  // The libp2p multiaddress to connect to.
-	IPFSConnect                           string                  // The multiaddress to connect to for IPFS.
-	HostAddress                           string                  // The host address to listen on.
-	SwarmPort                             int                     // The host port for libp2p network.
-	JobSelectionPolicy                    node.JobSelectionPolicy // How the node decides what jobs to run.
-	ExternalVerifierHook                  *url.URL                // Where to send external verification requests to.
-	LimitTotalCPU                         string                  // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                      string                  // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                         string                  // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                           string                  // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                        string                  // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                           string                  // The amount of GPU the system can be using at one time for a single job.
-	MaxJobExecutionTimeout                time.Duration           // The maximum time a job can execute for.
-	DisabledFeatures                      node.FeatureConfig      // What feautres should not be enbaled even if installed
-	JobExecutionTimeoutClientIDBypassList []string                // IDs of clients that can submit jobs more than the configured job execution timeout
-	Labels                                map[string]string       // Labels to apply to the node that can be used for node selection and filtering
-	IPFSSwarmAddresses                    []string                // IPFS multiaddresses that the in-process IPFS should connect to
-	PrivateInternalIPFS                   bool                    // Whether the in-process IPFS should automatically discover other IPFS nodes
-	AllowListedLocalPaths                 []string                // Local paths that are allowed to be mounted into jobs
-}
-
-func NewServeOptions() *ServeOptions {
-	return &ServeOptions{
-		NodeType:               []string{"requester"},
-		PeerConnect:            DefaultPeerConnect,
-		IPFSConnect:            "",
-		HostAddress:            "0.0.0.0",
-		SwarmPort:              DefaultSwarmPort,
-		JobSelectionPolicy:     node.NewDefaultJobSelectionPolicy(),
-		LimitTotalCPU:          "",
-		LimitTotalMemory:       "",
-		LimitTotalGPU:          "",
-		LimitJobCPU:            "",
-		LimitJobMemory:         "",
-		LimitJobGPU:            "",
-		MaxJobExecutionTimeout: model.NoJobTimeout,
-		PrivateInternalIPFS:    true,
-	}
-}
-
-func SetupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitTotalCPU, "limit-total-cpu", OS.LimitTotalCPU,
-		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
+func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
+	var (
+		peersStrings []string
 	)
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitTotalMemory, "limit-total-memory", OS.LimitTotalMemory,
-		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitTotalGPU, "limit-total-gpu", OS.LimitTotalGPU,
-		`Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitJobCPU, "limit-job-cpu", OS.LimitJobCPU,
-		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitJobMemory, "limit-job-memory", OS.LimitJobMemory,
-		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.LimitJobGPU, "limit-job-gpu", OS.LimitJobGPU,
-		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
-	)
-	cmd.PersistentFlags().DurationVar(
-		&OS.MaxJobExecutionTimeout, "max-timeout", OS.MaxJobExecutionTimeout,
-		`Job time exeuciton limit for a single job (e.g. 30m, 1hr)`,
-	)
-	cmd.PersistentFlags().StringSliceVar(
-		&OS.JobExecutionTimeoutClientIDBypassList, "job-execution-timeout-bypass-client-id", OS.JobExecutionTimeoutClientIDBypassList,
-		`List of IDs of clients that are allowed to bypass the job execution timeout check`,
-	)
-}
-
-func SetupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
-	cmd.PersistentFlags().StringVar(
-		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`A comma-separated list of libp2p multiaddress to connect to. `+
-			`Use "none" to avoid connecting to any peer, `+
-			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var).`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.HostAddress, "host", OS.HostAddress,
-		`The host to listen on (for both api and swarm connections).`,
-	)
-	cmd.PersistentFlags().IntVar(
-		&OS.SwarmPort, "swarm-port", OS.SwarmPort,
-		`The port to listen on for swarm connections.`,
-	)
-}
-
-func GetPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
-	var peersStrings []string
-	if OS.PeerConnect == DefaultPeerConnect {
-		peersStrings = []string{}
-	} else if OS.PeerConnect == "env" {
+	// TODO(forrest): [ux] this is a really confusing way to configure bootstrap peers.
+	// The convenience is nice by passing a single 'env' value, and can be improved with sane defaults commented
+	// out in the config. If a user wants to connect then can pass the --peer flag or uncomment the config values.
+	if peerConnect == DefaultPeerConnect || peerConnect == "" {
+		return nil, nil
+	} else if peerConnect == "env" {
+		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environment
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
-		peersStrings = strings.Split(OS.PeerConnect, ",")
+		peersStrings = strings.Split(peerConnect, ",")
 	}
 
 	peers := make([]multiaddr.Multiaddr, 0, len(peersStrings))
@@ -176,175 +82,152 @@ func GetPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	return peers, nil
 }
 
-func GetComputeConfig(OS *ServeOptions) (node.ComputeConfig, error) {
-	totalResourcLimitsConfig := models.ResourcesConfig{
-		CPU:    OS.LimitTotalCPU,
-		Memory: OS.LimitTotalMemory,
-		GPU:    OS.LimitTotalGPU,
-	}
-
-	jobResourcesLimitsConfig := models.ResourcesConfig{
-		CPU:    OS.LimitJobCPU,
-		Memory: OS.LimitJobMemory,
-		GPU:    OS.LimitJobGPU,
-	}
-
-	parsedTotalLimits, err := totalResourcLimitsConfig.ToResources()
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
-
-	parsedLimits, err := jobResourcesLimitsConfig.ToResources()
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
-
-	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy:                    OS.JobSelectionPolicy,
-		TotalResourceLimits:                   *parsedTotalLimits,
-		JobResourceLimits:                     *parsedLimits,
-		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
-		MaxJobExecutionTimeout:                OS.MaxJobExecutionTimeout,
-		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
-	}), nil
-}
-
-func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
-	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobSelectionPolicy:         OS.JobSelectionPolicy,
-		ExternalValidatorWebhook:   OS.ExternalVerifierHook,
-		DefaultJobExecutionTimeout: OS.MaxJobExecutionTimeout,
-	})
-}
-
 func NewCmd() *cobra.Command {
-	OS := NewServeOptions()
+	serveFlags := map[string][]configflags.Definition{
+		"server-api":       configflags.ServerAPIFlags,
+		"libp2p":           configflags.Libp2pFlags,
+		"ipfs":             configflags.IPFSFlags,
+		"capacity":         configflags.CapacityFlags,
+		"job-selection":    configflags.JobSelectionFlags,
+		"disable-features": configflags.DisabledFeatureFlags,
+		"labels":           configflags.LabelFlags,
+		"node-type":        configflags.NodeTypeFlags,
+		"list-local":       configflags.AllowListLocalPathsFlags,
+		"compute-store":    configflags.ComputeStorageFlags,
+		"requester-store":  configflags.RequesterJobStorageFlags,
+	}
 
 	serveCmd := &cobra.Command{
 		Use:     "serve",
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			/*
+				NB(forrest):
+				(I learned a lot more about viper and cobra than was intended...)
+
+				Binding flags in the PreRun phase is crucial to ensure that Viper binds only
+				to the flags specific to the current command being executed. This helps prevent
+				potential issues with overlapping flag names or default values from other commands.
+				An example of an overlapping flagset is the libp2p flags, shared here and in the id command.
+				By binding in PreRun, we maintain a clean separation between flag registration
+				and its binding to configuration. It ensures that each command's flags are
+				independently managed, avoiding interference or unexpected behavior from shared
+				flag names across multiple commands.
+
+				It's essential to understand the nature of Viper when working with Cobra commands.
+				At its core, Viper functions as a flat namespace key-value store for configuration
+				settings. It doesn't inherently respect or understand Cobra's command hierarchy or
+				nuances. When multiple commands have overlapping flag names and modify the same
+				configuration key in Viper, there's potential for confusion. For example, if two
+				commands both use a "peer" flag, which value should Viper return and how does it
+				know if the flag changes? Since Viper doesn't recognize the context of commands, it will
+				return the value of the last flag bound to it. This is why it's important to manage
+				flag binding thoughtfully, ensuring each command's context is respected.
+			*/
+			if err := configflags.BindFlags(cmd, serveFlags); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+		},
 		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd, OS); err != nil {
+			if err := serve(cmd); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
 
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.NodeType, "node-type", OS.NodeType,
-		`Whether the node is a compute, requester or both.`,
-	)
-
-	serveCmd.PersistentFlags().StringToStringVar(
-		&OS.Labels, "labels", OS.Labels,
-		`Labels to be associated with the node that can be used for node selection and filtering. (e.g. --labels key1=value1,key2=value2)`,
-	)
-
-	serveCmd.PersistentFlags().StringVar(
-		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
-		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
-	)
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
-		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
-	)
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs",
-	)
-	serveCmd.PersistentFlags().BoolVar(
-		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
-		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
-			"cannot be used with --ipfs-connect. "+
-			"Use \"--private-internal-ipfs=false\" to disable. "+
-			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
-	)
-
-	SetupLibp2pCLIFlags(serveCmd, OS)
-	serveCmd.Flags().AddFlagSet(flags.DisabledFeatureCLIFlags(&OS.DisabledFeatures))
-	serveCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
-	SetupCapacityManagerCLIFlags(serveCmd, OS)
+	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
+		util.Fatal(serveCmd, err, 1)
+	}
 
 	return serveCmd
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command, OS *ServeOptions) error {
+func serve(cmd *cobra.Command) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	isComputeNode, isRequesterNode := false, false
-	for _, nodeType := range OS.NodeType {
-		if nodeType == "compute" {
-			isComputeNode = true
-		} else if nodeType == "requester" {
-			isRequesterNode = true
-		} else {
-			return fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
-		}
-	}
-
-	if OS.IPFSConnect != "" && OS.PrivateInternalIPFS {
-		return fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
-	}
-
-	if OS.IPFSConnect != "" && len(OS.IPFSSwarmAddresses) != 0 {
-		return fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
-	}
-
-	// Establishing p2p connection
-	peers, err := GetPeers(OS)
+	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
+	if err := fsRepo.Open(); err != nil {
+		return err
+	}
 
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
+	// configure node type
+	isRequesterNode, isComputeNode, err := getNodeType()
 	if err != nil {
-		return fmt.Errorf("error creating libp2p host: %w", err)
+		return err
+	}
+
+	libp2pCfg, err := config.GetLibp2pConfig()
+	if err != nil {
+		return err
+	}
+
+	peers, err := GetPeers(libp2pCfg.PeerConnect)
+	if err != nil {
+		return err
+	}
+
+	// configure libp2p
+	libp2pHost, err := setupLibp2pHost(libp2pCfg)
+	if err != nil {
+		return err
 	}
 	cm.RegisterCallback(libp2pHost.Close)
-
 	// add nodeID to logging context
 	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
-	ipfsClient, err := IpfsClient(ctx, OS, cm)
+	ipfsConfig, err := getIPFSConfig()
 	if err != nil {
 		return err
 	}
 
-	AutoLabels := AutoOutputLabels()
-	combinedMap := make(map[string]string)
-	for key, value := range AutoLabels {
-		combinedMap[key] = value
-	}
-
-	for key, value := range OS.Labels {
-		combinedMap[key] = value
-	}
-
-	computeConfig, err := GetComputeConfig(OS)
+	ipfsClient, err := SetupIPFSClient(ctx, cm, ipfsConfig)
 	if err != nil {
 		return err
 	}
 
+	computeConfig, err := GetComputeConfig()
+	if err != nil {
+		return err
+	}
+
+	requesterConfig, err := GetRequesterConfig()
+	if err != nil {
+		return err
+	}
+
+	featureConfig, err := getDisabledFeatures()
+	if err != nil {
+		return err
+	}
+
+	allowedListLocalPaths := getAllowListedLocalPathsConfig()
+
+	// TODO (forrest): [ux] in the future we should make this configurable to users.
+	autoLabel := true
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		IPFSClient:            ipfsClient,
 		CleanupManager:        cm,
+		IPFSClient:            ipfsClient,
 		Host:                  libp2pHost,
-		DisabledFeatures:      OS.DisabledFeatures,
-		HostAddress:           OS.HostAddress,
-		APIPort:               util.GetAPIPort(ctx),
+		DisabledFeatures:      featureConfig,
+		HostAddress:           config.ServerAPIHost(),
+		APIPort:               config.ServerAPIPort(),
 		ComputeConfig:         computeConfig,
-		RequesterNodeConfig:   GetRequesterConfig(OS),
+		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
-		Labels:                combinedMap,
-		AllowListedLocalPaths: OS.AllowListedLocalPaths,
+		Labels:                getNodeLabels(autoLabel),
+		AllowListedLocalPaths: allowedListLocalPaths,
+		FsRepo:                fsRepo,
 	}
 
 	// Create node
@@ -354,7 +237,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Start transport layer
-	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
+	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
 		return err
 	}
@@ -365,11 +248,11 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// only in station logging output
-	if util.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
+	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
-	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
+	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
 		// other nodes can be just compute nodes
 		// no need to spawn 1+ requester nodes
 		nodeType := "--node-type compute"
@@ -398,29 +281,50 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 
-		shellVariablesString := fmt.Sprintf(`
-export BACALHAU_IPFS_SWARM_ADDRESSES=%s
-export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%d
-export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, util.GetAPIPort(ctx), peerAddress)
+		summaryBuilder := strings.Builder{}
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
+			ipfsSwarmAddress,
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config.KeyAsEnvVar(types.NodeServerAPIHost),
+			config.ServerAPIHost(),
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%d\n",
+			config.KeyAsEnvVar(types.NodeServerAPIPort),
+			config.ServerAPIPort(),
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
+			peerAddress,
+		))
+
+		// Just convenience below - print out the last of the nodes information as the global variable
+		summaryShellVariablesString := summaryBuilder.String()
 
 		if isRequesterNode {
 			cmd.Println()
 			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
-			cmd.Println(shellVariablesString)
+			cmd.Println(summaryShellVariablesString)
 		}
 
-		err = config.WriteRunInfoFile(ctx, shellVariablesString)
+		ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
+		if err != nil {
+			return fmt.Errorf("writing run info to repo: %w", err)
+		} else {
+			cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
+		}
 		if err != nil {
 			return err
 		}
-		cmd.Println("\nA copy of these variables have been written to: " + config.GetRunInfoFilePath())
 
-		cm.RegisterCallback(config.CleanupRunInfoFile)
-
-		if err != nil {
-			return err
-		}
+		cm.RegisterCallback(func() error {
+			return os.Remove(ripath)
+		})
 	}
 
 	<-ctx.Done() // block until killed
@@ -462,40 +366,6 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	return addresses[0]
 }
 
-func IpfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {
-	if OS.IPFSConnect == "" {
-		// Connect to the public IPFS nodes by default
-		newNode := ipfs.NewNode
-		if OS.PrivateInternalIPFS {
-			newNode = ipfs.NewLocalNode
-		}
-
-		ipfsNode, err := newNode(ctx, cm, OS.IPFSSwarmAddresses)
-		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
-		}
-		if OS.PrivateInternalIPFS {
-			log.Ctx(ctx).Debug().Msgf("ipfs_node_apiport: %d", ipfsNode.APIPort)
-		}
-		cm.RegisterCallbackWithContext(ipfsNode.Close)
-		client := ipfsNode.Client()
-
-		swarmAddresses, err := client.SwarmAddresses(ctx)
-		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error looking up IPFS addresses: %s", err)
-		}
-
-		log.Ctx(ctx).Debug().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
-		return client, nil
-	}
-
-	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect)
-	if err != nil {
-		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
-	}
-
-	return client, nil
-}
 func AutoOutputLabels() map[string]string {
 	m := make(map[string]string)
 	// Get the operating system name
@@ -507,16 +377,19 @@ func AutoOutputLabels() map[string]string {
 	}
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
-	CLIPATH, _ := exec.LookPath(NvidiaCLI)
-	if CLIPATH != "" {
-		gpuNames, gpuMemory := gpuList()
+
+	gpus, err := system_capacity.GetSystemGPUs()
+	if err != nil {
 		// Print the GPU names
-		for i, name := range gpuNames {
-			name = strings.Replace(name, " ", "-", -1) // Replace spaces with dashes
-			key := fmt.Sprintf("GPU-%d", i)
+		for i, gpu := range gpus {
+			// Model label e.g. GPU-0: Tesla-T1
+			key := fmt.Sprintf("GPU-%d", gpu.Index)
+			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
 			m[key] = name
+
+			// Memory label e.g. GPU-0-Memory: 15360-MiB
 			key = fmt.Sprintf("GPU-%d-Memory", i)
-			memory := strings.Replace(gpuMemory[i], " ", "-", -1) // Replace spaces with dashes
+			memory := strings.Replace(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-", -1) // Replace spaces with dashes
 			m[key] = memory
 		}
 	}
@@ -527,42 +400,13 @@ func AutoOutputLabels() map[string]string {
 	// }
 	// var packageList []string
 	// for _, file := range files {
-	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
+	// 	if !file.IsDir() && filepath.Ext(file.FlagName()) == ".list" {
 
-	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
+	// 		packageList = append(packageList, file.FlagName()[:len(file.FlagName())-5])
 	// 	}
 	// }
 	// m["Installed-Packages"] = strings.Join(packageList, ",")
 	return m
-}
-
-func gpuList() ([]string, []string) {
-	// Execute nvidia-smi command to get GPU names
-	cmd := exec.Command("nvidia-smi", "--query-gpu=gpu_name", "--format=csv")
-	output, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
-
-	// Split the output by newline character
-	gpuNames := strings.Split(string(output), "\n")
-
-	// Remove the first and last elements of the slice
-	gpuNames = gpuNames[1 : len(gpuNames)-1]
-
-	cmd1 := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv")
-	output1, err1 := cmd1.Output()
-	if err1 != nil {
-		panic(err1)
-	}
-
-	// Split the output by newline character
-	gpuMemory := strings.Split(string(output1), "\n")
-
-	// Remove the first and last elements of the slice
-	gpuMemory = gpuMemory[1 : len(gpuMemory)-1]
-
-	return gpuNames, gpuMemory
 }
 
 func checkGitLFS() bool {

@@ -325,7 +325,7 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 	}
 	tagSet := make(map[string]struct{})
 	for _, tag := range tags {
-		tagLabel := []byte(strings.ToLower(string(tag)))
+		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
 			return nil, err
@@ -351,8 +351,9 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 	if len(tags) == 0 {
 		return jobSet, nil
 	}
+
 	for _, tag := range tags {
-		tagLabel := []byte(strings.ToLower(string(tag)))
+		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
 			return nil, err

@@ -12,6 +12,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+const (
+	DefaultStreamBufferSize = 1024
+)
+
 // TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
 // Details in: https://github.com/bacalhau-project/bacalhau/issues/2700
 
@@ -67,7 +71,9 @@ func (s *GRPCServer) ShouldBid(ctx context.Context, request *proto.ShouldBidRequ
 	return &proto.ShouldBidResponse{BidResponse: b}, nil
 }
 
-func (s *GRPCServer) ShouldBidBasedOnUsage(ctx context.Context, request *proto.ShouldBidBasedOnUsageRequest) (*proto.ShouldBidResponse, error) {
+func (s *GRPCServer) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request *proto.ShouldBidBasedOnUsageRequest) (*proto.ShouldBidResponse, error) {
 	var bidReq bidstrategy.BidStrategyRequest
 	if err := json.Unmarshal(request.BidRequest, &bidReq); err != nil {
 		return nil, err
@@ -94,7 +100,7 @@ func (s *GRPCServer) GetOutputStream(request *proto.OutputStreamRequest, srv pro
 	}
 	defer result.Close()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, DefaultStreamBufferSize)
 	for {
 		n, err := result.Read(buffer)
 		if err != nil {

@@ -9,14 +9,15 @@ import (
 	"strconv"
 	"sync"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/boxo/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
+
+	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/rs/zerolog/log"
 
@@ -243,7 +244,7 @@ func (n *Node) Close(ctx context.Context) error {
 	}
 
 	// don't delete repo if we've setup BACALHAU_SERVE_IPFS_PATH
-	if n.RepoPath != "" && os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
+	if n.RepoPath != "" && bac_config.GetServeIPFSPath() == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -255,10 +256,10 @@ func (n *Node) Close(ctx context.Context) error {
 func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	var repoPath string
 	var err error
-	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
+	if bac_config.GetServeIPFSPath() == "" {
 		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
 	} else {
-		repoPath = os.Getenv("BACALHAU_SERVE_IPFS_PATH")
+		repoPath = bac_config.GetServeIPFSPath()
 		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)
 	}
 	if err != nil {

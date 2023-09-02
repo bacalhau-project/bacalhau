@@ -3,10 +3,12 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"golang.org/x/exp/maps"
 )
 
 const newExecutionComment = "LocalExecutionState created"
@@ -14,6 +16,7 @@ const newExecutionComment = "LocalExecutionState created"
 type Store struct {
 	executionMap map[string]store.LocalExecutionState
 	jobMap       map[string][]string
+	liveMap      map[string]struct{}
 	history      map[string][]store.LocalStateHistory
 	mu           sync.RWMutex
 }
@@ -22,6 +25,7 @@ func NewStore() *Store {
 	res := &Store{
 		executionMap: make(map[string]store.LocalExecutionState),
 		jobMap:       make(map[string][]string),
+		liveMap:      make(map[string]struct{}),
 		history:      make(map[string][]store.LocalStateHistory),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
@@ -52,6 +56,25 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.LocalE
 	for i, id := range executionIDs {
 		executions[i] = s.executionMap[id]
 	}
+	return executions, nil
+}
+
+func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionState, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	liveIDs := maps.Keys(s.liveMap)
+
+	executions := make([]store.LocalExecutionState, len(liveIDs))
+	for i, id := range liveIDs {
+		executions[i] = s.executionMap[id]
+	}
+
+	// Ensure executions are returned oldest first
+	sort.Slice(executions, func(i, j int) bool {
+		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
+	})
+
 	return executions, nil
 }
 
@@ -98,12 +121,20 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	if localExecutionState.State.IsTerminal() {
 		return store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)
 	}
+
 	previousState := localExecutionState.State
 	localExecutionState.State = request.NewState
 	localExecutionState.Version += 1
 	localExecutionState.UpdateTime = time.Now()
 	s.executionMap[localExecutionState.Execution.ID] = localExecutionState
 	s.appendHistory(localExecutionState, previousState, request.Comment)
+
+	if localExecutionState.State.IsExecuting() {
+		s.liveMap[localExecutionState.Execution.ID] = struct{}{}
+	} else {
+		delete(s.liveMap, localExecutionState.Execution.ID)
+	}
+
 	return nil
 }
 

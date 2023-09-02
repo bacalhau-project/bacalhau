@@ -90,7 +90,10 @@ type OutputLimits struct {
 //
 // It will consume only the bytes from the passed io.Readers that it needs to
 // correctly form job outputs. Once the command returns, the readers can close.
-func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error, limits OutputLimits) (*models.RunCommandResult, error) {
+func WriteJobResults(resultsDir string, stdout, stderr io.Reader,
+	exitcode int,
+	err error,
+	limits OutputLimits) (*models.RunCommandResult, error) {
 	result := models.NewRunCommandResult()
 
 	outputs := []outputResult{

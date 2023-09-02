@@ -18,7 +18,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -54,8 +54,8 @@ func PrintJobExecution(
 	ctx context.Context,
 	j *model.Job,
 	cmd *cobra.Command,
-	downloadSettings *flags.DownloaderSettings,
-	runtimeSettings *flags.RunTimeSettings,
+	downloadSettings *cliflags.DownloaderSettings,
+	runtimeSettings *cliflags.RunTimeSettings,
 	client *client.APIClient,
 ) error {
 	// if we are in --wait=false - print the id then exit

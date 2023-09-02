@@ -5,10 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	"github.com/stretchr/testify/suite"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -45,7 +47,12 @@ type ScenarioRunner struct {
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
+	repoPath, err := fsRepo.Path()
+	if err != nil {
+		s.T().Fatal(err)
+	}
+	s.T().Setenv("BACALHAU_DIR", repoPath)
 
 	s.Ctx = context.Background()
 

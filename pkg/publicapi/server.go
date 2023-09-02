@@ -9,9 +9,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/labstack/echo/v4"
 	echomiddelware "github.com/labstack/echo/v4/middleware"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
@@ -64,12 +64,18 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		"/requester/websocket/events": "/api/v1/requester/websocket/events",
 	}
 
-	// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
-	logErrorStatusesOnly := system.GetEnvironment() != system.EnvironmentTest &&
-		system.GetEnvironment() != system.EnvironmentDev
+	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
+	if err != nil {
+		return nil, err
+	}
 
-	// base middleware stack
+	// base middleware before routing
 	server.Router.Pre(
+		echomiddelware.Rewrite(migrations),
+	)
+
+	// base middle after routing
+	server.Router.Use(
 		echomiddelware.TimeoutWithConfig(echomiddelware.TimeoutConfig{
 			Timeout:      params.Config.RequestHandlerTimeout,
 			ErrorMessage: TimeoutMessage,
@@ -77,9 +83,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		}),
 		echomiddelware.RateLimiter(echomiddelware.NewRateLimiterMemoryStore(rate.Limit(params.Config.ThrottleLimit))),
 		echomiddelware.RequestID(),
-		middleware.RequestLogger(logErrorStatusesOnly),
+		middleware.RequestLogger(
+			*log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID)),
+			logLevel),
 		middleware.Otel(),
-		echomiddelware.Rewrite(migrations), // after logger and otel to track old paths
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 	)
 

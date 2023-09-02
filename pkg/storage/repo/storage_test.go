@@ -5,27 +5,28 @@ package repo
 import (
 	"context"
 	"fmt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/go-git/go-git/v5"
-
 	// "net/http"
 	// "net/http/httptest"
 	"os"
 	"path/filepath"
-
 	// "regexp"
 	"testing"
 
+	"github.com/go-git/go-git/v5"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -43,7 +44,7 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
 func getIpfsStorage() (*apicopy.StorageProvider, error) {

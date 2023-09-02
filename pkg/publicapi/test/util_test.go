@@ -2,16 +2,16 @@ package test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/labstack/echo/v4"
 	"github.com/phayes/freeport"
@@ -29,7 +29,7 @@ func setupServerWithConfig(t *testing.T, serverConfig *publicapi.Config) (*publi
 
 func setupServerWithHandlers(
 	t *testing.T, serverConfig *publicapi.Config, handlers map[string]echo.HandlerFunc) (*publicapi.Server, *client.APIClient) {
-	system.InitConfigForTesting(t)
+	setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
@@ -61,38 +61,34 @@ func setupNodeForTest(t *testing.T) (*node.Node, *client.APIClient) {
 	return setupNodeForTestWithConfig(t, publicapi.Config{})
 }
 
-func setupNodeForTestWithConfig(t *testing.T, config publicapi.Config) (*node.Node, *client.APIClient) {
-	system.InitConfigForTesting(t)
+func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, *client.APIClient) {
+	fsRepo := setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
-	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
-	dbFile := filepath.Join(dir, "testing.db")
-	cm.RegisterCallback(func() error {
-		os.Remove(dbFile)
-		return nil
-	})
-
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	libp2pHost, err := libp2p.NewHost(libp2pPort)
+	privKey, err := config.GetLibp2pPrivKey()
+	require.NoError(t, err)
+	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
-		CleanupManager:            system.NewCleanupManager(),
+		CleanupManager:            cm,
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
 		ComputeConfig:             node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
-		APIServerConfig:           config,
+		APIServerConfig:           apiCfg,
 		IsRequesterNode:           true,
 		IsComputeNode:             true,
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
+		FsRepo:                    fsRepo,
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)

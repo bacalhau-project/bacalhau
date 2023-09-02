@@ -17,6 +17,7 @@ type EnvironmentData struct {
 }
 
 // Envs is a list of environment data for various environments:
+// Deprecated: stop using this, and use the config file.
 var Envs = map[Environment]EnvironmentData{
 	EnvironmentProd: {
 		APIPort: 1234,

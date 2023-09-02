@@ -4,6 +4,7 @@ package boltdb
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,6 +100,97 @@ func (s *Suite) TestGetExecutions() {
 	s.Len(readExecutions, 2)
 	s.Equal(s.localExecutionState, readExecutions[0])
 	s.Equal(anotherExecutionState, readExecutions[1])
+}
+
+func (s *Suite) TestGetLiveExecutions() {
+	ctx := context.Background()
+
+	localExec := store.NewLocalExecutionState(s.execution, "req1")
+	err := s.executionStore.CreateExecution(ctx, *localExec)
+	s.Require().NoError(err)
+
+	err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		ExecutionID: s.execution.ID,
+		NewState:    store.ExecutionStateRunning,
+	})
+	s.Require().NoError(err)
+
+	execs, err := s.executionStore.GetLiveExecutions(ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(execs))
+	s.Require().Equal(s.execution.ID, execs[0].Execution.ID)
+}
+
+func (s *Suite) TestFullLiveExecutions() {
+	ctx := context.Background()
+
+	requireLive := func(executionID string) {
+		execs, err := s.executionStore.GetLiveExecutions(ctx)
+		s.Require().NoError(err)
+		s.Require().Equal(1, len(execs))
+		s.Require().Equal(executionID, execs[0].Execution.ID)
+	}
+	requireNotLive := func(executionID string) {
+		execs, err := s.executionStore.GetLiveExecutions(ctx)
+		s.Require().NoError(err)
+		s.Require().Equal([]store.LocalExecutionState{}, execs)
+	}
+
+	localExec := store.NewLocalExecutionState(s.execution, "req1")
+	err := s.executionStore.CreateExecution(ctx, *localExec)
+	s.Require().NoError(err)
+
+	type testdata struct {
+		state       store.LocalExecutionStateType
+		requirement func(string)
+	}
+	testcases := []testdata{
+		{store.ExecutionStateBidAccepted, requireNotLive},
+		{store.ExecutionStateCreated, requireNotLive},
+		{store.ExecutionStateRunning, requireLive},
+		{store.ExecutionStateCancelled, requireNotLive},
+	}
+
+	for _, tc := range testcases {
+		s.T().Run(tc.state.String(), func(t *testing.T) {
+			err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+				ExecutionID: s.execution.ID,
+				NewState:    tc.state,
+			})
+			s.Require().NoError(err)
+
+			tc.requirement(s.execution.ID)
+		})
+	}
+
+}
+
+func (s *Suite) TestGetMultipleLiveExecutions() {
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		exec := mock.ExecutionForJob(mock.Job())
+		exec.ID = fmt.Sprintf("%d", i+1)
+		localExec := store.NewLocalExecutionState(exec, "req1")
+		err := s.executionStore.CreateExecution(ctx, *localExec)
+		s.Require().NoError(err)
+
+		err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			ExecutionID: exec.ID,
+			NewState:    store.ExecutionStateRunning,
+		})
+		s.Require().NoError(err)
+	}
+
+	execs, err := s.executionStore.GetLiveExecutions(ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(3, len(execs))
+
+	// We want to make sure the executions are returned with increasing update times
+	// that is, oldest first. On windows, the Update times are the same and so we
+	// allow them to compare as <=.
+	s.Require().LessOrEqual(execs[0].UpdateTime, execs[1].UpdateTime)
+	s.Require().LessOrEqual(execs[1].UpdateTime, execs[2].UpdateTime)
 }
 
 func (s *Suite) TestGetExecutions_DoesntExist() {

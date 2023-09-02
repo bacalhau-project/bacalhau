@@ -7,24 +7,28 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -41,6 +45,7 @@ type ServeSuite struct {
 
 	ipfsPort int
 	ctx      context.Context
+	repoPath string
 }
 
 func TestServeSuite(t *testing.T) {
@@ -49,7 +54,10 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
+	repoPath, err := fsRepo.Path()
+	s.Require().NoError(err)
+	s.repoPath = repoPath
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -90,9 +98,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
 	args := []string{
 		"serve",
+		"--repo", s.repoPath,
 		"--peer", serve.DefaultPeerConnect,
 		"--private-internal-ipfs",
-		"--api-port", fmt.Sprint(port),
+		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
 
@@ -187,27 +196,30 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
 	cm := system.NewCleanupManager()
-	OS := serve.NewServeOptions()
 
-	client, err := serve.IpfsClient(s.ctx, OS, cm)
+	client, err := serve.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
+		Connect:         "",
+		PrivateInternal: true,
+		SwarmAddresses:  []string{},
+	})
 	s.Require().NoError(err)
 
 	swarmAddresses, err := client.SwarmAddresses(s.ctx)
 	s.NoError(err)
+	// TODO(forrest): [correctness] this test is bound to flake if an IPFS local node
+	// ever decides not to return 2 address. What are we actually testing here?
+
 	// an IPFS local node usually returns 2 addresses
 	s.Require().Equal(2, len(swarmAddresses))
 }
 
 func (s *ServeSuite) TestGetPeers() {
 	// by default it should return no peers
-	OS := serve.NewServeOptions()
-	peers, err := serve.GetPeers(OS)
+	peers, err := serve.GetPeers(serve.DefaultPeerConnect)
 	s.NoError(err)
 	s.Require().Equal(0, len(peers))
 
 	// if we set the peer connect to "env" it should return the peers from the env
-	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
-	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
 	for envName, envData := range system.Envs {
 		// skip checking environments other than test, because
 		// system.GetEnvironment() in getPeers() always returns "test" while testing
@@ -215,9 +227,9 @@ func (s *ServeSuite) TestGetPeers() {
 			continue
 		}
 
-		OS = serve.NewServeOptions()
-		OS.PeerConnect = "env"
-		peers, err = serve.GetPeers(OS)
+		// this is required for the below line to succeed as environment is being deprecated.
+		config.Set(configenv.Testing)
+		peers, err = serve.GetPeers("env")
 		s.NoError(err)
 		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")
 		// search each peer in env BootstrapAddresses
@@ -234,22 +246,20 @@ func (s *ServeSuite) TestGetPeers() {
 	}
 
 	// if we pass multiaddresses it should just return them
-	OS = serve.NewServeOptions()
 	inputPeers := []string{
 		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
 		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
 	}
-	OS.PeerConnect = strings.Join(inputPeers, ",")
-	peers, err = serve.GetPeers(OS)
+	peerConnect := strings.Join(inputPeers, ",")
+	peers, err = serve.GetPeers(peerConnect)
 	s.NoError(err)
 	s.Require().Equal(inputPeers[0], peers[0].String())
 	s.Require().Equal(inputPeers[1], peers[1].String())
 
 	// if we pass invalid multiaddress it should error out
-	OS = serve.NewServeOptions()
 	inputPeers = []string{"foo"}
-	OS.PeerConnect = strings.Join(inputPeers, ",")
-	_, err = serve.GetPeers(OS)
+	peerConnect = strings.Join(inputPeers, ",")
+	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
 }
 

@@ -101,6 +101,10 @@ func (proxy *PersistentExecutionStore) GetExecutions(ctx context.Context, shared
 	return proxy.store.GetExecutions(ctx, sharedID)
 }
 
+func (proxy *PersistentExecutionStore) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionState, error) {
+	return proxy.store.GetLiveExecutions(ctx)
+}
+
 // UpdateExecutionState implements store.ExecutionStore
 func (proxy *PersistentExecutionStore) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
 	err := proxy.store.UpdateExecutionState(ctx, request)
@@ -123,7 +127,7 @@ func (proxy *PersistentExecutionStore) UpdateExecutionState(ctx context.Context,
 }
 
 func (proxy *PersistentExecutionStore) Close(ctx context.Context) error {
-	return nil
+	return proxy.store.Close(ctx)
 }
 
 func writeCounter(filepath string, count uint64) error {

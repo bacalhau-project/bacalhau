@@ -11,17 +11,23 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
-
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+)
+
+const (
+	DefaultLibp2pKeySize = 2048
 )
 
 type DevStackOptions struct {
@@ -67,6 +73,7 @@ type DevStack struct {
 func Setup(
 	ctx context.Context,
 	cm *system.CleanupManager,
+	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
 	stackConfig := defaultDevStackConfig()
@@ -148,7 +155,20 @@ func Setup(
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		libp2pHost, err := libp2p.NewHost(libp2pPort)
+		// TODO(forrest): [devstack] Refactor the devstack s.t. each node has its own repo and config.
+		// previously the config would generate a key using the host port as the postfix
+		// this is not longer the case as a node should have a single libp2p key, but since
+		// all devstack nodes share a repo we will get a self dial error if we use the same
+		// key from the config for each devstack node. The solution here is to refactor the
+		// the devstack such that all nodes in the stack have their own repos and configuration
+		// rather than rely on global values and one off key gen via the config.
+
+		// Creates a new RSA key pair for this host.
+		privKey, err := bac_libp2p.GeneratePrivateKey(DefaultLibp2pKeySize)
+		if err != nil {
+			return nil, err
+		}
+		libp2pHost, err := bac_libp2p.NewHost(libp2pPort, privKey)
 		if err != nil {
 			return nil, err
 		}
@@ -207,6 +227,7 @@ func Setup(
 			DisabledFeatures:          stackConfig.DisabledFeatures,
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
+			FsRepo:                    fsRepo,
 		}
 
 		// allow overriding configs of some nodes
@@ -226,7 +247,7 @@ func Setup(
 		}
 
 		// Start transport layer
-		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
+		err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
 		if err != nil {
 			return nil, err
 		}
@@ -280,6 +301,14 @@ func createIPFSNode(ctx context.Context,
 
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	if err != nil {
+		return "", err
+	}
+	if err := fsRepo.Open(); err != nil {
+		return "", err
+	}
+
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -290,6 +319,7 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupMana
 	devStackIPFSSwarmAddress := ""
 	var devstackPeerAddrs []string
 
+	// TODO remove this it's wrong and never printed, nothing sets the env vars its printing
 	logString += `
 -----------------------------------------
 -----------------------------------------
@@ -363,32 +393,48 @@ export BACALHAU_API_PORT_%d=%d`,
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 	}
 
-	// Just convenience below - print out the last of the nodes information as the global variable
-	summaryShellVariablesString := fmt.Sprintf(`
-export BACALHAU_IPFS_SWARM_ADDRESSES=%s
-export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%s
-export BACALHAU_PEER_CONNECT=%s`,
+	summaryBuilder := strings.Builder{}
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
 		devStackIPFSSwarmAddress,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config.KeyAsEnvVar(types.NodeServerAPIHost),
 		devStackAPIHost,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config.KeyAsEnvVar(types.NodeServerAPIPort),
 		devStackAPIPort,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 		strings.Join(devstackPeerAddrs, ","),
-	)
+	))
 
-	err := config.WriteRunInfoFile(ctx, summaryShellVariablesString)
+	// Just convenience below - print out the last of the nodes information as the global variable
+	summaryShellVariablesString := summaryBuilder.String()
+
+	ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
 	if err != nil {
 		return "", err
 	}
-	cm.RegisterCallback(config.CleanupRunInfoFile)
+	cm.RegisterCallback(func() error {
+		return os.Remove(ripath)
+	})
 
 	if !stack.PublicIPFSMode {
-		summaryShellVariablesString += `
-
-By default devstack is not running on the public IPFS network.
-If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
-You can also run a new IPFS daemon locally and connect it to Bacalhau using:
-
-ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
+		summaryBuilder.WriteString(
+			"\nBy default devstack is not running on the public IPFS network.\n" +
+				"If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.\n" +
+				"You can also run a new IPFS daemon locally and connect it to Bacalhau using:\n\n",
+		)
+		summaryBuilder.WriteString(
+			fmt.Sprintf("ipfs swarm connect $%s", config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses)),
+		)
 	}
 
 	log.Ctx(ctx).Debug().Msg(logString)
@@ -398,14 +444,16 @@ Devstack is ready!
 No. of requester only nodes: %d
 No. of compute only nodes: %d
 No. of hybrid nodes: %d
-To use the devstack, run the following commands in your shell: %s
+To use the devstack, run the following commands in your shell: 
+
+%s
 
 The above variables were also written to this file (will be deleted when devstack exits): %s`,
 		requesterOnlyNodes,
 		computeOnlyNodes,
 		hybridNodes,
-		summaryShellVariablesString,
-		config.GetRunInfoFilePath())
+		summaryBuilder.String(),
+		ripath)
 	return returnString, nil
 }
 

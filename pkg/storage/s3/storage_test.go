@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 
@@ -26,6 +28,7 @@ type StorageTestSuite struct {
 }
 
 func (s *StorageTestSuite) SetupSuite() {
+	s.Require().NoError(config.Set(configenv.Local))
 	cfg, err := s3helper.DefaultAWSConfig()
 	s.Require().NoError(err)
 	if !s3helper.HasValidCredentials(cfg) {

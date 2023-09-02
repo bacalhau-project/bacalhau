@@ -115,6 +115,7 @@ func (e *PluginExecutorManager) dispense(name string, config PluginExecutorManag
 			MagicCookieKey:   config.MagicCookieKey,
 			MagicCookieValue: config.MagicCookieValue,
 		},
+		//nolint:gosec
 		Cmd: exec.Command(filepath.Join(config.Path, config.Command)),
 	})
 

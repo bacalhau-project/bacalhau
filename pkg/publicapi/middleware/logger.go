@@ -6,10 +6,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
 	echomiddelware "github.com/labstack/echo/v4/middleware"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
-func RequestLogger(onlyErrorStatuses bool) echo.MiddlewareFunc {
+func RequestLogger(logger zerolog.Logger, logLevel zerolog.Level) echo.MiddlewareFunc {
 	return echomiddelware.RequestLoggerWithConfig(echomiddelware.RequestLoggerConfig{
 		LogMethod:       true,
 		LogURI:          true,
@@ -21,10 +21,13 @@ func RequestLogger(onlyErrorStatuses bool) echo.MiddlewareFunc {
 		LogUserAgent:    true,
 		LogRequestID:    true,
 		LogValuesFunc: func(c echo.Context, v echomiddelware.RequestLoggerValues) error {
-			if onlyErrorStatuses && v.Status < http.StatusBadRequest {
-				return nil
+			if v.Status >= http.StatusInternalServerError && logLevel < zerolog.ErrorLevel {
+				logLevel = zerolog.ErrorLevel
+			} else if v.Status >= http.StatusBadRequest && logLevel < zerolog.WarnLevel {
+				logLevel = zerolog.WarnLevel
 			}
-			log.Ctx(c.Request().Context()).Info().
+
+			logger.WithLevel(logLevel).
 				Str("RequestID", v.RequestID).
 				Str("Method", v.Method).
 				Str("URI", v.URI).

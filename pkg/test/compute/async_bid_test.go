@@ -47,6 +47,7 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore = &CallbackStore{}
 	s.callbackStore.GetExecutionFn = s.store.GetExecution
 	s.callbackStore.GetExecutionsFn = s.store.GetExecutions
+	s.callbackStore.GetLiveExecutionsFn = s.store.GetLiveExecutions
 	s.callbackStore.GetExecutionHistoryFn = s.store.GetExecutionHistory
 	s.callbackStore.CreateExecutionFn = s.store.CreateExecution
 	s.callbackStore.UpdateExecutionStateFn = s.store.UpdateExecutionState
