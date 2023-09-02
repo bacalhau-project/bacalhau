@@ -3,7 +3,7 @@ package requester
 import (
 	"net/http"
 
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 )
 
 // nodes godoc
@@ -15,13 +15,12 @@ import (
 //	@Success	200	{object}	[]models.NodeInfo
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/requester/nodes [get]
-func (s *Endpoint) nodes(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+func (s *Endpoint) nodes(c echo.Context) error {
+	ctx := c.Request().Context()
 	nodes, err := s.nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	render.JSON(res, req, nodes)
+	return c.JSON(http.StatusOK, nodes)
 }

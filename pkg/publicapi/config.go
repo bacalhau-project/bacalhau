@@ -24,7 +24,7 @@ type Config struct {
 	SkippedTimeoutPaths []string
 
 	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
-	MaxBytesToReadInBody uint64
+	MaxBytesToReadInBody string
 
 	// ThrottleLimit is the maximum number of requests per second
 	ThrottleLimit int
@@ -43,7 +43,7 @@ var defaultConfig = Config{
 	WriteTimeout:          45 * time.Second,
 	RequestHandlerTimeout: 30 * time.Second,
 	SkippedTimeoutPaths:   make([]string, 0),
-	MaxBytesToReadInBody:  1024 * 1024 * 10, // defaulting to 10MB
+	MaxBytesToReadInBody:  "10MB",
 	ThrottleLimit:         1000,
 	Protocol:              "http",
 	LogLevel:              "info",
@@ -86,7 +86,7 @@ func WithSkipTimeoutPaths(paths []string) Option {
 	}
 }
 
-func WithMaxBytesToReadInBody(size uint64) Option {
+func WithMaxBytesToReadInBody(size string) Option {
 	return func(c *Config) {
 		c.MaxBytesToReadInBody = size
 	}

@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -14,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -25,16 +24,16 @@ func setupServer(t *testing.T) (*publicapi.Server, *client.APIClient) {
 }
 
 func setupServerWithConfig(t *testing.T, serverConfig *publicapi.Config) (*publicapi.Server, *client.APIClient) {
-	return setupServerWithHandlers(t, serverConfig, map[string]http.Handler{})
+	return setupServerWithHandlers(t, serverConfig, map[string]echo.HandlerFunc{})
 }
 
 func setupServerWithHandlers(
-	t *testing.T, serverConfig *publicapi.Config, handlers map[string]http.Handler) (*publicapi.Server, *client.APIClient) {
+	t *testing.T, serverConfig *publicapi.Config, handlers map[string]echo.HandlerFunc) (*publicapi.Server, *client.APIClient) {
 	setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
-		Router:  chi.NewRouter(),
+		Router:  echo.New(),
 		Address: "0.0.0.0",
 		Port:    0,
 		Config:  *serverConfig,
@@ -48,7 +47,7 @@ func setupServerWithHandlers(
 	})
 
 	for path, handler := range handlers {
-		apiServer.Router.Mount(path, handler)
+		apiServer.Router.Any(path, handler)
 	}
 	require.NoError(t, apiServer.ListenAndServe(ctx))
 

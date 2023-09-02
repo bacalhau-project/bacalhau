@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,7 +20,7 @@ type APIServerTestSuite struct {
 
 func (suite *APIServerTestSuite) SetupTest() {
 	params := ServerParams{
-		Router:  chi.NewRouter(),
+		Router:  echo.New(),
 		Address: "localhost",
 		Port:    8080,
 		HostID:  "testHostID",

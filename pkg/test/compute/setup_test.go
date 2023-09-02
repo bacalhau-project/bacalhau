@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/chi/v5"
 )
 
 type ComputeSuite struct {
@@ -77,7 +77,7 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { _ = host.Close })
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
-		Router:  chi.NewRouter(),
+		Router:  echo.New(),
 		Address: "0.0.0.0",
 		Port:    0,
 		Config:  publicapi.DefaultConfig(),

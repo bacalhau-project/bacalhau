@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -25,23 +25,21 @@ import (
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/results [post]
-func (s *Endpoint) results(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+func (s *Endpoint) results(c echo.Context) error {
 	var stateReq apimodels.StateRequest
-	if err := render.DecodeJSON(req.Body, &stateReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+	if err := c.Bind(&stateReq); err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
 	}
-	res.Header().Set(apimodels.HTTPHeaderClientID, stateReq.ClientID)
-	res.Header().Set(apimodels.HTTPHeaderJobID, stateReq.JobID)
+	c.Response().Header().Set(apimodels.HTTPHeaderClientID, stateReq.ClientID)
+	c.Response().Header().Set(apimodels.HTTPHeaderJobID, stateReq.JobID)
 
+	ctx := c.Request().Context()
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
 	executions, err := s.jobStore.GetExecutions(ctx, stateReq.JobID)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	results := make([]model.PublishedResult, 0)
@@ -49,8 +47,7 @@ func (s *Endpoint) results(res http.ResponseWriter, req *http.Request) {
 		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
 			storageConfig, err := legacy.ToLegacyStorageSpec(execution.PublishedResult)
 			if err != nil {
-				http.Error(res, err.Error(), http.StatusInternalServerError)
-				return
+				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 			results = append(results, model.PublishedResult{
 				NodeID: execution.NodeID,
@@ -59,7 +56,5 @@ func (s *Endpoint) results(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	render.JSON(res, req, apimodels.ResultsResponse{
-		Results: results,
-	})
+	return c.JSON(http.StatusOK, apimodels.ResultsResponse{Results: results})
 }

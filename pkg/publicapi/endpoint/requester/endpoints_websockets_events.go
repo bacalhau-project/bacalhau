@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,19 +17,20 @@ var upgrader = websocket.Upgrader{
 }
 
 // TODO: Godoc
-func (s *Endpoint) websocketJobEvents(res http.ResponseWriter, req *http.Request) {
-	conn, err := upgrader.Upgrade(res, req, nil)
+
+func (s *Endpoint) websocketJobEvents(c echo.Context) error {
+	ctx := c.Request().Context()
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	log.Ctx(req.Context()).Debug().Msgf("New websocketJobEvents connection.")
+	log.Ctx(ctx).Debug().Msgf("New websocketJobEvents connection.")
 	defer conn.Close()
 
 	// NB: jobId == "" is the case for subscriptions to "all events"
 
 	// get job_id from query string
-	jobID := req.URL.Query().Get("job_id")
+	jobID := c.QueryParam("job_id")
 
 	func() {
 		s.websocketsMutex.Lock()
@@ -46,13 +48,13 @@ func (s *Endpoint) websocketJobEvents(res http.ResponseWriter, req *http.Request
 		// list events for job out of localDB and send them to the client
 		events, err := s.jobStore.GetJobHistory(context.Background(), jobID, apimodels.EventFilterOptions{})
 		if err != nil {
-			log.Ctx(req.Context()).Error().Msgf("error listing job events: %s\n", err.Error())
-			return
+			log.Ctx(ctx).Error().Msgf("error listing job events: %s\n", err.Error())
+			return err
 		}
 		for _, event := range events {
 			err := conn.WriteJSON(event)
 			if err != nil {
-				log.Ctx(req.Context()).Error().Msgf("error writing event JSON: %s\n", err.Error())
+				log.Ctx(ctx).Error().Msgf("error writing event JSON: %s\n", err.Error())
 			}
 		}
 	}
@@ -65,9 +67,11 @@ func (s *Endpoint) websocketJobEvents(res http.ResponseWriter, req *http.Request
 			break
 		}
 	}
+
+	return nil
 }
 
-func (s *Endpoint) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
+func (s *Endpoint) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
 	s.websocketsMutex.Lock()
 	defer s.websocketsMutex.Unlock()
 

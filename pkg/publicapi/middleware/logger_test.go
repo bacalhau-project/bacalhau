@@ -10,10 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -86,16 +84,11 @@ func (suite *ZeroLogFormatterTestSuite) TestLogLevels() {
 		},
 	} {
 		suite.Run(tc.name, func() {
-			formatter := NewZeroLogFormatter(
-				WithLogger(suite.logger),
-				WithLogLevel(tc.logLevel),
-			)
-
 			suite.buf.Reset()
-			router := chi.NewRouter()
-			router.Use(chimiddleware.RequestLogger(formatter))
-			router.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tc.returnedStatus)
+			router := echo.New()
+			router.Use(RequestLogger(suite.logger, tc.logLevel))
+			router.GET("/test", func(e echo.Context) error {
+				return e.String(tc.returnedStatus, "test")
 			})
 			rr := httptest.NewRecorder()
 			req, _ := http.NewRequestWithContext(context.Background(), "GET", "/test", nil)
@@ -104,14 +97,6 @@ func (suite *ZeroLogFormatterTestSuite) TestLogLevels() {
 			suite.Contains(suite.buf.String(), fmt.Sprintf(`"StatusCode":%d`, tc.returnedStatus))
 		})
 	}
-}
-
-func (suite *ZeroLogFormatterTestSuite) TestPanic() {
-	formatter := NewZeroLogFormatter(WithLogger(suite.logger))
-	entry := formatter.NewLogEntry(httptest.NewRequest(http.MethodGet, "/", nil))
-	entry.Panic("test panic", []byte("stacktrace"))
-
-	assert.Contains(suite.T(), suite.buf.String(), `test panic`)
 }
 
 func TestZeroLogFormatterTestSuite(t *testing.T) {

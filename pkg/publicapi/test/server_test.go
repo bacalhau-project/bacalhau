@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -74,11 +75,11 @@ func (s *ServerSuite) TestTimeout() {
 	endpoint := "/timeout"
 	timeout := 100 * time.Millisecond
 	config := publicapi.NewConfig(publicapi.WithRequestHandlerTimeout(timeout))
-	s.server, s.client = setupServerWithHandlers(s.T(), config, map[string]http.Handler{
-		endpoint: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server, s.client = setupServerWithHandlers(s.T(), config, map[string]echo.HandlerFunc{
+		endpoint: func(c echo.Context) error {
 			time.Sleep(timeout + 10*time.Millisecond)
-			w.WriteHeader(http.StatusOK)
-		}),
+			return c.String(http.StatusOK, "Ok!")
+		},
 	})
 
 	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
@@ -94,12 +95,12 @@ func (s *ServerSuite) TestTimeout() {
 }
 
 func (s *ServerSuite) TestMaxBodyReader() {
-	config := publicapi.NewConfig(publicapi.WithMaxBytesToReadInBody(500))
+	config := publicapi.NewConfig(publicapi.WithMaxBytesToReadInBody("500B"))
 	s.server, s.client = setupServerWithConfig(s.T(), config)
 
 	// Due to the rest of the Version payload we need MaxBytes minus
 	// an amount that accounts for the other data we send
-	payloadSize := int(500) - 16
+	payloadSize := int(500) - 17
 	testCases := []struct {
 		name        string
 		size        int
@@ -125,7 +126,7 @@ func (s *ServerSuite) TestMaxBodyReader() {
 				if !strings.Contains(err.Error(), "Job not found") {
 					if tc.expectError {
 						require.Error(s.T(), err, "expected error")
-						require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
+						require.Contains(s.T(), err.Error(), "Request Entity Too Large", "expected to error with body too large")
 					} else {
 						require.NoError(s.T(), err, "expected no error")
 					}

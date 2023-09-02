@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/go-chi/render"
+	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
 )
 
@@ -30,22 +30,22 @@ import (
 //	@Failure				403				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/cancel [post]
-func (s *Endpoint) cancel(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	jobCancelPayload, err := signatures.UnmarshalSigned[model.JobCancelPayload](ctx, req.Body)
+func (s *Endpoint) cancel(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobCancelPayload, err := signatures.UnmarshalSigned[model.JobCancelPayload](ctx, c.Request().Body)
 	if err != nil {
-		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
-		return
+		publicapi.HTTPError(c, err, http.StatusBadRequest)
+		return nil
 	}
 
-	res.Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
+	c.Response().Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
 	ctx = system.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
 
 	// Get the job, check it exists and check it belongs to the same client
 	job, err := s.jobStore.GetJob(ctx, jobCancelPayload.JobID)
 	if err != nil {
-		publicapi.HTTPError(ctx, res, errors.Wrap(err, "missing job"), http.StatusNotFound)
-		return
+		publicapi.HTTPError(c, errors.Wrap(err, "missing job"), http.StatusNotFound)
+		return nil
 	}
 
 	// We can compare the payload's client ID against the existing job's metadata
@@ -54,8 +54,8 @@ func (s *Endpoint) cancel(res http.ResponseWriter, req *http.Request) {
 	if job.Namespace != jobCancelPayload.ClientID {
 		err = fmt.Errorf("mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
 			job.Namespace, jobCancelPayload.ClientID)
-		publicapi.HTTPError(ctx, res, err, http.StatusUnauthorized)
-		return
+		publicapi.HTTPError(c, err, http.StatusUnauthorized)
+		return nil
 	}
 
 	_, err = s.requester.CancelJob(ctx, requester.CancelJobRequest{
@@ -64,20 +64,19 @@ func (s *Endpoint) cancel(res http.ResponseWriter, req *http.Request) {
 		UserTriggered: true,
 	})
 	if err != nil {
-		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
-		return
+		publicapi.HTTPError(c, err, http.StatusInternalServerError)
+		return nil
 	}
 
 	jobState, err := legacy.GetJobState(ctx, s.jobStore, jobCancelPayload.JobID)
 	if err != nil {
-		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
-		return
+		publicapi.HTTPError(c, err, http.StatusInternalServerError)
+		return nil
 	}
 
-	response := apimodels.CancelResponse{
+	c.Response().Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
+	c.Response().Header().Set(apimodels.HTTPHeaderJobID, jobCancelPayload.JobID)
+	return c.JSON(http.StatusOK, apimodels.CancelResponse{
 		State: &jobState,
-	}
-	res.Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
-	res.Header().Set(apimodels.HTTPHeaderJobID, jobCancelPayload.JobID)
-	render.JSON(res, req, response)
+	})
 }

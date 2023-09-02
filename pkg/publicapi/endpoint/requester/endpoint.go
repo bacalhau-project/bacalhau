@@ -4,15 +4,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
-	Router             chi.Router
+	Router             *echo.Echo
 	Requester          requester.Endpoint
 	DebugInfoProviders []model.DebugInfoProvider
 	JobStore           jobstore.Store
@@ -20,7 +20,7 @@ type EndpointParams struct {
 }
 
 type Endpoint struct {
-	router             chi.Router
+	router             *echo.Echo
 	requester          requester.Endpoint
 	debugInfoProviders []model.DebugInfoProvider
 	jobStore           jobstore.Store
@@ -40,18 +40,18 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		websockets:         make(map[string][]*websocket.Conn),
 	}
 
-	e.router.Route("/api/v1/requester", func(r chi.Router) {
-		r.Use(render.SetContentType(render.ContentTypeJSON))
-		r.Post("/list", e.list)
-		r.Get("/nodes", e.nodes)
-		r.Post("/states", e.states)
-		r.Post("/results", e.results)
-		r.Post("/events", e.events)
-		r.Post("/submit", e.submit)
-		r.Post("/cancel", e.cancel)
-		r.Post("/debug", e.debug)
-		r.Get("/logs", e.logs)
-		r.Get("/websocket/events", e.websocketJobEvents)
-	})
+	g := e.router.Group("/api/v1/requester")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.POST("/list", e.list)
+	g.GET("/nodes", e.nodes)
+	g.POST("/states", e.states)
+	g.POST("/results", e.results)
+	g.POST("/events", e.events)
+	g.POST("/submit", e.submit)
+	g.POST("/cancel", e.cancel)
+	g.POST("/debug", e.debug)
+	g.GET("/logs", e.logs)
+	g.GET("/websocket/events", e.websocketJobEvents)
+
 	return e
 }
