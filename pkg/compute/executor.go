@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -283,6 +284,26 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	result, err := e.Wait(ctx, state)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			// TODO(forrest) [correctness]:
+			// This is a special case for now. The ExecutorBuffer is using a context with a timeout to signal
+			// an execution has timed out and should end. If we return an error here, the deferred handleFailure
+			// call above will mark this execution as 'Failed'. Current testing and implementation expects executions
+			// that have timed out to be in state 'Canceled', rather than 'Failed'. IMO An execution that doesn't
+			// complete in the timeframe requested by a user should be 'Failed'. 'Canceled' probably ought to be
+			// reserved for actions initiated by a user. We are ignoring _only_ context.DeadlineExceeded
+			// errors and allowing context.Canceled errors be to returned so that when a compute node is shutdown
+			// any active executions will be labeled as 'Failed' instead of canceled.
+			// There is prior discussion regarding this point here:
+			// https://github.com/bacalhau-project/bacalhau/pull/2705#discussion_r1283543457
+			//
+			// Moving forward we must avoid canceling executions via the context.Context. When pluggable executors
+			// become the default since canceling the context will simply result in the RPC connection closing (I think)
+			// The general solution here is to stop using contexts for canceling jobs and to instead make explicit calls
+			// the an executors `Cancel` method.
+			log.Ctx(ctx).Info().Msg("execution timeout exceeded canceling execution")
+			return nil
+		}
 		return err
 	}
 	if result.ErrorMsg != "" {

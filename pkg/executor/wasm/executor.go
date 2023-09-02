@@ -136,7 +136,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	defer close(out)
 	select {
 	case <-ctx.Done():
-		out <- executor.NewFailedResult(fmt.Sprintf("context canceled while waiting for execution: %s", ctx.Err()))
+		return
 	case <-handle.waitCh:
 		out <- handle.result
 	}

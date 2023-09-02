@@ -182,12 +182,20 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	return nil
 }
 
+// Wait waits for the completion of a specific execution by its executionID.
+// A channel is returned that will emit the result of the execution.
+// TODO: The current implementation spawns a new Goroutine for each Wait call,
+// which could become resource-intensive with a large number of concurrent Wait calls.
+// We should consider using a shared broadcast channel in the executionHandler to notify all
+// waiting Goroutines at once.
 func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
 		return nil, fmt.Errorf("execution (%s) not found", executionID)
 	}
 	ch := make(chan *models.RunCommandResult)
+	// TODO this pattern is wasteful if we expect there to be a large number things calling wait, as each wait spins off
+	// a go rotutine
 	go e.doWait(ctx, ch, handler)
 	return ch, nil
 }
@@ -197,7 +205,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	defer close(out)
 	select {
 	case <-ctx.Done():
-		out <- executor.NewFailedResult(fmt.Sprintf("context canceled while waiting for execution: %s", ctx.Err()))
+		return
 	case <-handle.waitCh:
 		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
 		out <- handle.result
