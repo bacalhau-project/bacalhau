@@ -37,6 +37,10 @@ type FeatureConfig struct {
 	Storages   []string
 }
 
+type TLSConfig struct {
+	AutoTLS string
+}
+
 // Node configuration
 type NodeConfig struct {
 	IPFSClient                ipfs.Client
@@ -44,6 +48,7 @@ type NodeConfig struct {
 	Host                      host.Host
 	HostAddress               string
 	APIPort                   uint16
+	RequesterAutoCert         string
 	DisabledFeatures          FeatureConfig
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
@@ -54,6 +59,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
+	AutoTLS                   string
 	FsRepo                    *repo.FsRepo
 }
 

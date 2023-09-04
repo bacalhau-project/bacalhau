@@ -28,6 +28,10 @@ func ServerAPIHost() string {
 	return viper.GetString(types.NodeServerAPIHost)
 }
 
+func ServerAutoCertDomain() string {
+	return viper.GetString(types.NodeClientAPITLSAutoTLS)
+}
+
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }

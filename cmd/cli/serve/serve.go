@@ -221,6 +221,7 @@ func serve(cmd *cobra.Command) error {
 		DisabledFeatures:      featureConfig,
 		HostAddress:           config.ServerAPIHost(),
 		APIPort:               config.ServerAPIPort(),
+		RequesterAutoCert:     config.ServerAutoCertDomain(),
 		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,

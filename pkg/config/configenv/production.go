@@ -24,6 +24,7 @@ var Production = types.BacalhauConfig{
 		ServerAPI: types.APIConfig{
 			Host: "0.0.0.0",
 			Port: 1234,
+			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
