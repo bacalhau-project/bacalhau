@@ -39,6 +39,7 @@ type Server struct {
 
 	httpServer http.Server
 	config     Config
+	useTLS     bool
 }
 
 func NewAPIServer(params ServerParams) (*Server, error) {
@@ -109,6 +110,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			NextProtos:     []string{acme.ALPNProto},
 			MinVersion:     tls.VersionTLS12,
 		}
+
+		server.useTLS = true
 	}
 
 	server.httpServer = http.Server{
@@ -169,7 +172,14 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
 
 	go func() {
-		err := apiServer.httpServer.Serve(listener)
+		var err error
+
+		if apiServer.useTLS {
+			err = apiServer.httpServer.ServeTLS(listener, "", "")
+		} else {
+			err = apiServer.httpServer.Serve(listener)
+		}
+
 		if err == http.ErrServerClosed {
 			log.Ctx(ctx).Debug().Msgf(
 				"API server closed for host %s on %s.", apiServer.Address, apiServer.httpServer.Addr)
