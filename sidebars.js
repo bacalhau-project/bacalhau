@@ -176,10 +176,10 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Running Node',
+      label: 'Running a Node',
       link: {
         type: 'generated-index',
-        title: 'Running node',
+        title: 'Running a node',
         slug: '/running-node',
       },
       collapsed: true,
@@ -192,6 +192,7 @@ module.exports = {
         'running-node/resource-limits',
         'running-node/test-network',
         'running-node/gpu',
+        'running-node/persistence',
         'running-node/windows-support',
         'running-node/observability'
       ],
