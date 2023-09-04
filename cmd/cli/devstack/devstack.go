@@ -38,6 +38,9 @@ var (
 
 		# Create a devstack cluster with a single hybrid (requester and compute) nodes
 		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
+
+		# Run a devstack and create (or use) the config repo in a specific folder
+		bacalhau devstack  --stack-repo ./my-devstack-configuration
 `))
 )
 
@@ -51,6 +54,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
+		ConfigurationRepo:          "",
 	}
 }
 
@@ -133,6 +137,10 @@ func NewCmd() *cobra.Command {
 		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
 		"Will use pluggable executors when set to true",
 	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
+		"Folder to act as the devstack configuration repo",
+	)
 
 	return devstackCmd
 }
@@ -143,19 +151,17 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	cm := util.GetCleanupManager(ctx)
 
-	// We need to clean up the repo when the node shuts down, but we can ONLY
-	// do this because we know it is a temporary directory.
-	repoPath, _ := os.MkdirTemp("", "")
-	defer os.RemoveAll(repoPath)
+	repoPath := ODs.ConfigurationRepo
+	if repoPath == "" {
+		// We need to clean up the repo when the node shuts down, but we can ONLY
+		// do this because we know it is a temporary directory. Do not delete the
+		// configured repo if `--stack-repo` was specified
+		repoPath, _ = os.MkdirTemp("", "")
+		defer os.RemoveAll(repoPath)
+	}
 
-	fsRepo, err := repo.NewFS(repoPath)
+	fsRepo, err := getRepo(repoPath)
 	if err != nil {
-		return err
-	}
-	if err = fsRepo.Init(); err != nil {
-		return err
-	}
-	if err := fsRepo.Open(); err != nil {
 		return err
 	}
 
@@ -250,4 +256,31 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	cmd.Println("\nShutting down devstack")
 	return nil
+}
+
+// getRepo will return a config repo that given a directory, will
+// create, init (if necessary) and open the repository before
+// returning it.
+func getRepo(repoPath string) (*repo.FsRepo, error) {
+	fsRepo, err := repo.NewFS(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := fsRepo.Exists()
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		if err = fsRepo.Init(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := fsRepo.Open(); err != nil {
+		return nil, err
+	}
+
+	return fsRepo, nil
 }
