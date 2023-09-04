@@ -45,10 +45,14 @@ type APIConfig struct {
 }
 
 type TLSConfiguration struct {
-	// AutoTLS specifies a hostname for a certificate to be obtained via ACME.
+	// AutoCert specifies a hostname for a certificate to be obtained via ACME.
 	// This is only used by the server, and only by the requester node when it
 	// has a publicly resolvable domain name.
-	AutoTLS string `yaml:"AutoTLS"`
+	AutoCert string `yaml:"AutoCert"`
+
+	// AutoCertCachePath specifies the directory where the autocert process
+	// will cache certificates to avoid rate limits.
+	AutoCertCachePath string `yaml:"AutoCertCachePath"`
 }
 
 type Libp2pConfig struct {

@@ -84,6 +84,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"requester-tls":    configflags.RequesterTLSFlags,
 		"server-api":       configflags.ServerAPIFlags,
 		"libp2p":           configflags.Libp2pFlags,
 		"ipfs":             configflags.IPFSFlags,
@@ -221,7 +222,6 @@ func serve(cmd *cobra.Command) error {
 		DisabledFeatures:      featureConfig,
 		HostAddress:           config.ServerAPIHost(),
 		APIPort:               config.ServerAPIPort(),
-		RequesterAutoCert:     config.ServerAutoCertDomain(),
 		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
@@ -229,6 +229,13 @@ func serve(cmd *cobra.Command) error {
 		Labels:                getNodeLabels(autoLabel),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
+	}
+
+	if isRequesterNode {
+		// We only want auto TLS for the requester node, but this info doesn't fit well
+		// with the other data in the requesterConfig.
+		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
+		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
 	}
 
 	// Create node

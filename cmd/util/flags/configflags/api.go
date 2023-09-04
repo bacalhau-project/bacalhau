@@ -35,10 +35,13 @@ var ServerAPIFlags = []Definition{
 		ConfigPath:   types.NodeServerAPIHost,
 		Description:  `The host to serve on.`,
 	},
+}
+
+var RequesterTLSFlags = []Definition{
 	{
-		FlagName:     "autotls",
-		DefaultValue: Default.Node.ServerAPI.TLS.AutoTLS,
-		ConfigPath:   types.NodeServerAPITLSAutoTLS,
+		FlagName:     "autocert",
+		DefaultValue: Default.Node.ServerAPI.TLS.AutoCert,
+		ConfigPath:   types.NodeServerAPITLSAutoCert,
 		Description: `Specifies a host name for which ACME is used to obtain a TLS Certificate.
 Using this option results in the API serving over HTTPS`,
 		EnvironmentVariables: []string{"BACALHAU_AUTO_TLS"},

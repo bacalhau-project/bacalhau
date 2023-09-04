@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,17 +14,21 @@ import (
 	echomiddelware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/acme"
+	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
 )
 
 const TimeoutMessage = "Server Timeout!"
 
 type ServerParams struct {
-	Router  *echo.Echo
-	Address string
-	Port    uint16
-	HostID  string
-	Config  Config
+	Router         *echo.Echo
+	Address        string
+	Port           uint16
+	HostID         string
+	AutoCertDomain string
+	AutoCertCache  string
+	Config         Config
 }
 
 // Server configures a node's public REST API.
@@ -90,11 +95,28 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 	)
 
+	var tlsConfig *tls.Config
+	if params.AutoCertDomain != "" {
+		log.Ctx(context.TODO()).Debug().Msgf("Setting up auto-cert for %s", params.AutoCertDomain)
+
+		autoTLSManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			Cache:      autocert.DirCache(params.AutoCertCache),
+			HostPolicy: autocert.HostWhitelist(params.AutoCertDomain),
+		}
+		tlsConfig = &tls.Config{
+			GetCertificate: autoTLSManager.GetCertificate,
+			NextProtos:     []string{acme.ALPNProto},
+			MinVersion:     tls.VersionTLS12,
+		}
+	}
+
 	server.httpServer = http.Server{
 		Handler:           server.Router,
 		ReadHeaderTimeout: server.config.ReadHeaderTimeout,
 		ReadTimeout:       server.config.ReadTimeout,
 		WriteTimeout:      server.config.WriteTimeout,
+		TLSConfig:         tlsConfig,
 		BaseContext: func(l net.Listener) context.Context {
 			return logger.ContextWithNodeIDLogger(context.Background(), params.HostID)
 		},

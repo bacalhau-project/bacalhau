@@ -21,3 +21,7 @@ func SetExecutorPluginPath(path string) {
 func SetComputeStoragesPath(path string) {
 	viper.Set(types.NodeComputeStoragePath, path)
 }
+
+func SetAutoCertCachePath(path string) {
+	viper.Set(types.NodeServerAPITLSAutoCertCachePath, path)
+}
