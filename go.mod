@@ -77,7 +77,7 @@ require (
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.25.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	k8s.io/apimachinery v0.28.0
+	k8s.io/apimachinery v0.28.1
 	k8s.io/kubectl v0.28.0
 	sigs.k8s.io/yaml v1.3.0
 )
