@@ -23,8 +23,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					SubmitRequest	body		legacy.SubmitRequest	true	" "
-//	@Success				200				{object}	legacy.SubmitResponse
+//	@Param					SubmitRequest	body		legacymodels.SubmitRequest	true	" "
+//	@Success				200				{object}	legacymodels.SubmitResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/submit [post]

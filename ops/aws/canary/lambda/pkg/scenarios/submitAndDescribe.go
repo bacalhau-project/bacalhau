@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,7 +40,7 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, apimodels.EventFilterOptions{})
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, legacymodels.EventFilterOptions{})
 	if err != nil {
 		return err
 	}

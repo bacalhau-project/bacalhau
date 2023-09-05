@@ -55,8 +55,8 @@ func (e *Endpoint) alive(c echo.Context) error {
 //	@Description	See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.
 //	@Tags			Ops
 //	@Produce		json
-//	@Success		200				{object}	apimodels.GetVersionResponse
-//	@Failure		500				{object}	json
+//	@Success		200	{object}	apimodels.GetVersionResponse
+//	@Failure		500	{object}	string
 //	@Router			/api/v1/agent/version [get]
 func (e *Endpoint) version(c echo.Context) error {
 	return c.JSON(http.StatusOK, apimodels.GetVersionResponse{
@@ -71,7 +71,7 @@ func (e *Endpoint) version(c echo.Context) error {
 //	@Tags		Ops
 //	@Produce	json
 //	@Success	200	{object}	models.NodeInfo
-//	@Failure	500	{object}	json
+//	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/node [get]
 func (e *Endpoint) node(c echo.Context) error {
 	nodeInfo := e.nodeInfoProvider.GetNodeInfo(c.Request().Context())
