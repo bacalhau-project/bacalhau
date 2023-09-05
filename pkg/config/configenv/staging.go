@@ -24,6 +24,7 @@ var Staging = types.BacalhauConfig{
 		ServerAPI: types.APIConfig{
 			Host: "0.0.0.0",
 			Port: 1234,
+			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.125.80.77/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",

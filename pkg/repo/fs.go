@@ -37,6 +37,9 @@ const (
 	// compute paths
 	ComputeStoragesPath = "executor_storages"
 	PluginsPath         = "plugins"
+
+	// requester paths
+	AutoCertCachePath = "autocert-cache"
 )
 
 type FsRepo struct {
@@ -135,6 +138,11 @@ func (fsr *FsRepo) Open() error {
 	if cfg.Node.ExecutorPluginPath == "" {
 		cfg.Node.ExecutorPluginPath = filepath.Join(fsr.path, PluginsPath)
 		config.SetExecutorPluginPath(cfg.Node.ExecutorPluginPath)
+	}
+
+	if cfg.Node.ServerAPI.TLS.AutoCertCachePath == "" {
+		cfg.Node.ServerAPI.TLS.AutoCertCachePath = filepath.Join(fsr.path, AutoCertCachePath)
+		config.SetAutoCertCachePath(cfg.Node.ServerAPI.TLS.AutoCertCachePath)
 	}
 
 	if cfg.Node.ComputeStoragePath == "" {

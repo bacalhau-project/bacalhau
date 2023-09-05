@@ -136,6 +136,21 @@ func (mr *MockExecutionStoreMockRecorder) GetExecutions(ctx, jobID interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExecutions", reflect.TypeOf((*MockExecutionStore)(nil).GetExecutions), ctx, jobID)
 }
 
+// GetLiveExecutions mocks base method.
+func (m *MockExecutionStore) GetLiveExecutions(ctx context.Context) ([]LocalExecutionState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLiveExecutions", ctx)
+	ret0, _ := ret[0].([]LocalExecutionState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLiveExecutions indicates an expected call of GetLiveExecutions.
+func (mr *MockExecutionStoreMockRecorder) GetLiveExecutions(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLiveExecutions", reflect.TypeOf((*MockExecutionStore)(nil).GetLiveExecutions), ctx)
+}
+
 // UpdateExecutionState mocks base method.
 func (m *MockExecutionStore) UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error {
 	m.ctrl.T.Helper()

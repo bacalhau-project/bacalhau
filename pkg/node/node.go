@@ -44,6 +44,8 @@ type NodeConfig struct {
 	Host                      host.Host
 	HostAddress               string
 	APIPort                   uint16
+	RequesterAutoCert         string
+	RequesterAutoCertCache    string
 	DisabledFeatures          FeatureConfig
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
@@ -54,7 +56,8 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
-	FsRepo                    *repo.FsRepo
+
+	FsRepo *repo.FsRepo
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -192,13 +195,21 @@ func NewNode(
 	}...)
 
 	// public http api server
-	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
+	serverParams := publicapi.ServerParams{
 		Router:  echo.New(),
 		Address: config.HostAddress,
 		Port:    config.APIPort,
 		HostID:  config.Host.ID().String(),
 		Config:  config.APIServerConfig,
-	})
+	}
+
+	// Only allow autocert for requester nodes
+	if config.IsRequesterNode {
+		serverParams.AutoCertDomain = config.RequesterAutoCert
+		serverParams.AutoCertCache = config.RequesterAutoCertCache
+	}
+
+	apiServer, err := publicapi.NewAPIServer(serverParams)
 	if err != nil {
 		return nil, err
 	}

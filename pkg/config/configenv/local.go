@@ -24,6 +24,7 @@ var Local = types.BacalhauConfig{
 		ServerAPI: types.APIConfig{
 			Host: "0.0.0.0",
 			Port: 1234,
+			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),

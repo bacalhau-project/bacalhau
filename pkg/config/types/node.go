@@ -40,6 +40,19 @@ type APIConfig struct {
 	Host string `yaml:"Host"`
 	// Port is the port that an environment serves the public API on.
 	Port int `yaml:"Port"`
+	// TLS returns information about how TLS is configured for the public server
+	TLS TLSConfiguration `yaml:"TLS"`
+}
+
+type TLSConfiguration struct {
+	// AutoCert specifies a hostname for a certificate to be obtained via ACME.
+	// This is only used by the server, and only by the requester node when it
+	// has a publicly resolvable domain name.
+	AutoCert string `yaml:"AutoCert"`
+
+	// AutoCertCachePath specifies the directory where the autocert process
+	// will cache certificates to avoid rate limits.
+	AutoCertCachePath string `yaml:"AutoCertCachePath"`
 }
 
 type Libp2pConfig struct {

@@ -28,6 +28,10 @@ func ServerAPIHost() string {
 	return viper.GetString(types.NodeServerAPIHost)
 }
 
+func ServerAutoCertDomain() string {
+	return viper.GetString(types.NodeServerAPITLSAutoCert)
+}
+
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }
@@ -96,6 +100,10 @@ func GetLogMode() logger.LogMode {
 		log.Error().Msgf("unknown logging mode: %v", mode)
 		return logger.LogModeDefault
 	}
+}
+
+func GetAutoCertCachePath() string {
+	return viper.GetString(types.NodeServerAPITLSAutoCertCachePath)
 }
 
 func GetLibp2pTracerPath() string {

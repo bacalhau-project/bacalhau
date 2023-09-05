@@ -230,6 +230,13 @@ func Setup(
 			FsRepo:                    fsRepo,
 		}
 
+		if isRequesterNode {
+			// If we are setting up the requester node, then we should set the TLS
+			// settings needed for AutoCert.
+			nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
+			nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
+		}
+
 		// allow overriding configs of some nodes
 		if i < len(stackConfig.NodeOverrides) {
 			originalConfig := nodeConfig
