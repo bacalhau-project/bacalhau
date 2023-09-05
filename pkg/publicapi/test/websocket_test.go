@@ -39,9 +39,9 @@ func TestWebsocketSuite(t *testing.T) {
 // Before each test
 func (s *WebsocketSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	n, client := setupNodeForTest(s.T())
+	n, _ := setupNodeForTest(s.T())
 	s.node = n
-	s.client = client
+	s.client = client.NewAPIClient(n.APIServer.Address, n.APIServer.Port)
 }
 
 // After each test

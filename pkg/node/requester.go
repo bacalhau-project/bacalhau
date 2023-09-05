@@ -9,7 +9,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -211,6 +213,17 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: nodeConfig.DefaultJobExecutionTimeout,
 	})
 
+	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
+		ID:               host.ID().String(),
+		EvaluationBroker: evalBroker,
+		Store:            jobStore,
+		EventEmitter:     eventEmitter,
+		ComputeProxy:     computeProxy,
+		Transformer: transformer.ChainedJobTransformer{
+			transformer.JobFn(transformer.IDGenerator),
+		},
+	})
+
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
 		Endpoint: endpoint,
 		JobStore: jobStore,
@@ -236,6 +249,13 @@ func NewRequesterNode(
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
 		NodeDiscoverer:     nodeDiscoveryChain,
+	})
+
+	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
+		Router:       apiServer.Router,
+		Orchestrator: endpointV2,
+		JobStore:     jobStore,
+		NodeStore:    nodeInfoStore,
 	})
 
 	// Register event handlers

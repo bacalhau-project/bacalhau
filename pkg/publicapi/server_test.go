@@ -4,7 +4,9 @@ package publicapi
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,70 +15,131 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const testTimeout = 100 * time.Millisecond
+const testMaxBytesToReadInBody = "500B"
+
 type APIServerTestSuite struct {
 	suite.Suite
 	server *Server
 }
 
-func (suite *APIServerTestSuite) SetupTest() {
+func (s *APIServerTestSuite) SetupTest() {
 	params := ServerParams{
 		Router:  echo.New(),
 		Address: "localhost",
 		Port:    8080,
 		HostID:  "testHostID",
-		Config:  *NewConfig(),
+		Config: *NewConfig(
+			WithRequestHandlerTimeout(testTimeout),
+			WithMaxBytesToReadInBody(testMaxBytesToReadInBody),
+		),
 	}
 	var err error
-	suite.server, err = NewAPIServer(params)
-	assert.NotNil(suite.T(), suite.server)
-	assert.NoError(suite.T(), err)
+	s.server, err = NewAPIServer(params)
+	assert.NotNil(s.T(), s.server)
+	assert.NoError(s.T(), err)
 }
 
-func (suite *APIServerTestSuite) TestGetURI() {
-	uri := suite.server.GetURI()
-	assert.NotNil(suite.T(), uri)
-	assert.Equal(suite.T(), "http", uri.Scheme)
-	assert.Equal(suite.T(), "localhost", uri.Hostname())
-	assert.Equal(suite.T(), "8080", uri.Port())
+func (s *APIServerTestSuite) TearDownTest() {
+	if s.server != nil {
+		s.Require().NoError(s.server.Shutdown(context.Background()))
+	}
 }
 
-func (suite *APIServerTestSuite) TestListenAndServe() {
-	ctx := context.Background()
-	go func() {
-		err := suite.server.ListenAndServe(ctx)
-		assert.NoError(suite.T(), err)
-	}()
+func (s *APIServerTestSuite) TestGetURI() {
+	uri := s.server.GetURI()
+	assert.NotNil(s.T(), uri)
+	assert.Equal(s.T(), "http", uri.Scheme)
+	assert.Equal(s.T(), "localhost", uri.Hostname())
+	assert.Equal(s.T(), "8080", uri.Port())
+}
 
-	suite.Eventually(func() bool {
-		resp, err := http.Get(suite.server.GetURI().String())
-		defer func() {
-			if resp != nil {
-				resp.Body.Close()
-			}
-		}()
-		return err == nil && resp != nil && resp.StatusCode == http.StatusNotFound
-	}, 1*time.Second, 50*time.Millisecond) // give it some time to start
+func (s *APIServerTestSuite) TestListenAndServe() {
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
 
 	// Make a request to ensure the server is running
-	resp, err := http.Get(suite.server.GetURI().String())
-	assert.NoError(suite.T(), err)
-	assert.NotNil(suite.T(), resp)
+	resp, err := http.Get(s.server.GetURI().String())
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), resp)
 	resp.Body.Close()
 
 	// shutdown the server
-	err = suite.server.Shutdown(ctx)
-	assert.NoError(suite.T(), err)
+	err = s.server.Shutdown(context.Background())
+	assert.NoError(s.T(), err)
 
 	// Make a request to ensure the server is shutdown
-	resp, err = http.Get(suite.server.GetURI().String())
-	assert.Error(suite.T(), err)
+	resp, err = http.Get(s.server.GetURI().String())
+	assert.Error(s.T(), err)
 }
 
-func (suite *APIServerTestSuite) TestShutdownNotRunning() {
+func (s *APIServerTestSuite) TestTimeout() {
+	// register slow handler
+	endpoint := "/timeout"
+	s.server.Router.GET(endpoint, func(c echo.Context) error {
+		time.Sleep(testTimeout + 10*time.Millisecond)
+		return c.String(http.StatusOK, "Ok!")
+	})
+
+	// start the server
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
+
+	res, err := http.Get(s.server.GetURI().JoinPath(endpoint).String())
+	s.Require().NoError(err)
+	defer res.Body.Close()
+	s.validateResponse(res, http.StatusServiceUnavailable, "Server Timeout!")
+}
+
+func (s *APIServerTestSuite) TestMaxBodyReader() {
+	// register handler
+	endpoint := "/large"
+	s.server.Router.POST(endpoint, func(c echo.Context) error {
+		return c.String(http.StatusOK, "Ok!")
+	})
+
+	// start the server
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
+
+	payloadSize := 500
+	testCases := []struct {
+		name        string
+		size        int
+		expectError bool
+	}{
+		{name: "Max - 1", size: payloadSize - 1, expectError: false},
+		{name: "Max", size: payloadSize, expectError: false},
+		{name: "Max + 1", size: payloadSize + 1, expectError: true},
+	}
+
+	_ = testCases
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			request := strings.Repeat("a", tc.size)
+			res, err := http.Post(s.server.GetURI().JoinPath(endpoint).String(), "text/plain", strings.NewReader(request))
+			s.Require().NoError(err)
+			defer res.Body.Close()
+			if tc.expectError {
+				s.validateResponse(res, http.StatusRequestEntityTooLarge, "Request Entity Too Large")
+			} else {
+				s.validateResponse(res, http.StatusOK, "Ok!")
+			}
+		})
+	}
+}
+
+func (s *APIServerTestSuite) TestShutdownNotRunning() {
 	// shutdown the server when it's not running should not error
-	ctx := context.Background()
-	err := suite.server.Shutdown(ctx)
-	assert.NoError(suite.T(), err)
+	s.Require().NoError(s.server.Shutdown(context.Background()))
+}
+
+// validateResponse validates the response from the server
+func (s *APIServerTestSuite) validateResponse(resp *http.Response, expectedStatusCode int, expectedBody string) {
+	s.Require().NotNil(resp)
+	s.Require().Equal(expectedStatusCode, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	s.Require().NoError(err)
+	s.Require().Contains(string(body), expectedBody)
 }
 
 func TestAPIServerTestSuite(t *testing.T) {

@@ -35,9 +35,9 @@ func TestRequesterSuite(t *testing.T) {
 // Before each test
 func (s *RequesterSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	n, client := setupNodeForTest(s.T())
+	n, _ := setupNodeForTest(s.T())
 	s.node = n
-	s.client = client
+	s.client = client.NewAPIClient(n.APIServer.Address, n.APIServer.Port)
 }
 
 // After each test

@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 )
 
@@ -54,7 +55,10 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			s.Require().NoError(err)
 
 			client := client.NewAPIClient("localhost", port)
-			s.Require().NoError(apitest.WaitForAlive(s.ctx, client))
+			clientV2 := clientv2.New(clientv2.Options{
+				Address: fmt.Sprintf("http://localhost:%d", port),
+			})
+			s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 			testJob := model.NewJob()
 			specOpts := []job.SpecOpt{}

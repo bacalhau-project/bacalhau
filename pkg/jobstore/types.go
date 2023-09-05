@@ -12,8 +12,8 @@ type JobQuery struct {
 	Namespace   string   `json:"namespace"`
 	IncludeTags []string `json:"include_tags"`
 	ExcludeTags []string `json:"exclude_tags"`
-	Limit       int      `json:"limit"`
-	Offset      int      `json:"offset"`
+	Limit       uint32   `json:"limit"`
+	Offset      uint32   `json:"offset"`
 	ReturnAll   bool     `json:"return_all"`
 	SortBy      string   `json:"sort_by"`
 	SortReverse bool     `json:"sort_reverse"`

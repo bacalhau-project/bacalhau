@@ -3,15 +3,13 @@ package shared
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/docs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type EndpointParams struct {
@@ -49,10 +47,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
 	pt.GET("/id", e.id)
 	pt.GET("/livez", e.livez)
-
-	// Swagger UI
-	docs.SwaggerInfo.Version = version.Get().GitVersion
-	e.router.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
 
 	return e
 }
@@ -117,12 +111,12 @@ func (e *Endpoint) nodeInfo(c echo.Context) error {
 //
 //nolint:lll
 func (e *Endpoint) version(c echo.Context) error {
-	var versionReq apimodels.VersionRequest
+	var versionReq legacymodels.VersionRequest
 	if err := c.Bind(&versionReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, apimodels.VersionResponse{
+	return c.JSON(http.StatusOK, legacymodels.VersionResponse{
 		VersionInfo: version.Get(),
 	})
 }

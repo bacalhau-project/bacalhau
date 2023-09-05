@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -23,8 +24,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					CancelRequest	body		apimodels.CancelRequest	true	" "
-//	@Success				200				{object}	apimodels.CancelResponse
+//	@Param					CancelRequest	body		legacymodels.CancelRequest	true	" "
+//	@Success				200				{object}	legacymodels.CancelResponse
 //	@Failure				400				{object}	string
 //	@Failure				401				{object}	string
 //	@Failure				403				{object}	string
@@ -76,7 +77,7 @@ func (s *Endpoint) cancel(c echo.Context) error {
 
 	c.Response().Header().Set(apimodels.HTTPHeaderClientID, jobCancelPayload.ClientID)
 	c.Response().Header().Set(apimodels.HTTPHeaderJobID, jobCancelPayload.JobID)
-	return c.JSON(http.StatusOK, apimodels.CancelResponse{
+	return c.JSON(http.StatusOK, legacymodels.CancelResponse{
 		State: &jobState,
 	})
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
@@ -185,7 +186,10 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := client.NewAPIClient("localhost", port)
-	s.Require().NoError(apitest.WaitForAlive(s.ctx, client))
+	clientV2 := clientv2.New(clientv2.Options{
+		Address: fmt.Sprintf("http://localhost:%d", port),
+	})
+	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)

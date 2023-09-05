@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
@@ -21,15 +21,15 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					ListRequest	body		apimodels.ListRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
-//	@Success				200			{object}	apimodels.ListResponse
+//	@Param					ListRequest	body		legacymodels.ListRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
+//	@Success				200			{object}	legacymodels.ListResponse
 //	@Failure				400			{object}	string
 //	@Failure				500			{object}	string
 //	@Router					/api/v1/requester/list [post]
 //
 //nolint:lll
 func (s *Endpoint) list(c echo.Context) error {
-	var listReq apimodels.ListRequest
+	var listReq legacymodels.ListRequest
 
 	if err := c.Bind(&listReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -58,12 +58,12 @@ func (s *Endpoint) list(c echo.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, apimodels.ListResponse{
+	return c.JSON(http.StatusOK, legacymodels.ListResponse{
 		Jobs: jobWithInfos,
 	})
 }
 
-func (s *Endpoint) getJobsList(ctx context.Context, listReq apimodels.ListRequest) ([]model.Job, error) {
+func (s *Endpoint) getJobsList(ctx context.Context, listReq legacymodels.ListRequest) ([]model.Job, error) {
 	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
 		Namespace:   listReq.ClientID,
 		ID:          listReq.JobID,

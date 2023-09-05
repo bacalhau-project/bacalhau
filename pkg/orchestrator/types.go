@@ -5,6 +5,37 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type SubmitJobRequest struct {
+	Job *models.Job
+}
+
+type SubmitJobResponse struct {
+	JobID        string
+	EvaluationID string
+}
+
+type StopJobRequest struct {
+	JobID         string
+	Reason        string
+	UserTriggered bool
+}
+
+type StopJobResponse struct {
+	EvaluationID string
+}
+
+type ReadLogsRequest struct {
+	JobID       string
+	ExecutionID string
+	WithHistory bool
+	Follow      bool
+}
+
+type ReadLogsResponse struct {
+	Address           string
+	ExecutionComplete bool
+}
+
 // NodeRank represents a node and its rank. The higher the rank, the more preferable a node is to execute the job.
 // A negative rank means the node is not suitable to execute the job.
 type NodeRank struct {
