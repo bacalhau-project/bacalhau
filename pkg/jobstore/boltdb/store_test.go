@@ -460,28 +460,29 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
 
 	eval := models.Evaluation{
-		ID:    "e1",
-		JobID: "10",
+		ID:     "e1",
+		JobID:  "10",
+		Status: models.EvalStatusPending,
 	}
 
 	// Wrong job ID means JobNotFound
 	err := s.store.CreateEvaluation(s.ctx, eval)
-	s.Error(err)
+	s.Require().Error(err)
 
 	// Correct job ID
 	eval.JobID = "1"
 	err = s.store.CreateEvaluation(s.ctx, eval)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	_, err = s.store.GetEvaluation(s.ctx, "missing")
-	s.Error(err)
+	s.Require().Error(err)
 
 	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
-	s.NoError(err)
-	s.Equal(e, eval)
+	s.Require().NoError(err)
+	s.Require().Equal(eval, e)
 
 	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *BoltJobstoreTestSuite) TestUpdateGetEvaluations() {

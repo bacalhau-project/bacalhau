@@ -1009,20 +1009,20 @@ func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (models.Eva
 	return eval, err
 }
 
-func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation, error) {
+func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, evalID string) (models.Evaluation, error) {
 	var eval models.Evaluation
 
-	key, err := b.getEvaluationJobID(tx, id)
+	jobID, err := b.getEvaluationJobID(tx, evalID)
 	if err != nil {
 		return eval, err
 	}
 
-	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobEvaluations).Get(tx, false); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobEvaluations).Get(tx, false); err != nil {
 		return eval, err
 	} else {
-		data := bkt.Get([]byte(id))
+		data := bkt.Get([]byte(evalID))
 		if data == nil {
-			return eval, bacerrors.NewEvaluationNotFound(id)
+			return eval, bacerrors.NewEvaluationNotFound(evalID)
 		}
 
 		err = json.Unmarshal(data, &eval)
