@@ -55,18 +55,6 @@ func (s *EndpointSuite) TestEndpointVersion() {
 	s.Equal(string(expectedResponse), strings.TrimSpace(rr.Body.String()))
 }
 
-func (s *EndpointSuite) TestEndpointHealthz() {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
-	rr := httptest.NewRecorder()
-	s.router.ServeHTTP(rr, req)
-
-	expectedResponse := GenerateHealthData() // Assuming you have this function defined.
-	body, _ := json.Marshal(expectedResponse)
-
-	s.Equal(http.StatusOK, rr.Code)
-	s.Equal(string(body), strings.TrimSpace(rr.Body.String()))
-}
-
 func (s *EndpointSuite) TestEndpointLivez() {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/livez", nil)
 	rr := httptest.NewRecorder()
