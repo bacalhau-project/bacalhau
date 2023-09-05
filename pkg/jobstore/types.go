@@ -79,6 +79,12 @@ type Store interface {
 	// GetEvaluation retrieves the specified evaluation
 	GetEvaluation(ctx context.Context, id string) (models.Evaluation, error)
 
+	// GetEvaluationsByState returns all evaluations in a specific state
+	GetEvaluationsByState(ctx context.Context, state string) ([]models.Evaluation, error)
+
+	// UpdateEvaluation updates the stored evaluation
+	UpdateEvaluation(ctx context.Context, eval models.Evaluation) error
+
 	// DeleteEvaluation deletes the specified evaluation
 	DeleteEvaluation(ctx context.Context, id string) error
 

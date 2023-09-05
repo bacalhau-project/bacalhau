@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
+	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -27,11 +28,12 @@ const (
 	BucketJobHistory       = "job_history"
 	BucketExecutionHistory = "execution_history"
 
-	BucketTagsIndex        = "idx_tags"        // tag -> Job id
-	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
-	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
-	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
-	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
+	BucketTagsIndex            = "idx_tags"             // tag -> Job id
+	BucketProgressIndex        = "idx_inprogress"       // job-id -> {}
+	BucketNamespacesIndex      = "idx_namespaces"       // namespace -> Job id
+	BucketExecutionsIndex      = "idx_executions"       // execution-id -> Job id
+	BucketEvaluationsIndex     = "idx_evaluations"      // evaluation-id -> Job id
+	BucketEvaluationStateIndex = "idx_evaluation_state" // state -> evaluation id
 
 	newJobComment = "Job created"
 )
@@ -44,11 +46,12 @@ type BoltJobStore struct {
 	watchers    []*jobstore.Watcher
 	watcherLock sync.Mutex
 
-	inProgressIndex  *Index
-	namespacesIndex  *Index
-	tagsIndex        *Index
-	executionsIndex  *Index
-	evaluationsIndex *Index
+	inProgressIndex      *Index
+	namespacesIndex      *Index
+	tagsIndex            *Index
+	executionsIndex      *Index
+	evaluationsIndex     *Index
+	evaluationStateIndex *Index
 }
 
 type Option func(store *BoltJobStore)
@@ -122,13 +125,14 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		return nil
 	})
 
-	log.Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
+	log.Ctx(context.Background()).Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
 
 	store.inProgressIndex = NewIndex(BucketProgressIndex)
 	store.namespacesIndex = NewIndex(BucketNamespacesIndex)
 	store.tagsIndex = NewIndex(BucketTagsIndex)
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
+	store.evaluationStateIndex = NewIndex(BucketEvaluationStateIndex)
 
 	return store, err
 }
@@ -947,7 +951,51 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 	if err != nil {
 		return err
 	}
+
+	// Add the evaluation in the pending (default) state to the index
+	err = b.evaluationStateIndex.Add(tx, []byte(eval.ID), []byte(eval.Status))
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (b *BoltJobStore) GetEvaluationsByState(ctx context.Context, state string) ([]models.Evaluation, error) {
+	var evals []models.Evaluation
+
+	err := b.database.View(func(tx *bolt.Tx) (err error) {
+		evals, err = b.getEvaluationsByState(tx, state)
+		return
+	})
+
+	return evals, err
+}
+
+func (b *BoltJobStore) getEvaluationsByState(tx *bolt.Tx, state string) ([]models.Evaluation, error) {
+	evals := make([]models.Evaluation, 0)
+
+	keys, listErr := b.evaluationStateIndex.List(tx, []byte(state))
+	if listErr != nil {
+		return nil, listErr
+	}
+
+	err := new(multierror.Error)
+
+	for _, key := range keys {
+		eval, getErr := b.getEvaluation(tx, string(key))
+		if getErr != nil {
+			err = multierror.Append(err, getErr)
+		}
+
+		evals = append(evals, eval)
+	}
+
+	sort.Slice(evals, func(i, j int) bool {
+		return evals[i].CreateTime < evals[j].CreateTime
+	})
+
+	return evals, err.ErrorOrNil()
 }
 
 // GetEvaluation retrieves the specified evaluation
@@ -984,6 +1032,51 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation,
 	}
 
 	return eval, nil
+}
+
+func (b *BoltJobStore) UpdateEvaluation(ctx context.Context, eval models.Evaluation) error {
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		return b.updateEvaluation(tx, eval)
+	})
+}
+
+func (b *BoltJobStore) updateEvaluation(tx *bolt.Tx, eval models.Evaluation) error {
+	// If there is an error getting the current evaluation we should not be updating it
+	existingEval, err := b.getEvaluation(tx, eval.ID)
+	if err != nil {
+		return bacerrors.NewEvaluationNotFound(eval.ID)
+	}
+
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.UpdateEvent, eval)
+	})
+
+	data, err := json.Marshal(eval)
+	if err != nil {
+		return err
+	}
+
+	if bkt, err := NewBucketPath(BucketJobs, eval.JobID, BucketJobEvaluations).Get(tx, false); err != nil {
+		return err
+	} else {
+		if err = bkt.Put([]byte(eval.ID), data); err != nil {
+			return err
+		}
+	}
+
+	errs := new(multierror.Error)
+
+	// Remove the old evaluation state index and set the new one if it has changed
+	if existingEval.Status != eval.Status {
+		if err = b.evaluationStateIndex.Remove(tx, []byte(existingEval.ID), []byte(existingEval.Status)); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+		if err = b.evaluationStateIndex.Add(tx, []byte(eval.ID), []byte(eval.Status)); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
 func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error) {
@@ -1030,7 +1123,17 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 		}
 	}
 
-	return nil
+	// Remove the evaluation from the indexes
+	errs := new(multierror.Error)
+
+	if err = b.evaluationStateIndex.Remove(tx, []byte(eval.ID), []byte(eval.Status)); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	if err = b.evaluationsIndex.Remove(tx, []byte(jobID), []byte(eval.ID)); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+
+	return errs.ErrorOrNil()
 }
 
 func (b *BoltJobStore) Close(ctx context.Context) error {

@@ -493,6 +493,33 @@ func (s *InMemoryTestSuite) TestEvaluations() {
 	s.NoError(err)
 }
 
+func (s *InMemoryTestSuite) TestUpdateGetEvaluations() {
+	eval := models.Evaluation{
+		ID:     "e1",
+		JobID:  s.ids[0],
+		Status: models.EvalStatusPending,
+	}
+
+	err := s.store.CreateEvaluation(s.ctx, eval)
+	s.Require().NoError(err)
+
+	eval.Status = models.EvalStatusFailed
+	err = s.store.UpdateEvaluation(s.ctx, eval)
+	s.Require().NoError(err)
+
+	evals, err := s.store.GetEvaluationsByState(s.ctx, models.EvalStatusFailed)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(evals))
+	s.Require().Equal("e1", evals[0].ID)
+
+	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(models.EvalStatusFailed, e.Status)
+
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+}
+
 func makeDockerEngineJob(entrypointArray []string) *models.Job {
 	j := mock.Job()
 	j.Task().Engine = &models.SpecConfig{

@@ -134,6 +134,21 @@ func (mr *MockStoreMockRecorder) GetEvaluation(ctx, id interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluation", reflect.TypeOf((*MockStore)(nil).GetEvaluation), ctx, id)
 }
 
+// GetEvaluationsByState mocks base method.
+func (m *MockStore) GetEvaluationsByState(ctx context.Context, state string) ([]models.Evaluation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEvaluationsByState", ctx, state)
+	ret0, _ := ret[0].([]models.Evaluation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEvaluationsByState indicates an expected call of GetEvaluationsByState.
+func (mr *MockStoreMockRecorder) GetEvaluationsByState(ctx, state interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluationsByState", reflect.TypeOf((*MockStore)(nil).GetEvaluationsByState), ctx, state)
+}
+
 // GetExecutions mocks base method.
 func (m *MockStore) GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error) {
 	m.ctrl.T.Helper()
@@ -207,6 +222,20 @@ func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) ([]models.Job, 
 func (mr *MockStoreMockRecorder) GetJobs(ctx, query interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockStore)(nil).GetJobs), ctx, query)
+}
+
+// UpdateEvaluation mocks base method.
+func (m *MockStore) UpdateEvaluation(ctx context.Context, eval models.Evaluation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEvaluation", ctx, eval)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEvaluation indicates an expected call of UpdateEvaluation.
+func (mr *MockStoreMockRecorder) UpdateEvaluation(ctx, eval interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEvaluation", reflect.TypeOf((*MockStore)(nil).UpdateEvaluation), ctx, eval)
 }
 
 // UpdateExecution mocks base method.
