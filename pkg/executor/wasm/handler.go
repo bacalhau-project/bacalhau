@@ -154,7 +154,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	_, wasmErr := entryFunc.Call(wasmCtx)
-	exitCode := int64(-1)
+	exitCode := int64(0)
 	var errExit *sys.ExitError
 	if errors.As(wasmErr, &errExit) {
 		exitCode = int64(errExit.ExitCode())
@@ -162,6 +162,9 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.logger.Info().Int64("exit_code", exitCode).Msg("execution ended")
 	}
 	if wasmErr != nil {
+		// in the event that an error is returned without an exist code we'll assume the operation
+		// failed and set the exit code to 1
+		exitCode = 1
 		h.logger.Warn().Int64("exit_code", exitCode).Err(wasmErr).Msg("execution ended")
 	}
 	// execution has finished and there's nothing else to read from so inform

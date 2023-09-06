@@ -105,28 +105,13 @@ func (e *Executor) ShouldBidBasedOnUsage(
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
-//nolint:funlen,gocyclo // will clean up
-func (e *Executor) Run(
-	ctx context.Context,
-	request *executor.RunCommandRequest,
-) (*models.RunCommandResult, error) {
-	if err := e.Start(ctx, request); err != nil {
-		return nil, err
-	}
-	res, err := e.Wait(ctx, request.ExecutionID)
-	if err != nil {
-		return nil, err
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case out := <-res:
-		return out, nil
-	}
-}
-
-// TODO need a better name as this starts an execution for the request, not the actual executor this method is on.
-// Launc, Exec, Dispatch?
+// Start initiates an execution based on the provided RunCommandRequest.
+// It performs several key tasks as part of the initiation:
+// 1. Checks if the execution is already started or completed and returns an error if so.
+// 2. Calls newDockerJobContainer to create and configure a Docker container for the execution.
+// 3. Registers a new executionHandler to manage the execution.
+// 4. Finally, it starts a new Goroutine to run the container.
+// It returns an error if any of the above steps fail.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	log.Ctx(ctx).Info().
 		Str("executionID", request.ExecutionID).
@@ -135,11 +120,9 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	if handler, found := e.handlers.Get(request.ExecutionID); found {
 		if handler.active() {
-			// TODO we can make this method idempotent by not returning an error here if the execution is already active
-			return fmt.Errorf("execution (%s) already started", request.ExecutionID)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyStartedErr)
 		} else {
-			// TODO what should we do if an execution has already completed and we try to start it again? Just rerun it?
-			return fmt.Errorf("execution (%s) already completed", request.ExecutionID)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyCompleteErr)
 		}
 	}
 
@@ -182,16 +165,14 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	return nil
 }
 
-// Wait waits for the completion of a specific execution by its executionID.
+// Wait waits for the completion of a specific execution given its executionID.
 // A channel is returned that will emit the result of the execution.
-// TODO: The current implementation spawns a new Goroutine for each Wait call,
+// Note: The current implementation spawns a new Goroutine for each Wait call,
 // which could become resource-intensive with a large number of concurrent Wait calls.
-// We should consider using a shared broadcast channel in the executionHandler to notify all
-// waiting Goroutines at once.
 func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return nil, fmt.Errorf("execution (%s) not found", executionID)
+		return nil, fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
 	}
 	ch := make(chan *models.RunCommandResult)
 	// TODO this pattern is wasteful if we expect there to be a large number things calling wait, as each wait spins off
@@ -200,6 +181,9 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 	return ch, nil
 }
 
+// doWait is an internal method that does the actual waiting for an execution to complete.
+// It listens for a signal on the executionHandler's wait channel and sends the result
+// to the provided output channel.
 func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
 	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
 	defer close(out)
@@ -212,20 +196,50 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	}
 }
 
+// Cancel tries to cancel a specific execution by its executionID.
+// It returns an error if the execution is not found.
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return fmt.Errorf("execution (%s) not found", executionID)
+		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.NotFoundErr)
 	}
 	return handler.kill(ctx)
 }
 
+// GetOutputStream provides a stream of output logs for a specific execution.
+// Parameters 'withHistory' and 'follow' control whether to include past logs
+// and whether to keep the stream open for new logs, respectively.
+// It returns an error if the execution is not found.
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return nil, fmt.Errorf("execution (%s) not found", executionID)
+		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.NotFoundErr)
 	}
 	return handler.outputStream(ctx, withHistory, found)
+}
+
+// Run initiates and waits for the completion of an execution in one call.
+// This method serves as a higher-level convenience function that
+// internally calls Start and Wait methods.
+// It returns the result of the execution or an error if either starting
+// or waiting fails, or if the context is canceled.
+func (e *Executor) Run(
+	ctx context.Context,
+	request *executor.RunCommandRequest,
+) (*models.RunCommandResult, error) {
+	if err := e.Start(ctx, request); err != nil {
+		return nil, err
+	}
+	res, err := e.Wait(ctx, request.ExecutionID)
+	if err != nil {
+		return nil, err
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case out := <-res:
+		return out, nil
+	}
 }
 
 type dockerJobContainerParams struct {
@@ -239,6 +253,11 @@ type dockerJobContainerParams struct {
 	ResultsDir    string
 }
 
+// newDockerJobContainer is an internal method called by Start to set up a new Docker container
+// for the job execution. It configures the container based on the provided dockerJobContainerParams.
+// This includes decoding engine specifications, setting up environment variables, mounts, resource
+// constraints, and network configurations. It then creates the container but does not start it.
+// The method returns a container.CreateResponse and an error if any part of the setup fails.
 func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobContainerParams) (container.CreateResponse, error) {
 	// decode the request arguments, bail if they are invalid.
 	dockerArgs, err := dockermodels.DecodeSpec(params.EngineSpec)

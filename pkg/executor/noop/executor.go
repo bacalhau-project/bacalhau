@@ -117,7 +117,7 @@ func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRe
 func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return nil, fmt.Errorf("execution (%s) not found", executionID)
+		return nil, fmt.Errorf("wait execution (%s): %w", executionID, executor.NotFoundErr)
 	}
 	ch := make(chan *models.RunCommandResult)
 	go e.doWait(ctx, ch, handler)

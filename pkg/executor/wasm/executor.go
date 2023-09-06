@@ -56,17 +56,34 @@ func (*Executor) ShouldBidBasedOnUsage(
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
+// Start initiates the execution of a WebAssembly (WASM) task using the provided RunCommandRequest.
+// It first checks if the execution with the given ExecutionID is already active or completed,
+// returning an error if so.
+//
+// This method performs several steps to initiate the execution:
+// 1. Decodes the engine parameters specific to the WASM engine.
+// 2. Configures memory limits for the WASM runtime, based on the resources specified in the request.
+// 3. Creates a virtual filesystem from storage to be used by the WASM execution.
+// 4. Sets up a new log manager specific to the execution for capturing logs.
+//
+// After preparing the environment, it creates an executionHandler and associates it with the ExecutionID.
+// The executionHandler is responsible for running the WASM task, and it's executed in a separate goroutine.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - request: The RunCommandRequest object containing details such as ExecutionID, resources, and inputs/outputs.
+//
+// Returns:
+// - An error if the initialization fails, or if an execution with the given ExecutionID is already active or completed.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
 	defer span.End()
 
 	if handler, found := e.handlers.Get(request.ExecutionID); found {
 		if handler.active() {
-			// TODO we can make this method idempotent by not returning an error here if the execution is already active
-			return fmt.Errorf("execution (%s) already started", request.ExecutionID)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyStartedErr)
 		} else {
-			// TODO what should we do if an execution has already completed and we try to start it again? Just rerun it?
-			return fmt.Errorf("execution (%s) already completed", request.ExecutionID)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyCompleteErr)
 		}
 	}
 
@@ -122,16 +139,41 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	return nil
 }
 
+// Wait waits for the completion of a specific execution identified by its executionID.
+// It returns a read-only channel through which the result of the execution will be sent.
+// If an execution with the given executionID is not found, an error is returned.
+//
+// Internally, this method spawns a new Goroutine to wait for the execution to complete,
+// which adds a TODO note suggesting future optimization to handle a large number of concurrent
+// Wait calls more efficiently.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - executionID: The unique identifier for the execution to wait on.
+//
+// Returns:
+// - A read-only channel emitting the result of the execution.
+// - An error if the execution with the given executionID is not found.
 func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return nil, fmt.Errorf("execution (%s) not found", executionID)
+		return nil, fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
 	}
 	ch := make(chan *models.RunCommandResult)
 	go e.doWait(ctx, ch, handler)
 	return ch, nil
 }
 
+// doWait is an internal method that performs the actual waiting for a given execution to complete.
+// It listens for the completion signal from the executionHandler's wait channel or a cancellation signal
+// from the context, and then forwards the result through the provided output channel.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - out: The channel through which the execution result will be sent.
+// - handle: The executionHandler responsible for the execution.
+//
+// Note: This method is intended to be run in a separate Goroutine.
 func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
 	defer close(out)
 	select {
@@ -142,6 +184,61 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	}
 }
 
+// Cancel attempts to terminate an ongoing execution identified by its executionID.
+// It looks up the handler for the execution and invokes its kill method to cancel it.
+// If the execution with the given ID is not found, an error is returned.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - executionID: The unique identifier for the execution to cancel.
+//
+// Returns:
+// - An error if the execution with the given executionID is not found or if canceling fails.
+func (e *Executor) Cancel(ctx context.Context, executionID string) error {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.NotFoundErr)
+	}
+	return handler.kill(ctx)
+}
+
+// GetOutputStream retrieves the output stream for a specific execution identified by its executionID.
+// The method allows configuring whether to include past output (history) and whether to keep the stream open for new output (follow).
+// If an execution with the given executionID is not found, an error is returned.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - executionID: The unique identifier for the execution whose output stream to get.
+// - withHistory: Whether to include the historical output in the returned stream.
+// - follow: Whether to keep the stream open for new output.
+//
+// Returns:
+// - An io.ReadCloser that provides access to the output stream.
+// - An error if the execution with the given executionID is not found.
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.NotFoundErr)
+	}
+	return handler.outputStream(ctx, withHistory, follow)
+}
+
+// Run initiates and waits for the completion of an execution in one call.
+// This is essentially a convenience method that combines the Start and Wait methods.
+//
+// Parameters:
+// - ctx: The context for the operation, used for timeouts and cancellations.
+// - request: The RunCommandRequest object containing details about the execution.
+//
+// Returns:
+// - A pointer to a RunCommandResult object, containing the result of the execution.
+// - An error if either starting or waiting for the execution fails, or if the context is cancelled.
+//
+// Steps:
+//  1. Starts the execution using the Start method. If it fails, returns an error.
+//  2. Waits for the execution to complete using the Wait method. If it fails, returns an error.
+//  3. Listens on the channel returned by Wait, and returns the result when available.
+//     If the context is cancelled, it returns a context error.
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
@@ -159,22 +256,6 @@ func (e *Executor) Run(
 	case out := <-res:
 		return out, nil
 	}
-}
-
-func (e *Executor) Cancel(ctx context.Context, executionID string) error {
-	handler, found := e.handlers.Get(executionID)
-	if !found {
-		return fmt.Errorf("execution (%s) not found", executionID)
-	}
-	return handler.kill(ctx)
-}
-
-func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	handler, found := e.handlers.Get(executionID)
-	if !found {
-		return nil, fmt.Errorf("execution (%s) not found", executionID)
-	}
-	return handler.outputStream(ctx, withHistory, follow)
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that

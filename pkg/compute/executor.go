@@ -97,12 +97,25 @@ func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvide
 	return volumes, cleanup, nil
 }
 
+// InputCleanupFn is a function type that defines the contract for cleaning up
+// resources associated with input volume data after the job execution has either completed
+// or failed to start. The function is expected to take a context.Context as an argument,
+// which can be used for timeout and cancellation signals. It returns an error if
+// the cleanup operation fails.
+//
+// For example, an InputCleanupFn might be responsible for deallocating storage used
+// for input volumes, or deleting temporary input files that were created as part of the
+// job's execution. The nature of it operation depends on the storage provided by `strgprovider` and
+// input sources of the jobs associated tasks. For the case of a wasm job its input and entry module storage volumes
+// should be removed via the method after the jobs execution reaches a terminal state.
+type InputCleanupFn = func(context.Context) error
+
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	execution *models.Execution,
 	resultsDir string,
-) (*executor.RunCommandRequest, func(context.Context) error, error) {
+) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
 	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, execution.Job.Task().InputSources...)
@@ -178,7 +191,7 @@ func PrepareRunArguments(
 }
 
 type StartResult struct {
-	cleanup func(ctx context.Context) error
+	cleanup InputCleanupFn
 	Err     error
 }
 
