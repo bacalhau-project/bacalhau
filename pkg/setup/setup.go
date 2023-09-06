@@ -50,20 +50,20 @@ func getBacalhauRepoPath() (string, error) {
 }
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
-func SetupBacalhauRepo(repoDir string) (string, error) {
+func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 	if repoDir == "" {
 		var err error
 		repoDir, err = getBacalhauRepoPath()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
 	fsRepo, err := setupRepo(repoDir)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return fsRepo.Path()
+	return fsRepo, nil
 }
 
 func setupRepo(path string) (*repo.FsRepo, error) {

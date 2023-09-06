@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -160,7 +160,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		defer os.RemoveAll(repoPath)
 	}
 
-	fsRepo, err := getRepo(repoPath)
+	fsRepo, err := setup.SetupBacalhauRepo(repoPath)
 	if err != nil {
 		return err
 	}
@@ -256,31 +256,4 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	cmd.Println("\nShutting down devstack")
 	return nil
-}
-
-// getRepo will return a config repo that given a directory, will
-// create, init (if necessary) and open the repository before
-// returning it.
-func getRepo(repoPath string) (*repo.FsRepo, error) {
-	fsRepo, err := repo.NewFS(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	exists, err := fsRepo.Exists()
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
-		if err = fsRepo.Init(); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := fsRepo.Open(); err != nil {
-		return nil, err
-	}
-
-	return fsRepo, nil
 }
