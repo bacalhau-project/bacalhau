@@ -86,9 +86,13 @@ func Get[T any](key string) (T, error) {
 		return zeroValue[T](), fmt.Errorf("value not found for %s", key)
 	}
 
+	var val T
 	val, ok := raw.(T)
 	if !ok {
-		return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T", raw)
+		err := ForKey(key, &val)
+		if err != nil {
+			return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T", raw)
+		}
 	}
 
 	return val, nil

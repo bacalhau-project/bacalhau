@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/samber/lo"
@@ -42,7 +43,7 @@ func (s *ParallelStorageSuite) SetupSuite() {
 	s.cm = system.NewCleanupManager()
 
 	// Setup required IPFS node and client
-	node, err := ipfs.NewLocalNode(s.ctx, s.cm, []string{})
+	node, err := ipfs.NewNodeWithConfig(s.ctx, s.cm, types.IpfsConfig{PrivateInternal: true})
 	require.NoError(s.T(), err)
 	s.node = node
 	client := s.node.Client()
