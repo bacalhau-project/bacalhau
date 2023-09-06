@@ -151,12 +151,52 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (e *Endpoint) jobSummary(c echo.Context) error {
-	// TODO: implement me
-	return c.JSON(http.StatusOK, apimodels.SummarizeJobResponse{})
+func (e *Endpoint) jobExecutions(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobID := c.Param("id")
+	var args apimodels.ListJobExecutionsRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+
+	executions, err := e.store.GetExecutions(ctx, jobID)
+	if err != nil {
+		return err
+	}
+	res := &apimodels.ListJobExecutionsResponse{
+		Executions: make([]*models.Execution, len(executions)),
+	}
+	for i := range executions {
+		res.Executions[i] = &executions[i]
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
-func (e *Endpoint) describeJob(c echo.Context) error {
-	// TODO: implement me
-	return c.JSON(http.StatusOK, apimodels.DescribeJobResponse{})
+func (e *Endpoint) jobResults(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobID := c.Param("id")
+	var args apimodels.ListJobResultsRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+
+	executions, err := e.store.GetExecutions(ctx, jobID)
+	if err != nil {
+		return err
+	}
+	results := make([]*models.SpecConfig, 0)
+	for _, execution := range executions {
+		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
+			results = append(results, execution.PublishedResult)
+		}
+	}
+	return c.JSON(http.StatusOK, &apimodels.ListJobResultsResponse{
+		Results: results,
+	})
 }

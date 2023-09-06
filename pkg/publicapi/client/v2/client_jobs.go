@@ -58,10 +58,10 @@ func (j *Jobs) Executions(r *apimodels.ListJobExecutionsRequest) (*apimodels.Lis
 	return &resp, nil
 }
 
-// Evaluations returns evaluations for a job.
-func (j *Jobs) Evaluations(r *apimodels.ListJobEvaluationsRequest) (*apimodels.ListJobEvaluationsResponse, error) {
-	var resp apimodels.ListJobEvaluationsResponse
-	if err := j.client.list(jobsPath+"/"+r.JobID+"/evaluations", r, &resp); err != nil {
+// Results returns results for a job.
+func (j *Jobs) Results(r *apimodels.ListJobResultsRequest) (*apimodels.ListJobResultsResponse, error) {
+	var resp apimodels.ListJobResultsResponse
+	if err := j.client.list(jobsPath+"/"+r.JobID+"/results", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -70,25 +70,7 @@ func (j *Jobs) Evaluations(r *apimodels.ListJobEvaluationsRequest) (*apimodels.L
 // Stop is used to stop a job by ID.
 func (j *Jobs) Stop(r *apimodels.StopJobRequest) (*apimodels.StopJobResponse, error) {
 	var resp apimodels.StopJobResponse
-	if err := j.client.delete(jobsPath, r, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// Describe is used to describe a job by ID.
-func (j *Jobs) Describe(r *apimodels.DescribeJobRequest) (*apimodels.DescribeJobResponse, error) {
-	var resp apimodels.DescribeJobResponse
-	if err := j.client.get(jobsPath+"/"+r.JobID+"description", r, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// Summarize is used to summarize a job by ID.
-func (j *Jobs) Summarize(r *apimodels.SummarizeJobRequest) (*apimodels.SummarizeJobResponse, error) {
-	var resp apimodels.SummarizeJobResponse
-	if err := j.client.get(jobsPath+"/"+r.JobID+"summary", r, &resp); err != nil {
+	if err := j.client.delete(jobsPath+"/"+r.JobID, r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

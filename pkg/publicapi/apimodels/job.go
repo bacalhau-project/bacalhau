@@ -89,22 +89,22 @@ type ListJobHistoryResponse struct {
 
 type ListJobExecutionsRequest struct {
 	BaseListRequest
-	JobID string `query:"job_id" validate:"required"`
+	JobID string `query:"-"`
 }
 
 type ListJobExecutionsResponse struct {
 	BaseListResponse
-	ExecutionIDs []string
+	Executions []*models.Execution
 }
 
-type ListJobEvaluationsRequest struct {
+type ListJobResultsRequest struct {
 	BaseListRequest
-	JobID string `query:"job_id" validate:"required"`
+	JobID string `query:"-"`
 }
 
-type ListJobEvaluationsResponse struct {
+type ListJobResultsResponse struct {
 	BaseListResponse
-	EvaluationIDs []string
+	Results []*models.SpecConfig
 }
 
 type StopJobRequest struct {
@@ -116,22 +116,4 @@ type StopJobRequest struct {
 type StopJobResponse struct {
 	BasePutResponse
 	EvaluationID string `json:"EvaluationID"`
-}
-
-type DescribeJobRequest struct {
-	BaseGetRequest
-	JobID string
-}
-
-type DescribeJobResponse struct {
-	BaseGetResponse
-}
-
-type SummarizeJobRequest struct {
-	BaseGetRequest
-	JobID string
-}
-
-type SummarizeJobResponse struct {
-	BaseGetResponse
 }

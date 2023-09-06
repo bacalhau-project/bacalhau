@@ -46,10 +46,10 @@ func Task() *models.Task {
 	task := &models.Task{
 		Name: "task1",
 		Engine: &models.SpecConfig{
-			Type: "Noop",
+			Type: "noop",
 		},
 		Publisher: &models.SpecConfig{
-			Type: "Noop",
+			Type: "noop",
 		},
 		ResourcesConfig: &models.ResourcesConfig{
 			CPU:    "0.1",
