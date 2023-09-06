@@ -132,7 +132,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
-			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/api/v1/livez", port))
+			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" {
 				return port, nil
 			}
@@ -162,7 +162,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
 
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
-	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/api/v1/healthz", port))
+	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
@@ -187,7 +187,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := client.NewAPIClient("localhost", port)
 	clientV2 := clientv2.New(clientv2.Options{
-		Address: fmt.Sprintf("http://localhost:%d", port),
+		Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 	})
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
