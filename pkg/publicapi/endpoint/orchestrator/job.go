@@ -89,11 +89,11 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 	}
 
 	res := &apimodels.ListJobsResponse{
-		Jobs: make([]*models.Job, len(jobs)),
+		Jobs: make([]*models.Job, 0),
 	}
 	for i := range jobs {
 		if selector.Matches(labels.Set(jobs[i].Labels)) {
-			res.Jobs[i] = &jobs[i]
+			res.Jobs = append(res.Jobs, &jobs[i])
 		}
 	}
 	return c.JSON(http.StatusOK, res)
