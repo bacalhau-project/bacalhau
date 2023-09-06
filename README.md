@@ -140,9 +140,15 @@ We are excited to hear your feedback!
 
 We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions, development, and more.
 
-## Current state of Bacalhau 📈
-Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)
+## Open Source
+This repository contains the Bacalhau software, covered under the [Apache-2.0](./LICENSE), except where noted (any Bacalhau logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
 
-## License
+Bacalhau is a product produced from this open source software, exclusively by Expanso, Inc. It is distributed under our commercial terms.
 
-[Apache-2.0](./LICENSE)
+Others are allowed to make their own distribution of the software, but they cannot use any of the Bacalhau trademarks, cloud services, etc.
+
+We explicitly grant permission for you to make a build that includes our trademarks while developing Bacalhau software itself. You may not publish or share the build, and you may not use that build to run Bacalhau software for any other purpose.
+
+We have borrowed the above Open Source clause from the excellent [System Initiative](https://github.com/systeminit/si/blob/main/CONTRIBUTING.md)
+
+
