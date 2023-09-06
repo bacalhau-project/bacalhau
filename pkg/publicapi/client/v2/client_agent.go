@@ -15,29 +15,15 @@ func (c *Client) Agent() *Agent {
 
 // Alive is used to check if the agent is alive.
 func (c *Agent) Alive() (*apimodels.IsAliveResponse, error) {
-	req := &apimodels.BaseGetRequest{
-		BaseRequest: apimodels.BaseRequest{
-			Headers: map[string]string{
-				"Content-Type": "application/json",
-			},
-		},
-	}
 	var res apimodels.IsAliveResponse
-	err := c.client.get("/api/v1/agent/alive", req, &res)
+	err := c.client.get("/api/v1/agent/alive", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }
 
 // Version is used to get the agent version.
 func (c *Agent) Version() (*apimodels.GetVersionResponse, error) {
-	req := &apimodels.BaseGetRequest{
-		BaseRequest: apimodels.BaseRequest{
-			Headers: map[string]string{
-				"Content-Type": "application/json",
-			},
-		},
-	}
 	var res apimodels.GetVersionResponse
-	err := c.client.get("/api/v1/agent/version", req, &res)
+	err := c.client.get("/api/v1/agent/version", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }
 
