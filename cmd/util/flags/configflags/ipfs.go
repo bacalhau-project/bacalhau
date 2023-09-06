@@ -11,6 +11,13 @@ var IPFSFlags = []Definition{
 		EnvironmentVariables: []string{"BACALHAU_IPFS_SWARM_ADDRESSES"},
 	},
 	{
+		FlagName:             "ipfs-swarm-key",
+		ConfigPath:           types.NodeIPFSSwarmKeyPath,
+		DefaultValue:         Default.Node.IPFS.SwarmKeyPath,
+		Description:          "Optional IPFS swarm key required to connect to a private IPFS swarm",
+		EnvironmentVariables: []string{"BACALHAU_IPFS_SWARM_KEY"},
+	},
+	{
 		FlagName:     "ipfs-connect",
 		ConfigPath:   types.NodeIPFSConnect,
 		DefaultValue: Default.Node.IPFS.Connect,

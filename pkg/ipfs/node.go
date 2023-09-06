@@ -208,6 +208,17 @@ func createNode(ctx context.Context, _ *system.CleanupManager, ipfsConfig types.
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
+	// If we have a swarm key, copy it into the repo
+	if ipfsConfig.SwarmKeyPath != "" {
+		destinationPath := filepath.Join(repoPath, "swarm.key")
+		err = copyFile(ipfsConfig.SwarmKeyPath, destinationPath)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to copy swarm key: %w", err)
+		} else {
+			log.Ctx(ctx).Debug().Str("Path", destinationPath).Msg("Copied IPFS private swarm key")
+		}
+	}
+
 	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to open repo: %w", err)
@@ -375,6 +386,9 @@ func connectToSwarmProfile(swarmAddrs []string, privateSwarm bool) config.Profil
 				return fmt.Errorf("failed to parse peer addresses: %w", err)
 			}
 			c.Peering = config.Peering{Peers: swarmPeers}
+			if privateSwarm {
+				c.Bootstrap = swarmAddrs
+			}
 			return nil
 		},
 	}
@@ -401,7 +415,8 @@ func createRepo(path string, nodeConfig types.IpfsConfig) error {
 	}
 
 	if nodeConfig.SwarmAddresses != nil {
-		profiles = append(profiles, connectToSwarmProfile(nodeConfig.GetSwarmAddresses(), false))
+		privateSwarm := nodeConfig.SwarmKeyPath != ""
+		profiles = append(profiles, connectToSwarmProfile(nodeConfig.GetSwarmAddresses(), privateSwarm))
 	}
 
 	if preferredAddress := bac_config.PreferredAddress(); preferredAddress != "" {
