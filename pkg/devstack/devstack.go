@@ -43,7 +43,8 @@ type DevStackOptions struct {
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
-	ExecutorPlugins            bool // when true pluggable executors will be used.
+	ExecutorPlugins            bool   // when true pluggable executors will be used.
+	ConfigurationRepo          string // A custom config repo
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
