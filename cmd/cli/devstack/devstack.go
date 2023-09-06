@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
@@ -166,7 +167,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	}
 
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if config.GetServeIPFSPath() != "" {
+	if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
 		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment " +
 			"and/or --ipfs-serve-path from your flags " +
 			"and/or node.ipfs.servepath from your config " +

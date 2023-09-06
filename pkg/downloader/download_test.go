@@ -7,9 +7,11 @@ import (
 	"crypto/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -53,7 +55,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
 
-	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
+	node, err := ipfs.NewNodeWithConfig(ctx, ds.cm, types.IpfsConfig{PrivateInternal: true})
 	require.NoError(ds.T(), err)
 
 	ds.client = node.Client()
@@ -64,10 +66,13 @@ func (ds *DownloaderSuite) SetupTest() {
 	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
 
+	cfg := configenv.Testing
+	cfg.Node.IPFS.SwarmAddresses = swarm
+	ds.Require().NoError(config.Set(cfg))
+
 	ds.downloadSettings = &model.DownloaderSettings{
-		Timeout:        model.DefaultIPFSTimeout,
-		OutputDir:      testOutputDir,
-		IPFSSwarmAddrs: strings.Join(swarm, ","),
+		Timeout:   model.DefaultDownloadTimeout,
+		OutputDir: testOutputDir,
 	}
 
 	ds.downloadProvider = provider.NewMappedProvider(

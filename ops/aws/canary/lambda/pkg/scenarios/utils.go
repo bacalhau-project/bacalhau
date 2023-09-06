@@ -3,19 +3,15 @@ package scenarios
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -96,20 +92,14 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 }
 
 func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp(os.TempDir(), "")
 	if err != nil {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := config.Getenv(types.NodeIPFSSwarmAddresses)
-	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
-	}
-
 	return &model.DownloaderSettings{
-		Timeout:        50 * time.Second,
-		OutputDir:      dir,
-		IPFSSwarmAddrs: IPFSSwarmAddrs,
+		Timeout:   50 * time.Second,
+		OutputDir: dir,
 	}, nil
 }
 

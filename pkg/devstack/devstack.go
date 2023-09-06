@@ -290,21 +290,7 @@ func createIPFSNode(ctx context.Context,
 	//////////////////////////////////////
 	// IPFS
 	//////////////////////////////////////
-	var err error
-	var ipfsNode *ipfs.Node
-
-	if publicIPFSMode {
-		ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-		}
-	} else {
-		ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddresses)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-		}
-	}
-	return ipfsNode, nil
+	return ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{SwarmAddresses: ipfsSwarmAddresses, PrivateInternal: !publicIPFSMode})
 }
 
 //nolint:funlen
@@ -452,7 +438,7 @@ Devstack is ready!
 No. of requester only nodes: %d
 No. of compute only nodes: %d
 No. of hybrid nodes: %d
-To use the devstack, run the following commands in your shell: 
+To use the devstack, run the following commands in your shell:
 
 %s
 

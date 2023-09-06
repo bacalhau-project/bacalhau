@@ -2,11 +2,12 @@ package scenario
 
 import (
 	"context"
-	"strings"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
@@ -169,11 +170,12 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 			swarmAddresses = append(swarmAddresses, addrs...)
 		}
 
+		viper.Set(types.NodeIPFSSwarmAddresses, swarmAddresses)
+		viper.Set(types.NodeIPFSPrivateInternal, true)
+
 		downloaderSettings := &model.DownloaderSettings{
-			Timeout:        time.Second * 10,
-			OutputDir:      resultsDir,
-			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
-			LocalIPFS:      true,
+			Timeout:   time.Second * 10,
+			OutputDir: resultsDir,
 		}
 
 		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)

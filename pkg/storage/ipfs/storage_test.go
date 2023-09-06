@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -26,7 +27,7 @@ func getIpfsStorage(t *testing.T) *StorageProvider {
 		cm.Cleanup(context.Background())
 	})
 
-	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
+	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
 	require.NoError(t, err)
 
 	storage, err := NewStorage(cm, node.Client())

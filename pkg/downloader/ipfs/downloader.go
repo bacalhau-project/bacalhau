@@ -32,26 +32,12 @@ func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
 	log.Ctx(ctx).Debug().Msg("creating ipfs node")
 
 	if d.node == nil {
-		// Only create a temporary ipfs node on the first need for a client
-		newNode := ipfs.NewNode
-		if d.settings.LocalIPFS {
-			newNode = ipfs.NewLocalNode
-		}
-
-		node, err := newNode(ctx, d.cm, strings.Split(d.settings.IPFSSwarmAddrs, ","))
+		node, err := ipfs.NewNode(ctx, d.cm)
 		if err != nil {
 			return ipfs.Client{}, err
 		}
 
 		d.node = node
-
-		// Cleanup when the Downloader disappears.
-		d.cm.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if d.node != nil {
-				d.node.Close(ctx)
-			}
-			return nil
-		})
 	}
 
 	return d.node.Client(), nil
@@ -98,7 +84,6 @@ func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) e
 	defer span.End()
 
 	ipfsClient, err := d.getClient(ctx)
-
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -41,13 +42,23 @@ func NewGetOptions() *GetOptions {
 func NewCmd() *cobra.Command {
 	OG := NewGetOptions()
 
+	getFlags := map[string][]configflags.Definition{
+		"ipfs": configflags.IPFSFlags,
+	}
+
 	getCmd := &cobra.Command{
 		Use:     "get [id]",
 		Short:   "Get the results of a job",
 		Long:    getLong,
 		Example: getExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if err := configflags.BindFlags(cmd, getFlags); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+
+			util.ApplyPorcelainLogLevel(cmd, args)
+		},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := get(cmd, cmdArgs, OG); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -56,6 +67,10 @@ func NewCmd() *cobra.Command {
 	}
 
 	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
+
+	if err := configflags.RegisterFlags(getCmd, getFlags); err != nil {
+		util.Fatal(getCmd, err, 1)
+	}
 
 	return getCmd
 }

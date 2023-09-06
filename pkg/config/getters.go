@@ -144,14 +144,10 @@ func GetStoragePath() string {
 	return path
 }
 
-// PreferredAddress will allow for the specificying of
+// PreferredAddress will allow for the specifying of
 // the preferred address to listen on for cases where it
 // is not clear, or where the address does not appear when
 // using 0.0.0.0
 func PreferredAddress() string {
 	return os.Getenv("BACALHAU_PREFERRED_ADDRESS")
-}
-
-func GetServeIPFSPath() string {
-	return viper.GetString(types.NodeIPFSServePath)
 }
