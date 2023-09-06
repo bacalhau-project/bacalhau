@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/labstack/echo/v4"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -20,13 +21,13 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					StateRequest	body		apimodels.StateRequest	true	" "
-//	@Success				200				{object}	apimodels.ResultsResponse
+//	@Param					StateRequest	body		legacymodels.StateRequest	true	" "
+//	@Success				200				{object}	legacymodels.ResultsResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/results [post]
 func (s *Endpoint) results(c echo.Context) error {
-	var stateReq apimodels.StateRequest
+	var stateReq legacymodels.StateRequest
 	if err := c.Bind(&stateReq); err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -56,5 +57,5 @@ func (s *Endpoint) results(c echo.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, apimodels.ResultsResponse{Results: results})
+	return c.JSON(http.StatusOK, legacymodels.ResultsResponse{Results: results})
 }

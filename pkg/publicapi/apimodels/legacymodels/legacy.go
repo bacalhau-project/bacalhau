@@ -1,10 +1,19 @@
-package apimodels
+package legacymodels
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 )
+
+type VersionRequest struct {
+	ClientID string `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+}
+
+type VersionResponse struct {
+	VersionInfo *models.BuildVersionInfo `json:"build_version_info"`
+}
 
 type CancelRequest = signatures.SignedRequest[model.JobCancelPayload]
 
@@ -29,7 +38,7 @@ type ListRequest struct {
 	ClientID    string   `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	IncludeTags []string `json:"include_tags" example:"['any-tag']"`
 	ExcludeTags []string `json:"exclude_tags" example:"['any-tag']"`
-	MaxJobs     int      `json:"max_jobs" example:"10"`
+	MaxJobs     uint32   `json:"max_jobs" example:"10"`
 	ReturnAll   bool     `json:"return_all" `
 	SortBy      string   `json:"sort_by" example:"created_at"`
 	SortReverse bool     `json:"sort_reverse"`

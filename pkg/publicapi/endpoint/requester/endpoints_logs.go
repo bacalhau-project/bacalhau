@@ -34,7 +34,7 @@ type Msg struct {
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					LogRequest	body		apimodels.LogRequest	true	" "
+//	@Param					LogRequest	body		legacymodels.LogRequest	true	" "
 //	@Success				200			{object}	string
 //	@Failure				400			{object}	string
 //	@Failure				401			{object}	string

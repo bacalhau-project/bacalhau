@@ -3,6 +3,8 @@ package models
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -13,6 +15,16 @@ const (
 	NodeTypeRequester NodeType = iota
 	NodeTypeCompute
 )
+
+func ParseNodeType(s string) (NodeType, error) {
+	for typ := NodeTypeRequester; typ <= NodeTypeCompute; typ++ {
+		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
+			return typ, nil
+		}
+	}
+
+	return NodeTypeCompute, fmt.Errorf("invalid node type: %s", s)
+}
 
 type NodeInfoProvider interface {
 	GetNodeInfo(ctx context.Context) NodeInfo

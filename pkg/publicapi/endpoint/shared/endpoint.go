@@ -3,15 +3,13 @@ package shared
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/docs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type EndpointParams struct {
@@ -49,10 +47,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
 	pt.GET("/id", e.id)
 	pt.GET("/livez", e.livez)
-
-	// Swagger UI
-	docs.SwaggerInfo.Version = version.Get().GitVersion
-	e.router.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
 
 	return e
 }
@@ -109,20 +103,20 @@ func (e *Endpoint) nodeInfo(c echo.Context) error {
 //	@Tags			Misc
 //	@Accept			json
 //	@Produce		json
-//	@Param			VersionRequest	body		apimodels.VersionRequest	true	"Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
-//	@Success		200				{object}	apimodels.VersionResponse
+//	@Param			VersionRequest	body		legacymodels.VersionRequest	true	"Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
+//	@Success		200				{object}	legacymodels.VersionResponse
 //	@Failure		400				{object}	string
 //	@Failure		500				{object}	string
 //	@Router			/api/v1/version [post]
 //
 //nolint:lll
 func (e *Endpoint) version(c echo.Context) error {
-	var versionReq apimodels.VersionRequest
+	var versionReq legacymodels.VersionRequest
 	if err := c.Bind(&versionReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, apimodels.VersionResponse{
+	return c.JSON(http.StatusOK, legacymodels.VersionResponse{
 		VersionInfo: version.Get(),
 	})
 }

@@ -92,7 +92,7 @@ func (s *PublisherTestSuite) TestValidateJob() {
 			config: s3helper.PublisherSpec{
 				Bucket:   bucket,
 				Key:      prefix + uuid.New().String(),
-				Endpoint: "http://localhost:4566",
+				Endpoint: "http://127.0.0.1:4566",
 				Region:   "eu-west-1",
 			},
 		},

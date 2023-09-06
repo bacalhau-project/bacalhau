@@ -16,6 +16,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/fatih/structs v1.1.0
+	github.com/go-playground/validator/v10 v10.2.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.5.0
@@ -107,6 +108,8 @@ require (
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
+	github.com/go-playground/locales v0.13.0 // indirect
+	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
@@ -117,12 +120,14 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
+	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
+	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
@@ -308,7 +313,6 @@ require (
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

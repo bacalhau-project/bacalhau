@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -115,7 +115,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	require.NoError(suite.T(), err)
 
 	// parse response
-	response := apimodels.ListResponse{}
+	response := legacymodels.ListResponse{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem model.Job
@@ -189,7 +189,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 				require.NoError(suite.T(), err)
 
-				response := apimodels.ListResponse{}
+				response := legacymodels.ListResponse{}
 				_ = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)

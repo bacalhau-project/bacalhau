@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
@@ -40,7 +40,7 @@ func (s *EndpointSuite) TestEndpointId() {
 }
 
 func (s *EndpointSuite) TestEndpointVersion() {
-	versionReq := &apimodels.VersionRequest{ClientID: "testClient"}
+	versionReq := &legacymodels.VersionRequest{ClientID: "testClient"}
 	body, _ := json.Marshal(versionReq)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/version", bytes.NewReader(body))
@@ -49,22 +49,10 @@ func (s *EndpointSuite) TestEndpointVersion() {
 	s.router.ServeHTTP(rr, req)
 
 	expectedVersion := version.Get()
-	expectedResponse, _ := json.Marshal(apimodels.VersionResponse{VersionInfo: expectedVersion})
+	expectedResponse, _ := json.Marshal(legacymodels.VersionResponse{VersionInfo: expectedVersion})
 
 	s.Equal(http.StatusOK, rr.Code)
 	s.Equal(string(expectedResponse), strings.TrimSpace(rr.Body.String()))
-}
-
-func (s *EndpointSuite) TestEndpointHealthz() {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
-	rr := httptest.NewRecorder()
-	s.router.ServeHTTP(rr, req)
-
-	expectedResponse := GenerateHealthData() // Assuming you have this function defined.
-	body, _ := json.Marshal(expectedResponse)
-
-	s.Equal(http.StatusOK, rr.Code)
-	s.Equal(string(body), strings.TrimSpace(rr.Body.String()))
 }
 
 func (s *EndpointSuite) TestEndpointLivez() {

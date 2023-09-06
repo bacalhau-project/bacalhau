@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
@@ -218,6 +219,11 @@ func NewNode(
 		Router:           apiServer.Router,
 		NodeID:           config.Host.ID().String(),
 		PeerStore:        config.Host.Peerstore(),
+		NodeInfoProvider: nodeInfoProvider,
+	})
+
+	agent.NewEndpoint(agent.EndpointParams{
+		Router:           apiServer.Router,
 		NodeInfoProvider: nodeInfoProvider,
 	})
 

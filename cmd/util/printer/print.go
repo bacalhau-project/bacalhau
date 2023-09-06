@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -252,7 +252,7 @@ To cancel the job, run:
 	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, apimodels.EventFilterOptions{
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, legacymodels.EventFilterOptions{
 			Since:                 lastSeenTimestamp,
 			ExcludeExecutionLevel: true,
 		})

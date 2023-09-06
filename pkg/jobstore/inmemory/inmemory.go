@@ -118,7 +118,7 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 	}
 
 	for _, j := range maps.Values(d.jobs) {
-		if query.Limit > 0 && len(result) == query.Limit {
+		if query.Limit > 0 && uint32(len(result)) == query.Limit {
 			break
 		}
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -34,11 +34,11 @@ func (apiClient *APIClient) Version(ctx context.Context) (*models.BuildVersionIn
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Version")
 	defer span.End()
 
-	req := apimodels.VersionRequest{
+	req := legacymodels.VersionRequest{
 		ClientID: system.GetClientID(),
 	}
 
-	var res apimodels.VersionResponse
+	var res legacymodels.VersionResponse
 	if err := apiClient.DoPost(ctx, "/api/v1/version", req, &res); err != nil {
 		return nil, err
 	}

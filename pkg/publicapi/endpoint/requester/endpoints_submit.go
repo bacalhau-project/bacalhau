@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/labstack/echo/v4"
@@ -22,8 +23,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					SubmitRequest	body		apimodels.SubmitRequest	true	" "
-//	@Success				200				{object}	apimodels.SubmitResponse
+//	@Param					SubmitRequest	body		legacymodels.SubmitRequest	true	" "
+//	@Success				200				{object}	legacymodels.SubmitResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/submit [post]
@@ -57,5 +58,5 @@ func (s *Endpoint) submit(c echo.Context) error {
 	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
-	return c.JSON(http.StatusOK, apimodels.SubmitResponse{Job: j})
+	return c.JSON(http.StatusOK, legacymodels.SubmitResponse{Job: j})
 }

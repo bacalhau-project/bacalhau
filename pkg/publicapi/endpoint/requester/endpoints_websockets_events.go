@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -46,7 +46,7 @@ func (s *Endpoint) websocketJobEvents(c echo.Context) error {
 
 	if jobID != "" {
 		// list events for job out of localDB and send them to the client
-		events, err := s.jobStore.GetJobHistory(context.Background(), jobID, apimodels.EventFilterOptions{})
+		events, err := s.jobStore.GetJobHistory(context.Background(), jobID, legacymodels.EventFilterOptions{})
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error listing job events: %s\n", err.Error())
 			return err

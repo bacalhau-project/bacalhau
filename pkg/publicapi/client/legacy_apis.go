@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
@@ -40,9 +40,9 @@ func (apiClient *APIClient) List(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.APIClient.List")
 	defer span.End()
 
-	req := apimodels.ListRequest{
+	req := legacymodels.ListRequest{
 		ClientID:    system.GetClientID(),
-		MaxJobs:     maxJobs,
+		MaxJobs:     uint32(maxJobs),
 		JobID:       idFilter,
 		IncludeTags: includeTags,
 		ExcludeTags: excludeTags,
@@ -51,7 +51,7 @@ func (apiClient *APIClient) List(
 		SortReverse: sortReverse,
 	}
 
-	var res apimodels.ListResponse
+	var res legacymodels.ListResponse
 	if err := apiClient.DoPost(ctx, "/api/v1/requester/list", req, &res); err != nil {
 		e := err
 		return nil, e
@@ -104,7 +104,7 @@ func (apiClient *APIClient) Cancel(ctx context.Context, jobID string, reason str
 		Reason:   reason,
 	}
 
-	var res apimodels.CancelResponse
+	var res legacymodels.CancelResponse
 	if err := apiClient.doPostSigned(ctx, "/api/v1/requester/cancel", req, &res); err != nil {
 		return &model.JobState{}, err
 	}
@@ -141,12 +141,12 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 		return model.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
-	req := apimodels.StateRequest{
+	req := legacymodels.StateRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 	}
 
-	var res apimodels.StateResponse
+	var res legacymodels.StateResponse
 	var outerErr error
 
 	for i := 0; i < APIRetryCount; i++ {
@@ -180,7 +180,7 @@ func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 func (apiClient *APIClient) GetEvents(
 	ctx context.Context,
 	jobID string,
-	options apimodels.EventFilterOptions) (events []model.JobHistory, err error) {
+	options legacymodels.EventFilterOptions) (events []model.JobHistory, err error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.APIClient.GetEvents")
 	defer span.End()
 
@@ -188,14 +188,14 @@ func (apiClient *APIClient) GetEvents(
 		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
 	}
 
-	req := apimodels.EventsRequest{
+	req := legacymodels.EventsRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 		Options:  options,
 	}
 
 	// Test if the context has been canceled before making the request.
-	var res apimodels.EventsResponse
+	var res legacymodels.EventsResponse
 	var outerErr error
 
 	for i := 0; i < APIRetryCount; i++ {
@@ -223,12 +223,12 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 		return nil, fmt.Errorf("jobID must be non-empty in a GetResults call")
 	}
 
-	req := apimodels.ResultsRequest{
+	req := legacymodels.ResultsRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 	}
 
-	var res apimodels.ResultsResponse
+	var res legacymodels.ResultsResponse
 	if err := apiClient.DoPost(ctx, "/api/v1/requester/results", req, &res); err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (apiClient *APIClient) Submit(
 		Spec:       &j.Spec,
 	}
 
-	var res apimodels.SubmitResponse
+	var res legacymodels.SubmitResponse
 	err := apiClient.doPostSigned(ctx, "/api/v1/requester/submit", data, &res)
 	if err != nil {
 		return &model.Job{}, err

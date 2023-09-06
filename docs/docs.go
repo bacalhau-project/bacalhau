@@ -23,6 +23,78 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/agent/alive": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "operationId": "agent/alive",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/node": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the info of the node.",
+                "operationId": "agent/node",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.NodeInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/version": {
+            "get": {
+                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the build version running on the server.",
+                "operationId": "agent/version",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetVersionResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/compute/approve": {
             "get": {
                 "produces": [
@@ -225,7 +297,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.CancelRequest"
+                            "$ref": "#/definitions/legacymodels.CancelRequest"
                         }
                     }
                 ],
@@ -233,7 +305,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.CancelResponse"
+                            "$ref": "#/definitions/legacymodels.CancelResponse"
                         }
                     },
                     "400": {
@@ -310,7 +382,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.EventsRequest"
+                            "$ref": "#/definitions/legacymodels.EventsRequest"
                         }
                     }
                 ],
@@ -318,7 +390,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.EventsResponse"
+                            "$ref": "#/definitions/legacymodels.EventsResponse"
                         }
                     },
                     "400": {
@@ -357,7 +429,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.ListRequest"
+                            "$ref": "#/definitions/legacymodels.ListRequest"
                         }
                     }
                 ],
@@ -365,7 +437,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.ListResponse"
+                            "$ref": "#/definitions/legacymodels.ListResponse"
                         }
                     },
                     "400": {
@@ -404,7 +476,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.LogRequest"
+                            "$ref": "#/definitions/legacymodels.LogRequest"
                         }
                     }
                 ],
@@ -492,7 +564,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.StateRequest"
+                            "$ref": "#/definitions/legacymodels.StateRequest"
                         }
                     }
                 ],
@@ -500,7 +572,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.ResultsResponse"
+                            "$ref": "#/definitions/legacymodels.ResultsResponse"
                         }
                     },
                     "400": {
@@ -539,7 +611,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.StateRequest"
+                            "$ref": "#/definitions/legacymodels.StateRequest"
                         }
                     }
                 ],
@@ -547,7 +619,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.StateResponse"
+                            "$ref": "#/definitions/legacymodels.StateResponse"
                         }
                     },
                     "400": {
@@ -586,7 +658,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.SubmitRequest"
+                            "$ref": "#/definitions/legacymodels.SubmitRequest"
                         }
                     }
                 ],
@@ -594,7 +666,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.SubmitResponse"
+                            "$ref": "#/definitions/legacymodels.SubmitResponse"
                         }
                     },
                     "400": {
@@ -633,7 +705,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apimodels.VersionRequest"
+                            "$ref": "#/definitions/legacymodels.VersionRequest"
                         }
                     }
                 ],
@@ -641,7 +713,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.VersionResponse"
+                            "$ref": "#/definitions/legacymodels.VersionResponse"
                         }
                     },
                     "400": {
@@ -661,7 +733,40 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "apimodels.CancelRequest": {
+        "apimodels.GetVersionResponse": {
+            "type": "object",
+            "properties": {
+                "builddate": {
+                    "type": "string",
+                    "example": "2022-11-16T14:03:31Z"
+                },
+                "gitcommit": {
+                    "type": "string",
+                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                },
+                "gitversion": {
+                    "type": "string",
+                    "example": "v0.3.12"
+                },
+                "goarch": {
+                    "type": "string",
+                    "example": "amd64"
+                },
+                "goos": {
+                    "type": "string",
+                    "example": "linux"
+                },
+                "major": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "minor": {
+                    "type": "string",
+                    "example": "3"
+                }
+            }
+        },
+        "legacymodels.CancelRequest": {
             "type": "object",
             "required": [
                 "client_public_key",
@@ -687,7 +792,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.CancelResponse": {
+        "legacymodels.CancelResponse": {
             "type": "object",
             "properties": {
                 "state": {
@@ -695,7 +800,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.EventFilterOptions": {
+        "legacymodels.EventFilterOptions": {
             "type": "object",
             "properties": {
                 "exclude_execution_level": {
@@ -709,7 +814,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.EventsRequest": {
+        "legacymodels.EventsRequest": {
             "type": "object",
             "properties": {
                 "client_id": {
@@ -720,7 +825,7 @@ const docTemplate = `{
                     "description": "Records the number of seconds since the unix epoch (UTC)",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/apimodels.EventFilterOptions"
+                            "$ref": "#/definitions/legacymodels.EventFilterOptions"
                         }
                     ]
                 },
@@ -730,7 +835,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.EventsResponse": {
+        "legacymodels.EventsResponse": {
             "type": "object",
             "properties": {
                 "events": {
@@ -741,7 +846,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.ListRequest": {
+        "legacymodels.ListRequest": {
             "type": "object",
             "properties": {
                 "client_id": {
@@ -786,7 +891,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.ListResponse": {
+        "legacymodels.ListResponse": {
             "type": "object",
             "properties": {
                 "jobs": {
@@ -797,7 +902,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.LogRequest": {
+        "legacymodels.LogRequest": {
             "type": "object",
             "required": [
                 "client_public_key",
@@ -823,7 +928,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.ResultsResponse": {
+        "legacymodels.ResultsResponse": {
             "type": "object",
             "properties": {
                 "results": {
@@ -834,7 +939,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.StateRequest": {
+        "legacymodels.StateRequest": {
             "type": "object",
             "properties": {
                 "client_id": {
@@ -847,7 +952,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.StateResponse": {
+        "legacymodels.StateResponse": {
             "type": "object",
             "properties": {
                 "state": {
@@ -855,7 +960,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.SubmitRequest": {
+        "legacymodels.SubmitRequest": {
             "type": "object",
             "required": [
                 "client_public_key",
@@ -881,7 +986,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.SubmitResponse": {
+        "legacymodels.SubmitResponse": {
             "type": "object",
             "properties": {
                 "job": {
@@ -889,7 +994,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.VersionRequest": {
+        "legacymodels.VersionRequest": {
             "type": "object",
             "properties": {
                 "client_id": {
@@ -898,7 +1003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.VersionResponse": {
+        "legacymodels.VersionResponse": {
             "type": "object",
             "properties": {
                 "build_version_info": {

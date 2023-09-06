@@ -391,9 +391,9 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) []models.Job {
 	limit := query.Limit
 	if limit == 0 {
-		limit = len(jobs)
+		limit = uint32(len(jobs))
 	} else {
-		limit = math.Min(len(jobs), limit+query.Offset)
+		limit = math.Min(uint32(len(jobs)), limit+query.Offset)
 	}
 
 	return jobs[query.Offset:limit]

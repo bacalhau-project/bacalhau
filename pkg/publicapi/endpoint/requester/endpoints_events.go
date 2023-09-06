@@ -6,6 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/labstack/echo/v4"
 )
 
@@ -17,8 +18,8 @@ import (
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					EventsRequest	body		apimodels.EventsRequest	true	"Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
-//	@Success				200				{object}	apimodels.EventsResponse
+//	@Param					EventsRequest	body		legacymodels.EventsRequest	true	"Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
+//	@Success				200				{object}	legacymodels.EventsResponse
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/api/v1/requester/events [post]
@@ -26,7 +27,7 @@ import (
 //nolint:lll
 //nolint:dupl
 func (s *Endpoint) events(c echo.Context) error {
-	var eventsReq apimodels.EventsRequest
+	var eventsReq legacymodels.EventsRequest
 
 	if err := c.Bind(&eventsReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -46,7 +47,7 @@ func (s *Endpoint) events(c echo.Context) error {
 		legacyEvents[i] = *legacy.ToLegacyJobHistory(&events[i])
 	}
 
-	return c.JSON(http.StatusOK, apimodels.EventsResponse{
+	return c.JSON(http.StatusOK, legacymodels.EventsResponse{
 		Events: legacyEvents,
 	})
 }
