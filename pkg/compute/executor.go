@@ -240,7 +240,6 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 	}
 
 	if err := jobExecutor.Start(ctx, args); err != nil {
-		jobsFailed.Add(ctx, 1)
 		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
 		result.Err = err
 	}
@@ -290,7 +289,31 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}()
 	if err := res.Err; err != nil {
-		return err
+		if errors.Is(err, executor.AlreadyStartedErr) {
+			// by not returning this error to the caller when the execution has already been started/is already running
+			// we allow duplicate calls to `Run` to be idempotent and fall through to the below `Wait` call.
+			log.Ctx(ctx).Warn().Err(err).Str("execution", execution.ID).
+				Msg("execution is already running processing to wait on execution")
+		} else if errors.Is(err, executor.AlreadyCompleteErr) {
+			/*
+				if execution.Job.Type == models.JobTypeDaemon || execution.Job.Type == models.JobTypeService {
+					 // TODO: [decision]
+					 if the execution is already completed then it's in a terminal state. We need to decide if
+					 going from terminal to running is valid for job execution. Seems it could be valid for
+					 long-running jobs, but shouldn't be the case for "batch" and "ops" jobs.
+					 Gut check says we should create a new execution for the job and start that, reason being
+					 that we can preserve the history that a job failed and was restarted in the job history.
+				}
+			*/
+			return err
+		} else {
+			// We don't consider the job failed if the execution is already running or has already completed.
+			// TODO(forrest): [correctness] do we really want to record a job failed metric if (one of) its execution(s)
+			// failed to start? Perhaps it would be better to have metrics for exection failures here and job failures
+			// higher up the call stack?
+			jobsFailed.Add(ctx, 1)
+			return err
+		}
 	}
 
 	result, err := e.Wait(ctx, state)
