@@ -8,10 +8,27 @@ import (
 )
 
 const (
-	EvalStatusBlocked   = "blocked"
-	EvalStatusPending   = "pending"
-	EvalStatusComplete  = "complete"
-	EvalStatusFailed    = "failed"
+	// Evaluations can be in one of several states, with only one of them `pending`
+	// being an active state, the rest being considered terminal. The evaluation can
+	// move from `pending` to any other state, but may _only_ move back to pending
+	// if it is in the `blocked` state
+
+	// The evaluation's initial state, it will stay in pending until it has been
+	// processed by the Evaluation Broker.
+	EvalStatusPending = "pending"
+
+	// If an evaluation is unable to be completed, possibly due to a temporal
+	// constraint, it will be left in the blocked state.
+	EvalStatusBlocked = "blocked"
+
+	// When fully evaluated, the evaluation will be in the completed state.
+	EvalStatusComplete = "complete"
+
+	// This status applies when an evaluation fails during procesing
+	EvalStatusFailed = "failed"
+
+	// As a result of processing, the evaluation may be determined to now be
+	// unnecessary and cancelled as a result, which will leave it in this state.
 	EvalStatusCancelled = "canceled"
 )
 
