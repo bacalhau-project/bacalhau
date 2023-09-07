@@ -130,6 +130,11 @@ func NewRequesterNode(
 	}
 	evalBroker.SetEnabled(true)
 
+	// Connect the evaluation broker to a function that will update the evaluation in
+	// whatever JobStore we have configured.
+	evalStateUpdater := jobstore.MakeEvaluationStateUpdater(ctx, jobStore)
+	evalBroker.RegisterStateChangeCallback(evalStateUpdater)
+
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
 	planners := planner.NewChain(
