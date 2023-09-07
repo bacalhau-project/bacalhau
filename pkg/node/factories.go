@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -98,7 +99,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 				executor_util.PluginExecutorOptions{
 					Plugins: []executor_util.PluginExecutorManagerConfig{
 						{
-							Name:             "Docker",
+							Name:             models.EngineDocker,
 							Path:             config.GetExecutorPluginsPath(),
 							Command:          "bacalhau-docker-executor",
 							ProtocolVersion:  1,
@@ -106,7 +107,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 							MagicCookieValue: "bacalhau_executor",
 						},
 						{
-							Name:             "Wasm",
+							Name:             models.EngineWasm,
 							Path:             config.GetExecutorPluginsPath(),
 							Command:          "bacalhau-wasm-executor",
 							ProtocolVersion:  1,

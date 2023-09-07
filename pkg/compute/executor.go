@@ -255,17 +255,15 @@ func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState
 		return nil, fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
 	}
 
-	waitCh, err := jobExecutor.Wait(ctx, execution.ID)
-	if err != nil {
-		jobsFailed.Add(ctx, 1)
-		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
-		return nil, err
-	}
+	waitC, errC := jobExecutor.Wait(ctx, execution.ID)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case res := <-waitCh:
+	case res := <-waitC:
 		return res, nil
+	case err := <-errC:
+		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
+		return nil, err
 	}
 
 }

@@ -145,12 +145,6 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 	))
 }
 
-func (s *ExecutorTestSuite) waitExecution(executionID string) <-chan *models.RunCommandResult {
-	waitCh, err := s.executor.Wait(context.Background(), executionID)
-	s.Require().NoError(err)
-	return waitCh
-}
-
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
 	result := s.T().TempDir()
 	j := mock.Job()
@@ -179,12 +173,15 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 			},
 		},
 	))
-	res, err := s.executor.Wait(ctx, name)
-	s.Require().NoError(err)
+	resultC, errC := s.executor.Wait(ctx, name)
 	select {
-	case out := <-res:
+	case out := <-resultC:
 		return out, nil
+	case err := <-errC:
+		s.T().Fatalf("while waiting for exection to complete: %s", err)
 	}
+	// unreachable
+	return nil, nil
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID string) (string, error) {

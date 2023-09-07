@@ -33,10 +33,12 @@ type Executor interface {
 	// Specifically, it will return an error if the execution already exists and is in a started or terminal state.
 	Run(ctx context.Context, args *RunCommandRequest) (*models.RunCommandResult, error)
 
-	// Wait waits for the completion of an execution identified by its executionID.
-	// It returns a channel that emits the result once the execution is complete.
-	// Returns an error if the execution does not exist or is already in a terminal state.
-	Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error)
+	// Wait monitors the completion of an execution identified by its executionID.
+	// It returns two channels:
+	// 1. A channel that emits the execution result once the task is complete.
+	// 2. An error channel that relays any issues encountered, such as when the
+	//    execution is non-existent or has already concluded.
+	Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, <-chan error)
 
 	// Cancel attempts to cancel an ongoing execution identified by its executionID.
 	// Returns an error if the execution does not exist or is already in a terminal state.

@@ -139,48 +139,51 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	return nil
 }
 
-// Wait waits for the completion of a specific execution identified by its executionID.
-// It returns a read-only channel through which the result of the execution will be sent.
-// If an execution with the given executionID is not found, an error is returned.
-//
-// Internally, this method spawns a new Goroutine to wait for the execution to complete,
-// which adds a TODO note suggesting future optimization to handle a large number of concurrent
-// Wait calls more efficiently.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - executionID: The unique identifier for the execution to wait on.
-//
-// Returns:
-// - A read-only channel emitting the result of the execution.
-// - An error if the execution with the given executionID is not found.
-func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+// Wait initiates a wait for the completion of a specific execution using its
+// executionID. The function returns two channels: one for the result and another
+// for any potential error. If the executionID is not found, an error is immediately
+// sent to the error channel. Otherwise, an internal goroutine (doWait) is spawned
+// to handle the asynchronous waiting. Callers should use the two returned channels
+// to wait for the result of the execution or an error. This can be due to issues
+// either beginning the wait or in getting the response. This approach allows the
+// caller to synchronize Wait with calls to Start, waiting for the execution to complete.
+func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, <-chan error) {
 	handler, found := e.handlers.Get(executionID)
+	outCh := make(chan *models.RunCommandResult, 1)
+	errCh := make(chan error, 1)
+
 	if !found {
-		return nil, fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		return outCh, errCh
 	}
-	ch := make(chan *models.RunCommandResult)
-	go e.doWait(ctx, ch, handler)
-	return ch, nil
+
+	go e.doWait(ctx, outCh, errCh, handler)
+	return outCh, errCh
 }
 
-// doWait is an internal method that performs the actual waiting for a given execution to complete.
-// It listens for the completion signal from the executionHandler's wait channel or a cancellation signal
-// from the context, and then forwards the result through the provided output channel.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - out: The channel through which the execution result will be sent.
-// - handle: The executionHandler responsible for the execution.
-//
-// Note: This method is intended to be run in a separate Goroutine.
-func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
+// doWait is a helper function that actively waits for an execution to finish. It
+// listens on the executionHandler's wait channel for completion signals. Once the
+// signal is received, the result is sent to the provided output channel. If there's
+// a cancellation request (context is done) before completion, an error is relayed to
+// the error channel. If the execution result is nil, an error suggests a potential
+// flaw in the executor logic.
+func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, errCh chan error, handle *executionHandler) {
+	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
+
 	defer close(out)
+	defer close(errCh)
+
 	select {
 	case <-ctx.Done():
+		errCh <- ctx.Err() // Send the cancellation error to the error channel
 		return
 	case <-handle.waitCh:
-		out <- handle.result
+		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
+		if handle.result != nil {
+			out <- handle.result
+		} else {
+			errCh <- fmt.Errorf("execution result is nil")
+		}
 	}
 }
 
@@ -246,15 +249,14 @@ func (e *Executor) Run(
 	if err := e.Start(ctx, request); err != nil {
 		return nil, err
 	}
-	res, err := e.Wait(ctx, request.ExecutionID)
-	if err != nil {
-		return nil, err
-	}
+	resCh, errCh := e.Wait(ctx, request.ExecutionID)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case out := <-res:
+	case out := <-resCh:
 		return out, nil
+	case err := <-errCh:
+		return nil, err
 	}
 }
 

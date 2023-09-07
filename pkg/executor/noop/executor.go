@@ -114,17 +114,21 @@ func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRe
 	return nil
 }
 
-func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, <-chan error) {
 	handler, found := e.handlers.Get(executionID)
+	resultC := make(chan *models.RunCommandResult, 1)
+	errC := make(chan error, 1)
+
 	if !found {
-		return nil, fmt.Errorf("wait execution (%s): %w", executionID, executor.NotFoundErr)
+		errC <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		return resultC, errC
 	}
-	ch := make(chan *models.RunCommandResult)
-	go e.doWait(ctx, ch, handler)
-	return ch, nil
+
+	go e.doWait(ctx, resultC, errC, handler)
+	return resultC, errC
 }
 
-func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandResult, handler *executionHandler) {
+func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandResult, errC <-chan error, handler *executionHandler) {
 	defer close(out)
 	select {
 	case <-ctx.Done():
@@ -213,14 +217,13 @@ func (e *NoopExecutor) Run(
 		if err := e.Start(ctx, args); err != nil {
 			return nil, err
 		}
-		res, err := e.Wait(ctx, args.ExecutionID)
-		if err != nil {
-			return nil, err
-		}
+		resultC, errC := e.Wait(ctx, args.ExecutionID)
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case out := <-res:
+		case err := <-errC:
+			return nil, err
+		case out := <-resultC:
 			return out, nil
 		}
 	}

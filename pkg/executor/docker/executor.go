@@ -165,34 +165,52 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	return nil
 }
 
-// Wait waits for the completion of a specific execution given its executionID.
-// A channel is returned that will emit the result of the execution.
-// Note: The current implementation spawns a new Goroutine for each Wait call,
-// which could become resource-intensive with a large number of concurrent Wait calls.
-func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, error) {
+// Wait initiates a wait for the completion of a specific execution using its
+// executionID. The function returns two channels: one for the result and another
+// for any potential error. If the executionID is not found, an error is immediately
+// sent to the error channel. Otherwise, an internal goroutine (doWait) is spawned
+// to handle the asynchronous waiting. Callers should use the two returned channels
+// to wait for the result of the execution or an error. This can be due to issues
+// either beginning the wait or in getting the response. This approach allows the
+// caller to synchronize Wait with calls to Start, waiting for the execution to complete.
+func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, <-chan error) {
 	handler, found := e.handlers.Get(executionID)
+	resultCh := make(chan *models.RunCommandResult, 1)
+	errCh := make(chan error, 1)
+
 	if !found {
-		return nil, fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		return resultCh, errCh
 	}
-	ch := make(chan *models.RunCommandResult)
-	// TODO this pattern is wasteful if we expect there to be a large number things calling wait, as each wait spins off
-	// a go rotutine
-	go e.doWait(ctx, ch, handler)
-	return ch, nil
+
+	go e.doWait(ctx, resultCh, errCh, handler)
+	return resultCh, errCh
 }
 
-// doWait is an internal method that does the actual waiting for an execution to complete.
-// It listens for a signal on the executionHandler's wait channel and sends the result
-// to the provided output channel.
-func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, handle *executionHandler) {
+// doWait is a helper function that actively waits for an execution to finish. It
+// listens on the executionHandler's wait channel for completion signals. Once the
+// signal is received, the result is sent to the provided output channel. If there's
+// a cancellation request (context is done) before completion, an error is relayed to
+// the error channel. If the execution result is nil, an error suggests a potential
+// flaw in the executor logic.
+func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, errCh chan error, handle *executionHandler) {
 	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
 	defer close(out)
+	defer close(errCh)
+
 	select {
 	case <-ctx.Done():
+		errCh <- ctx.Err() // Send the cancellation error to the error channel
 		return
 	case <-handle.waitCh:
 		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
-		out <- handle.result
+		if handle.result != nil {
+			out <- handle.result
+		} else {
+			// NB(forrest): this shouldn't happen with the wasm and docker executors, but handling it as it
+			// represents a significant error in executor logic, which may occur in future pluggable executor impls.
+			errCh <- fmt.Errorf("execution (%s) result is nil", handle.executionID)
+		}
 	}
 }
 
@@ -230,15 +248,14 @@ func (e *Executor) Run(
 	if err := e.Start(ctx, request); err != nil {
 		return nil, err
 	}
-	res, err := e.Wait(ctx, request.ExecutionID)
-	if err != nil {
-		return nil, err
-	}
+	resCh, errCh := e.Wait(ctx, request.ExecutionID)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case out := <-res:
+	case out := <-resCh:
 		return out, nil
+	case err := <-errCh:
+		return nil, err
 	}
 }
 
