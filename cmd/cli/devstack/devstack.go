@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -168,10 +170,17 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
 	if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
-		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment " +
-			"and/or --ipfs-serve-path from your flags " +
-			"and/or node.ipfs.servepath from your config " +
-			"to run devstack")
+		flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
+		return fmt.Errorf("unset %s in your environment "+
+			"and/or --%s from your flags "+
+			"and/or %s from your config "+
+			"to run devstack",
+			strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
+			flag.FlagName,
+			flag.ConfigPath,
+		)
+	} else if err != nil {
+		return err
 	}
 
 	cm.RegisterCallback(telemetry.Cleanup)
