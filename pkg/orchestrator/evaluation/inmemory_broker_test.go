@@ -236,7 +236,7 @@ func (s *InMemoryBrokerTestSuite) TestNack_Delay() {
 		return true, nil
 	}}))
 
-	delay := time.Now().Sub(start)
+	delay := time.Since(start)
 	s.Require().GreaterOrEqual(delay, s.broker.subsequentNackDelay, "should have waited for the nack delay")
 
 	// Dequeue should work again
@@ -276,13 +276,13 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 
 	// first job
 	eval1 := newEval(1, ns1)
-	newEval(2, ns1)
-	newEval(3, ns1)
+	eval2 := newEval(2, ns1)
+	eval3 := newEval(3, ns1)
 	eval4 := newEval(4, ns1)
 
 	// second job
 	eval5 := newEval(5, ns2)
-	newEval(6, ns2)
+	eval6 := newEval(6, ns2)
 	eval7 := newEval(7, ns2)
 
 	// retreive the stats from the broker, less some stats that aren't
@@ -309,9 +309,19 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 
 	// Ack should clear the first eval
 	s.Require().NoError(s.broker.Ack(eval1.ID, receiptHandle))
+
 	// eval4 and eval5 are ready
+	s.Require().Equal(eval4.Status, models.EvalStatusReady)
+	s.Require().Equal(eval5.Status, models.EvalStatusReady)
+
 	// eval6 and eval7 are pending
+	s.Require().Equal(eval6.Status, models.EvalStatusPending)
+	s.Require().Equal(eval7.Status, models.EvalStatusPending)
+
 	// eval2 and eval3 are canceled
+	s.Require().Equal(eval2.Status, models.EvalStatusCancelled)
+	s.Require().Equal(eval3.Status, models.EvalStatusCancelled)
+
 	s.Require().Equal(
 		BrokerStats{TotalReady: 2, TotalInflight: 0, TotalPending: 2, TotalCancelable: 2}, getStats())
 
@@ -321,12 +331,16 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	s.Require().Equal(out, eval4, "expected 4th eval")
 	s.Require().Equal(
 		BrokerStats{TotalReady: 1, TotalInflight: 1, TotalPending: 2, TotalCancelable: 2}, getStats())
+	s.Require().Equal(eval4.Status, models.EvalStatusInflight)
+	s.Require().Equal(eval5.Status, models.EvalStatusReady)
 
 	// Ack should clear the rest of namespace-one pending but leave
 	// namespace-two untouched
 	s.Require().NoError(s.broker.Ack(eval4.ID, receiptHandle))
 	s.Require().Equal(
 		BrokerStats{TotalReady: 1, TotalInflight: 0, TotalPending: 2, TotalCancelable: 2}, getStats())
+	s.Require().Equal(eval4.Status, models.EvalStatusComplete)
+	s.Require().Equal(eval5.Status, models.EvalStatusReady)
 
 	// Dequeue should get 5th eval
 	out, receiptHandle, err = s.broker.Dequeue(defaultSched, time.Second)
@@ -334,11 +348,14 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	s.Require().Equal(out, eval5, "expected 5th eval")
 	s.Require().Equal(
 		BrokerStats{TotalReady: 0, TotalInflight: 1, TotalPending: 2, TotalCancelable: 2}, getStats())
+	s.Require().Equal(eval5.Status, models.EvalStatusInflight)
 
-	// Ack should clear remaining namespace-two pending evals
+	// Ack should clear remaining namespace-two pending evals (6 and 7)
 	s.Require().NoError(s.broker.Ack(eval5.ID, receiptHandle))
 	s.Require().Equal(
 		BrokerStats{TotalReady: 1, TotalInflight: 0, TotalPending: 0, TotalCancelable: 3}, getStats())
+	s.Require().Equal(eval6.Status, models.EvalStatusCancelled)
+	s.Require().Equal(eval7.Status, models.EvalStatusReady)
 
 	// Dequeue should get 7th eval because that's all that's left
 	out, receiptHandle, err = s.broker.Dequeue(defaultSched, time.Second)
@@ -346,11 +363,19 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	s.Require().Equal(out, eval7, "expected 7th eval")
 	s.Require().Equal(
 		BrokerStats{TotalReady: 0, TotalInflight: 1, TotalPending: 0, TotalCancelable: 3}, getStats())
+	s.Require().Equal(eval7.Status, models.EvalStatusInflight)
 
 	// Last ack should leave the broker empty except for cancels
 	s.Require().NoError(s.broker.Ack(eval7.ID, receiptHandle))
 	s.Require().Equal(
 		BrokerStats{TotalReady: 0, TotalInflight: 0, TotalPending: 0, TotalCancelable: 3}, getStats())
+	s.Require().True(eval1.TerminalStatus())
+	s.Require().True(eval2.TerminalStatus())
+	s.Require().True(eval3.TerminalStatus())
+	s.Require().True(eval4.TerminalStatus())
+	s.Require().True(eval5.TerminalStatus())
+	s.Require().True(eval6.TerminalStatus())
+	s.Require().True(eval7.TerminalStatus())
 }
 
 func (s *InMemoryBrokerTestSuite) TestEnqueue_Disable() {

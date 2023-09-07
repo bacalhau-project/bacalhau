@@ -227,6 +227,8 @@ func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle s
 		// If the receiptHandle has been passed, the evaluation is being reblocked by
 		// the scheduler and should be processed once the outstanding evaluation
 		// is Acked or Nacked.
+		b.evaluationStateChange(eval, models.EvalStatusBlocked)
+
 		if inflight, ok := b.inflight[eval.ID]; ok && inflight.ReceiptHandle == receiptHandle {
 			b.requeue[receiptHandle] = eval
 		}
@@ -297,6 +299,8 @@ func (b *InMemoryBroker) enqueueReady(eval *models.Evaluation, queueName string)
 	// Push onto the heap
 	heap.Push(&readyQueue, eval)
 	b.ready[queueName] = readyQueue
+
+	b.evaluationStateChange(eval, models.EvalStatusReady)
 
 	// Update the stats
 	b.stats.TotalReady += 1
@@ -441,6 +445,8 @@ func (b *InMemoryBroker) dequeueForSched(jobType string) (*models.Evaluation, st
 	bySched.Ready -= 1
 	bySched.Inflight += 1
 
+	b.evaluationStateChange(eval, models.EvalStatusInflight)
+
 	return eval, receiptHandle, nil
 }
 
@@ -512,6 +518,7 @@ func (b *InMemoryBroker) InflightExtend(evalID, receiptHandle string) error {
 	return nil
 }
 
+// Ack is used to acknowledge that the evaluation/receipt pair have been handled
 func (b *InMemoryBroker) Ack(evalID, receiptHandle string) error {
 	b.l.Lock()
 	defer b.l.Unlock()
@@ -557,6 +564,11 @@ func (b *InMemoryBroker) Ack(evalID, receiptHandle string) error {
 	if pending := b.pending[namespacedID]; len(pending) != 0 {
 		// Only enqueue the latest pending evaluation and cancel the rest
 		cancelable := pending.MarkForCancel()
+
+		for _, ev := range cancelable {
+			b.evaluationStateChange(ev, models.EvalStatusCancelled)
+		}
+
 		b.cancelable = append(b.cancelable, cancelable...)
 		b.stats.TotalCancelable = len(b.cancelable)
 		b.stats.TotalPending -= len(cancelable)
@@ -585,11 +597,15 @@ func (b *InMemoryBroker) Ack(evalID, receiptHandle string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		b.evaluationStateChange(inflight.Eval, models.EvalStatusComplete)
 	}
 
 	return nil
 }
 
+// Nack is used to record a failure to acknowledge an evaluation within the necessary
+// constraints.
 func (b *InMemoryBroker) Nack(evalID, receiptHandle string) error {
 	b.l.Lock()
 	defer b.l.Unlock()
@@ -626,9 +642,13 @@ func (b *InMemoryBroker) Nack(evalID, receiptHandle string) error {
 	if dequeues >= b.maxReceiveCount {
 		log.Debug().Msgf("Nack: %s has been dequeued %d times, moving to failedQueue", evalID, dequeues)
 		queue = deadLetterQueue
+
+		b.evaluationStateChange(e, models.EvalStatusFailed)
 	} else {
 		queue = e.Type
 		e.WaitUntil = time.Now().Add(b.nackReenqueueDelay(e, dequeues)).UTC()
+
+		b.evaluationStateChange(e, models.EvalStatusBlocked)
 	}
 	return b.enqueueLocked(e, queue)
 }
@@ -775,8 +795,7 @@ func (b *InMemoryBroker) Stats() *BrokerStats {
 }
 
 // Cancelable retrieves a batch of previously-pending evaluations that are now
-// stale and ready to mark for canceling. The eval RPC will call this with a
-// batch size set to avoid sending overly large raft messages.
+// stale and ready to mark for canceling.
 func (b *InMemoryBroker) Cancelable(batchSize int) []*models.Evaluation {
 	b.l.Lock()
 	defer b.l.Unlock()
@@ -815,7 +834,8 @@ func (b *InMemoryBroker) RegisterStateChangeCallback(callback models.EvaluationS
 	b.evaluationStateCallbacks = append(b.evaluationStateCallbacks, callback)
 }
 
-func (b *InMemoryBroker) triggerStateChange(e *models.Evaluation) {
+func (b *InMemoryBroker) evaluationStateChange(e *models.Evaluation, newState string) {
+	e.Status = newState
 	for _, callback := range b.evaluationStateCallbacks {
 		callback(e)
 	}

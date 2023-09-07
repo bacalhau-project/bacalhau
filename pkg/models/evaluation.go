@@ -8,14 +8,22 @@ import (
 )
 
 const (
-	// Evaluations can be in one of several states, with only one of them `pending`
-	// being an active state, the rest being considered terminal. The evaluation can
-	// move from `pending` to any other state, but may _only_ move back to pending
-	// if it is in the `blocked` state
+	// Evaluations can be in one of several states, with only two of them `pending`
+	// and `ready` being active states, the rest being considered terminal. The
+	// evaluation can move from `pending` to any other state, but may _only_ move
+	// back to pending if it is in the `blocked` state
 
 	// The evaluation's initial state, it will stay in pending until it has been
 	// processed by the Evaluation Broker.
 	EvalStatusPending = "pending"
+
+	// When an evaluation is being considered for evaluation, its state will be
+	// moved to ready.
+	EvalStatusReady = "ready"
+
+	// When an evaluation the output from an evaluation is currently 'running'
+	// then it will be in the inflight state
+	EvalStatusInflight = "inflight"
 
 	// If an evaluation is unable to be completed, possibly due to a temporal
 	// constraint, it will be left in the blocked state.
