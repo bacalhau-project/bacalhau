@@ -110,3 +110,7 @@ type EvaluationReceipt struct {
 	// ReceiptHandle is a unique identifier when dequeue an Evaluation from a broker.
 	ReceiptHandle string
 }
+
+// EvaluationStateChanged is used as a callback mechanism in cases where
+// a component is interested in state changes within an evaluation.
+type EvaluationStateChanged func(e *Evaluation)

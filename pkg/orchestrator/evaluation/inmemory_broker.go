@@ -107,6 +107,10 @@ type InMemoryBroker struct {
 
 	metricRegistration metric.Registration
 
+	// evaluationStateCallback is passed a pointer to an evaluation whenever
+	// a state change occurs
+	evaluationStateCallbacks []models.EvaluationStateChanged
+
 	stats *BrokerStats
 
 	l sync.RWMutex
@@ -805,4 +809,14 @@ func (b *InMemoryBroker) registerMetrics() (metric.Registration, error) {
 		return nil
 	}, orchestrator.EvalBrokerReady, orchestrator.EvalBrokerInflight, orchestrator.EvalBrokerPending,
 		orchestrator.EvalBrokerWaiting, orchestrator.EvalBrokerCancelable)
+}
+
+func (b *InMemoryBroker) RegisterStateChangeCallback(callback models.EvaluationStateChanged) {
+	b.evaluationStateCallbacks = append(b.evaluationStateCallbacks, callback)
+}
+
+func (b *InMemoryBroker) triggerStateChange(e *models.Evaluation) {
+	for _, callback := range b.evaluationStateCallbacks {
+		callback(e)
+	}
 }
