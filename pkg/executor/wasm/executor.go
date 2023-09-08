@@ -32,6 +32,7 @@ import (
 )
 
 type Executor struct {
+	// handlers is a map of executionID to its handler.
 	handlers generic.SyncMap[string, *executionHandler]
 }
 
@@ -81,9 +82,9 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	if handler, found := e.handlers.Get(request.ExecutionID); found {
 		if handler.active() {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyStartedErr)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
 		} else {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.AlreadyCompleteErr)
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
 		}
 	}
 
@@ -153,7 +154,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 	errCh := make(chan error, 1)
 
 	if !found {
-		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.ErrNotFound)
 		return outCh, errCh
 	}
 
@@ -200,7 +201,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.NotFoundErr)
+		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.ErrNotFound)
 	}
 	return handler.kill(ctx)
 }
@@ -221,7 +222,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.NotFoundErr)
+		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
 	}
 	return handler.outputStream(ctx, withHistory, follow)
 }

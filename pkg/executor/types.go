@@ -68,12 +68,12 @@ type RunCommandRequest struct {
 
 // Error variables for execution states.
 var (
-	// AlreadyStartedErr is returned when trying to start an already started execution.
-	AlreadyStartedErr = fmt.Errorf("execution already started")
+	// ErrAlreadyStarted is returned when trying to start an already started execution.
+	ErrAlreadyStarted = fmt.Errorf("execution already started")
 
-	// AlreadyCompleteErr is returned when action is attempted on an execution that is already complete.
-	AlreadyCompleteErr = fmt.Errorf("execution already complete")
+	// ErrAlreadyComplete is returned when action is attempted on an execution that is already complete.
+	ErrAlreadyComplete = fmt.Errorf("execution already complete")
 
-	// NotFoundErr is returned when the execution ID provided does not match any existing execution.
-	NotFoundErr = fmt.Errorf("execution not found")
+	// ErrNotFound is returned when the execution ID provided does not match any existing execution.
+	ErrNotFound = fmt.Errorf("execution not found")
 )

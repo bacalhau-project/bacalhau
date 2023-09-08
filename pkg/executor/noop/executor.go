@@ -120,7 +120,7 @@ func (e *NoopExecutor) Wait(ctx context.Context, executionID string) (<-chan *mo
 	errC := make(chan error, 1)
 
 	if !found {
-		errC <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.NotFoundErr)
+		errC <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.ErrNotFound)
 		return resultC, errC
 	}
 
