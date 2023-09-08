@@ -97,7 +97,7 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func setupLibp2pHost(cfg types.Libp2pConfig) (host.Host, error) {
+func SetupLibp2pHost(cfg types.Libp2pConfig) (host.Host, error) {
 	privKey, err := config.GetLibp2pPrivKey()
 	if err != nil {
 		return nil, err

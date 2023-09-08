@@ -176,7 +176,7 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	// configure libp2p
-	libp2pHost, err := setupLibp2pHost(libp2pCfg)
+	libp2pHost, err := SetupLibp2pHost(libp2pCfg)
 	if err != nil {
 		return err
 	}
@@ -238,11 +238,19 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
 	}
 
-	// Create node
-	standardNode, err := node.NewNode(ctx, nodeConfig)
+	stopFn, err := node.NewNodeWithOptions(ctx, nodeConfig)
 	if err != nil {
-		return fmt.Errorf("error creating node: %w", err)
+		panic(err)
 	}
+	defer stopFn(ctx)
+
+	// Create node
+	/*
+		standardNode, err := node.NewNode(ctx, nodeConfig)
+		if err != nil {
+			return fmt.Errorf("error creating node: %w", err)
+		}
+	*/
 
 	// Start transport layer
 	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
@@ -250,15 +258,18 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	// Start node
-	if err := standardNode.Start(ctx); err != nil {
-		return fmt.Errorf("error starting node: %w", err)
-	}
+	/*
+		// Start node
+		if err := standardNode.Start(ctx); err != nil {
+			return fmt.Errorf("error starting node: %w", err)
+		}
 
-	// only in station logging output
-	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
-		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
-	}
+		// only in station logging output
+		if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
+			cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
+		}
+
+	*/
 
 	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
 		// other nodes can be just compute nodes

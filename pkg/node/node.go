@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -16,6 +12,11 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -147,12 +148,26 @@ func NewNode(
 		return nil, err
 	}
 
+	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
+	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
+		TTL: 10 * time.Minute,
+	})
+
+	// register consumers of node info published over gossipSub
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
+
 	// PubSub to publish node info to the network
 	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeInfo](libp2p.PubSubParams{
 		Host:      config.Host,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
 		return nil, err
 	}
@@ -168,26 +183,6 @@ func NewNode(
 		Labels:          config.Labels,
 		BacalhauVersion: *version.Get(),
 	})
-
-	// node info publisher
-	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval.IsZero() {
-		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
-	}
-
-	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
-	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: 10 * time.Minute,
-	})
-	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
-
-	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
-	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-	if err != nil {
-		return nil, err
-	}
 
 	// timeoutHandler doesn't implement http.Hijacker, so we need to skip it for websocket endpoints
 	config.APIServerConfig.SkippedTimeoutPaths = append(config.APIServerConfig.SkippedTimeoutPaths, []string{
@@ -226,6 +221,8 @@ func NewNode(
 		Router:           apiServer.Router,
 		NodeInfoProvider: nodeInfoProvider,
 	})
+
+	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
 
 	var requesterNode *Requester
 	var computeNode *Compute
@@ -266,6 +263,12 @@ func NewNode(
 		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
 	}
 
+	// node info publisher
+	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
+	if nodeInfoPublisherInterval.IsZero() {
+		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
+	}
+
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
@@ -273,6 +276,7 @@ func NewNode(
 		NodeInfoProvider: nodeInfoProvider,
 		IntervalConfig:   nodeInfoPublisherInterval,
 	})
+	nodeInfoPublisher.Start(ctx)
 
 	// cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {

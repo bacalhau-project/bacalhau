@@ -5,10 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type NodeInfoPublisherIntervalConfig struct {
@@ -56,14 +57,17 @@ func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 		stopChannel:      make(chan struct{}),
 	}
 
+	return p
+}
+
+func (n *NodeInfoPublisher) Start(ctx context.Context) {
 	go func() {
-		if p.intervalConfig.IsEagerPublishEnabled() {
-			p.eagerPublishBackgroundTask()
+		if n.intervalConfig.IsEagerPublishEnabled() {
+			n.eagerPublishBackgroundTask()
 		} else {
-			p.standardPublishBackgroundTask()
+			n.standardPublishBackgroundTask()
 		}
 	}()
-	return p
 }
 
 // Publish publishes the node info to the pubsub topic manually and won't wait for the background task to do it.
