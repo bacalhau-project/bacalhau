@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
+	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -147,6 +149,7 @@ func NewCmd() *cobra.Command {
 
 //nolint:funlen,gocyclo
 func serve(cmd *cobra.Command) error {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
@@ -242,7 +245,6 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		panic(err)
 	}
-	defer stopFn(ctx)
 
 	// Create node
 	/*
@@ -347,7 +349,7 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	<-ctx.Done() // block until killed
-	return nil
+	return stopFn(context.TODO())
 }
 
 // pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list
