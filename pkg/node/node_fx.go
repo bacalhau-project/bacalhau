@@ -7,11 +7,14 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -33,7 +36,7 @@ func NewExecutorProvider(cfg NodeConfig) (executor.ExecutorProvider, error) {
 	return cfg.DependencyInjector.ExecutorsFactory.Get(context.TODO(), cfg)
 }
 
-func NewAPIServer(cfg NodeConfig) (*publicapi.Server, error) {
+func NewAPIServer(cfg NodeConfig, provider *routing.NodeInfoProvider) (*publicapi.Server, error) {
 	// timeoutHandler doesn't implement http.Hijacker, so we need to skip it for websocket endpoints
 	cfg.APIServerConfig.SkippedTimeoutPaths = append(cfg.APIServerConfig.SkippedTimeoutPaths, []string{
 		"/api/v1/requester/websocket/events",
@@ -55,12 +58,33 @@ func NewAPIServer(cfg NodeConfig) (*publicapi.Server, error) {
 		serverParams.AutoCertCache = cfg.RequesterAutoCertCache
 	}
 
-	return publicapi.NewAPIServer(serverParams)
+	apiServer, err := publicapi.NewAPIServer(serverParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(forrest): [correctness] strange we ignore the returns from these constructors.
+	shared.NewEndpoint(shared.EndpointParams{
+		Router:           apiServer.Router,
+		NodeID:           cfg.Host.ID().String(),
+		PeerStore:        cfg.Host.Peerstore(),
+		NodeInfoProvider: provider,
+	})
+
+	agent.NewEndpoint(agent.EndpointParams{
+		Router:           apiServer.Router,
+		NodeInfoProvider: provider,
+	})
+
+	return apiServer, nil
 }
 
 type StopFn = func(ctx context.Context) error
 
 func NewNodeWithOptions(ctx context.Context, cfg NodeConfig) (StopFn, error) {
+	// yay globals...
+	identify.ActivationThresh = 2
+
 	cfg.DependencyInjector = mergeDependencyInjectors(cfg.DependencyInjector, NewStandardNodeDependencyInjector())
 	err := mergo.Merge(&cfg.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
