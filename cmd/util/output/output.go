@@ -19,7 +19,8 @@ const (
 	YAMLFormat  OutputFormat = "yaml"
 )
 
-var AllFormats = []OutputFormat{TableFormat, CSVFormat, JSONFormat, YAMLFormat}
+var AllFormats = append([]OutputFormat{TableFormat, CSVFormat}, NonTabularFormats...)
+var NonTabularFormats = []OutputFormat{JSONFormat, YAMLFormat}
 
 var noStyle = table.Style{
 	Name:   "StyleDefault",
@@ -39,9 +40,23 @@ var noStyle = table.Style{
 
 type OutputOptions struct {
 	Format     OutputFormat // The output format for the list of jobs
+	Pretty     bool         // Pretty print the output
 	HideHeader bool         // Hide the column headers
 	NoStyle    bool         // Remove all styling from table output.
 	Wide       bool         // Print full values in the table results
+}
+
+// toNonTabularOptions converts OutputOptions to NonTabularOutputOptions
+func (o OutputOptions) toNonTabularOptions() NonTabularOutputOptions {
+	return NonTabularOutputOptions{
+		Format: o.Format,
+		Pretty: o.Pretty,
+	}
+}
+
+type NonTabularOutputOptions struct {
+	Format OutputFormat // The output format for the list of jobs
+	Pretty bool         // Pretty print the output
 }
 
 type TableColumn[T any] struct {
@@ -51,15 +66,24 @@ type TableColumn[T any] struct {
 
 func Output[T any](cmd *cobra.Command, columns []TableColumn[T], options OutputOptions, items []T) error {
 	switch options.Format {
-	case JSONFormat:
-		return json.NewEncoder(cmd.OutOrStdout()).Encode(items)
-	case YAMLFormat:
-		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(items)
-	case CSVFormat:
-		fallthrough
-	case TableFormat:
+	case TableFormat, CSVFormat:
 		outputTable[T](cmd, columns, options, items)
 		return nil
+	default:
+		return OutputNonTabular(cmd, options.toNonTabularOptions(), items)
+	}
+}
+
+func OutputNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOptions, items []T) error {
+	switch options.Format {
+	case JSONFormat:
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		if options.Pretty {
+			encoder.SetIndent("", "  ")
+		}
+		return encoder.Encode(items)
+	case YAMLFormat:
+		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(items)
 	default:
 		return fmt.Errorf("invalid format %q", options.Format)
 	}
@@ -67,15 +91,24 @@ func Output[T any](cmd *cobra.Command, columns []TableColumn[T], options OutputO
 
 func OutputOne[T any](cmd *cobra.Command, columns []TableColumn[T], options OutputOptions, item T) error {
 	switch options.Format {
-	case JSONFormat:
-		return json.NewEncoder(cmd.OutOrStdout()).Encode(item)
-	case YAMLFormat:
-		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(item)
-	case CSVFormat:
-		fallthrough
-	case TableFormat:
+	case TableFormat, CSVFormat:
 		outputTable[T](cmd, columns, options, []T{item})
 		return nil
+	default:
+		return OutputOneNonTabular(cmd, options.toNonTabularOptions(), item)
+	}
+}
+
+func OutputOneNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOptions, item T) error {
+	switch options.Format {
+	case JSONFormat:
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		if options.Pretty {
+			encoder.SetIndent("", "  ")
+		}
+		return encoder.Encode(item)
+	case YAMLFormat:
+		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(item)
 	default:
 		return fmt.Errorf("invalid format %q", options.Format)
 	}

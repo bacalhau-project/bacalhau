@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 // ChainedJobTransformer is a slice of Transformers that runs in sequence
@@ -23,7 +23,7 @@ func (ct ChainedJobTransformer) Transform(ctx context.Context, job *models.Job) 
 // IDGenerator is a transformer that generates a new ID for the job if it is empty.
 func IDGenerator(_ context.Context, job *models.Job) error {
 	if job.ID == "" {
-		job.ID = uuid.NewString()
+		job.ID = idgen.NewJobID()
 	}
 	return nil
 }

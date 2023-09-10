@@ -12,6 +12,7 @@ type SubmitJobRequest struct {
 type SubmitJobResponse struct {
 	JobID        string
 	EvaluationID string
+	Warnings     []string
 }
 
 type StopJobRequest struct {

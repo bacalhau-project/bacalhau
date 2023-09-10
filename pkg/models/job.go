@@ -4,6 +4,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -38,6 +39,14 @@ const (
 // IsUndefined returns true if the job state is undefined
 func (s JobStateType) IsUndefined() bool {
 	return s == JobStateTypeUndefined
+}
+
+func JobStateTypes() []JobStateType {
+	var res []JobStateType
+	for typ := JobStateTypePending; typ <= JobStateTypeStopped; typ++ {
+		res = append(res, typ)
+	}
+	return res
 }
 
 type Job struct {
@@ -219,6 +228,48 @@ func (j *Job) ValidateSubmission() error {
 	}
 
 	return mErr.ErrorOrNil()
+}
+
+// SanitizeSubmission is used to sanitize a job for reasonable configuration when it is submitted.
+func (j *Job) SanitizeSubmission() (warnings []string) {
+	if !j.State.StateType.IsUndefined() {
+		warnings = append(warnings, "job state is ignored when submitting a job")
+		j.State = NewJobState(JobStateTypeUndefined)
+	}
+	if j.Revision != 0 {
+		warnings = append(warnings, "job revision is ignored when submitting a job")
+		j.Revision = 0
+	}
+	if j.Version != 0 {
+		warnings = append(warnings, "job version is ignored when submitting a job")
+		j.Version = 0
+	}
+	if j.CreateTime != 0 {
+		warnings = append(warnings, "job create time is ignored when submitting a job")
+		j.CreateTime = 0
+	}
+	if j.ModifyTime != 0 {
+		warnings = append(warnings, "job modify time is ignored when submitting a job")
+		j.ModifyTime = 0
+	}
+	if j.Type == JobTypeBatch || j.Type == JobTypeOps {
+		if j.ID != "" {
+			warnings = append(warnings, "job ID is ignored when submitting a batch job")
+			j.ID = ""
+		}
+	}
+	// TODO: remove this once we have multiple tasks per job
+	if len(j.Tasks) > 1 {
+		warnings = append(warnings, "only one task is supported per job")
+		j.Tasks = j.Tasks[:1]
+	}
+	for k := range j.Meta {
+		if strings.HasPrefix(k, MetaReservedPrefix) {
+			warnings = append(warnings, fmt.Sprintf("job meta key %q is reserved and will be ignored", k))
+			delete(j.Meta, k)
+		}
+	}
+	return warnings
 }
 
 // IsTerminal returns true if the job is in a terminal state

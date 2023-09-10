@@ -1,5 +1,5 @@
 package userstrings
 
 const (
-	JobSpecBad = "The job provided is invalid."
+	JobSpecBad = "the job provided is invalid"
 )

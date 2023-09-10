@@ -4,6 +4,7 @@ package models
 
 import (
 	"errors"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
@@ -116,6 +117,16 @@ func (e *Execution) String() string {
 
 func (e *Execution) JobNamespacedID() NamespacedID {
 	return NewNamespacedID(e.JobID, e.Namespace)
+}
+
+// GetCreateTime returns the creation time
+func (e *Execution) GetCreateTime() time.Time {
+	return time.Unix(0, e.CreateTime).UTC()
+}
+
+// GetModifyTime returns the modify time
+func (e *Execution) GetModifyTime() time.Time {
+	return time.Unix(0, e.ModifyTime).UTC()
 }
 
 // Normalize Allocation to ensure fields are initialized to the expectations

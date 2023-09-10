@@ -56,6 +56,7 @@ const (
 )
 
 const (
+	MetaReservedPrefix     = "bacalhau.org/"
 	MetaRequesterID        = "bacalhau.org/requester.id"
 	MetaRequesterPublicKey = "bacalhau.org/requester.publicKey"
 	MetaClientID           = "bacalhau.org/client.id"

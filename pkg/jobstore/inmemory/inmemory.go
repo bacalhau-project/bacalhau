@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/benbjohnson/clock"
@@ -212,6 +213,14 @@ func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
 		}
 
 		if options.ExcludeJobLevel && event.Type == models.JobHistoryTypeJobLevel {
+			continue
+		}
+
+		if options.ExecutionID != "" && strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+			continue
+		}
+
+		if options.NodeID != "" && strings.HasPrefix(event.NodeID, options.NodeID) {
 			continue
 		}
 

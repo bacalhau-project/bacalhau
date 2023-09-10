@@ -51,12 +51,12 @@ type DockerRunOptions struct {
 	Entrypoint       []string
 	WorkingDirectory string // Working directory for docker
 
-	SpecSettings       *cliflags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   *cliflags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings *cliflags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       *cliflags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    *cliflags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   *cliflags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
+	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
+	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
+	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
+	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
+	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
 
 }
 
@@ -74,7 +74,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
 		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
 		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    cliflags.NewDefaultRunTimeSettings(),
+		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -121,7 +121,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
 
 	return dockerRunCmd
 }
@@ -168,7 +168,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return err
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
