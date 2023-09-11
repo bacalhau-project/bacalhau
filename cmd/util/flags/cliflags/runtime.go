@@ -12,7 +12,6 @@ func NewDefaultRunTimeSettings() *RunTimeSettings {
 		PrintJobIDOnly:        false,
 		PrintNodeDetails:      false,
 		Follow:                false,
-		SkipSyntaxChecking:    false,
 		DryRun:                false,
 	}
 }
@@ -26,7 +25,6 @@ type RunTimeSettings struct {
 	PrintJobIDOnly        bool // Only print the Job ID as output
 	PrintNodeDetails      bool // Print the node details as output
 	Follow                bool // Follow along with the output of the job
-	SkipSyntaxChecking    bool // Skip having 'shellchecker' verify syntax of the command.
 	DryRun                bool // iff true do not submit the job, but instead print out what will be submitted.
 }
 
@@ -50,9 +48,6 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`Should we download the results once the job is complete?`)
 	flags.BoolVarP(&settings.Follow, "follow", "f", settings.Follow,
 		`When specified will follow the output from the job as it runs`)
-	flags.BoolVar(
-		&settings.SkipSyntaxChecking, "skip-syntax-checking", settings.SkipSyntaxChecking,
-		`Skip having 'shellchecker' verify syntax of the command`)
 	flags.BoolVar(
 		&settings.DryRun, "dry-run", settings.DryRun,
 		`Do not submit the job, but instead print out what will be submitted`)
