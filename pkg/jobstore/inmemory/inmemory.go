@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -81,14 +80,12 @@ func (d *InMemoryJobStore) Watch(c context.Context, t jobstore.StoreWatcherType,
 }
 
 func (d *InMemoryJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object interface{}) {
-	data, _ := json.Marshal(object)
-
 	for _, w := range d.watchers {
 		if w.IsWatchingEvent(e) && w.IsWatchingType(t) {
 			w.Channel() <- jobstore.WatchEvent{
 				Kind:   t,
 				Event:  e,
-				Object: data,
+				Object: object,
 			}
 		}
 	}

@@ -146,14 +146,12 @@ func (b *BoltJobStore) Watch(ctx context.Context,
 }
 
 func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object interface{}) {
-	data, _ := json.Marshal(object)
-
 	for _, w := range b.watchers {
 		if !w.IsWatchingEvent(e) || !w.IsWatchingType(t) {
 			return
 		}
 
-		_ = w.WriteEvent(t, e, data, false) // Do not block
+		_ = w.WriteEvent(t, e, object, false) // Do not block
 	}
 }
 

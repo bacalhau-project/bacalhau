@@ -4,7 +4,6 @@ package inmemory
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -399,9 +398,7 @@ func (s *InMemoryTestSuite) TestEvents() {
 		s.Equal(ev.Event, jobstore.CreateEvent)
 		s.Equal(ev.Kind, jobstore.JobWatcher)
 
-		var decodedJob models.Job
-		err = json.Unmarshal(ev.Object, &decodedJob)
-		s.NoError(err)
+		decodedJob := ev.Object.(models.Job)
 		s.Equal(decodedJob.ID, job.ID)
 	})
 
@@ -452,9 +449,7 @@ func (s *InMemoryTestSuite) TestEvents() {
 		s.Equal(ev.Event, jobstore.UpdateEvent)
 		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
 
-		var decodedExecution models.Execution
-		err := json.Unmarshal(ev.Object, &decodedExecution)
-		s.NoError(err)
+		decodedExecution := ev.Object.(models.Execution)
 		s.Equal(decodedExecution.ID, execution.ID)
 	})
 

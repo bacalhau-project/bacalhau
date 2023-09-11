@@ -48,15 +48,15 @@ const DefaultWatchChannelSize = 64
 type WatchEvent struct {
 	Kind      StoreWatcherType
 	Event     StoreEventType
-	Object    []byte
+	Object    interface{}
 	Timestamp int64
 }
 
-func NewWatchEvent(kind StoreWatcherType, event StoreEventType, object []byte) WatchEvent {
+func NewWatchEvent(kind StoreWatcherType, event StoreEventType, object interface{}) WatchEvent {
 	return WatchEvent{
 		Kind:   kind,
 		Event:  event,
-		Object: append([]byte(nil), object...),
+		Object: object,
 		// TODO(ross): Add a timestamp from the actual time of the event (rather than the
 		// time at which this event was created).
 	}
@@ -94,7 +94,7 @@ func (w *Watcher) Channel() chan WatchEvent {
 	return w.channel
 }
 
-func (w *Watcher) WriteEvent(kind StoreWatcherType, event StoreEventType, object []byte, allowBlock bool) bool {
+func (w *Watcher) WriteEvent(kind StoreWatcherType, event StoreEventType, object interface{}, allowBlock bool) bool {
 	// If we don't want to block, return a fail when the channel is currently full.
 	// By default, we'll block and wait for a space in the channel
 	if len(w.channel) == w.channelSize && !allowBlock {

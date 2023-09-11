@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -30,14 +29,9 @@ type EvaluationQueue struct {
 func NewEvaluationQueue(ctx context.Context, store jobstore.Store, broker orchestrator.EvaluationBroker) (*EvaluationQueue, error) {
 	workers, err := workerpool.NewWorkerPool[jobstore.WatchEvent](
 		func(evt jobstore.WatchEvent) error {
-			var eval models.Evaluation
+			eval := evt.Object.(models.Evaluation)
 
-			err := json.Unmarshal(evt.Object, &eval)
-			if err != nil {
-				return fmt.Errorf("failed to unmarshall json from job store: %s", err)
-			}
-
-			err = broker.Enqueue(&eval)
+			err := broker.Enqueue(&eval)
 			if err != nil {
 				return fmt.Errorf("failed to enqueue an evaluation: %s", err)
 			}
