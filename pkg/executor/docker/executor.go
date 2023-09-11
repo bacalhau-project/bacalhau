@@ -198,8 +198,8 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 		errCh <- ctx.Err() // Send the cancellation error to the error channel
 		return
 	case <-handle.waitCh:
-		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
 		if handle.result != nil {
+			log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
 			out <- handle.result
 		} else {
 			// NB(forrest): this shouldn't happen with the wasm and docker executors, but handling it as it

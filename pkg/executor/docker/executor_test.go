@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -178,10 +179,8 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 	case out := <-resultC:
 		return out, nil
 	case err := <-errC:
-		s.T().Fatalf("while waiting for exection to complete: %s", err)
+		return nil, err
 	}
-	// unreachable
-	return nil, nil
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID string) (string, error) {
@@ -387,11 +386,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 	require.Equal(s.T(), executionID, result.STDOUT, result.STDOUT)
 }
 
-/*
 func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
-	s.T().Skip("We cannot timeout our docker executor with a context.")
 	expected := "message after sleep"
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	jobCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	task := mock.TaskBuilder().
@@ -401,15 +398,48 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 				Build()).
 		BuildOrDie()
 
-	result, err := s.runJobWithContext(ctx, task, "timeout")
-	s.NoError(err)
-	// The Docker client has changed so that it prioritizes container error message
-	// and not the error message from the context. It does error upon timeout, but not
-	// with a context.DeadlineExceeded error.
-	s.NotEmpty(result.ErrorMsg)
-	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
+	name := "timeout"
+	resultDir := s.T().TempDir()
+	j := mock.Job()
+	j.ID = name
+	j.Tasks = []*models.Task{task}
+
+	resources, err := task.ResourcesConfig.ToResources()
+	require.NoError(s.T(), err)
+
+	s.Require().NoError(s.executor.Start(jobCtx,
+		&executor.RunCommandRequest{
+			JobID:        j.ID,
+			ExecutionID:  name,
+			Resources:    resources,
+			Network:      task.Network,
+			Outputs:      task.ResultPaths,
+			Inputs:       nil,
+			ResultsDir:   resultDir,
+			EngineParams: task.Engine,
+			OutputLimits: executor.OutputLimits{
+				MaxStdoutFileLength:   system.MaxStdoutFileLength,
+				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+				MaxStderrFileLength:   system.MaxStderrFileLength,
+				MaxStderrReturnLength: system.MaxStderrReturnLength,
+			},
+		},
+	))
+
+	ticker := time.NewTimer(time.Second * 10)
+	// use a different context for waiting as we don't want to timout waiting on the job.
+	resC, errC := s.executor.Wait(context.Background(), name)
+	select {
+	case res := <-resC:
+		// we expect to receive an error from the executions result stating the deadline for
+		// execution was exceeded.
+		s.Require().Contains(res.ErrorMsg, context.DeadlineExceeded.Error())
+	case err := <-errC:
+		s.T().Fatal(err)
+	case <-ticker.C:
+		s.T().Fatal("container was not canceled.")
+	}
 }
-*/
 
 func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	id := "streams-fail"

@@ -145,7 +145,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	entryFunc := instance.ExportedFunction(h.arguments.EntryPoint)
 	h.logger.Info().Msg("running execution")
 
-	// TODO this is a little racey
+	// TODO(forrest): this is a bit of a race condition as the operation has not started when these lines are called.
 	h.running.Store(true)
 	close(h.activeCh)
 
@@ -154,7 +154,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	_, wasmErr := entryFunc.Call(wasmCtx)
-	exitCode := int64(0)
+	exitCode := int64(-1)
 	var errExit *sys.ExitError
 	if errors.As(wasmErr, &errExit) {
 		exitCode = int64(errExit.ExitCode())
