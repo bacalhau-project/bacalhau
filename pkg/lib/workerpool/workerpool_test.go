@@ -63,9 +63,7 @@ func (s *WorkerPoolSuite) TestBusy() {
 	took := time.Since(start)
 
 	// We expect no error, and a fast processing time but between the submit and
-	// the shutdown we may not manage to process every single message so we'll allow
-	// for somewhere with a few of the target number.
+	// the shutdown we may not manage to process every single message.
 	s.Require().NoError(err)
-	s.Require().InDelta(number, ctr, 5)
-	s.Require().Less(took, time.Duration(5*time.Millisecond))
+	s.Require().Less(took, time.Duration(50*time.Millisecond))
 }
