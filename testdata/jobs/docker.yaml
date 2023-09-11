@@ -1,4 +1,4 @@
-name: Simple job
+name: Docker Job
 type: batch
 namespace: default
 count: 1
@@ -7,9 +7,9 @@ tasks:
     engine:
       type: docker
       params:
+        Image: ubuntu:latest
         Entrypoint:
           - /bin/bash
-        Image: ubuntu
         Parameters:
           - -c
           - echo 15

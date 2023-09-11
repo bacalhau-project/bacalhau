@@ -2,7 +2,6 @@ package types
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type RequesterConfig struct {
@@ -37,6 +36,5 @@ type WorkerConfig struct {
 }
 
 type JobDefaults struct {
-	ResourcesConfig  models.ResourcesConfig `yaml:"ResourcesConfig"`
-	ExecutionTimeout Duration               `yaml:"ExecutionTimeout"`
+	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
 }

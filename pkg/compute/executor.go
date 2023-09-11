@@ -205,21 +205,59 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 	}
 	jobsCompleted.Add(ctx, 1)
 
+	expectedState := store.ExecutionStateRunning
+	publishedResult := models.SpecConfig{}
+
+	// publish if the job has a publisher defined
+	if !execution.Job.Task().Publisher.IsEmpty() {
+		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			ExecutionID:   execution.ID,
+			ExpectedState: expectedState,
+			NewState:      store.ExecutionStatePublishing,
+		}); err != nil {
+			return err
+		}
+
+		operation = "Publishing"
+		expectedState = store.ExecutionStatePublishing
+		publishedResult, err = e.publish(ctx, localExecutionState, resultFolder)
+		if err != nil {
+			return err
+		}
+	}
+
+	// mark the execution as completed
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateRunning,
-		NewState:      store.ExecutionStatePublishing,
+		ExpectedState: expectedState,
+		NewState:      store.ExecutionStateCompleted,
 	}); err != nil {
 		return err
 	}
 
-	operation = "Publishing"
-	return e.publish(ctx, localExecutionState, resultFolder, runCommandResult)
+	// cleanup resources
+	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
+	err = os.RemoveAll(resultFolder)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
+	}
+
+	// notify requester
+	e.callback.OnRunComplete(ctx, RunResult{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+		RoutingMetadata: RoutingMetadata{
+			SourcePeerID: e.ID,
+			TargetPeerID: localExecutionState.RequesterNodeID,
+		},
+		PublishResult:    &publishedResult,
+		RunCommandResult: runCommandResult,
+	})
+	return err
 }
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
-	resultFolder string, result *models.RunCommandResult) (err error) {
+	resultFolder string) (publishedResult models.SpecConfig, err error) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
@@ -228,7 +266,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 		return
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
+	publishedResult, err = jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to publish result: %w", err)
 		return
@@ -238,31 +276,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 		Str("execution", execution.ID).
 		Msg("Execution published")
 
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStatePublishing,
-		NewState:      store.ExecutionStateCompleted,
-	})
-	if err != nil {
-		return
-	}
-
-	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
-	err = os.RemoveAll(resultFolder)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
-	}
-
-	e.callback.OnRunComplete(ctx, RunResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
-			SourcePeerID: e.ID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
-		},
-		PublishResult:    &publishedResult,
-		RunCommandResult: result,
-	})
-	return err
+	return
 }
 
 // Cancel the execution.

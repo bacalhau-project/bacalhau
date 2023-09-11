@@ -32,10 +32,6 @@ var DefaultComputeConfig = ComputeConfigParams{
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ResourcesConfig: models.ResourcesConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
-		},
 		ExecutionTimeout: model.NoJobTimeout,
 	},
 
@@ -60,10 +56,6 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 var TestRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ResourcesConfig: models.ResourcesConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
-		},
 		ExecutionTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,

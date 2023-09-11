@@ -79,6 +79,14 @@ func (s *SpecConfig) ValidateAllowBlank() error {
 
 // IsType returns true if the current SpecConfig
 func (s *SpecConfig) IsType(t string) bool {
+	if s == nil {
+		return false
+	}
 	t = strings.TrimSpace(t)
 	return strings.EqualFold(s.Type, t)
+}
+
+// IsEmpty returns true if the spec config is empty
+func (s *SpecConfig) IsEmpty() bool {
+	return s == nil || (validate.IsBlank(s.Type) && len(s.Params) == 0)
 }

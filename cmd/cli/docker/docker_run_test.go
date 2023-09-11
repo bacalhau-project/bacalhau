@@ -76,7 +76,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			)
 			s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -151,7 +151,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 
 			s.Require().True(!tc.fatalErr, "Expected fatal err, but submitted.")
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			if tc.errString != "" {
 				o := logBuf.String()
@@ -188,7 +188,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			)
 			s.Require().NoErrorf(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -245,7 +245,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
 
@@ -309,7 +309,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
 				s.Require().Equal(turls.inputURL.url, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
@@ -379,7 +379,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(tcids.correctLength, len(j.Spec.Outputs), "Number of job outputs != correct number.")
 
@@ -435,7 +435,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			)
 			s.NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			s.Require().LessOrEqual(j.Metadata.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
@@ -500,7 +500,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				if labelTest.BadCase {
 					s.Require().Contains(out, "rror")
@@ -558,7 +558,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 
 			s.Require().True(!tc.fatalErr, "Expected fatal err, but submitted.")
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			if tc.errString != "" {
 				o := logBuf.String()
@@ -601,7 +601,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			} else {
 				s.Require().NoError(err, "Error submitting job.")
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				dockerSpec, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
 				s.Require().NoError(err)
@@ -699,7 +699,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 			info, _, err := s.Client.Get(ctx, j.Metadata.ID)
 			s.Require().NoError(err)
 
@@ -746,7 +746,7 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 		s.Require().NoError(err, "Error submitting job")
 
-		j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+		j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 		s.Require().Equal(tc.expectedVolumes, len(j.Spec.Inputs))
 	}
@@ -822,7 +822,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	)
 	s.Require().NoError(err)
 
-	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 	s.T().Log(job)
 
 	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
@@ -844,7 +844,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	)
 	s.NoError(err, "Error submitting job without defining a timeout value")
 
-	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 	s.Require().Equal(node.TestRequesterConfig.JobDefaults.ExecutionTimeout, j.Spec.GetTimeout(),
 		"Did not fall back to default timeout value")
@@ -863,7 +863,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	)
 	s.NoError(err, "Error submitting job with a defined a timeout value")
 
-	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 	s.Require().Equal(expectedTimeout, j.Spec.GetTimeout())
 }

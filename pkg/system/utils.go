@@ -65,6 +65,17 @@ func SplitLines(s string) []string {
 
 func FindJobIDInTestOutput(testOutput string) string {
 	// Build a regex starting with Job ID and ending with a UUID
+	r := regexp.MustCompile(`Job ID: (j-[a-f0-9-]{36})`)
+
+	b := r.FindStringSubmatch(testOutput)
+	if len(b) > 1 {
+		return b[1]
+	}
+	return ""
+}
+
+func FindJobIDInTestOutputLegacy(testOutput string) string {
+	// Build a regex starting with Job ID and ending with a UUID
 	r := regexp.MustCompile(`Job ID: ([a-f0-9-]{36})`)
 
 	b := r.FindStringSubmatch(testOutput)

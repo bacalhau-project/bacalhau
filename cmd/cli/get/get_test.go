@@ -136,7 +136,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	})
 	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(runOutput)
+	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
 	hostID := s.Node.Host.ID().String()
 	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
@@ -157,7 +157,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	})
 	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(runOutput)
+	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
 	hostID := s.Node.Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
@@ -177,7 +177,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
@@ -201,7 +201,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutputLegacy(out)
 
 	_, getoutput, err := cmdtesting.ExecuteTestCobraCommand("get",
 		"--api-host", s.Node.APIServer.Address,
@@ -224,7 +224,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
@@ -250,7 +250,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
@@ -288,7 +288,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.Host.ID().String()
 
 	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",

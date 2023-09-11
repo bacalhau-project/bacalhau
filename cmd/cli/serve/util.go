@@ -57,7 +57,6 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
-			ResourcesConfig:  cfg.JobDefaults.ResourcesConfig,
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 		},
 		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),

@@ -33,7 +33,7 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 	tests := []struct {
 		Name    string
-		Fixture *testdata.Fixture
+		Fixture *testdata.FixtureLegacy
 	}{
 		{
 			Name:    "noop json",
@@ -63,7 +63,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 		/*
 			{
 				Name:    "wasm task json",
-				Fixture: testdata.TaskWasmJson,
+				FixtureLegacy: testdata.TaskWasmJson,
 			},
 		*/
 		{
@@ -100,7 +100,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 			fmt.Println(tc.Fixture.Data)
 
 			require.NoError(s.T(), err, "Error submitting job")
-			testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -114,7 +114,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
-	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.Client, out)
+	job := testutils.GetJobFromTestOutputLegacy(context.Background(), s.T(), s.Client, out)
 	_, _, err = cmdtesting.ExecuteTestCobraCommand("describe",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
@@ -156,6 +156,6 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 		}
 	}
 
-	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
+	require.Contains(s.T(), errorOutputMap["Message"], "the job provided is invalid", "Output message should error properly.")
 	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
 }

@@ -29,6 +29,9 @@ var (
 	runExample = templates.Examples(i18n.T(`
 		# Run a job using the data in job.yaml
 		bacalhau job run ./job.yaml
+
+		# Run a new job from an already executed job
+		bacalhau job describe 6e51df50 | bacalhau job run 
 		`))
 )
 
@@ -95,6 +98,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
+		return
 	}
 
 	// Normalize and validate the job spec
@@ -102,6 +106,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	err = j.ValidateSubmission()
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
+		return
 	}
 
 	if o.RunTimeSettings.DryRun {
@@ -119,6 +124,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
+		return
 	}
 
 	if o.ShowWarnings && len(resp.Warnings) > 0 {
@@ -127,6 +133,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 
 	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, client); err != nil {
 		util.Fatal(cmd, fmt.Errorf("failed to print job execution: %w", err), 1)
+		return
 	}
 }
 

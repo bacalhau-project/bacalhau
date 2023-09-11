@@ -217,6 +217,9 @@ func (j *Job) Validate() error {
 // ValidateSubmission is used to check a job for reasonable configuration when it is submitted.
 // It is a subset of Validate that does not check fields with defaults, such as job ID
 func (j *Job) ValidateSubmission() error {
+	if j == nil {
+		return errors.New("empty/nil job")
+	}
 	var mErr multierror.Error
 	if validate.IsBlank(j.Name) {
 		mErr.Errors = append(mErr.Errors, errors.New("missing job name"))

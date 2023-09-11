@@ -36,7 +36,7 @@ var (
 		bacalhau create ./job.yaml
 
 		# Create a new job from an already executed job
-		bacalhau describe 6e51df50 | bacalhau create -`))
+		bacalhau describe 6e51df50 | bacalhau create `))
 )
 
 type CreateOptions struct {

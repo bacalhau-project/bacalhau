@@ -30,7 +30,6 @@ func IDGenerator(_ context.Context, job *models.Job) error {
 }
 
 type JobDefaults struct {
-	ResourcesConfig  models.ResourcesConfig
 	ExecutionTimeout time.Duration
 }
 
@@ -38,9 +37,6 @@ type JobDefaults struct {
 func DefaultsApplier(defaults JobDefaults) Job {
 	f := func(ctx context.Context, job *models.Job) error {
 		for _, task := range job.Tasks {
-			if task.ResourcesConfig == nil {
-				task.ResourcesConfig = defaults.ResourcesConfig.Copy()
-			}
 			if task.Timeouts.GetExecutionTimeout() <= 0 {
 				task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
 			}
