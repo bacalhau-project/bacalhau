@@ -57,25 +57,7 @@ func (*Executor) ShouldBidBasedOnUsage(
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
-// Start initiates the execution of a WebAssembly (WASM) task using the provided RunCommandRequest.
-// It first checks if the execution with the given ExecutionID is already active or completed,
-// returning an error if so.
-//
-// This method performs several steps to initiate the execution:
-// 1. Decodes the engine parameters specific to the WASM engine.
-// 2. Configures memory limits for the WASM runtime, based on the resources specified in the request.
-// 3. Creates a virtual filesystem from storage to be used by the WASM execution.
-// 4. Sets up a new log manager specific to the execution for capturing logs.
-//
-// After preparing the environment, it creates an executionHandler and associates it with the ExecutionID.
-// The executionHandler is responsible for running the WASM task, and it's executed in a separate goroutine.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - request: The RunCommandRequest object containing details such as ExecutionID, resources, and inputs/outputs.
-//
-// Returns:
-// - An error if the initialization fails, or if an execution with the given ExecutionID is already active or completed.
+// Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
 	defer span.End()
@@ -188,16 +170,8 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 	}
 }
 
-// Cancel attempts to terminate an ongoing execution identified by its executionID.
-// It looks up the handler for the execution and invokes its kill method to cancel it.
-// If the execution with the given ID is not found, an error is returned.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - executionID: The unique identifier for the execution to cancel.
-//
-// Returns:
-// - An error if the execution with the given executionID is not found or if canceling fails.
+// Cancel tries to cancel a specific execution by its executionID.
+// It returns an error if the execution is not found.
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
@@ -206,19 +180,10 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	return handler.kill(ctx)
 }
 
-// GetOutputStream retrieves the output stream for a specific execution identified by its executionID.
-// The method allows configuring whether to include past output (history) and whether to keep the stream open for new output (follow).
-// If an execution with the given executionID is not found, an error is returned.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - executionID: The unique identifier for the execution whose output stream to get.
-// - withHistory: Whether to include the historical output in the returned stream.
-// - follow: Whether to keep the stream open for new output.
-//
-// Returns:
-// - An io.ReadCloser that provides access to the output stream.
-// - An error if the execution with the given executionID is not found.
+// GetOutputStream provides a stream of output logs for a specific execution.
+// Parameters 'withHistory' and 'follow' control whether to include past logs
+// and whether to keep the stream open for new logs, respectively.
+// It returns an error if the execution is not found.
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
@@ -228,21 +193,10 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 }
 
 // Run initiates and waits for the completion of an execution in one call.
-// This is essentially a convenience method that combines the Start and Wait methods.
-//
-// Parameters:
-// - ctx: The context for the operation, used for timeouts and cancellations.
-// - request: The RunCommandRequest object containing details about the execution.
-//
-// Returns:
-// - A pointer to a RunCommandResult object, containing the result of the execution.
-// - An error if either starting or waiting for the execution fails, or if the context is cancelled.
-//
-// Steps:
-//  1. Starts the execution using the Start method. If it fails, returns an error.
-//  2. Waits for the execution to complete using the Wait method. If it fails, returns an error.
-//  3. Listens on the channel returned by Wait, and returns the result when available.
-//     If the context is cancelled, it returns a context error.
+// This method serves as a higher-level convenience function that
+// internally calls Start and Wait methods.
+// It returns the result of the execution or an error if either starting
+// or waiting fails, or if the context is canceled.
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,

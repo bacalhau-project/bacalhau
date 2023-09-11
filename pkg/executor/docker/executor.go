@@ -107,12 +107,6 @@ func (e *Executor) ShouldBidBasedOnUsage(
 }
 
 // Start initiates an execution based on the provided RunCommandRequest.
-// It performs several key tasks as part of the initiation:
-// 1. Checks if the execution is already started or completed and returns an error if so.
-// 2. Calls newDockerJobContainer to create and configure a Docker container for the execution.
-// 3. Registers a new executionHandler to manage the execution.
-// 4. Finally, it starts a new Goroutine to run the container.
-// It returns an error if any of the above steps fail.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	log.Ctx(ctx).Info().
 		Str("executionID", request.ExecutionID).
