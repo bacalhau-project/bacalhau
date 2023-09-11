@@ -214,7 +214,11 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	evalQueue := requester.NewEvaluationQueue(jobStore, evalBroker)
+	evalQueue, err := requester.NewEvaluationQueue(ctx, jobStore, evalBroker)
+	if err != nil {
+		return nil, err
+	}
+	evalQueue.Start(ctx)
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
@@ -302,6 +306,8 @@ func NewRequesterNode(
 		for _, worker := range workers {
 			worker.Stop()
 		}
+
+		evalQueue.Stop()
 		evalBroker.SetEnabled(false)
 
 		cleanupErr := jobInfoPubSub.Close(ctx)

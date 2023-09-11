@@ -70,6 +70,7 @@ type Watcher struct {
 	events      StoreEventType   // a bitmask of events being watched
 	channelSize int
 	channel     chan WatchEvent
+	closed      bool
 }
 
 func NewWatcher(types StoreWatcherType, events StoreEventType) *Watcher {
@@ -100,6 +101,10 @@ func (w *Watcher) WriteEvent(kind StoreWatcherType, event StoreEventType, object
 		return false
 	}
 
+	if w.closed {
+		return false
+	}
+
 	w.channel <- WatchEvent{
 		Kind:   kind,
 		Event:  event,
@@ -109,5 +114,6 @@ func (w *Watcher) WriteEvent(kind StoreWatcherType, event StoreEventType, object
 }
 
 func (w *Watcher) Close() {
+	w.closed = true
 	close(w.channel)
 }

@@ -44,7 +44,7 @@ func NewWorkerPool[MsgType any](worker WorkerFn[MsgType], options ...OptionFn) (
 	}
 
 	return &WorkerPool[MsgType]{
-		InputChannel: make(chan MsgType),
+		InputChannel: make(chan MsgType, config.inputChannelSize),
 		workerCount:  config.workerCount,
 		workerFunc:   worker,
 		closeChannel: make(chan struct{}),
@@ -55,7 +55,7 @@ func NewWorkerPool[MsgType any](worker WorkerFn[MsgType], options ...OptionFn) (
 func (w *WorkerPool[MsgType]) Start(ctx context.Context) {
 	for i := 0; i <= w.workerCount; i++ {
 		w.wg.Add(1)
-		go w.runWorker(ctx, i+1, w.InputChannel)
+		go w.runWorker(ctx, i+1)
 	}
 }
 
@@ -68,7 +68,7 @@ func (w *WorkerPool[MsgType]) Submit(m MsgType) {
 // runWorker loops forever waiting to be told the pool is shutting down (or
 // has been cancelled) or to receive a message. When given a message it will
 // invoke the worker function, logging any errors it encounters.
-func (w *WorkerPool[MsgType]) runWorker(ctx context.Context, id int, input chan MsgType) {
+func (w *WorkerPool[MsgType]) runWorker(ctx context.Context, id int) {
 	defer w.wg.Done()
 
 	for {
@@ -77,7 +77,7 @@ func (w *WorkerPool[MsgType]) runWorker(ctx context.Context, id int, input chan 
 			return
 		case <-ctx.Done():
 			return
-		case msg := <-input:
+		case msg := <-w.InputChannel:
 			err := w.workerFunc(msg)
 			if err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("failed to process message in worker function")

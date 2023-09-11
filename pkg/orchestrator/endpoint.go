@@ -74,9 +74,9 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	if err := e.evaluationBroker.Enqueue(eval); err != nil {
-		return nil, err
-	}
+	// if err := e.evaluationBroker.Enqueue(eval); err != nil {
+	// 	return nil, err
+	// }
 	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return &SubmitJobResponse{
 		JobID:        job.ID,
@@ -136,10 +136,10 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			return StopJobResponse{}, err
 		}
 
-		err = e.evaluationBroker.Enqueue(eval)
-		if err != nil {
-			return StopJobResponse{}, err
-		}
+		// err = e.evaluationBroker.Enqueue(eval)
+		// if err != nil {
+		// 	return StopJobResponse{}, err
+		// }
 		evalID = eval.ID
 	}
 	e.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
