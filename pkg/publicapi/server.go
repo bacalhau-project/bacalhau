@@ -25,13 +25,15 @@ import (
 const TimeoutMessage = "Server Timeout!"
 
 type ServerParams struct {
-	Router         *echo.Echo
-	Address        string
-	Port           uint16
-	HostID         string
-	AutoCertDomain string
-	AutoCertCache  string
-	Config         Config
+	Router             *echo.Echo
+	Address            string
+	Port               uint16
+	HostID             string
+	AutoCertDomain     string
+	AutoCertCache      string
+	TLSCertificateFile string
+	TLSKeyFile         string
+	Config             Config
 }
 
 // Server configures a node's public REST API.
@@ -39,6 +41,9 @@ type Server struct {
 	Router  *echo.Echo
 	Address string
 	Port    uint16
+
+	TLSCertificateFile string
+	TLSKeyFile         string
 
 	httpServer http.Server
 	config     Config
@@ -125,7 +130,12 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		}
 
 		server.useTLS = true
+	} else {
+		server.useTLS = params.TLSCertificateFile != "" && params.TLSKeyFile != ""
 	}
+
+	server.TLSCertificateFile = params.TLSCertificateFile
+	server.TLSKeyFile = params.TLSKeyFile
 
 	server.httpServer = http.Server{
 		Handler:           server.Router,
@@ -188,7 +198,10 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 		var err error
 
 		if apiServer.useTLS {
-			err = apiServer.httpServer.ServeTLS(listener, "", "")
+			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+			fmt.Println("Using TLS, Port", apiServer.Port, "Cert is ", apiServer.TLSCertificateFile, "Key is", apiServer.TLSKeyFile)
+			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+			err = apiServer.httpServer.ServeTLS(listener, apiServer.TLSCertificateFile, apiServer.TLSKeyFile)
 		} else {
 			err = apiServer.httpServer.Serve(listener)
 		}

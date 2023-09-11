@@ -40,23 +40,25 @@ type FeatureConfig struct {
 
 // Node configuration
 type NodeConfig struct {
-	IPFSClient                ipfs.Client
-	CleanupManager            *system.CleanupManager
-	Host                      host.Host
-	HostAddress               string
-	APIPort                   uint16
-	RequesterAutoCert         string
-	RequesterAutoCertCache    string
-	DisabledFeatures          FeatureConfig
-	ComputeConfig             ComputeConfig
-	RequesterNodeConfig       RequesterConfig
-	APIServerConfig           publicapi.Config
-	IsRequesterNode           bool
-	IsComputeNode             bool
-	Labels                    map[string]string
-	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
-	DependencyInjector        NodeDependencyInjector
-	AllowListedLocalPaths     []string
+	IPFSClient                  ipfs.Client
+	CleanupManager              *system.CleanupManager
+	Host                        host.Host
+	HostAddress                 string
+	APIPort                     uint16
+	RequesterAutoCert           string
+	RequesterAutoCertCache      string
+	RequesterTLSCertificateFile string
+	RequesterTLSKeyFile         string
+	DisabledFeatures            FeatureConfig
+	ComputeConfig               ComputeConfig
+	RequesterNodeConfig         RequesterConfig
+	APIServerConfig             publicapi.Config
+	IsRequesterNode             bool
+	IsComputeNode               bool
+	Labels                      map[string]string
+	NodeInfoPublisherInterval   routing.NodeInfoPublisherIntervalConfig
+	DependencyInjector          NodeDependencyInjector
+	AllowListedLocalPaths       []string
 
 	FsRepo *repo.FsRepo
 }
@@ -208,6 +210,8 @@ func NewNode(
 	if config.IsRequesterNode {
 		serverParams.AutoCertDomain = config.RequesterAutoCert
 		serverParams.AutoCertCache = config.RequesterAutoCertCache
+		serverParams.TLSCertificateFile = config.RequesterTLSCertificateFile
+		serverParams.TLSKeyFile = config.RequesterTLSKeyFile
 	}
 
 	apiServer, err := publicapi.NewAPIServer(serverParams)
