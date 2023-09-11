@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -59,7 +60,7 @@ var errorLogsTestCase = scenario.Scenario{
 						MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 						MaxStderrFileLength:   system.MaxStderrFileLength,
 						MaxStderrReturnLength: system.MaxStderrReturnLength,
-					})
+					}), nil
 				},
 			},
 		},

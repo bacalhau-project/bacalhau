@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const PluggableExecutorPluginName = "PLUGGABLE_EXECUTOR"
@@ -31,16 +30,13 @@ func main() { // Create an hclog.Logger
 		Output: os.Stderr,
 		Level:  hclog.Trace,
 	})
-	cm := system.NewCleanupManager()
 	dockerExecutor, err := docker.NewExecutor(
 		ctx,
-		cm,
 		"bacalhau-pluggable-executor-docker",
 	)
 	if err != nil {
 		logger.Error(err.Error())
 	}
-	defer cm.Cleanup(ctx)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: HandshakeConfig,

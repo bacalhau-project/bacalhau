@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -28,6 +30,7 @@ type outputResult struct {
 
 func writeOutputResult(resultsDir string, output outputResult) error {
 	if output.contents == nil {
+		log.Warn().Msg("writing result output contents null")
 		// contents may be nil if something went wrong while trying to get the logs
 		output.contents = bytes.NewReader(nil)
 	}
@@ -50,9 +53,6 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	}
 	if output.truncated != nil {
 		*(output.truncated) = summaryRead > int(output.summaryLimit)
-	}
-	if err != nil && err != io.EOF {
-		return err
 	}
 
 	file, err := os.Create(filepath.Join(resultsDir, output.filename))
@@ -90,10 +90,13 @@ type OutputLimits struct {
 //
 // It will consume only the bytes from the passed io.Readers that it needs to
 // correctly form job outputs. Once the command returns, the readers can close.
-func WriteJobResults(resultsDir string, stdout, stderr io.Reader,
+func WriteJobResults(
+	resultsDir string,
+	stdout, stderr io.Reader,
 	exitcode int,
 	err error,
-	limits OutputLimits) (*models.RunCommandResult, error) {
+	limits OutputLimits,
+) *models.RunCommandResult {
 	result := models.NewRunCommandResult()
 
 	outputs := []outputResult{
@@ -140,7 +143,11 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader,
 	}
 
 	result.ExitCode = exitcode
-	return result, err
+	return result
+}
+
+func NewFailedResult(reason string) *models.RunCommandResult {
+	return &models.RunCommandResult{ErrorMsg: reason, ExitCode: -1}
 }
 
 func FailResult(err error) (*models.RunCommandResult, error) {
