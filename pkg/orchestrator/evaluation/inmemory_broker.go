@@ -840,3 +840,6 @@ func (b *InMemoryBroker) evaluationStateChange(e *models.Evaluation, newState st
 		callback(e)
 	}
 }
+
+var _ orchestrator.EvaluationStateNotifier = (*InMemoryBroker)(nil)
+var _ orchestrator.EvaluationBroker = (*InMemoryBroker)(nil)
