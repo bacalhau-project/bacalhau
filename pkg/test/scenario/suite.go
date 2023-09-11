@@ -84,7 +84,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
 	}
 
-	if config.RequesterConfig.DefaultJobExecutionTimeout == 0 {
+	if config.RequesterConfig.JobDefaults.ExecutionTimeout == 0 {
 		config.RequesterConfig = node.NewRequesterConfigWithDefaults()
 	}
 

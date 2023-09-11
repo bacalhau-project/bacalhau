@@ -62,9 +62,16 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		annotations = append(annotations, k)
 	}
 
-	publisherType, err := model.ParsePublisher(job.Task().Publisher.Type)
-	if err != nil {
-		return nil, err
+	publisherSpec := model.PublisherSpec{}
+	if job.Task().Publisher.Type != "" {
+		publisherType, err := model.ParsePublisher(job.Task().Publisher.Type)
+		if err != nil {
+			return nil, err
+		}
+		publisherSpec = model.PublisherSpec{
+			Type:   publisherType,
+			Params: job.Task().Publisher.Params,
+		}
 	}
 
 	networkConfig, err := ToLegacyNetworkConfig(job.Task().Network)
@@ -85,10 +92,7 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 			Type:   job.Task().Engine.Type,
 			Params: job.Task().Engine.Params,
 		},
-		PublisherSpec: model.PublisherSpec{
-			Type:   publisherType,
-			Params: job.Task().Publisher.Params,
-		},
+		PublisherSpec: publisherSpec,
 		Resources: model.ResourceUsageConfig{
 			CPU:    job.Task().ResourcesConfig.CPU,
 			Memory: job.Task().ResourcesConfig.Memory,

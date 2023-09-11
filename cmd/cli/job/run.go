@@ -97,7 +97,8 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
 	}
 
-	// Validate the job spec
+	// Normalize and validate the job spec
+	j.Normalize()
 	err = j.ValidateSubmission()
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)

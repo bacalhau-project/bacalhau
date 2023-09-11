@@ -1,0 +1,15 @@
+name: Simple job
+type: batch
+namespace: default
+count: 1
+tasks:
+  - name: main
+    engine:
+      type: docker
+      params:
+        Entrypoint:
+          - /bin/bash
+        Image: ubuntu
+        Parameters:
+          - -c
+          - echo 15

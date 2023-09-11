@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 var Development = types.BacalhauConfig{
@@ -145,8 +146,11 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
-	Timeouts: types.TimeoutConfig{
-		MinJobExecutionTimeout:     types.Duration(0 * time.Second),
-		DefaultJobExecutionTimeout: types.Duration(30 * time.Minute),
+	JobDefaults: types.JobDefaults{
+		ResourcesConfig: models.ResourcesConfig{
+			CPU:    "100m",
+			Memory: "100Mi",
+		},
+		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
 }

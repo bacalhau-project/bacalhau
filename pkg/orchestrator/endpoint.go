@@ -46,6 +46,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 // SubmitJob submits a job to the evaluation broker.
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (*SubmitJobResponse, error) {
 	job := request.Job
+	job.Normalize()
 	warnings := job.SanitizeSubmission()
 
 	if err := e.Transformer.Transform(ctx, job); err != nil {

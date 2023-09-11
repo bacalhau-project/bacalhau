@@ -170,22 +170,22 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 
 	// TODO: move ordering to jobstore
 	// parse order_by
-	var sortFnc func(a, b *models.Execution) bool
+	var sortFnc func(a, b models.Execution) bool
 	switch args.OrderBy {
 	case "modify_time", "":
-		sortFnc = func(a, b *models.Execution) bool { return a.ModifyTime < b.ModifyTime }
+		sortFnc = func(a, b models.Execution) bool { return a.ModifyTime < b.ModifyTime }
 	case "create_time":
-		sortFnc = func(a, b *models.Execution) bool { return a.CreateTime < b.CreateTime }
+		sortFnc = func(a, b models.Execution) bool { return a.CreateTime < b.CreateTime }
 	case "id":
-		sortFnc = func(a, b *models.Execution) bool { return a.ID < b.ID }
+		sortFnc = func(a, b models.Execution) bool { return a.ID < b.ID }
 	case "state":
-		sortFnc = func(a, b *models.Execution) bool { return a.ComputeState.StateType < b.ComputeState.StateType }
+		sortFnc = func(a, b models.Execution) bool { return a.ComputeState.StateType < b.ComputeState.StateType }
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
 	if args.Reverse {
 		baseSortFnc := sortFnc
-		sortFnc = func(a, b *models.Execution) bool { return !baseSortFnc(a, b) }
+		sortFnc = func(a, b models.Execution) bool { return !baseSortFnc(a, b) }
 	}
 
 	// query executions
@@ -193,19 +193,21 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// sort executions
+	slices.SortFunc(executions, sortFnc)
+
+	// apply limit
+	if args.Limit > 0 && len(executions) > int(args.Limit) {
+		executions = executions[:args.Limit]
+	}
+
+	// prepare result
 	res := &apimodels.ListJobExecutionsResponse{
 		Executions: make([]*models.Execution, len(executions)),
 	}
 	for i := range executions {
 		res.Executions[i] = &executions[i]
-	}
-
-	// sort executions
-	slices.SortFunc(res.Executions, sortFnc)
-
-	// apply limit
-	if args.Limit > 0 && len(res.Executions) > int(args.Limit) {
-		res.Executions = res.Executions[:args.Limit]
 	}
 
 	return c.JSON(http.StatusOK, res)

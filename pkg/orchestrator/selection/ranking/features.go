@@ -30,7 +30,13 @@ func NewEnginesNodeRanker() *featureNodeRanker {
 
 func NewPublishersNodeRanker() *featureNodeRanker {
 	return &featureNodeRanker{
-		getJobRequirement:   func(j models.Job) []string { return []string{j.Task().Publisher.Type} },
+		getJobRequirement: func(j models.Job) []string {
+			// publisher is optional and can be empty
+			if j.Task().Publisher.Type == "" {
+				return []string{}
+			}
+			return []string{j.Task().Publisher.Type}
+		},
 		getNodeProvidedKeys: func(ni models.ComputeNodeInfo) []string { return ni.Publishers },
 	}
 }

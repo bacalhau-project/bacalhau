@@ -8,6 +8,7 @@ import (
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -30,8 +31,13 @@ var DefaultComputeConfig = ComputeConfigParams{
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	MinJobExecutionTimeout:     0 * time.Second,
-	DefaultJobExecutionTimeout: model.NoJobTimeout,
+	JobDefaults: transformer.JobDefaults{
+		ResourcesConfig: models.ResourcesConfig{
+			CPU:    "100m",
+			Memory: "100Mi",
+		},
+		ExecutionTimeout: model.NoJobTimeout,
+	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            5,
@@ -53,9 +59,13 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
-	MinJobExecutionTimeout:     0 * time.Second,
-	DefaultJobExecutionTimeout: 30 * time.Second,
-
+	JobDefaults: transformer.JobDefaults{
+		ResourcesConfig: models.ResourcesConfig{
+			CPU:    "100m",
+			Memory: "100Mi",
+		},
+		ExecutionTimeout: 30 * time.Second,
+	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,

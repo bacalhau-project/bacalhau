@@ -2,6 +2,7 @@ package transformer
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -26,4 +27,25 @@ func IDGenerator(_ context.Context, job *models.Job) error {
 		job.ID = idgen.NewJobID()
 	}
 	return nil
+}
+
+type JobDefaults struct {
+	ResourcesConfig  models.ResourcesConfig
+	ExecutionTimeout time.Duration
+}
+
+// DefaultsApplier is a transformer that applies default values to the job.
+func DefaultsApplier(defaults JobDefaults) Job {
+	f := func(ctx context.Context, job *models.Job) error {
+		for _, task := range job.Tasks {
+			if task.ResourcesConfig == nil {
+				task.ResourcesConfig = defaults.ResourcesConfig.Copy()
+			}
+			if task.Timeouts.GetExecutionTimeout() <= 0 {
+				task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
+			}
+		}
+		return nil
+	}
+	return JobFn(f)
 }
