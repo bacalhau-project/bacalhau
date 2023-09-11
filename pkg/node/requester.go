@@ -214,6 +214,8 @@ func NewRequesterNode(
 		return nil, err
 	}
 
+	evalQueue := requester.NewEvaluationQueue(jobStore, evalBroker)
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
@@ -221,6 +223,7 @@ func NewRequesterNode(
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
+		EvaluationQueue:            evalQueue,
 		StorageProviders:           storageProviders,
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})

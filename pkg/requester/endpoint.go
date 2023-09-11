@@ -27,6 +27,7 @@ type BaseEndpointParams struct {
 	PublicKey                  []byte
 	EvaluationBroker           orchestrator.EvaluationBroker
 	Store                      jobstore.Store
+	EvaluationQueue            *EvaluationQueue
 	EventEmitter               orchestrator.EventEmitter
 	ComputeEndpoint            compute.Endpoint
 	StorageProviders           storage.StorageProvider
@@ -39,6 +40,7 @@ type BaseEndpoint struct {
 	id               string
 	evaluationBroker orchestrator.EvaluationBroker
 	store            jobstore.Store
+	evaluationQueue  *EvaluationQueue
 	eventEmitter     orchestrator.EventEmitter
 	computesvc       compute.Endpoint
 	transforms       []jobtransform.Transformer
@@ -65,6 +67,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		evaluationBroker: params.EvaluationBroker,
 		computesvc:       params.ComputeEndpoint,
 		store:            params.Store,
+		evaluationQueue:  params.EvaluationQueue,
 		transforms:       transforms,
 		postTransforms:   postTransforms,
 		eventEmitter:     params.EventEmitter,
