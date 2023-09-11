@@ -121,7 +121,7 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		return types.IpfsConfig{}, fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
 	}
 
-	if ipfsConfig.Connect != "" && len(ipfsConfig.SwarmAddresses) != 0 {
+	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
 		return types.IpfsConfig{}, fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
 	}
 	return ipfsConfig, nil
@@ -129,13 +129,7 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 
 func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg types.IpfsConfig) (ipfs.Client, error) {
 	if ipfsCfg.Connect == "" {
-		// Connect to the public IPFS nodes by default
-		newNode := ipfs.NewNode
-		if ipfsCfg.PrivateInternal {
-			newNode = ipfs.NewLocalNode
-		}
-
-		ipfsNode, err := newNode(ctx, cm, ipfsCfg.SwarmAddresses)
+		ipfsNode, err := ipfs.NewNodeWithConfig(ctx, cm, ipfsCfg)
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
 		}

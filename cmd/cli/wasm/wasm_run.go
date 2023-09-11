@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
@@ -87,6 +88,10 @@ func NewCmd() *cobra.Command {
 func newRunCmd() *cobra.Command {
 	opts := NewWasmOptions()
 
+	wasmRunFlags := map[string][]configflags.Definition{
+		"ipfs": configflags.IPFSFlags,
+	}
+
 	wasmRunCmd := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:   "Run a WASM job on the network",
@@ -94,6 +99,13 @@ func newRunCmd() *cobra.Command {
 		Example: wasmRunExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  util.ApplyPorcelainLogLevel,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := configflags.BindFlags(cmd, wasmRunFlags)
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+			return err
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -122,6 +134,10 @@ func newRunCmd() *cobra.Command {
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+
+	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
+		util.Fatal(wasmRunCmd, err, 1)
+	}
 
 	return wasmRunCmd
 }

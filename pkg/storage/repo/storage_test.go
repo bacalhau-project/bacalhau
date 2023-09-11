@@ -5,28 +5,22 @@ package repo
 import (
 	"context"
 	"fmt"
-	// "net/http"
-	// "net/http/httptest"
 	"os"
 	"path/filepath"
-	// "regexp"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -51,25 +45,15 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
+	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
 	if err != nil {
-		// panic(err)
 		return nil, err
 
 	}
-	// // require.NoError(t, err)
 
-	// apiAddresses, err := node.APIAddresses()
-	if err != nil {
-		// panic(err)
-		return nil, err
-
-	}
 	cl := ipfs.NewClient(node.Client().API)
-
 	storage, err := apicopy.NewStorage(cm, cl)
 	if err != nil {
-		// panic(err)
 		return nil, err
 	}
 

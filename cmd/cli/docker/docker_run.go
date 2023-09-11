@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -92,6 +93,10 @@ func NewCmd() *cobra.Command {
 func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
+	dockerRunFlags := map[string][]configflags.Definition{
+		"ipfs": configflags.IPFSFlags,
+	}
+
 	dockerRunCmd := &cobra.Command{
 		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
 		Short:   "Run a docker job on the network",
@@ -99,6 +104,13 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  util.ApplyPorcelainLogLevel,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := configflags.BindFlags(cmd, dockerRunFlags)
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+			return err
+		},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -122,6 +134,10 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+
+	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
+		util.Fatal(dockerRunCmd, err, 1)
+	}
 
 	return dockerRunCmd
 }

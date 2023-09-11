@@ -297,12 +297,12 @@ func serve(cmd *cobra.Command) error {
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%s\n",
-			config.KeyAsEnvVar(types.NodeServerAPIHost),
+			config.KeyAsEnvVar(types.NodeClientAPIHost),
 			config.ServerAPIHost(),
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(
 			"export %s=%d\n",
-			config.KeyAsEnvVar(types.NodeServerAPIPort),
+			config.KeyAsEnvVar(types.NodeClientAPIPort),
 			config.ServerAPIPort(),
 		))
 		summaryBuilder.WriteString(fmt.Sprintf(

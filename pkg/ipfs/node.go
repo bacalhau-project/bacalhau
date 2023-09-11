@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 
 	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/rs/zerolog/log"
@@ -28,7 +30,6 @@ import (
 	"github.com/ipfs/kubo/core/corehttp"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
-	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
 )
 
@@ -52,9 +53,7 @@ const (
 type Node struct {
 	api      icore.CoreAPI
 	ipfsNode *core.IpfsNode
-
-	// Mode is the mode the ipfs node was created in.
-	Mode NodeMode
+	cfg      types.IpfsConfig
 
 	// RepoPath is the path to the ipfs node's data repository.
 	RepoPath string
@@ -65,77 +64,17 @@ type Node struct {
 	apiAddresses []string
 }
 
-// NodeMode configures how the node treats the public IPFS network.
-type NodeMode int
-
-const (
-	// ModeDefault is the default node mode, which uses an IPFS repo backed
-	// by the `flatfs` datastore, and connects to the public IPFS network.
-	ModeDefault NodeMode = iota
-
-	// ModeLocal is a node mode that uses an IPFS repo backed by the `flatfs`
-	// datastore and ignores the public IPFS network completely, for setting
-	// up test environments without polluting the public IPFS nodes.
-	ModeLocal
-)
-
-// Config contains configuration for the IPFS node.
-type Config struct {
-	// PeerAddrs is a list of additional IPFS node multiaddrs to use as
-	// peers. By default, the IPFS node will connect to whatever nodes are
-	// specified by its mode.
-	PeerAddrs []string
-
-	// Mode configures the node's default settings.
-	Mode NodeMode
-
-	// KeypairSize is the number of bits to use for the node's repo keypair. If
-	// nil, then a default value of 2048 is used.
-	KeypairSize int
-}
-
-func (cfg *Config) getKeypairSize() int {
-	if cfg.KeypairSize == 0 {
-		return defaultKeypairSize
+func NewNode(ctx context.Context, cm *system.CleanupManager) (*Node, error) {
+	var cfg types.IpfsConfig
+	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
+		return nil, err
 	}
-
-	return cfg.KeypairSize
-}
-
-func (cfg *Config) getMode() NodeMode {
-	return cfg.Mode
-}
-
-// NewNode creates a new IPFS node in default mode, which creates an IPFS
-// repo in a temporary directory, uses the public libp2p nodes as peers and
-// generates a repo keypair with 2048 bits.
-func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeDefault)
-}
-
-// NewLocalNode creates a new local IPFS node in local mode, which can be used
-// to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeLocal)
-}
-
-func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
-	// filter out any empty peer addresses
-	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
-	for _, addr := range peerAddrs {
-		if addr != "" {
-			filteredPeerAddrs = append(filteredPeerAddrs, addr)
-		}
-	}
-	return newNodeWithConfig(ctx, cm, Config{
-		Mode:      mode,
-		PeerAddrs: filteredPeerAddrs,
-	})
+	return NewNodeWithConfig(ctx, cm, cfg)
 }
 
 // newNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types.IpfsConfig) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins(cm)
@@ -154,7 +93,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		}
 	}()
 
-	if err = connectToPeers(ctx, api, ipfsNode, cfg.PeerAddrs); err != nil {
+	if err = connectToPeers(ctx, api, ipfsNode, cfg.GetSwarmAddresses()); err != nil {
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
@@ -174,7 +113,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	n := Node{
 		api:      api,
 		ipfsNode: ipfsNode,
-		Mode:     cfg.getMode(),
+		cfg:      cfg,
 		RepoPath: repoPath,
 		APIPort:  apiPort,
 	}
@@ -244,7 +183,7 @@ func (n *Node) Close(ctx context.Context) error {
 	}
 
 	// don't delete repo if we've setup BACALHAU_SERVE_IPFS_PATH
-	if n.RepoPath != "" && bac_config.GetServeIPFSPath() == "" {
+	if n.RepoPath != "" && n.cfg.ServePath != "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -253,27 +192,36 @@ func (n *Node) Close(ctx context.Context) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
-	var repoPath string
+func createNode(ctx context.Context, _ *system.CleanupManager, ipfsConfig types.IpfsConfig) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	var err error
-	if bac_config.GetServeIPFSPath() == "" {
+	repoPath := ipfsConfig.ServePath
+	if repoPath == "" {
 		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
 	} else {
-		repoPath = bac_config.GetServeIPFSPath()
 		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)
 	}
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
 
-	var repo kuboRepo.Repo
-	if err = createRepo(repoPath, cfg); err != nil {
+	if err = createRepo(repoPath, ipfsConfig); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
-	repo, err = fsrepo.Open(repoPath)
+	// If we have a swarm key, copy it into the repo
+	if ipfsConfig.SwarmKeyPath != "" {
+		destinationPath := filepath.Join(repoPath, "swarm.key")
+		err = copyFile(ipfsConfig.SwarmKeyPath, destinationPath)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to copy swarm key: %w", err)
+		} else {
+			log.Ctx(ctx).Debug().Str("Path", destinationPath).Msg("Copied IPFS private swarm key")
+		}
+	}
+
+	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to open temp repo: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to open repo: %w", err)
 	}
 
 	nodeOptions := &core.BuildCfg{
@@ -340,10 +288,12 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 	var addresses []string
 	for _, listener := range listeners {
 		addresses = append(addresses, listener.Multiaddr().String())
+		log.Debug().Stringer("Address", listener.Multiaddr()).Msg("IPFS listening")
 		// NOTE: this is not critical, but we should log for debugging
 		go func(listener manet.Listener) {
-			if err := corehttp.Serve(node, manet.NetListener(listener), opts...); err != nil {
-				log.Debug().Err(err).Msgf("node '%s' failed to serve ipfs api", node.Identity)
+			err := corehttp.Serve(node, manet.NetListener(listener), opts...)
+			if err != nil && !errors.Is(err, net.ErrClosed) {
+				log.Warn().Stringer("IPFSNode", node.Identity).Err(err).Msg("failed to serve IPFS API")
 			}
 		}(listener)
 	}
@@ -381,57 +331,102 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 	return anyErr
 }
 
+// Switch off networking services that might connect to public nodes
+var localOnlyProfile = config.Profile{
+	Transform: func(c *config.Config) error {
+		c.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
+		c.Swarm.EnableHolePunching = config.False
+		c.Swarm.RelayClient.Enabled = config.False
+		c.Swarm.RelayService.Enabled = config.False
+		c.Swarm.Transports.Network.Relay = config.False
+		return nil
+	},
+}
+
+// Serve the IPFS HTTP API on a local-only address
+var localAPIProfile = config.Profile{
+	Transform: func(c *config.Config) error {
+		c.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
+		return nil
+	},
+}
+
+// Serve the IPFS services on random ports to ensure no port clashes
+var randomPortsProfile = config.Profile{
+	Transform: func(c *config.Config) error {
+		c.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		c.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		return nil
+	},
+}
+
+// Only serve the swarm on the preferred listen address.
+func preferredAddressProfile(preferredAddress string) config.Profile {
+	return config.Profile{
+		Transform: func(c *config.Config) error {
+			c.Addresses.Swarm = []string{fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)}
+			return nil
+		},
+	}
+}
+
+// Continuously connect to the swarm. If the swarm is private, don't bootstrap
+// with public nodes, only with swarm nodes.
+func connectToSwarmProfile(swarmAddrs []string, privateSwarm bool) config.Profile {
+	return config.Profile{
+		Transform: func(c *config.Config) error {
+			// establish peering with the passed nodes. This is different than
+			// bootstrapping or manually connecting to peers, and kubo will
+			// create sticky connections with these nodes and reconnect if the
+			// connection is lost
+			// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
+			swarmPeers, err := ParsePeersString(swarmAddrs)
+			if err != nil {
+				return fmt.Errorf("failed to parse peer addresses: %w", err)
+			}
+			c.Peering = config.Peering{Peers: swarmPeers}
+			if privateSwarm {
+				c.Bootstrap = swarmAddrs
+			}
+			return nil
+		},
+	}
+}
+
 // createRepo creates an IPFS repository in a given directory.
-func createRepo(path string, nodeConfig Config) error {
-	cfg, err := config.Init(io.Discard, nodeConfig.getKeypairSize())
+func createRepo(path string, nodeConfig types.IpfsConfig) error {
+	cfg, err := config.Init(io.Discard, defaultKeypairSize)
 	if err != nil {
 		return fmt.Errorf("failed to initialize config: %w", err)
 	}
 
-	profile := "flatfs"
-	if nodeConfig.getMode() == ModeLocal {
-		profile = "test"
-	}
-
-	transformer, ok := config.Profiles[profile]
-	if !ok {
-		return fmt.Errorf("invalid configuration profile: %s", profile)
-	}
-	if err := transformer.Transform(cfg); err != nil { //nolint: govet
-		return err
+	profiles := []config.Profile{
+		config.Profiles["flatfs"],
+		randomPortsProfile,
+		localAPIProfile,
 	}
 
 	// If we're in local mode, then we need to manually change the config to
-	// serve an IPFS swarm client on some local port:
-	if nodeConfig.getMode() == ModeLocal {
-		cfg.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
-		cfg.Swarm.EnableHolePunching = config.False
-		cfg.Swarm.DisableNatPortMap = true
-		cfg.Swarm.RelayClient.Enabled = config.False
-		cfg.Swarm.RelayService.Enabled = config.False
-		cfg.Swarm.Transports.Network.Relay = config.False
-		cfg.Discovery.MDNS.Enabled = false
-		cfg.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0"}
-		cfg.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0"}
-		cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
-	} else {
-		cfg.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
+	// serve an IPFS swarm client on some local port. Else, make sure we are
+	// only serving the API on a local connection
+	if nodeConfig.PrivateInternal {
+		profiles = append(profiles, config.Profiles["test"], localOnlyProfile)
 	}
 
-	preferredAddress := bac_config.PreferredAddress()
-	if preferredAddress != "" {
-		cfg.Addresses.Swarm = []string{fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)}
+	if nodeConfig.SwarmAddresses != nil {
+		privateSwarm := nodeConfig.SwarmKeyPath != ""
+		profiles = append(profiles, connectToSwarmProfile(nodeConfig.GetSwarmAddresses(), privateSwarm))
 	}
 
-	// establish peering with the passed nodes. This is different than bootstrapping or manually connecting to peers,
-	//and kubo will create sticky connections with these nodes and reconnect if the connection is lost
-	// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
-	swarmPeers, err := ParsePeersString(nodeConfig.PeerAddrs)
-	if err != nil {
-		return fmt.Errorf("failed to parse peer addresses: %w", err)
+	if preferredAddress := bac_config.PreferredAddress(); preferredAddress != "" {
+		profiles = append(profiles, preferredAddressProfile(preferredAddress))
 	}
-	cfg.Peering = config.Peering{
-		Peers: swarmPeers,
+
+	for _, transformer := range profiles {
+		if err = transformer.Transform(cfg); err != nil {
+			return err
+		}
 	}
 
 	err = fsrepo.Init(path, cfg)

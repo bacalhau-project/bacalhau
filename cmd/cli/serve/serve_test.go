@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -71,7 +72,7 @@ func (s *ServeSuite) SetupTest() {
 		cm.Cleanup(s.ctx)
 	})
 
-	node, err := ipfs.NewLocalNode(s.ctx, cm, []string{})
+	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
 	s.Require().NoError(err)
 	s.ipfsPort = node.APIPort
 }
@@ -198,7 +199,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	s.NoError(err)
 }
 
-func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
+func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
 	cm := system.NewCleanupManager()
 
 	client, err := serve.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
@@ -208,13 +209,32 @@ func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
 	})
 	s.Require().NoError(err)
 
-	swarmAddresses, err := client.SwarmAddresses(s.ctx)
-	s.NoError(err)
-	// TODO(forrest): [correctness] this test is bound to flake if an IPFS local node
-	// ever decides not to return 2 address. What are we actually testing here?
+	addrs, err := client.SwarmMultiAddresses(s.ctx)
+	s.Require().NoError(err)
 
-	// an IPFS local node usually returns 2 addresses
-	s.Require().Equal(2, len(swarmAddresses))
+	ip4 := multiaddr.ProtocolWithName("ip4")
+	ip6 := multiaddr.ProtocolWithName("ip6")
+
+	for _, addr := range addrs {
+		s.T().Logf("Internal IPFS node listening on %s", addr)
+		ip, err := addr.ValueForProtocol(ip4.Code)
+		if err == nil {
+			s.Require().Equal("127.0.0.1", ip)
+			continue
+		} else {
+			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
+		}
+
+		ip, err = addr.ValueForProtocol(ip6.Code)
+		if err == nil {
+			s.Require().Equal("::1", ip)
+			continue
+		} else {
+			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
+		}
+	}
+
+	s.Require().GreaterOrEqual(len(addrs), 1)
 }
 
 func (s *ServeSuite) TestGetPeers() {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -24,15 +25,15 @@ func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) 
 		// IPFS
 		//////////////////////////////////////
 		var err error
-		var ipfsSwarmAddrs []string
+		cfg := types.IpfsConfig{PrivateInternal: true}
 		if i > 0 {
-			ipfsSwarmAddrs, err = clients[0].SwarmAddresses(ctx)
+			cfg.SwarmAddresses, err = clients[0].SwarmAddresses(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
 		}
 
-		ipfsNode, err := ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
+		ipfsNode, err := ipfs.NewNodeWithConfig(ctx, cm, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
