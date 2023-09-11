@@ -198,9 +198,6 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 		var err error
 
 		if apiServer.useTLS {
-			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-			fmt.Println("Using TLS, Port", apiServer.Port, "Cert is ", apiServer.TLSCertificateFile, "Key is", apiServer.TLSKeyFile)
-			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 			err = apiServer.httpServer.ServeTLS(listener, apiServer.TLSCertificateFile, apiServer.TLSKeyFile)
 		} else {
 			err = apiServer.httpServer.Serve(listener)
