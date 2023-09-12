@@ -1,17 +1,19 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/rs/zerolog/log"
 )
 
 const defaultBacalhauDir = ".bacalhau"
 
-func defaultRepo() (string, error) {
+func defaultRepo() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get user home dir: %w", err)
+		log.Debug().Err(err).Msg("failed to get user home dir as default repo. Must set --repo flag or BACALHAU_DIR to specify a repo")
+		return ""
 	}
-	return filepath.Join(home, defaultBacalhauDir), nil
+	return filepath.Join(home, defaultBacalhauDir)
 }

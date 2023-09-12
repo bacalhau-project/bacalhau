@@ -81,11 +81,8 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
-	defaultRepo, err := defaultRepo()
-	if err != nil {
-		panic(err)
-	}
-	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
+
+	RootCmd.PersistentFlags().String("repo", defaultRepo(), "path to bacalhau repo")
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
 		util.Fatal(RootCmd, err, 1)
 	}
