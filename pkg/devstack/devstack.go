@@ -236,6 +236,10 @@ func Setup(
 			// settings needed for AutoCert.
 			nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 			nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
+
+			cert, key := config.GetRequesterCertificateSettings()
+			nodeConfig.RequesterTLSCertificateFile = cert
+			nodeConfig.RequesterTLSKeyFile = key
 		}
 
 		// allow overriding configs of some nodes

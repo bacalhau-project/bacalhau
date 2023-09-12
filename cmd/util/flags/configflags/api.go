@@ -47,4 +47,18 @@ var RequesterTLSFlags = []Definition{
 Using this option results in the API serving over HTTPS`,
 		EnvironmentVariables: []string{"BACALHAU_AUTO_TLS"},
 	},
+	{
+		FlagName:             "tlscert",
+		DefaultValue:         Default.Node.ServerAPI.TLS.ServerCertificate,
+		ConfigPath:           types.NodeServerAPITLSServerCertificate,
+		Description:          `Specifies a TLS certificate file to be used by the requester node`,
+		EnvironmentVariables: []string{"BACALHAU_TLS_CERT"},
+	},
+	{
+		FlagName:             "tlskey",
+		DefaultValue:         Default.Node.ServerAPI.TLS.ServerKey,
+		ConfigPath:           types.NodeServerAPITLSServerKey,
+		Description:          `Specifies a TLS key file matching the certificate to be used by the requester node`,
+		EnvironmentVariables: []string{"BACALHAU_TLS_KEY"},
+	},
 }
