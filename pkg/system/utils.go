@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
 )
 
@@ -83,13 +82,6 @@ func FindJobIDInTestOutputLegacy(testOutput string) string {
 		return b[1]
 	}
 	return ""
-}
-
-func GetShortID(ID string) string {
-	if len(ID) < model.ShortIDLength {
-		return ID
-	}
-	return ID[:model.ShortIDLength]
 }
 
 func MustParseURL(uri string) *url.URL {

@@ -19,13 +19,13 @@ var (
 `))
 	describeExample = templates.Examples(i18n.T(`
 		# Describe a job with the full ID
-		bacalhau job describe e3f8c209-d683-4a41-b840-f09b88d087b9
+		bacalhau job describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 
 		# Describe a job with the a shortened ID
-		bacalhau job describe 47805f5c
+		bacalhau job describe j-47805f5c
 
 		# Describe a job with json output
-		bacalhau job describe --output json --pretty b6ad164a
+		bacalhau job describe --output json --pretty j-b6ad164a
 `))
 )
 

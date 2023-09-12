@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
@@ -17,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -150,8 +150,8 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 	{
 		ColumnConfig: table.ColumnConfig{
 			Name:             "id",
-			WidthMax:         model.ShortIDLength,
-			WidthMaxEnforcer: func(col string, maxLen int) string { return system.GetShortID(col) }},
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortID(col) }},
 		Value: func(jwi *model.JobWithInfo) string { return jwi.Job.ID() },
 	},
 	{

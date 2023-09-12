@@ -61,7 +61,3 @@ const (
 	MetaRequesterPublicKey = "bacalhau.org/requester.publicKey"
 	MetaClientID           = "bacalhau.org/client.id"
 )
-
-const (
-	ShortIDLength = 8
-)

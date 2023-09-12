@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
@@ -281,15 +281,11 @@ func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
 // It is important that we don't attempt to acquire a lock inside this method to avoid deadlocks since
 // the callers are expected to be holding a lock, and golang doesn't support reentrant locks.
 func (d *InMemoryJobStore) getJob(id string) (models.Job, error) {
-	if len(id) < models.ShortIDLength {
-		return models.Job{}, bacerrors.NewJobNotFound(id)
-	}
-
 	// support for short job IDs
-	if jobutils.ShortID(id) == id {
+	if idgen.ShortID(id) == id {
 		// passed in a short id, need to resolve the long id first
 		for k := range d.jobs {
-			if jobutils.ShortID(k) == id {
+			if idgen.ShortID(k) == id {
 				id = k
 				break
 			}

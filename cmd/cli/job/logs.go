@@ -15,10 +15,10 @@ var (
 
 	logsExample = templates.Examples(i18n.T(`
 		# Follow logs for a previously submitted job
-		bacalhau logs 51225160-807e-48b8-88c9-28311c7899e1
+		bacalhau logs j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Follow output with a short ID 
-		bacalhau logs ebd9bf2f
+		bacalhau logs j-ebd9bf2f
 `))
 )
 

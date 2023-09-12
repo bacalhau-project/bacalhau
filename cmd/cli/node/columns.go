@@ -7,7 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/c2h5oh/datasize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -18,7 +18,7 @@ import (
 var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "id"},
-		Value:        func(node *models.NodeInfo) string { return system.GetShortID(node.PeerInfo.ID.String()) },
+		Value:        func(node *models.NodeInfo) string { return idgen.ShortID(node.PeerInfo.ID.String()) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "type"},

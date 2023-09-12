@@ -52,6 +52,11 @@ func TestExtractPrefix(t *testing.T) {
 			input:          "a-b-c-d",
 			expectedOutput: "a-b-c-d",
 		},
+		{
+			name:           "node id",
+			input:          "QmbkBjSraDGpdG3a4t9hg9k5iFFc6xiJn3Tu1dX17GyMgQ",
+			expectedOutput: "QmbkBjSr",
+		},
 	}
 
 	for _, tt := range tests {

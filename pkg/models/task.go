@@ -98,10 +98,10 @@ func (t *Task) Validate() error {
 	mErr = multierror.Append(mErr, t.ValidateSubmission())
 
 	if err := t.Timeouts.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("task timeouts validation failed: %v", err))
+		mErr = multierror.Append(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
 	}
 	if err := t.ResourcesConfig.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("task resources validation failed: %v", err))
+		mErr = multierror.Append(mErr, fmt.Errorf("task resources validation failed: %v", err))
 	}
 	return mErr.ErrorOrNil()
 }

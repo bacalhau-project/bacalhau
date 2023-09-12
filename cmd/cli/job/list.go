@@ -8,7 +8,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -93,7 +92,7 @@ var listColumns = []output.TableColumn[*models.Job]{
 	{
 		ColumnConfig: table.ColumnConfig{
 			Name:             "id",
-			WidthMax:         model.ShortIDLength,
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
 			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortID(col) }},
 		Value: func(jwi *models.Job) string { return jwi.ID },
 	},

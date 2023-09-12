@@ -22,10 +22,10 @@ var (
 	//nolint:lll // Documentation
 	stopExample = templates.Examples(i18n.T(`
 		# Stop a previously submitted job
-		bacalhau job stop 51225160-807e-48b8-88c9-28311c7899e1
+		bacalhau job stop j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Stop a job, with a short ID.
-		bacalhau job stop 51225160
+		bacalhau job stop j-51225160
 `))
 )
 

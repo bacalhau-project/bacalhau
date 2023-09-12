@@ -3,6 +3,7 @@ package idgen
 import "strings"
 
 const ShortIDLength = 8
+const ShortIDLengthWithPrefix = ShortIDLength + len(JobIDPrefix)
 
 // ShortID takes a string in the format of "prefix-UUID" or just "UUID"
 // and returns the prefix along with the first segment of the UUID.

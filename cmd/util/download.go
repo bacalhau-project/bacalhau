@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -14,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func DownloadResultsHandler(
@@ -112,5 +112,5 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 }
 
 func GetDefaultJobFolder(jobID string) string {
-	return fmt.Sprintf("job-%s", system.GetShortID(jobID))
+	return idgen.ShortID(jobID)
 }
