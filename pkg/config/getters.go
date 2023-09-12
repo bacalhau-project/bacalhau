@@ -32,6 +32,12 @@ func ServerAutoCertDomain() string {
 	return viper.GetString(types.NodeServerAPITLSAutoCert)
 }
 
+func GetRequesterCertificateSettings() (string, string) {
+	cert := viper.GetString(types.NodeServerAPITLSServerCertificate)
+	key := viper.GetString(types.NodeServerAPITLSServerKey)
+	return cert, key
+}
+
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }

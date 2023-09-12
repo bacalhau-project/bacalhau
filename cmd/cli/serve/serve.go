@@ -236,6 +236,10 @@ func serve(cmd *cobra.Command) error {
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
+
+		cert, key := config.GetRequesterCertificateSettings()
+		nodeConfig.RequesterTLSCertificateFile = cert
+		nodeConfig.RequesterTLSKeyFile = key
 	}
 
 	// Create node
