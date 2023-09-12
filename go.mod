@@ -16,6 +16,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/fatih/structs v1.1.0
+	github.com/gammazero/workerpool v1.1.3
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
@@ -106,6 +107,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/gammazero/deque v0.2.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
