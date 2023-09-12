@@ -29,7 +29,7 @@ var (
 
 	executionExample = templates.Examples(i18n.T(`
 		# All executions for a given job.
-		bacalhau job executions e3f8c209-d683-4a41-b840-f09b88d087b9	
+		bacalhau job executions j-e3f8c209-d683-4a41-b840-f09b88d087b9	
 `))
 )
 
