@@ -62,9 +62,16 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		annotations = append(annotations, k)
 	}
 
-	publisherType, err := model.ParsePublisher(job.Task().Publisher.Type)
-	if err != nil {
-		return nil, err
+	publisherSpec := model.PublisherSpec{}
+	if job.Task().Publisher.Type != "" {
+		publisherType, err := model.ParsePublisher(job.Task().Publisher.Type)
+		if err != nil {
+			return nil, err
+		}
+		publisherSpec = model.PublisherSpec{
+			Type:   publisherType,
+			Params: job.Task().Publisher.Params,
+		}
 	}
 
 	networkConfig, err := ToLegacyNetworkConfig(job.Task().Network)
@@ -85,10 +92,7 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 			Type:   job.Task().Engine.Type,
 			Params: job.Task().Engine.Params,
 		},
-		PublisherSpec: model.PublisherSpec{
-			Type:   publisherType,
-			Params: job.Task().Publisher.Params,
-		},
+		PublisherSpec: publisherSpec,
 		Resources: model.ResourceUsageConfig{
 			CPU:    job.Task().ResourcesConfig.CPU,
 			Memory: job.Task().ResourcesConfig.Memory,
@@ -162,14 +166,19 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 			ReadWrite:     storage.Params["ReadWrite"].(bool),
 		}, nil
 	case models.StorageSourceS3:
+		s3Spec := &model.S3StorageSpec{
+			Bucket: storage.Params["Bucket"].(string),
+			Key:    storage.Params["Key"].(string),
+		}
+		if storage.Params["Region"] != nil {
+			s3Spec.Region = storage.Params["Region"].(string)
+		}
+		if storage.Params["Endpoint"] != nil {
+			s3Spec.Endpoint = storage.Params["Endpoint"].(string)
+		}
 		return model.StorageSpec{
 			StorageSource: model.StorageSourceS3,
-			S3: &model.S3StorageSpec{
-				Bucket:   storage.Params["Bucket"].(string),
-				Key:      storage.Params["Key"].(string),
-				Region:   storage.Params["Region"].(string),
-				Endpoint: storage.Params["Endpoint"].(string),
-			},
+			S3:            s3Spec,
 		}, nil
 	default:
 		return model.StorageSpec{}, fmt.Errorf("unhandled storage source type: %s", storage.Type)

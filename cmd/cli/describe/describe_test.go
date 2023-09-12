@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
@@ -119,7 +120,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				// Short job id
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
 					"--api-host", s.Host,
-					submittedJob.Metadata.ID[0:model.ShortIDLength],
+					idgen.ShortID(submittedJob.Metadata.ID),
 					"--api-port", fmt.Sprint(s.Port),
 				)
 

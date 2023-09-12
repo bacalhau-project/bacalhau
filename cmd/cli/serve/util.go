@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -55,8 +56,9 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		return node.RequesterConfig{}, err
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		MinJobExecutionTimeout:             time.Duration(cfg.Timeouts.MinJobExecutionTimeout),
-		DefaultJobExecutionTimeout:         time.Duration(cfg.Timeouts.DefaultJobExecutionTimeout),
+		JobDefaults: transformer.JobDefaults{
+			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
+		},
 		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
 		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               cfg.OverAskForBidsFactor,

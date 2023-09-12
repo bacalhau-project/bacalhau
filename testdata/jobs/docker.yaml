@@ -1,0 +1,15 @@
+name: Docker Job
+type: batch
+namespace: default
+count: 1
+tasks:
+  - name: main
+    engine:
+      type: docker
+      params:
+        Image: ubuntu:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - echo 15

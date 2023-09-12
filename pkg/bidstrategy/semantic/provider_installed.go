@@ -3,9 +3,11 @@ package semantic
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -20,7 +22,14 @@ func NewProviderInstalledStrategy[P provider.Providable](
 ) *ProviderInstalledStrategy[P] {
 	return &ProviderInstalledStrategy[P]{
 		provider: provider,
-		getter:   func(j *models.Job) []string { return []string{getter(j)} },
+		getter: func(j *models.Job) []string {
+			// handle optional specs, such as publisher
+			key := strings.TrimSpace(getter(j))
+			if validate.IsBlank(key) {
+				return []string{}
+			}
+			return []string{key}
+		},
 	}
 }
 

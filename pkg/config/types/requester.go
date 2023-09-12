@@ -5,6 +5,7 @@ import (
 )
 
 type RequesterConfig struct {
+	JobDefaults JobDefaults `yaml:"JobDefaults"`
 	// URL where to send external verification requests to.
 	ExternalVerifierHook string `yaml:"ExternalVerifierHook"`
 	// How the node decides what jobs to run.
@@ -18,7 +19,6 @@ type RequesterConfig struct {
 
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
-	Timeouts         TimeoutConfig          `yaml:"Timeouts"`
 }
 
 type EvaluationBrokerConfig struct {
@@ -35,7 +35,6 @@ type WorkerConfig struct {
 	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
-type TimeoutConfig struct {
-	MinJobExecutionTimeout     Duration `yaml:"MinJobExecutionTimeout"`
-	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
+type JobDefaults struct {
+	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
 }

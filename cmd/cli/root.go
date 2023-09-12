@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
@@ -19,7 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/id"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/nodes"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
@@ -126,8 +128,14 @@ func NewRootCmd() *cobra.Command {
 	// List jobs
 	RootCmd.AddCommand(list.NewCmd())
 
-	// List nodes
-	RootCmd.AddCommand(nodes.NewCmd())
+	// Register agent subcommands
+	RootCmd.AddCommand(agent.NewCmd())
+
+	// Register job subcommands
+	RootCmd.AddCommand(job.NewCmd())
+
+	// Register nodes subcommands
+	RootCmd.AddCommand(node.NewCmd())
 
 	// ====== Run a server
 

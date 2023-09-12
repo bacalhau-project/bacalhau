@@ -24,7 +24,7 @@ func (s *ServerSuite) TestNodeListLabels() {
 	require.NoError(s.T(), err)
 
 	resp, err := s.client.Nodes().List(&apimodels.ListNodesRequest{
-		Labels: []*labels.Requirement{req1, req2},
+		Labels: []labels.Requirement{*req1, *req2},
 	})
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), resp)

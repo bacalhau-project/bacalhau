@@ -68,8 +68,25 @@ func (s *SpecConfig) Validate() error {
 	return nil
 }
 
+// ValidateAllowBlank is the same as Validate but allows blank types.
+// This is useful for when you want to validate a spec config that is optional.
+func (s *SpecConfig) ValidateAllowBlank() error {
+	if s == nil {
+		return errors.New("nil spec config")
+	}
+	return nil
+}
+
 // IsType returns true if the current SpecConfig
 func (s *SpecConfig) IsType(t string) bool {
+	if s == nil {
+		return false
+	}
 	t = strings.TrimSpace(t)
 	return strings.EqualFold(s.Type, t)
+}
+
+// IsEmpty returns true if the spec config is empty
+func (s *SpecConfig) IsEmpty() bool {
+	return s == nil || (validate.IsBlank(s.Type) && len(s.Params) == 0)
 }

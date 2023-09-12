@@ -525,9 +525,21 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
-	// Filter out anything before the specified Since time
-	history = lo.Filter(history, func(item models.JobHistory, index int) bool {
-		return item.Time.Unix() >= options.Since
+	// Filter out anything before the specified Since time, and anything that doesn't match the
+	// specified ExecutionID or NodeID
+	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
+		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+			return false
+		}
+
+		if options.NodeID != "" && !strings.HasPrefix(event.NodeID, options.NodeID) {
+			return false
+		}
+
+		if event.Time.Unix() < options.Since {
+			return false
+		}
+		return true
 	})
 
 	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })

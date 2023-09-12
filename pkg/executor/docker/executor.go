@@ -48,7 +48,6 @@ type Executor struct {
 	activeFlags map[string]chan struct{}
 	complete    map[string]chan struct{}
 	client      *docker.Client
-	results     generic.SyncMap[string, *models.RunCommandResult]
 }
 
 func NewExecutor(
@@ -342,7 +341,8 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	return jobContainer, nil
 }
 
-func makeContainerMounts(ctx context.Context, inputs []storage.PreparedStorage, outputs []*models.ResultPath, resultsDir string) ([]mount.Mount, error) {
+func makeContainerMounts(
+	ctx context.Context, inputs []storage.PreparedStorage, outputs []*models.ResultPath, resultsDir string) ([]mount.Mount, error) {
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
 	var mounts []mount.Mount

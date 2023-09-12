@@ -8,13 +8,14 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[NodeTypeRequester-0]
-	_ = x[NodeTypeCompute-1]
+	_ = x[nodeTypeUndefined-0]
+	_ = x[NodeTypeRequester-1]
+	_ = x[NodeTypeCompute-2]
 }
 
-const _NodeType_name = "RequesterCompute"
+const _NodeType_name = "nodeTypeUndefinedRequesterCompute"
 
-var _NodeType_index = [...]uint8{0, 9, 16}
+var _NodeType_index = [...]uint8{0, 17, 26, 33}
 
 func (i NodeType) String() string {
 	if i < 0 || i >= NodeType(len(_NodeType_index)-1) {

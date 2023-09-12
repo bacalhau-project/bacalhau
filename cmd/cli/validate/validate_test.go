@@ -25,7 +25,7 @@ func TestValidateSuite(t *testing.T) {
 
 func (s *ValidateSuite) TestValidate() {
 	tests := map[string]struct {
-		testFile *testdata.Fixture
+		testFile *testdata.FixtureLegacy
 		valid    bool
 	}{
 		"validJobFile":   {testFile: testdata.YamlJobNoop, valid: true},

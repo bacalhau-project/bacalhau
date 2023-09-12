@@ -9,16 +9,16 @@ func (o *BaseResponse) Normalize() {
 }
 
 type BasePutResponse struct {
-	BaseResponse
+	BaseResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
 }
 
 type BaseGetResponse struct {
-	BaseResponse
+	BaseResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
 }
 
 type BaseListResponse struct {
-	BaseResponse
-	NextToken string
+	BaseGetResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
+	NextToken       string
 }
 
 func (o *BaseListResponse) GetNextToken() string { return o.NextToken }

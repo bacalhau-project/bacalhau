@@ -40,7 +40,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	)
 	require.NoError(suite.T(), err, "Error submitting job")
 
-	job := testutils.GetJobFromTestOutput(ctx, suite.T(), suite.Client, stdout)
+	job := testutils.GetJobFromTestOutputLegacy(ctx, suite.T(), suite.Client, stdout)
 	suite.T().Logf("Created job %s", job.Metadata.ID)
 
 	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
