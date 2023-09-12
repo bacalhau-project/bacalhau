@@ -48,12 +48,12 @@ type WasmRunOptions struct {
 	ImportModules []model.StorageSpec
 	Entrypoint    string
 
-	SpecSettings       *cliflags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   *cliflags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings *cliflags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       *cliflags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    *cliflags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   *cliflags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
+	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
+	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
+	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
+	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
+	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
 
 }
 
@@ -66,7 +66,7 @@ func NewWasmOptions() *WasmRunOptions {
 		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
 		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
 		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    cliflags.NewDefaultRunTimeSettings(),
+		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -133,7 +133,7 @@ func newRunCmd() *cobra.Command {
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
 
 	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
 		util.Fatal(wasmRunCmd, err, 1)
@@ -170,7 +170,7 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {

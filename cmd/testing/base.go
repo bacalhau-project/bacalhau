@@ -2,10 +2,12 @@ package cmdtesting
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -18,10 +20,11 @@ import (
 
 type BaseSuite struct {
 	suite.Suite
-	Node   *node.Node
-	Client *client.APIClient
-	Host   string
-	Port   uint16
+	Node     *node.Node
+	Client   *client.APIClient
+	ClientV2 *clientv2.Client
+	Host     string
+	Port     uint16
 }
 
 // before each test
@@ -52,6 +55,9 @@ func (s *BaseSuite) SetupTest() {
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
 	s.Client = client.NewAPIClient(s.Host, s.Port)
+	s.ClientV2 = clientv2.New(clientv2.Options{
+		Address: fmt.Sprintf("http://%s:%d", s.Host, s.Port),
+	})
 }
 
 // After each test

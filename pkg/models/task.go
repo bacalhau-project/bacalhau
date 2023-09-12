@@ -55,6 +55,10 @@ func (t *Task) Normalize() {
 	if t.ResourcesConfig == nil {
 		t.ResourcesConfig = &ResourcesConfig{}
 	}
+	// publisher is optional and can be empty
+	if t.Publisher == nil {
+		t.Publisher = &SpecConfig{}
+	}
 	if t.Network == nil {
 		t.Network = &NetworkConfig{}
 	}
@@ -88,7 +92,23 @@ func (t *Task) Copy() *Task {
 	return nt
 }
 
+// Validate is used to check a job for reasonable configuration
 func (t *Task) Validate() error {
+	mErr := new(multierror.Error)
+	mErr = multierror.Append(mErr, t.ValidateSubmission())
+
+	if err := t.Timeouts.Validate(); err != nil {
+		mErr = multierror.Append(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
+	}
+	if err := t.ResourcesConfig.Validate(); err != nil {
+		mErr = multierror.Append(mErr, fmt.Errorf("task resources validation failed: %v", err))
+	}
+	return mErr.ErrorOrNil()
+}
+
+// ValidateSubmission is used to check a task for reasonable configuration when it is submitted.
+// It is a subset of Validate that does not check fields with defaults, such as timeouts and resources.
+func (t *Task) ValidateSubmission() error {
 	var mErr multierror.Error
 	if validate.IsBlank(t.Name) {
 		mErr.Errors = append(mErr.Errors, errors.New("missing task name"))
@@ -98,7 +118,7 @@ func (t *Task) Validate() error {
 	if err := t.Engine.Validate(); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("engine validation failed: %v", err))
 	}
-	if err := t.Publisher.Validate(); err != nil {
+	if err := t.Publisher.ValidateAllowBlank(); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("publisher validation failed: %v", err))
 	}
 	if err := ValidateSlice(t.InputSources); err != nil {
@@ -107,11 +127,8 @@ func (t *Task) Validate() error {
 	if err := ValidateSlice(t.ResultPaths); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
 	}
-	if err := t.ResourcesConfig.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("task resources validation failed: %v", err))
-	}
-	if err := t.Timeouts.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("task timeouts validation failed: %v", err))
+	if len(t.ResultPaths) > 0 && t.Publisher.IsEmpty() {
+		mErr.Errors = append(mErr.Errors, errors.New("publisher must be set if result paths are set"))
 	}
 
 	seenInputAliases := make(map[string]bool)

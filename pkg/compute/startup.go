@@ -91,15 +91,9 @@ func (s *Startup) failExecution(ctx context.Context, execution store.LocalExecut
 }
 
 func (s *Startup) runExecution(ctx context.Context, execution store.LocalExecutionState) error {
-	// We want to ensure this execution is running.  If we just call .Run, there's a
-	// chance we'll end up with two copies running if the previous version is alive
-	// for whatever reason.  We'll call Cancel here so that we can be sure that it
-	// is not running before we ask for it to be run.
-	// TODO: Find a better way of either:
-	// * Findout out whether the underlying process (e.g. docker) is still running, or
-	// * Have .Run be idempotent for the execution id without relying on the store.
-	_ = s.execBuffer.Cancel(ctx, execution)
-
+	// We want to ensure this 'live' execution is running and rather than go through
+	// multiple steps trying to determine whether the executor or underlying process
+	// is still running, we will just call Run() and expect it to do the correct thing.
 	log.Ctx(ctx).Info().Msgf("Re-running execution %s after restart", execution.Execution.ID)
 	return s.execBuffer.Run(ctx, execution)
 }

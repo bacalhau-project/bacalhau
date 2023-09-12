@@ -32,5 +32,5 @@ func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	)
 	s.Require().NoError(err)
 
-	_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 }

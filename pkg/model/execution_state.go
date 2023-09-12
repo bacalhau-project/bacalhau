@@ -4,6 +4,8 @@ package model
 import (
 	"fmt"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 // ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
@@ -100,7 +102,7 @@ type ExecutionID struct {
 
 // String returns a string representation of the execution id
 func (e ExecutionID) String() string {
-	return fmt.Sprintf("%s:%s:%s", e.JobID, ShortID(e.NodeID), e.ExecutionID)
+	return fmt.Sprintf("%s:%s:%s", e.JobID, idgen.ShortID(e.NodeID), e.ExecutionID)
 }
 
 type ExecutionState struct {

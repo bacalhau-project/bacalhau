@@ -59,7 +59,8 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) ([]storage.PreparedStorage, func(context.Context) error, error) {
+func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) (
+	[]storage.PreparedStorage, func(context.Context) error, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
 	if err != nil {
 		return nil, nil, err
@@ -69,7 +70,8 @@ func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvid
 	}, nil
 }
 
-func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (map[string][]storage.PreparedStorage, func(context.Context) error, error) {
+func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (
+	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
@@ -244,7 +246,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 		result.Err = err
 	}
 
-	return
+	return result
 }
 
 func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState) (*models.RunCommandResult, error) {
@@ -268,6 +270,8 @@ func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
+//
+//nolint:funlen
 func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState) (err error) {
 	execution := state.Execution
 	ctx = log.Ctx(ctx).With().
@@ -297,7 +301,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		} else {
 			// We don't consider the job failed if the execution is already running or has already completed.
 			// TODO(forrest): [correctness] do we really want to record a job failed metric if (one of) its execution(s)
-			// failed to start? Perhaps it would be better to have metrics for exection failures here and job failures
+			// failed to start? Perhaps it would be better to have metrics for execution failures here and job failures
 			// higher up the call stack?
 			jobsFailed.Add(ctx, 1)
 			return err
@@ -333,62 +337,48 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	}
 	jobsCompleted.Add(ctx, 1)
 
-	operation = "Publishing"
-	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   state.Execution.ID,
-		ExpectedState: store.ExecutionStateRunning,
-		NewState:      store.ExecutionStatePublishing,
-	}); err != nil {
-		return err
-	}
-
+	expectedState := store.ExecutionStateRunning
+	publishedResult := models.SpecConfig{}
 	resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
 	if err != nil {
 		return err
 	}
-	return e.publish(ctx, state, resultsDir, result)
-}
 
-// Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(
-	ctx context.Context,
-	state store.LocalExecutionState,
-	resultFolder string,
-	result *models.RunCommandResult,
-) (err error) {
-	execution := state.Execution
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+	// publish if the job has a publisher defined
+	if !execution.Job.Task().Publisher.IsEmpty() {
+		operation = "Publishing"
+		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			ExecutionID:   execution.ID,
+			ExpectedState: expectedState,
+			NewState:      store.ExecutionStatePublishing,
+		}); err != nil {
+			return err
+		}
 
-	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
-	if err != nil {
-		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
-		return
-	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
-	if err != nil {
-		err = fmt.Errorf("failed to publish result: %w", err)
-		return
+		expectedState = store.ExecutionStatePublishing
+		publishedResult, err = e.publish(ctx, state, resultsDir)
+		if err != nil {
+			return err
+		}
 	}
 
-	log.Ctx(ctx).Debug().
-		Str("execution", execution.ID).
-		Msg("Execution published")
-
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	// mark the execution as completed
+	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStatePublishing,
+		ExpectedState: expectedState,
 		NewState:      store.ExecutionStateCompleted,
-	})
-	if err != nil {
-		return
+	}); err != nil {
+		return err
 	}
 
-	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
-	err = os.RemoveAll(resultFolder)
+	// cleanup resources
+	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+	err = os.RemoveAll(resultsDir)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
 	}
 
+	// notify requester
 	e.callback.OnRunComplete(ctx, RunResult{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
@@ -399,6 +389,30 @@ func (e *BaseExecutor) publish(
 		RunCommandResult: result,
 	})
 	return err
+}
+
+// Publish the result of an execution after it has been verified.
+func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
+	resultFolder string) (publishedResult models.SpecConfig, err error) {
+	execution := localExecutionState.Execution
+	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
+	if err != nil {
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
+		return
+	}
+	publishedResult, err = jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
+	if err != nil {
+		err = fmt.Errorf("failed to publish result: %w", err)
+		return
+	}
+
+	log.Ctx(ctx).Debug().
+		Str("execution", execution.ID).
+		Msg("Execution published")
+
+	return
 }
 
 // Cancel the execution.

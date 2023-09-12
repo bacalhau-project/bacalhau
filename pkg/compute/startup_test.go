@@ -72,13 +72,12 @@ func (s *StartupTestSuite) TestLongRunning() {
 			NewState:    store.ExecutionStateRunning,
 		})
 		s.Require().NoError(err)
-
 	}
 
 	ctrl := gomock.NewController(s.T())
 	mockExecutor := compute.NewMockExecutor(ctrl)
 
-	mockExecutor.EXPECT().Cancel(any, any).Return(nil).MaxTimes(2)
+	mockExecutor.EXPECT().Cancel(any, any).Return(nil)
 	mockExecutor.EXPECT().Run(any, any).Return(nil)
 
 	execs, err := database.GetLiveExecutions(s.ctx)

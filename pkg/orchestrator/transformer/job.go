@@ -2,9 +2,10 @@ package transformer
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 // ChainedJobTransformer is a slice of Transformers that runs in sequence
@@ -23,7 +24,24 @@ func (ct ChainedJobTransformer) Transform(ctx context.Context, job *models.Job) 
 // IDGenerator is a transformer that generates a new ID for the job if it is empty.
 func IDGenerator(_ context.Context, job *models.Job) error {
 	if job.ID == "" {
-		job.ID = uuid.NewString()
+		job.ID = idgen.NewJobID()
 	}
 	return nil
+}
+
+type JobDefaults struct {
+	ExecutionTimeout time.Duration
+}
+
+// DefaultsApplier is a transformer that applies default values to the job.
+func DefaultsApplier(defaults JobDefaults) Job {
+	f := func(ctx context.Context, job *models.Job) error {
+		for _, task := range job.Tasks {
+			if task.Timeouts.GetExecutionTimeout() <= 0 {
+				task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
+			}
+		}
+		return nil
+	}
+	return JobFn(f)
 }

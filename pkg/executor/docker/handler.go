@@ -144,7 +144,6 @@ func (h *executionHandler) run(ctx context.Context) {
 	h.logger.Info().
 		Int64("status", containerExitStatusCode).
 		Msg("container execution ended")
-	return
 }
 
 func (h *executionHandler) kill(ctx context.Context) error {
