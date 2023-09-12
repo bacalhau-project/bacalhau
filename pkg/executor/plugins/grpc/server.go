@@ -23,6 +23,46 @@ type GRPCServer struct {
 	Impl executor.Executor
 }
 
+func (s *GRPCServer) Start(_ context.Context, request *proto.RunCommandRequest) (*proto.StartResponse, error) {
+	// NB(forrest): A new context is created for the `Start` operation because `Start` initiates a
+	// long-running operation. The context passed as an argument to this method is tied to the gRPC request and is
+	// canceled when this method returns. By creating a separate context, we ensure that `Start` has a lifecycle
+	// independent of the gRPC request.
+	ctx := context.Background()
+	args := new(executor.RunCommandRequest)
+	if err := json.Unmarshal(request.Params, args); err != nil {
+		return nil, err
+	}
+	if err := s.Impl.Start(ctx, args); err != nil {
+		return nil, err
+	}
+	return &proto.StartResponse{}, nil
+}
+
+func (s *GRPCServer) Wait(request *proto.WaitRequest, server proto.Executor_WaitServer) error {
+	// NB(forrest): The context obtained from `server.Context()` is appropriate to use here because `Wait`
+	// is a streaming RPC. The context remains active for the entire lifetime of the stream and is
+	// only canceled when the client or server closes the stream. This behavior is in contrast to
+	// unary RPCs (like `Start` and `Run`), where the context is tied to the individual request.
+	ctx := server.Context()
+	waitC, errC := s.Impl.Wait(ctx, request.GetExecutionID())
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errC:
+		return err
+	case res := <-waitC:
+		resp, err := json.Marshal(res)
+		if err != nil {
+			return err
+		}
+		if err := server.Send(&proto.RunCommandResponse{Params: resp}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *GRPCServer) Run(ctx context.Context, request *proto.RunCommandRequest) (*proto.RunCommandResponse, error) {
 	args := new(executor.RunCommandRequest)
 	if err := json.Unmarshal(request.Params, args); err != nil {
@@ -93,8 +133,9 @@ func (s *GRPCServer) ShouldBidBasedOnUsage(
 	return &proto.ShouldBidResponse{BidResponse: b}, nil
 }
 
-func (s *GRPCServer) GetOutputStream(request *proto.OutputStreamRequest, srv proto.Executor_GetOutputStreamServer) error {
-	result, err := s.Impl.GetOutputStream(context.TODO(), request.ExecutionID, request.History, request.Follow)
+func (s *GRPCServer) GetOutputStream(request *proto.OutputStreamRequest, server proto.Executor_GetOutputStreamServer) error {
+	ctx := server.Context()
+	result, err := s.Impl.GetOutputStream(ctx, request.ExecutionID, request.History, request.Follow)
 	if err != nil {
 		return err
 	}
@@ -111,7 +152,7 @@ func (s *GRPCServer) GetOutputStream(request *proto.OutputStreamRequest, srv pro
 		}
 
 		res := &proto.OutputStreamResponse{Data: buffer[:n]}
-		if err := srv.Send(res); err != nil {
+		if err := server.Send(res); err != nil {
 			return fmt.Errorf("failed to send data: %w", err)
 		}
 	}

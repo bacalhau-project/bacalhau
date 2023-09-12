@@ -2,11 +2,14 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -56,26 +59,73 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
+func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) (
+	[]storage.PreparedStorage, func(context.Context) error, error) {
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return inputVolumes, func(ctx context.Context) error {
+		return storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes)
+	}, nil
+}
+
+func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (
+	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
+	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	volumes := map[string][]storage.PreparedStorage{
+		"importModules": importModuleVolumes,
+		"entryModules":  entryModuleVolumes,
+	}
+
+	cleanup := func(ctx context.Context) error {
+		err1 := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes)
+		err2 := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes)
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
+		}
+		return nil
+	}
+
+	return volumes, cleanup, nil
+}
+
+// InputCleanupFn is a function type that defines the contract for cleaning up
+// resources associated with input volume data after the job execution has either completed
+// or failed to start. The function is expected to take a context.Context as an argument,
+// which can be used for timeout and cancellation signals. It returns an error if
+// the cleanup operation fails.
+//
+// For example, an InputCleanupFn might be responsible for deallocating storage used
+// for input volumes, or deleting temporary input files that were created as part of the
+// job's execution. The nature of it operation depends on the storage provided by `strgprovider` and
+// input sources of the jobs associated tasks. For the case of a wasm job its input and entry module storage volumes
+// should be removed via the method after the jobs execution reaches a terminal state.
+type InputCleanupFn = func(context.Context) error
+
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	execution *models.Execution,
 	resultsDir string,
-	cleanup *system.CleanupManager,
-) (*executor.RunCommandRequest, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Task().InputSources...)
+) (*executor.RunCommandRequest, InputCleanupFn, error) {
+	var cleanupFuncs []func(context.Context) error
+
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, execution.Job.Task().InputSources...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
+		return nil, nil, err
 	}
+	cleanupFuncs = append(cleanupFuncs, inputCleanup)
 
-	cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-		if err := storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes); err != nil {
-			return fmt.Errorf("cleaning up job inputs: %w", err)
-		}
-		return nil
-	})
-
-	var engineArgs *models.SpecConfig
 	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
 	// download them before passing it to the wasm executor
 	/*
@@ -86,130 +136,217 @@ func PrepareRunArguments(
 		inputs via their arguments - docker image comes to mind as a potential candidate).
 
 		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
-		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		before passing it to the executor. Previously executors were responsible for downloading their inputs to
 		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
 		plugins to handle the download of different storage specs seems impractical
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
 		provides more context on the need for the change).
 	*/
+	var engineArgs *models.SpecConfig
 	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
 		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
-		if err != nil {
-			return nil, err
-		}
-		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if err := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes); err != nil {
-				return fmt.Errorf("cleaning up wasm import modules: %w", err)
-			}
-			return nil
-		})
 
-		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, wasmEngine)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if err := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes); err != nil {
-				return fmt.Errorf("cleaning up wasm entry modules: %w", err)
-			}
-			return nil
-		})
+
+		cleanupFuncs = append(cleanupFuncs, wasmCleanup)
+
 		engineArgs = &models.SpecConfig{
 			Type:   models.EngineWasm,
-			Params: wasmEngine.ToArguments(entryModuleVolumes[0], importModuleVolumes...).ToMap(),
+			Params: wasmEngine.ToArguments(volumes["entryModules"][0], volumes["importModules"]...).ToMap(),
 		}
 	} else {
 		engineArgs = execution.Job.Task().Engine
 	}
+
 	return &executor.RunCommandRequest{
-		JobID:        execution.Job.ID,
-		ExecutionID:  execution.ID,
-		Resources:    execution.TotalAllocatedResources(),
-		Network:      execution.Job.Task().Network,
-		Outputs:      execution.Job.Task().ResultPaths,
-		Inputs:       inputVolumes,
-		ResultsDir:   resultsDir,
-		EngineParams: engineArgs,
-		OutputLimits: executor.OutputLimits{
-			MaxStdoutFileLength:   system.MaxStdoutFileLength,
-			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
-			MaxStderrFileLength:   system.MaxStderrFileLength,
-			MaxStderrReturnLength: system.MaxStderrReturnLength,
-		},
-	}, nil
+			JobID:        execution.Job.ID,
+			ExecutionID:  execution.ID,
+			Resources:    execution.TotalAllocatedResources(),
+			Network:      execution.Job.Task().Network,
+			Outputs:      execution.Job.Task().ResultPaths,
+			Inputs:       inputVolumes,
+			ResultsDir:   resultsDir,
+			EngineParams: engineArgs,
+			OutputLimits: executor.OutputLimits{
+				MaxStdoutFileLength:   system.MaxStdoutFileLength,
+				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+				MaxStderrFileLength:   system.MaxStderrFileLength,
+				MaxStderrReturnLength: system.MaxStderrReturnLength,
+			},
+		}, func(ctx context.Context) error {
+			log.Ctx(ctx).Info().Str("execution", execution.ID).Msg("cleaning up execution")
+			cleanupErr := new(multierror.Error)
+			for _, cleanupFunc := range cleanupFuncs {
+				if err := cleanupFunc(ctx); err != nil {
+					log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).Msg("cleaning up execution")
+					cleanupErr = multierror.Append(cleanupErr, err)
+				}
+			}
+			return cleanupErr.ErrorOrNil()
+		}, nil
 }
 
-// Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	execution := localExecutionState.Execution
-	ctx = log.Ctx(ctx).With().
-		Str("job", execution.Job.ID).
-		Str("execution", execution.ID).
-		Logger().WithContext(ctx)
+type StartResult struct {
+	cleanup InputCleanupFn
+	Err     error
+}
 
-	ctx, cancel := context.WithCancel(ctx)
-	e.cancellers.Put(execution.ID, cancel)
-	defer func() {
-		if cancel, found := e.cancellers.Get(execution.ID); found {
-			e.cancellers.Delete(execution.ID)
-			cancel()
-		}
-	}()
+func (r *StartResult) Cleanup(ctx context.Context) error {
+	if r.cleanup != nil {
+		return r.cleanup(ctx)
+	}
+	return nil
+}
 
-	operation := "Running"
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, localExecutionState, err, operation)
-		}
-	}()
+func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (result *StartResult) {
+	result = new(StartResult)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		result.Err = fmt.Errorf("getting executor %s: %w", execution.Job.Task().Engine, err)
+		return
+	}
 
-	log.Ctx(ctx).Debug().Msg("Running execution")
+	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
+	if err != nil {
+		result.Err = fmt.Errorf("preparing results path: %w", err)
+		return
+	}
+
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
+	result.cleanup = cleanup
+	if err != nil {
+		result.Err = fmt.Errorf("preparing arguments: %w", err)
+		return
+	}
+
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateBidAccepted,
 		NewState:      store.ExecutionStateRunning,
 	}); err != nil {
-		return err
+		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
+		return
 	}
 
-	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get result path: %w", err)
-	}
-
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
-	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
-	}
+	log.Ctx(ctx).Debug().Msg("starting execution")
 
 	if e.failureInjection.IsBadActor {
-		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
+		result.Err = fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
+		return
 	}
 
-	runCommandCleanup := system.NewCleanupManager()
-	runCommandArguments, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder, runCommandCleanup)
+	if err := jobExecutor.Start(ctx, args); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to start execution")
+		result.Err = err
+	}
+
+	return result
+}
+
+func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState) (*models.RunCommandResult, error) {
+	execution := state.Execution
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
+		return nil, fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
+	}
+
+	waitC, errC := jobExecutor.Wait(ctx, execution.ID)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-waitC:
+		return res, nil
+	case err := <-errC:
+		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
+		return nil, err
+	}
+
+}
+
+// Run the execution after it has been accepted, and propose a result to the requester to be verified.
+//
+//nolint:funlen
+func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState) (err error) {
+	execution := state.Execution
+	ctx = log.Ctx(ctx).With().
+		Str("job", execution.Job.ID).
+		Str("execution", execution.ID).
+		Logger().WithContext(ctx)
+
+	operation := "Running"
+	defer func() {
+		if err != nil {
+			e.handleFailure(ctx, state, err, operation)
+		}
+	}()
+
+	res := e.Start(ctx, execution)
+	defer func() {
+		if err := res.Cleanup(ctx); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
+		}
+	}()
+	if err := res.Err; err != nil {
+		if errors.Is(err, executor.ErrAlreadyStarted) {
+			// by not returning this error to the caller when the execution has already been started/is already running
+			// we allow duplicate calls to `Run` to be idempotent and fall through to the below `Wait` call.
+			log.Ctx(ctx).Warn().Err(err).Str("execution", execution.ID).
+				Msg("execution is already running processing to wait on execution")
+		} else {
+			// We don't consider the job failed if the execution is already running or has already completed.
+			// TODO(forrest): [correctness] do we really want to record a job failed metric if (one of) its execution(s)
+			// failed to start? Perhaps it would be better to have metrics for execution failures here and job failures
+			// higher up the call stack?
+			jobsFailed.Add(ctx, 1)
+			return err
+		}
+	}
+
+	result, err := e.Wait(ctx, state)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			// TODO(forrest) [correctness]:
+			// This is a special case for now. The ExecutorBuffer is using a context with a timeout to signal
+			// an execution has timed out and should end. If we return an error here, the deferred handleFailure
+			// call above will mark this execution as 'Failed'. Current testing and implementation expects executions
+			// that have timed out to be in state 'Canceled', rather than 'Failed'. IMO An execution that doesn't
+			// complete in the timeframe requested by a user should be 'Failed'. 'Canceled' probably ought to be
+			// reserved for actions initiated by a user. We are ignoring _only_ context.DeadlineExceeded
+			// errors and allowing context.Canceled errors be to returned so that when a compute node is shutdown
+			// any active executions will be labeled as 'Failed' instead of canceled.
+			// There is prior discussion regarding this point here:
+			// https://github.com/bacalhau-project/bacalhau/pull/2705#discussion_r1283543457
+			//
+			// Moving forward we must avoid canceling executions via the context.Context. When pluggable executors
+			// become the default since canceling the context will simply result in the RPC connection closing (I think)
+			// The general solution here is to stop using contexts for canceling jobs and to instead make explicit calls
+			// the an executors `Cancel` method.
+			log.Ctx(ctx).Info().Msg("execution timeout exceeded canceling execution")
+			return nil
+		}
 		return err
 	}
-	defer runCommandCleanup.Cleanup(ctx)
-
-	runCommandResult, err := jobExecutor.Run(ctx, runCommandArguments)
-	if err != nil {
-		jobsFailed.Add(ctx, 1)
-		log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
-		return err
+	if result.ErrorMsg != "" {
+		return fmt.Errorf("execution error: %s", result.ErrorMsg)
 	}
 	jobsCompleted.Add(ctx, 1)
 
 	expectedState := store.ExecutionStateRunning
 	publishedResult := models.SpecConfig{}
+	resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
+	if err != nil {
+		return err
+	}
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
+		operation = "Publishing"
 		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID:   execution.ID,
 			ExpectedState: expectedState,
@@ -218,9 +355,8 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 			return err
 		}
 
-		operation = "Publishing"
 		expectedState = store.ExecutionStatePublishing
-		publishedResult, err = e.publish(ctx, localExecutionState, resultFolder)
+		publishedResult, err = e.publish(ctx, state, resultsDir)
 		if err != nil {
 			return err
 		}
@@ -236,10 +372,10 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 	}
 
 	// cleanup resources
-	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
-	err = os.RemoveAll(resultFolder)
+	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+	err = os.RemoveAll(resultsDir)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
 	}
 
 	// notify requester
@@ -247,10 +383,10 @@ func (e *BaseExecutor) Run(ctx context.Context, localExecutionState store.LocalE
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 		PublishResult:    &publishedResult,
-		RunCommandResult: runCommandResult,
+		RunCommandResult: result,
 	})
 	return err
 }
@@ -280,32 +416,36 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionState) (err error) {
+	execution := state.Execution
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, localExecutionState, err, "Canceling")
+			e.handleFailure(ctx, state, err, "Canceling")
 		}
 	}()
 
 	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
-	if cancel, found := e.cancellers.Get(execution.ID); found {
-		e.cancellers.Delete(execution.ID)
-		cancel()
+
+	exe, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
+	if err != nil {
+		return err
+	}
+	if err := exe.Cancel(ctx, execution.ID); err != nil {
+		return err
 	}
 
 	e.callback.OnCancelComplete(ctx, CancelResult{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 	})
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState store.LocalExecutionState, err error, operation string) {
-	execution := localExecutionState.Execution
+func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
+	execution := state.Execution
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,
@@ -320,7 +460,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, localExecutionState st
 			ExecutionMetadata: NewExecutionMetadata(execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: e.ID,
-				TargetPeerID: localExecutionState.RequesterNodeID,
+				TargetPeerID: state.RequesterNodeID,
 			},
 			Err: err.Error(),
 		})
