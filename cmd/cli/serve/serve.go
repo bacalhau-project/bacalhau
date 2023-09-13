@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/multiformats/go-multiaddr"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
@@ -20,7 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -66,6 +67,10 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	} else if peerConnect == "env" {
 		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environment
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
+	} else if peerConnect == "config" {
+		// TODO(forrest): [ux] if the user explicitly passes the peer flag with value `config` read the
+		// boostrap peer list from their config file.
+		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
 	}
