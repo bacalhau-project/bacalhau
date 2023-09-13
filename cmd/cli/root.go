@@ -7,12 +7,6 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/describe"
@@ -20,19 +14,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/get"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/id"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel/trace"
 )
 
 //nolint:funlen
@@ -46,7 +44,7 @@ func NewRootCmd() *cobra.Command {
 		Short: "Compute over data",
 		Long:  `Compute over data`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			repoDir, err := config.Get[string]("repo")
+			repoDir, err := setup.GetBacalhauRepoPath()
 			if err != nil {
 				panic(err)
 			}
@@ -83,11 +81,8 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
-	defaultRepo, err := defaultRepo()
-	if err != nil {
-		panic(err)
-	}
-	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
+
+	RootCmd.PersistentFlags().String("repo", "", "path to bacalhau repo")
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
 		util.Fatal(RootCmd, err, 1)
 	}
