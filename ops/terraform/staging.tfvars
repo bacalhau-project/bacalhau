@@ -1,5 +1,5 @@
 bacalhau_version            = ""
-bacalhau_branch             = "staging-terraform"
+bacalhau_branch             = "main"
 bacalhau_port               = "1235"
 bacalhau_node_id_0          = "QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC"
 bacalhau_node_id_1          = "QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk"
