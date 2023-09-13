@@ -297,7 +297,7 @@ func serve(cmd *cobra.Command) error {
 		cmd.Println()
 		cmd.Println("To connect another node to this private one, run the following command in your shell:")
 		cmd.Printf(
-			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
+			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addrs %s\n",
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 

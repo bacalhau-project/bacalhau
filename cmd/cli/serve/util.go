@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -121,7 +122,7 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 	}
 
 	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
-		return types.IpfsConfig{}, fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
+		return types.IpfsConfig{}, fmt.Errorf("--ipfs-swarm-addrs cannot be used with --ipfs-connect")
 	}
 	return ipfsConfig, nil
 }
