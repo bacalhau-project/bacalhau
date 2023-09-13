@@ -63,8 +63,30 @@ Find more [in the examples folder](./plugins/flytekit-bacalhau/examples/) ✨.
 
 ## Kubernetes Deployment
 
-To deploy Flyte on Kubernetes, please follow the [official instructions](https://docs.flyte.org/en/latest/deployment/index.html).
-You'll have to install our [custom Bacalhau Agent](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/extend_flyte/agent_service.html#update-flyteagent) as well; to faciliate you in doing that we do provide extra [deployment instructions for GKE](./DEPLOYMENT.md) 
+To deploy Flyte on Kubernetes, please follow [these instructions](https://github.com/davidmirror-ops/flyte-the-hard-way).
+If you go for the option without an ingress, you'll need to [port forward Flyte http and grpc services](https://docs.flyte.org/en/latest/deployment/deployment/cloud_simple.html#port-forward-flyte-service).
+
+```shell
+$ kubectl -n flyte port-forward service/flyte-binary-grpc 8089:8089
+$ kubectl -n flyte port-forward service/flyte-binary-http 8088:8088
+```
+
+Your `~/.flyte/config.yaml` might look like the following.
+
+```yaml
+admin:
+  endpoint: localhost:8089
+  authType: Pkce
+  insecure: true
+logger:
+  show-source: true
+  level: 6
+```
+
+In order to register our custom Bacalhau agent, you need to:
+
+1. Enable the agent in [the Helm chart](https://github.com/flyteorg/flyte/blob/master/charts/flyte-binary/values.yaml)
+1. Update the FlytePropeller configmap as described in [the docs](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/development_lifecycle/agent_service.html#update-flyteagent)
 
 ## Development :computer:
 
