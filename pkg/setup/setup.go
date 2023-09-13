@@ -10,21 +10,32 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
-// GetBacalhauRepoPath is a helper method that tries to get the repo path from viber,
-// which includes both env variables and command line args, but then falls to the default
-// $HOME/.bacalhau directory is no value was passed.
-func GetBacalhauRepoPath() (string, error) {
-	repoDir, err := config.Get[string]("repo")
-	if err != nil {
-		return "", err
-	}
+func getBacalhauRepoPath() (string, error) {
+	// BACALHAU_DIR has the highest precedence, if its set, we return it
+	repoDir := os.Getenv("BACALHAU_DIR")
 	if repoDir != "" {
-		log.Debug().Str("repo", repoDir).Msg("using config[\"repo\"] as bacalhau repo")
+		log.Debug().Str("repo", repoDir).Msg("using BACALHAU_DIR as bacalhau repo")
+		return repoDir, nil
+	}
+	// next precedence is station configuration
+
+	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
+	//and not a generic environment variable set by the user
+	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); set {
+		repoDir = os.Getenv("ROOT_DIR")
+		if repoDir != "" {
+			log.Debug().Str("repo", repoDir).Msg("using station ROOT_DIR as bacalhau repo")
+			return repoDir, nil
+		}
+	}
+
+	// next is the repo flag
+
+	if repoDir = viper.GetString("repo"); repoDir != "" {
+		log.Debug().Str("repo", repoDir).Msg("using --repo flag value as bacalhau repo")
 		return repoDir, nil
 	}
 
@@ -42,7 +53,7 @@ func GetBacalhauRepoPath() (string, error) {
 func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 	if repoDir == "" {
 		var err error
-		repoDir, err = GetBacalhauRepoPath()
+		repoDir, err = getBacalhauRepoPath()
 		if err != nil {
 			return nil, err
 		}

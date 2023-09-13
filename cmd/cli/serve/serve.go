@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -19,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -155,11 +155,7 @@ func serve(cmd *cobra.Command) error {
 	cm := util.GetCleanupManager(ctx)
 
 	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
-	repoPath, err := setup.GetBacalhauRepoPath()
-	if err != nil {
-		return err
-	}
-	fsRepo, err := repo.NewFS(repoPath)
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
 	if err != nil {
 		return err
 	}
