@@ -809,6 +809,12 @@ const docTemplate = `{
                 "exclude_job_level": {
                     "type": "boolean"
                 },
+                "execution_id": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
                 "since": {
                     "type": "integer"
                 }
@@ -1962,22 +1968,22 @@ const docTemplate = `{
         "models.NodeInfo": {
             "type": "object",
             "properties": {
-                "bacalhauVersion": {
+                "BacalhauVersion": {
                     "$ref": "#/definitions/models.BuildVersionInfo"
                 },
-                "computeNodeInfo": {
+                "ComputeNodeInfo": {
                     "$ref": "#/definitions/models.ComputeNodeInfo"
                 },
-                "labels": {
+                "Labels": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
                 },
-                "nodeType": {
+                "NodeType": {
                     "$ref": "#/definitions/models.NodeType"
                 },
-                "peerInfo": {
+                "PeerInfo": {
                     "$ref": "#/definitions/peer.AddrInfo"
                 }
             }
@@ -1986,9 +1992,11 @@ const docTemplate = `{
             "type": "integer",
             "enum": [
                 0,
-                1
+                1,
+                2
             ],
             "x-enum-varnames": [
+                "nodeTypeUndefined",
                 "NodeTypeRequester",
                 "NodeTypeCompute"
             ]
