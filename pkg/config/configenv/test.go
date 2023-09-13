@@ -27,7 +27,7 @@ var Testing = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses: []string{
-			"/ip4/0.0.0.0/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
@@ -50,7 +50,7 @@ var Testing = types.BacalhauConfig{
 			Connect:         "",
 			PrivateInternal: true,
 			SwarmAddresses: []string{
-				"/ip4/0.0.0.0/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
+				"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 			},
 		},
 		Compute:   TestingComputeConfig,
