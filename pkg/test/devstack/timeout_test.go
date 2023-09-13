@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -53,15 +54,18 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
+			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
+			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
+			JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
+		})
+		suite.Require().NoError(err)
+
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
-				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-					JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
-					MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
-					MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
-					JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
-				}),
+				ComputeConfig:   computeConfig,
 				RequesterConfig: node.NewRequesterConfigWith(node.RequesterConfigParams{
 					JobDefaults: transformer.JobDefaults{
 						ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,

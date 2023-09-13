@@ -12,9 +12,13 @@ import (
 
 type ConfigOption = func(cfg *DevStackConfig)
 
-func defaultDevStackConfig() *DevStackConfig {
+func defaultDevStackConfig() (*DevStackConfig, error) {
+	computeConfig, err := node.NewComputeConfigWithDefaults()
+	if err != nil {
+		return nil, err
+	}
 	return &DevStackConfig{
-		ComputeConfig:          node.NewComputeConfigWithDefaults(),
+		ComputeConfig:          computeConfig,
 		RequesterConfig:        node.NewRequesterConfigWithDefaults(),
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
@@ -33,7 +37,7 @@ func defaultDevStackConfig() *DevStackConfig {
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
 		ExecutorPlugins:            false,
-	}
+	}, nil
 }
 
 type DevStackConfig struct {

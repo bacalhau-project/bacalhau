@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -32,16 +33,16 @@ func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	util.Fatal = util.FakeFatalErrorHandler
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	s.Require().NoError(err)
 	ctx := context.Background()
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
-		devstack.WithComputeConfig(
-			node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: node.JobSelectionPolicy{
-					Locality: semantic.Anywhere,
-				},
-			}),
-		),
+		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(
 			node.NewRequesterConfigWith(
 				node.RequesterConfigParams{

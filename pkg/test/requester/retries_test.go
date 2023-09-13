@@ -48,6 +48,11 @@ func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
 	setup.SetupBacalhauRepoForTesting(s.T())
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+		BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+	})
+	s.Require().NoError(err)
 	nodeOverrides := []node.NodeConfig{
 		{
 			Labels: map[string]string{
@@ -59,10 +64,7 @@ func (s *RetriesSuite) SetupSuite() {
 			Labels: map[string]string{
 				"name": "bid-rejector",
 			},
-			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-			}),
+			ComputeConfig: computeConfig,
 		},
 		{
 			Labels: map[string]string{

@@ -90,7 +90,11 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	}
 
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
-		config.ComputeConfig = node.NewComputeConfigWithDefaults()
+		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
+		// we probably want to merge these instead.
+		cfg, err := node.NewComputeConfigWithDefaults()
+		s.Require().NoError(err)
+		config.ComputeConfig = cfg
 	}
 	stack := testutils.Setup(s.Ctx, s.T(),
 		append(config.DevStackOptions.Options(),
