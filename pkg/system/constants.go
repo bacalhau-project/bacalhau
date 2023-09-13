@@ -49,24 +49,24 @@ var Envs = map[Environment]EnvironmentData{
 		APIPort: 1234,
 		APIHost: "bootstrap.staging.bacalhau.org",
 		BootstrapAddresses: []string{
-			"/ip4/34.125.80.77/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
-			"/ip4/34.125.130.185/tcp/1235/p2p/QmTRsYgLck8RHedBdZijjA8jPfkSKjmUwVu2k9iUXJ7SLp",
-			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
+			"/ip4/34.85.197.247/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
+			"/ip4/35.199.63.137/tcp/1235/p2p/Qmf2U97oNUtyH8tSJ8yHqWmLU32PX2bNxhhsdETd7hFYMG",
+			"/ip4/35.188.227.44/tcp/1235/p2p/QmTMyorSBpERJT5hukKi3p24zC1qHxNKZPxiBaveMSjXZ8",
 		},
 		IPFSSwarmAddresses: []string{
-			"/ip4/34.125.80.77/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
-			"/ip4/34.125.130.185/tcp/1235/p2p/QmTRsYgLck8RHedBdZijjA8jPfkSKjmUwVu2k9iUXJ7SLp",
-			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
+			"/ip4/34.85.197.247/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
+			"/ip4/35.199.63.137/tcp/1235/p2p/Qmf2U97oNUtyH8tSJ8yHqWmLU32PX2bNxhhsdETd7hFYMG",
+			"/ip4/35.188.227.44/tcp/1235/p2p/QmTMyorSBpERJT5hukKi3p24zC1qHxNKZPxiBaveMSjXZ8",
 		},
 	},
 	EnvironmentTest: {
 		APIPort: 9999,
 		APIHost: "test",
 		BootstrapAddresses: []string{
-			"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
 		},
 		IPFSSwarmAddresses: []string{
-			"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmSnwDbJYYrFsDGfqYjWjktUMKePTBEMDVauLPKbWKb8rr",
 		},
 	},
 }
