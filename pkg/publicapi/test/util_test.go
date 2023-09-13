@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -12,8 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 func setupNodeForTest(t *testing.T) (*node.Node, *client.Client) {
@@ -36,12 +37,14 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
 	require.NoError(t, err)
 
+	computeConfig, err := node.NewComputeConfigWithDefaults()
+	require.NoError(t, err)
 	nodeConfig := node.NodeConfig{
 		CleanupManager:            cm,
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
-		ComputeConfig:             node.NewComputeConfigWithDefaults(),
+		ComputeConfig:             computeConfig,
 		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
 		APIServerConfig:           apiCfg,
 		IsRequesterNode:           true,

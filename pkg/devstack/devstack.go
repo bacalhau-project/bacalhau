@@ -76,7 +76,10 @@ func Setup(
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	stackConfig := defaultDevStackConfig()
+	stackConfig, err := defaultDevStackConfig()
+	if err != nil {
+		return nil, err
+	}
 	for _, opt := range opts {
 		opt(stackConfig)
 	}

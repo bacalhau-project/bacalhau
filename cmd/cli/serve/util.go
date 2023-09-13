@@ -49,7 +49,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 			ProbeExec:           cfg.JobSelection.ProbeExec,
 		},
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
-	}), nil
+	})
 }
 
 func GetRequesterConfig() (node.RequesterConfig, error) {

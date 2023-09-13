@@ -49,13 +49,15 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	suite.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: node.JobSelectionPolicy{
-					Locality: semantic.Anywhere,
-				},
-			}),
+			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
@@ -218,13 +220,15 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	s.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: node.JobSelectionPolicy{
-					Locality: semantic.Anywhere,
-				},
-			}),
+			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
