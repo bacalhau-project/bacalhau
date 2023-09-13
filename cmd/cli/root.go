@@ -6,12 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
@@ -83,9 +84,10 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
+	// ensure the `repo` key always gets a usable default value.
 	defaultRepo, err := defaultRepo()
 	if err != nil {
-		panic(err)
+		util.Fatal(RootCmd, err, 1)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -155,7 +154,11 @@ func serve(cmd *cobra.Command) error {
 	cm := util.GetCleanupManager(ctx)
 
 	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
-	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	repoDir, err := config.Get[string]("repo")
+	if err != nil {
+		return err
+	}
+	fsRepo, err := repo.NewFS(repoDir)
 	if err != nil {
 		return err
 	}
