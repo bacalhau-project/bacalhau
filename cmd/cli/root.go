@@ -49,7 +49,12 @@ func NewRootCmd() *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			repoDir, err := config.Get[string]("repo")
 			if err != nil {
-				panic(err)
+				util.Fatal(cmd, fmt.Errorf("failed to read --repo value: %w", err), 1)
+			}
+			if repoDir == "" {
+				// this error indicates `defaultRepo` was unable to find a default location and the user
+				// didn't provide on.
+				util.Fatal(cmd, fmt.Errorf("bacalhau repo not set, please use BACALHAU_DIR or --repo"), 1)
 			}
 			if _, err := setup.SetupBacalhauRepo(repoDir); err != nil {
 				util.Fatal(cmd, fmt.Errorf("failed to initialize bacalhau repo at '%s': %w", repoDir, err), 1)
@@ -84,10 +89,12 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
-	// ensure the `repo` key always gets a usable default value.
+	// ensure the `repo` key always gets a usable default value, warn if it's not.
 	defaultRepo, err := defaultRepo()
 	if err != nil {
-		util.Fatal(RootCmd, err, 1)
+		RootCmd.Printf("WARNING: %s\n"+
+			"cannot determine default repo location: "+
+			"BACALHAU_DIR or --repo must be set to initialize a node.\n\n", err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
