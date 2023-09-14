@@ -9,7 +9,11 @@ In this tutorial, you'll learn how to install and run a job with the Bacalhau cl
 
 ## The Bacalhau Client
 
-The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
+The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau.  The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
+
+:::tip
+By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../next-steps/private-cluster).
+:::
 
 ### Install the Bacalhau CLI
 
@@ -21,7 +25,7 @@ Using the **CLI**: Windows users can download the [latest release tarball from G
 :::
 
 :::info
-To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v0.3.23, where "v0.3.23" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
+To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
 :::
 
 
@@ -97,7 +101,6 @@ values={[
 </TabItem>
 <TabItem value="Docker">
 
-    %%bash --out job_id
     docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     docker run \
         --id-only \
@@ -119,19 +122,15 @@ Job successfully submitted. Job ID: 3b39baee-5714-4f17-aa71-1f5824665ad6
 Checking job status...
 ```
 
-The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `3b39baee`. For ease, we store the `job_id` in an environment variable.
-
-```shell
-$ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
-```
+The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `3b39baee`. 
 
 ## Checking the State of your Jobs
 
 - **Job status**: You can check the status of the job using `bacalhau list`.
 
 
-```bash
-bacalhau list --id-filter ${JOB_ID}
+```shell
+bacalhau list --id-filter 3b39baee
 ```
 
 When it says `Completed`, that means the job is done, and we can get the results.
@@ -147,35 +146,39 @@ For a comprehensive list of flags you can pass to the list command check out [th
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
-```bash
-bacalhau describe ${JOB_ID}
+```shell
+bacalhau describe 3b39baee
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory called `myfolder` and download our job output to be stored in that directory.
+This outputs all information about the job, including stdout, stderr, where the job was scheduled, and so on.
+
+- **Job download**: You can download your job results directly by using `bacalhau get`. In the command below, we created a directory called `myfolder` and download our job output to be stored in that directory.
 
 
-```bash
-$ cd Downloads
-$ mkdir -p /tmp/myfolder
-$ cd /tmp/myfolder
-
-bacalhau get $JOB_ID
+```shell
+bacalhau get 3b39baee
 ```
 
-After the download has finished you should see the following contents in the results directory
+After the download has finished you should see the following contents in the results directory.
+
+```shell
+$ tree job-3b39baee
+job-d2eab486
+├── exitCode
+├── outputs
+├── stderr
+└── stdout
+```
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
-
 ```shell
-$ cat /tmp/myfolder/job-id/stdout
+$ cat job-3b39baee/stdout
 ```
 
 That should print out the string `Hello World`.
 
 With that, you have just successfully run a job on the Bacalhau network! :fish:
-
 
 ## Where to go next?
 

@@ -25,3 +25,5 @@ package-lock.json
 
 env.*
 .env
+
+job-[a-zA-Z0-9]*
