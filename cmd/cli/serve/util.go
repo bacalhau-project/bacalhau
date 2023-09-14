@@ -3,9 +3,11 @@ package serve
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -125,12 +127,6 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		)
 	}
 
-	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
-	}
 	return ipfsConfig, nil
 }
 
@@ -158,6 +154,27 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	client, err := ipfs.NewClientUsingRemoteHandler(ctx, ipfsCfg.Connect)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+
+	if len(ipfsCfg.SwarmAddresses) != 0 {
+		log.Ctx(ctx).Info().Int("count", len(ipfsCfg.SwarmAddresses)).Msg("attempting to connect to ipfs swarm address peers")
+		maddrs, err := ipfs.ParsePeersString(ipfsCfg.SwarmAddresses)
+		if err != nil {
+			return ipfs.Client{}, err
+		}
+		var wg sync.WaitGroup
+		for _, pi := range maddrs {
+			wg.Add(1)
+			go func(peerInfo peer.AddrInfo) {
+				defer wg.Done()
+				if err := client.API.Swarm().Connect(ctx, peerInfo); err != nil {
+					log.Ctx(ctx).Warn().Err(err).Msgf("failed to connect to peer %s with addresses %s", peerInfo.ID, peerInfo.Addrs)
+				} else {
+					log.Ctx(ctx).Info().Msgf("connected to peer %s with addresses %s", peerInfo.ID, peerInfo.Addrs)
+				}
+			}(pi)
+		}
+		wg.Wait()
 	}
 
 	return client, nil
