@@ -40,16 +40,16 @@ func (s *BaseSuite) SetupTest() {
 	})
 	s.Require().NoError(err)
 	ctx := context.Background()
+	requesterConfig, err := node.NewRequesterConfigWith(
+		node.RequesterConfigParams{
+			HousekeepingBackgroundTaskInterval: 1 * time.Second,
+		},
+	)
+	s.Require().NoError(err)
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(
-			node.NewRequesterConfigWith(
-				node.RequesterConfigParams{
-					HousekeepingBackgroundTaskInterval: 1 * time.Second,
-				},
-			),
-		),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 	s.Node = stack.Nodes[0]

@@ -129,18 +129,18 @@ func (s *RetriesSuite) SetupSuite() {
 	}
 	ctx := context.Background()
 
+	requesterConfig, err := node.NewRequesterConfigWith(
+		node.RequesterConfigParams{
+			NodeRankRandomnessRange: 0,
+			OverAskForBidsFactor:    1,
+		},
+	)
+	s.Require().NoError(err)
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
 		devstack.WithNodeOverrides(nodeOverrides...),
-		devstack.WithRequesterConfig(
-			node.NewRequesterConfigWith(
-				node.RequesterConfigParams{
-					NodeRankRandomnessRange: 0,
-					OverAskForBidsFactor:    1,
-				},
-			),
-		),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 

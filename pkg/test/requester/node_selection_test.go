@@ -6,10 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -62,19 +63,19 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
+	requesterConfig, err := node.NewRequesterConfigWith(
+		node.RequesterConfigParams{
+			NodeRankRandomnessRange: 0,
+			OverAskForBidsFactor:    1,
+		},
+	)
+	s.Require().NoError(err)
 	stack := teststack.Setup(ctx,
 		s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(3),
 		devstack.WithNodeOverrides(nodeOverrides...),
-		devstack.WithRequesterConfig(
-			node.NewRequesterConfigWith(
-				node.RequesterConfigParams{
-					NodeRankRandomnessRange: 0,
-					OverAskForBidsFactor:    1,
-				},
-			),
-		),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
