@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -118,11 +119,17 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		return types.IpfsConfig{}, err
 	}
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
+		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
+			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
+		)
 	}
 
 	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
-		return types.IpfsConfig{}, fmt.Errorf("--ipfs-swarm-addrs cannot be used with --ipfs-connect")
+		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
+			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
+			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
+		)
 	}
 	return ipfsConfig, nil
 }
