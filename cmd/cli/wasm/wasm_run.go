@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
@@ -234,16 +235,18 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 	}, nil
 }
 
+// parseArrayAsMap accepts a string array where each entry is A=B and
+// returns a map with {A: B}
 func parseArrayAsMap(inputArray []string) (map[string]string, error) {
-	if len(inputArray)%2 != 0 {
-		return nil, fmt.Errorf("array must have an even number of elements")
-	}
-
 	resultMap := make(map[string]string)
-	for i := 0; i < len(inputArray); i += 2 {
-		key := inputArray[i]
-		value := inputArray[i+1]
-		resultMap[key] = value
+
+	for _, v := range inputArray {
+		parts := strings.Split(v, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("malformed entry, expected = in: %s", v)
+		}
+
+		resultMap[parts[0]] = parts[1]
 	}
 
 	return resultMap, nil
