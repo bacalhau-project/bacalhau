@@ -69,7 +69,7 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(host.ID().String())
+	jobStore, err := fsRepo.InitJobStore(ctx, host.ID().String())
 	if err != nil {
 		return nil, err
 	}

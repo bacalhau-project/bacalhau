@@ -421,6 +421,39 @@ func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	s.Equal("3", infos[0].ID)
 }
 
+func (s *BoltJobstoreTestSuite) TestShortIDs() {
+	uuidString := "9308d0d2-d93c-4e22-8a5b-c392e614922e"
+	uuidString2 := "9308d0d2-d93c-4e22-8a5b-c392e614922f"
+	shortString := "9308d0d2"
+
+	job := makeDockerEngineJob(
+		[]string{"bash", "-c", "echo hello"})
+	job.ID = uuidString
+	job.Namespace = "1"
+
+	// No matches
+	_, err := s.store.GetJob(s.ctx, shortString)
+	s.Require().Error(err)
+	s.Require().Equal(err.Error(), "Job not found. ID: 9308d0d2")
+
+	// Create and fetch the single entry
+	err = s.store.CreateJob(s.ctx, *job)
+	s.Require().NoError(err)
+
+	j, err := s.store.GetJob(s.ctx, shortString)
+	s.Require().NoError(err)
+	s.Require().Equal(uuidString, j.ID)
+
+	// Add a record that will also match and expect an appropriate error
+	job.ID = uuidString2
+	err = s.store.CreateJob(s.ctx, *job)
+	s.Require().NoError(err)
+
+	_, err = s.store.GetJob(s.ctx, shortString)
+	s.Require().Error(err)
+	s.Require().Equal(err.Error(), "Duplicate jobs found for ID: 9308d0d2")
+}
+
 func (s *BoltJobstoreTestSuite) TestEvents() {
 	ch := s.store.Watch(s.ctx,
 		jobstore.JobWatcher|jobstore.ExecutionWatcher,

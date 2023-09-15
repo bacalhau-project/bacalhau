@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	memjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/rs/zerolog/log"
 )
 
 // InitJobStore must be called after Init and uses the configuration to create a
@@ -17,7 +19,7 @@ import (
 // then the database will be created in the repo in a folder labeledafter the node ID.
 // For example:
 // `~/.bacalhau/Qmd1BEyR4RsLdYTEym1YxxaeXFdwWCMANYN7XCcpPYbTRs-requester/jobs.db`
-func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
+func (fsr *FsRepo) InitJobStore(ctx context.Context, prefix string) (jobstore.Store, error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
@@ -39,8 +41,11 @@ func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
 
 			path = filepath.Join(directory, "jobs.db")
 		}
+
+		log.Ctx(ctx).Debug().Str("Path", path).Msg("creating boltdb backed jobstore")
 		return boltjobstore.NewBoltJobStore(path)
 	case types.InMemory:
+		log.Ctx(ctx).Debug().Msg("creating inmemory backed jobstore")
 		return memjobstore.NewInMemoryJobStore(), nil
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
