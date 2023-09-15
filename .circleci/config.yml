@@ -13,10 +13,13 @@ executors:
       image: ubuntu-2204:2022.07.1
       resource_class: arm.xlarge
   darwin-amd64:
-    # Note - not an actual ARM macOS machine (https://circleci.canny.io/cloud-feature-requests/p/support-new-m1-arm-based-macs)
     macos:
       xcode: "14.2.0"
     resource_class: macos.x86.medium.gen2
+  darwin-arm64:
+    macos:
+      xcode: "14.2.0"
+    resource_class: macos.m1.medium.gen1
   windows-amd64:
     machine:
       image: windows-server-2022-gui:current
@@ -29,7 +32,7 @@ commands:
     parameters:
       executor:
         type: enum
-        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "windows-amd64"]
+        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64", "windows-amd64"]
     steps:
     - run:
         name: Set GOVER
@@ -54,6 +57,7 @@ commands:
         condition:
           or:
           - equal: ["darwin-amd64", << parameters.executor >>]
+          - equal: ["darwin-arm64", << parameters.executor >>]
           - equal: ["linux-amd64", << parameters.executor >>]
           - equal: ["linux-arm64", << parameters.executor >>]
         steps:
@@ -102,7 +106,7 @@ jobs:
     parameters:
       executor:
         type: enum
-        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "windows-amd64"]
+        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64", "windows-amd64"]
       target_arch:
         type: enum
         enum: ["amd64", "arm64", "armv6", "armv7"]
@@ -790,11 +794,14 @@ workflows:
   test_darwin_arm64:
     jobs:
     - build:
-        name: test-darwin-arm64
-        executor: darwin-amd64
-        target_os: darwin
-        target_arch: arm64
-        run_tests: false
+        name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+        executor: << matrix.target_os >>-<< matrix.target_arch >>
+        matrix:
+          parameters:
+            target_os: ["darwin"]
+            target_arch: ["arm64"]
+            run_tests: [true]
+            build_tags: ["unit", "integration"]
         filters:
           branches:
             ignore: main
@@ -830,27 +837,11 @@ workflows:
             target_arch: ["amd64", "arm64"]
             run_tests: [true]
             build_tags: ["unit", "integration"]
-          exclude:
-          - target_os: "darwin"
-            target_arch: "arm64"
-            run_tests: true
-            build_tags: "unit"
-          - target_os: "darwin"
-            target_arch: "arm64"
-            run_tests: true
-            build_tags: "integration"
         filters: &filters_main_only
           branches: # this yaml anchor is setting these values to "filters_main_only"
             only: main
           tags:
             ignore: /.*/
-    - build:
-        name: build-darwin-arm64
-        executor: darwin-amd64
-        target_os: darwin
-        target_arch: arm64
-        run_tests: false
-        filters: *filters_main_only
     - build:
         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
@@ -882,7 +873,6 @@ workflows:
         name: Build coverage report
         requires:
         - build-generic
-        - build-darwin-arm64
         - build-windows
         - build-arm
     - build_swagger:
@@ -931,16 +921,6 @@ workflows:
           - target_os: windows
             target_arch: arm64
             run_tests: false
-          - target_os: darwin
-            target_arch: arm64
-            run_tests: false
-        filters: *filters_tags_only
-    - build:
-        name: build-darwin-arm64
-        executor: darwin-amd64
-        target_os: darwin
-        target_arch: arm64
-        run_tests: false
         filters: *filters_tags_only
     - build:
         name: build-linux-<< matrix.target_arch >>
@@ -956,7 +936,6 @@ workflows:
         name: release-all-binaries
         requires:
         - build-generic
-        - build-darwin-arm64
         - build-arm
         filters: *filters_tags_only
     - docker:
