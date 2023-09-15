@@ -273,9 +273,6 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
-		// other nodes can be just compute nodes
-		// no need to spawn 1+ requester nodes
-		nodeType := "--node-type compute"
 
 		if isComputeNode && !isRequesterNode {
 			cmd.Println("Make sure there's at least one requester node in your network.")
@@ -294,12 +291,28 @@ func serve(cmd *cobra.Command) error {
 		peerAddress := pickP2pAddress(libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
 		ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
 
-		cmd.Println()
-		cmd.Println("To connect another node to this private one, run the following command in your shell:")
-		cmd.Printf(
-			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
-			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
-		)
+		sb := strings.Builder{}
+		sb.WriteString("\n")
+		sb.WriteString("To connect another node to this private one, run the following command in your shell:\n")
+
+		sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		sb.WriteString(fmt.Sprintf("%s=compute ",
+			configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+
+		sb.WriteString(fmt.Sprintf("%s ",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
+
+		sb.WriteString(fmt.Sprintf("%s=%s ",
+			configflags.FlagNameForKey(types.NodeLibp2pPeerConnect, configflags.Libp2pFlags...),
+			peerAddress,
+		))
+		sb.WriteString(fmt.Sprintf("%s=%s ",
+			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
+			ipfsSwarmAddress,
+		))
+		cmd.Println(sb.String())
 
 		summaryBuilder := strings.Builder{}
 		summaryBuilder.WriteString(fmt.Sprintf(
