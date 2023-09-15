@@ -309,8 +309,14 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 		e.id, result.ExecutionID, result.SourcePeerID)
 	e.eventEmitter.EmitRunComplete(ctx, result)
 
+	job, err := e.store.GetJob(ctx, result.JobID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to get job %s", result.JobID)
+		return
+	}
+
 	// update execution state
-	err := e.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
+	updateExecutionRequest := jobstore.UpdateExecutionRequest{
 		ExecutionID: result.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedStates: []models.ExecutionStateType{
@@ -328,7 +334,18 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 			ComputeState:    models.NewExecutionState(models.ExecutionStateCompleted),
 			DesiredState:    models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution completed"),
 		},
-	})
+	}
+
+	if job.IsLongRunning() {
+		log.Ctx(ctx).Error().Msgf(
+			"[OnRunComplete] job %s is long running, but received a RunComplete. Marking the execution as failed instead", result.JobID)
+		updateExecutionRequest.NewValues.ComputeState =
+			models.NewExecutionState(models.ExecutionStateFailed).WithMessage("execution completed unexpectedly")
+		updateExecutionRequest.NewValues.DesiredState =
+			models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution completed unexpectedly")
+	}
+
+	err = e.store.UpdateExecution(ctx, updateExecutionRequest)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to update execution")
 		return

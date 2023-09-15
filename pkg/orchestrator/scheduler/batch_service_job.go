@@ -3,45 +3,42 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
-// BatchJobScheduler is a scheduler for batch jobs that run until completion
-type BatchJobScheduler struct {
-	jobStore       jobstore.Store
-	planner        orchestrator.Planner
-	nodeDiscoverer orchestrator.NodeDiscoverer
-	nodeRanker     orchestrator.NodeRanker
-	retryStrategy  orchestrator.RetryStrategy
+// BatchServiceJobScheduler is a scheduler for:
+// - batch jobs that run until completion on N number of nodes
+// - service jobs than run until stopped on N number of nodes
+type BatchServiceJobScheduler struct {
+	jobStore      jobstore.Store
+	planner       orchestrator.Planner
+	nodeSelector  orchestrator.NodeSelector
+	retryStrategy orchestrator.RetryStrategy
 }
 
-type BatchJobSchedulerParams struct {
-	JobStore       jobstore.Store
-	Planner        orchestrator.Planner
-	NodeDiscoverer orchestrator.NodeDiscoverer
-	NodeRanker     orchestrator.NodeRanker
-	RetryStrategy  orchestrator.RetryStrategy
+type BatchServiceJobSchedulerParams struct {
+	JobStore      jobstore.Store
+	Planner       orchestrator.Planner
+	NodeSelector  orchestrator.NodeSelector
+	RetryStrategy orchestrator.RetryStrategy
 }
 
-func NewBatchJobScheduler(params BatchJobSchedulerParams) *BatchJobScheduler {
-	return &BatchJobScheduler{
-		jobStore:       params.JobStore,
-		planner:        params.Planner,
-		nodeDiscoverer: params.NodeDiscoverer,
-		nodeRanker:     params.NodeRanker,
-		retryStrategy:  params.RetryStrategy,
+func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchServiceJobScheduler {
+	return &BatchServiceJobScheduler{
+		jobStore:      params.JobStore,
+		planner:       params.Planner,
+		nodeSelector:  params.NodeSelector,
+		retryStrategy: params.RetryStrategy,
 	}
 }
 
-func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
+func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
 	job, err := b.jobStore.GetJob(ctx, evaluation.JobID)
@@ -68,7 +65,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	}
 
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeDiscoverer, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
@@ -77,8 +74,16 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(execLost, plan)
 
+	// Calculate remaining job count
+	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
+	// remaining count equals the count specified in the job spec.
+	// Batch jobs on the other hand run until completion and the desired remaining count excludes the completed executions
+	desiredRemainingCount := job.Count
+	if job.Type == models.JobTypeBatch {
+		desiredRemainingCount = math.Max(0, job.Count-existingExecs.countCompleted())
+	}
+
 	// Approve/Reject nodes
-	desiredRemainingCount := math.Max(0, job.Count-existingExecs.countCompleted())
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
@@ -110,7 +115,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	return b.planner.Process(ctx, plan)
 }
 
-func (b *BatchJobScheduler) createMissingExecs(
+func (b *BatchServiceJobScheduler) createMissingExecs(
 	ctx context.Context, remainingExecutionCount int, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
 	for i := 0; i < remainingExecutionCount; i++ {
@@ -138,9 +143,9 @@ func (b *BatchJobScheduler) createMissingExecs(
 }
 
 // placeExecs places the executions
-func (b *BatchJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
+func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
-		selectedNodes, err := b.selectNodes(ctx, job, len(execs))
+		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, len(execs))
 		if err != nil {
 			return err
 		}
@@ -153,43 +158,7 @@ func (b *BatchJobScheduler) placeExecs(ctx context.Context, execs execSet, job *
 	return nil
 }
 
-func (b *BatchJobScheduler) selectNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
-	nodeIDs, err := b.nodeDiscoverer.FindNodes(ctx, *job)
-	if err != nil {
-		return nil, err
-	}
-	log.Ctx(ctx).Debug().Int("Discovered", len(nodeIDs)).Msg("Found nodes for job")
-
-	rankedNodes, err := b.nodeRanker.RankNodes(ctx, *job, nodeIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// filter nodes with rank below 0
-	var filteredNodes []orchestrator.NodeRank
-	for _, nodeRank := range rankedNodes {
-		if nodeRank.MeetsRequirement() {
-			filteredNodes = append(filteredNodes, nodeRank)
-		}
-	}
-	log.Ctx(ctx).Debug().Int("Ranked", len(filteredNodes)).Msg("Ranked nodes for job")
-
-	if len(filteredNodes) < desiredCount {
-		// TODO: evaluate if we should run the job if some nodes where found
-		err = orchestrator.NewErrNotEnoughNodes(desiredCount, rankedNodes)
-		return nil, err
-	}
-
-	sort.Slice(filteredNodes, func(i, j int) bool {
-		return filteredNodes[i].Rank > filteredNodes[j].Rank
-	})
-
-	selectedNodes := filteredNodes[:math.Min(len(filteredNodes), desiredCount)]
-	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
-	return selectedInfos, nil
-}
-
-func (b *BatchJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
+func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
 	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
 	// mark all non-terminal executions as failed
 	nonTerminalExecs.markStopped(jobFailed, plan)
@@ -203,5 +172,5 @@ func (b *BatchJobScheduler) handleFailure(nonTerminalExecs execSet, failed execS
 	plan.MarkJobFailed(latestErr)
 }
 
-// compile-time assertion that BatchJobScheduler satisfies the Scheduler interface
-var _ orchestrator.Scheduler = &BatchJobScheduler{}
+// compile-time assertion that BatchServiceJobScheduler satisfies the Scheduler interface
+var _ orchestrator.Scheduler = &BatchServiceJobScheduler{}

@@ -64,9 +64,9 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid accepted: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateCreated,
-		NewState:      store.ExecutionStateBidAccepted,
+		ExecutionID:    request.ExecutionID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
+		NewState:       store.ExecutionStateBidAccepted,
 	})
 	if err != nil {
 		return BidAcceptedResponse{}, err
@@ -92,10 +92,10 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid rejected: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateCreated,
-		NewState:      store.ExecutionStateCancelled,
-		Comment:       "bid rejected due to: " + request.Justification,
+		ExecutionID:    request.ExecutionID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
+		NewState:       store.ExecutionStateCancelled,
+		Comment:        "bid rejected due to: " + request.Justification,
 	})
 	if err != nil {
 		return BidRejectedResponse{}, err

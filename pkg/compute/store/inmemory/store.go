@@ -112,11 +112,8 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	if !ok {
 		return store.NewErrExecutionNotFound(request.ExecutionID)
 	}
-	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
-		return store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
-	}
-	if request.ExpectedVersion != 0 && localExecutionState.Version != request.ExpectedVersion {
-		return store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
+	if err := request.Validate(localExecutionState); err != nil {
+		return err
 	}
 	if localExecutionState.State.IsTerminal() {
 		return store.NewErrExecutionAlreadyTerminal(request.ExecutionID, localExecutionState.State, request.NewState)

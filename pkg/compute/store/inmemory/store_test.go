@@ -217,7 +217,7 @@ func (s *Suite) TestUpdateExecution_ConditionsPass() {
 	// update with no conditions
 	request := store.UpdateExecutionStateRequest{
 		ExecutionID:     s.execution.ID,
-		ExpectedState:   s.localExecutionState.State,
+		ExpectedStates:  []store.LocalExecutionStateType{s.localExecutionState.State},
 		ExpectedVersion: s.localExecutionState.Version,
 		NewState:        store.ExecutionStatePublishing,
 		Comment:         "Hello There!",
@@ -239,9 +239,9 @@ func (s *Suite) TestUpdateExecution_ConditionsStateFail() {
 
 	// update with no conditions
 	request := store.UpdateExecutionStateRequest{
-		ExecutionID:   s.execution.ID,
-		ExpectedState: store.ExecutionStateBidAccepted,
-		NewState:      store.ExecutionStatePublishing,
+		ExecutionID:    s.execution.ID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateBidAccepted},
+		NewState:       store.ExecutionStatePublishing,
 	}
 	err = s.executionStore.UpdateExecutionState(ctx, request)
 	s.ErrorAs(err, &store.ErrInvalidExecutionState{})

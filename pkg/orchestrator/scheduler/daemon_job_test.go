@@ -16,34 +16,34 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-type OpsJobSchedulerTestSuite struct {
+type DaemonJobSchedulerTestSuite struct {
 	suite.Suite
 	jobStore     *jobstore.MockStore
 	planner      *orchestrator.MockPlanner
 	nodeSelector *orchestrator.MockNodeSelector
-	scheduler    *OpsJobScheduler
+	scheduler    *DaemonJobScheduler
 }
 
-func (s *OpsJobSchedulerTestSuite) SetupTest() {
+func (s *DaemonJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 
-	s.scheduler = NewOpsJobScheduler(OpsJobSchedulerParams{
+	s.scheduler = NewDaemonJobScheduler(DaemonJobSchedulerParams{
 		JobStore:     s.jobStore,
 		Planner:      s.planner,
 		NodeSelector: s.nodeSelector,
 	})
 }
 
-func TestOpsJobSchedulerTestSuite(t *testing.T) {
-	suite.Run(t, new(OpsJobSchedulerTestSuite))
+func TestDaemonJobSchedulerTestSuite(t *testing.T) {
+	suite.Run(t, new(DaemonJobSchedulerTestSuite))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
+func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	executions = []models.Execution{}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
@@ -53,7 +53,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 		*mockNodeInfo(s.T(), nodeIDs[1]),
 		*mockNodeInfo(s.T(), nodeIDs[2]),
 	}
-	s.mockNodeSelection(job, nodeInfos)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any()).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:               evaluation,
@@ -68,24 +68,28 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsCompleted() {
+// It is a bug if a long running execution is completed. The scheduler should just ignore it
+// and NOT mark the job as completed
+func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsCompleted() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted) // Simulate a completed execution
+	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted) // Simulate a completed execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any()).Return([]models.NodeInfo{}, nil)
 
+	// Noop plan
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
-		JobState:   models.JobStateTypeCompleted,
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealthyNodes() {
+func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealthyNodes() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
@@ -96,6 +100,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealt
 		*mockNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
@@ -108,9 +113,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealt
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
+// Even when an execution has failed, we don't mark the job as failed and continue waiting
+// for more nodes that match the job selection to join.
+// This requires a revisit in the future if all or a high percentage of nodes keep failing
+func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsFailed() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted) // running, but lost node
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateFailed)      // failed execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
@@ -121,10 +129,10 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
 		*mockNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
-		JobState:   models.JobStateTypeFailed,
 		StoppedExecutions: []string{
 			executions[0].ID,
 		},
@@ -133,9 +141,9 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalExecutionsAsStopped() {
+func (s *DaemonJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalExecutionsAsStopped() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	job.State = models.NewJobState(models.JobStateTypeStopped) // Simulate a canceled job
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
@@ -144,33 +152,30 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTer
 		Evaluation: evaluation,
 		StoppedExecutions: []string{
 			executions[0].ID,
+			executions[1].ID,
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
+func (s *DaemonJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
+	job, executions, evaluation := mockDaemonJob()
 	executions = []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
-	s.mockNodeSelection(job, []models.NodeInfo{})
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return([]models.NodeInfo{}, nil)
 
+	// Noop plan
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
-		JobState:   models.JobStateTypeFailed,
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo) {
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
-}
-
-func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {
+func mockDaemonJob() (*models.Job, []models.Execution, *models.Evaluation) {
 	job := mock.Job()
 
 	executionCount := 2
@@ -181,11 +186,11 @@ func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {
 	}
 
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
-	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
+	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidAccepted)
 
 	evaluation := &models.Evaluation{
 		JobID: job.ID,
-		Type:  models.JobTypeOps,
+		Type:  models.JobTypeDaemon,
 		ID:    uuid.NewString(),
 	}
 

@@ -49,7 +49,7 @@ func (e *LocalExecutionState) ToSummary() ExecutionSummary {
 		ExecutionID:        e.Execution.ID,
 		JobID:              e.Execution.Job.ID,
 		State:              e.State.String(),
-		AllocatedResources: e.Execution.AllocatedResources,
+		AllocatedResources: *e.Execution.AllocatedResources,
 	}
 }
 
@@ -67,15 +67,37 @@ type ExecutionSummary struct {
 	ExecutionID        string
 	JobID              string
 	State              string
-	AllocatedResources *models.AllocatedResources
+	AllocatedResources models.AllocatedResources
 }
 
 type UpdateExecutionStateRequest struct {
 	ExecutionID     string
 	NewState        LocalExecutionStateType
-	ExpectedState   LocalExecutionStateType
+	ExpectedStates  []LocalExecutionStateType
 	ExpectedVersion int
 	Comment         string
+}
+
+// Validate checks if the condition matches the given execution
+func (condition UpdateExecutionStateRequest) Validate(localExecutionState LocalExecutionState) error {
+	execution := localExecutionState.Execution
+	if len(condition.ExpectedStates) > 0 {
+		validState := false
+		for _, s := range condition.ExpectedStates {
+			if s == localExecutionState.State {
+				validState = true
+				break
+			}
+		}
+		if !validState {
+			return NewErrInvalidExecutionState(execution.ID, localExecutionState.State, condition.ExpectedStates...)
+		}
+	}
+
+	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != localExecutionState.Version {
+		return NewErrInvalidExecutionVersion(execution.ID, localExecutionState.Version, condition.ExpectedVersion)
+	}
+	return nil
 }
 
 // ExecutionStore A metadata store of job executions handled by the current compute node
