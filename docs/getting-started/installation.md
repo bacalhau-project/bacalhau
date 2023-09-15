@@ -163,7 +163,7 @@ After the download has finished you should see the following contents in the res
 
 ```shell
 $ tree job-3b39baee
-job-d2eab486
+job-3b39baee
 ├── exitCode
 ├── outputs
 ├── stderr
