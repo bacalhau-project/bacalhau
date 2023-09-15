@@ -112,5 +112,5 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 }
 
 func GetDefaultJobFolder(jobID string) string {
-	return idgen.ShortID(jobID)
+	return fmt.Sprintf("job-%s", idgen.ShortID(jobID))
 }
