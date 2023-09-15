@@ -45,7 +45,9 @@ func WriteConfig(fileName string) error {
 	if _, err := f.Write(cfgBytes); err != nil {
 		return err
 	}
-	return nil
+
+	// read the config we wrote into viper, setting its values as the defaults used for configuration
+	return viper.ReadInConfig()
 }
 
 func ReadConfig(fileName string) error {
