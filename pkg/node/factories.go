@@ -114,6 +114,14 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
 							MagicCookieValue: "bacalhau_executor",
 						},
+						{
+							Name:             "rawexec",
+							Path:             config.GetExecutorPluginsPath(),
+							Command:          "bacalhau-rawexec-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
 					},
 				})
 			if err != nil {
