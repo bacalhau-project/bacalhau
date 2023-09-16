@@ -125,12 +125,6 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		)
 	}
 
-	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
-	}
 	return ipfsConfig, nil
 }
 
@@ -158,6 +152,15 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	client, err := ipfs.NewClientUsingRemoteHandler(ctx, ipfsCfg.Connect)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+
+	if len(ipfsCfg.SwarmAddresses) != 0 {
+		maddrs, err := ipfs.ParsePeersString(ipfsCfg.SwarmAddresses)
+		if err != nil {
+			return ipfs.Client{}, err
+		}
+
+		client.SwarmConnect(ctx, maddrs)
 	}
 
 	return client, nil

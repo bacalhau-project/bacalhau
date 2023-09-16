@@ -64,16 +64,7 @@ type Node struct {
 	apiAddresses []string
 }
 
-func NewNode(ctx context.Context, cm *system.CleanupManager) (*Node, error) {
-	var cfg types.IpfsConfig
-	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
-		return nil, err
-	}
-	return NewNodeWithConfig(ctx, cm, cfg)
-}
-
-// newNodeWithConfig creates a new IPFS node with the given configuration.
-// NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
+// NewNodeWithConfig creates a new in-process IPFS node with the given configuration.
 func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types.IpfsConfig) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
@@ -93,6 +84,7 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types
 		}
 	}()
 
+	// TODO if cfg.PrivateInternal is true do we actually want to connect to peers?
 	if err = connectToPeers(ctx, api, ipfsNode, cfg.GetSwarmAddresses()); err != nil {
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}

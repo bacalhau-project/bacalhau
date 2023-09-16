@@ -3,12 +3,16 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
+	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type Downloader struct {
@@ -29,10 +33,31 @@ func (d *Downloader) IsInstalled(context.Context) (bool, error) {
 }
 
 func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
-	log.Ctx(ctx).Debug().Msg("creating ipfs node")
+	var cfg types.IpfsConfig
+	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
+		return ipfs.Client{}, err
+	}
 
+	if cfg.Connect != "" {
+		log.Ctx(ctx).Debug().Msg("creating ipfs client")
+		client, err := ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+		}
+
+		if len(cfg.SwarmAddresses) != 0 {
+			maddrs, err := ipfs.ParsePeersString(cfg.SwarmAddresses)
+			if err != nil {
+				return ipfs.Client{}, err
+			}
+			client.SwarmConnect(ctx, maddrs)
+		}
+		return client, nil
+	}
+
+	log.Ctx(ctx).Debug().Msg("creating ipfs node")
 	if d.node == nil {
-		node, err := ipfs.NewNode(ctx, d.cm)
+		node, err := ipfs.NewNodeWithConfig(ctx, d.cm, cfg)
 		if err != nil {
 			return ipfs.Client{}, err
 		}
