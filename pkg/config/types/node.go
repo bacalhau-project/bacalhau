@@ -3,8 +3,9 @@ package types
 import (
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type NodeConfig struct {
