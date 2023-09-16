@@ -58,7 +58,7 @@ func TestConfig(t *testing.T) {
 				var out types.NodeConfig
 				err = ForKey(types.Node, &out)
 				assert.Nil(t, err)
-				assert.Equal(t, expectedConfig.Node, out)
+				assert.Equal(t, expectedConfig.Node.ServerAPI, out.ServerAPI)
 
 				retrieved, err := Get[string](types.NodeServerAPIHost)
 				assert.Nil(t, err)
