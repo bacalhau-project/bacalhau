@@ -51,10 +51,16 @@ var Staging = types.BacalhauConfig{
 		IPFS: types.IpfsConfig{
 			Connect:         "",
 			PrivateInternal: true,
+			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
-				"/ip4/34.85.197.247/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
-				"/ip4/35.245.163.45/tcp/1235/p2p/QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk",
-				"/ip4/35.199.63.137/tcp/1235/p2p/QmVXwmdZUHsa88UHRKwQvvapguAXgHxd2uvVEpHrhjchAH",
+				"/ip4/34.85.197.247/tcp/4001/p2p/12D3KooWDaveKrxPZSCrHY2hjsk4pcWVSCE3eUKFotmKWL8nJDZi",
+				"/ip4/34.85.197.247/udp/4001/quic/p2p/12D3KooWDaveKrxPZSCrHY2hjsk4pcWVSCE3eUKFotmKWL8nJDZi",
+				"/ip4/35.245.163.45/tcp/4001/p2p/12D3KooWDzhR9PAsCNc2xY7v6NQJ4oKEmhvpwaxKCS3Jbxw36G3C",
+				"/ip4/35.245.163.45/udp/4001/quic/p2p/12D3KooWDzhR9PAsCNc2xY7v6NQJ4oKEmhvpwaxKCS3Jbxw36G3C",
+				"/ip4/35.199.63.137/tcp/4001/p2p/12D3KooWKFN8bf1yK1n2zXZMUp2NpTcCLn9szcpYiwrrg9YbrKap",
+				"/ip4/35.199.63.137/udp/4001/quic/p2p/12D3KooWKFN8bf1yK1n2zXZMUp2NpTcCLn9szcpYiwrrg9YbrKap",
+				"/ip4/35.188.227.44/tcp/4001/p2p/12D3KooWGzqdeV1oM7voQghTtnwSQmmfadPswTweDTtya6qMJC3j",
+				"/ip4/35.188.227.44/udp/4001/quic/p2p/12D3KooWGzqdeV1oM7voQghTtnwSQmmfadPswTweDTtya6qMJC3j",
 			},
 		},
 		Compute:   StagingComputeConfig,
