@@ -52,7 +52,7 @@ all: build
 
 # Run init repo after cloning it
 .PHONY: init
-init:
+init: generate-tools
 	@ops/repo_init.sh 1>/dev/null
 	@echo "Build environment initialized."
 

@@ -334,20 +334,31 @@ jobs:
           command: |
             make install-pre-commit
 
-      - run:
-          name: Cache Precommit
-          command: |
-            cp .pre-commit-config.yaml pre-commit-cache-key.txt
-            poetry run python --version --version >> pre-commit-cache-key.txt
+      #- run:
+          #name: Cache Precommit
+          #command: |
+            #cp .pre-commit-config.yaml pre-commit-cache-key.txt
+            #poetry run python --version --version >> pre-commit-cache-key.txt
 
       - restore_cache:
           name: Restoring pre-commit cache
           key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
 
       - run:
+          name: Run go generate
+          command: |
+            go generate ./...
+            if [[ -n $(git status --porcelain) ]]; then
+              echo "Error: changes found after running go generate"
+              git status --porcelain
+              exit 1
+            fi
+      - run:
           name: Run linter
           command: |
             make precommit
+
+
 
   performance_job:
     resource_class: bacalhau-project/self-hosted-bacalhau
