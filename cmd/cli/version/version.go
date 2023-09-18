@@ -125,7 +125,7 @@ type ServerResponse struct {
 }
 
 func checkForUpdates(ctx context.Context, currentVersion string) {
-	resp, err := http.Get("http://35.238.214.16/version")
+	resp, err := http.Get("http://update.bacalhau.org/version")
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to fetch the latest version from the server.")
 		return
