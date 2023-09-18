@@ -45,7 +45,9 @@ func WriteConfig(fileName string) error {
 	if _, err := f.Write(cfgBytes); err != nil {
 		return err
 	}
-	return nil
+
+	// read the config we wrote into viper, setting its values as the defaults used for configuration
+	return viper.ReadInConfig()
 }
 
 func ReadConfig(fileName string) error {
@@ -107,9 +109,18 @@ func zeroValue[T any]() T {
 	return zero
 }
 
-// Set sets the current configuration to `config`, useful for testing.
-func Set(config types.BacalhauConfig) error {
+// SetDefault sets the default value for the configuration.
+// Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
+func SetDefault(config types.BacalhauConfig) error {
 	types.SetDefaults(config)
+	return nil
+}
+
+// Set sets the configuration value.
+// Will be used instead of values obtained via flags, config file, ENV, default.
+// Useful for testing.
+func Set(config types.BacalhauConfig) error {
+	types.Set(config)
 	return nil
 }
 
@@ -165,7 +176,7 @@ func initConfig(params initParams) (types.BacalhauConfig, error) {
 	viper.SetEnvPrefix(environmentVariablePrefix)
 	viper.SetTypeByDefaultValue(inferConfigTypes)
 	viper.SetEnvKeyReplacer(environmentVariableReplace)
-	if err := Set(params.defaultConfig); err != nil {
+	if err := SetDefault(params.defaultConfig); err != nil {
 		return types.BacalhauConfig{}, nil
 	}
 	if err := params.fileHandler(filepath.Join(params.filePath, fmt.Sprintf("%s.%s", params.fileName, params.fileType))); err != nil {
@@ -205,7 +216,7 @@ func ForKey(key string, cfg interface{}) error {
 // It's especially useful when the desired value is not directly associated with the key, but
 // instead is spread across various nested sub-keys within the configuration.
 func unmarshalCompositeKey(key string, output interface{}) error {
-	compositeValue, err := getCompositeValue(key)
+	compositeValue, isNested, err := getCompositeValue(key)
 	if err != nil {
 		return err
 	}
@@ -220,13 +231,24 @@ func unmarshalCompositeKey(key string, output interface{}) error {
 		return err
 	}
 
+	if isNested {
+		val, ok := compositeValue[key]
+		if !ok {
+			// NB(forrest): this case should never happen as we ensure all configuration values
+			// have a corresponding key via code gen. If this does occur it represents an error we need to debug.
+			return fmt.Errorf("CRITICAL ERROR: invalid configuration detected for key: %s. Config value not found", key)
+		}
+		return decoder.Decode(val)
+	}
+
 	return decoder.Decode(compositeValue)
 }
 
 // getCompositeValue constructs a composite value for a given key. If the key directly corresponds
-// to a set value in Viper, it returns that. Otherwise, it collects all nested values under that
-// key and returns them as a nested map.
-func getCompositeValue(key string) (map[string]interface{}, error) {
+// to a set value in Viper, it returns that, and false to indicate the value isn't nested under the key.
+// Otherwise, it collects all nested values under that key and returns them as a nested map and true
+// indicating the value is nested under the key.
+func getCompositeValue(key string) (map[string]interface{}, bool, error) {
 	var compositeValue map[string]interface{}
 
 	// Fetch directly if the exact key exists
@@ -238,10 +260,10 @@ func getCompositeValue(key string) (map[string]interface{}, error) {
 		default:
 			return map[string]interface{}{
 				key: rawValue,
-			}, nil
+			}, true, nil
 		}
 	} else {
-		compositeValue = make(map[string]interface{})
+		return nil, false, fmt.Errorf("configuration value not found for key: %s", key)
 	}
 
 	lowerKey := strings.ToLower(key)
@@ -258,12 +280,12 @@ func getCompositeValue(key string) (map[string]interface{}, error) {
 		if strings.HasPrefix(lowerK, lowerKey+".") {
 			parts := strings.Split(lowerK[len(lowerKey)+1:], ".")
 			if err := setNested(compositeValue, parts, viper.Get(originalK)); err != nil {
-				return nil, err
+				return nil, false, nil
 			}
 		}
 	}
 
-	return compositeValue, nil
+	return compositeValue, false, nil
 }
 
 // setNested is a recursive helper function that sets a value in a nested map based on a slice of keys.

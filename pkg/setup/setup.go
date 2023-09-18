@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )

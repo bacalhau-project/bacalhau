@@ -27,7 +27,7 @@ import (
 //
 // The output is written to the provided io.Writer, producing a series of Viper default value assignments suitable for including
 // in a Go source file.
-func generateSetDefaults(t reflect.Type, prefix string, path []string, value reflect.Value, writer io.Writer) {
+func generateSetDefaults(t reflect.Type, prefix string, path []string, value reflect.Value, writer io.Writer, methodName string) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		tag := field.Tag.Get("config")
@@ -57,9 +57,9 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 			// Inserting the viper.SetDefault for the nested struct path.
 			constantNameForStruct := strings.ReplaceAll(newPrefix, ".", "")
 			defaultValueForStruct := "cfg." + strings.Join(newPath, ".")
-			fmt.Fprintf(writer, "\tviper.SetDefault(%s, %s)\n", constantNameForStruct, defaultValueForStruct)
+			fmt.Fprintf(writer, "\tviper.%s(%s, %s)\n", methodName, constantNameForStruct, defaultValueForStruct)
 
-			generateSetDefaults(field.Type, newPrefix, newPath, fieldValue, writer)
+			generateSetDefaults(field.Type, newPrefix, newPath, fieldValue, writer, methodName)
 		} else {
 			constantName := strings.ReplaceAll(newPrefix, ".", "")
 			constantPath := strings.Join(newPath, ".")
@@ -71,7 +71,7 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 				defaultValue = "cfg." + constantPath + ".String()"
 			}
 
-			fmt.Fprintf(writer, "\tviper.SetDefault(%s, %s)\n", constantName, defaultValue)
+			fmt.Fprintf(writer, "\tviper.%s(%s, %s)\n", methodName, constantName, defaultValue)
 		}
 	}
 }
@@ -92,7 +92,11 @@ func main() {
 	fmt.Fprintf(file, "import \"github.com/spf13/viper\"\n\n")
 	fmt.Fprintf(file, "func SetDefaults(cfg BacalhauConfig) {\n")
 
-	generateSetDefaults(reflect.TypeOf(defaultConfig), "", []string{}, reflect.ValueOf(defaultConfig), file)
+	generateSetDefaults(reflect.TypeOf(defaultConfig), "", []string{}, reflect.ValueOf(defaultConfig), file, "SetDefault")
 
+	fmt.Fprintf(file, "}\n\n")
+
+	fmt.Fprintf(file, "func Set(cfg BacalhauConfig) {\n")
+	generateSetDefaults(reflect.TypeOf(defaultConfig), "", []string{}, reflect.ValueOf(defaultConfig), file, "Set")
 	fmt.Fprintf(file, "}\n")
 }

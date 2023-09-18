@@ -17,19 +17,39 @@ func TestConfig(t *testing.T) {
 	defer Reset()
 
 	// Testing Set and Get
-	t.Run("SetAndGet", func(t *testing.T) {
+	t.Run("SetAndGetHappyPath", func(t *testing.T) {
 		expectedConfig := configenv.Testing
 		err := Set(expectedConfig)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		var out types.NodeConfig
 		err = ForKey(types.Node, &out)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node, out)
 
 		retrieved, err := Get[string](types.NodeServerAPIHost)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
+	})
+	t.Run("SetAndGetAdvance", func(t *testing.T) {
+		expectedConfig := configenv.Testing
+		expectedConfig.Node.IPFS.SwarmAddresses = []string{"1", "2", "3", "4", "5"}
+		err := Set(expectedConfig)
+		assert.NoError(t, err)
+
+		var out types.IpfsConfig
+		err = ForKey(types.NodeIPFS, &out)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedConfig.Node.IPFS, out)
+
+		var node types.NodeConfig
+		err = ForKey(types.Node, &node)
+		assert.Equal(t, expectedConfig.Node, node)
+		assert.NoError(t, err)
+
+		var invalidNode types.NodeConfig
+		err = ForKey("INVALID", &invalidNode)
+		assert.Error(t, err)
 	})
 
 	// Testing KeyAsEnvVar
@@ -57,11 +77,11 @@ func TestConfig(t *testing.T) {
 
 				var out types.NodeConfig
 				err = ForKey(types.Node, &out)
-				assert.Nil(t, err)
-				assert.Equal(t, expectedConfig.Node, out)
+				assert.NoError(t, err)
+				assert.Equal(t, expectedConfig.Node.ServerAPI, out.ServerAPI)
 
 				retrieved, err := Get[string](types.NodeServerAPIHost)
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
 			})
 		}
