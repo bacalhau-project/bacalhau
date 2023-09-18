@@ -62,7 +62,7 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		"output",
 		"o",
 		settings.OutputVolumes,
-		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
+		`name:path of the output data volumes`,
 	)
 	flags.StringSliceVarP(
 		&settings.EnvVar,

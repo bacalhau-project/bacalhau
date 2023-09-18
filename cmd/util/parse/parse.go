@@ -47,8 +47,7 @@ func NodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error)
 }
 
 func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
-	outputVolumesMap := make(map[string]model.StorageSpec)
-	outputVolumes = append(outputVolumes, "outputs:/outputs")
+	outputVolumesMap := make(map[string]model.StorageSpec, len(outputVolumes))
 
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
