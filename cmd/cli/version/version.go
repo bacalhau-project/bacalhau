@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package version
 
 import (
@@ -23,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -36,19 +36,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 )
 
-// Versions is a struct for version information
 type Versions struct {
-	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
-	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
+	ClientVersion  *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion  *models.BuildVersionInfo `json:"serverVersion,omitempty"`
+	OperatingSystem string                   `json:"operatingSystem,omitempty"`
+	Architecture    string                   `json:"architecture,omitempty"`
+	UserID          string                   `json:"userID,omitempty"`
 }
 
-// VersionOptions is a struct to support version command
 type VersionOptions struct {
 	ClientOnly bool
 	OutputOpts output.OutputOptions
 }
 
-// NewVersionOptions returns initialized Options
 func NewVersionOptions() *VersionOptions {
 	return &VersionOptions{
 		OutputOpts: output.OutputOptions{Format: output.TableFormat},
@@ -95,7 +95,6 @@ var serverVersionColumn = output.TableColumn[Versions]{
 	Value:        func(v Versions) string { return v.ServerVersion.GitVersion },
 }
 
-// Run executes version command
 func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	var (
 		versions Versions
@@ -109,20 +108,23 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("could not get server version")
-			// Fail silently
 		} else {
 			versions.ServerVersion = serverVersion
 			columns = append(columns, serverVersionColumn)
 		}
 	}
 
-	// Assuming versions.ServerVersion may be nil if oV.ClientOnly is true
+	// Add additional information
+	versions.OperatingSystem = runtime.GOOS
+	versions.Architecture = runtime.GOARCH
+	versions.UserID = "some-user-id" // Replace this with your method to get UserID
+
 	var serverVersion string
 	if versions.ServerVersion != nil {
 		serverVersion = versions.ServerVersion.GitVersion
 	}
 
-	checkForUpdates(ctx, versions.ClientVersion.GitVersion, serverVersion)
+	checkForUpdates(ctx, versions.ClientVersion.GitVersion, serverVersion, versions.OperatingSystem, versions.Architecture, versions.UserID)
 
 	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
 }
@@ -132,8 +134,7 @@ type ServerResponse struct {
 	Message string `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion string) {
-	// Construct URL with query parameters
+func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion, os, arch, userID string) {
 	u, err := url.Parse("http://update.bacalhau.org/version")
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
@@ -145,6 +146,11 @@ func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVer
 	if currentServerVersion != "" {
 		q.Set("serverVersion", currentServerVersion)
 	}
+	// Add OS, Architecture, and UserID to the query parameters
+	q.Set("operatingSystem", os)
+	q.Set("architecture", arch)
+	q.Set("userID", userID)
+	
 	u.RawQuery = q.Encode()
 
 	resp, err := http.Get(u.String())
@@ -167,9 +173,5 @@ func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVer
 		return
 	}
 
-	if currentClientVersion != serverResponse.Version {
-		fmt.Println(serverResponse.Message)
-	} else {
-		fmt.Println("Your Bacalhau Version is latest")
-	}
+	fmt.Println(serverResponse.Message)
 }
