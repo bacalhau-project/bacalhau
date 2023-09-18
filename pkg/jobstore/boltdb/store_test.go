@@ -176,6 +176,56 @@ func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 	require.Equal(s.T(), 4, len(history))
 }
 
+func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
+	allHistories, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	require.NoError(s.T(), err)
+
+	var executionID string
+	for _, h := range allHistories {
+		if h.ExecutionID != "" {
+			executionID = h.ExecutionID
+			break
+		}
+	}
+	require.NotEmpty(s.T(), executionID, "failed to find execution ID")
+
+	options := jobstore.JobHistoryFilterOptions{
+		ExecutionID: executionID,
+	}
+
+	history, err := s.store.GetJobHistory(s.ctx, "1", options)
+	require.NoError(s.T(), err, "failed to get job history")
+
+	for _, h := range history {
+		require.Equal(s.T(), executionID, h.ExecutionID)
+	}
+}
+
+func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
+	allHistories, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	require.NoError(s.T(), err)
+
+	var nodeID string
+	for _, h := range allHistories {
+		if h.NodeID != "" {
+			nodeID = h.NodeID
+			break
+		}
+	}
+	require.NotEmpty(s.T(), nodeID, "failed to find node ID")
+
+	options := jobstore.JobHistoryFilterOptions{
+		NodeID: nodeID,
+	}
+
+	history, err := s.store.GetJobHistory(s.ctx, "1", options)
+	require.NoError(s.T(), err, "failed to get job history")
+
+	for _, h := range history {
+		require.Equal(s.T(), nodeID, h.NodeID)
+	}
+}
+
 func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	jobOptions := jobstore.JobHistoryFilterOptions{
 		ExcludeExecutionLevel: true,
@@ -369,6 +419,39 @@ func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	s.NoError(err)
 	s.Equal(1, len(infos))
 	s.Equal("3", infos[0].ID)
+}
+
+func (s *BoltJobstoreTestSuite) TestShortIDs() {
+	uuidString := "9308d0d2-d93c-4e22-8a5b-c392e614922e"
+	uuidString2 := "9308d0d2-d93c-4e22-8a5b-c392e614922f"
+	shortString := "9308d0d2"
+
+	job := makeDockerEngineJob(
+		[]string{"bash", "-c", "echo hello"})
+	job.ID = uuidString
+	job.Namespace = "1"
+
+	// No matches
+	_, err := s.store.GetJob(s.ctx, shortString)
+	s.Require().Error(err)
+	s.Require().Equal(err.Error(), "Job not found. ID: 9308d0d2")
+
+	// Create and fetch the single entry
+	err = s.store.CreateJob(s.ctx, *job)
+	s.Require().NoError(err)
+
+	j, err := s.store.GetJob(s.ctx, shortString)
+	s.Require().NoError(err)
+	s.Require().Equal(uuidString, j.ID)
+
+	// Add a record that will also match and expect an appropriate error
+	job.ID = uuidString2
+	err = s.store.CreateJob(s.ctx, *job)
+	s.Require().NoError(err)
+
+	_, err = s.store.GetJob(s.ctx, shortString)
+	s.Require().Error(err)
+	s.Require().Equal(err.Error(), "Duplicate jobs found for ID: 9308d0d2")
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {

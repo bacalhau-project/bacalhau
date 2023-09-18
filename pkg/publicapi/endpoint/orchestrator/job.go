@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -30,6 +31,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	return c.JSON(http.StatusOK, apimodels.PutJobResponse{
 		JobID:        resp.JobID,
 		EvaluationID: resp.EvaluationID,
+		Warnings:     resp.Warnings,
 	})
 }
 
@@ -101,6 +103,8 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 
 func (e *Endpoint) stopJob(c echo.Context) error {
 	ctx := c.Request().Context()
+	jobID := c.Param("id")
+
 	var args apimodels.StopJobRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -109,7 +113,7 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 		return err
 	}
 	resp, err := e.orchestrator.StopJob(ctx, &orchestrator.StopJobRequest{
-		JobID:         args.JobID,
+		JobID:         jobID,
 		Reason:        args.Reason,
 		UserTriggered: true,
 	})
@@ -134,8 +138,10 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 
 	options := jobstore.JobHistoryFilterOptions{
 		Since:                 args.Since,
-		ExcludeExecutionLevel: args.Type == "job",
-		ExcludeJobLevel:       args.Type == "execution",
+		ExcludeExecutionLevel: args.EventType == "job",
+		ExcludeJobLevel:       args.EventType == "execution",
+		ExecutionID:           args.ExecutionID,
+		NodeID:                args.NodeID,
 	}
 	history, err := e.store.GetJobHistory(ctx, jobID, options)
 	if err != nil {
@@ -162,16 +168,48 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 		return err
 	}
 
+	// TODO: move ordering to jobstore
+	// parse order_by
+	var sortFnc func(a, b models.Execution) bool
+	switch args.OrderBy {
+	case "modify_time", "":
+		sortFnc = func(a, b models.Execution) bool { return a.ModifyTime < b.ModifyTime }
+	case "create_time":
+		sortFnc = func(a, b models.Execution) bool { return a.CreateTime < b.CreateTime }
+	case "id":
+		sortFnc = func(a, b models.Execution) bool { return a.ID < b.ID }
+	case "state":
+		sortFnc = func(a, b models.Execution) bool { return a.ComputeState.StateType < b.ComputeState.StateType }
+	default:
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
+	}
+	if args.Reverse {
+		baseSortFnc := sortFnc
+		sortFnc = func(a, b models.Execution) bool { return !baseSortFnc(a, b) }
+	}
+
+	// query executions
 	executions, err := e.store.GetExecutions(ctx, jobID)
 	if err != nil {
 		return err
 	}
+
+	// sort executions
+	slices.SortFunc(executions, sortFnc)
+
+	// apply limit
+	if args.Limit > 0 && len(executions) > int(args.Limit) {
+		executions = executions[:args.Limit]
+	}
+
+	// prepare result
 	res := &apimodels.ListJobExecutionsResponse{
 		Executions: make([]*models.Execution, len(executions)),
 	}
 	for i := range executions {
 		res.Executions[i] = &executions[i]
 	}
+
 	return c.JSON(http.StatusOK, res)
 }
 

@@ -139,8 +139,7 @@ var LocalRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
-	Timeouts: types.TimeoutConfig{
-		MinJobExecutionTimeout:     types.Duration(0 * time.Second),
-		DefaultJobExecutionTimeout: types.Duration(30 * time.Minute),
+	JobDefaults: types.JobDefaults{
+		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
 }

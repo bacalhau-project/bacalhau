@@ -57,6 +57,7 @@ type executionHandler struct {
 	result *models.RunCommandResult
 }
 
+//nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {

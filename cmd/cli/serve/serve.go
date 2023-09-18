@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -20,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -67,6 +67,10 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	} else if peerConnect == "env" {
 		// TODO(forrest): [ux/sanity] in the future default to the value in the config file and remove system environment
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
+	} else if peerConnect == "config" {
+		// TODO(forrest): [ux] if the user explicitly passes the peer flag with value `config` read the
+		// boostrap peer list from their config file.
+		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
 	}
@@ -151,7 +155,11 @@ func serve(cmd *cobra.Command) error {
 	cm := util.GetCleanupManager(ctx)
 
 	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
-	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	repoPath, err := setup.GetBacalhauRepoPath()
+	if err != nil {
+		return err
+	}
+	fsRepo, err := repo.NewFS(repoPath)
 	if err != nil {
 		return err
 	}
@@ -236,6 +244,10 @@ func serve(cmd *cobra.Command) error {
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
+
+		cert, key := config.GetRequesterCertificateSettings()
+		nodeConfig.RequesterTLSCertificateFile = cert
+		nodeConfig.RequesterTLSKeyFile = key
 	}
 
 	// Create node
@@ -261,9 +273,6 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
-		// other nodes can be just compute nodes
-		// no need to spawn 1+ requester nodes
-		nodeType := "--node-type compute"
 
 		if isComputeNode && !isRequesterNode {
 			cmd.Println("Make sure there's at least one requester node in your network.")
@@ -282,12 +291,28 @@ func serve(cmd *cobra.Command) error {
 		peerAddress := pickP2pAddress(libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
 		ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
 
-		cmd.Println()
-		cmd.Println("To connect another node to this private one, run the following command in your shell:")
-		cmd.Printf(
-			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
-			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
-		)
+		sb := strings.Builder{}
+		sb.WriteString("\n")
+		sb.WriteString("To connect another node to this private one, run the following command in your shell:\n")
+
+		sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		sb.WriteString(fmt.Sprintf("%s=compute ",
+			configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+
+		sb.WriteString(fmt.Sprintf("%s ",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
+
+		sb.WriteString(fmt.Sprintf("%s=%s ",
+			configflags.FlagNameForKey(types.NodeLibp2pPeerConnect, configflags.Libp2pFlags...),
+			peerAddress,
+		))
+		sb.WriteString(fmt.Sprintf("%s=%s ",
+			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
+			ipfsSwarmAddress,
+		))
+		cmd.Println(sb.String())
 
 		summaryBuilder := strings.Builder{}
 		summaryBuilder.WriteString(fmt.Sprintf(

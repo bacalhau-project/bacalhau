@@ -8,14 +8,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 )
 
 type RequesterConfigParams struct {
-	// Timeout config
-	MinJobExecutionTimeout     time.Duration
-	DefaultJobExecutionTimeout time.Duration
+	JobDefaults transformer.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int

@@ -1,6 +1,7 @@
 package boltjobstore
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
@@ -125,8 +127,6 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		return nil
 	})
 
-	log.Ctx(context.Background()).Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
-
 	store.inProgressIndex = NewIndex(BucketProgressIndex)
 	store.namespacesIndex = NewIndex(BucketNamespacesIndex)
 	store.tagsIndex = NewIndex(BucketTagsIndex)
@@ -173,16 +173,52 @@ func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error
 	return job, err
 }
 
-func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (models.Job, error) {
+func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 	var job models.Job
 
-	data := GetBucketData(tx, NewBucketPath(BucketJobs, id), SpecKey)
-	if data == nil {
-		return job, bacerrors.NewJobNotFound(id)
+	jobID, err := b.reifyJobID(tx, jobID)
+	if err != nil {
+		return job, err
 	}
 
-	err := json.Unmarshal(data, &job)
+	data := GetBucketData(tx, NewBucketPath(BucketJobs, jobID), SpecKey)
+	if data == nil {
+		return job, bacerrors.NewJobNotFound(jobID)
+	}
+
+	err = json.Unmarshal(data, &job)
 	return job, err
+}
+
+// reifyJobID ensures the provided job ID is a full-length ID. This is either through
+// returning the ID, or resolving the short ID to a single job id.
+func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
+	if idgen.ShortID(jobID) == jobID {
+		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
+		if err != nil {
+			return "", err
+		}
+
+		found := make([][]byte, 0, 1)
+
+		cursor := bktJobs.Cursor()
+		prefix := []byte(jobID)
+		for k, _ := cursor.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = cursor.Next() {
+			found = append(found, k)
+		}
+
+		switch len(found) {
+		case 0:
+			return "", bacerrors.NewJobNotFound(jobID)
+		case 1:
+			return string(found[0]), nil
+		default:
+			return "", bacerrors.NewDuplicateJob(jobID)
+		}
+	}
+
+	// Return what we were given
+	return jobID, nil
 }
 
 func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, error) {
@@ -529,9 +565,21 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
-	// Filter out anything before the specified Since time
-	history = lo.Filter(history, func(item models.JobHistory, index int) bool {
-		return item.Time.Unix() >= options.Since
+	// Filter out anything before the specified Since time, and anything that doesn't match the
+	// specified ExecutionID or NodeID
+	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
+		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+			return false
+		}
+
+		if options.NodeID != "" && !strings.HasPrefix(event.NodeID, options.NodeID) {
+			return false
+		}
+
+		if event.Time.Unix() < options.Since {
+			return false
+		}
+		return true
 	})
 
 	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })

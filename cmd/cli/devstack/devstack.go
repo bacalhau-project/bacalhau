@@ -226,7 +226,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		return err
 	}
 
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
+	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsRepo, cm)
 	if err != nil {
 		return fmt.Errorf("failed to print node info: %w", err)
 	}

@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	icore "github.com/ipfs/boxo/coreiface"
 	icoreoptions "github.com/ipfs/boxo/coreiface/options"
 	icorepath "github.com/ipfs/boxo/coreiface/path"
@@ -17,11 +15,16 @@ import (
 	ft "github.com/ipfs/boxo/ipld/unixfs"
 	ipld "github.com/ipfs/go-ipld-format"
 	httpapi "github.com/ipfs/kubo/client/rpc"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 // Client is a front-end for an ipfs node's API endpoints. You can create
@@ -136,6 +139,23 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 	})
 
 	return addresses, nil
+}
+
+// SwarmConnect establishes concurrent connections to each peer from the provided `peers` list.
+// It spawns a goroutine for each peer connection. In the event of a connection failure,
+// a warning log containing the error and peer details is generated.
+func (cl Client) SwarmConnect(ctx context.Context, peers []peer.AddrInfo) {
+	var wg sync.WaitGroup
+	for _, p := range peers {
+		wg.Add(1)
+		go func(ctx context.Context, p peer.AddrInfo) {
+			defer wg.Done()
+			if err := cl.API.Swarm().Connect(ctx, p); err != nil {
+				log.Ctx(ctx).Warn().Err(err).Stringer("peer", p).Msg("failed to connect to peer")
+			}
+		}(ctx, p)
+	}
+	wg.Wait()
 }
 
 // Get fetches a file or directory from the ipfs network.

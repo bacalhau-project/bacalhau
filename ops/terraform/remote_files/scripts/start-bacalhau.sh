@@ -64,7 +64,6 @@ bacalhau serve \
   --job-selection-data-locality anywhere \
   --job-selection-accept-networked \
   --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \
-  --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --max-timeout '60m' \
   --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
   --swarm-port "${BACALHAU_PORT}" \

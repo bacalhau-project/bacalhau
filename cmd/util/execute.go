@@ -13,7 +13,7 @@ import (
 //nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	j *model.Job,
-	runtimeSettings *cliflags.RunTimeSettings,
+	runtimeSettings *cliflags.RunTimeSettingsWithDownload,
 ) (*model.Job, error) {
 	err := job.VerifyJob(ctx, j)
 	if err != nil {

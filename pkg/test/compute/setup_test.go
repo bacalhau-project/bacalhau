@@ -43,11 +43,13 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupSuite() {
-	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
+	cfg, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU: 2,
 		},
 	})
+	s.Require().NoError(err)
+	s.config = cfg
 }
 
 func (s *ComputeSuite) SetupTest() {

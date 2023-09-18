@@ -17,7 +17,7 @@ type GetNodeResponse struct {
 
 type ListNodesRequest struct {
 	BaseListRequest
-	Labels []*labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+	Labels []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request

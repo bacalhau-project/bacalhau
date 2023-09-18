@@ -36,14 +36,14 @@ var (
 		bacalhau create ./job.yaml
 
 		# Create a new job from an already executed job
-		bacalhau describe 6e51df50 | bacalhau create -`))
+		bacalhau describe 6e51df50 | bacalhau create `))
 )
 
 type CreateOptions struct {
-	Filename        string                       // Filename for job (can be .json or .yaml)
-	Concurrency     int                          // Number of concurrent jobs to run
-	RunTimeSettings *cliflags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
-	DownloadFlags   *cliflags.DownloaderSettings // Settings for running Download
+	Filename        string                                // Filename for job (can be .json or .yaml)
+	Concurrency     int                                   // Number of concurrent jobs to run
+	RunTimeSettings *cliflags.RunTimeSettingsWithDownload // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadFlags   *cliflags.DownloaderSettings          // Settings for running Download
 }
 
 func NewCreateOptions() *CreateOptions {
@@ -51,7 +51,7 @@ func NewCreateOptions() *CreateOptions {
 		Filename:        "",
 		Concurrency:     1,
 		DownloadFlags:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings: cliflags.NewDefaultRunTimeSettings(),
+		RunTimeSettings: cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -73,7 +73,7 @@ func NewCmd() *cobra.Command {
 	}
 
 	createCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(OC.DownloadFlags))
-	createCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(OC.RunTimeSettings))
+	createCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(OC.RunTimeSettings))
 
 	return createCmd
 }
@@ -232,7 +232,8 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx)); err != nil {
+	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx))
+	if err != nil {
 		return err
 	}
 

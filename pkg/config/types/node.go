@@ -58,6 +58,14 @@ type TLSConfiguration struct {
 	// AutoCertCachePath specifies the directory where the autocert process
 	// will cache certificates to avoid rate limits.
 	AutoCertCachePath string `yaml:"AutoCertCachePath"`
+
+	// ServerCertificate specifies the location of a TLS certificate to be used
+	// by the requester to serve TLS requests
+	ServerCertificate string `yaml:"ServerCertificate"`
+
+	// ServerKey is the TLS server key to match the certificate to allow the
+	// requester to server TLS.
+	ServerKey string `yaml:"ServerTLSKey"`
 }
 
 type Libp2pConfig struct {

@@ -50,7 +50,7 @@ func NewRequesterNode(
 	ctx context.Context,
 	host host.Host,
 	apiServer *publicapi.Server,
-	nodeConfig RequesterConfig,
+	requesterConfig RequesterConfig,
 	storageProviders storage.StorageProvider,
 	nodeInfoStore routing.NodeInfoStore,
 	gossipSub *libp2p_pubsub.PubSub,
@@ -69,7 +69,7 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(host.ID().String())
+	jobStore, err := fsRepo.InitJobStore(ctx, host.ID().String())
 	if err != nil {
 		return nil, err
 	}
@@ -110,20 +110,20 @@ func NewRequesterNode(
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
-		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: nodeConfig.MinBacalhauVersion}),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: nodeConfig.NodeRankRandomnessRange,
+			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
 		}),
 	)
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
-		VisibilityTimeout:    nodeConfig.EvalBrokerVisibilityTimeout,
-		InitialRetryDelay:    nodeConfig.EvalBrokerInitialRetryDelay,
-		SubsequentRetryDelay: nodeConfig.EvalBrokerSubsequentRetryDelay,
-		MaxReceiveCount:      nodeConfig.EvalBrokerMaxRetryCount,
+		VisibilityTimeout:    requesterConfig.EvalBrokerVisibilityTimeout,
+		InitialRetryDelay:    requesterConfig.EvalBrokerInitialRetryDelay,
+		SubsequentRetryDelay: requesterConfig.EvalBrokerSubsequentRetryDelay,
+		MaxReceiveCount:      requesterConfig.EvalBrokerMaxRetryCount,
 	})
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func NewRequesterNode(
 		planner.NewLoggingPlanner(),
 	)
 
-	retryStrategy := nodeConfig.RetryStrategy
+	retryStrategy := requesterConfig.RetryStrategy
 	if retryStrategy == nil {
 		// retry strategy
 		retryStrategyChain := retry.NewChain()
@@ -186,15 +186,15 @@ func NewRequesterNode(
 		}),
 	})
 
-	workers := make([]*orchestrator.Worker, 0, nodeConfig.WorkerCount)
-	for i := 1; i <= nodeConfig.WorkerCount; i++ {
+	workers := make([]*orchestrator.Worker, 0, requesterConfig.WorkerCount)
+	for i := 1; i <= requesterConfig.WorkerCount; i++ {
 		log.Debug().Msgf("Starting worker %d", i)
 		// worker config the polls from the broker
 		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
 			SchedulerProvider:     schedulerProvider,
 			EvaluationBroker:      evalBroker,
-			DequeueTimeout:        nodeConfig.WorkerEvalDequeueTimeout,
-			DequeueFailureBackoff: backoff.NewExponential(nodeConfig.WorkerEvalDequeueBaseBackoff, nodeConfig.WorkerEvalDequeueMaxBackoff),
+			DequeueTimeout:        requesterConfig.WorkerEvalDequeueTimeout,
+			DequeueFailureBackoff: backoff.NewExponential(requesterConfig.WorkerEvalDequeueBaseBackoff, requesterConfig.WorkerEvalDequeueMaxBackoff),
 		})
 		workers = append(workers, worker)
 		worker.Start(ctx)
@@ -214,8 +214,7 @@ func NewRequesterNode(
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
 		StorageProviders:           storageProviders,
-		MinJobExecutionTimeout:     nodeConfig.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: nodeConfig.DefaultJobExecutionTimeout,
+		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
@@ -226,6 +225,7 @@ func NewRequesterNode(
 		ComputeProxy:     computeProxy,
 		Transformer: transformer.ChainedJobTransformer{
 			transformer.JobFn(transformer.IDGenerator),
+			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		},
 	})
 
@@ -233,7 +233,7 @@ func NewRequesterNode(
 		Endpoint: endpoint,
 		JobStore: jobStore,
 		NodeID:   host.ID().String(),
-		Interval: nodeConfig.HousekeepingBackgroundTaskInterval,
+		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
 	})
 
 	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler

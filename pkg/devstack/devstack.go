@@ -11,7 +11,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -77,7 +76,10 @@ func Setup(
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	stackConfig := defaultDevStackConfig()
+	stackConfig, err := defaultDevStackConfig()
+	if err != nil {
+		return nil, err
+	}
 	for _, opt := range opts {
 		opt(stackConfig)
 	}
@@ -236,6 +238,10 @@ func Setup(
 			// settings needed for AutoCert.
 			nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 			nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
+
+			cert, key := config.GetRequesterCertificateSettings()
+			nodeConfig.RequesterTLSCertificateFile = cert
+			nodeConfig.RequesterTLSKeyFile = key
 		}
 
 		// allow overriding configs of some nodes
@@ -294,15 +300,7 @@ func createIPFSNode(ctx context.Context,
 }
 
 //nolint:funlen
-func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
-	fsRepo, err := repo.NewFS(viper.GetString("repo"))
-	if err != nil {
-		return "", err
-	}
-	if err := fsRepo.Open(); err != nil {
-		return "", err
-	}
-
+func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -105,18 +107,11 @@ type ComputeConfig struct {
 	ExecutionStore store.ExecutionStore
 }
 
-func NewComputeConfigWithDefaults() ComputeConfig {
+func NewComputeConfigWithDefaults() (ComputeConfig, error) {
 	return NewComputeConfigWith(DefaultComputeConfig)
 }
 
-func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			panic(fmt.Sprintf("Failed to initialize compute config %s", err.Error()))
-		}
-	}()
+func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	if params.JobNegotiationTimeout == 0 {
 		params.JobNegotiationTimeout = DefaultComputeConfig.JobNegotiationTimeout
 	}
@@ -143,7 +138,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	}
 	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.Background())
 	if err != nil {
-		return
+		return ComputeConfig{}, fmt.Errorf("getting compute resource capacity for config: %w", err)
 	}
 	// populate total resource limits with default values and physical resources if not set
 	totalResourceLimits := params.TotalResourceLimits.
@@ -165,7 +160,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	defaultJobResourceLimits := params.DefaultJobResourceLimits.
 		Merge(DefaultComputeConfig.DefaultJobResourceLimits)
 
-	config = ComputeConfig{
+	config := ComputeConfig{
 		TotalResourceLimits:           *totalResourceLimits,
 		QueueResourceLimits:           params.QueueResourceLimits,
 		JobResourceLimits:             *jobResourceLimits,
@@ -188,37 +183,38 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		BidResourceStrategy:          params.BidResourceStrategy,
 	}
 
-	validateConfig(config, physicalResources)
-	return config
+	if err := validateConfig(config, physicalResources); err != nil {
+		return ComputeConfig{}, fmt.Errorf("validating compute config: %w", err)
+	}
+	return config, nil
 }
 
-func validateConfig(config ComputeConfig, physicalResources models.Resources) {
-	var err error
-	defer func() {
-		if err != nil {
-			panic(fmt.Sprintf("Failed to validate compute config %s", err.Error()))
-		}
-	}()
+func validateConfig(config ComputeConfig, physicalResources models.Resources) error {
+	var errors *multierror.Error
 
 	if !config.IgnorePhysicalResourceLimits && !config.TotalResourceLimits.LessThanEq(physicalResources) {
-		err = fmt.Errorf("total resource limits %+v exceed physical resources %+v", config.TotalResourceLimits, physicalResources)
-		return
+		errors = multierror.Append(errors,
+			fmt.Errorf("total resource limits %+v exceed physical resources %+v",
+				config.TotalResourceLimits, physicalResources))
 	}
 
 	if !config.JobResourceLimits.LessThanEq(config.TotalResourceLimits) {
-		err = fmt.Errorf("job resource limits %+v exceed total resource limits %+v", config.JobResourceLimits, config.TotalResourceLimits)
-		return
+		errors = multierror.Append(errors,
+			fmt.Errorf("job resource limits %+v exceed total resource limits %+v",
+				config.JobResourceLimits, config.TotalResourceLimits))
 	}
 
 	if !config.JobResourceLimits.LessThanEq(config.QueueResourceLimits) {
-		err = fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
-			config.JobResourceLimits, config.QueueResourceLimits)
-		return
+		errors = multierror.Append(errors,
+			fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
+				config.JobResourceLimits, config.QueueResourceLimits))
 	}
 
 	if !config.DefaultJobResourceLimits.LessThanEq(config.JobResourceLimits) {
-		err = fmt.Errorf("default job resource limits %+v exceed job resource limits %+v",
-			config.DefaultJobResourceLimits, config.JobResourceLimits)
-		return
+		errors = multierror.Append(errors,
+			fmt.Errorf("default job resource limits %+v exceed job resource limits %+v",
+				config.DefaultJobResourceLimits, config.JobResourceLimits))
 	}
+
+	return errors.ErrorOrNil()
 }

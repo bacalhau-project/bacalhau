@@ -50,9 +50,12 @@ var Development = types.BacalhauConfig{
 		IPFS: types.IpfsConfig{
 			Connect:         "",
 			PrivateInternal: true,
+			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
-				"/ip4/34.88.135.65/tcp/1235/p2p/QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo",
-				"/ip4/35.228.112.50/tcp/1235/p2p/QmQM1yRXyKGAfFtYpPSy5grHSief3fic6YjLEWQYpmiGTM",
+				"/ip4/34.88.135.65/tcp/4001/p2p/12D3KooWMYUaxS32AucbSN4Y9ae6CPfHcZiLxteAQpbjTBHexG6N",
+				"/ip4/34.88.135.65/udp/4001/quic/p2p/12D3KooWMYUaxS32AucbSN4Y9ae6CPfHcZiLxteAQpbjTBHexG6N",
+				"/ip4/35.228.112.50/tcp/4001/p2p/12D3KooWJE4HiVBbyUp2x3B98xKukKbN76zvU4FN8Uvc1NWZYzHS",
+				"/ip4/35.228.112.50/udp/4001/quic/p2p/12D3KooWJE4HiVBbyUp2x3B98xKukKbN76zvU4FN8Uvc1NWZYzHS",
 			},
 		},
 		Compute:   DevelopmentComputeConfig,
@@ -145,8 +148,7 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
-	Timeouts: types.TimeoutConfig{
-		MinJobExecutionTimeout:     types.Duration(0 * time.Second),
-		DefaultJobExecutionTimeout: types.Duration(30 * time.Minute),
+	JobDefaults: types.JobDefaults{
+		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
 }

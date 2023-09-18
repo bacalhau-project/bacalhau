@@ -2,6 +2,7 @@ package apimodels
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/hashicorp/go-multierror"
@@ -35,8 +36,9 @@ func (r *PutJobRequest) Validate() error {
 
 type PutJobResponse struct {
 	BasePutResponse
-	JobID        string `json:"JobID"`
-	EvaluationID string `json:"EvaluationID"`
+	JobID        string   `json:"JobID"`
+	EvaluationID string   `json:"EvaluationID"`
+	Warnings     []string `json:"Warnings"`
 }
 
 type GetJobRequest struct {
@@ -59,7 +61,17 @@ func (r *GetJobResponse) Normalize() {
 
 type ListJobsRequest struct {
 	BaseListRequest
-	Labels []*labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+	Labels []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *ListJobsRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseListRequest.ToHTTPRequest()
+
+	for _, v := range o.Labels {
+		r.Params.Add("labels", v.String())
+	}
+	return r
 }
 
 type ListJobsResponse struct {
@@ -77,9 +89,30 @@ func (r *ListJobsResponse) Normalize() {
 
 type ListJobHistoryRequest struct {
 	BaseListRequest
-	JobID string `query:"-"`
-	Since int64  `query:"since" validate:"min=0"`
-	Type  string `query:"type" validate:"omitempty,oneof=all job execution"`
+	JobID       string `query:"-"`
+	Since       int64  `query:"since" validate:"min=0"`
+	EventType   string `query:"event_type" validate:"omitempty,oneof=all job execution"`
+	ExecutionID string `query:"execution_id" validate:"omitempty"`
+	NodeID      string `query:"node_id" validate:"omitempty"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseListRequest.ToHTTPRequest()
+
+	if o.Since != 0 {
+		r.Params.Set("since", strconv.FormatInt(o.Since, 10))
+	}
+	if o.EventType != "" {
+		r.Params.Set("event_type", o.EventType)
+	}
+	if o.ExecutionID != "" {
+		r.Params.Set("execution_id", o.ExecutionID)
+	}
+	if o.NodeID != "" {
+		r.Params.Set("node_id", o.NodeID)
+	}
+	return r
 }
 
 type ListJobHistoryResponse struct {

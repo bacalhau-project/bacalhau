@@ -43,12 +43,14 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			suite.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/361")
 		}
 
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobSelectionPolicy: testCase.policy,
+		})
+		suite.Require().NoError(err)
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
-				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-					JobSelectionPolicy: testCase.policy,
-				}),
+				ComputeConfig:   computeConfig,
 			},
 			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform(suite.T()).Inputs),
 			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,

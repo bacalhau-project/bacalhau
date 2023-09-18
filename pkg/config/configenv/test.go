@@ -27,7 +27,7 @@ var Testing = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses: []string{
-			"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
@@ -50,7 +50,7 @@ var Testing = types.BacalhauConfig{
 			Connect:         "",
 			PrivateInternal: true,
 			SwarmAddresses: []string{
-				"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+				"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 			},
 		},
 		Compute:   TestingComputeConfig,
@@ -143,8 +143,7 @@ var TestingRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
-	Timeouts: types.TimeoutConfig{
-		MinJobExecutionTimeout:     types.Duration(0 * time.Second),
-		DefaultJobExecutionTimeout: types.Duration(30 * time.Minute),
+	JobDefaults: types.JobDefaults{
+		ExecutionTimeout: types.Duration(30 * time.Second),
 	},
 }

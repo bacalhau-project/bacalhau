@@ -32,5 +32,18 @@ func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	)
 	s.Require().NoError(err)
 
-	_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
+}
+
+func (s *WasmRunSuite) TestSpecifyingEnvVars() {
+	ctx := context.Background()
+	_, out, err := cmdtesting.ExecuteTestCobraCommand("wasm", "run",
+		"--api-host", s.Host,
+		"--api-port", fmt.Sprint(s.Port),
+		"../../../testdata/wasm/env/main.wasm",
+		"-e A=B,C=D",
+	)
+	s.Require().NoError(err)
+
+	_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 }

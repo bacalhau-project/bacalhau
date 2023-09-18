@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -130,14 +131,16 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		parsedResources, err := resourcesConfig.ToResources()
 		require.NoError(suite.T(), err)
 
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			TotalResourceLimits:           *parsedResources,
+			IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
+			ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
+		})
+		suite.Require().NoError(err)
 		stack := teststack.Setup(ctx,
 			suite.T(),
 			devstack.WithNumberOfHybridNodes(1),
-			devstack.WithComputeConfig(node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits:           *parsedResources,
-				IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
-				ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
-			})),
+			devstack.WithComputeConfig(computeConfig),
 			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
@@ -291,18 +294,20 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		return &models.RunCommandResult{}, nil
 	}
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		TotalResourceLimits: models.Resources{
+			CPU:    1,
+			Memory: 1 * 1024 * 1024 * 1024,
+			Disk:   1 * 1024 * 1024 * 1024,
+			GPU:    1,
+		},
+		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+	})
+	suite.Require().NoError(err)
 	stack := teststack.Setup(ctx,
 		suite.T(),
 		devstack.WithNumberOfHybridNodes(nodeCount),
-		devstack.WithComputeConfig(node.NewComputeConfigWith(node.ComputeConfigParams{
-			TotalResourceLimits: models.Resources{
-				CPU:    1,
-				Memory: 1 * 1024 * 1024 * 1024,
-				Disk:   1 * 1024 * 1024 * 1024,
-				GPU:    1,
-			},
-			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
-		})),
+		devstack.WithComputeConfig(computeConfig),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{

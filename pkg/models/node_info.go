@@ -12,7 +12,8 @@ import (
 type NodeType int
 
 const (
-	NodeTypeRequester NodeType = iota
+	nodeTypeUndefined NodeType = iota
+	NodeTypeRequester
 	NodeTypeCompute
 )
 
@@ -23,7 +24,17 @@ func ParseNodeType(s string) (NodeType, error) {
 		}
 	}
 
-	return NodeTypeCompute, fmt.Errorf("invalid node type: %s", s)
+	return nodeTypeUndefined, fmt.Errorf("invalid node type: %s", s)
+}
+
+func (e NodeType) MarshalText() ([]byte, error) {
+	return []byte(e.String()), nil
+}
+
+func (e *NodeType) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*e, err = ParseNodeType(name)
+	return
 }
 
 type NodeInfoProvider interface {
@@ -35,11 +46,11 @@ type ComputeNodeInfoProvider interface {
 }
 
 type NodeInfo struct {
-	BacalhauVersion BuildVersionInfo
-	PeerInfo        peer.AddrInfo
-	NodeType        NodeType
-	Labels          map[string]string
-	ComputeNodeInfo *ComputeNodeInfo
+	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
+	NodeType        NodeType          `json:"NodeType"`
+	Labels          map[string]string `json:"Labels"`
+	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
+	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
 }
 
 // IsComputeNode returns true if the node is a compute node

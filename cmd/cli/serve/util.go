@@ -9,6 +9,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -46,7 +49,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 			ProbeExec:           cfg.JobSelection.ProbeExec,
 		},
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
-	}), nil
+	})
 }
 
 func GetRequesterConfig() (node.RequesterConfig, error) {
@@ -55,8 +58,9 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		return node.RequesterConfig{}, err
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		MinJobExecutionTimeout:             time.Duration(cfg.Timeouts.MinJobExecutionTimeout),
-		DefaultJobExecutionTimeout:         time.Duration(cfg.Timeouts.DefaultJobExecutionTimeout),
+		JobDefaults: transformer.JobDefaults{
+			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
+		},
 		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
 		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               cfg.OverAskForBidsFactor,
@@ -115,12 +119,12 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		return types.IpfsConfig{}, err
 	}
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
+		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
+			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
+		)
 	}
 
-	if ipfsConfig.Connect != "" && len(ipfsConfig.GetSwarmAddresses()) != 0 {
-		return types.IpfsConfig{}, fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
-	}
 	return ipfsConfig, nil
 }
 
@@ -148,6 +152,15 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	client, err := ipfs.NewClientUsingRemoteHandler(ctx, ipfsCfg.Connect)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+
+	if len(ipfsCfg.SwarmAddresses) != 0 {
+		maddrs, err := ipfs.ParsePeersString(ipfsCfg.SwarmAddresses)
+		if err != nil {
+			return ipfs.Client{}, err
+		}
+
+		client.SwarmConnect(ctx, maddrs)
 	}
 
 	return client, nil

@@ -19,15 +19,6 @@ const MaxSerializedStringInput = int(10 * datasize.MB)
 // Arbitrarily choosing 1000 jobs to serialize - this is a pretty high
 const MaxNumberOfObjectsToSerialize = 1000
 
-const ShortIDLength = 8
-
-func ShortID(id string) string {
-	if len(id) > ShortIDLength {
-		return id[:ShortIDLength]
-	}
-	return id
-}
-
 func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)
