@@ -86,7 +86,10 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	}
 
 	if config.RequesterConfig.JobDefaults.ExecutionTimeout == 0 {
-		config.RequesterConfig = node.NewRequesterConfigWithDefaults()
+		// TODO(forrest) [correctness] don't override the config wholesale if a field is missing
+		cfg, err := node.NewRequesterConfigWithDefaults()
+		s.Require().NoError(err)
+		config.RequesterConfig = cfg
 	}
 
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
