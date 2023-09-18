@@ -78,10 +78,10 @@ func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 
 	err := oV.Run(ctx, cmd)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error running version")
+		return fmt.Errorf("error running version: %w", err)
 	}
 
-	return nil
+	return err
 }
 
 var clientVersionColumn = output.TableColumn[Versions]{
@@ -146,10 +146,8 @@ func checkForUpdates(ctx context.Context, currentVersion string) {
 	}
 
 	if currentVersion != serverResponse.Version {
-		fmt.Println("A new version is available!")
-		fmt.Println("Update by running the following command:")
-		fmt.Println("curl -sL https://get.bacalhau.org/install.sh | bash")
-	} else {
 		fmt.Println(serverResponse.Message)
+	} else {
+		fmt.Println("Your Bacalhau Version is latest")
 	}
 }
