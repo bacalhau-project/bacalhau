@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -15,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -74,6 +76,23 @@ func PrintJobExecution(
 		}
 	}
 
+	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+		executions, err := client.Jobs().Executions(&apimodels.ListJobExecutionsRequest{
+			JobID: jobID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job executions: %w", err)
+		}
+		cmd.Println("\nJob Results By Node:")
+		for message, nodes := range summariseExecutions(executions.Executions) {
+			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+			if strings.ContainsRune(message, '\n') {
+				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+			} else {
+				cmd.Println(message)
+			}
+		}
+	}
 	if !quiet {
 		cmd.Println()
 		cmd.Println("To get more details about the run, execute:")
@@ -260,4 +279,29 @@ To cancel the job, run:
 	}
 
 	return returnError
+}
+
+// Groups the executions in the job state, returning a map of printable messages
+// to node(s) that generated that message.
+func summariseExecutions(executions []*models.Execution) map[string][]string {
+	results := make(map[string][]string, len(executions))
+	for _, execution := range executions {
+		var message string
+		if execution.RunOutput != nil {
+			if execution.RunOutput.ErrorMsg != "" {
+				message = execution.RunOutput.ErrorMsg
+			} else if execution.RunOutput.ExitCode > 0 {
+				message = execution.RunOutput.STDERR
+			} else {
+				message = execution.RunOutput.STDOUT
+			}
+		} else if execution.IsDiscarded() {
+			message = execution.ComputeState.Message
+		}
+
+		if message != "" {
+			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
+		}
+	}
+	return results
 }
