@@ -234,6 +234,7 @@ func NewRequesterNode(
 		Transformer: transformer.ChainedJobTransformer{
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
+			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 		},
 	})
 
