@@ -341,3 +341,8 @@ func (j *Job) AllStorageTypes() []string {
 	}
 	return storageTypes
 }
+
+// IsLongRunning returns true if the job is long running
+func (j *Job) IsLongRunning() bool {
+	return j.Type == JobTypeService || j.Type == JobTypeDaemon
+}

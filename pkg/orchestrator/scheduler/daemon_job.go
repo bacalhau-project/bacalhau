@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -12,28 +11,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// OpsJobScheduler is a scheduler for batch jobs that run until completion
-type OpsJobScheduler struct {
+// DaemonJobScheduler is a scheduler for batch jobs that run until completion
+type DaemonJobScheduler struct {
 	jobStore     jobstore.Store
 	planner      orchestrator.Planner
 	nodeSelector orchestrator.NodeSelector
 }
 
-type OpsJobSchedulerParams struct {
+type DaemonJobSchedulerParams struct {
 	JobStore     jobstore.Store
 	Planner      orchestrator.Planner
 	NodeSelector orchestrator.NodeSelector
 }
 
-func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
-	return &OpsJobScheduler{
+func NewDaemonJobScheduler(params DaemonJobSchedulerParams) *DaemonJobScheduler {
+	return &DaemonJobScheduler{
 		jobStore:     params.JobStore,
 		planner:      params.Planner,
 		nodeSelector: params.NodeSelector,
 	}
 }
 
-func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
+func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
 	job, err := b.jobStore.GetJob(ctx, evaluation.JobID)
@@ -66,45 +65,36 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	}
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
+	_, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(execLost, plan)
 
-	allFailed := existingExecs.filterFailed().union(lost)
-
-	// Look for matching nodes and create new executions if:
-	// - Ops jobs: this is the first time we are evaluating the job
-	// - Daemon jobs: everytime the job is evaluated
-	var newExecs execSet
-	if job.Type == models.JobTypeDaemon || len(existingExecs) == 0 {
-		newExecs, err = b.createMissingExecs(ctx, &job, plan)
-		if err != nil {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, err)
-			return b.planner.Process(ctx, plan)
-		}
-	}
-
-	// mark job as completed if there are no more active or new executions
-	if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
-		if len(allFailed) > 0 {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, errors.New(""))
-		} else {
-			plan.MarkJobCompleted()
-		}
+	// Look for new matching nodes and create new executions everytime we evaluate the job
+	_, err = b.createMissingExecs(ctx, &job, plan, existingExecs)
+	if err != nil {
+		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}
 	return b.planner.Process(ctx, plan)
 }
 
-func (b *OpsJobScheduler) createMissingExecs(
-	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
+func (b *DaemonJobScheduler) createMissingExecs(
+	ctx context.Context, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
 	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}
-	if len(nodes) == 0 {
-		return nil, orchestrator.ErrNoMatchingNodes{}
+
+	// map for existing NodeIDs for faster lookup and filtering of existing executions
+	existingNodes := make(map[string]struct{})
+	for _, exec := range existingExecs {
+		existingNodes[exec.NodeID] = struct{}{}
 	}
+
 	for _, node := range nodes {
+		if _, ok := existingNodes[node.PeerInfo.ID.String()]; ok {
+			// there is already a healthy execution on this node
+			continue
+		}
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
@@ -123,18 +113,5 @@ func (b *OpsJobScheduler) createMissingExecs(
 	return newExecs, nil
 }
 
-func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// mark all non-terminal executions as failed
-	nonTerminalExecs.markStopped(jobFailed, plan)
-
-	// mark the job as failed, using the error message of the latest failed execution, if any, or use
-	// the error message passed by the scheduler
-	latestErr := err.Error()
-	if len(failed) > 0 {
-		latestErr = failed.latest().ComputeState.Message
-	}
-	plan.MarkJobFailed(latestErr)
-}
-
-// compile-time assertion that OpsJobScheduler satisfies the Scheduler interface
-var _ orchestrator.Scheduler = &OpsJobScheduler{}
+// compile-time assertion that DaemonJobScheduler satisfies the Scheduler interface
+var _ orchestrator.Scheduler = &DaemonJobScheduler{}

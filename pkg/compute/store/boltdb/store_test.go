@@ -233,7 +233,7 @@ func (s *Suite) TestUpdateExecution_ConditionsPass() {
 	// update with no conditions
 	request := store.UpdateExecutionStateRequest{
 		ExecutionID:     s.execution.ID,
-		ExpectedState:   s.localExecutionState.State,
+		ExpectedStates:  []store.LocalExecutionStateType{s.localExecutionState.State},
 		ExpectedVersion: s.localExecutionState.Version,
 		NewState:        store.ExecutionStatePublishing,
 		Comment:         "Hello There!",
@@ -267,7 +267,7 @@ func (s *Suite) TestGetExecutionCount() {
 
 		request := store.UpdateExecutionStateRequest{
 			ExecutionID:     execution.ID,
-			ExpectedState:   executionState.State,
+			ExpectedStates:  []store.LocalExecutionStateType{executionState.State},
 			ExpectedVersion: executionState.Version,
 			NewState:        state,
 			Comment:         "Hello There!",
@@ -295,7 +295,7 @@ func (s *Suite) TestStateCounterChange() {
 
 	request := store.UpdateExecutionStateRequest{
 		ExecutionID:     s.execution.ID,
-		ExpectedState:   s.localExecutionState.State,
+		ExpectedStates:  []store.LocalExecutionStateType{s.localExecutionState.State},
 		ExpectedVersion: s.localExecutionState.Version,
 		NewState:        store.ExecutionStateBidAccepted,
 		Comment:         "Starting",
@@ -312,7 +312,7 @@ func (s *Suite) TestStateCounterChange() {
 
 	request = store.UpdateExecutionStateRequest{
 		ExecutionID:     s.execution.ID,
-		ExpectedState:   store.ExecutionStateBidAccepted,
+		ExpectedStates:  []store.LocalExecutionStateType{store.ExecutionStateBidAccepted},
 		ExpectedVersion: s.localExecutionState.Version + 1,
 		NewState:        store.ExecutionStateCompleted,
 		Comment:         "Completed",
@@ -336,9 +336,9 @@ func (s *Suite) TestUpdateExecution_ConditionsStateFail() {
 
 	// update with no conditions
 	request := store.UpdateExecutionStateRequest{
-		ExecutionID:   s.execution.ID,
-		ExpectedState: store.ExecutionStateBidAccepted,
-		NewState:      store.ExecutionStatePublishing,
+		ExecutionID:    s.execution.ID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateBidAccepted},
+		NewState:       store.ExecutionStatePublishing,
 	}
 	err = s.executionStore.UpdateExecutionState(ctx, request)
 	s.ErrorAs(err, &store.ErrInvalidExecutionState{})

@@ -396,12 +396,8 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 		return emptyState, store.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
-	if request.ExpectedState != store.ExecutionStateUndefined && localExecutionState.State != request.ExpectedState {
-		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, localExecutionState.State, request.ExpectedState)
-	}
-
-	if request.ExpectedVersion != 0 && localExecutionState.Version != request.ExpectedVersion {
-		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, localExecutionState.Version, request.ExpectedVersion)
+	if err := request.Validate(localExecutionState); err != nil {
+		return emptyState, err
 	}
 
 	if localExecutionState.State.IsTerminal() {

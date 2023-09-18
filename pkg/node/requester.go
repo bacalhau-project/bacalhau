@@ -4,11 +4,13 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
@@ -118,6 +120,12 @@ func NewRequesterNode(
 		}),
 	)
 
+	// node selector
+	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
+		NodeDiscoverer: nodeDiscoveryChain,
+		NodeRanker:     nodeRankerChain,
+	})
+
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
 		VisibilityTimeout:    requesterConfig.EvalBrokerVisibilityTimeout,
@@ -165,19 +173,24 @@ func NewRequesterNode(
 	}
 
 	// scheduler provider
+	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
+		JobStore:      jobStore,
+		Planner:       planners,
+		NodeSelector:  nodeSelector,
+		RetryStrategy: retryStrategy,
+	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
-		model.JobTypeBatch: scheduler.NewBatchJobScheduler(scheduler.BatchJobSchedulerParams{
-			JobStore:       jobStore,
-			Planner:        planners,
-			NodeDiscoverer: nodeDiscoveryChain,
-			NodeRanker:     nodeRankerChain,
-			RetryStrategy:  retryStrategy,
+		models.JobTypeBatch:   batchServiceJobScheduler,
+		models.JobTypeService: batchServiceJobScheduler,
+		models.JobTypeOps: scheduler.NewOpsJobScheduler(scheduler.OpsJobSchedulerParams{
+			JobStore:     jobStore,
+			Planner:      planners,
+			NodeSelector: nodeSelector,
 		}),
-		model.JobTypeOps: scheduler.NewOpsJobScheduler(scheduler.OpsJobSchedulerParams{
-			JobStore:       jobStore,
-			Planner:        planners,
-			NodeDiscoverer: nodeDiscoveryChain,
-			NodeRanker:     nodeRankerChain,
+		models.JobTypeDaemon: scheduler.NewDaemonJobScheduler(scheduler.DaemonJobSchedulerParams{
+			JobStore:     jobStore,
+			Planner:      planners,
+			NodeSelector: nodeSelector,
 		}),
 	})
 

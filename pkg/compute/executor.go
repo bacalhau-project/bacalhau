@@ -226,9 +226,12 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 	}
 
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateBidAccepted,
-		NewState:      store.ExecutionStateRunning,
+		ExecutionID: execution.ID,
+		ExpectedStates: []store.LocalExecutionStateType{
+			store.ExecutionStateBidAccepted,
+			store.ExecutionStateRunning, // allow retries during node restarts
+		},
+		NewState: store.ExecutionStateRunning,
 	}); err != nil {
 		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
 		return
@@ -348,9 +351,9 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	if !execution.Job.Task().Publisher.IsEmpty() {
 		operation = "Publishing"
 		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-			ExecutionID:   execution.ID,
-			ExpectedState: expectedState,
-			NewState:      store.ExecutionStatePublishing,
+			ExecutionID:    execution.ID,
+			ExpectedStates: []store.LocalExecutionStateType{expectedState},
+			NewState:       store.ExecutionStatePublishing,
 		}); err != nil {
 			return err
 		}
@@ -364,9 +367,9 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	// mark the execution as completed
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: expectedState,
-		NewState:      store.ExecutionStateCompleted,
+		ExecutionID:    execution.ID,
+		ExpectedStates: []store.LocalExecutionStateType{expectedState},
+		NewState:       store.ExecutionStateCompleted,
 	}); err != nil {
 		return err
 	}
