@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -108,13 +109,20 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("could not get server version")
+			// Fail silently
 		} else {
 			versions.ServerVersion = serverVersion
 			columns = append(columns, serverVersionColumn)
 		}
 	}
 
-	checkForUpdates(ctx, versions.ClientVersion.GitVersion)
+	// Assuming versions.ServerVersion may be nil if oV.ClientOnly is true
+	var serverVersion string
+	if versions.ServerVersion != nil {
+		serverVersion = versions.ServerVersion.GitVersion
+	}
+
+	checkForUpdates(ctx, versions.ClientVersion.GitVersion, serverVersion)
 
 	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
 }
@@ -124,8 +132,22 @@ type ServerResponse struct {
 	Message string `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentVersion string) {
-	resp, err := http.Get("http://update.bacalhau.org/version")
+func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion string) {
+	// Construct URL with query parameters
+	u, err := url.Parse("http://update.bacalhau.org/version")
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
+		return
+	}
+
+	q := u.Query()
+	q.Set("clientVersion", currentClientVersion)
+	if currentServerVersion != "" {
+		q.Set("serverVersion", currentServerVersion)
+	}
+	u.RawQuery = q.Encode()
+
+	resp, err := http.Get(u.String())
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to fetch the latest version from the server.")
 		return
@@ -145,7 +167,7 @@ func checkForUpdates(ctx context.Context, currentVersion string) {
 		return
 	}
 
-	if currentVersion != serverResponse.Version {
+	if currentClientVersion != serverResponse.Version {
 		fmt.Println(serverResponse.Message)
 	} else {
 		fmt.Println("Your Bacalhau Version is latest")
