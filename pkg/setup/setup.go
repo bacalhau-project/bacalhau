@@ -7,47 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
-// GetBacalhauRepoPath is a helper method that tries to get the repo path from viber,
-// which includes both env variables and command line args, but then falls to the default
-// $HOME/.bacalhau directory is no value was passed.
-func GetBacalhauRepoPath() (string, error) {
-	repoDir, err := config.Get[string]("repo")
-	if err != nil {
-		return "", err
-	}
-	if repoDir != "" {
-		log.Debug().Str("repo", repoDir).Msg("using config[\"repo\"] as bacalhau repo")
-		return repoDir, nil
-	}
-
-	// last is the default, the home directory
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home dir for bacalhau repo: %w", err)
-	}
-	repoDir = filepath.Join(home, ".bacalhau")
-	log.Info().Str("repo", repoDir).Msg("using $HOME for bacalhau repo")
-	return repoDir, nil
-}
-
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
 func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
-	if repoDir == "" {
-		var err error
-		repoDir, err = GetBacalhauRepoPath()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	fsRepo, err := setupRepo(repoDir)
 	if err != nil {
 		return nil, err
