@@ -26,7 +26,7 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // nodes when handling retries:
 // - Rank 30: Node has never executed the job.
 // - Rank 0: Node has already executed the job.
-// - Rank -1: Node has executed the job more than once, has rejected a bid, or produced a invalid result
+// - Rank -1: Node has executed the job more than once or has rejected a bid
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
@@ -56,7 +56,7 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 				reason = "job already executed on this node more than once"
 			} else if _, filterOut := toFilterOut[node.PeerInfo.ID.String()]; filterOut {
 				rank = orchestrator.RankUnsuitable
-				reason = "job rejected or produced invalid result"
+				reason = "job rejected"
 			} else {
 				rank = orchestrator.RankPossible
 				reason = "job already executed on this node"
