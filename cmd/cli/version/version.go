@@ -18,7 +18,10 @@ package version
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -75,10 +78,10 @@ func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 
 	err := oV.Run(ctx, cmd)
 	if err != nil {
-		return fmt.Errorf("error running version: %w", err)
+		log.Ctx(ctx).Error().Err(err).Msgf("error running version")
 	}
 
-	return err
+	return nil
 }
 
 var clientVersionColumn = output.TableColumn[Versions]{
@@ -105,12 +108,48 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("could not get server version")
-			return err
+		} else {
+			versions.ServerVersion = serverVersion
+			columns = append(columns, serverVersionColumn)
 		}
-
-		versions.ServerVersion = serverVersion
-		columns = append(columns, serverVersionColumn)
 	}
 
+	checkForUpdates(ctx, versions.ClientVersion.GitVersion)
+
 	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
+}
+
+type ServerResponse struct {
+	Version string `json:"version"`
+	Message string `json:"message"`
+}
+
+func checkForUpdates(ctx context.Context, currentVersion string) {
+	resp, err := http.Get("http://35.238.214.16/version")
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to fetch the latest version from the server.")
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to read response body.")
+		return
+	}
+
+	var serverResponse ServerResponse
+	err = json.Unmarshal(body, &serverResponse)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to unmarshal the server response.")
+		return
+	}
+
+	if currentVersion != serverResponse.Version {
+		fmt.Println("A new version is available!")
+		fmt.Println("Update by running the following command:")
+		fmt.Println("curl -sL https://get.bacalhau.org/install.sh | bash")
+	} else {
+		fmt.Println(serverResponse.Message)
+	}
 }
