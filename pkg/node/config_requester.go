@@ -5,12 +5,13 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
 )
 
 type RequesterConfigParams struct {
@@ -45,27 +46,18 @@ type RequesterConfig struct {
 	RequesterConfigParams
 }
 
-func NewRequesterConfigWithDefaults() RequesterConfig {
+func NewRequesterConfigWithDefaults() (RequesterConfig, error) {
 	return NewRequesterConfigWith(getRequesterConfigParams())
 }
 
 //nolint:gosimple
-func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfig) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			panic(fmt.Sprintf("Failed to initialize compute config %s", err.Error()))
-		}
-	}()
-
-	err = mergo.Merge(&params, getRequesterConfigParams())
-	if err != nil {
-		return
+func NewRequesterConfigWith(params RequesterConfigParams) (RequesterConfig, error) {
+	if err := mergo.Merge(&params, getRequesterConfigParams()); err != nil {
+		return RequesterConfig{}, fmt.Errorf("creating requester config: %w", err)
 	}
 
 	log.Debug().Msgf("Requester config: %+v", params)
 	return RequesterConfig{
 		RequesterConfigParams: params,
-	}
+	}, nil
 }

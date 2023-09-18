@@ -78,7 +78,7 @@ func Setup(
 ) (*DevStack, error) {
 	stackConfig, err := defaultDevStackConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
 	for _, opt := range opts {
 		opt(stackConfig)
