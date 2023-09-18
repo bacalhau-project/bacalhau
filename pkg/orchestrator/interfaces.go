@@ -99,6 +99,17 @@ type NodeRanker interface {
 	RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]NodeRank, error)
 }
 
+// NodeSelector selects nodes based on their suitability to execute a job.
+type NodeSelector interface {
+	// AllNodes returns all nodes in the network.
+	AllNodes(ctx context.Context) ([]models.NodeInfo, error)
+	// AllMatchingNodes returns all nodes that match the job constrains and selection criteria.
+	AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error)
+	// TopMatchingNodes return the top ranked desiredCount number of nodes that match job constraints
+	// ordered in descending order based on their rank, or error if not enough nodes match.
+	TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error)
+}
+
 type RetryStrategy interface {
 	// ShouldRetry returns true if the job can be retried.
 	ShouldRetry(ctx context.Context, request RetryRequest) bool

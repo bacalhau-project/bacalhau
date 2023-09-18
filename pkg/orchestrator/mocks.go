@@ -354,6 +354,74 @@ func (mr *MockNodeRankerMockRecorder) RankNodes(ctx, job, nodes interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RankNodes", reflect.TypeOf((*MockNodeRanker)(nil).RankNodes), ctx, job, nodes)
 }
 
+// MockNodeSelector is a mock of NodeSelector interface.
+type MockNodeSelector struct {
+	ctrl     *gomock.Controller
+	recorder *MockNodeSelectorMockRecorder
+}
+
+// MockNodeSelectorMockRecorder is the mock recorder for MockNodeSelector.
+type MockNodeSelectorMockRecorder struct {
+	mock *MockNodeSelector
+}
+
+// NewMockNodeSelector creates a new mock instance.
+func NewMockNodeSelector(ctrl *gomock.Controller) *MockNodeSelector {
+	mock := &MockNodeSelector{ctrl: ctrl}
+	mock.recorder = &MockNodeSelectorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockNodeSelector) EXPECT() *MockNodeSelectorMockRecorder {
+	return m.recorder
+}
+
+// AllMatchingNodes mocks base method.
+func (m *MockNodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllMatchingNodes", ctx, job)
+	ret0, _ := ret[0].([]models.NodeInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AllMatchingNodes indicates an expected call of AllMatchingNodes.
+func (mr *MockNodeSelectorMockRecorder) AllMatchingNodes(ctx, job interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).AllMatchingNodes), ctx, job)
+}
+
+// AllNodes mocks base method.
+func (m *MockNodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllNodes", ctx)
+	ret0, _ := ret[0].([]models.NodeInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AllNodes indicates an expected call of AllNodes.
+func (mr *MockNodeSelectorMockRecorder) AllNodes(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllNodes", reflect.TypeOf((*MockNodeSelector)(nil).AllNodes), ctx)
+}
+
+// TopMatchingNodes mocks base method.
+func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TopMatchingNodes", ctx, job, desiredCount)
+	ret0, _ := ret[0].([]models.NodeInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TopMatchingNodes indicates an expected call of TopMatchingNodes.
+func (mr *MockNodeSelectorMockRecorder) TopMatchingNodes(ctx, job, desiredCount interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).TopMatchingNodes), ctx, job, desiredCount)
+}
+
 // MockRetryStrategy is a mock of RetryStrategy interface.
 type MockRetryStrategy struct {
 	ctrl     *gomock.Controller

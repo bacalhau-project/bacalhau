@@ -9,8 +9,9 @@ import (
 )
 
 // existingNodeInfos returns a map of nodeID to NodeInfo for all the nodes that have executions for this job
-func existingNodeInfos(
-	ctx context.Context, nodeDiscoverer orchestrator.NodeDiscoverer, existingExecutions execSet) (map[string]*models.NodeInfo, error) {
+func existingNodeInfos(ctx context.Context,
+	nodeSelector orchestrator.NodeSelector,
+	existingExecutions execSet) (map[string]*models.NodeInfo, error) {
 	out := make(map[string]*models.NodeInfo)
 	if len(existingExecutions) == 0 {
 		return out, nil
@@ -18,8 +19,9 @@ func existingNodeInfos(
 	checked := make(map[string]struct{})
 
 	// TODO: implement a better way to retrieve node info instead of listing all nodes
+	//  Also we should detect if a node is still available, but does not support the job constraints any longer.
 	nodesMap := make(map[string]*models.NodeInfo)
-	discoveredNodes, err := nodeDiscoverer.ListNodes(ctx)
+	discoveredNodes, err := nodeSelector.AllNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
 	}

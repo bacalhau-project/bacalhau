@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -41,6 +42,15 @@ func DefaultsApplier(defaults JobDefaults) Job {
 				task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
 			}
 		}
+		return nil
+	}
+	return JobFn(f)
+}
+
+func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) Job {
+	f := func(ctx context.Context, job *models.Job) error {
+		job.Meta[models.MetaRequesterID] = requesterNodeID
+		job.Meta[models.MetaRequesterPublicKey] = requesterPubKey.String()
 		return nil
 	}
 	return JobFn(f)
