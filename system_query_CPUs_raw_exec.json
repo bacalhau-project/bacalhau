@@ -1,0 +1,16 @@
+{
+  "APIVersion": "v1beta1",
+  "Spec": {
+    "EngineSpec": {
+      "Type": "rawexec",
+      "Params": {
+        "Command": "sysctl",
+        "Args": [
+          "-n",
+          "hw.ncpu"
+        ]
+      }
+    }
+  },
+  "Publisher": "noop"
+}

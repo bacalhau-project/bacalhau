@@ -1,0 +1,17 @@
+{
+  "APIVersion": "v1beta1",
+    "Spec": {
+      "EngineSpec": {
+        "Type": "rawexec",
+        "Params": {
+          "Dir": "/Users/frrist/Workspace/src/github.com/bacalhau-project/bacalhau",
+          "Command": "sqlite3",
+          "Args": [
+          "chinook.db",
+          "select * from Employee limit 10;"
+          ]
+        }
+      }
+    },
+    "Publisher": "noop"
+}

@@ -1,0 +1,18 @@
+{
+  "APIVersion": "v1beta1",
+  "Spec": {
+    "EngineSpec": {
+      "Type": "rawexec",
+      "Params": {
+        "Dir": "/Users/frrist/Workspace/src/github.com/bacalhau-project/bacalhau/bacalhau_results",
+        "Command": "curl",
+        "Args": [
+          "-O",
+          "https://get.bacalhau.org/install.sh",
+          "-o bacalhau_install.sh"
+        ]
+      }
+    }
+  },
+  "Publisher": "noop"
+}
