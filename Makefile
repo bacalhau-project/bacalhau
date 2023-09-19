@@ -187,9 +187,19 @@ build-http-gateway-image:
 
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
+
+# Only tag images with :latest if the release tag is a semver tag (e.g. v0.3.12)
+# and not a commit hash or a release candidate (e.g. v0.3.12-rc1)
+LATEST_TAG :=
+ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BACALHAU_TAG})
+	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
+endif
+
 .PHONY: build-bacalhau-image
 build-bacalhau-image:
 	docker build --progress=plain \
+		--build-arg TAG=${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
 		--tag ${BACALHAU_IMAGE}:latest \
 		--file docker/bacalhau-image/Dockerfile \
 		.
@@ -199,7 +209,8 @@ push-bacalhau-image:
 	docker buildx build --push --progress=plain \
 		--platform linux/amd64,linux/arm64 \
 		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:latest \
+		${LATEST_TAG} \
+		--build-arg TAG=${BACALHAU_TAG} \
 		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--label org.opencontainers.image.version=${BACALHAU_TAG} \
 		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
