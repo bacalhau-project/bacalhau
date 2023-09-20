@@ -222,6 +222,7 @@ module.exports = {
       items: [
         'troubleshooting/debugging',
         'troubleshooting/faqs',   
+        'all-flags',
       ],
     },
     {

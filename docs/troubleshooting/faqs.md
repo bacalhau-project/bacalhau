@@ -51,7 +51,7 @@ Networking is supported by Bacalhau which enables one to run a script that requi
 
 ## How do I see a job’s progress while it’s running?
 
-That's currently not possible
+If your job writes to stdout, or stderr, while it is running, you can view the output with the [logs](https://docs.bacalhau.org/all-flags/#logs) command.
 
 ## How do I get an IPFS peer if I want to start Bacalhau Server?
 
