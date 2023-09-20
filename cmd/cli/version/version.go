@@ -125,11 +125,11 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
         return fmt.Errorf("error getting UserID: %w", err)
     }
 
-    versions.OperatingSystem = runtime.GOOS
-    versions.Architecture = runtime.GOARCH
-    versions.UserID = UserIDStr
+    OperatingSystem := runtime.GOOS
+    Architecture := runtime.GOARCH
+    UserID := UserIDStr
 
-    updateMessage := checkForUpdates(ctx, versions.ClientVersion.GitVersion, "", versions.OperatingSystem, versions.Architecture, versions.UserID)
+    updateMessage := checkForUpdates(ctx, versions.ClientVersion.GitVersion, "", OperatingSystem, Architecture, UserID)
 
     // Print the update message only if --output flag is not used
     if oV.OutputOpts.Format == output.TableFormat {
@@ -144,29 +144,27 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 
 
 type ServerResponse struct {
-	Version *model.BuildVersionInfo `json:"version"`
+	Version *models.BuildVersionInfo `json:"version"`
 	Message string `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion *model.BuildVersionInfo, userID string) string {
-    os := currentClientVersion.GOOS
-    arch := currentClientVersion.GOARCH
-	u, err := url.Parse("http://update.bacalhau.org/version")
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
-		return ""
-	}
+func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion, operatingSystem, architecture, userID string) string {
+    u, err := url.Parse("http://update.bacalhau.org/version")
+    if err != nil {
+        log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
+        return ""
+    }
 
-	q := u.Query()
-	q.Set("clientVersion", currentClientVersion)
-	if currentServerVersion != "" {
-		q.Set("serverVersion", currentServerVersion)
-	}
-	q.Set("operatingSystem", os)
-	q.Set("architecture", arch)
-	q.Set("userID", userID)
+    q := u.Query()
+    q.Set("clientVersion", currentClientVersion)
+    if currentServerVersion != "" {
+        q.Set("serverVersion", currentServerVersion)
+    }
+    q.Set("operatingSystem", operatingSystem)
+    q.Set("architecture", architecture)
+    q.Set("userID", userID)
 
-	u.RawQuery = q.Encode()
+    u.RawQuery = q.Encode()
 
 	resp, err := http.Get(u.String())
 	if err != nil {
