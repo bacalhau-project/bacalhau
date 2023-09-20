@@ -107,6 +107,7 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/dylibso/observe-sdk/go v0.0.0-20230909191205-476cdaaa9ac6 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
@@ -118,6 +119,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab // indirect
 	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -131,6 +133,7 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
+	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"sort"
 
+	"github.com/dylibso/observe-sdk/go/adapter/stdout"
 	"github.com/rs/zerolog"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
@@ -55,6 +56,8 @@ type executionHandler struct {
 
 	// results
 	result *models.RunCommandResult
+
+	adapter *stdout.StdoutAdapter
 }
 
 //nolint:funlen
@@ -77,7 +80,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
-	tracingEngine := tracedRuntime{h.runtime}
+	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: stdout.NewStdoutAdapter()}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", tracingEngine)
 	stdout, stderr := h.logManager.GetWriters()
 	// Configure the modules. We don't want to execute any start functions
@@ -102,6 +105,7 @@ func (h *executionHandler) run(ctx context.Context) {
 
 	h.logger.Info().Msg("instantiating wasm modules")
 	loader := NewModuleLoader(tracingEngine, config, h.inputs...)
+
 	// TODO we have been ignoring errors from this method for ages. Now that we actually check them tests fail! nice..
 	// v1.0.3: https://github.com/bacalhau-project/bacalhau/blob/v1.0.3/pkg/executor/wasm/executor.go#L243
 	// current: https://github.com/bacalhau-project/bacalhau/blob/ff1bd9cb1c09fa3652c4a68943a97476340dbe33/pkg/executor/wasm/executor.go#L216
@@ -171,6 +175,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	// execution has finished and there's nothing else to read from so inform
 	// the logs that it is time to drain any remaining items.
 	h.logManager.Drain()
+
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
 
 	h.result = executor.WriteJobResults(h.resultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.limits)
