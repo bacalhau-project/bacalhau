@@ -155,7 +155,7 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 		res = &models.SpecConfig{
 			Type: models.StorageSourceLocalDirectory,
 			Params: localdirectory.Source{
-				SourcePath: legacy.Path,
+				SourcePath: legacy.SourcePath,
 				ReadWrite:  legacy.ReadWrite,
 			}.ToMap(),
 		}
