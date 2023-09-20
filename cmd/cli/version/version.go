@@ -146,7 +146,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 
 
 type ServerResponse struct {
-	Version string `json:"version"`
+	Version *model.BuildVersionInfo `json:"version"`
 	Message string `json:"message"`
 }
 
