@@ -125,11 +125,9 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
         return fmt.Errorf("error getting UserID: %w", err)
     }
 
-    OperatingSystem := runtime.GOOS
-    Architecture := runtime.GOARCH
     UserID := UserIDStr
 
-    updateMessage := checkForUpdates(ctx, versions.ClientVersion.GitVersion, "", OperatingSystem, Architecture, UserID)
+    updateMessage := checkForUpdates(ctx, versions.ClientVersion, versions.ServerVersion, UserID)
 
     // Print the update message only if --output flag is not used
     if oV.OutputOpts.Format == output.TableFormat {
@@ -148,17 +146,19 @@ type ServerResponse struct {
 	Message string `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion, operatingSystem, architecture, userID string) string {
+func checkForUpdates(ctx context.Context, currentClientVersion , currentServerVersion *models.BuildVersionInfo, userID string) string {
     u, err := url.Parse("http://update.bacalhau.org/version")
+	operatingSystem := runtime.GOOS
+    architecture := runtime.GOARCH
     if err != nil {
         log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
         return ""
     }
 
     q := u.Query()
-    q.Set("clientVersion", currentClientVersion)
-    if currentServerVersion != "" {
-        q.Set("serverVersion", currentServerVersion)
+    q.Set("clientVersion", currentClientVersion.GitVersion)
+    if currentServerVersion.GitVersion != "" {
+        q.Set("serverVersion", currentServerVersion.GitVersion)
     }
     q.Set("operatingSystem", operatingSystem)
     q.Set("architecture", architecture)
