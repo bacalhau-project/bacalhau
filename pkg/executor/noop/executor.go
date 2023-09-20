@@ -69,8 +69,9 @@ type handlerResult struct {
 }
 
 func (e *executionHandler) run(ctx context.Context) {
+	defer close(e.done)
+
 	if e.isEmpty {
-		close(e.done)
 		e.result = &handlerResult{
 			err: nil,
 			result: &models.RunCommandResult{
@@ -85,7 +86,6 @@ func (e *executionHandler) run(ctx context.Context) {
 		return
 	}
 	result, err := e.jobHandler(ctx, e.jobID, e.resultsDir)
-	close(e.done)
 	e.result = &handlerResult{
 		err:    err,
 		result: result,
