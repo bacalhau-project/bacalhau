@@ -1766,17 +1766,17 @@ const docTemplate = `{
                 "PublisherSpec": {
                     "$ref": "#/definitions/model.PublisherSpec"
                 },
-                "Timeout": {
-                    "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
-                    "type": "integer"
-                },
-                "TotalAllocatedResources": {
+                "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.ResourceUsageConfig"
                         }
                     ]
+                },
+                "Timeout": {
+                    "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
+                    "type": "integer"
                 },
                 "Wasm": {
                     "description": "Deprecated: use EngineSpec.",
