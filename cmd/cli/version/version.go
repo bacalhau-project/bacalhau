@@ -150,7 +150,9 @@ type ServerResponse struct {
 	Message string `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion, os, arch, userID string) string {
+func checkForUpdates(ctx context.Context, currentClientVersion, currentServerVersion *model.BuildVersionInfo, userID string) string {
+    os := currentClientVersion.GOOS
+    arch := currentClientVersion.GOARCH
 	u, err := url.Parse("http://update.bacalhau.org/version")
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
