@@ -41,9 +41,7 @@ import (
 type Versions struct {
 	ClientVersion  *models.BuildVersionInfo `json:"clientVersion,omitempty"`
 	ServerVersion  *models.BuildVersionInfo `json:"serverVersion,omitempty"`
-	OperatingSystem string                   `json:"operatingSystem,omitempty"`
-	Architecture    string                   `json:"architecture,omitempty"`
-	UserID          string                   `json:"userID,omitempty"`
+	LatestVersion   *models.BuildVersionInfo `json:"latestVersion,omitempty"`
 	UpdateMessage   string                   `json:"updateMessage,omitempty"`
 }
 
