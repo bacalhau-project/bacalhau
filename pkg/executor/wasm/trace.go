@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"context"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -39,6 +40,15 @@ type tracedFunction struct {
 	traceCtx *observe.TraceCtx
 }
 
+type globalTraceContext struct {
+	lock     sync.Mutex
+	traceCtx *observe.TraceCtx
+}
+
+// TODO(dylibso): hack to get TraceCtx for CompiledModules, this will hold a lock when `CompileModule` is called that is released in `InstantiateModule`
+// the real fix for this is probably to create a `tracedCompiledModule` wrapper type like the ones above
+var lastTraceCtx globalTraceContext
+
 func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Module, error) {
 	t.adapter.Start(ctx)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.Instantiate")
@@ -70,9 +80,6 @@ func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte,
 	return module, err
 }
 
-// TODO(dylibso): hack to get source
-var lastTraceCtx *observe.TraceCtx
-
 func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero.CompiledModule, error) {
 	t.adapter.Start(ctx)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.CompileModule")
@@ -87,7 +94,8 @@ func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
 	}
-	lastTraceCtx = traceCtx
+	lastTraceCtx.lock.Lock()
+	lastTraceCtx.traceCtx = traceCtx
 	return module, err
 }
 
@@ -103,10 +111,9 @@ func (t tracedRuntime) InstantiateModule(
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
-		// TODO(dylibso): figure out how to get source for compiled modules
-		println("XXX Instantiate CompiledModule")
-		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: lastTraceCtx}
+		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: lastTraceCtx.traceCtx}
 	}
+	lastTraceCtx.lock.Unlock()
 	return module, err
 }
 
