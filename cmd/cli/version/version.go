@@ -140,7 +140,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 
 			// Print the update message only if --output flag is not used
 			if oV.OutputOpts.Format == output.TableFormat {
-				fmt.Println(updateCheck.Message)
+				cmd.Println(updateCheck.Message)
 			} else {
 				columns = append(columns, updateMessageColumn)
 			}
