@@ -162,7 +162,7 @@ func checkForUpdates(
 ) (*serverResponse, error) {
 	u, err := url.Parse("http://update.bacalhau.org/version")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse URL")
+		return nil, errors.Wrap(err, "failed to parse URL for update host")
 	}
 
 	q := u.Query()
