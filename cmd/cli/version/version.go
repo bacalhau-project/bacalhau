@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,9 +22,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"runtime"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -39,10 +39,10 @@ import (
 )
 
 type Versions struct {
-	ClientVersion  *models.BuildVersionInfo `json:"clientVersion,omitempty"`
-	ServerVersion  *models.BuildVersionInfo `json:"serverVersion,omitempty"`
-	LatestVersion   *models.BuildVersionInfo `json:"latestVersion,omitempty"`
-	UpdateMessage   string                   `json:"updateMessage,omitempty"`
+	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
+	LatestVersion *models.BuildVersionInfo `json:"latestVersion,omitempty"`
+	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
 type VersionOptions struct {
@@ -60,9 +60,10 @@ func NewCmd() *cobra.Command {
 	oV := NewVersionOptions()
 
 	versionCmd := &cobra.Command{
-		Use:   "version",
-		Short: "Get the client and server version.",
-		Args:  cobra.NoArgs,
+		Use:    "version",
+		Short:  "Get the client and server version.",
+		Args:   cobra.NoArgs,
+		PreRun: util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := runVersion(cmd, oV); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -96,95 +97,106 @@ var serverVersionColumn = output.TableColumn[Versions]{
 	Value:        func(v Versions) string { return v.ServerVersion.GitVersion },
 }
 
+var latestVersionColumn = output.TableColumn[Versions]{
+	ColumnConfig: table.ColumnConfig{Name: "latest"},
+	Value:        func(v Versions) string { return v.LatestVersion.GitVersion },
+}
+
 var updateMessageColumn = output.TableColumn[Versions]{
 	ColumnConfig: table.ColumnConfig{Name: "Update Message"},
 	Value:        func(v Versions) string { return v.UpdateMessage },
 }
 
 func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
-    var (
-        versions Versions
-        columns  []output.TableColumn[Versions]
-    )
+	var (
+		versions Versions
+		columns  []output.TableColumn[Versions]
+	)
 
-    versions.ClientVersion = version.Get()
-    columns = append(columns, clientVersionColumn)
+	versions.ClientVersion = version.Get()
+	columns = append(columns, clientVersionColumn)
 
-    if !oV.ClientOnly {
-        serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
-        if err != nil {
-            return fmt.Errorf("error running version: %w", err)
-        }
+	if !oV.ClientOnly {
+		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
+		if err != nil {
+			return fmt.Errorf("error running version: %w", err)
+		}
 
-        versions.ServerVersion = serverVersion
-        columns = append(columns, serverVersionColumn)
-    }
+		versions.ServerVersion = serverVersion
+		columns = append(columns, serverVersionColumn)
 
-    UserIDStr, err := config.GetClientID()
-    if err != nil {
-        return fmt.Errorf("error getting UserID: %w", err)
-    }
+		clientID, err := config.GetClientID()
+		if err != nil {
+			return fmt.Errorf("error getting UserID: %w", err)
+		}
 
-    UserID := UserIDStr
+		updateCheck, err := checkForUpdates(ctx, versions.ClientVersion, versions.ServerVersion, clientID)
+		if err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("Failed to perform update check")
+		} else {
+			versions.UpdateMessage = updateCheck.Message
+			versions.LatestVersion = updateCheck.Version
+			columns = append(columns, latestVersionColumn)
 
-    updateMessage := checkForUpdates(ctx, versions.ClientVersion, versions.ServerVersion, UserID)
+			// Print the update message only if --output flag is not used
+			if oV.OutputOpts.Format == output.TableFormat {
+				fmt.Println(updateCheck.Message)
+			} else {
+				columns = append(columns, updateMessageColumn)
+			}
+		}
+	}
 
-    // Print the update message only if --output flag is not used
-    if oV.OutputOpts.Format == output.TableFormat {
-        fmt.Println(updateMessage)
-    } else {
-        versions.UpdateMessage = updateMessage
-        columns = append(columns, updateMessageColumn)
-    }
-
-    return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
+	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
 }
 
-
-type ServerResponse struct {
+type serverResponse struct {
 	Version *models.BuildVersionInfo `json:"version"`
-	Message string `json:"message"`
+	Message string                   `json:"message"`
 }
 
-func checkForUpdates(ctx context.Context, currentClientVersion , currentServerVersion *models.BuildVersionInfo, userID string) string {
-    u, err := url.Parse("http://update.bacalhau.org/version")
-	operatingSystem := runtime.GOOS
-    architecture := runtime.GOARCH
-    if err != nil {
-        log.Ctx(ctx).Error().Err(err).Msg("Failed to parse URL.")
-        return ""
-    }
-
-    q := u.Query()
-    q.Set("clientVersion", currentClientVersion.GitVersion)
-    if currentServerVersion.GitVersion != "" {
-        q.Set("serverVersion", currentServerVersion.GitVersion)
-    }
-    q.Set("operatingSystem", operatingSystem)
-    q.Set("architecture", architecture)
-    q.Set("userID", userID)
-
-    u.RawQuery = q.Encode()
-
-	resp, err := http.Get(u.String())
+func checkForUpdates(
+	ctx context.Context,
+	currentClientVersion, currentServerVersion *models.BuildVersionInfo,
+	clientID string,
+) (*serverResponse, error) {
+	u, err := url.Parse("http://update.bacalhau.org/version")
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to fetch the latest version from the server.")
-		return ""
+		return nil, errors.Wrap(err, "failed to parse URL")
+	}
+
+	q := u.Query()
+	q.Set("clientVersion", currentClientVersion.GitVersion)
+	if currentServerVersion.GitVersion != "" {
+		q.Set("serverVersion", currentServerVersion.GitVersion)
+	}
+	q.Set("operatingSystem", currentClientVersion.GOOS)
+	q.Set("architecture", currentClientVersion.GOARCH)
+	q.Set("userID", clientID)
+
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build HTTP request")
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch the latest version from the server")
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to read response body.")
-		return ""
+		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
-	var serverResponse ServerResponse
-	err = json.Unmarshal(body, &serverResponse)
+	var updateCheck serverResponse
+	err = json.Unmarshal(body, &updateCheck)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to unmarshal the server response.")
-		return ""
+		return nil, errors.Wrap(err, "failed to unmarshal the server response")
 	}
 
-	return serverResponse.Message
+	return &updateCheck, nil
 }
