@@ -129,6 +129,7 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)
 	defer span.End()
+	defer t.adapter.Stop(true)
 	defer t.traceCtx.Finish()
 
 	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.Function.Call(ctx, params...))
@@ -143,6 +144,7 @@ func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error
 	)
 	defer span.End()
 	defer t.traceCtx.Finish()
+	defer t.adapter.Stop(true)
 	return telemetry.RecordErrorOnSpan(span)(t.Function.CallWithStack(ctx, stack))
 }
 
@@ -153,7 +155,6 @@ func (t tracedRuntime) NewHostModuleBuilder(moduleName string) wazero.HostModule
 }
 
 func (t tracedRuntime) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
-	t.adapter.Stop(true)
 	return t.Runtime.CloseWithExitCode(ctx, exitCode)
 }
 
@@ -162,7 +163,6 @@ func (t tracedRuntime) Module(moduleName string) api.Module {
 }
 
 func (t tracedRuntime) Close(ctx context.Context) error {
-	t.adapter.Stop(true)
 	return t.Runtime.Close(ctx)
 }
 
@@ -199,10 +199,11 @@ func (t tracedModule) ExportedGlobal(name string) api.Global {
 }
 
 func (t tracedModule) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
+	t.traceCtx.Finish()
 	return t.Module.CloseWithExitCode(ctx, exitCode)
 }
 
 func (t tracedModule) Close(ctx context.Context) error {
-	// t.traceCtx.Finish()
+	t.traceCtx.Finish()
 	return t.Module.Close(ctx)
 }
