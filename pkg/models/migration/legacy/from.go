@@ -1,6 +1,7 @@
 package legacy
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -117,6 +118,10 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 	var res *models.SpecConfig
 	switch legacy.StorageSource {
 	case model.StorageSourceIPFS:
+		if legacy.CID == "" {
+			return nil, errors.New("invalid legacy storage spec - missing CID")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceIPFS,
 			Params: ipfs_storage.Source{
@@ -124,6 +129,10 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			}.ToMap(),
 		}
 	case model.StorageSourceURLDownload:
+		if legacy.URL == "" {
+			return nil, errors.New("invalid legacy storage spec - missing URL")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceURL,
 			Params: urldownload.Source{
@@ -131,6 +140,10 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			}.ToMap(),
 		}
 	case model.StorageSourceRepoClone:
+		if legacy.Repo == "" {
+			return nil, errors.New("invalid legacy storage spec - missing Repo")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceRepoClone,
 			Params: repo.Source{
@@ -138,6 +151,10 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			}.ToMap(),
 		}
 	case model.StorageSourceRepoCloneLFS:
+		if legacy.Repo == "" {
+			return nil, errors.New("invalid legacy storage spec - missing Repo")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceRepoCloneLFS,
 			Params: repo.Source{
@@ -145,6 +162,10 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			}.ToMap(),
 		}
 	case model.StorageSourceInline:
+		if legacy.URL == "" {
+			return nil, errors.New("invalid legacy storage spec - missing URL")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceInline,
 			Params: inline.Source{
@@ -152,14 +173,22 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			}.ToMap(),
 		}
 	case model.StorageSourceLocalDirectory:
+		if legacy.SourcePath == "" {
+			return nil, errors.New("invalid legacy storage spec - missing SourcePath")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceLocalDirectory,
 			Params: localdirectory.Source{
-				SourcePath: legacy.Path,
+				SourcePath: legacy.SourcePath,
 				ReadWrite:  legacy.ReadWrite,
 			}.ToMap(),
 		}
 	case model.StorageSourceS3:
+		if legacy.S3 == nil {
+			return nil, errors.New("invalid legacy storage spec - missing S3 details")
+		}
+
 		res = &models.SpecConfig{
 			Type: models.StorageSourceS3,
 			Params: s3helper.SourceSpec{
