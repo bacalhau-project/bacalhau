@@ -210,24 +210,22 @@ func (s *ExecutorBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalExecutionState) error {
+func (s *ExecutorBuffer) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) error {
 	// TODO: Enqueue cancel tasks
+
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
+	defer span.End()
+
 	execution := localExecutionState.Execution
-	go func() {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Job.ID)
-		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
-		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
-		defer span.End()
 
-		err := s.delegateService.Cancel(ctx, localExecutionState)
-		if err == nil {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+	err := s.delegateService.Cancel(ctx, localExecutionState)
+	if err == nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
-			delete(s.running, execution.ID)
-		}
-	}()
+		delete(s.running, execution.ID)
+	}
+
 	return nil
 }
 
