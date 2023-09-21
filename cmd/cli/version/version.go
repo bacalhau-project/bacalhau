@@ -195,7 +195,7 @@ func checkForUpdates(
 	var updateCheck serverResponse
 	err = json.Unmarshal(body, &updateCheck)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal the server response")
+		return nil, errors.Wrap(err, "failed to unmarshal the server response when checking for updates")
 	}
 
 	return &updateCheck, nil
