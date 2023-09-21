@@ -127,7 +127,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 
 		clientID, err := config.GetClientID()
 		if err != nil {
-			return fmt.Errorf("error getting UserID: %w", err)
+			return fmt.Errorf("error getting client ID: %w", err)
 		}
 
 		updateCheck, err := checkForUpdates(ctx, versions.ClientVersion, versions.ServerVersion, clientID)
