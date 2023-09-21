@@ -178,7 +178,7 @@ func checkForUpdates(
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build HTTP request")
+		return nil, errors.Wrap(err, "failed to build HTTP request for update check")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
