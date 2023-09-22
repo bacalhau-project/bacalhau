@@ -102,6 +102,12 @@ def test_init_config():
     assert isinstance(conf, Configuration)
     assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
 
+    os.environ["BACALHAU_HTTPS"] = "1"
+    conf = init_config()
+    assert isinstance(conf, Configuration)
+    assert conf.host == "https://bootstrap.production.bacalhau.org:1234"
+    os.environ["BACALHAU_HTTPS"]
+
     os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
     os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
