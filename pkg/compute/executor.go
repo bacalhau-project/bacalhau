@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type BaseExecutorParams struct {
@@ -35,27 +34,28 @@ type BaseExecutorParams struct {
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID               string
-	callback         Callback
-	store            store.ExecutionStore
-	cancellers       generic.SyncMap[string, context.CancelFunc]
-	Storages         storage.StorageProvider
-	executors        executor.ExecutorProvider
-	publishers       publisher.PublisherProvider
-	resultsPath      ResultsPath
-	failureInjection model.FailureInjectionComputeConfig
+	ID                       string
+	callback                 Callback
+	store                    store.ExecutionStore
+	Storages                 storage.StorageProvider
+	executors                executor.ExecutorProvider
+	publishers               publisher.PublisherProvider
+	resultsPath              ResultsPath
+	failureInjection         model.FailureInjectionComputeConfig
+	debugCancelledExecutions map[string]struct{}
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:               params.ID,
-		callback:         params.Callback,
-		store:            params.Store,
-		Storages:         params.Storages,
-		executors:        params.Executors,
-		publishers:       params.Publishers,
-		failureInjection: params.FailureInjectionConfig,
-		resultsPath:      params.ResultsPath,
+		ID:                       params.ID,
+		callback:                 params.Callback,
+		store:                    params.Store,
+		Storages:                 params.Storages,
+		executors:                params.Executors,
+		publishers:               params.Publishers,
+		failureInjection:         params.FailureInjectionConfig,
+		resultsPath:              params.ResultsPath,
+		debugCancelledExecutions: make(map[string]struct{}),
 	}
 }
 
@@ -421,6 +421,9 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 // Cancel the execution.
 func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionState) (err error) {
 	execution := state.Execution
+
+	e.debugCancelledExecutions[execution.ID] = struct{}{}
+
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, state, err, "Canceling")
@@ -448,26 +451,35 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 }
 
 func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
-	// execution := state.Execution
-	// log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
-	// updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-	// 	ExecutionID: execution.ID,
-	// 	NewState:    store.ExecutionStateFailed,
-	// 	Comment:     err.Error(),
-	// })
+	execution := state.Execution
 
-	// if updateError != nil {
-	// 	log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
-	// } else {
-	// 	e.callback.OnComputeFailure(ctx, ComputeError{
-	// 		ExecutionMetadata: NewExecutionMetadata(execution),
-	// 		RoutingMetadata: RoutingMetadata{
-	// 			SourcePeerID: e.ID,
-	// 			TargetPeerID: state.RequesterNodeID,
-	// 		},
-	// 		Err: err.Error(),
-	// 	})
-	// }
+	_, found := e.debugCancelledExecutions[execution.ID]
+	if found {
+		fmt.Println("~~~~~~~~")
+		fmt.Println("NOT handling failure as execution was cancelled")
+		fmt.Println("~~~~~~~~")
+		return
+	}
+
+	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
+	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		ExecutionID: execution.ID,
+		NewState:    store.ExecutionStateFailed,
+		Comment:     err.Error(),
+	})
+
+	if updateError != nil {
+		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+	} else {
+		e.callback.OnComputeFailure(ctx, ComputeError{
+			ExecutionMetadata: NewExecutionMetadata(execution),
+			RoutingMetadata: RoutingMetadata{
+				SourcePeerID: e.ID,
+				TargetPeerID: state.RequesterNodeID,
+			},
+			Err: err.Error(),
+		})
+	}
 }
 
 // compile-time interface check
