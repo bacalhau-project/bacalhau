@@ -448,26 +448,26 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 }
 
 func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
-	execution := state.Execution
-	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
-	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID: execution.ID,
-		NewState:    store.ExecutionStateFailed,
-		Comment:     err.Error(),
-	})
+	// execution := state.Execution
+	// log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
+	// updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	// 	ExecutionID: execution.ID,
+	// 	NewState:    store.ExecutionStateFailed,
+	// 	Comment:     err.Error(),
+	// })
 
-	if updateError != nil {
-		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
-	} else {
-		e.callback.OnComputeFailure(ctx, ComputeError{
-			ExecutionMetadata: NewExecutionMetadata(execution),
-			RoutingMetadata: RoutingMetadata{
-				SourcePeerID: e.ID,
-				TargetPeerID: state.RequesterNodeID,
-			},
-			Err: err.Error(),
-		})
-	}
+	// if updateError != nil {
+	// 	log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+	// } else {
+	// 	e.callback.OnComputeFailure(ctx, ComputeError{
+	// 		ExecutionMetadata: NewExecutionMetadata(execution),
+	// 		RoutingMetadata: RoutingMetadata{
+	// 			SourcePeerID: e.ID,
+	// 			TargetPeerID: state.RequesterNodeID,
+	// 		},
+	// 		Err: err.Error(),
+	// 	})
+	// }
 }
 
 // compile-time interface check
