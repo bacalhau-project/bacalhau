@@ -453,11 +453,10 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
 	execution := state.Execution
 
+	// If there was a call to cancel for this execution, then we must NOT
+	// record a failure as it may trigger a race condition.
 	_, found := e.debugCancelledExecutions[execution.ID]
 	if found {
-		fmt.Println("~~~~~~~~")
-		fmt.Println("NOT handling failure as execution was cancelled")
-		fmt.Println("~~~~~~~~")
 		return
 	}
 
