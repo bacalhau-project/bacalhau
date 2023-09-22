@@ -35,6 +35,6 @@ However this is just the tip of the iceberg, there are more usecases where Bacal
 
 ## Research
 
-Finally, we see Protocol Labs as a research lab, where YOUR ideas can become technologies that have a real impact on the world.
+Finally, we see Expanso as a research lab, where YOUR ideas can become technologies that have a real impact on the world.
 
-If you're interested in contributing to our research, please reach out to [research@bacalhau.org](mailto:research@bacalhau.org) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.
+If you're interested in contributing, please reach out to [contribute@bacalhau.org](mailto:contribute@bacalhau.org) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.
