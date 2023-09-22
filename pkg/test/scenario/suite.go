@@ -145,7 +145,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	}
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()

@@ -129,7 +129,7 @@ func getClient() *client.APIClient {
 	if err != nil {
 		panic(err)
 	}
-	return client.NewAPIClient(hostStr, uint16(apiport))
+	return client.NewAPIClient(client.NoTLS, hostStr, uint16(apiport))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
