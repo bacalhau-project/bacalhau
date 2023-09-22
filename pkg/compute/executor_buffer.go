@@ -212,19 +212,16 @@ func (s *ExecutorBuffer) deque() {
 
 func (s *ExecutorBuffer) Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) error {
 	// TODO: Enqueue cancel tasks
-
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 	defer span.End()
 
-	execution := localExecutionState.Execution
-
-	err := s.delegateService.Cancel(ctx, localExecutionState)
-	if err == nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
-		delete(s.running, execution.ID)
+	if err := s.delegateService.Cancel(ctx, localExecutionState); err != nil {
+		return err
 	}
+
+	s.mu.Lock()
+	delete(s.running, localExecutionState.Execution.ID)
+	s.mu.Unlock()
 
 	return nil
 }
