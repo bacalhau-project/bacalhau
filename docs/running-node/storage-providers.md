@@ -30,30 +30,42 @@ The multiaddress above is just an example - you'll need to get the multiaddress 
 
 :::
 
-You can then configure your bacalhau node to use this IPFS server by passing the `--ipfs-connect` argument to the `serve` command:
+You can then configure your Bacalhau node to use this IPFS server by passing the `--ipfs-connect` argument to the `serve` command:
 
 ```bash
-bacalhau serve \
-  --ipfs-connect $IPFS_CONNECT
+bacalhau serve --ipfs-connect $IPFS_CONNECT
 ```
+
+Or, set the `Node.IPFS.Connect` property in the Bacalhau configuration file.
 
 ## Publishers
 
-### Estuary
-
-[Estuary](https://estuary.tech/) gives an accessible API for adding content to both IPFS and Filecoin.
-
-You can configure your bacalhau node to use Estuary by passing the `--estuary-api-key` argument to the `serve` command:
-
-```bash
-bacalhau serve \
-  --estuary-api-key XXX
-```
-
-To get an API key for estuary, you'll need to [register an account](https://estuary.tech/) and then [create an api key](https://estuary.tech/api-admin).
-
 ### IPFS
 
-The IPFS publisher works using the same setup as above - you'll need to have an IPFS server running, a multiaddress for it. You'll then you pass that multiaddress using the `--ipfs-connect` argument to the `serve` command.
+The IPFS publisher works using the same setup as above - you'll need to have an
+IPFS server running and a multiaddress for it. You'll then you pass that
+multiaddress using the `--ipfs-connect` argument to the `serve` command.
 
-The IPFS publisher will be used as the default if there is no Estuary API Key configured.
+If you are publishing to a public IPFS node, you can use `bacalhau get` with no
+further arguments to download the results. However, you may experience a delay
+in results becoming available as indexing of new data by public nodes takes
+time.
+
+To speed up the download or to retrieve results from a private IPFS node, pass
+the swarm multiaddress to `bacalhau get` to download results.
+
+```bash
+# Set the below environment variable, use the --ipfs-swarm-addrs flag,
+# or set the Node.IPFS.SwarmAddresses config property.
+export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/.../tcp/5001/p2p/Qmy...
+bacalhau get $JOB_ID
+```
+
+Pass the swarm key to `bacalhau get` if the IPFS swarm is a private swarm.
+
+```bash
+# Set the below environment variable, use the --ipfs-swarm-key flag,
+# or set the Node.IPFS.SwarmKeyPath config property.
+export BACALHAU_IPFS_SWARM_KEY=./path/to/swarm.key
+bacalhau get $JOB_ID
+```

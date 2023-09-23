@@ -320,36 +320,24 @@ The instructions to run a job are the same as the insecure version, [please foll
 
 ### Retrieve the Results on the Private Network (Secure)
 
-It is not yet possible to retrieve the results from a secure IPFS node because Bacalhau does not yet support the IPFS swarm key. To retrieve the results you must use the IPFS command or container with the CID.
+The same process as above can be used to retrieve results from the IPFS node as long as the Bacalhau `get` command
+has access to the IPFS swarm key.
 
-First, obtain the CID from the Bacalhau job. The following parses the JSON output of the Bacalhau job to get the CID using `jq`:
+Running the Bacalhau binary from outside of Docker:
 
 ```bash
-export CID=$(bacalhau --api-host=localhost list $JOB_ID --output json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID')
+bacalhau --api-host=localhost --ipfs-swarm-addrs=$SWARM_ADDR --ipfs-swarm-key=$(pwd)/ipfs/swarm.key get $JOB_ID
 ```
 
-Next, use the IPFS CLI, using the admin RPC API, to retrieve the results:
+Alternatively, you can use the Docker container, mount the results volume, and change the `--api-host` to the name of the Bacalhau container and the `--ipfs-swarm-addrs` back to port 4001:
 
 ```bash
-rm -rf results && mkdir results && \
-    ipfs --api /ip4/127.0.0.1/tcp/5001 get $CID --output $(pwd)/results
-```
-
-Alternatively, you can use the information contained within the `ipfs` directory to point you to the admin RPC port:
-
-```bash
-IPFS_PATH=$(pwd)/ipfs ipfs get $CID --output $(pwd)/results
-```
-
-If you exported that environmental variable, that's probably a bit easier to use.
-
-And finally, you could also use the IPFS container to retrieve the results from the admin API:
-
-```bash
-rm -rf results && mkdir results && \
-    docker run -t --rm --network=bacalhau-network \
-        -v $(pwd)/results:/results \
-        ipfs/kubo:latest --api /dns4/ipfs_host/tcp/5001 get --output=/results $CID
+mkdir results && \
+docker run -t --rm --network=bacalhau-network \
+    -v $(pwd)/results:/results \
+    -v $(pwd)/ipfs:/ipfs \
+    ghcr.io/bacalhau-project/bacalhau:latest \
+    get --api-host=bacalhau --ipfs-swarm-addrs=/dns4/bacalhau/tcp/4001/p2p/$SWARM_ID --ipfs-swarm-key=/ipfs/swarm.key --output-dir=/results $JOB_ID
 ```
 
 ## Common Prerequisites
