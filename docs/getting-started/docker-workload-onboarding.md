@@ -18,8 +18,7 @@ You can check out this example tutorial on [how to work with custom containers i
 ## Requirements
 Here are a few things to note before getting started:
 * You must publish the container to a public container registry that is accessible from the Bacalhau network
-* Bacalhau supports only `amd64` images. Does not support `arm64` images
-* Containers must have an `x86_64` CPU architecture
+* Bacalhau supports only images that match the architecture of the host node. Typically, most nodes run `linux/amd64` so containers in `arm64` format are not able to run.
 * The `--input ipfs://...` flag does not support CID subpaths only **directories**
 * The `--input https://...` flag does not support URL directories only **single files** only
 * The `--input s3://...` flag does support S3 keys and prefixes. e.g. `s3://bucket/logs-2023-04*` for all April 2023 logs
@@ -36,7 +35,7 @@ You can check to see a [list of example public containers](https://github.com/or
 
 To help provide a safe, secure network for all users, we add the following runtime restrictions:
 
-- All ingress/egress networking is disabled. You won't be able to pull `data/code/weights/` etc from an external source
+- All ingress/egress networking is limited, as described in the [networking](../next-steps/networking.md) documentation. You won't be able to pull `data/code/weights/` etc from an external source
 - Data passing is implemented with Docker volumes, using [Bacalhau's input/output volumes](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes)
 
 
@@ -72,7 +71,7 @@ If you haven't already, you'll need to [build your image](https://docs.docker.co
 
 :::caution
 
-All Bacalhau nodes are of an `x86_64` architecture, therefore containers must be built for [`x86_64` systems](#what-containers-to-use).
+Most Bacalhau nodes are of an `x86_64` architecture, therefore containers should be built for [`x86_64` systems](#what-containers-to-use).
 
 :::
 
