@@ -118,6 +118,7 @@ spec:
         image: ubuntu
         entryPoint:
             - echo
+        parameters:
             - Hello
             - World
     outputs:
@@ -144,7 +145,8 @@ An example UCAN Invocation that runs the same job as the above example would loo
   "with": "ubuntu",
   "do": "docker/run",
   "inputs": {
-    "entrypoint": ["echo", "hello", "world"],
+    "entrypoint": ["echo"],
+    "parameters": ["hello", "world"],
     "workdir": "/",
     "mounts": {},
     "outputs": {

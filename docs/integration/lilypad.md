@@ -149,8 +149,8 @@ Here's an example JSON job specification for the Stable Diffusion job:
   "PublisherSpec": { "Type": "estuary" },
   "Docker": {
     "Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-    "Entrypoint": [
-      "python",
+    "Entrypoint": ["python"],
+    "Parameters": [
       "main.py",
       "--o",
       "./outputs",
@@ -175,7 +175,8 @@ string constant specStart = '{'
     '"PublisherSpec": {"Type": "estuary"},'
     '"Docker": {'
     '"Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",'
-    '"Entrypoint": ["python", "main.py", "--o", "./outputs", "--p", "';
+    '"Entrypoint": ["python"],
+    '"Parameters": ["main.py", "--o", "./outputs", "--p", "';
 
 string constant specEnd =
     '"]},'
@@ -266,7 +267,8 @@ contract MyContract is LilypadCallerInterface {
       '"PublisherSpec": {"Type": "estuary"},'
       '"Docker": {'
       '"Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",'
-      '"Entrypoint": ["python", "main.py", "--o", "./outputs", "--p", "';
+      '"Entrypoint": ["python"],
+      '"Parameters": ["main.py", "--o", "./outputs", "--p", "';
 
   string constant specEnd =
       '"]},'
@@ -327,4 +329,3 @@ The Lilypad Events contract - used for triggering compute jobs on Bacalhau, is c
 | Polygon Mainnet (coming soon)          |                                            | see [https://chainlist.org/chain/137](https://chainlist.org/chain/137)                                                                                                                                                                                                             | 137 (0x89)          | [https://polygonscan.com/](https://polygonscan.com/)                                                                                                                                                                       | Requires MATIC tokens                                                                                                                                                                                        |
 | Optimism (coming soon)                 |                                            | see [https://chainlist.org/chain/10](https://chainlist.org/chain/10)                                                                                                                                                                                                               | 10(0xa)             |                                                                                                                                                                                                                            | Requires OP tokens                                                                                                                                                                                           |
 | Arbitrum One (coming soon)             |                                            | see [https://chainlist.org/chain/42161](https://chainlist.org/chain/42161)                                                                                                                                                                                                         | 42161 (0xa4b1)      |                                                                                                                                                                                                                            | Requires ARB tokens                                                                                                                                                                                          |
-

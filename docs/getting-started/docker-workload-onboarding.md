@@ -99,6 +99,13 @@ $ docker run --rm \
   ${CMD}
 ```
 
+:::tip
+
+Bacalhau will use the [default ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint)
+if your image contains one. To override it, pass `--entrypoint` to `bacalhau docker run`.
+
+:::
+
 For example:
 
 ```shell

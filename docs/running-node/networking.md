@@ -84,7 +84,7 @@ You can use the `--host` flag to restrict network access to the REST API.
 You can call [http://dashboard.bacalhau.org:1000/api/v1/run](http://dashboard.bacalhau.org:1000/api/v1/run) with the POST body as a JSON serialized spec
 
 ```bash
-curl -XPOST -d '{"Engine": "Docker", "Docker": {"Image": "ubuntu", "Entrypoint": ["echo", "hello"]}, "Deal": {"Concurrency": 1}, "Verifier": "Noop", "PublisherSpec":{"Type":"IPFS"}}' 'http://dashboard.bacalhau.org:1000/api/v1/run';
+curl -XPOST -d '{"Engine": "Docker", "Docker": {"Image": "ubuntu", "Entrypoint": ["echo"], "Parameters": ["hello"]}, "Deal": {"Concurrency": 1}, "Verifier": "Noop", "PublisherSpec":{"Type":"IPFS"}}' 'http://dashboard.bacalhau.org:1000/api/v1/run';
 ```
 
 Once you run the command above, you'll get a CID output:
