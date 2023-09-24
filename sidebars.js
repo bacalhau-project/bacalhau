@@ -193,6 +193,7 @@ module.exports = {
         'running-node/test-network',
         'running-node/gpu',
         'running-node/persistence',
+        'running-node/configuring-tls',
         'running-node/windows-support',
         'running-node/observability'
       ],
