@@ -71,7 +71,7 @@ This repository comprises four directories and seven files:
 
 ## Configuring a Bacalhau Node
 
-Within a `.bacalhau` repository, a `config.yaml` file may be present. This file serves as the configuration source for the bacalhau node and adheres to the YAML format. 
+Within a `.bacalhau` repository, a `config.yaml` file may be present. This file serves as the configuration source for the bacalhau node and adheres to the YAML format.
 
 **Note:** On the initialization of a new `.bacalhau` repository, Bacalhau will generate a `config.yaml` file. However, if Bacalhau is opening an existing repository, it will not create this file if it's absent.
 
@@ -86,11 +86,19 @@ Modifications to the `config.yaml` file will not be dynamically loaded by the Ba
 
 ### Relationship Between `config.yaml` and Bacalhau Environment Variables
 
-Bacalhau establishes a direct relationship between the leaf keys within the `config.yaml` file and corresponding environment variables. For leaf keys, the environment variable name is constructed by capitalizing each segment of the key, and then joining them with underscores, prefixed with `BACALHAU_`. 
+Bacalhau establishes a direct relationship between the value-bearing keys within the `config.yaml` file and corresponding environment variables. For these keys that have no further sub-keys, the environment variable name is constructed by capitalizing each segment of the key, and then joining them with underscores, prefixed with `BACALHAU_`.
 
-For example, a YAML leaf key with the path `Node.Ipfs.Connect` translates to the environment variable `BACALHAU_NODE_IPFS_CONNECT`. 
+For example, a YAML key with the path `Node.IPFS.Connect` translates to the environment variable `BACALHAU_NODE_IPFS_CONNECT` and is represented in a file like:
 
-It's important to emphasize that this transformation applies exclusively to leaf keys. Nodes with nested values within the `config.yaml` are not represented as environment variables in this manner.
+```yaml
+Node:
+    IPFS:
+        Connect: value
+```
+
+There is no corresponding environment variable for either `Node` or `Node.IPFS`.
+Config values may also have other environment variables that set them for
+simplicity or to maintain backwards compatibility.
 
 ### Environments
 
@@ -141,7 +149,7 @@ It's important to emphasize that this transformation applies exclusively to leaf
 ### How to initialize a Bacalhau Server for a local private network
 
 ```
-$ env BACALHAU_ENVIRONMENT=local ./bin/darwin_arm64/bacalhau serve 
+$ env BACALHAU_ENVIRONMENT=local ./bin/darwin_arm64/bacalhau serve
 INF pkg/repo/fs.go:187 > Initializing repo at '/Users/frrist/.bacalhau' for environment 'local'
 ```
 
@@ -167,4 +175,3 @@ $ env LOG_LEVEL=debug ./bin/darwin_arm64/bacalhau serve
 DBG pkg/system/environment.go:53 > Defaulting to production environment: os.Args: [./bin/darwin_arm64/bacalhau serve]
 
 ```
-
