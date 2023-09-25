@@ -146,6 +146,18 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Topic Guides',
+      link: {
+        type: 'doc',
+        id: 'topic-guides/index',
+      },
+      collapsed: true,
+      items: [
+        'topic-guides/job-types'
+      ],
+    },    
+    {
+      type: 'category',
       label: 'Data Ingestion',
       link: {
         type: 'generated-index',
