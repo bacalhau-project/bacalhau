@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -34,28 +35,28 @@ type BaseExecutorParams struct {
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID                       string
-	callback                 Callback
-	store                    store.ExecutionStore
-	Storages                 storage.StorageProvider
-	executors                executor.ExecutorProvider
-	publishers               publisher.PublisherProvider
-	resultsPath              ResultsPath
-	failureInjection         model.FailureInjectionComputeConfig
-	debugCancelledExecutions map[string]struct{}
+	ID                  string
+	callback            Callback
+	store               store.ExecutionStore
+	Storages            storage.StorageProvider
+	executors           executor.ExecutorProvider
+	publishers          publisher.PublisherProvider
+	resultsPath         ResultsPath
+	failureInjection    model.FailureInjectionComputeConfig
+	cancelledExecutions generic.SyncMap[string, struct{}]
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:                       params.ID,
-		callback:                 params.Callback,
-		store:                    params.Store,
-		Storages:                 params.Storages,
-		executors:                params.Executors,
-		publishers:               params.Publishers,
-		failureInjection:         params.FailureInjectionConfig,
-		resultsPath:              params.ResultsPath,
-		debugCancelledExecutions: make(map[string]struct{}),
+		ID:                  params.ID,
+		callback:            params.Callback,
+		store:               params.Store,
+		Storages:            params.Storages,
+		executors:           params.Executors,
+		publishers:          params.Publishers,
+		failureInjection:    params.FailureInjectionConfig,
+		resultsPath:         params.ResultsPath,
+		cancelledExecutions: generic.SyncMap[string, struct{}]{},
 	}
 }
 
@@ -284,6 +285,8 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	operation := "Running"
 	defer func() {
+		// Speculative deletion
+		e.cancelledExecutions.Delete(state.Execution.ID)
 		if err != nil {
 			e.handleFailure(ctx, state, err, operation)
 		}
@@ -313,6 +316,16 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	result, err := e.Wait(ctx, state)
 	if err != nil {
+
+		_, found := e.cancelledExecutions.Get(state.Execution.ID)
+		if found {
+			log.Ctx(ctx).
+				Debug().
+				Str("execution", execution.ID).
+				Msg("error from Wait() after call to Cancel()")
+			return nil
+		}
+
 		if errors.Is(err, context.DeadlineExceeded) {
 			// TODO(forrest) [correctness]:
 			// This is a special case for now. The ExecutorBuffer is using a context with a timeout to signal
@@ -422,8 +435,6 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionState) (err error) {
 	execution := state.Execution
 
-	e.debugCancelledExecutions[execution.ID] = struct{}{}
-
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, state, err, "Canceling")
@@ -436,6 +447,8 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 	if err != nil {
 		return err
 	}
+
+	e.cancelledExecutions.Put(execution.ID, struct{}{})
 	if err := exe.Cancel(ctx, execution.ID); err != nil {
 		return err
 	}
@@ -452,13 +465,6 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 
 func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
 	execution := state.Execution
-
-	// If there was a call to cancel for this execution, then we must NOT
-	// record a failure as it may trigger a race condition.
-	_, found := e.debugCancelledExecutions[execution.ID]
-	if found {
-		return
-	}
 
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
