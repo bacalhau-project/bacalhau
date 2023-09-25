@@ -14,12 +14,12 @@ import (
 
 type ResourcesConfig struct {
 	// CPU https://github.com/BTBurke/k8sresource string
-	CPU string
+	CPU string `json:"CPU,omitempty"`
 	// Memory github.com/c2h5oh/datasize string
-	Memory string
+	Memory string `json:"Memory,omitempty"`
 	// Memory github.com/c2h5oh/datasize string
-	Disk string
-	GPU  string
+	Disk string `json:"Disk,omitempty"`
+	GPU  string `json:"GPU,omitempty"`
 }
 
 // Normalize normalizes the resources
@@ -149,13 +149,13 @@ func (r *ResourcesConfigBuilder) BuildOrDie() *ResourcesConfig {
 
 type Resources struct {
 	// CPU units
-	CPU float64
+	CPU float64 `json:"CPU,omitempty"`
 	// Memory in bytes
-	Memory uint64
+	Memory uint64 `json:"Memory,omitempty"`
 	// Disk in bytes
-	Disk uint64
+	Disk uint64 `json:"Disk,omitempty"`
 	// GPU units
-	GPU uint64
+	GPU uint64 `json:"GPU,omitempty"`
 }
 
 // Copy returns a deep copy of the resources
@@ -276,7 +276,7 @@ func (r *Resources) String() string {
 // AllocatedResources is the set of resources to be used by an execution, which
 // maybe be resources allocated to a single task or a set of tasks in the future.
 type AllocatedResources struct {
-	Tasks map[string]*Resources
+	Tasks map[string]*Resources `json:"Tasks"`
 }
 
 func (a *AllocatedResources) Copy() *AllocatedResources {

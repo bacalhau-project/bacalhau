@@ -59,12 +59,12 @@ func (n NodeInfo) IsComputeNode() bool {
 }
 
 type ComputeNodeInfo struct {
-	ExecutionEngines   []string
-	Publishers         []string
-	StorageSources     []string
-	MaxCapacity        Resources
-	AvailableCapacity  Resources
-	MaxJobRequirements Resources
-	RunningExecutions  int
-	EnqueuedExecutions int
+	ExecutionEngines   []string  `json:"ExecutionEngines"`
+	Publishers         []string  `json:"Publishers"`
+	StorageSources     []string  `json:"StorageSources"`
+	MaxCapacity        Resources `json:"MaxCapacity"`
+	AvailableCapacity  Resources `json:"AvailableCapacity"`
+	MaxJobRequirements Resources `json:"MaxJobRequirements"`
+	RunningExecutions  int       `json:"RunningExecutions"`
+	EnqueuedExecutions int       `json:"EnqueuedExecutions"`
 }

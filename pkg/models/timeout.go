@@ -13,7 +13,7 @@ import (
 type TimeoutConfig struct {
 	// ExecutionTimeout is the maximum amount of time a task is allowed to run in seconds.
 	// Zero means no timeout, such as for a daemon task.
-	ExecutionTimeout int64
+	ExecutionTimeout int64 `json:"ExecutionTimeout,omitempty"`
 }
 
 // GetExecutionTimeout returns the execution timeout duration

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ghodss/yaml"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 type OutputFormat string
@@ -83,7 +83,12 @@ func OutputNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOptions
 		}
 		return encoder.Encode(items)
 	case YAMLFormat:
-		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(items)
+		b, err := yaml.Marshal(items)
+		if err != nil {
+			return err
+		}
+		_, err = cmd.OutOrStdout().Write(b)
+		return err
 	default:
 		return fmt.Errorf("invalid format %q", options.Format)
 	}
@@ -108,7 +113,12 @@ func OutputOneNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOpti
 		}
 		return encoder.Encode(item)
 	case YAMLFormat:
-		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(item)
+		b, err := yaml.Marshal(item)
+		if err != nil {
+			return err
+		}
+		_, err = cmd.OutOrStdout().Write(b)
+		return err
 	default:
 		return fmt.Errorf("invalid format %q", options.Format)
 	}
