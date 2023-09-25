@@ -80,7 +80,7 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
-	}), nil
+	})
 }
 
 func getNodeType() (requester, compute bool, err error) {

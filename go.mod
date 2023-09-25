@@ -24,7 +24,7 @@ require (
 	github.com/hashicorp/go-plugin v1.4.10
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/imdario/mergo v0.3.16
-	github.com/invopop/jsonschema v0.7.0
+	github.com/invopop/jsonschema v0.9.0
 	github.com/ipfs/boxo v0.10.2
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-ipld-format v0.5.0
@@ -74,9 +74,9 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.40.0
 	go.opentelemetry.io/otel/trace v1.17.0
 	go.ptx.dk/multierrgroup v0.0.3
-	go.uber.org/mock v0.2.0
+	go.uber.org/mock v0.3.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.25.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.11.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	k8s.io/apimachinery v0.28.1
@@ -102,6 +102,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.13.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.21.5 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -130,8 +132,9 @@ require (
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
@@ -202,7 +205,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.2.0 // indirect
-	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect

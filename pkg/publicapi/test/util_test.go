@@ -39,13 +39,16 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 
 	computeConfig, err := node.NewComputeConfigWithDefaults()
 	require.NoError(t, err)
+	requesterConfig, err := node.NewRequesterConfigWithDefaults()
+	require.NoError(t, err)
+
 	nodeConfig := node.NodeConfig{
 		CleanupManager:            cm,
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
 		ComputeConfig:             computeConfig,
-		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
+		RequesterNodeConfig:       requesterConfig,
 		APIServerConfig:           apiCfg,
 		IsRequesterNode:           true,
 		IsComputeNode:             true,

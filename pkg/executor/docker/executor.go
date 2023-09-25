@@ -112,38 +112,51 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		Str("jobID", request.JobID).
 		Msg("starting execution")
 
-	if handler, found := e.handlers.Get(request.ExecutionID); found {
-		if handler.active() {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
-		} else {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
-		}
-	}
+	// It's possible that this is being called due to a restart. Whilst we check the handlers to see
+	// if we already have a running execution, this map will be empty on a compute node restart. As
+	// a result we need to explicitly ask docker if there is a running container with the relevant
+	// bacalhau execution label _before_ we do anything else.  If we are able to find one then we
+	// will use that container in the executionHandler that we create.
+	containerID, err := e.FindRunningContainer(ctx, request.ExecutionID)
 
-	jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
-		ExecutionID:   request.ExecutionID,
-		JobID:         request.JobID,
-		EngineSpec:    request.EngineParams,
-		NetworkConfig: request.Network,
-		Resources:     request.Resources,
-		Inputs:        request.Inputs,
-		Outputs:       request.Outputs,
-		ResultsDir:    request.ResultsDir,
-	})
 	if err != nil {
-		return fmt.Errorf("failed to create docker job container: %w", err)
+		// Unable to find a running container for this execution, we will instead check for a handler, and
+		// failing that will create a new containe.
+		if handler, found := e.handlers.Get(request.ExecutionID); found {
+			if handler.active() {
+				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
+			} else {
+				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
+			}
+		}
+
+		jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
+			ExecutionID:   request.ExecutionID,
+			JobID:         request.JobID,
+			EngineSpec:    request.EngineParams,
+			NetworkConfig: request.Network,
+			Resources:     request.Resources,
+			Inputs:        request.Inputs,
+			Outputs:       request.Outputs,
+			ResultsDir:    request.ResultsDir,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create docker job container: %w", err)
+		}
+
+		containerID = jobContainer.ID
 	}
 
 	handler := &executionHandler{
 		client: e.client,
 		logger: log.With().
-			Str("container", jobContainer.ID).
+			Str("container", containerID).
 			Str("execution", request.ExecutionID).
 			Str("job", request.JobID).
 			Logger(),
 		ID:          e.ID,
 		executionID: request.ExecutionID,
-		containerID: jobContainer.ID,
+		containerID: containerID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
 		keepStack:   config.ShouldKeepStack(),
@@ -424,3 +437,10 @@ func labelExecutionValue(executorID string, executionID string) string {
 
 // Compile-time interface check:
 var _ executor.Executor = (*Executor)(nil)
+
+// FindRunningContainer, not part of the Executor interface, is a utility function that
+// helps locate a container durin a restart check.
+func (e *Executor) FindRunningContainer(ctx context.Context, executionID string) (string, error) {
+	labelValue := labelExecutionValue(e.ID, executionID)
+	return e.client.FindContainer(ctx, labelExecutionID, labelValue)
+}

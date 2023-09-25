@@ -10,11 +10,13 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/pbnjay/memory"
+	"github.com/ricochet2200/go-disk-usage/du"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/pbnjay/memory"
-	"github.com/ricochet2200/go-disk-usage/du"
 )
 
 type GPU struct {
@@ -67,26 +69,35 @@ func numSystemGPUs() (uint64, error) {
 	return uint64(len(gpus)), err
 }
 
-// nvidiaCLI is the path to the Nvidia helper binary
-const nvidiaCLI = "nvidia-smi"
-
-// nvidiaCLIArgs is the args we pass the nvidiaCLI
-var nvidiaCLIArgs = []string{
-	"--query-gpu=index,gpu_name,memory.total",
-	"--format=csv,noheader,nounits",
-}
+// TODO(forrest) consider switching to: https://github.com/NVIDIA/gpu-monitoring-tools
+const (
+	// nvidiaCLI is the path to the Nvidia helper binary
+	nvidiaCLI = "nvidia-smi"
+	// nvidiaCLIArgs is the args we pass the nvidiaCLI
+	nvidiaCLIQueryArg  = "--query-gpu=index,gpu_name,memory.total"
+	nvidiaCLIFormatArg = "--format=csv,noheader,nounits"
+)
 
 func GetSystemGPUs() ([]GPU, error) {
 	nvidiaPath, err := exec.LookPath(nvidiaCLI)
 	if err != nil {
 		// If the NVIDIA CLI is not installed, we can't know the number of GPUs.
 		// It is not an error to assume zero.
+		log.Info().Msgf("cannot inspect system GPUs: %s not installed. GPUs will not be used.", nvidiaCLI)
 		return []GPU{}, nil
 	}
-	cmd := exec.Command(nvidiaPath, nvidiaCLIArgs...)
+	cmd := exec.Command(nvidiaPath, nvidiaCLIQueryArg, nvidiaCLIFormatArg)
 	resp, err := cmd.Output()
 	if err != nil {
-		return []GPU{}, err
+		// we won't error here since some hosts may have nvidia-smi installed but in a misconfigured state
+		// e.g. their drivers are missing, the smi can't communicate with the drivers, etc.
+		// instead we provide a warning show the args to the command we tried and its response
+		// motivation: https://expanso.atlassian.net/browse/GDAY-90
+		log.Warn().Err(err).
+			Str("command", fmt.Sprintf("%s %s %s", nvidiaCLI, nvidiaCLIQueryArg, nvidiaCLIFormatArg)).
+			Str("response", string(resp)).
+			Msgf("inspecting system GPUs failed")
+		return []GPU{}, nil
 	}
 
 	return parseNvidiaCliOutput(bytes.NewReader(resp))

@@ -40,7 +40,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	OverAskForBidsFactor:               3,
 
 	MinBacalhauVersion: models.BuildVersionInfo{
-		Major: "0", Minor: "3", GitVersion: "v0.3.26",
+		Major: "1", Minor: "0", GitVersion: "v1.0.4",
 	},
 
 	EvalBrokerVisibilityTimeout:    60 * time.Second,
@@ -63,7 +63,7 @@ var TestRequesterConfig = RequesterConfigParams{
 	OverAskForBidsFactor:               3,
 
 	MinBacalhauVersion: models.BuildVersionInfo{
-		Major: "0", Minor: "3", GitVersion: "v0.3.26",
+		Major: "1", Minor: "0", GitVersion: "v1.0.4",
 	},
 
 	EvalBrokerVisibilityTimeout:    5 * time.Second,
