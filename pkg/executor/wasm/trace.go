@@ -9,7 +9,7 @@ import (
 
 	// "github.com/dylibso/observe-sdk/go"
 	observe "github.com/dylibso/observe-sdk/go"
-	"github.com/dylibso/observe-sdk/go/adapter/stdout"
+	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -23,20 +23,20 @@ var _ api.Module = tracedModule{}
 // tracedRuntime wraps a 'real' wazero.Runtime so that important events like compiling modules can be easily traced.
 type tracedRuntime struct {
 	wazero.Runtime
-	adapter *stdout.StdoutAdapter
+	adapter *opentelemetry.OTelAdapter
 }
 
 // tracedModule wraps a 'real' wazero api.Module so that function calls made to the module can be easily traced.
 type tracedModule struct {
 	api.Module
-	adapter  *stdout.StdoutAdapter
+	adapter  *opentelemetry.OTelAdapter
 	traceCtx *observe.TraceCtx
 }
 
 // tracedFunction wraps a 'real' wazero api.Function so that calls to the function can be easily traced.
 type tracedFunction struct {
 	api.Function
-	adapter  *stdout.StdoutAdapter
+	adapter  *opentelemetry.OTelAdapter
 	traceCtx *observe.TraceCtx
 }
 
@@ -129,7 +129,7 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)
 	defer span.End()
-	defer t.adapter.Stop(true)
+	defer t.adapter.StopWithContext(ctx, true)
 	defer t.traceCtx.Finish()
 
 	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.Function.Call(ctx, params...))

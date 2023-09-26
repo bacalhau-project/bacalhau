@@ -8,7 +8,7 @@ import (
 	"io/fs"
 	"sort"
 
-	"github.com/dylibso/observe-sdk/go/adapter/stdout"
+	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
 	"github.com/rs/zerolog"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
@@ -57,7 +57,7 @@ type executionHandler struct {
 	// results
 	result *models.RunCommandResult
 
-	adapter *stdout.StdoutAdapter
+	adapter *opentelemetry.OTelAdapter
 }
 
 //nolint:funlen
@@ -80,7 +80,10 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
-	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: stdout.NewStdoutAdapter()}
+	otelConfig := &opentelemetry.OTelConfig{}
+	// TODO(dylibso): configure otel endpoint
+
+	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: opentelemetry.NewOTelAdapter(otelConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", tracingEngine)
 	stdout, stderr := h.logManager.GetWriters()
 	// Configure the modules. We don't want to execute any start functions
