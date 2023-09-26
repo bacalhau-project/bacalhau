@@ -852,12 +852,7 @@ workflows:
             # only run on tags that look like release tags e.g. v0.1.2 or
             # v0.1.3alpha19 (actually v0.1.3anything...)
             only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
-    - build_jsonschema_job:
-        name: run-jsonschema-gen-<< pipeline.git.branch >>
-        requires:
-        - build-linux-amd64
-        filters:
-          !!merge <<: *filters_tags_only
+
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
