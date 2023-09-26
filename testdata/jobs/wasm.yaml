@@ -1,11 +1,11 @@
-name: Wasm Job
-type: batch
-count: 1
-tasks:
-  - name: main
-    engine:
-      type: wasm
-      params:
+Name: Wasm Job
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: wasm
+      Params:
         EntryModule:
           Alias: ""
           Source:

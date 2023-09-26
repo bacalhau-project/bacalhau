@@ -1,28 +1,28 @@
 package models
 
 type PlanExecutionDesiredUpdate struct {
-	Execution    *Execution
-	DesiredState ExecutionDesiredStateType
-	Comment      string
+	Execution    *Execution                `json:"Execution"`
+	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
+	Comment      string                    `json:"Comment,omitempty"`
 }
 
 // Plan holds actions as a result of processing an evaluation by the scheduler.
 type Plan struct {
-	EvalID      string
-	EvalReceipt string
+	EvalID      string `json:"EvalID"`
+	EvalReceipt string `json:"EvalReceipt"`
 	// TODO: passing the evalID should be enough once we persist evaluations
-	Eval     *Evaluation
-	Priority int
+	Eval     *Evaluation `json:"Eval,omitempty"`
+	Priority int         `json:"Priority"`
 
-	Job *Job
+	Job *Job `json:"Job,omitempty"`
 
-	DesiredJobState JobStateType
-	Comment         string
+	DesiredJobState JobStateType `json:"DesiredJobState,omitempty"`
+	Comment         string       `json:"Comment,omitempty"`
 
 	// NewExecutions holds the executions to be created.
-	NewExecutions []*Execution
+	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
 
-	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate
+	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate `json:"UpdatedExecutions,omitempty"`
 }
 
 // NewPlan creates a new Plan instance.

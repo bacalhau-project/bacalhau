@@ -10,9 +10,9 @@ import (
 
 type ResultPath struct {
 	// Name
-	Name string
+	Name string `json:"Name"`
 	// The path to the file/dir
-	Path string
+	Path string `json:"Path"`
 }
 
 // Normalize normalizes the path to a canonical form
