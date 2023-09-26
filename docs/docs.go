@@ -1930,34 +1930,34 @@ const docTemplate = `{
         "models.ComputeNodeInfo": {
             "type": "object",
             "properties": {
-                "availableCapacity": {
+                "AvailableCapacity": {
                     "$ref": "#/definitions/models.Resources"
                 },
-                "enqueuedExecutions": {
+                "EnqueuedExecutions": {
                     "type": "integer"
                 },
-                "executionEngines": {
+                "ExecutionEngines": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "maxCapacity": {
+                "MaxCapacity": {
                     "$ref": "#/definitions/models.Resources"
                 },
-                "maxJobRequirements": {
+                "MaxJobRequirements": {
                     "$ref": "#/definitions/models.Resources"
                 },
-                "publishers": {
+                "Publishers": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "runningExecutions": {
+                "RunningExecutions": {
                     "type": "integer"
                 },
-                "storageSources": {
+                "StorageSources": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -2004,19 +2004,19 @@ const docTemplate = `{
         "models.Resources": {
             "type": "object",
             "properties": {
-                "cpu": {
+                "CPU": {
                     "description": "CPU units",
                     "type": "number"
                 },
-                "disk": {
+                "Disk": {
                     "description": "Disk in bytes",
                     "type": "integer"
                 },
-                "gpu": {
+                "GPU": {
                     "description": "GPU units",
                     "type": "integer"
                 },
-                "memory": {
+                "Memory": {
                     "description": "Memory in bytes",
                     "type": "integer"
                 }
