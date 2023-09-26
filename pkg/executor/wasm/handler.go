@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"sort"
+	"time"
 
 	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
 	"github.com/rs/zerolog"
@@ -56,8 +57,6 @@ type executionHandler struct {
 
 	// results
 	result *models.RunCommandResult
-
-	adapter *opentelemetry.OTelAdapter
 }
 
 //nolint:funlen
@@ -80,10 +79,20 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
-	otelConfig := &opentelemetry.OTelConfig{}
-	// TODO(dylibso): configure otel endpoint
+	conf := &opentelemetry.OTelConfig{
+		ServiceName:        "bacalhau",
+		EmitTracesInterval: time.Second * 1,
+		TraceBatchMax:      100,
+		Endpoint:           "localhost:4317",
+		Protocol:           opentelemetry.GRPC,
+		AllowInsecure:      true, // for localhost in dev via http
+	}
+	// TODO(dylibso): make endpoint configurable
+	adapter := opentelemetry.NewOTelAdapter(conf)
+	adapter.Start(ctx)
+	defer adapter.StopWithContext(ctx, true)
 
-	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: opentelemetry.NewOTelAdapter(otelConfig)}
+	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: adapter}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", tracingEngine)
 	stdout, stderr := h.logManager.GetWriters()
 	// Configure the modules. We don't want to execute any start functions
