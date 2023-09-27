@@ -1,0 +1,15 @@
+[Unit]
+Description=Bacalhau Application
+After=network.target
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+WorkingDirectory={{ ansible_env.HOME }}/bacalhau/bin/linux_amd64
+ExecStart={{ ansible_env.HOME }}/bacalhau/bin/linux_amd64/bacalhau serve
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

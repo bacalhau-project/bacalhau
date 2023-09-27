@@ -1,24 +1,46 @@
 - name: Deploy Golang App
   hosts: local
   tasks:
+  - name: Ensure git is installed
+    become: yes
+    apt:
+      name: git
+      state: present
+    when: ansible_os_family == "Debian"
+
   - name: Ensure Golang is installed
+    become: yes
     apt:
       name: golang
       state: present
     when: ansible_os_family == "Debian"
 
   - name: Set GOPATH
+    become: yes
+    become_user: frrist
     set_fact:
       GOPATH: "{{ ansible_env.HOME }}/go"
 
-  - name: Build the Golang App
-    command:
-      cmd: "go build -o myapp ./path/to/your/app/source"
-      chdir: "{{ ansible_env.HOME }}/your_app_directory"
+  - name: Clone the repository
+    become: yes
+    become_user: frrist
+    git:
+      repo: 'https://github.com/bacalhau-project/bacalhau.git'
+      dest: "{{ ansible_env.HOME }}/bacalhau"
+      version: "{{ git_branch }}"
+      clone: yes
+      update: yes
 
-  - name: Ensure the app is running
+  - name: Build the Golang App
+    become: yes
+    become_user: frrist
     command:
-      cmd: "{{ ansible_env.HOME }}/your_app_directory/myapp"
-      chdir: "{{ ansible_env.HOME }}/your_app_directory"
-    async: 10
-    poll: 0
+      cmd: "make"
+      chdir: "{{ ansible_env.HOME }}/bacalhau"
+
+  - name: Deploy bacalhau systemd service file from template
+    become: yes
+    template:
+      src: "{{ ansible_env.HOME }}/bacalhau/ops/ansible/services/bacalhau.service.j2"
+      dest: /etc/systemd/system/bacalhau.service
+      mode: '0644'
