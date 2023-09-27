@@ -5,11 +5,14 @@ package requester
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
@@ -31,8 +34,8 @@ import (
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
-var executionErr = errors.New("I am a bad executor")
-var publishErr = errors.New("I am a bad publisher")
+var errExecution = errors.New("I am a bad executor")
+var errPublish = errors.New("I am a bad publisher")
 var slowExecutorSleep = 5 * time.Second
 var goodExecutorSleep = 250 * time.Millisecond // force bad executors to finish first to have more predictable tests
 
@@ -73,7 +76,7 @@ func (s *RetriesSuite) SetupSuite() {
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
 					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-						JobHandler: noop_executor.ErrorJobHandler(executionErr),
+						JobHandler: noop_executor.ErrorJobHandler(errExecution),
 					},
 				}),
 			},
@@ -85,7 +88,7 @@ func (s *RetriesSuite) SetupSuite() {
 			DependencyInjector: node.NodeDependencyInjector{
 				PublishersFactory: devstack.NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{
 					ExternalHooks: noop_publisher.PublisherExternalHooks{
-						PublishResult: noop_publisher.ErrorResultPublisher(publishErr),
+						PublishResult: noop_publisher.ErrorResultPublisher(errPublish),
 					},
 				}),
 			},
@@ -170,110 +173,123 @@ func (s *RetriesSuite) TestRetry() {
 		concurrency             int
 		failed                  bool // whether the job should fail
 		expectedJobState        model.JobStateType
-		expectedExecutionStates map[model.ExecutionStateType]int
+		expectedStateCount      IntMatch
+		expectedExecutionStates map[model.ExecutionStateType]IntMatch
 		expectedExecutionErrors map[model.ExecutionStateType]string
 	}{
 		{
-			name:  "bid-rejected-succeed-with-retry-on-good-nodes",
-			nodes: []string{"bid-rejector", "good-guy1"},
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted:         1,
-				model.ExecutionStateAskForBidRejected: 1,
+			name:               "bid-rejected-succeed-with-retry-on-good-nodes",
+			nodes:              []string{"bid-rejector", "good-guy1"},
+			expectedStateCount: NewIntMatch(2),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateCompleted:         NewIntMatch(1),
+				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
 			},
 		},
 		{
-			name:   "bid-rejected-no-good-nodes",
-			nodes:  []string{"bid-rejector"},
-			failed: true,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateAskForBidRejected: 1,
+			name:               "bid-rejected-no-good-nodes",
+			nodes:              []string{"bid-rejector"},
+			failed:             true,
+			expectedStateCount: NewIntMatch(1),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
 			},
 		},
 		{
-			name:  "execution-failure-succeed-with-retry-on-good-nodes",
-			nodes: []string{"bad-executor", "good-guy1"},
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 1,
-				model.ExecutionStateFailed:    1,
+			name:               "execution-failure-succeed-with-retry-on-good-nodes",
+			nodes:              []string{"bad-executor", "good-guy1"},
+			expectedStateCount: NewIntMatch(2),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateCompleted: NewIntMatch(1),
+				model.ExecutionStateFailed:    NewIntMatch(1),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed: executionErr.Error(),
+				model.ExecutionStateFailed: errExecution.Error(),
 			},
 		},
 		{
-			name:   "execution-failure-no-good-nodes",
-			nodes:  []string{"bad-executor"},
-			failed: true,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateFailed: 2, // we retry up to two times on the same node
+			name:               "execution-failure-no-good-nodes",
+			nodes:              []string{"bad-executor"},
+			failed:             true,
+			expectedStateCount: NewIntMatch(1),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateFailed: NewIntMatch(2), // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed: executionErr.Error(),
+				model.ExecutionStateFailed: errExecution.Error(),
 			},
 		},
 		{
-			name:  "publish-failure-succeed-with-retry-on-good-nodes",
-			nodes: []string{"bad-publisher", "good-guy1"},
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 1,
-				model.ExecutionStateFailed:    1,
+			name:               "publish-failure-succeed-with-retry-on-good-nodes",
+			nodes:              []string{"bad-publisher", "good-guy1"},
+			expectedStateCount: NewIntMatch(2),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateCompleted: NewIntMatch(1),
+				model.ExecutionStateFailed:    NewIntMatch(1),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed: publishErr.Error(),
+				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:   "publish-failure-no-good-nodes",
-			nodes:  []string{"bad-publisher"},
-			failed: true,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateFailed: 2,
+			name:               "publish-failure-no-good-nodes",
+			nodes:              []string{"bad-publisher"},
+			failed:             true,
+			expectedStateCount: NewIntMatch(1),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateFailed: NewIntMatch(2),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed: publishErr.Error(),
+				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:             "publish-partial-failure",
-			nodes:            []string{"bad-publisher", "good-guy1"},
-			concurrency:      2,
-			failed:           true,
-			expectedJobState: model.JobStateError,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCancelled: 1, // we cancel the good-guy1 if the two attempts on bad-publisher fail
-				model.ExecutionStateFailed:    2, // we retry up to two times on the same node
+			name:               "publish-partial-failure",
+			nodes:              []string{"bad-publisher", "good-guy1"},
+			concurrency:        2,
+			failed:             true,
+			expectedJobState:   model.JobStateError,
+			expectedStateCount: NewIntMatch(2),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				// we cancel the good-guy1 if the two attempts on bad-publisher fail but it may
+				// have completed so we will allow 0,1 cancelled and 0,1 completed
+				model.ExecutionStateCancelled: NewIntMatch(0, 1),
+				model.ExecutionStateCompleted: NewIntMatch(0, 1),
+				model.ExecutionStateFailed:    NewIntMatch(2), // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed: publishErr.Error(),
+				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:             "cancel-slow-executor-on-failure",
-			nodes:            []string{"slow-executor", "bad-executor"},
-			concurrency:      2,
-			failed:           true,
-			expectedJobState: model.JobStateError,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateFailed:    2, // we retry up to two times on the same node
-				model.ExecutionStateCancelled: 1,
+			name:               "cancel-slow-executor-on-failure",
+			nodes:              []string{"slow-executor", "bad-executor"},
+			concurrency:        2,
+			failed:             true,
+			expectedJobState:   model.JobStateError,
+			expectedStateCount: NewIntMatch(2),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateFailed:    NewIntMatch(2), // we retry up to two times on the same node
+				model.ExecutionStateCancelled: NewIntMatch(1),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed:    executionErr.Error(),
+				model.ExecutionStateFailed:    errExecution.Error(),
 				model.ExecutionStateCancelled: "overall job has failed",
 			},
 		},
 		{
-			name:        "multiple-failures-succeed-with-retry-on-good-nodes",
-			nodes:       []string{"bid-rejector", "bad-executor", "good-guy1", "good-guy2"},
-			concurrency: 2,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateAskForBidRejected: 1,
-				model.ExecutionStateFailed:            1,
-				model.ExecutionStateCompleted:         2,
+			name:               "multiple-failures-succeed-with-retry-on-good-nodes",
+			nodes:              []string{"bid-rejector", "bad-executor", "good-guy1", "good-guy2"},
+			concurrency:        2,
+			expectedStateCount: NewIntMatch(3),
+			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
+				model.ExecutionStateFailed:            NewIntMatch(1),
+				model.ExecutionStateCompleted:         NewIntMatch(2),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed:    executionErr.Error(),
-				model.ExecutionStateCancelled: executionErr.Error(),
+				model.ExecutionStateFailed:    errExecution.Error(),
+				model.ExecutionStateCancelled: errExecution.Error(),
 			},
 		},
 	}
@@ -284,20 +300,22 @@ func (s *RetriesSuite) TestRetry() {
 			j := makeBadTargetingJob(s.T(), tc.nodes)
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
 			submittedJob, err := s.client.Submit(ctx, j)
+			s.Require().NoError(err)
+
 			if tc.failed {
-				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
+				s.Require().Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			} else {
-				s.NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
+				s.Require().NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			}
-			s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
+			s.Require().NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 
 			jobState, err := s.stateResolver.GetJobState(ctx, submittedJob.ID())
 			if len(tc.expectedExecutionStates) == 0 {
 				// no job state is expected to exist for this scenario
-				s.Error(err)
+				s.Require().Error(err)
 				return
 			}
-			s.NoError(err)
+			s.Require().NoError(err)
 
 			// verify job state
 			if tc.expectedJobState.IsUndefined() {
@@ -307,21 +325,23 @@ func (s *RetriesSuite) TestRetry() {
 					tc.expectedJobState = model.JobStateCompleted
 				}
 			}
-			s.Equal(tc.expectedJobState, jobState.State,
+			s.Require().Equal(tc.expectedJobState, jobState.State,
 				"Expected job in state %s, found %s", tc.expectedJobState.String(), jobState.State.String())
 
 			// verify execution states
 			executionStates := jobState.GroupExecutionsByState()
-			s.Equal(len(tc.expectedExecutionStates), len(executionStates))
-			for state, count := range tc.expectedExecutionStates {
-				s.Equal(count, len(executionStates[state]),
-					"Expected %d executions in state %s, found %d", count, state.String(), len(executionStates[state]))
+			s.Require().True(tc.expectedStateCount.Match(len(executionStates)), "Expected %s, got %d", tc.expectedStateCount.String(), len(executionStates))
+
+			for state, matcher := range tc.expectedExecutionStates {
+				// Does the number of states match one of the values in the IntMatch
+				s.Require().True(matcher.Match(len(executionStates[state])),
+					"Expected %d executions in state %s, found %d", matcher.String(), state.String(), len(executionStates[state]))
 			}
 
 			// verify execution error status message
 			for state, message := range tc.expectedExecutionErrors {
 				for _, execution := range executionStates[state] {
-					s.Contains(execution.Status, message)
+					s.Require().Contains(execution.Status, message)
 				}
 			}
 		})
@@ -345,4 +365,39 @@ func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *model.Job {
 	}
 	j.Spec.NodeSelectors = req
 	return &j
+}
+
+// IntMatch is a type that contains a list of numbers that are
+// a possible match. This allows us to say that we want, for
+// instance, one item, or zero or one items. This might have
+// best been implemented as a Range type, but
+type IntMatch struct {
+	numbers []int
+}
+
+func NewIntMatch(nums ...int) IntMatch {
+	return IntMatch{
+		numbers: append([]int(nil), nums...),
+	}
+}
+
+func (i IntMatch) Match(v int) bool {
+	return slices.Contains[int](i.numbers, v)
+}
+
+func (i IntMatch) String() string {
+	strs := []string{}
+
+	for _, n := range i.numbers {
+		strs = append(strs, fmt.Sprintf("%d", n))
+	}
+
+	return strings.Join(strs, " OR ")
+}
+
+func (s *RetriesSuite) TestMatcher() {
+	i := NewIntMatch(0, 1, 2, 3)
+	s.Require().Equal(i.String(), "0 OR 1 OR 2 OR 3")
+	s.Require().True(i.Match(2))
+	s.Require().False(i.Match(10))
 }
