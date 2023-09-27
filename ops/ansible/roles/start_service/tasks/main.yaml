@@ -1,0 +1,18 @@
+- name: Deploy bacalhau systemd service file from template
+  become: yes
+  template:
+    src: "{{ ansible_env.HOME }}/bacalhau/ops/ansible/services/bacalhau.service.j2"
+    dest: /etc/systemd/system/bacalhau.service
+    mode: '0644'
+
+- name: Reload systemd to recognize bacalhau service
+  become: yes
+  command: systemctl daemon-reload
+
+- name: Enable and start bacalhau service
+  become: yes
+  systemd:
+    name: bacalhau
+    enabled: yes
+    state: started
+

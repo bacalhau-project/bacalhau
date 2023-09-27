@@ -1,17 +1,16 @@
 - name: Deploy Golang App
   hosts: local
   tasks:
-  - name: Ensure git is installed
-    become: yes
-    apt:
-      name: git
-      state: present
-    when: ansible_os_family == "Debian"
 
-  - name: Ensure Golang is installed
+  - name: Ensure tools are installed
     become: yes
     apt:
-      name: golang
+      name:
+        - git
+        - golang
+        - make
+        - jq
+        - docker
       state: present
     when: ansible_os_family == "Debian"
 
@@ -38,9 +37,34 @@
       cmd: "make"
       chdir: "{{ ansible_env.HOME }}/bacalhau"
 
+  - name: Setup the Repo
+    become_user: frrist
+    environment:
+      BACALHAU_ENVIRONMENT: "local"
+    command:
+      cmd: "bacalhau id"
+      chdir: "{{ ansible_env.HOME }}/bacalhau"
+
+  - name: Setup Node Identity
+    become_user: frrist
+    copy:
+      src: /home/frrist/src/github.com/bacalhau-project/bacalhau/ops/ansible/keys/libp2p_private_key
+      dest: "{{ ansible_env.HOME }}/.bacalhau/libp2p_private_key"
+
   - name: Deploy bacalhau systemd service file from template
     become: yes
     template:
       src: "{{ ansible_env.HOME }}/bacalhau/ops/ansible/services/bacalhau.service.j2"
       dest: /etc/systemd/system/bacalhau.service
       mode: '0644'
+
+  - name: Reload systemd to recognize bacalhau service
+    become: yes
+    command: systemctl daemon-reload
+
+  - name: Enable and start bacalhau service
+    become: yes
+    systemd:
+      name: bacalhau
+      enabled: yes
+      state: started

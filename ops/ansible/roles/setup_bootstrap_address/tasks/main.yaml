@@ -1,0 +1,15 @@
+- name: Construct the list of new BootstrapAddresses
+  set_fact:
+    bootstrap_addresses: >-
+      {{ bootstrap_addresses | default([]) + ["/ip4/" + hostvars[host].ansible_default_ipv4.address + "/tcp/1235/p2p/" + hostvars[host].bootstrap_peer_id] }}
+  loop: "{{ groups['all'] }}"
+  when: 
+    - hostvars[host].ansible_default_ipv4.address is defined
+    - hostvars[host].bootstrap_peer_id is defined
+  loop_control:
+    loop_var: host
+
+- name: Generate configuration using template
+  template:
+    src: config.yaml.j2
+    dest: "{{ ansible_env.HOME }}/.bacalhau/config.yaml"

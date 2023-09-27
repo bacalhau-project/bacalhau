@@ -1,0 +1,28 @@
+- name: Ensure tools are installed
+  become: yes
+  apt:
+    name:
+      - git
+      - golang
+      - make
+      - jq
+      - docker
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Set GOPATH
+  become: yes
+  become_user: frrist
+  set_fact:
+    GOPATH: "{{ ansible_env.HOME }}/go"
+
+- name: Clone the repository
+  become: yes
+  become_user: frrist
+  git:
+    repo: 'https://github.com/bacalhau-project/bacalhau.git'
+    dest: "{{ ansible_env.HOME }}/bacalhau"
+    version: "{{ git_branch }}"
+    clone: yes
+    update: yes
+

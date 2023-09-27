@@ -1,0 +1,14 @@
+- name: Build the Bacalhau
+  become: yes
+  become_user: frrist
+  command:
+    cmd: "make"
+    chdir: "{{ ansible_env.HOME }}/bacalhau"
+
+- name: Initalize Bacalhau Repo
+  become_user: frrist
+  environment:
+    BACALHAU_ENVIRONMENT: "local"
+  command:
+    cmd: "bacalhau id"
+    chdir: "{{ ansible_env.HOME }}/bacalhau"

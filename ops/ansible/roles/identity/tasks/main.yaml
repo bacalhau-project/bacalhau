@@ -1,0 +1,6 @@
+- name: Setup Bacalhau Node Identity
+  become_user: frrist
+  copy:
+    src: /home/frrist/src/github.com/bacalhau-project/bacalhau/ops/ansible/keys/libp2p_private_key
+    dest: "{{ ansible_env.HOME }}/.bacalhau/libp2p_private_key"
+
