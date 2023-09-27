@@ -1,0 +1,24 @@
+- name: Deploy Golang App
+  hosts: local
+  tasks:
+  - name: Ensure Golang is installed
+    apt:
+      name: golang
+      state: present
+    when: ansible_os_family == "Debian"
+
+  - name: Set GOPATH
+    set_fact:
+      GOPATH: "{{ ansible_env.HOME }}/go"
+
+  - name: Build the Golang App
+    command:
+      cmd: "go build -o myapp ./path/to/your/app/source"
+      chdir: "{{ ansible_env.HOME }}/your_app_directory"
+
+  - name: Ensure the app is running
+    command:
+      cmd: "{{ ansible_env.HOME }}/your_app_directory/myapp"
+      chdir: "{{ ansible_env.HOME }}/your_app_directory"
+    async: 10
+    poll: 0
