@@ -14,7 +14,7 @@ hide_title: true
 
 Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_. 
 
-Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals is to create an open, collaborative compute ecosystem that enables unparalleled collaboration. **At the moment we are free volunteer network, enjoy;)**
+Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals is to create an open, collaborative compute ecosystem that enables unparalleled collaboration. We ([Expanso.io](https://expanso.io)) offer a demo network so you can try out jobs without even installing. Give it a shot!
 
 ## Why Bacalhau?
 
@@ -28,14 +28,11 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source. 
 
-🤓  You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data.
+🤓 You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data.
 
 💥 You can integrate with services running on nodes to run a jobs, such as on [DuckDB](https://docs.bacalhau.org/examples/data-engineering/DuckDB/).
 
 📚 Bacalhau operates at scale over parallel jobs. You can batch process petabytes (quadrillion bytes) of data.
-
-🎆 You can auto-generate art using a [Stable Diffusion AI model](https://www.waterlily.ai/) trained on the chosen artist’s original works.
-
 
 ## Fast Track ⏱️
 
@@ -53,7 +50,7 @@ Submit a "Hello World" job:
 bacalhau docker run ubuntu echo Hello World
 ```
 
-The job runs on the global Bacalhau network.
+The job runs on the demo Bacalhau network.
 
 Download your result:
 
@@ -62,7 +59,7 @@ bacalhau get 63d08ff0..... # make sure to use the right job id from the docker r
 ```
 
 :::info
-For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
+For a more detailed tutorial, check out our [Getting Started Tutorial](https://docs.bacalhau.org/getting-started/installation).
 :::
 
 
@@ -82,8 +79,13 @@ The options are not limited to the above mentioned. You can mount your data anyw
 :::
 
 ### Security in Bacalhau
-You could use environment variables to store sensitive data such as access tokens, API keys, or passwords. These variables can be accessed by Bacalhau at runtime and are not visible to anyone who has access to the code or the server.
-Endpoints can also be used to provide secure access to Bacalhau. This way, the client can authenticate with Bacalhau using the token without exposing their credentials.
+All workloads run under restricted Docker or WASM permissions on the node. Additionally, you can use existing (locked down) binaries that are pre-installed through Pluggable Executors.
+
+Best practices in [12-factor apps](https://12factor.net/) is to use environment variables to store sensitive data such as access tokens, API keys, or passwords. These variables can be accessed by Bacalhau at runtime and are not visible to anyone who has access to the code or the server.
+
+Alternatively, you can pre-provision credentials to the nodes and access those on a node by node basis.
+
+Finally, endpoints (such as vaults) can also be used to provide secure access to Bacalhau. This way, the client can authenticate with Bacalhau using the token without exposing their credentials.
 
 ### Workloads Bacalhau is best suited for
 Bacalhau can be used for a variety of data processing workloads, including machine learning, data analytics, and scientific computing. It is well-suited for workloads that require processing large amounts of data in a distributed and parallelized manner.
@@ -101,10 +103,6 @@ Here are some example tutorials on how you can process your data with Bacalhau:
 :::info
 For more tutorials, visit our [example page](https://docs.bacalhau.org/examples/)
 :::
-
-## Roadmap
-
-Our mission is to transform the way that compute is run globally. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)!
 
 ## Community
 
