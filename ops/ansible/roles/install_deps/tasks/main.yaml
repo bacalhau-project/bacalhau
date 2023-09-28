@@ -1,20 +1,15 @@
 - name: Ensure tools are installed
   become: yes
+  #become_user: frrist
   apt:
     name:
       - git
-      - golang
+      - golang-1.20
       - make
       - jq
       - docker
     state: present
   when: ansible_os_family == "Debian"
-
-- name: Set GOPATH
-  become: yes
-  become_user: frrist
-  set_fact:
-    GOPATH: "{{ ansible_env.HOME }}/go"
 
 - name: Clone the repository
   become: yes

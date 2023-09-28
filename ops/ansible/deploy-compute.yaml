@@ -1,0 +1,9 @@
+- name: Deply Compute Node
+  hosts: compute
+  roles:
+    - install_deps
+    - build_bacalhau
+    #- setup_bootstrap_address
+    - setup_compute_config
+    - start_service
+

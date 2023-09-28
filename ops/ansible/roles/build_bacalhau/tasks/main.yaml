@@ -1,11 +1,19 @@
 - name: Build the Bacalhau
-  become: yes
-  become_user: frrist
+  environment:
+    PATH: /usr/lib/go-1.20/bin:{{ ansible_env.PATH }}
   command:
     cmd: "make"
     chdir: "{{ ansible_env.HOME }}/bacalhau"
 
-- name: Initalize Bacalhau Repo
+- name: "Copy bacalhau binary to path"
+  become: yes
+  copy:
+    src: "{{ ansible_env.HOME }}/bacalhau/bin/linux_amd64/bacalhau"
+    dest: "/usr/local/bin/bacalhau"
+    mode: '0755'
+    remote_src: yes
+
+- name: Initialize Bacalhau Repo
   become_user: frrist
   environment:
     BACALHAU_ENVIRONMENT: "local"

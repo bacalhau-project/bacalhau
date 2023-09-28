@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User={{ ansible_user }}
 WorkingDirectory={{ ansible_env.HOME }}/bacalhau/bin/linux_amd64
-ExecStart={{ ansible_env.HOME }}/bacalhau/bin/linux_amd64/bacalhau serve
+ExecStart={{ ansible_env.HOME }}/bacalhau/bin/linux_amd64/bacalhau serve --peer=config
 Restart=always
 RestartSec=5
 

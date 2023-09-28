@@ -1,0 +1,120 @@
+Node:
+    ClientAPI:
+        Host: "{{ requester_host }}"
+        Port: "{{ requester_port }}"
+        TLS:
+            AutoCert: ""
+            AutoCertCachePath: ""
+            ServerCertificate: ""
+            ServerTLSKey: ""
+    ServerAPI:
+        Host: 0.0.0.0
+        Port: 1234
+        TLS:
+            AutoCert: ""
+            AutoCertCachePath: ""
+            ServerCertificate: ""
+            ServerTLSKey: ""
+    Libp2P:
+        SwarmPort: 1235
+        PeerConnect: none
+    IPFS:
+        Connect: ""
+        PrivateInternal: true
+        SwarmAddresses: []
+        SwarmKeyPath: ""
+        ServePath: ""
+    Compute:
+        Capacity:
+            IgnorePhysicalResourceLimits: false
+            TotalResourceLimits:
+                CPU: ""
+                Memory: ""
+                Disk: ""
+                GPU: ""
+            JobResourceLimits:
+                CPU: ""
+                Memory: ""
+                Disk: ""
+                GPU: ""
+            DefaultJobResourceLimits:
+                CPU: ""
+                Memory: ""
+                Disk: ""
+                GPU: ""
+            QueueResourceLimits:
+                CPU: ""
+                Memory: ""
+                Disk: ""
+                GPU: ""
+            MaxJobExecutionTimeout: 0s
+        ExecutionStore:
+            Type: BoltDB
+            Path: ""
+        JobTimeouts:
+            JobExecutionTimeoutClientIDBypassList: []
+            JobNegotiationTimeout: 3m0s
+            MinJobExecutionTimeout: 500ms
+            MaxJobExecutionTimeout: 2562047h47m16s
+            DefaultJobExecutionTimeout: 10m0s
+        JobSelection:
+            Locality: anywhere
+            RejectStatelessJobs: false
+            AcceptNetworkedJobs: false
+            ProbeHTTP: ""
+            ProbeExec: ""
+        Queue:
+            ExecutorBufferBackoffDuration: 50ms
+        Logging:
+            LogRunningExecutionsInterval: 10s
+    Requester:
+        JobDefaults:
+            ExecutionTimeout: 30m0s
+        ExternalVerifierHook: ""
+        JobSelectionPolicy:
+            Locality: anywhere
+            RejectStatelessJobs: false
+            AcceptNetworkedJobs: false
+            ProbeHTTP: ""
+            ProbeExec: ""
+        JobStore:
+            Type: BoltDB
+            Path: ""
+        HousekeepingBackgroundTaskInterval: 30s
+        NodeRankRandomnessRange: 5
+        OverAskForBidsFactor: 3
+        FailureInjectionConfig:
+            IsBadActor: false
+        EvaluationBroker:
+            EvalBrokerVisibilityTimeout: 1m0s
+            EvalBrokerInitialRetryDelay: 1s
+            EvalBrokerSubsequentRetryDelay: 30s
+            EvalBrokerMaxRetryCount: 10
+        Worker:
+            WorkerCount: 32
+            WorkerEvalDequeueTimeout: 5s
+            WorkerEvalDequeueBaseBackoff: 1s
+            WorkerEvalDequeueMaxBackoff: 30s
+    BootstrapAddresses:
+        - "{{ requester_maddr }}"
+    DownloadURLRequestRetries: 3
+    DownloadURLRequestTimeout: 5m0s
+    VolumeSizeRequestTimeout: 2m0s
+    ExecutorPluginPath: "{{ ansible_env.HOME }}/.bacalhau/plugins"
+    ComputeStoragePath: "{{ ansible_env.HOME }}/.bacalhau/executor_storages"
+    LoggingMode: default
+    Type:
+        - compute
+    EstuaryAPIKey: ""
+    AllowListedLocalPaths: []
+    DisabledFeatures:
+        Engines: []
+        Publishers: []
+        Storages: []
+    Labels: {}
+User:
+    KeyPath: "{{ ansible_env.HOME }}/.bacalhau/user_id.pem"
+    Libp2PKeyPath: "{{ ansible_env.HOME }}/.bacalhau/libp2p_private_key"
+Metrics:
+    Libp2PTracerPath: /dev/null
+    EventTracerPath: /dev/null

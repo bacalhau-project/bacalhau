@@ -10,14 +10,19 @@ ansible_user=frrist
 git_branch=frrist/deploy/ansible
 
 [compute]
-# cypress
-100.66.106.140
 # sequoia
 100.80.109.127
+# cypress
+#100.66.106.140
 
 [compute:vars]
 ansible_user=frrist
 git_branch=frrist/deploy/ansible
+
 # this is based on the libp2p key in ./keys
-bootstrap_peer_id=QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
+requester_peer_id=QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
+
+requester_host=100.64.44.93
+requester_port=1234
+requester_maddr=/ip4/100.64.44.93/tcp/1235/p2p/QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
 

@@ -1,0 +1,4 @@
+- name: Apply the Bacalhau configuration template
+  template:
+    src: config.yaml.j2
+    dest: "{{ ansible_env.HOME }}/.bacalhau/config.yaml"

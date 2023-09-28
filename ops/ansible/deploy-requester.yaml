@@ -1,9 +1,9 @@
 - name: Deply Requester Node
-  hosts: local
+  become: no
+  hosts: requester
   roles:
     - install_deps
     - build_bacalhau
     - identity
-    - setup_bootstrap_address
     - start_service
 
