@@ -269,28 +269,6 @@ clean: clean-plugins
 
 
 ################################################################################
-# Target: schema
-################################################################################
-SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-
-.PHONY: schema
-schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
-
-${SCHEMA_DIR}/%.json:
-	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-
-################################################################################
-# Target: all_schemas
-################################################################################
-EARLIEST_TAG := v0.3.12
-ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
-ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
-
-.PHONY: all_schemas
-all_schemas: ${ALL_SCHEMAS}
-
-
-################################################################################
 # Target: test
 ################################################################################
 .PHONY: test
