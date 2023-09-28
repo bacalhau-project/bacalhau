@@ -2,18 +2,20 @@
 127.0.0.1 ansible_connection=local ansible_user=frrist git_branch=frrist/deploy/ansible bootstrap_peer_id=QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
 
 [requester]
-# pine
-100.64.44.93
+# forrest-usecase-ml-requester
+34.105.32.183 ansible_ssh_private_key_file=~/.ssh/google_compute_engine
 
 [requester:vars]
 ansible_user=frrist
 git_branch=frrist/deploy/ansible
 
 [compute]
-# sequoia
-100.80.109.127
-# cypress
-#100.66.106.140
+# forrest-usecase-ml-compute-2
+34.172.45.205 ansible_ssh_private_key_file=~/.ssh/google_compute_engine
+# forrest-usecase-ml-compute-1
+#34.82.26.212 ansible_ssh_private_key_file=~/.ssh/google_compute_engine
+
+
 
 [compute:vars]
 ansible_user=frrist
@@ -22,7 +24,7 @@ git_branch=frrist/deploy/ansible
 # this is based on the libp2p key in ./keys
 requester_peer_id=QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
 
-requester_host=100.64.44.93
+requester_host=34.172.45.205
 requester_port=1234
-requester_maddr=/ip4/100.64.44.93/tcp/1235/p2p/QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
+requester_maddr=/ip4/34.172.45.205/tcp/1235/p2p/QmUgpyprvxWk6kMo3CA3foBjzRmKuSw4qjoUZztSdiVkbU
 

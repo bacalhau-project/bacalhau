@@ -1,0 +1,31 @@
+- name: Download Go Tarball
+  get_url:
+    url: "{{ download_url }}"
+    dest: "{{ tmp_location }}"
+    mode: '0755'
+
+- name: Remove old Go directory (if it exists)
+  become: yes
+  ansible.builtin.file:
+    path: "{{ extraction_dir }}/go"
+    state: absent
+
+- name: Extract Go Tarball
+  become: yes
+  unarchive:
+    src: "{{ tmp_location }}"
+    dest: "{{ extraction_dir }}"
+    remote_src: yes
+
+- name: Ensure /usr/bin/go is symlinked to the Go binary
+  become: yes
+  file:
+    src: "{{ extraction_dir }}/go/bin/go"
+    dest: "/usr/bin/go"
+    state: link
+
+# Optionally remove the downloaded tarball (cleanup)
+- name: Remove downloaded Go tarball
+  file:
+    path: "{{ tmp_location }}"
+    state: absent

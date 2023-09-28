@@ -1,0 +1,4 @@
+go_version: "1.20.8"
+download_url: "https://golang.org/dl/go{{ go_version }}.linux-amd64.tar.gz"
+tmp_location: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+extraction_dir: "/usr/local"

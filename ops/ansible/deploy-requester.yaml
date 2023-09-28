@@ -2,6 +2,7 @@
   become: no
   hosts: requester
   roles:
+    - install_go
     - install_deps
     - build_bacalhau
     - identity
