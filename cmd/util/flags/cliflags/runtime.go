@@ -26,7 +26,7 @@ const DefaultRunWaitSeconds = 600
 func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
 	flags.BoolVar(&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
-		`Wait for the job to finish.`)
+		`Wait for the job to finish. Use --wait=false to return as soon as the job is submitted.`)
 	flags.IntVar(&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
 	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
