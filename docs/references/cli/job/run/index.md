@@ -31,7 +31,7 @@ bacalhau job run [flags]
     - Description: Shows any warnings that occur during the job submission.
 
 - `--wait`:
-    - Description: Waits for the job to finish execution.
+    - Description: Waits for the job to finish execution. To set this to false, use --wait=false
     - Default: `true`
 
 - `--wait-timeout-secs int`:

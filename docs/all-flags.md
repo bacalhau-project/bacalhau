@@ -92,7 +92,7 @@ Flags:
       --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
       --local                       Run the job locally. Docker is required
       --output-dir string           Directory to write the output to. (default ".")
-      --wait                        Wait for the job to finish.
+      --wait                        Wait for the job to finish. Use --wait=false to not wait.
       --wait-timeout-secs int       When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
 ```
 
