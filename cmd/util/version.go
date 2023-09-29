@@ -8,20 +8,23 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 func CheckVersion(cmd *cobra.Command, args []string) error {
-	client := GetAPIClient(cmd.Context())
-	ctx := cmd.Context()
-
 	// corba doesn't do PersistentPreRun{,E} chaining yet
 	// https://github.com/spf13/cobra/issues/252
 	root := cmd
 	for ; root.HasParent(); root = root.Parent() {
 	}
 	root.PersistentPreRun(cmd, args)
+
+	// the client will not be known until the root persisten pre run logic is executed which
+	// sets up the repo and config
+	ctx := cmd.Context()
+	client := GetAPIClient(ctx)
 
 	// Check that the server version is compatible with the client version
 	serverVersion, _ := client.Version(ctx) // Ok if this fails, version validation will skip
@@ -32,7 +35,7 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *models.BuildVersionInfo) error {
 	if clientVersion == nil {
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil

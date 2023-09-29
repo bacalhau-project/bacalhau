@@ -13,16 +13,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 )
 
 //When the entrypoint flag is used on the CLI, eg "docker run --entrypoint /bin/echo image hello world" docker will ignore the CMD
@@ -43,44 +46,13 @@ type DockerEntrypointTestSuite struct {
 	imageNames []string
 }
 
-type dockerfilePermutation struct {
-	entrypoint bool
-	cmd        bool
-}
-
-type userOverwrites struct {
-	entrypoint []string
-	cmd        []string
-}
-
-var defaultUserOverwrites = userOverwrites{
-	entrypoint: []string{"/bin/ls"},
-	cmd:        []string{"media"},
-}
-
-func createDockerfile(d dockerfilePermutation) string {
-	ep := "\nENTRYPOINT [\"/bin/echo\"]"
-	cmd := "\nCMD [\"echo\", \"This is from CMD\"]"
-	baseDockerFile := "FROM alpine:latest"
-	if d.entrypoint == true {
-		baseDockerFile += ep
-	}
-	if d.cmd == true {
-		baseDockerFile += cmd
-	}
-	return baseDockerFile
-}
-
 func (suite *DockerEntrypointTestSuite) SetupSuite() {
 	docker.MustHaveDocker(suite.T())
 	ctx := context.Background()
 	suite.testName = strings.ToLower(suite.Suite.T().Name())
 
 	tempDir := suite.T().TempDir()
-	dockerfilePermutations := []struct {
-		entrypoint bool
-		cmd        bool
-	}{
+	dockerfilePermutations := []dockerfilePermutation{
 		{true, true},
 		{true, false},
 		{false, true},
@@ -155,29 +127,154 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 
 }
 
-type tests []struct {
-	expectedStderr string
-	expectedStdout string
-	image          string
-	entrypoint     []string
-	parameters     []string
-	expectError    bool
+func (suite *DockerEntrypointTestSuite) TestTableDriven() {
+	var (
+		overwriteEntrypoint = []string{"/bin/ls"}
+		overwriteCmd        = []string{"media"}
+	)
+
+	testCases := []struct {
+		name            string
+		imageSuffix     string
+		expectedStderr  string
+		expectedStdout  string
+		entrypoint      []string
+		parameters      []string
+		expectError     bool
+		expectNoResults bool
+	}{
+		// Test cases for true-true
+		{
+			name:           "TrueTrue - Override both entrypoint and cmd",
+			imageSuffix:    "true-true",
+			expectedStdout: "cdrom\nfloppy\nusb\n",
+			entrypoint:     overwriteEntrypoint,
+			parameters:     overwriteCmd,
+		},
+		{
+			name:           "TrueTrue - Override only cmd",
+			imageSuffix:    "true-true",
+			expectedStdout: "media\n",
+			parameters:     overwriteCmd,
+		},
+		{
+			name:           "TrueTrue - Override only entrypoint",
+			imageSuffix:    "true-true",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			entrypoint:     overwriteEntrypoint,
+		},
+		{
+			name:           "TrueTrue - Do not override",
+			imageSuffix:    "true-true",
+			expectedStdout: "echo This is from CMD\n",
+		},
+		// Test cases for true-false
+		{
+			name:           "TrueFalse - Override only cmd",
+			imageSuffix:    "true-false",
+			expectedStdout: "media\n",
+			parameters:     overwriteCmd,
+		},
+		{
+			name:           "TrueFalse - Override both entrypoint and cmd",
+			imageSuffix:    "true-false",
+			expectedStdout: "cdrom\nfloppy\nusb\n",
+			entrypoint:     overwriteEntrypoint,
+			parameters:     overwriteCmd,
+		},
+		{
+			name:           "TrueFalse - Override only entrypoint",
+			imageSuffix:    "true-false",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			entrypoint:     overwriteEntrypoint,
+		},
+		{
+			name:           "TrueFalse - Do not override",
+			imageSuffix:    "true-false",
+			expectedStdout: "\n",
+		},
+		// Test cases for false-true
+		{
+			name:            "FalseTrue - Override only cmd",
+			imageSuffix:     "false-true",
+			parameters:      overwriteCmd,
+			expectError:     false,
+			expectNoResults: true,
+		},
+		{
+			name:           "FalseTrue - Override only entrypoint",
+			imageSuffix:    "false-true",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			entrypoint:     overwriteEntrypoint,
+		},
+		{
+			name:           "FalseTrue - Override both entrypoint and cmd",
+			imageSuffix:    "false-true",
+			expectedStdout: "cdrom\nfloppy\nusb\n",
+			entrypoint:     overwriteEntrypoint,
+			parameters:     overwriteCmd,
+		},
+		{
+			name:           "FalseTrue - Do not override",
+			imageSuffix:    "false-true",
+			expectedStdout: "This is from CMD\n",
+		},
+		// Test cases for false-false
+		{
+			name:            "FalseFalse - Override only cmd",
+			imageSuffix:     "false-false",
+			parameters:      overwriteCmd,
+			expectError:     false,
+			expectNoResults: true,
+		},
+		{
+			name:           "FalseFalse - Override only entrypoint",
+			imageSuffix:    "false-false",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			entrypoint:     overwriteEntrypoint,
+		},
+		{
+			name:           "FalseFalse - Override both entrypoint and cmd",
+			imageSuffix:    "false-false",
+			expectedStdout: "cdrom\nfloppy\nusb\n",
+			entrypoint:     overwriteEntrypoint,
+			parameters:     overwriteCmd,
+		},
+		{
+			name:        "FalseFalse - Do not override",
+			imageSuffix: "false-false",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			image := fmt.Sprintf("%s-image-%s", suite.testName, tc.imageSuffix)
+			testScenario := createTestScenario(t, tc.expectedStderr, tc.expectedStdout, image, tc.entrypoint, tc.parameters, tc.expectError, tc.expectNoResults)
+			RunTestCase(t, testScenario)
+		})
+	}
 }
 
-func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint, parameters []string, expectError bool) scenario.Scenario {
-	testScenario := scenario.Scenario{
-		ResultsChecker: scenario.ManyChecks(
+func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image string, entrypoint, parameters []string, expectError bool, expectNoResults bool) scenario.Scenario {
+	var checkResults scenario.CheckResults
+	if expectNoResults {
+		checkResults = nil
+	} else {
+		checkResults = scenario.ManyChecks(
 			scenario.FileEquals(model.DownloadFilenameStderr, expectedStderr),
 			scenario.FileEquals(model.DownloadFilenameStdout, expectedStdout),
+		)
+	}
+	testScenario := scenario.Scenario{
+		ResultsChecker: checkResults,
+		Spec: testutils.MakeSpecWithOpts(t,
+			job.WithEngineSpec(
+				model.NewDockerEngineBuilder(image).
+					WithEntrypoint(entrypoint...).
+					WithParameters(parameters...).
+					Build(),
+			),
 		),
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: model.JobSpecDocker{
-				Image:      image,
-				Entrypoint: entrypoint,
-				Parameters: parameters,
-			},
-		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 	}
 	if expectError == true {
@@ -186,80 +283,21 @@ func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint
 	}
 	return testScenario
 }
-func (suite *DockerEntrypointTestSuite) TestCaseImageTrueTrue() {
-	//CMD is set AND Entrypoint is set:
-	//Entrypoint ["bin/echo"]
-	//Cmd ["echo","This is from CMD"]
-	image := suite.testName + "-image-true-true"
-	stderr := ""
-	newTests := tests{
 
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
-		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd, false},
-		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil, false},
-		{stderr, "echo This is from CMD\n", image, nil, nil, false},
-	}
-	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
-		RunTestCase(suite.T(), testScenario)
-	}
-
+type dockerfilePermutation struct {
+	entrypoint bool
+	cmd        bool
 }
 
-func (suite *DockerEntrypointTestSuite) TestCaseImageTrueFalse() {
-	//Entrypoint is set to bin/echo
-	//CMD is empty
-
-	image := suite.testName + "-image-true-false"
-	stderr := ""
-	newTests := tests{
-		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd, false},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
-		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil, false},
-		{stderr, "\n", image, nil, nil, false},
+func createDockerfile(d dockerfilePermutation) string {
+	ep := "\nENTRYPOINT [\"/bin/echo\"]"
+	cmd := "\nCMD [\"echo\", \"This is from CMD\"]"
+	baseDockerFile := "FROM alpine:latest"
+	if d.entrypoint == true {
+		baseDockerFile += ep
 	}
-	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
-		RunTestCase(suite.T(), testScenario)
+	if d.cmd == true {
+		baseDockerFile += cmd
 	}
-}
-
-func (suite *DockerEntrypointTestSuite) TestCaseImageFalseTrue() {
-	//Entrypoint is empty
-	//CMD is set to ["echo","This is from CMD"]
-	image := suite.testName + "-image-false-true"
-	stderr := ""
-	newTests := tests{
-		//override Cmd expect: error.
-		{stderr, "", image, nil, defaultUserOverwrites.cmd, true},
-		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil, false},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
-		{stderr, "This is from CMD\n", image, nil, nil, false},
-	}
-	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
-		RunTestCase(suite.T(), testScenario)
-	}
-
-}
-func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
-	//Entrypoint is empty
-	//CMD is empty, so dockerfile will use Alpine default of /bin/sh
-	image := suite.testName + "-image-false-false"
-	stderr := ""
-	newTests := tests{
-		//override Cmd expect: error.
-		{stderr, "", image, nil, defaultUserOverwrites.cmd, true},
-		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil, false},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
-		{stderr, "", image, nil, nil, false},
-	}
-	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
-		RunTestCase(suite.T(), testScenario)
-	}
+	return baseDockerFile
 }

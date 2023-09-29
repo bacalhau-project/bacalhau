@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -22,13 +22,13 @@ var (
 	//nolint:lll // Documentation
 	describeExample = templates.Examples(i18n.T(`
 		# Describe a job with the full ID
-		bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
+		bacalhau describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 
 		# Describe a job with the a shortened ID
-		bacalhau describe 47805f5c
+		bacalhau describe j-47805f5c
 
 		# Describe a job and include all server and local events
-		bacalhau describe --include-events b6ad164a
+		bacalhau describe --include-events j-b6ad164a
 `))
 )
 
@@ -114,14 +114,13 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, legacymodels.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}
 		jobDesc.History = jobEvents
 	}
 
-	//b, err := model.JSONMarshalIndentWithMax(jobDesc, 3)
 	b, err := json.Marshal(jobDesc)
 	if err != nil {
 		return fmt.Errorf("failure marshaling job description '%s': %w", j.Job.Metadata.ID, err)

@@ -5,10 +5,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"github.com/vincent-petithory/dataurl"
+
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // A SetupStorage is a function that return a model.StorageSpec representing
@@ -56,6 +57,7 @@ func StoredFile(
 		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
+				Name:          fileCid,
 				StorageSource: driverName,
 				CID:           fileCid,
 				Path:          mountPath,

@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 // TODO: replace the manual and lazy eviction with a more efficient caching library
 type nodeInfoWrapper struct {
-	model.NodeInfo
+	models.NodeInfo
 	evictAt time.Time
 }
 
@@ -25,7 +25,7 @@ type NodeInfoStoreParams struct {
 type NodeInfoStore struct {
 	ttl             time.Duration
 	nodeInfoMap     map[peer.ID]nodeInfoWrapper
-	engineNodeIDMap map[model.Engine]map[peer.ID]struct{}
+	engineNodeIDMap map[string]map[peer.ID]struct{}
 	mu              sync.RWMutex
 }
 
@@ -33,7 +33,7 @@ func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
 	res := &NodeInfoStore{
 		ttl:             params.TTL,
 		nodeInfoMap:     make(map[peer.ID]nodeInfoWrapper),
-		engineNodeIDMap: make(map[model.Engine]map[peer.ID]struct{}),
+		engineNodeIDMap: make(map[string]map[peer.ID]struct{}),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -42,7 +42,7 @@ func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
 	return res
 }
 
-func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error {
+func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -55,11 +55,9 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 			}
 		}
 	} else {
-		var engines []model.Engine
+		var engines []string
 		if nodeInfo.ComputeNodeInfo != nil {
-			for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
-				engines = append(engines, engine)
-			}
+			engines = append(engines, nodeInfo.ComputeNodeInfo.ExecutionEngines...)
 		}
 		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store with engines %v", nodeInfo.PeerInfo.ID, engines)
 	}
@@ -84,16 +82,16 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 	return nil
 }
 
-func (r *NodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.NodeInfo, error) {
+func (r *NodeInfoStore) Get(ctx context.Context, peerID peer.ID) (models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[peerID]
 	if !ok {
-		return model.NodeInfo{}, requester.NewErrNodeNotFound(peerID)
+		return models.NodeInfo{}, routing.NewErrNodeNotFound(peerID)
 	}
 	if time.Now().After(infoWrapper.evictAt) {
 		go r.evict(ctx, infoWrapper)
-		return model.NodeInfo{}, requester.NewErrNodeNotFound(peerID)
+		return models.NodeInfo{}, routing.NewErrNodeNotFound(peerID)
 	}
 	return infoWrapper.NodeInfo, nil
 }
@@ -111,10 +109,10 @@ func (r *NodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.Addr
 	return peer.AddrInfo{}, nil
 }
 
-func (r *NodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
+func (r *NodeInfoStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var nodeInfos []model.NodeInfo
+	var nodeInfos []models.NodeInfo
 	var toEvict []nodeInfoWrapper
 	for _, nodeInfo := range r.nodeInfoMap {
 		if time.Now().After(nodeInfo.evictAt) {
@@ -129,10 +127,10 @@ func (r *NodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error) {
+func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine string) ([]models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var nodeInfos []model.NodeInfo
+	var nodeInfos []models.NodeInfo
 	var toEvict []nodeInfoWrapper
 	for nodeID := range r.engineNodeIDMap[engine] {
 		nodeInfo := r.nodeInfoMap[nodeID]

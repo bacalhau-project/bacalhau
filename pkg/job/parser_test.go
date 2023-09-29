@@ -5,10 +5,9 @@ package job
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func TestParseStorageString(t *testing.T) {
@@ -58,7 +57,7 @@ func TestParseStorageString(t *testing.T) {
 			name:   "s3 with endpoint and region",
 			source: "s3://myBucket/dir/file-001.txt",
 			options: map[string]string{
-				"endpoint": "http://localhost:9000",
+				"endpoint": "http://127.0.0.1:9000",
 				"region":   "us-east-1",
 			},
 			expected: model.StorageSpec{
@@ -68,7 +67,7 @@ func TestParseStorageString(t *testing.T) {
 				S3: &model.S3StorageSpec{
 					Bucket:   "myBucket",
 					Key:      "dir/file-001.txt",
-					Endpoint: "http://localhost:9000",
+					Endpoint: "http://127.0.0.1:9000",
 					Region:   "us-east-1",
 				},
 			},
@@ -119,13 +118,6 @@ func TestParsePublisherString(t *testing.T) {
 			},
 		},
 		{
-			name:         "estuary",
-			publisherURI: "estuary",
-			expected: model.PublisherSpec{
-				Type: model.PublisherEstuary,
-			},
-		},
-		{
 			name:         "s3",
 			publisherURI: "s3://myBucket/dir/file-001.txt",
 			expected: model.PublisherSpec{
@@ -140,7 +132,7 @@ func TestParsePublisherString(t *testing.T) {
 			name:         "s3 with endpoint and region",
 			publisherURI: "s3://myBucket/dir/file-001.txt",
 			options: map[string]interface{}{
-				"endpoint": "http://localhost:9000",
+				"endpoint": "http://127.0.0.1:9000",
 				"region":   "us-east-1",
 				"archive":  true,
 			},
@@ -149,7 +141,7 @@ func TestParsePublisherString(t *testing.T) {
 				Params: map[string]interface{}{
 					"bucket":   "myBucket",
 					"key":      "dir/file-001.txt",
-					"endpoint": "http://localhost:9000",
+					"endpoint": "http://127.0.0.1:9000",
 					"region":   "us-east-1",
 					"archive":  true,
 				},

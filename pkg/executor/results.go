@@ -8,13 +8,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type outputResult struct {
@@ -28,6 +30,7 @@ type outputResult struct {
 
 func writeOutputResult(resultsDir string, output outputResult) error {
 	if output.contents == nil {
+		log.Warn().Msg("writing result output contents null")
 		// contents may be nil if something went wrong while trying to get the logs
 		output.contents = bytes.NewReader(nil)
 	}
@@ -50,9 +53,6 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	}
 	if output.truncated != nil {
 		*(output.truncated) = summaryRead > int(output.summaryLimit)
-	}
-	if err != nil && err != io.EOF {
-		return err
 	}
 
 	file, err := os.Create(filepath.Join(resultsDir, output.filename))
@@ -77,38 +77,51 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	return nil
 }
 
-// WriteJobResults produces files and a model.RunCommandResult in the standard
+type OutputLimits struct {
+	MaxStdoutFileLength   datasize.ByteSize
+	MaxStdoutReturnLength datasize.ByteSize
+	MaxStderrFileLength   datasize.ByteSize
+	MaxStderrReturnLength datasize.ByteSize
+}
+
+// WriteJobResults produces files and a models.RunCommandResult in the standard
 // format, including truncating the contents of both where necessary to fit
 // within system-defined limits.
 //
 // It will consume only the bytes from the passed io.Readers that it needs to
 // correctly form job outputs. Once the command returns, the readers can close.
-func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error) (*model.RunCommandResult, error) {
-	result := model.NewRunCommandResult()
+func WriteJobResults(
+	resultsDir string,
+	stdout, stderr io.Reader,
+	exitcode int,
+	err error,
+	limits OutputLimits,
+) *models.RunCommandResult {
+	result := models.NewRunCommandResult()
 
 	outputs := []outputResult{
 		// Standard output
 		{
 			stdout,
-			model.DownloadFilenameStdout,
-			system.MaxStdoutFileLength,
+			models.DownloadFilenameStdout,
+			limits.MaxStdoutFileLength,
 			&result.STDOUT,
-			system.MaxStdoutReturnLength,
+			limits.MaxStdoutReturnLength,
 			&result.StdoutTruncated,
 		},
 		// Standard error
 		{
 			stderr,
-			model.DownloadFilenameStderr,
-			system.MaxStderrFileLength,
+			models.DownloadFilenameStderr,
+			limits.MaxStderrFileLength,
 			&result.STDERR,
-			system.MaxStderrReturnLength,
+			limits.MaxStderrReturnLength,
 			&result.StderrTruncated,
 		},
 		// Exit code
 		{
 			strings.NewReader(fmt.Sprint(exitcode)),
-			model.DownloadFilenameExitCode,
+			models.DownloadFilenameExitCode,
 			4,
 			nil,
 			4,
@@ -130,9 +143,13 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 	}
 
 	result.ExitCode = exitcode
-	return result, err
+	return result
 }
 
-func FailResult(err error) (*model.RunCommandResult, error) {
-	return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+func NewFailedResult(reason string) *models.RunCommandResult {
+	return &models.RunCommandResult{ErrorMsg: reason, ExitCode: -1}
+}
+
+func FailResult(err error) (*models.RunCommandResult, error) {
+	return &models.RunCommandResult{ErrorMsg: err.Error()}, err
 }

@@ -10,7 +10,8 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -51,12 +52,12 @@ type DockerRunOptions struct {
 	Entrypoint       []string
 	WorkingDirectory string // Working directory for docker
 
-	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   *flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings *flags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       *flags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    *flags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   *flags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
+	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
+	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
+	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
+	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
+	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
 
 }
 
@@ -69,12 +70,12 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Entrypoint:       nil,
 		WorkingDirectory: "",
 
-		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   flags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: flags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       flags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   flags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    flags.NewDefaultRunTimeSettings(),
+		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
+		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
+		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
+		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
+		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -92,6 +93,10 @@ func NewCmd() *cobra.Command {
 func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
+	dockerRunFlags := map[string][]configflags.Definition{
+		"ipfs": configflags.IPFSFlags,
+	}
+
 	dockerRunCmd := &cobra.Command{
 		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
 		Short:   "Run a docker job on the network",
@@ -99,6 +104,13 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  util.ApplyPorcelainLogLevel,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := configflags.BindFlags(cmd, dockerRunFlags)
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+			return err
+		},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -116,12 +128,16 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Override the default ENTRYPOINT of the image`,
 	)
 
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(opts.DealSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(opts.DownloadSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(opts.NetworkingSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(opts.ResourceSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+
+	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
+		util.Fatal(dockerRunCmd, err, 1)
+	}
 
 	return dockerRunCmd
 }
@@ -129,14 +145,16 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
-	j, err := CreateJob(ctx, cmdArgs, opts)
+	image := cmdArgs[0]
+	parameters := cmdArgs[1:]
+	j, err := CreateJob(ctx, image, parameters, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
 	}
 
 	if err := jobutils.VerifyJob(ctx, j); err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
+			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", image)
 		} else {
 			return fmt.Errorf("verifying job: %s", err)
 		}
@@ -144,7 +162,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 
 	quiet := opts.RunTimeSettings.PrintJobIDOnly
 	if !quiet {
-		containsTag := dockerImageContainsTag(j.Spec.Docker.Image)
+		containsTag := dockerImageContainsTag(image)
 		if !containsTag {
 			cmd.PrintErrln("Using default tag: latest. Please specify a tag/digest for better reproducibility.")
 		}
@@ -166,14 +184,11 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return err
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
-	image := cmdArgs[0]
-	parameters := cmdArgs[1:]
-
+func CreateJob(ctx context.Context, image string, parameters []string, opts *DockerRunOptions) (*model.Job, error) {
 	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
 	if err != nil {
 		return nil, err

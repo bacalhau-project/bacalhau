@@ -46,9 +46,14 @@ func NodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error)
 	return model.ToLabelSelectorRequirements(requirements...), nil
 }
 
+var DefaultOutputSpec = model.StorageSpec{
+	StorageSource: model.StorageSourceIPFS,
+	Name:          "outputs",
+	Path:          "/outputs",
+}
+
 func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
-	outputVolumesMap := make(map[string]model.StorageSpec)
-	outputVolumes = append(outputVolumes, "outputs:/outputs")
+	outputVolumesMap := make(map[string]model.StorageSpec, len(outputVolumes)+1)
 
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
@@ -74,6 +79,10 @@ func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpe
 			Name:          slices[0],
 			Path:          slices[1],
 		}
+	}
+
+	if _, found := outputVolumesMap[DefaultOutputSpec.Path]; !found {
+		outputVolumesMap[DefaultOutputSpec.Path] = DefaultOutputSpec
 	}
 
 	var returnOutputVolumes []model.StorageSpec

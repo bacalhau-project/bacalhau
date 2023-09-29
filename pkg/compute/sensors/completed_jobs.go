@@ -26,4 +26,4 @@ func (c *CompletedJobProvider) GetDebugInfo(ctx context.Context) (model.DebugInf
 
 var _ model.DebugInfoProvider = (*CompletedJobProvider)(nil)
 
-// add a method to Execution store interface to return an execution count for a given state.
+// add a method to LocalExecutionState store interface to return an execution count for a given state.

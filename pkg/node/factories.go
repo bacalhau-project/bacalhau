@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -18,7 +20,7 @@ type StorageProvidersFactory interface {
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 }
 
 type PublishersFactory interface {
@@ -35,15 +37,13 @@ func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeCon
 type ExecutorsFactoryFunc func(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error)
 
 func (f ExecutorsFactoryFunc) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error) {
-	return f(ctx, nodeConfig, storages)
+	return f(ctx, nodeConfig)
 }
 
 type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
@@ -58,29 +58,27 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
-		provider, err := executor_util.NewStandardStorageProvider(
+		pr, err := executor_util.NewStandardStorageProvider(
 			ctx,
 			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
-				EstuaryAPIKey:         nodeConfig.EstuaryAPIKey,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
 		if err != nil {
 			return nil, err
 		}
-		return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Storages), err
+		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err
 	})
 }
 
 func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
-			provider, err := executor_util.NewStandardExecutorProvider(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			pr, err := executor_util.NewStandardExecutorProvider(
 				ctx,
 				nodeConfig.CleanupManager,
-				storages,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 				},
@@ -88,7 +86,40 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+		})
+}
+
+func NewPluginExecutorFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			pr, err := executor_util.NewPluginExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				executor_util.PluginExecutorOptions{
+					Plugins: []executor_util.PluginExecutorManagerConfig{
+						{
+							Name:             models.EngineDocker,
+							Path:             config.GetExecutorPluginsPath(),
+							Command:          "bacalhau-docker-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+						{
+							Name:             models.EngineWasm,
+							Path:             config.GetExecutorPluginsPath(),
+							Command:          "bacalhau-wasm-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+					},
+				})
+			if err != nil {
+				return nil, err
+			}
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
 		})
 }
 
@@ -97,15 +128,14 @@ func NewStandardPublishersFactory() PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			provider, err := publisher_util.NewIPFSPublishers(
+			pr, err := publisher_util.NewIPFSPublishers(
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
-				nodeConfig.EstuaryAPIKey,
 			)
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Publishers), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
 		})
 }

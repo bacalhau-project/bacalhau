@@ -88,14 +88,14 @@ func TestJobSelectionHttp(t *testing.T) {
 
 			params := semantic.ExternalHTTPStrategyParams{URL: svr.URL}
 			strategy := semantic.NewExternalHTTPStrategy(params)
-			request := getBidStrategyRequest()
+			request := getBidStrategyRequest(t)
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)
 			require.Equal(t, test.expectBid, result.ShouldBid)
 			require.Equal(t, test.expectWait, result.ShouldWait)
 
 			// this makes sure that the http payload was given to the http endpoint
-			require.Equal(t, request.Job.Metadata.ID, requestPayload.JobID)
+			require.Equal(t, request.Job.ID, requestPayload.Job.ID)
 		})
 	}
 }

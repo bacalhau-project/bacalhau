@@ -56,23 +56,23 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	go s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
 
 	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
-		ExecutionID: request.ExecutionID,
-		JobID:       request.JobID,
+		ExecutionID: request.Execution.ID,
+		JobID:       request.Execution.JobID,
 	}}, nil
 }
 
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid accepted: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateCreated,
-		NewState:      store.ExecutionStateBidAccepted,
+		ExecutionID:    request.ExecutionID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
+		NewState:       store.ExecutionStateBidAccepted,
 	})
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
 
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
@@ -80,47 +80,48 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 	// Increment the number of jobs accepted by this compute node:
 	jobsAccepted.Add(ctx, 1)
 
-	err = s.executor.Run(ctx, execution)
+	err = s.executor.Run(ctx, localExecutionState)
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
 	return BidAcceptedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 	}, nil
 }
 
 func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid rejected: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateCreated,
-		NewState:      store.ExecutionStateCancelled,
-		Comment:       "bid rejected due to: " + request.Justification,
+		ExecutionID:    request.ExecutionID,
+		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
+		NewState:       store.ExecutionStateCancelled,
+		Comment:        "bid rejected due to: " + request.Justification,
 	})
 	if err != nil {
 		return BidRejectedResponse{}, err
 	}
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return BidRejectedResponse{}, err
 	}
 	return BidRejectedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 	}, nil
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return CancelExecutionResponse{}, err
 	}
-	if execution.State.IsTerminal() {
-		return CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s", execution.ID, execution.State)
+	if localExecutionState.State.IsTerminal() {
+		return CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s",
+			localExecutionState.Execution.ID, localExecutionState.State)
 	}
 
-	if execution.State.IsExecuting() {
-		err = s.executor.Cancel(ctx, execution)
+	if localExecutionState.State.IsExecuting() {
+		err = s.executor.Cancel(ctx, localExecutionState)
 		if err != nil {
 			return CancelExecutionResponse{}, err
 		}
@@ -135,7 +136,7 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 		return CancelExecutionResponse{}, err
 	}
 	return CancelExecutionResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 	}, nil
 }
 

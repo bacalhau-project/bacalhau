@@ -8,13 +8,19 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type TargetAllSuite struct {
@@ -32,7 +38,7 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   0,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(0),
@@ -48,10 +54,15 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   1,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers:   scenario.WaitUntilSuccessful(1),
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
+			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				model.ExecutionStateCompleted: 1,
+			}),
+		},
 	}
 
 	suite.RunScenario(testCase)
@@ -64,39 +75,54 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   5,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers:   scenario.WaitUntilSuccessful(5),
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
+			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				model.ExecutionStateCompleted: 5,
+			}),
+		},
 	}
 
 	suite.RunScenario(testCase)
 }
 
-func (suite *TargetAllSuite) TestCanRetryOnNodes() {
+func (suite *TargetAllSuite) TestPartialFailure() {
 	var hasFailed atomic.Bool
 
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: 0, NumberOfRequesterOnlyNodes: 1, NumberOfComputeOnlyNodes: 2},
+			DevStackOptions: &devstack.DevStackOptions{
+				NumberOfHybridNodes:        0,
+				NumberOfRequesterOnlyNodes: 1,
+				NumberOfComputeOnlyNodes:   2,
+			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
-							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil)
+							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil, executor.OutputLimits{
+								MaxStdoutFileLength:   system.MaxStdoutFileLength,
+								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+								MaxStderrFileLength:   system.MaxStderrFileLength,
+								MaxStderrReturnLength: system.MaxStderrReturnLength,
+							}), nil
 						}
 					},
 				},
 			},
 		},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForUnsuccessfulCompletion(),
 			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 2,
+				model.ExecutionStateCompleted: 1,
 				model.ExecutionStateFailed:    1,
 			}),
 		},

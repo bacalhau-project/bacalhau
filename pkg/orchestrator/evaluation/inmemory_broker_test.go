@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/pkg/test/wait"
@@ -17,8 +16,8 @@ import (
 
 var (
 	defaultSched = []string{
-		model.JobTypeService,
-		model.JobTypeBatch,
+		models.JobTypeService,
+		models.JobTypeBatch,
 	}
 	defaultBrokerParams = InMemoryBrokerParams{
 		VisibilityTimeout:    5 * time.Second,
@@ -264,13 +263,13 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	ns2 := "namespace-two"
 	jobID := "example"
 
-	newEval := func(idx uint64, ns string) *models.Evaluation {
+	newEval := func(idx int64, ns string) *models.Evaluation {
 		eval := mock.Eval()
 		eval.ID = fmt.Sprintf("eval:%d", idx)
 		eval.JobID = jobID
 		eval.Namespace = ns
-		eval.CreateIndex = idx
-		eval.ModifyIndex = idx
+		eval.CreateTime = idx
+		eval.ModifyTime = idx
 		s.Require().NoError(s.broker.Enqueue(eval))
 		return eval
 	}
@@ -482,15 +481,15 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_FIFO() {
 
 	for i := NUM; i > 0; i-- {
 		eval := mock.Eval()
-		eval.CreateIndex = uint64(i)
-		eval.ModifyIndex = uint64(i)
+		eval.CreateTime = int64(i)
+		eval.ModifyTime = int64(i)
 		s.Require().NoError(s.broker.Enqueue(eval))
 	}
 
 	for i := 1; i < NUM; i++ {
 		out1, _, _ := s.broker.Dequeue(defaultSched, time.Second)
-		s.Require().Equal(uint64(i), out1.CreateIndex,
-			"eval was not FIFO by CreateIndex",
+		s.Require().Equal(int64(i), out1.CreateTime,
+			"eval was not FIFO by CreateTime",
 		)
 	}
 }
@@ -503,9 +502,9 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Fairness() {
 	for i := 0; i < NUM; i++ {
 		eval := mock.Eval()
 		if i < (NUM / 2) {
-			eval.Type = model.JobTypeService
+			eval.Type = models.JobTypeService
 		} else {
-			eval.Type = model.JobTypeBatch
+			eval.Type = models.JobTypeBatch
 		}
 		s.Require().NoError(s.broker.Enqueue(eval))
 	}
@@ -516,9 +515,9 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Fairness() {
 		out1, _, _ := s.broker.Dequeue(defaultSched, time.Second)
 
 		switch out1.Type {
-		case model.JobTypeService:
+		case models.JobTypeService:
 			typeServiceCounter += 1
-		case model.JobTypeBatch:
+		case models.JobTypeBatch:
 			typeBatchCounter += 1
 		}
 	}
@@ -709,19 +708,19 @@ func (s *InMemoryBrokerTestSuite) TestWaitUntil() {
 	// Create a few of evals with WaitUntil set
 	eval1 := mock.Eval()
 	eval1.WaitUntil = now.Add(1 * time.Second)
-	eval1.CreateIndex = 1
+	eval1.CreateTime = 1
 	s.Require().NoError(s.broker.Enqueue(eval1))
 
 	eval2 := mock.Eval()
 	eval2.WaitUntil = now.Add(100 * time.Millisecond)
-	// set CreateIndex to use as a tie breaker when eval2
+	// set CreateTime to use as a tie breaker when eval2
 	// and eval3 are both in the pending evals heap
-	eval2.CreateIndex = 2
+	eval2.CreateTime = 2
 	s.Require().NoError(s.broker.Enqueue(eval2))
 
 	eval3 := mock.Eval()
 	eval3.WaitUntil = now.Add(20 * time.Millisecond)
-	eval3.CreateIndex = 1
+	eval3.CreateTime = 1
 	s.Require().NoError(s.broker.Enqueue(eval3))
 	s.Require().Equal(3, s.broker.stats.TotalWaiting)
 	// sleep enough for two evals to be ready

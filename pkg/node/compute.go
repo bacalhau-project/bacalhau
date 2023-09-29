@@ -2,10 +2,12 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -14,18 +16,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
@@ -38,11 +35,12 @@ type Compute struct {
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
+	Storages            storage.StorageProvider
 	LogServer           *logstream.LogStreamServer
 	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
-	computeInfoProvider model.ComputeNodeInfoProvider
+	computeInfoProvider models.ComputeNodeInfoProvider
 }
 
 //nolint:funlen
@@ -50,16 +48,18 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
-	apiServer *publicapi.APIServer,
+	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	publishers publisher.PublisherProvider) (*Compute, error) {
+	publishers publisher.PublisherProvider,
+	fsRepo *repo.FsRepo,
+) (*Compute, error) {
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(ctx, host)
+		executionStore, err = fsRepo.InitExecutionStore(ctx, host.ID().String())
 		if err != nil {
 			return nil, err
 		}
@@ -88,6 +88,7 @@ func NewComputeNode(
 		ID:                     host.ID().String(),
 		Callback:               computeCallback,
 		Store:                  executionStore,
+		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
 		FailureInjectionConfig: config.FailureInjectionConfig,
@@ -127,7 +128,7 @@ func NewComputeNode(
 				Defaults: config.DefaultJobResourceLimits,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
-				Executors: executors,
+				Storages: storages,
 			}),
 		},
 	})
@@ -136,14 +137,23 @@ func NewComputeNode(
 	if semanticBidStrat == nil {
 		semanticBidStrat = semantic.NewChainedSemanticBidStrategy(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
-			semantic.FromJobSelectionPolicy(config.JobSelectionPolicy),
+			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+			}),
 			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality:  config.JobSelectionPolicy.Locality,
-				Executors: executors,
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
 			}),
 			semantic.NewProviderInstalledStrategy(
 				publishers,
-				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
+				func(j *models.Job) string { return j.Task().Publisher.Type },
 			),
 			semantic.NewStorageInstalledBidStrategy(storages),
 			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
@@ -203,8 +213,9 @@ func NewComputeNode(
 		ResourceStrategy: resourceBidStrat,
 		Store:            executionStore,
 		Callback:         computeCallback,
+		Executor:         bufferRunner,
 		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
+			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
 		},
 	})
 
@@ -228,17 +239,19 @@ func NewComputeNode(
 		sensors.NewCompletedJobs(executionStore),
 	}
 
+	startup := compute.NewStartup(executionStore, bufferRunner)
+	startupErr := startup.Execute(ctx)
+	if startupErr != nil {
+		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
+	}
+
 	// register compute public http apis
-	computeAPIServer := compute_publicapi.NewComputeAPIServer(compute_publicapi.ComputeAPIServerParams{
-		APIServer:          apiServer,
+	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
+		Router:             apiServer.Router,
 		Bidder:             bidder,
 		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
-	err = computeAPIServer.RegisterAllHandlers()
-	if err != nil {
-		return nil, err
-	}
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
@@ -252,6 +265,7 @@ func NewComputeNode(
 		Capacity:            runningCapacityTracker,
 		ExecutionStore:      executionStore,
 		Executors:           executors,
+		Storages:            storages,
 		Bidder:              bidder,
 		LogServer:           logserver,
 		computeCallback:     computeCallback,
@@ -262,36 +276,6 @@ func NewComputeNode(
 
 func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
-}
-
-func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
-	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
-	// e.g. when running tests or when running devstack
-	configDir, err := system.EnsureConfigDir()
-	if err != nil {
-		return nil, err
-	}
-	stateRootDir := filepath.Join(configDir, "execution-state-"+host.ID().String())
-	err = os.MkdirAll(stateRootDir, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-
-	var store store.ExecutionStore
-	storageConfig := config.GetComputeStorageConfig(host.ID().Pretty())
-	if storageConfig.StoreType == config.ExecutionStoreBoltDB {
-		store, err = boltdb.NewStore(ctx, storageConfig.Location)
-		if err != nil {
-			return nil, err
-		}
-	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
-		store = inmemory.NewStore()
-	}
-
-	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   store,
-		RootDir: stateRootDir,
-	})
 }
 
 func (c *Compute) cleanup(ctx context.Context) {

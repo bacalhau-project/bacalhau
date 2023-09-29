@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/rs/zerolog/log"
@@ -42,20 +41,20 @@ func (publisher *Publisher) IsInstalled(_ context.Context) (bool, error) {
 }
 
 // ValidateJob validates the job spec and returns an error if the job is invalid.
-func (publisher *Publisher) ValidateJob(_ context.Context, j model.Job) error {
-	_, err := DecodeSpec(j.Spec.PublisherSpec)
+func (publisher *Publisher) ValidateJob(_ context.Context, j models.Job) error {
+	_, err := s3helper.DecodePublisherSpec(j.Task().Publisher)
 	return err
 }
 
 func (publisher *Publisher) PublishResult(
 	ctx context.Context,
 	executionID string,
-	j model.Job,
+	j models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
-	spec, err := DecodeSpec(j.Spec.PublisherSpec)
+) (models.SpecConfig, error) {
+	spec, err := s3helper.DecodePublisherSpec(j.Task().Publisher)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
 	if spec.Compress {
@@ -66,31 +65,31 @@ func (publisher *Publisher) PublishResult(
 
 func (publisher *Publisher) publishArchive(
 	ctx context.Context,
-	spec Params,
+	spec s3helper.PublisherSpec,
 	executionID string,
-	j model.Job,
+	j models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (models.SpecConfig, error) {
 	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
 	key := ParsePublishedKey(spec.Key, executionID, j, true)
 
 	// Create a new GZIP writer that writes to the file.
 	targetFile, err := os.CreateTemp(publisher.localDir, "bacalhau-archive-*.tar.gz")
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 	defer targetFile.Close()
 	defer os.Remove(targetFile.Name())
 
 	err = archiveDirectory(resultPath, targetFile)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
 	// reset the archived file to read and upload it
 	_, err = targetFile.Seek(0, io.SeekStart)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
 	// Upload the GZIP archive to S3.
@@ -101,31 +100,30 @@ func (publisher *Publisher) publishArchive(
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 	})
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 	log.Debug().Msgf("Uploaded s3://%s/%s", spec.Bucket, aws.ToString(res.Key))
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceS3,
-		Name:          fmt.Sprintf("s3://%s/%s", spec.Bucket, key),
-		S3: &model.S3StorageSpec{
+	return models.SpecConfig{
+		Type: models.StorageSourceS3,
+		Params: s3helper.SourceSpec{
 			Bucket:         spec.Bucket,
 			Key:            key,
 			Endpoint:       spec.Endpoint,
 			Region:         spec.Region,
 			ChecksumSHA256: aws.ToString(res.ChecksumSHA256),
 			VersionID:      aws.ToString(res.VersionID),
-		},
+		}.ToMap(),
 	}, nil
 }
 
 func (publisher *Publisher) publishDirectory(
 	ctx context.Context,
-	spec Params,
+	spec s3helper.PublisherSpec,
 	executionID string,
-	j model.Job,
+	j models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (models.SpecConfig, error) {
 	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
 	key := ParsePublishedKey(spec.Key, executionID, j, false)
 
@@ -163,17 +161,16 @@ func (publisher *Publisher) publishDirectory(
 	})
 
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceS3,
-		Name:          fmt.Sprintf("s3://%s/%s", spec.Bucket, key),
-		S3: &model.S3StorageSpec{
+	return models.SpecConfig{
+		Type: models.StorageSourceS3,
+		Params: s3helper.SourceSpec{
 			Bucket:   spec.Bucket,
 			Key:      key,
-			Endpoint: spec.Endpoint,
 			Region:   spec.Region,
-		},
+			Endpoint: spec.Endpoint,
+		}.ToMap(),
 	}, nil
 }

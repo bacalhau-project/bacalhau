@@ -18,12 +18,13 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/google/uuid"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -76,7 +77,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			)
 			s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -106,13 +107,16 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			var j *model.Job
 			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(j.Spec.Docker.Parameters[0], entrypointCommand, "Dry run job should not have an ID")
+
+			dockerSpec, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
+			s.Require().NoError(err)
+			s.Require().Equal(entrypointCommand, dockerSpec.Parameters[0], "Dry run job should not have an ID")
 		}()
 	}
 }
 
 func (s *DockerRunSuite) TestRun_GPURequests() {
-	if !s.Node.ComputeNode.Capacity.IsWithinLimits(context.Background(), model.ResourceUsageData{GPU: 1}) {
+	if !s.Node.ComputeNode.Capacity.IsWithinLimits(context.Background(), models.Resources{GPU: 1}) {
 		s.T().Skip("Skipping test as no GPU is available in current host")
 	}
 	tests := []struct {
@@ -148,7 +152,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 
 			s.Require().True(!tc.fatalErr, "Expected fatal err, but submitted.")
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			if tc.errString != "" {
 				o := logBuf.String()
@@ -185,7 +189,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			)
 			s.Require().NoErrorf(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -242,7 +246,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
 
@@ -306,7 +310,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
 				s.Require().Equal(turls.inputURL.url, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
@@ -376,7 +380,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				s.Require().Equal(tcids.correctLength, len(j.Spec.Outputs), "Number of job outputs != correct number.")
 
@@ -432,7 +436,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			)
 			s.NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			s.Require().LessOrEqual(j.Metadata.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
@@ -497,7 +501,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 				if labelTest.BadCase {
 					s.Require().Contains(out, "rror")
@@ -555,7 +559,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 
 			s.Require().True(!tc.fatalErr, "Expected fatal err, but submitted.")
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 			if tc.errString != "" {
 				o := logBuf.String()
@@ -598,9 +602,11 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			} else {
 				s.Require().NoError(err, "Error submitting job.")
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
-				s.Require().Equal(tc.workdir, j.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
+				dockerSpec, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
+				s.Require().NoError(err)
+				s.Require().Equal(tc.workdir, dockerSpec.WorkingDirectory, "Job workdir != test workdir.")
 				s.Require().NoError(err, "Error in running command.")
 			}
 		}()
@@ -694,7 +700,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
-			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 			info, _, err := s.Client.Get(ctx, j.Metadata.ID)
 			s.Require().NoError(err)
 
@@ -741,7 +747,7 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 		s.Require().NoError(err, "Error submitting job")
 
-		j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+		j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
 		s.Require().Equal(tc.expectedVolumes, len(j.Spec.Inputs))
 	}
@@ -756,7 +762,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		errStringContains string
 	}{
 		"good-image-good-executable": {
-			imageName:         "ubuntu", // Good image
+			imageName:         "ubuntu", // Good image // TODO we consider an untagged image poor practice, fix this
 			executable:        "ls",     // Good executable
 			isValid:           true,
 			errStringContains: "",
@@ -768,7 +774,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			errStringContains: "Error submitting job",
 		},
 		"good-image-bad-executable": {
-			imageName:         "ubuntu",        // Good image
+			imageName:         "ubuntu",        // Good image // TODO we consider an untagged image poor practice, fix this
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
 			errStringContains: "Error submitting job",
@@ -817,7 +823,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	)
 	s.Require().NoError(err)
 
-	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 	s.T().Log(job)
 
 	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
@@ -839,25 +845,26 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	)
 	s.NoError(err, "Error submitting job without defining a timeout value")
 
-	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+	s.Require().Equal(node.TestRequesterConfig.JobDefaults.ExecutionTimeout, j.Spec.GetTimeout(),
+		"Did not fall back to default timeout value")
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
-	var expectedTimeout float64 = 999
+	const expectedTimeout = 999 * time.Second
 
 	ctx := context.Background()
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
-		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",
 	)
 	s.NoError(err, "Error submitting job with a defined a timeout value")
 
-	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+	j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, expectedTimeout)
+	s.Require().Equal(expectedTimeout, j.Spec.GetTimeout())
 }

@@ -5,8 +5,12 @@ package compute
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 )
+
+// TODO(forrest): [fixme] I don't think this test never actually calls its tests method
+// it just reruns the AskForBidSuite.
 
 type DataLocalityBidSuite struct {
 	AskForBidSuite
@@ -29,6 +33,6 @@ func (s *DataLocalityBidSuite) TestRejectStateless() {
 
 func (s *DataLocalityBidSuite) TestAcceptStateful() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addInput(generateJob(), "cid"),
+		execution: addInput(mock.Execution(), "cid"),
 	})
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
@@ -16,7 +16,7 @@ type NodeInfoProviderParams struct {
 	Storages           storage.StorageProvider
 	CapacityTracker    capacity.Tracker
 	ExecutorBuffer     *ExecutorBuffer
-	MaxJobRequirements model.ResourceUsageData
+	MaxJobRequirements models.Resources
 }
 
 type NodeInfoProvider struct {
@@ -25,7 +25,7 @@ type NodeInfoProvider struct {
 	storages           storage.StorageProvider
 	capacityTracker    capacity.Tracker
 	executorBuffer     *ExecutorBuffer
-	maxJobRequirements model.ResourceUsageData
+	maxJobRequirements models.Resources
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
@@ -39,18 +39,18 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	}
 }
 
-func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
-	return model.ComputeNodeInfo{
-		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, model.EngineTypes()),
-		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
-		StorageSources:     model.InstalledTypes(ctx, n.storages, model.StorageSourceTypes()),
+func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNodeInfo {
+	return models.ComputeNodeInfo{
+		ExecutionEngines:   n.executors.Keys(ctx),
+		Publishers:         n.publishers.Keys(ctx),
+		StorageSources:     n.storages.Keys(ctx),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
-		EnqueuedExecutions: len(n.executorBuffer.EnqueuedExecutions()),
+		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
 	}
 }
 
 // compile-time interface check
-var _ model.ComputeNodeInfoProvider = &NodeInfoProvider{}
+var _ models.ComputeNodeInfoProvider = &NodeInfoProvider{}

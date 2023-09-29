@@ -5,95 +5,59 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 )
 
 type RequesterConfigParams struct {
-	// Timeout config
-	MinJobExecutionTimeout     time.Duration
-	DefaultJobExecutionTimeout time.Duration
+	JobDefaults transformer.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
 	OverAskForBidsFactor               uint
-	JobSelectionPolicy                 model.JobSelectionPolicy
+	JobSelectionPolicy                 JobSelectionPolicy
 	ExternalValidatorWebhook           *url.URL
 	FailureInjectionConfig             model.FailureInjectionRequesterConfig
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
-	MinBacalhauVersion model.BuildVersionInfo
+	MinBacalhauVersion models.BuildVersionInfo
 
-	RetryStrategy requester.RetryStrategy
+	RetryStrategy orchestrator.RetryStrategy
+
+	// evaluation broker config
+	EvalBrokerVisibilityTimeout    time.Duration
+	EvalBrokerInitialRetryDelay    time.Duration
+	EvalBrokerSubsequentRetryDelay time.Duration
+	EvalBrokerMaxRetryCount        int
+
+	// worker config
+	WorkerCount                  int
+	WorkerEvalDequeueTimeout     time.Duration
+	WorkerEvalDequeueBaseBackoff time.Duration
+	WorkerEvalDequeueMaxBackoff  time.Duration
 }
 
 type RequesterConfig struct {
-	// MinJobExecutionTimeout requester will replace any job execution timeout that is less than this
-	// value with DefaultJobExecutionTimeout.
-	MinJobExecutionTimeout time.Duration
-	// DefaultJobExecutionTimeout default value for running, verifying and publishing job results,
-	// if the user didn't define one in the spec
-	DefaultJobExecutionTimeout time.Duration
-
-	// HousekeepingBackgroundTaskInterval background task interval that periodically checks for expired states
-	HousekeepingBackgroundTaskInterval time.Duration
-	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
-	NodeRankRandomnessRange  int
-	OverAskForBidsFactor     uint
-	JobSelectionPolicy       model.JobSelectionPolicy
-	ExternalValidatorWebhook *url.URL
-	FailureInjectionConfig   model.FailureInjectionRequesterConfig
-
-	// minimum version of compute nodes that the requester will accept and route jobs to
-	MinBacalhauVersion model.BuildVersionInfo
-
-	RetryStrategy requester.RetryStrategy
+	RequesterConfigParams
 }
 
-func NewRequesterConfigWithDefaults() RequesterConfig {
-	return NewRequesterConfigWith(DefaultRequesterConfig)
+func NewRequesterConfigWithDefaults() (RequesterConfig, error) {
+	return NewRequesterConfigWith(getRequesterConfigParams())
 }
 
 //nolint:gosimple
-func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfig) {
-	var err error
-
-	defer func() {
-		if err != nil {
-			panic(fmt.Sprintf("Failed to initialize compute config %s", err.Error()))
-		}
-	}()
-	if params.MinJobExecutionTimeout == 0 {
-		params.MinJobExecutionTimeout = DefaultRequesterConfig.MinJobExecutionTimeout
-	}
-	if params.DefaultJobExecutionTimeout == 0 {
-		params.DefaultJobExecutionTimeout = DefaultRequesterConfig.DefaultJobExecutionTimeout
-	}
-	if params.HousekeepingBackgroundTaskInterval == 0 {
-		params.HousekeepingBackgroundTaskInterval = DefaultRequesterConfig.HousekeepingBackgroundTaskInterval
-	}
-	if params.NodeRankRandomnessRange == 0 {
-		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
-	}
-	if params.OverAskForBidsFactor == 0 {
-		params.OverAskForBidsFactor = DefaultRequesterConfig.OverAskForBidsFactor
-	}
-	if params.MinBacalhauVersion == (model.BuildVersionInfo{}) {
-		params.MinBacalhauVersion = DefaultRequesterConfig.MinBacalhauVersion
+func NewRequesterConfigWith(params RequesterConfigParams) (RequesterConfig, error) {
+	if err := mergo.Merge(&params, getRequesterConfigParams()); err != nil {
+		return RequesterConfig{}, fmt.Errorf("creating requester config: %w", err)
 	}
 
-	config = RequesterConfig{
-		MinJobExecutionTimeout:             params.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout:         params.DefaultJobExecutionTimeout,
-		HousekeepingBackgroundTaskInterval: params.HousekeepingBackgroundTaskInterval,
-		JobSelectionPolicy:                 params.JobSelectionPolicy,
-		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
-		OverAskForBidsFactor:               params.OverAskForBidsFactor,
-		ExternalValidatorWebhook:           params.ExternalValidatorWebhook,
-		FailureInjectionConfig:             params.FailureInjectionConfig,
-		MinBacalhauVersion:                 params.MinBacalhauVersion,
-		RetryStrategy:                      params.RetryStrategy,
-	}
-
-	return config
+	log.Debug().Msgf("Requester config: %+v", params)
+	return RequesterConfig{
+		RequesterConfigParams: params,
+	}, nil
 }

@@ -11,7 +11,8 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
@@ -28,7 +29,6 @@ import (
 type StandardStorageProviderOptions struct {
 	API                   ipfs.Client
 	DownloadPath          string
-	EstuaryAPIKey         string
 	AllowListedLocalPaths []string
 }
 
@@ -51,7 +51,7 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage, options.EstuaryAPIKey)
+	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +72,14 @@ func NewStandardStorageProvider(
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
-		model.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
-		model.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		model.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
-		model.StorageSourceS3:             tracing.Wrap(s3Storage),
-		model.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
+	return provider.NewMappedProvider(map[string]storage.Storage{
+		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
+		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
+		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
+		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
+		models.StorageSourceS3:             tracing.Wrap(s3Storage),
+		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
 	}), nil
 }
 
@@ -116,33 +116,56 @@ func NewNoopStorageProvider(
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
 	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
-	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
+	return provider.NewNoopProvider[storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
+	dockerExecutor, err := docker.NewExecutor(ctx, executorOptions.DockerID)
 	if err != nil {
 		return nil, err
 	}
 
-	wasmExecutor, err := wasm.NewExecutor(ctx, storageProvider)
+	wasmExecutor, err := wasm.NewExecutor()
 	if err != nil {
 		return nil, err
 	}
 
-	return model.NewMappedProvider(map[model.Engine]executor.Executor{
-		model.EngineDocker: dockerExecutor,
-		model.EngineWasm:   wasmExecutor,
+	return provider.NewMappedProvider(map[string]executor.Executor{
+		models.EngineDocker: dockerExecutor,
+		models.EngineWasm:   wasmExecutor,
 	}), nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
+	return provider.NewNoopProvider[executor.Executor](noopExecutor)
+}
+
+type PluginExecutorOptions struct {
+	Plugins []PluginExecutorManagerConfig
+}
+
+func NewPluginExecutorProvider(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	pluginOptions PluginExecutorOptions,
+) (executor.ExecutorProvider, error) {
+	pe := NewPluginExecutorManager()
+	for _, cfg := range pluginOptions.Plugins {
+		if err := pe.RegisterPlugin(cfg); err != nil {
+			return nil, err
+		}
+	}
+	if err := pe.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallbackWithContext(pe.Stop)
+
+	return pe, nil
 }

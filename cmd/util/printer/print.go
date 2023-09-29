@@ -9,100 +9,65 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
-
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
-
-func GetCommandLineExecutable() string {
-	return os.Args[0]
-}
 
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 
-var eventsWorthPrinting = map[model.JobStateType]eventStruct{
-	model.JobStateNew:        {Message: "Creating job for submission", IsTerminal: false, PrintDownload: false, IsError: false},
-	model.JobStateQueued:     {Message: "Job waiting to be scheduled", PrintDownload: true, IsTerminal: false, IsError: false},
-	model.JobStateInProgress: {Message: "Job in progress", PrintDownload: true, IsTerminal: false, IsError: false},
-	model.JobStateError:      {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
-	model.JobStateCancelled:  {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
-	model.JobStateCompleted:  {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
+var eventsWorthPrinting = map[models.JobStateType]eventStruct{
+	models.JobStateTypePending:   {Message: "Creating job for submission", IsTerminal: false, IsError: false},
+	models.JobStateTypeRunning:   {Message: "Job in progress", IsTerminal: false, IsError: false},
+	models.JobStateTypeFailed:    {Message: "Error while executing the job", IsTerminal: true, IsError: true},
+	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true, IsError: false},
+	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true, IsError: false},
 }
 
 type eventStruct struct {
-	Message       string
-	IsTerminal    bool
-	PrintDownload bool
-	IsError       bool
+	Message    string
+	IsTerminal bool
+	IsError    bool
 }
 
 // PrintJobExecution displays information about the execution of a job
-// TODO gocyclo rates this as a 24, which is very high, we should refactor someday.
-//
-//nolint:gocyclo,funlen
 func PrintJobExecution(
 	ctx context.Context,
-	j *model.Job,
+	jobID string,
 	cmd *cobra.Command,
-	downloadSettings *flags.DownloaderSettings,
-	runtimeSettings *flags.RunTimeSettings,
-	client *publicapi.RequesterAPIClient,
+	runtimeSettings *cliflags.RunTimeSettings,
+	client *clientv2.Client,
 ) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
-	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
+	// "wait for the job to finish" (via waitForJobAndPrintResultsToUser)
 	if !runtimeSettings.WaitForJobToFinish {
-		cmd.Print(j.Metadata.ID + "\n")
+		cmd.Print(jobID + "\n")
 		return nil
 	}
 
 	// if we are in --id-only mode - print the id
 	if runtimeSettings.PrintJobIDOnly {
-		cmd.Print(j.Metadata.ID + "\n")
+		cmd.Print(jobID + "\n")
 	}
 
 	if runtimeSettings.Follow {
-		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
-		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
-
-		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
-		// the execution to appear.
-		for i := 0; i < 10; i++ {
-			jobState, stateErr := client.GetJobState(ctx, j.ID())
-			if stateErr != nil {
-				return fmt.Errorf("failed waiting for execution to start: %w", stateErr)
-			}
-
-			executionID := ""
-			for _, execution := range jobState.Executions {
-				if execution.State.IsActive() {
-					executionID = execution.ComputeReference
-				}
-			}
-
-			if executionID != "" {
-				break
-			}
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-
-		return util.Logs(cmd, j.Metadata.ID, true, true)
+		return followLogs(cmd, jobID, client)
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
+	jobErr := waitForJobAndPrintResultsToUser(ctx, cmd, jobID, quiet, client)
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			return nil
@@ -111,22 +76,15 @@ func PrintJobExecution(
 		}
 	}
 
-	jobReturn, found, err := client.Get(ctx, j.Metadata.ID)
-	if err != nil {
-		return fmt.Errorf("error getting job: %w", err)
-	}
-	if !found {
-		return fmt.Errorf("weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID)
-	}
-
-	js, err := client.GetJobState(ctx, jobReturn.Job.Metadata.ID)
-	if err != nil {
-		return fmt.Errorf("error getting job state: %w", err)
-	}
-
 	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+		executions, err := client.Jobs().Executions(&apimodels.ListJobExecutionsRequest{
+			JobID: jobID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job executions: %w", err)
+		}
 		cmd.Println("\nJob Results By Node:")
-		for message, nodes := range summariseExecutions(js) {
+		for message, nodes := range summariseExecutions(executions.Executions) {
 			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
 			if strings.ContainsRune(message, '\n') {
 				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
@@ -135,58 +93,72 @@ func PrintJobExecution(
 			}
 		}
 	}
-
-	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
-	if !quiet && hasResults {
-		cmd.Printf("\nTo download the results, execute:\n\t%s get %s\n", GetCommandLineExecutable(), j.ID())
-	}
-
 	if !quiet {
-		cmd.Printf("\nTo get more details about the run, execute:\n\t%s describe %s\n", GetCommandLineExecutable(), j.ID())
+		cmd.Println()
+		cmd.Println("To get more details about the run, execute:")
+		cmd.Println("\tbacalhau job describe " + jobID)
+
+		cmd.Println()
+		cmd.Println("To get more details about the run executions, execute:")
+		cmd.Println("\tbacalhau job executions " + jobID)
 	}
 
-	if hasResults && runtimeSettings.AutoDownloadResults {
-		if err := util.DownloadResultsHandler(ctx, cmd, j.Metadata.ID, downloadSettings); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-// WaitForJobAndPrintResultsToUser uses events to decide what to output to the terminal
+func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error {
+	cmd.Printf("Job successfully submitted. Job ID: %s\n", jobID)
+	cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+
+	// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
+	// the execution to appear.
+	for i := 0; i < 10; i++ {
+		resp, err := client.Jobs().Get(&apimodels.GetJobRequest{
+			JobID: jobID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job: %w", err)
+		}
+		if resp.Job.State.StateType != models.JobStateTypePending {
+			break
+		}
+		// TODO: add exponential backoff if there were no state updates
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+
+	return util.Logs(cmd, jobID, true, true)
+}
+
+// waitForJobAndPrintResultsToUser uses new job state  to decide what to output to the terminal
 // using a spinner to show long-running tasks. When the job is complete (or the user
 // triggers SIGINT) then the function will complete and stop outputting to the terminal.
 //
 //nolint:gocyclo,funlen
-func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
-	if j == nil || j.Metadata.ID == "" {
-		return errors.New("No job returned from the server.")
-	}
-
+func waitForJobAndPrintResultsToUser(
+	ctx context.Context, cmd *cobra.Command, jobID string, quiet bool, client *clientv2.Client) error {
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
-   bacalhau describe %s`, j.Metadata.ID)
+   bacalhau job describe %s`, jobID)
 
 	cancelString := fmt.Sprintf(`
 To cancel the job, run:
-   bacalhau cancel %s`, j.Metadata.ID)
+   bacalhau job stop %s`, jobID)
 
 	if !quiet {
-		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
+		cmd.Printf("Job successfully submitted. Job ID: %s\n", jobID)
 		cmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 	}
 
 	// Create a map of job state types -> boolean, this is a record of what has been printed
 	// so far.
-	printedEventsTracker := make(map[model.JobStateType]bool)
-	for _, jobEventType := range model.JobStateTypes() {
+	printedEventsTracker := make(map[models.JobStateType]bool)
+	for _, jobEventType := range models.JobStateTypes() {
 		printedEventsTracker[jobEventType] = false
 	}
 
 	// Inject "Job Initiated Event" to start - should we do this on the server?
 	// TODO: #1068 Should jobs auto add a "start event" on the client at creation?
 	// Faking an initial time (sometimes it happens too fast to see)
-	// fullLineMessage.TimerString = spinnerFmtDuration(DefaultSpinnerFormatDuration)
 	startMessage := "Communicating with the network"
 
 	// Decide where the spinner should write it's output, by default we want stdout
@@ -247,13 +219,10 @@ To cancel the job, run:
 		}
 	}()
 
-	var lastSeenTimestamp int64 = 0
-	var lastEventState model.JobStateType
+	var lastEventState models.JobStateType
 	for !cmdShuttingDown {
-		// Get the job level history events that happened since the last one we saw
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
-			Since:                 lastSeenTimestamp,
-			ExcludeExecutionLevel: true,
+		resp, err := client.Jobs().Get(&apimodels.GetJobRequest{
+			JobID: jobID,
 		})
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
@@ -261,62 +230,43 @@ To cancel the job, run:
 				cmdShuttingDown = true
 				continue
 			} else {
-				return errors.Wrap(err, "Error getting job events")
+				return errors.Wrap(err, "Error getting job")
 			}
 		}
 
-		// Iterate through the events, looking for ones we have not yet processed
-		for _, event := range jobEvents {
-			if event.Time.Unix() > lastSeenTimestamp {
-				lastSeenTimestamp = event.Time.Unix()
-			}
+		jobState := resp.Job.State
 
-			if event.Type != model.JobHistoryTypeJobLevel {
-				continue
-			}
+		if !quiet {
+			wasPrinted := printedEventsTracker[jobState.StateType]
 
-			if !quiet {
-				jet := event.JobState.New // Get the type of the new state
-				wasPrinted := printedEventsTracker[jet]
+			// If it hasn't been printed yet, we'll print this event.
+			// We'll also skip lines where there's no message to print.
+			if !wasPrinted && eventsWorthPrinting[jobState.StateType].Message != "" {
+				printedEventsTracker[jobState.StateType] = true
 
-				// If it hasn't been printed yet, we'll print this event.
-				// We'll also skip lines where there's no message to print.
-				if !wasPrinted && eventsWorthPrinting[jet].Message != "" {
-					printedEventsTracker[jet] = true
-
-					// We shouldn't do anything with execution errors because there could
-					// be retries following, so for now we will
-					if !eventsWorthPrinting[jet].IsError && !eventsWorthPrinting[jet].IsTerminal {
-						spinner.NextStep(eventsWorthPrinting[jet].Message)
-					}
-
-					if event.JobState.New == model.JobStateQueued {
-						spinner.msgMutex.Lock()
-						spinner.msg.Waiting = true
-						spinner.msg.Detail = event.Comment
-						spinner.msgMutex.Unlock()
-					}
-				} else if wasPrinted && lastEventState == event.JobState.New {
-					// Printing the same again but with new information, so we
-					// can just update the existing message.
-					spinner.msgMutex.Lock()
-					spinner.msg.Detail = event.Comment
-					spinner.msgMutex.Unlock()
+				// We shouldn't do anything with execution errors because there could
+				// be retries following, so for now we will
+				if !eventsWorthPrinting[jobState.StateType].IsError && !eventsWorthPrinting[jobState.StateType].IsTerminal {
+					spinner.NextStep(eventsWorthPrinting[jobState.StateType].Message)
 				}
+			} else if wasPrinted && lastEventState == jobState.StateType {
+				spinner.msgMutex.Lock()
+				spinner.msg.Detail = jobState.Message
+				spinner.msgMutex.Unlock()
 			}
+		}
 
-			lastEventState = event.JobState.New
+		lastEventState = jobState.StateType
 
-			if event.JobState.New.IsTerminal() {
-				if event.JobState.New != model.JobStateCompleted {
-					returnError = errors.New(event.Comment)
-					spinner.Done(StopFailed)
-				} else {
-					spinner.Done(StopSuccess)
-				}
-				cmdShuttingDown = true
-				break
+		if resp.Job.IsTerminal() {
+			if jobState.StateType != models.JobStateTypeCompleted {
+				returnError = errors.New(jobState.Message)
+				spinner.Done(StopFailed)
+			} else {
+				spinner.Done(StopSuccess)
 			}
+			cmdShuttingDown = true
+			break
 		}
 
 		// Have we been cancel(l)ed?
@@ -324,6 +274,7 @@ To cancel the job, run:
 			break
 		}
 
+		// TODO: add exponential backoff if there were no state updates
 		time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
 	}
 
@@ -332,9 +283,9 @@ To cancel the job, run:
 
 // Groups the executions in the job state, returning a map of printable messages
 // to node(s) that generated that message.
-func summariseExecutions(state model.JobState) map[string][]string {
-	results := make(map[string][]string, len(state.Executions))
-	for _, execution := range state.Executions {
+func summariseExecutions(executions []*models.Execution) map[string][]string {
+	results := make(map[string][]string, len(executions))
+	for _, execution := range executions {
 		var message string
 		if execution.RunOutput != nil {
 			if execution.RunOutput.ErrorMsg != "" {
@@ -344,12 +295,12 @@ func summariseExecutions(state model.JobState) map[string][]string {
 			} else {
 				message = execution.RunOutput.STDOUT
 			}
-		} else if execution.State.IsDiscarded() {
-			message = execution.Status
+		} else if execution.IsDiscarded() {
+			message = execution.ComputeState.Message
 		}
 
 		if message != "" {
-			results[message] = append(results[message], system.GetShortID(execution.NodeID))
+			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
 		}
 	}
 	return results

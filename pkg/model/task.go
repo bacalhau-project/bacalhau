@@ -55,7 +55,7 @@ type JobType interface {
 type NoopTask struct{}
 
 func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
+	spec.EngineSpec.Type = EngineNoop.String()
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (task *Task) ToSpec() (*Spec, error) {
 
 			spec.Publisher = config.Publisher
 			spec.Annotations = config.Annotations
-			spec.Timeout = config.Timeout.Seconds()
+			spec.Timeout = int64(config.Timeout.Seconds())
 			spec.Resources = ResourceUsageConfig{
 				CPU:    config.Resources.Cpu.String(),
 				Memory: config.Resources.Memory.String(),

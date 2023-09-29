@@ -5,15 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -37,6 +41,9 @@ var (
 
 		# Create a devstack cluster with a single hybrid (requester and compute) nodes
 		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
+
+		# Run a devstack and create (or use) the config repo in a specific folder
+		bacalhau devstack  --stack-repo ./my-devstack-configuration
 `))
 )
 
@@ -47,33 +54,42 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
+		ConfigurationRepo:          "",
 	}
 }
 
 func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
-	OS := serve.NewServeOptions()
-
-	// make sure serve options point to local mode
-	OS.PeerConnect = serve.DefaultPeerConnect
-	OS.PrivateInternalIPFS = true
-
 	IsNoop := false
+	devstackFlags := map[string][]configflags.Definition{
+		"requester-tls":    configflags.RequesterTLSFlags,
+		"job-selection":    configflags.JobSelectionFlags,
+		"disable-features": configflags.DisabledFeatureFlags,
+		"capacity":         configflags.CapacityFlags,
+	}
 
 	devstackCmd := &cobra.Command{
 		Use:     "devstack",
 		Short:   "Start a cluster of bacalhau nodes for testing and development",
 		Long:    devStackLong,
 		Example: devstackExample,
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := runDevstack(cmd, ODs, OS, IsNoop); err != nil {
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			if err := configflags.BindFlags(cmd, devstackFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
+		Run: func(cmd *cobra.Command, _ []string) {
+			if err := runDevstack(cmd, ODs, IsNoop); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+		},
+	}
+
+	if err := configflags.RegisterFlags(devstackCmd, devstackFlags); err != nil {
+		util.Fatal(devstackCmd, err, 1)
 	}
 
 	devstackCmd.PersistentFlags().IntVar(
@@ -97,7 +113,7 @@ func NewCmd() *cobra.Command {
 		`How many requester nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
-		&IsNoop, "noop", false,
+		&IsNoop, "Noop", false,
 		`Use the noop executor for all jobs`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
@@ -118,41 +134,58 @@ func NewCmd() *cobra.Command {
 	)
 	devstackCmd.PersistentFlags().StringSliceVar(
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs",
+		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
 	)
-
-	devstackCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
-	devstackCmd.Flags().AddFlagSet(flags.DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
-	serve.SetupCapacityManagerCLIFlags(devstackCmd, OS)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
+		"Will use pluggable executors when set to true",
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
+		"Folder to act as the devstack configuration repo",
+	)
 
 	return devstackCmd
 }
 
-//nolint:gocyclo
-func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.ServeOptions, IsNoop bool) error {
+//nolint:gocyclo,funlen
+func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
 
+	repoPath := ODs.ConfigurationRepo
+	if repoPath == "" {
+		// We need to clean up the repo when the node shuts down, but we can ONLY
+		// do this because we know it is a temporary directory. Do not delete the
+		// configured repo if `--stack-repo` was specified
+		repoPath, _ = os.MkdirTemp("", "")
+		defer os.RemoveAll(repoPath)
+	}
+
+	fsRepo, err := setup.SetupBacalhauRepo(repoPath)
+	if err != nil {
+		return err
+	}
+
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
-		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack")
+	if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
+		flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
+		return fmt.Errorf("unset %s in your environment "+
+			"and/or --%s from your flags "+
+			"and/or %s from your config "+
+			"to run devstack",
+			strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
+			flag.FlagName,
+			flag.ConfigPath,
+		)
+	} else if err != nil {
+		return err
 	}
 
 	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
-
-	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
-	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
-	if ODs.NumberOfBadComputeActors > totalComputeNodes {
-		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadComputeActors, totalComputeNodes)
-	}
-	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
-		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadRequesterActors, totalRequesterNodes)
-	}
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
@@ -168,21 +201,32 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		}
 	}
 
-	computeConfig := serve.GetComputeConfig(OS)
-	requestorConfig := serve.GetRequesterConfig(OS)
+	computeConfig, err := serve.GetComputeConfig()
+	if err != nil {
+		return err
+	}
+	requestorConfig, err := serve.GetRequesterConfig()
+	if err != nil {
+		return err
+	}
 
-	var stack *devstack.DevStack
-	var stackErr error
+	options := append(ODs.Options(),
+		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requestorConfig),
+	)
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
+	} else if ODs.ExecutorPlugins {
+		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
-	if stackErr != nil {
-		return stackErr
+	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
+	if err != nil {
+		return err
 	}
 
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
+	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsRepo, cm)
 	if err != nil {
 		return fmt.Errorf("failed to print node info: %w", err)
 	}
@@ -210,10 +254,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
 	}
 
-	if util.LoggingMode == logger.LogModeStation {
+	if config.GetLogMode() == logger.LogModeStation {
 		for _, node := range stack.Nodes {
 			if node.IsComputeNode() {
-				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
+				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 			}
 		}
 	}

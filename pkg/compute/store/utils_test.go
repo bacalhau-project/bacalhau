@@ -5,8 +5,7 @@ package store
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ func TestValidateNewExecution(t *testing.T) {
 
 func TestValidateNewExecution_InvalidState(t *testing.T) {
 	execution := newExecution()
-	execution.State = ExecutionStateBidAccepted
+	execution.State = ExecutionStateRunning
 	err := ValidateNewExecution(execution)
 	assert.ErrorAs(t, err, &ErrInvalidExecutionState{})
 }
@@ -30,17 +29,7 @@ func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 	assert.ErrorAs(t, err, &ErrInvalidExecutionVersion{})
 }
 
-func newExecution() Execution {
-	return *NewExecution(
-		uuid.NewString(),
-		model.Job{
-			Metadata: model.Metadata{
-				ID: uuid.NewString(),
-			},
-		},
-		"nodeID-1",
-		model.ResourceUsageData{
-			CPU:    1,
-			Memory: 2,
-		})
+func newExecution() LocalExecutionState {
+	execution := mock.ExecutionForJob(mock.Job())
+	return *NewLocalExecutionState(execution, "nodeID-1")
 }

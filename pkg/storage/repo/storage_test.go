@@ -5,27 +5,22 @@ package repo
 import (
 	"context"
 	"fmt"
-
-	"github.com/go-git/go-git/v5"
-
-	// "net/http"
-	// "net/http/httptest"
 	"os"
 	"path/filepath"
-
-	// "regexp"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -43,32 +38,22 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
 func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
+	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
 	if err != nil {
-		// panic(err)
 		return nil, err
 
 	}
-	// // require.NoError(t, err)
 
-	// apiAddresses, err := node.APIAddresses()
-	if err != nil {
-		// panic(err)
-		return nil, err
-
-	}
 	cl := ipfs.NewClient(node.Client().API)
-
 	storage, err := apicopy.NewStorage(cm, cl)
 	if err != nil {
-		// panic(err)
 		return nil, err
 	}
 
@@ -81,7 +66,7 @@ func (s *StorageSuite) TestNewStorageProvider() {
 	if err != nil {
 		panic(err)
 	}
-	sp, err := NewStorage(cm, storage, "")
+	sp, err := NewStorage(cm, storage)
 	require.NoError(s.T(), err, "failed to create storage provider")
 
 	// is dir writable?
@@ -105,13 +90,17 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	if err != nil {
 		panic(err)
 	}
-	sp, err := NewStorage(cm, storage, "")
+	sp, err := NewStorage(cm, storage)
 	require.NoError(s.T(), err, "failed to create storage provider")
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceRepoClone,
-		URL:           "foo",
-		Path:          "foo",
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceRepoClone,
+			Params: Source{
+				Repo: "foo",
+			}.ToMap(),
+		},
+		Target: "bar",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
@@ -137,8 +126,8 @@ func (s *StorageSuite) TestCloneRepo() {
 	}
 	// Rewrite this test replacing it with the clone part
 	filetypeCases := []repostruct{
-		{Site: "github", URL: "https://github.com/bacalhau-project/bacalhau.git",
-			repoName: "bacalhau-project/bacalhau",
+		{Site: "github", URL: "https://github.com/bacalhau-project/get.bacalhau.org.git",
+			repoName: "bacalhau-project/get.bacalhau.org",
 		}}
 
 	for _, ftc := range filetypeCases {
@@ -151,15 +140,19 @@ func (s *StorageSuite) TestCloneRepo() {
 			if err != nil {
 				panic(err)
 			}
-			sp, err := NewStorage(cm, storage, "")
+			sp, err := NewStorage(cm, storage)
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}
 
-			spec := model.StorageSpec{
-				StorageSource: model.StorageSourceRepoClone,
-				Repo:          ftc.URL,
-				Path:          "/inputs/" + ftc.repoName,
+			spec := models.InputSource{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceRepoClone,
+					Params: Source{
+						Repo: ftc.URL,
+					}.ToMap(),
+				},
+				Target: "/inputs/" + ftc.repoName,
 			}
 
 			volume, err := sp.PrepareStorage(ctx, spec)

@@ -10,13 +10,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata"
@@ -33,7 +33,7 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 	tests := []struct {
 		Name    string
-		Fixture *testdata.Fixture
+		Fixture *testdata.FixtureLegacy
 	}{
 		{
 			Name:    "noop json",
@@ -63,9 +63,21 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 		/*
 			{
 				Name:    "wasm task json",
-				Fixture: testdata.TaskWasmJson,
+				FixtureLegacy: testdata.TaskWasmJson,
 			},
 		*/
+		{
+			Name:    "docker engine spec json",
+			Fixture: testdata.JsonJobDockerEngineSpec,
+		},
+		{
+			Name:    "docker engine spec yaml",
+			Fixture: testdata.YamlJobDockerEngineSpec,
+		},
+		{
+			Name:    "wasm engine spec json",
+			Fixture: testdata.JsonJobWasmEngineSpec,
+		},
 	}
 
 	for _, tc := range tests {
@@ -88,7 +100,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 			fmt.Println(tc.Fixture.Data)
 
 			require.NoError(s.T(), err, "Error submitting job")
-			testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+			testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
 	}
 }
@@ -102,7 +114,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
-	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.Client, out)
+	job := testutils.GetJobFromTestOutputLegacy(context.Background(), s.T(), s.Client, out)
 	_, _, err = cmdtesting.ExecuteTestCobraCommand("describe",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
@@ -138,12 +150,12 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 
 	errorOutputMap := make(map[string]interface{})
 	for _, o := range strings.Split(commandReturnValue.out, "\n") {
-		err := model.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
+		err := marshaller.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
 		if err != nil {
 			continue
 		}
 	}
 
-	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
+	require.Contains(s.T(), errorOutputMap["Message"], "the job provided is invalid", "Output message should error properly.")
 	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
 }

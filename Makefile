@@ -160,10 +160,10 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau
+build: build-bacalhau build-plugins
 
 .PHONY: build-ci
-build-ci: build-bacalhau
+build-ci: build-bacalhau install-plugins
 
 .PHONY: build-dev
 build-dev: build-ci
@@ -195,9 +195,19 @@ build-http-gateway-image:
 
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
+
+# Only tag images with :latest if the release tag is a semver tag (e.g. v0.3.12)
+# and not a commit hash or a release candidate (e.g. v0.3.12-rc1)
+LATEST_TAG :=
+ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BACALHAU_TAG})
+	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
+endif
+
 .PHONY: build-bacalhau-image
 build-bacalhau-image:
 	docker build --progress=plain \
+		--build-arg TAG=${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
 		--tag ${BACALHAU_IMAGE}:latest \
 		--file docker/bacalhau-image/Dockerfile \
 		.
@@ -207,7 +217,8 @@ push-bacalhau-image:
 	docker buildx build --push --progress=plain \
 		--platform linux/amd64,linux/arm64 \
 		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:latest \
+		${LATEST_TAG} \
+		--build-arg TAG=${BACALHAU_TAG} \
 		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--label org.opencontainers.image.version=${BACALHAU_TAG} \
 		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
@@ -257,34 +268,12 @@ images: docker/.pulled
 # Target: clean
 ################################################################################
 .PHONY: clean
-clean:
+clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled
-
-
-################################################################################
-# Target: schema
-################################################################################
-SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-
-.PHONY: schema
-schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
-
-${SCHEMA_DIR}/%.json:
-	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-
-################################################################################
-# Target: all_schemas
-################################################################################
-EARLIEST_TAG := v0.3.12
-ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
-ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
-
-.PHONY: all_schemas
-all_schemas: ${ALL_SCHEMAS}
 
 
 ################################################################################
@@ -451,3 +440,47 @@ security:
 
 release: build-bacalhau
 	cp bin/bacalhau .
+
+ifeq ($(OS),Windows_NT)
+    detected_OS := Windows
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
+
+# TODO make the plugin path configurable instead of using the bacalhau config path.
+BACALHAU_CONFIG_PATH := $(shell echo $$BACALHAU_PATH)
+INSTALL_PLUGINS_DEST := $(if $(BACALHAU_CONFIG_PATH),$(BACALHAU_CONFIG_PATH)plugins/,~/.bacalhau/plugins/)
+
+EXECUTOR_PLUGINS := $(wildcard ./pkg/executor/plugins/executors/*/.)
+
+# TODO fix install on windows
+ifeq ($(detected_OS),Windows)
+    build-plugins clean-plugins install-plugins:
+	@echo "Skipping executor plugins on Windows"
+else
+    build-plugins: plugins-build
+    clean-plugins: plugins-clean
+    install-plugins: plugins-install
+
+    .PHONY: plugins-build $(EXECUTOR_PLUGINS)
+
+    plugins-build: $(EXECUTOR_PLUGINS)
+
+    $(EXECUTOR_PLUGINS):
+	    $(MAKE) -C $@
+
+    .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+    plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+    $(addsuffix .clean,$(EXECUTOR_PLUGINS)):
+	    $(MAKE) -C $(basename $@) clean
+
+    .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+    plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+    $(addsuffix .install,$(EXECUTOR_PLUGINS)):
+	    mkdir -p $(INSTALL_PLUGINS_DEST)
+	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+endif

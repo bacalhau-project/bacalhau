@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
@@ -41,13 +40,13 @@ func (s *WorkerTestSuite) SetupTest() {
 	s.broker = NewMockEvaluationBroker(ctrl)
 	s.backoff = backoff.NewMockBackoff(ctrl)
 	s.schedulerProvider = NewMappedSchedulerProvider(map[string]Scheduler{
-		model.JobTypeBatch:   s.schedulerBatchJobs,
-		model.JobTypeService: s.schedulerServiceJobs,
+		models.JobTypeBatch:   s.schedulerBatchJobs,
+		models.JobTypeService: s.schedulerServiceJobs,
 	})
 
 	s.eval = mock.Eval()
 	s.receiptHandle = uuid.NewString()
-	s.worker = NewWorker(&WorkerParams{
+	s.worker = NewWorker(WorkerParams{
 		SchedulerProvider:     s.schedulerProvider,
 		EvaluationBroker:      s.broker,
 		DequeueTimeout:        testDequeueTimeout,
@@ -193,10 +192,10 @@ func (s *WorkerTestSuite) TestProcessEvaluation_MultiCalls() {
 	eval3 := mock.Eval()
 	eval4 := mock.Eval()
 
-	eval1.Type = model.JobTypeBatch
-	eval2.Type = model.JobTypeService
+	eval1.Type = models.JobTypeBatch
+	eval2.Type = models.JobTypeService
 	eval3.Type = "missing-scheduler"
-	eval4.Type = model.JobTypeBatch
+	eval4.Type = models.JobTypeBatch
 
 	receiptHandle1 := "receiptHandle1"
 	receiptHandle2 := "receiptHandle2"

@@ -6,17 +6,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type DevstackSubmitSuite struct {
@@ -32,22 +32,18 @@ func TestDevstackSubmitSuite(t *testing.T) {
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	system.InitConfigForTesting(suite.T())
+	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack, _ := testutils.SetupTest(
-		ctx,
-		suite.T(),
-		1,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
+	stack := testutils.Setup(ctx, suite.T(),
+		devstack.WithNumberOfHybridNodes(1),
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}
@@ -56,7 +52,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	require.Error(suite.T(), missingSpecError)
 
 	j = &model.Job{}
-	j.Spec = model.Spec{Engine: model.EngineDocker}
+	j.Spec = model.Spec{EngineSpec: model.NewEngineBuilder().WithType(model.EngineDocker.String()).Build()}
 	_, missingDealError := apiClient.Submit(ctx, j)
 	require.Error(suite.T(), missingDealError)
 }

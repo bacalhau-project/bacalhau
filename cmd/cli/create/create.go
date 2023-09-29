@@ -13,10 +13,11 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
@@ -35,22 +36,22 @@ var (
 		bacalhau create ./job.yaml
 
 		# Create a new job from an already executed job
-		bacalhau describe 6e51df50 | bacalhau create -`))
+		bacalhau describe 6e51df50 | bacalhau create `))
 )
 
 type CreateOptions struct {
-	Filename        string                    // Filename for job (can be .json or .yaml)
-	Concurrency     int                       // Number of concurrent jobs to run
-	RunTimeSettings *flags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
-	DownloadFlags   *flags.DownloaderSettings // Settings for running Download
+	Filename        string                                // Filename for job (can be .json or .yaml)
+	Concurrency     int                                   // Number of concurrent jobs to run
+	RunTimeSettings *cliflags.RunTimeSettingsWithDownload // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadFlags   *cliflags.DownloaderSettings          // Settings for running Download
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
 		Filename:        "",
 		Concurrency:     1,
-		DownloadFlags:   flags.NewDefaultDownloaderSettings(),
-		RunTimeSettings: flags.NewDefaultRunTimeSettings(),
+		DownloadFlags:   cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings: cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -71,8 +72,8 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	createCmd.Flags().AddFlagSet(flags.NewDownloadFlags(OC.DownloadFlags))
-	createCmd.Flags().AddFlagSet(flags.NewRunTimeSettingsFlags(OC.RunTimeSettings))
+	createCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(OC.DownloadFlags))
+	createCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(OC.RunTimeSettings))
 
 	return createCmd
 }
@@ -115,18 +116,18 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	}
 
 	// Do a first pass for parsing to see if it's a Job or JobWithInfo
-	err = model.YAMLUnmarshalWithMax(byteResult, &rawMap)
+	err = marshaller.YAMLUnmarshalWithMax(byteResult, &rawMap)
 	if err != nil {
 		return fmt.Errorf("error parsing file: %w", err)
 	}
 
 	// If it's a JobWithInfo, we need to convert it to a Job
 	if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
-		err = model.YAMLUnmarshalWithMax(byteResult, &jwi)
+		err = marshaller.YAMLUnmarshalWithMax(byteResult, &jwi)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
-		byteResult, err = model.YAMLMarshalWithMax(jwi.Job)
+		byteResult, err = marshaller.YAMLMarshalWithMax(jwi.Job)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
@@ -150,7 +151,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		}
 
 		job.Spec = *spec
-		byteResult, err = model.YAMLMarshalWithMax(job)
+		byteResult, err = marshaller.YAMLMarshalWithMax(job)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
@@ -163,7 +164,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 	// so we can just use that
-	err = model.YAMLUnmarshalWithMax(byteResult, &j)
+	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
@@ -210,11 +211,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
-		} else {
-			return fmt.Errorf("error verifying job: %w", err)
-		}
+		return fmt.Errorf("error verifying job: %w", err)
 	}
 	if OC.RunTimeSettings.DryRun {
 		// Converting job to yaml
@@ -235,7 +232,8 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx)); err != nil {
+	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx))
+	if err != nil {
 		return err
 	}
 

@@ -1,0 +1,23 @@
+APIVersion: v1beta1
+Spec:
+  Publisher: ipfs
+  EngineSpec:
+    Type: docker
+    Params:
+      Image: ubuntu:latest
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - echo 15
+Resources:
+  CPU: ''
+  GPU: ''
+  Memory: ''
+  Disk: ''
+Inputs: []
+Outputs:
+  - StorageSource: ipfs
+    Name: output_custom
+    CID: ''
+    Path: /output_custom
+Annotations: []

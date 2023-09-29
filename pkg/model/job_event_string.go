@@ -8,7 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[jobEventUnknown-0]
+	_ = x[jobEventUndefined-0]
 	_ = x[JobEventCreated-1]
 	_ = x[JobEventBid-2]
 	_ = x[JobEventBidAccepted-3]
@@ -24,9 +24,9 @@ func _() {
 	_ = x[jobEventDone-13]
 }
 
-const _JobEventType_name = "jobEventUnknownCreatedBidBidAcceptedBidRejectedComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorCanceledCompletedjobEventDone"
+const _JobEventType_name = "jobEventUndefinedCreatedBidBidAcceptedBidRejectedComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorCanceledCompletedjobEventDone"
 
-var _JobEventType_index = [...]uint8{0, 15, 22, 25, 36, 47, 59, 74, 89, 104, 120, 125, 133, 142, 154}
+var _JobEventType_index = [...]uint8{0, 17, 24, 27, 38, 49, 61, 76, 91, 106, 122, 127, 135, 144, 156}
 
 func (i JobEventType) String() string {
 	if i < 0 || i >= JobEventType(len(_JobEventType_index)-1) {

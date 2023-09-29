@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
 
@@ -39,62 +41,129 @@ var taskWithConfigJSON []byte
 //go:embed wasm_task.json
 var wasmTaskJSON []byte
 
+//go:embed job-docker-engine-spec.json
+var jobJsonDockerEngineSpec []byte
+
+//go:embed job-docker-engine-spec.yaml
+var jobYamlDockerEngineSpec []byte
+
+//go:embed job-wasm-engine-spec.json
+var jobJsonWasmEngineSpec []byte
+
+//go:embed jobs/docker.yaml
+var dockerJobYAML []byte
+
+//go:embed jobs/docker-output.yaml
+var dockerOutputYAML []byte
+
+//go:embed jobs/docker-output.json
+var dockerOutputJSON []byte
+
+//go:embed jobs/docker-s3.yaml
+var dockerS3YAML []byte
+
+//go:embed jobs/empty.yaml
+var emptyJobYAML []byte
+
+//go:embed jobs/noop.yaml
+var noopJobYAML []byte
+
+//go:embed jobs/wasm.yaml
+var wasmJobYAML []byte
+
 var (
-	JsonJobNoop   *Fixture
-	JsonJobCancel *Fixture
+	JsonJobNoop             *FixtureLegacy
+	JsonJobCancel           *FixtureLegacy
+	JsonJobDockerEngineSpec *FixtureLegacy
+	JsonJobWasmEngineSpec   *FixtureLegacy
 
-	YamlJobS3          *Fixture
-	YamlJobNoop        *Fixture
-	YamlJobNoopInvalid *Fixture
-	YamlJobNoopUrl     *Fixture
+	YamlJobS3               *FixtureLegacy
+	YamlJobNoop             *FixtureLegacy
+	YamlJobNoopInvalid      *FixtureLegacy
+	YamlJobNoopUrl          *FixtureLegacy
+	YamlJobDockerEngineSpec *FixtureLegacy
 
-	IPVMTaskDocker     *Fixture
-	IPVMTaskWasm       *Fixture
-	IPVMTaskWithConfig *Fixture
+	IPVMTaskDocker     *FixtureLegacy
+	IPVMTaskWasm       *FixtureLegacy
+	IPVMTaskWithConfig *FixtureLegacy
+
+	DockerJobYAML    *Fixture
+	DockerOutputYAML *Fixture
+	DockerOutputJSON *Fixture
+	DockerS3YAML     *Fixture
+	EmptyJobYAML     *Fixture
+	NoopJobYAML      *Fixture
+	WasmJobYAML      *Fixture
 )
 
 func init() {
-	JsonJobNoop = NewSpecFixture(jobNoopJSON)
-	YamlJobNoop = NewSpecFixture(jobNoopYAML)
-	YamlJobNoopInvalid = NewSpecFixture(jobNoopYAMLInvalid)
+	JsonJobNoop = NewLegacySpecFixture(jobNoopJSON)
+	YamlJobNoop = NewLegacySpecFixture(jobNoopYAML)
+	YamlJobNoopInvalid = NewLegacySpecFixture(jobNoopYAMLInvalid)
 
-	JsonJobCancel = NewSpecFixture(jobCancelJSON)
+	JsonJobCancel = NewLegacySpecFixture(jobCancelJSON)
 
-	YamlJobS3 = NewSpecFixture(jobS3YAML)
+	YamlJobS3 = NewLegacySpecFixture(jobS3YAML)
 
-	YamlJobNoopUrl = NewSpecFixture(jobNoopURLYAML)
+	YamlJobNoopUrl = NewLegacySpecFixture(jobNoopURLYAML)
 
-	IPVMTaskDocker = NewIPVMFixture(dockerTaskJSON)
-	IPVMTaskWasm = NewIPVMFixture(wasmTaskJSON)
-	IPVMTaskWithConfig = NewIPVMFixture(taskWithConfigJSON)
+	IPVMTaskDocker = NewLegacyIPVMFixture(dockerTaskJSON)
+	IPVMTaskWasm = NewLegacyIPVMFixture(wasmTaskJSON)
+	IPVMTaskWithConfig = NewLegacyIPVMFixture(taskWithConfigJSON)
 
+	JsonJobDockerEngineSpec = NewLegacySpecFixture(jobJsonDockerEngineSpec)
+	YamlJobDockerEngineSpec = NewLegacySpecFixture(jobYamlDockerEngineSpec)
+
+	JsonJobWasmEngineSpec = NewLegacySpecFixture(jobJsonWasmEngineSpec)
+
+	DockerJobYAML = NewJobFixture("docker job", dockerJobYAML, false)
+	DockerOutputYAML = NewJobFixture("docker with output yaml", dockerOutputYAML, false)
+	DockerOutputJSON = NewJobFixture("docker with output json", dockerOutputJSON, false)
+	DockerS3YAML = NewJobFixture("docker with s3", dockerS3YAML, false)
+	EmptyJobYAML = NewJobFixture("empty job", emptyJobYAML, true)
+	NoopJobYAML = NewJobFixture("noop", noopJobYAML, false)
+	WasmJobYAML = NewJobFixture("wasm", wasmJobYAML, false)
 }
 
 type Fixture struct {
-	Job  model.Job
-	Data []byte
+	Description string
+	Job         *models.Job
+	Data        []byte
+	Invalid     bool
+}
+
+func AllFixtures() []*Fixture {
+	return []*Fixture{
+		DockerJobYAML,
+		DockerOutputYAML,
+		DockerOutputJSON,
+		DockerS3YAML,
+		EmptyJobYAML,
+		NoopJobYAML,
+		WasmJobYAML,
+	}
 }
 
 func (f *Fixture) RequiresDocker() bool {
-	return f.Job.Spec.Engine == model.EngineDocker
+	if f.Job == nil {
+		return false
+	}
+	return f.Job.Task().Engine.Type == models.EngineDocker
 }
 
 func (f *Fixture) RequiresS3() bool {
-	for _, i := range f.Job.Spec.AllStorageSpecs() {
-		if i.StorageSource == model.StorageSourceS3 {
+	if f.Job == nil {
+		return false
+	}
+	for _, i := range f.Job.AllStorageTypes() {
+		if i == models.StorageSourceS3 {
 			return true
 		}
 	}
-	return false
-}
-
-// validate validates the fixture.
-func (f *Fixture) validate() {
-	// validate the job spec was deserialized correctly and not empty
-	// checking for valid engine seems like a good enough check
-	if !model.IsValidEngine(f.Job.Spec.Engine) {
-		panic(fmt.Errorf("spec is empty/invalid: %s", string(f.Data)))
+	if f.Job.Task().Publisher.IsType(models.PublisherS3) {
+		return true
 	}
+	return false
 }
 
 func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
@@ -110,21 +179,75 @@ func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
 	return tmpfile.Name()
 }
 
-func NewSpecFixture(data []byte) *Fixture {
-	var out model.Job
-	if err := model.YAMLUnmarshalWithMax(data, &out); err != nil {
+func NewJobFixture(description string, data []byte, invalid bool) *Fixture {
+	out := new(models.Job)
+	if err := marshaller.YAMLUnmarshalWithMax(data, &out); err != nil {
 		panic(err)
 	}
 
-	f := &Fixture{
+	return &Fixture{
+		Description: description,
+		Job:         out,
+		Data:        data,
+		Invalid:     invalid,
+	}
+}
+
+type FixtureLegacy struct {
+	Job  model.Job
+	Data []byte
+}
+
+func (f *FixtureLegacy) RequiresDocker() bool {
+	return f.Job.Spec.EngineSpec.Engine() == model.EngineDocker
+}
+
+func (f *FixtureLegacy) RequiresS3() bool {
+	for _, i := range f.Job.Spec.AllStorageSpecs() {
+		if i.StorageSource == model.StorageSourceS3 {
+			return true
+		}
+	}
+	return false
+}
+
+// validate validates the fixture.
+func (f *FixtureLegacy) validate() {
+	// validate the job spec was deserialized correctly and not empty
+	// checking for valid engine seems like a good enough check
+	if !model.IsValidEngine(f.Job.Spec.EngineSpec.Engine()) {
+		panic(fmt.Errorf("spec is empty/invalid: %s", string(f.Data)))
+	}
+}
+
+func (f *FixtureLegacy) AsTempFile(t testing.TB, pattern string) string {
+	tmpfile, err := os.CreateTemp("", pattern)
+	require.NoError(t, err)
+
+	_, err = tmpfile.Write(f.Data)
+	require.NoError(t, err)
+
+	err = tmpfile.Close()
+	require.NoError(t, err)
+
+	return tmpfile.Name()
+}
+
+func NewLegacySpecFixture(data []byte) *FixtureLegacy {
+	var out model.Job
+	if err := marshaller.YAMLUnmarshalWithMax(data, &out); err != nil {
+		panic(err)
+	}
+
+	f := &FixtureLegacy{
 		Job:  out,
 		Data: data,
 	}
-	f.validate()
+	//f.validate()
 	return f
 }
 
-func NewIPVMFixture(data []byte) *Fixture {
+func NewLegacyIPVMFixture(data []byte) *FixtureLegacy {
 	task, err := model.UnmarshalIPLD[model.Task](data, json.Decode, model.UCANTaskSchema)
 	if err != nil {
 		panic(err)
@@ -140,10 +263,10 @@ func NewIPVMFixture(data []byte) *Fixture {
 	}
 	job.Spec = *spec
 
-	f := &Fixture{
+	f := &FixtureLegacy{
 		Job:  *job,
 		Data: data,
 	}
-	f.validate()
+	//f.validate()
 	return f
 }

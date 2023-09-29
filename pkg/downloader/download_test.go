@@ -7,19 +7,24 @@ import (
 	"crypto/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func TestDownloaderSuite(t *testing.T) {
@@ -37,7 +42,7 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
-	system.InitConfigForTesting(ds.T())
+	setup.SetupBacalhauRepoForTesting(ds.T())
 }
 
 // Before each test
@@ -50,7 +55,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
 
-	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
+	node, err := ipfs.NewNodeWithConfig(ctx, ds.cm, types.IpfsConfig{PrivateInternal: true})
 	require.NoError(ds.T(), err)
 
 	ds.client = node.Client()
@@ -61,15 +66,18 @@ func (ds *DownloaderSuite) SetupTest() {
 	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
 
+	cfg := configenv.Testing
+	cfg.Node.IPFS.SwarmAddresses = swarm
+	ds.Require().NoError(config.Set(cfg))
+
 	ds.downloadSettings = &model.DownloaderSettings{
-		Timeout:        model.DefaultIPFSTimeout,
-		OutputDir:      testOutputDir,
-		IPFSSwarmAddrs: strings.Join(swarm, ","),
+		Timeout:   model.DefaultDownloadTimeout,
+		OutputDir: testOutputDir,
 	}
 
-	ds.downloadProvider = model.NewMappedProvider(
-		map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
+	ds.downloadProvider = provider.NewMappedProvider(
+		map[string]Downloader{
+			model.StorageSourceIPFS.String(): ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
 		},
 	)
 }

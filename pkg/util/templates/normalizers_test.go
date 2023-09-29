@@ -23,21 +23,21 @@ func TestLongDesc(t *testing.T) {
 func TestExamples(t *testing.T) {
 	actual := Examples(`
 		# Describe a job with the full ID
-		bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
+		bacalhau describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 
 		# Describe a job with the a shortened ID
-		bacalhau describe 47805f5c
+		bacalhau describe j-47805f5c
 
 		# Describe a job and include all server and local events
-		bacalhau describe --include-events b6ad164a
+		bacalhau describe --include-events j-b6ad164a
 `)
 
 	assert.Equal(t, `  # Describe a job with the full ID
-  bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
+  bacalhau describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
   
   # Describe a job with the a shortened ID
-  bacalhau describe 47805f5c
+  bacalhau describe j-47805f5c
   
   # Describe a job and include all server and local events
-  bacalhau describe --include-events b6ad164a`, actual)
+  bacalhau describe --include-events j-b6ad164a`, actual)
 }

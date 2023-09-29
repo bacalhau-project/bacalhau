@@ -6,13 +6,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -53,66 +54,66 @@ func (s *UtilsSuite) TestSafeRegex() {
 }
 
 func (s *UtilsSuite) TestVersionCheck() {
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	// OK: Normal operation
-	err := EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err := EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: invalid semver
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "not-a-sem-ver",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: nil semver
-	err = EnsureValidVersion(context.TODO(), nil, &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), nil, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: development version
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: version.DevelopmentGitVersion,
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(s.T(), err)
 
 	// OK: development version
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.0",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: version.DevelopmentGitVersion,
 	})
 	require.NoError(s.T(), err)
 
 	// NOT OK: server is newer
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.4",
 	})
 	require.Error(s.T(), err)
 
 	// NOT OK: client is newer
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.4",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.Error(s.T(), err)
 
 	// https://github.com/bacalhau-project/bacalhau/issues/495
-	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
+	err = EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v0.1.37",
-	}, &model.BuildVersionInfo{
+	}, &models.BuildVersionInfo{
 		GitVersion: "v0.1.36",
 	})
 	require.Error(s.T(), err)
@@ -146,7 +147,7 @@ func (s *UtilsSuite) TestImages() {
 	for name, test := range tc {
 		s.Run(name, func() {
 			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
-			sampleJob.Spec.Docker.Image = test.Image
+			sampleJob.Spec.EngineSpec = model.NewDockerEngineBuilder(test.Image).Build()
 			err := job.VerifyJob(context.TODO(), sampleJob)
 			if test.Valid {
 				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)

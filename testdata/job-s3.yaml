@@ -1,8 +1,8 @@
 APIVersion: v1beta1
 Spec:
-  Engine: Docker
+  Engine: docker
   PublisherSpec:
-    Type: S3
+    Type: s3
     Params:
       Bucket: bacalhau-test-datasets
       Key: integration-tests-published-result/job-{jobID}
@@ -14,14 +14,14 @@ Spec:
       - -c
       - ls /input_custom
   Inputs:
-    - StorageSource: S3
+    - StorageSource: s3
       S3:
         Bucket: bacalhau-test-datasets
         Key: integration-tests-do-not-delete/set1/
         Region: eu-west-1
       Path: /input_custom
   Outputs:
-    - StorageSource: IPFS
+    - StorageSource: ipfs
       Name: output_custom
       Path: /output_custom
   Deal:

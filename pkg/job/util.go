@@ -24,14 +24,6 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
-// ShortID shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
-func ShortID(id string) string {
-	if len(id) < model.ShortIDLength {
-		return id
-	}
-	return id[:model.ShortIDLength]
-}
-
 func ComputeStateSummary(j model.JobState) string {
 	var currentJobState model.ExecutionStateType
 	executionStates := FlattenExecutionStates(j)

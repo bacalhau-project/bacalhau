@@ -2,8 +2,16 @@ package scenario
 
 import (
 	"context"
-	"strings"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -12,11 +20,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type ScenarioTestSuite interface {
@@ -42,7 +48,12 @@ type ScenarioRunner struct {
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
+	repoPath, err := fsRepo.Path()
+	if err != nil {
+		s.T().Fatal(err)
+	}
+	s.T().Setenv("BACALHAU_DIR", repoPath)
 
 	s.Ctx = context.Background()
 
@@ -74,22 +85,26 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
 	}
 
-	if config.RequesterConfig.DefaultJobExecutionTimeout == 0 {
-		config.RequesterConfig = node.NewRequesterConfigWithDefaults()
+	if config.RequesterConfig.JobDefaults.ExecutionTimeout == 0 {
+		// TODO(forrest) [correctness] don't override the config wholesale if a field is missing
+		cfg, err := node.NewRequesterConfigWithDefaults()
+		s.Require().NoError(err)
+		config.RequesterConfig = cfg
 	}
 
-	empty := model.ResourceUsageData{}
-	if config.ComputeConfig.TotalResourceLimits == empty {
-		config.ComputeConfig = node.NewComputeConfigWithDefaults()
+	if config.ComputeConfig.TotalResourceLimits.IsZero() {
+		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
+		// we probably want to merge these instead.
+		cfg, err := node.NewComputeConfigWithDefaults()
+		s.Require().NoError(err)
+		config.ComputeConfig = cfg
 	}
-
-	stack := testutils.SetupTestWithNoopExecutor(
-		s.Ctx,
-		s.T(),
-		*config.DevStackOptions,
-		config.ComputeConfig,
-		config.RequesterConfig,
-		config.ExecutorConfig,
+	stack := testutils.Setup(s.Ctx, s.T(),
+		append(config.DevStackOptions.Options(),
+			devstack.WithComputeConfig(config.ComputeConfig),
+			devstack.WithRequesterConfig(config.RequesterConfig),
+			testutils.WithNoopExecutor(config.ExecutorConfig),
+		)...,
 	)
 
 	return stack, stack.Nodes[0].CleanupManager
@@ -101,7 +116,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
@@ -117,7 +132,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Engine()))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
 			Type: model.PublisherIpfs,
@@ -130,7 +145,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	}
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()
@@ -155,21 +170,26 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		s.Require().NoError(err)
 
 		resultsDir = s.T().TempDir()
-		swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
-		s.Require().NoError(err)
+		var swarmAddresses []string
+		for _, n := range stack.Nodes {
+			addrs, err := n.IPFSClient.SwarmAddresses(s.Ctx)
+			s.Require().NoError(err)
+			swarmAddresses = append(swarmAddresses, addrs...)
+		}
+
+		viper.Set(types.NodeIPFSSwarmAddresses, swarmAddresses)
+		viper.Set(types.NodeIPFSPrivateInternal, true)
 
 		downloaderSettings := &model.DownloaderSettings{
-			Timeout:        time.Second * 10,
-			OutputDir:      resultsDir,
-			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
-			LocalIPFS:      true,
+			Timeout:   time.Second * 10,
+			OutputDir: resultsDir,
 		}
 
 		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 		s.Require().NoError(err)
 
-		downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-			model.StorageSourceIPFS: ipfsDownloader,
+		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{
+			models.StorageSourceIPFS: ipfsDownloader,
 		})
 
 		err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)

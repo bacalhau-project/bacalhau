@@ -7,21 +7,21 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings *flags.DownloaderSettings,
+	downloadSettings *cliflags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
@@ -55,7 +55,7 @@ func DownloadResultsHandler(
 
 	// check if we don't support downloading the results
 	for _, result := range results {
-		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
+		if !downloaderProvider.Has(ctx, result.Data.StorageSource.String()) {
 			cmd.PrintErrln(
 				"No supported downloader found for the published results. You will have to download the results differently.")
 			b, err := json.MarshalIndent(results, "", "    ")
@@ -83,7 +83,7 @@ func DownloadResultsHandler(
 
 	return nil
 }
-func processDownloadSettings(settings *flags.DownloaderSettings, jobID string) (*flags.DownloaderSettings, error) {
+func processDownloadSettings(settings *cliflags.DownloaderSettings, jobID string) (*cliflags.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {
@@ -112,5 +112,5 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 }
 
 func GetDefaultJobFolder(jobID string) string {
-	return fmt.Sprintf("job-%s", system.GetShortID(jobID))
+	return fmt.Sprintf("job-%s", idgen.ShortID(jobID))
 }

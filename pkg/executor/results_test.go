@@ -9,7 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/stretchr/testify/require"
@@ -99,15 +100,20 @@ func TestWriteResultHandlesNilPointers(t *testing.T) {
 
 func TestJobResult(t *testing.T) {
 	tempDir := t.TempDir()
-	result, err := WriteJobResults(
+	result := WriteJobResults(
 		tempDir,
 		strings.NewReader("standard output"),
 		strings.NewReader("standard error"),
 		123,
 		nil,
+		OutputLimits{
+			MaxStdoutFileLength:   system.MaxStdoutFileLength,
+			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+			MaxStderrFileLength:   system.MaxStderrFileLength,
+			MaxStderrReturnLength: system.MaxStderrReturnLength,
+		},
 	)
 
-	require.NoError(t, err)
 	require.Equal(t, "standard output", result.STDOUT)
 	require.Equal(t, false, result.StdoutTruncated)
 	require.Equal(t, "standard error", result.STDERR)
@@ -116,9 +122,9 @@ func TestJobResult(t *testing.T) {
 	require.Equal(t, "", result.ErrorMsg)
 
 	for filename, expectedContents := range map[string]string{
-		model.DownloadFilenameStdout:   "standard output",
-		model.DownloadFilenameStderr:   "standard error",
-		model.DownloadFilenameExitCode: "123",
+		models.DownloadFilenameStdout:   "standard output",
+		models.DownloadFilenameStderr:   "standard error",
+		models.DownloadFilenameExitCode: "123",
 	} {
 		actualContents, err := os.ReadFile(filepath.Join(tempDir, filename))
 		require.NoError(t, err)

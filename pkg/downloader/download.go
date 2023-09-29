@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // specialFiles - i.e. anything that is not a volume
@@ -20,7 +21,7 @@ var specialFiles = map[string]bool{
 	model.DownloadFilenameExitCode: true,
 }
 
-// DownloadResult downloads published results from a storage source and saves
+// DownloadResults downloads published results from a storage source and saves
 // them to the specific download path. It supports downloading multiple results
 // from different jobs and will append the logs to the global log file. This
 // behavior is left from when we supported sharded jobs, and multiple results
@@ -81,7 +82,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 
 	if settings.SingleFile != "" {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
 			if err != nil {
 				return err
 			}
@@ -128,7 +129,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 		}
 	} else {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
 			if err != nil {
 				return err
 			}

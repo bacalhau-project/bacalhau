@@ -5,7 +5,7 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
@@ -22,8 +22,8 @@ func (s *SchedulerProviderTestSuite) SetupTest() {
 	s.serviceTypeScheduler = NewMockScheduler(ctrl)
 	s.batchTypeScheduler = NewMockScheduler(ctrl)
 	s.schedulerProvider = NewMappedSchedulerProvider(map[string]Scheduler{
-		model.JobTypeService: s.serviceTypeScheduler,
-		model.JobTypeBatch:   s.batchTypeScheduler,
+		models.JobTypeService: s.serviceTypeScheduler,
+		models.JobTypeBatch:   s.batchTypeScheduler,
 	})
 }
 
@@ -34,12 +34,12 @@ func (s *SchedulerProviderTestSuite) TestGetScheduler() {
 		description string
 	}{
 		{
-			jobType:     model.JobTypeService,
+			jobType:     models.JobTypeService,
 			expected:    s.serviceTypeScheduler,
 			description: "GetScheduler should return the scheduler for service type",
 		},
 		{
-			jobType:     model.JobTypeBatch,
+			jobType:     models.JobTypeBatch,
 			expected:    s.batchTypeScheduler,
 			description: "GetScheduler should return the scheduler for batch type",
 		},
@@ -65,7 +65,7 @@ func (s *SchedulerProviderTestSuite) TestGetScheduler() {
 
 func (s *SchedulerProviderTestSuite) TestEnabledSchedulers() {
 	s.ElementsMatchf(
-		[]string{model.JobTypeService, model.JobTypeBatch},
+		[]string{models.JobTypeService, models.JobTypeBatch},
 		s.schedulerProvider.EnabledSchedulers(),
 		"EnabledSchedulers should return all the enabled schedulers",
 	)

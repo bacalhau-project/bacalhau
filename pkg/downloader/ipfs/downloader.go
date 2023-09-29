@@ -3,12 +3,16 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
+	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type Downloader struct {
@@ -29,29 +33,36 @@ func (d *Downloader) IsInstalled(context.Context) (bool, error) {
 }
 
 func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
-	log.Ctx(ctx).Debug().Msg("creating ipfs node")
+	var cfg types.IpfsConfig
+	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
+		return ipfs.Client{}, err
+	}
 
-	if d.node == nil {
-		// Only create a temporary ipfs node on the first need for a client
-		newNode := ipfs.NewNode
-		if d.settings.LocalIPFS {
-			newNode = ipfs.NewLocalNode
+	if cfg.Connect != "" {
+		log.Ctx(ctx).Debug().Msg("creating ipfs client")
+		client, err := ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
 		}
 
-		node, err := newNode(ctx, d.cm, strings.Split(d.settings.IPFSSwarmAddrs, ","))
+		if len(cfg.SwarmAddresses) != 0 {
+			maddrs, err := ipfs.ParsePeersString(cfg.SwarmAddresses)
+			if err != nil {
+				return ipfs.Client{}, err
+			}
+			client.SwarmConnect(ctx, maddrs)
+		}
+		return client, nil
+	}
+
+	log.Ctx(ctx).Debug().Msg("creating ipfs node")
+	if d.node == nil {
+		node, err := ipfs.NewNodeWithConfig(ctx, d.cm, cfg)
 		if err != nil {
 			return ipfs.Client{}, err
 		}
 
 		d.node = node
-
-		// Cleanup when the Downloader disappears.
-		d.cm.RegisterCallbackWithContext(func(ctx context.Context) error {
-			if d.node != nil {
-				d.node.Close(ctx)
-			}
-			return nil
-		})
 	}
 
 	return d.node.Client(), nil
@@ -98,7 +109,6 @@ func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) e
 	defer span.End()
 
 	ipfsClient, err := d.getClient(ctx)
-
 	if err != nil {
 		return err
 	}

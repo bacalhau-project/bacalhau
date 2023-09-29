@@ -1,10 +1,22 @@
 # syntax=docker/dockerfile:1.4
 # Pinned to 1.20
 FROM cgr.dev/chainguard/go@sha256:8ed3fdc8f6375a3fd84b4b8b696a2366c3a639931aab492d6f92ca917e726ad6 as build
+
+# Release tag. Used to build the binary and tag the version.
+ARG TAG
+
 WORKDIR /work
-COPY Makefile .
+
+# only copy what we need to build the binary instead of
+# the whole repo and then filter using .dockerignore
+COPY pkg ./pkg
+COPY cmd ./cmd
+COPY testdata ./testdata
+COPY docs ./docs
 COPY go.mod .
-COPY . .
+COPY main.go .
+COPY Makefile .
+RUN make modtidy
 RUN make build-bacalhau
 RUN find ./bin -name 'bacalhau' -exec mv -t ./bin {} +
 

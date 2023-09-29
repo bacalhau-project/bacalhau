@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const (
@@ -60,24 +60,26 @@ var (
 	gatewayCapabilities = []string{"NET_ADMIN"}
 )
 
+//nolint:nakedret
 func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
+	job string,
 	executionID string,
-	job model.Job,
+	network *models.NetworkConfig,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
-	containerConfig.NetworkDisabled = job.Spec.Network.Disabled()
-	switch job.Spec.Network.Type {
-	case model.NetworkNone:
+	containerConfig.NetworkDisabled = network.Disabled()
+	switch network.Type {
+	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
-	case model.NetworkFull:
+	case models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
-	case model.NetworkHTTP:
+	case models.NetworkHTTP:
 		var internalNetwork *types.NetworkResource
 		var proxyAddr *net.TCPAddr
-		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, executionID, job)
+		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, network)
 		if err != nil {
 			return
 		}
@@ -87,7 +89,7 @@ func (e *Executor) setupNetworkForJob(
 			fmt.Sprintf("https_proxy=%s", proxyAddr.String()),
 		)
 	default:
-		err = fmt.Errorf("unsupported network type %q", job.Spec.Network.Type.String())
+		err = fmt.Errorf("unsupported network type %q", network.Type.String())
 	}
 	return
 }
@@ -95,8 +97,9 @@ func (e *Executor) setupNetworkForJob(
 //nolint:funlen,gocyclo
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
+	job string,
 	executionID string,
-	job model.Job,
+	network *models.NetworkConfig,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
 	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
@@ -123,14 +126,14 @@ func (e *Executor) createHTTPGateway(
 	}
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
-	if len(job.Spec.Network.DomainSet()) == 0 {
+	if len(network.DomainSet()) == 0 {
 		return nil,
 			nil,
-			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", model.NetworkHTTP)
+			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", models.NetworkHTTP)
 	}
 
 	// Create the gateway container initially attached to the *host* network
-	domainList, derr := json.Marshal(job.Spec.Network.DomainSet())
+	domainList, derr := json.Marshal(network.DomainSet())
 	clientList, cerr := json.Marshal([]string{subnet})
 	if derr != nil || cerr != nil {
 		return nil, nil, errors.Wrap(multierr.Combine(derr, cerr), "error preparing gateway config")
@@ -141,7 +144,7 @@ func (e *Executor) createHTTPGateway(
 		Env: []string{
 			fmt.Sprintf("BACALHAU_HTTP_CLIENTS=%s", clientList),
 			fmt.Sprintf("BACALHAU_HTTP_DOMAINS=%s", domainList),
-			fmt.Sprintf("BACALHAU_JOB_ID=%s", job.ID()),
+			fmt.Sprintf("BACALHAU_JOB_ID=%s", job),
 			fmt.Sprintf("BACALHAU_EXECUTION_ID=%s", executionID),
 		},
 		Healthcheck:     &container.HealthConfig{}, //TODO

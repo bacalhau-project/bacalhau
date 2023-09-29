@@ -31,7 +31,7 @@ func (r RunningExecutionsInfoProvider) GetDebugInfo(ctx context.Context) (model.
 	executions := r.backendBuffer.RunningExecutions()
 	summaries := make([]store.ExecutionSummary, 0, len(executions))
 	for _, execution := range executions {
-		summaries = append(summaries, store.NewExecutionSummary(execution))
+		summaries = append(summaries, execution.ToSummary())
 	}
 
 	return model.DebugInfo{

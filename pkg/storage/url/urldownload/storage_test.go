@@ -11,11 +11,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -27,13 +31,14 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
+	err := config.Set(configenv.Local)
+	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }
 
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {
@@ -56,10 +61,14 @@ func (s *StorageSuite) TestNewStorageProvider() {
 func (s *StorageSuite) TestHasStorageLocally() {
 	sp := newStorage(s.T().TempDir())
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           "foo",
-		Path:          "foo",
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: "foo",
+			}.ToMap(),
+		},
+		Target: "bar",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(context.Background(), spec)
@@ -316,10 +325,17 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			subject := newStorage(s.T().TempDir())
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
-			vol, err := subject.PrepareStorage(context.Background(), model.StorageSpec{
-				URL:  url,
-				Path: "/inputs",
-			})
+			spec := models.InputSource{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceURL,
+					Params: Source{
+						URL: url,
+					}.ToMap(),
+				},
+				Target: "/inputs",
+			}
+
+			vol, err := subject.PrepareStorage(context.Background(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)

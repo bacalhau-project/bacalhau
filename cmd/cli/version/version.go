@@ -20,21 +20,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 )
 
 // Versions is a struct for version information
 type Versions struct {
-	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty"`
-	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty"`
+	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
 // VersionOptions is a struct to support version command
@@ -64,7 +65,7 @@ func NewCmd() *cobra.Command {
 		},
 	}
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
-	versionCmd.Flags().AddFlagSet(flags.OutputFormatFlags(&oV.OutputOpts))
+	versionCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&oV.OutputOpts))
 
 	return versionCmd
 }

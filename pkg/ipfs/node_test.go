@@ -9,10 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/boxo/coreiface/path"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const testString = "Hello World"
@@ -23,7 +26,7 @@ type NodeSuite struct {
 
 func (s *NodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:
@@ -39,16 +42,16 @@ func (s *NodeSuite) TestFunctionality() {
 		cm.Cleanup(context.Background())
 	})
 
-	n1, err := NewLocalNode(ctx, cm, nil)
+	n1, err := NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
 	s.Require().NoError(err)
 
 	addrs, err := n1.SwarmAddresses()
 	s.Require().NoError(err)
 
-	n2, err := NewLocalNode(ctx, cm, addrs) // connect to first node
+	n2, err := NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true, SwarmAddresses: addrs}) // connect to first node
 	s.Require().NoError(err)
 
-	n3, err := NewLocalNode(ctx, cm, nil) // to test that it doesn't auto-discover anyone
+	n3, err := NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true}) // to test that it doesn't auto-discover anyone
 	s.Require().NoError(err)
 
 	// Create a file in a temp dir to upload to the nodes:

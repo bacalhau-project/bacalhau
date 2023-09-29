@@ -16,10 +16,10 @@ var (
 	//nolint:lll // Documentation
 	logsExample = templates.Examples(i18n.T(`
 		# Follow logs for a previously submitted job
-		bacalhau logs 51225160-807e-48b8-88c9-28311c7899e1
+		bacalhau logs j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Follow output with a short ID 
-		bacalhau logs ebd9bf2f
+		bacalhau logs j-ebd9bf2f
 `))
 )
 
@@ -47,11 +47,6 @@ func NewCmd() *cobra.Command {
 	logsCmd.PersistentFlags().BoolVarP(
 		&options.Follow, "follow", "f", false,
 		`Follow the logs in real-time after retrieving the current logs.`,
-	)
-
-	logsCmd.PersistentFlags().BoolVarP(
-		&options.Follow, "history", "h", false,
-		`Show all logs with history. TODO better definition`,
 	)
 
 	return logsCmd

@@ -10,15 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type LogStreamTestSuite struct {
@@ -26,7 +22,6 @@ type LogStreamTestSuite struct {
 
 	ctx   context.Context
 	stack *devstack.DevStack
-	cm    *system.CleanupManager
 }
 
 func TestLogStreamTestSuite(t *testing.T) {
@@ -35,11 +30,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1)
-}
-
-func (s *LogStreamTestSuite) TearDownSuite() {
-	s.cm.Cleanup(s.ctx)
+	s.stack = testutil.Setup(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
 }
 
 func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {
@@ -58,40 +49,4 @@ func waitForOutputStream(ctx context.Context, executionID string, withHistory bo
 	}
 
 	return nil, fmt.Errorf("failed to get output stream from container")
-}
-
-func newTestExecution(name string, job model.Job) store.Execution {
-	return *store.NewExecution(
-		uuid.NewString(),
-		job,
-		name,
-		model.ResourceUsageData{
-			CPU:    1,
-			Memory: 2,
-		})
-}
-
-func newWasmJob(id string, spec model.JobSpecWasm) model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: id,
-		},
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			Wasm:   spec,
-		},
-	}
-}
-
-func newDockerJob(id string, spec model.JobSpecDocker) model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: id,
-		},
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: spec,
-		},
-	}
-
 }

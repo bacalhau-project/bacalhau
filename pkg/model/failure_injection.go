@@ -5,7 +5,7 @@ type FailureInjectionComputeConfig struct {
 }
 
 type FailureInjectionRequesterConfig struct {
-	IsBadActor bool
+	IsBadActor bool `yaml:"IsBadActor"`
 }
 
 type FailureInjectionConfig struct {

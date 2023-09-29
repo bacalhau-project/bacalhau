@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -30,8 +30,8 @@ func TestInMemoryNodeInfoStoreSuite(t *testing.T) {
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Get() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo2 := generateNodeInfo("node2", models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
@@ -49,75 +49,75 @@ func (s *InMemoryNodeInfoStoreSuite) Test_GetNotFound() {
 	ctx := context.Background()
 	_, err := s.store.Get(ctx, peer.ID("node1"))
 	s.Error(err)
-	s.IsType(requester.ErrNodeNotFound{}, err)
+	s.IsType(routing.ErrNodeNotFound{}, err)
 
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_List() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo2 := generateNodeInfo("node2", models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
 	// test List
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo2}, allNodeInfos)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo1, nodeInfo2}, allNodeInfos)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_ListForEngine() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineWasm)
-	nodeInfo3 := generateNodeInfo("node3", model.EngineDocker, model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo2 := generateNodeInfo("node2", models.EngineWasm)
+	nodeInfo3 := generateNodeInfo("node3", models.EngineDocker, models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 	s.NoError(s.store.Add(ctx, nodeInfo3))
 
-	dockerNodes, err := s.store.ListForEngine(ctx, model.EngineDocker)
+	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo3}, dockerNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo1, nodeInfo3}, dockerNodes)
 
-	wasmNodes, err := s.store.ListForEngine(ctx, model.EngineWasm)
+	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo2, nodeInfo3}, wasmNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo2, nodeInfo3}, wasmNodes)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Delete() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineDocker, model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo2 := generateNodeInfo("node2", models.EngineDocker, models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
 	// delete first node
 	s.NoError(s.store.Delete(ctx, nodeInfo1.PeerInfo.ID))
-	dockerNodes, err := s.store.ListForEngine(ctx, model.EngineDocker)
+	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo2}, dockerNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo2}, dockerNodes)
 
-	wasmNodes, err := s.store.ListForEngine(ctx, model.EngineWasm)
+	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo2}, wasmNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo2}, wasmNodes)
 
 	// delete second node
 	s.NoError(s.store.Delete(ctx, nodeInfo2.PeerInfo.ID))
-	dockerNodes, err = s.store.ListForEngine(ctx, model.EngineDocker)
+	dockerNodes, err = s.store.ListForEngine(ctx, models.EngineDocker)
 	s.NoError(err)
 	s.Empty(dockerNodes)
 
-	wasmNodes, err = s.store.ListForEngine(ctx, model.EngineWasm)
+	wasmNodes, err = s.store.ListForEngine(ctx, models.EngineWasm)
 	s.NoError(err)
 	s.Empty(wasmNodes)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
-	nodeInfo2 := generateNodeInfo("node1", model.EngineWasm)
+	nodeInfo2 := generateNodeInfo("node1", models.EngineWasm)
 	nodeInfo2.PeerInfo.ID = nodeInfo1.PeerInfo.ID
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
@@ -128,16 +128,16 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
 	// test List
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo2}, allNodeInfos)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo2}, allNodeInfos)
 
 	// test ListForEngine
-	dockerNodes, err := s.store.ListForEngine(ctx, model.EngineDocker)
+	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
 	s.NoError(err)
 	s.Empty(dockerNodes)
 
-	wasmNodes, err := s.store.ListForEngine(ctx, model.EngineWasm)
+	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
 	s.NoError(err)
-	s.ElementsMatch([]model.NodeInfo{nodeInfo2}, wasmNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo2}, wasmNodes)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
@@ -146,7 +146,7 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
 		TTL: ttl,
 	})
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
+	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// test Get
@@ -158,16 +158,16 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
 	time.Sleep(ttl + 100*time.Millisecond)
 	_, err = s.store.Get(ctx, nodeInfo1.PeerInfo.ID)
 	s.Error(err)
-	s.IsType(requester.ErrNodeNotFound{}, err)
+	s.IsType(routing.ErrNodeNotFound{}, err)
 }
 
-func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
-	return model.NodeInfo{
+func generateNodeInfo(id string, engines ...string) models.NodeInfo {
+	return models.NodeInfo{
 		PeerInfo: peer.AddrInfo{
 			ID: peer.ID(id),
 		},
-		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: &model.ComputeNodeInfo{
+		NodeType: models.NodeTypeCompute,
+		ComputeNodeInfo: &models.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}

@@ -15,6 +15,13 @@ const (
 	EvalStatusCancelled = "canceled"
 )
 
+const (
+	EvalTriggerJobRegister     = "job-register"
+	EvalTriggerJobCancel       = "job-cancel"
+	EvalTriggerRetryFailedExec = "exec-failure"
+	EvalTriggerExecUpdate      = "exec-update"
+)
+
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
 // scheduled or if existing ones must be stopped.
 // It is possible that no action is required if the scheduler sees the desired job state matches the observed state.
@@ -22,40 +29,36 @@ const (
 // having to do complex logic to decide what actions to take.
 type Evaluation struct {
 	// ID is the unique identifier of the evaluation.
-	ID string
+	ID string `json:"ID"`
 
 	// Namespace is the namespace the evaluation is created in
-	Namespace string
+	Namespace string `json:"Namespace"`
 
 	// JobID is the unique identifier of the job.
-	JobID string
+	JobID string `json:"JobID"`
 
 	// TriggeredBy is the root cause that triggered the evaluation.
-	TriggeredBy string
+	TriggeredBy string `json:"TriggeredBy"`
 
 	// Priority is the priority of the evaluation.
 	// e.g. 50 is higher priority than 10, and so will be evaluated first.
-	Priority int
+	Priority int `json:"Priority"`
 
 	// Type is the type of the job that needs to be evaluated.
-	Type string
+	Type string `json:"Type"`
 
 	// Status is the current status of the evaluation.
-	Status string
+	Status string `json:"Status"`
 
 	// Comment is to provide additional information about the evaluation.
-	Comment string
+	Comment string `json:"Comment"`
 
 	// WaitUntil is the time until which the evaluation should be ignored, such as to implement backoff when
 	// repeatedly failing to assess a job.
-	WaitUntil time.Time
+	WaitUntil time.Time `json:"WaitUntil"`
 
-	// DB replicated log index
-	CreateIndex uint64
-	ModifyIndex uint64
-
-	CreateTime int64
-	ModifyTime int64
+	CreateTime int64 `json:"CreateTime"`
+	ModifyTime int64 `json:"ModifyTime"`
 }
 
 // TerminalStatus returns if the current status is terminal and
@@ -103,7 +106,7 @@ func (e *Evaluation) Copy() *Evaluation {
 
 // EvaluationReceipt is a pair of an Evaluation and its ReceiptHandle.
 type EvaluationReceipt struct {
-	Evaluation *Evaluation
+	Evaluation *Evaluation `json:"Evaluation"`
 	// ReceiptHandle is a unique identifier when dequeue an Evaluation from a broker.
-	ReceiptHandle string
+	ReceiptHandle string `json:"ReceiptHandle"`
 }

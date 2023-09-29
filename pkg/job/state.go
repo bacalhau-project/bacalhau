@@ -272,6 +272,18 @@ func WaitForSuccessfulCompletion() CheckStatesFunction {
 	}
 }
 
+func WaitForUnsuccessfulCompletion() CheckStatesFunction {
+	return func(jobState model.JobState) (bool, error) {
+		if jobState.State.IsTerminal() {
+			if jobState.State != model.JobStateError {
+				return false, fmt.Errorf("job did not complete successfully")
+			}
+			return true, nil
+		}
+		return false, nil
+	}
+}
+
 // if there are > X states then error
 func WaitDontExceedCount(count int) CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {

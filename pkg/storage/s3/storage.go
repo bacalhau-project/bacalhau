@@ -10,11 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/rs/zerolog/log"
 )
 
 /*
@@ -63,17 +64,22 @@ func (s *StorageProvider) IsInstalled(_ context.Context) (bool, error) {
 }
 
 // HasStorageLocally checks if the requested content is hosted locally.
-func (s *StorageProvider) HasStorageLocally(_ context.Context, _ model.StorageSpec) (bool, error) {
+func (s *StorageProvider) HasStorageLocally(_ context.Context, _ models.InputSource) (bool, error) {
 	// TODO: return true if the content is on the same AZ or datacenter as the host
 	return false, nil
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
+	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout())
 	defer cancel()
 
-	client := s.clientProvider.GetClient(volume.S3.Endpoint, volume.S3.Region)
-	objects, err := s.explodeKey(ctx, client, volume.S3)
+	source, err := s3helper.DecodeSourceSpec(volume.Source)
+	if err != nil {
+		return 0, err
+	}
+
+	client := s.clientProvider.GetClient(source.Endpoint, source.Region)
+	objects, err := s.explodeKey(ctx, client, source)
 	if err != nil {
 		return 0, err
 	}
@@ -84,8 +90,12 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Storag
 	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	log.Debug().Msgf("Preparing storage for s3://%s/%s", storageSpec.S3.Bucket, storageSpec.S3.Key)
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+	source, err := s3helper.DecodeSourceSpec(storageSpec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	log.Debug().Msgf("Preparing storage for s3://%s/%s", source.Bucket, source.Key)
 
 	// create random directory to store the content and to avoid conflicts with other downloads
 	outputDir, err := os.MkdirTemp(s.localDir, "s3-input-*")
@@ -93,16 +103,16 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 		return storage.StorageVolume{}, err
 	}
 
-	client := s.clientProvider.GetClient(storageSpec.S3.Endpoint, storageSpec.S3.Region)
-	objects, err := s.explodeKey(ctx, client, storageSpec.S3)
+	client := s.clientProvider.GetClient(source.Endpoint, source.Region)
+	objects, err := s.explodeKey(ctx, client, source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	prefixTokens := strings.Split(s.sanitizeKey(storageSpec.S3.Key), "/")
+	prefixTokens := strings.Split(s.sanitizeKey(source.Key), "/")
 
 	for _, object := range objects {
-		err = s.downloadObject(ctx, client, storageSpec, object, outputDir, prefixTokens)
+		err = s.downloadObject(ctx, client, source, object, outputDir, prefixTokens)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
@@ -111,7 +121,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputDir,
-		Target: storageSpec.Path,
+		Target: storageSpec.Target,
 	}
 
 	return volume, nil
@@ -120,7 +130,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 // downloadObject downloads a single object from S3 to local disk
 func (s *StorageProvider) downloadObject(ctx context.Context,
 	client *s3helper.ClientWrapper,
-	storageSpec model.StorageSpec,
+	source s3helper.SourceSpec,
 	object s3ObjectSummary,
 	parentDir string,
 	prefixTokens []string) error {
@@ -139,26 +149,26 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	outputPath := filepath.Join(parentDir, filepath.Join(objectTokens[startingIndex:]...))
 
 	if object.isDir {
-		return os.MkdirAll(outputPath, model.DownloadFolderPerm)
+		return os.MkdirAll(outputPath, models.DownloadFolderPerm)
 	}
 
 	// create all parent directories if needed
-	err := os.MkdirAll(filepath.Dir(outputPath), model.DownloadFolderPerm)
+	err := os.MkdirAll(filepath.Dir(outputPath), models.DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
 
 	// create the file to download to
-	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
+	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, models.DownloadFilePerm)
 	if err != nil {
 		return err
 	}
 	defer outputFile.Close() //nolint:errcheck
 
 	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
-		storageSpec.S3.Bucket, aws.ToString(object.key), aws.ToString(object.versionID), aws.ToString(object.eTag), outputFile.Name())
+		source.Bucket, aws.ToString(object.key), aws.ToString(object.versionID), aws.ToString(object.eTag), outputFile.Name())
 	_, err = client.Downloader.Download(ctx, outputFile, &s3.GetObjectInput{
-		Bucket:    aws.String(storageSpec.S3.Bucket),
+		Bucket:    aws.String(source.Bucket),
 		Key:       object.key,
 		VersionId: object.versionID,
 		IfMatch:   object.eTag,
@@ -166,16 +176,16 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	return err
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, _ model.StorageSpec, volume storage.StorageVolume) error {
+func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
 	return os.RemoveAll(volume.Source)
 }
 
-func (s *StorageProvider) Upload(_ context.Context, _ string) (model.StorageSpec, error) {
-	return model.StorageSpec{}, fmt.Errorf("not implemented")
+func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig, error) {
+	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
 func (s *StorageProvider) explodeKey(
-	ctx context.Context, client *s3helper.ClientWrapper, storageSpec *model.S3StorageSpec) ([]s3ObjectSummary, error) {
+	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
 	if !strings.HasSuffix(storageSpec.Key, "*") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),

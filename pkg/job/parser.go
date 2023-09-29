@@ -14,6 +14,7 @@ import (
 
 const defaultStoragePath = "/inputs"
 
+//nolint:gocyclo
 func ParseStorageString(sourceURI, destinationPath string, options map[string]string) (model.StorageSpec, error) {
 	sourceURI = strings.Trim(sourceURI, " '\"")
 	destinationPath = strings.Trim(destinationPath, " '\"")
@@ -121,13 +122,9 @@ func ParsePublisherString(destinationURI string, options map[string]interface{})
 
 	var res model.PublisherSpec
 	switch parsedURI.Scheme {
-	case "ipfs":
+	case "ipfs", "estuary": // Also handle the deprecated estuary publisher
 		res = model.PublisherSpec{
 			Type: model.PublisherIpfs,
-		}
-	case "estuary":
-		res = model.PublisherSpec{
-			Type: model.PublisherEstuary,
 		}
 	case "s3":
 		if _, ok := options["bucket"]; !ok {

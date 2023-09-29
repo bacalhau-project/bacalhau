@@ -3,17 +3,17 @@ package noop
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 type PublisherHandlerIsInstalled func(ctx context.Context) (bool, error)
 type PublisherHandlerPublishResult func(
-	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error)
+	ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error)
 
 func ErrorResultPublisher(err error) PublisherHandlerPublishResult {
-	return func(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
-		return model.StorageSpec{}, err
+	return func(ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error) {
+		return models.SpecConfig{}, err
 	}
 }
 
@@ -47,16 +47,16 @@ func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (publisher *NoopPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+func (publisher *NoopPublisher) ValidateJob(ctx context.Context, j models.Job) error {
 	return nil
 }
 
 func (publisher *NoopPublisher) PublishResult(
-	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
+	ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error) {
 	if publisher.externalHooks.PublishResult != nil {
 		return publisher.externalHooks.PublishResult(ctx, executionID, job, resultPath)
 	}
-	return model.StorageSpec{}, nil
+	return models.SpecConfig{}, nil
 }
 
 // Compile-time check that Publisher implements the correct interface:

@@ -7,11 +7,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 const testNodeCount = 1
@@ -23,11 +29,8 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack, _ := testutils.SetupTest(ctx, t, testNodeCount,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
-	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
+	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine().String())
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
@@ -39,13 +42,16 @@ func RunTestCase(
 			return []model.StorageSpec{}
 		}
 
-		storageList, stErr := getStorage(ctx,
-			model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
+		storageList, stErr := getStorage(ctx, model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
-			hasStorage, stErr := executor.HasStorageLocally(
-				ctx, storageSpec)
+			inputSource, err := legacy.FromLegacyStorageSpecToInputSource(storageSpec)
+			require.NoError(t, err)
+
+			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, storageSpec.StorageSource.String())
+			require.NoError(t, err)
+			hasStorage, stErr := strger.HasStorageLocally(ctx, *inputSource)
 			require.NoError(t, stErr)
 			require.True(t, hasStorage)
 		}
@@ -69,8 +75,34 @@ func RunTestCase(
 		Spec: spec,
 	}
 
+	newJob, err := legacy.FromLegacyJob(&job)
+	require.NoError(t, err)
+	execution := mock.ExecutionForJob(newJob)
+	execution.AllocateResources(newJob.Task().Name, models.Resources{})
+
+	// Since we are submitting jobs directly to the executor, we need to
+	// transform wasm storage specs, which is currently handled by the
+	// requester's endpoint
+	jobTransformers := []jobtransform.PostTransformer{
+		jobtransform.NewWasmStorageSpecConverter(),
+	}
+	for _, transformer := range jobTransformers {
+		_, err = transformer(ctx, newJob)
+		require.NoError(t, err)
+	}
+
 	resultsDirectory := t.TempDir()
-	_, err = executor.Run(ctx, "test-execution", job, resultsDirectory)
+	strgProvider := stack.Nodes[0].ComputeNode.Storages
+
+	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, strgProvider, execution, resultsDirectory)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := cleanup(ctx); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	_, err = executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		err = testCase.SubmitChecker(&job, err)
 		require.NoError(t, err)

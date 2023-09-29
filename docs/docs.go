@@ -23,7 +23,79 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/approve": {
+        "/api/v1/agent/alive": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "operationId": "agent/alive",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/node": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the info of the node.",
+                "operationId": "agent/node",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.NodeInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/version": {
+            "get": {
+                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the build version running on the server.",
+                "operationId": "agent/version",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetVersionResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/compute/approve": {
             "get": {
                 "produces": [
                     "application/json"
@@ -58,7 +130,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/debug": {
+        "/api/v1/compute/debug": {
             "get": {
                 "produces": [
                     "application/json"
@@ -84,7 +156,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/healthz": {
+        "/api/v1/healthz": {
             "get": {
                 "produces": [
                     "application/json"
@@ -103,7 +175,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/id": {
+        "/api/v1/id": {
             "get": {
                 "produces": [
                     "text/plain"
@@ -129,7 +201,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/livez": {
+        "/api/v1/livez": {
             "get": {
                 "produces": [
                     "text/plain"
@@ -148,26 +220,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/logz": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "logz",
-                "responses": {
-                    "200": {
-                        "description": "TODO",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/node_info": {
+        "/api/v1/node_info": {
             "get": {
                 "produces": [
                     "application/json"
@@ -181,7 +234,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.NodeInfo"
+                            "$ref": "#/definitions/models.NodeInfo"
                         }
                     },
                     "500": {
@@ -193,7 +246,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers": {
+        "/api/v1/peers": {
             "get": {
                 "description": "As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.\n\nExample response:\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"bacalhau-job-event\": [\n    \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n    \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n    \"QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG\",\n    \"QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT\",\n    \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\"\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "produces": [
@@ -223,26 +276,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/readyz": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "readyz",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/requester/cancel": {
+        "/api/v1/requester/cancel": {
             "post": {
                 "description": "Cancels a job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nReturns the current jobstate after the cancel request has been processed.",
                 "consumes": [
@@ -259,11 +293,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "cancelRequest",
+                        "name": "CancelRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.cancelRequest"
+                            "$ref": "#/definitions/legacymodels.CancelRequest"
                         }
                     }
                 ],
@@ -271,7 +305,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.cancelResponse"
+                            "$ref": "#/definitions/legacymodels.CancelResponse"
                         }
                     },
                     "400": {
@@ -301,7 +335,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/debug": {
+        "/api/v1/requester/debug": {
             "get": {
                 "produces": [
                     "application/json"
@@ -327,7 +361,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/events": {
+        "/api/v1/requester/events": {
             "post": {
                 "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n",
                 "consumes": [
@@ -344,11 +378,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
-                        "name": "eventsRequest",
+                        "name": "EventsRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.eventsRequest"
+                            "$ref": "#/definitions/legacymodels.EventsRequest"
                         }
                     }
                 ],
@@ -356,7 +390,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.eventsResponse"
+                            "$ref": "#/definitions/legacymodels.EventsResponse"
                         }
                     },
                     "400": {
@@ -374,7 +408,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/list": {
+        "/api/v1/requester/list": {
             "post": {
                 "description": "Returns the first (sorted) #` + "`" + `max_jobs` + "`" + ` jobs that belong to the ` + "`" + `client_id` + "`" + ` passed in the body payload (by default).\nIf ` + "`" + `return_all` + "`" + ` is set to true, it returns all jobs on the Bacalhau network.\n\nIf ` + "`" + `id` + "`" + ` is set, it returns only the job with that ID.",
                 "consumes": [
@@ -391,11 +425,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Set ` + "`" + `return_all` + "`" + ` to ` + "`" + `true` + "`" + ` to return all jobs on the network (may degrade performance, use with care!).",
-                        "name": "listRequest",
+                        "name": "ListRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.listRequest"
+                            "$ref": "#/definitions/legacymodels.ListRequest"
                         }
                     }
                 ],
@@ -403,7 +437,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.listResponse"
+                            "$ref": "#/definitions/legacymodels.ListResponse"
                         }
                     },
                     "400": {
@@ -421,7 +455,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/logs": {
+        "/api/v1/requester/logs": {
             "post": {
                 "description": "Shows the output from the job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nThe ouput will be continuous until either, the client disconnects or the execution completes.",
                 "consumes": [
@@ -438,11 +472,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "logRequest",
+                        "name": "LogRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.logRequest"
+                            "$ref": "#/definitions/legacymodels.LogRequest"
                         }
                     }
                 ],
@@ -480,7 +514,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/nodes": {
+        "/api/v1/requester/nodes": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -496,7 +530,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.NodeInfo"
+                                "$ref": "#/definitions/models.NodeInfo"
                             }
                         }
                     },
@@ -509,7 +543,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/results": {
+        "/api/v1/requester/results": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "consumes": [
@@ -526,11 +560,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "stateRequest",
+                        "name": "StateRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.stateRequest"
+                            "$ref": "#/definitions/legacymodels.StateRequest"
                         }
                     }
                 ],
@@ -538,7 +572,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.resultsResponse"
+                            "$ref": "#/definitions/legacymodels.ResultsResponse"
                         }
                     },
                     "400": {
@@ -556,7 +590,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/states": {
+        "/api/v1/requester/states": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"state\": {\n    \"Nodes\": {\n      \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n            \"State\": \"Completed\",\n            \"Status\": \"Got results proposal of length: 0\",\n            \"VerificationResult\": {\n              \"Complete\": true,\n              \"Result\": true\n            },\n            \"PublishedResults\": {\n              \"StorageSource\": \"IPFS\",\n              \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n              \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n            },\n            \"RunOutput\": {\n              \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n              \"stdouttruncated\": false,\n              \"stderr\": \"\",\n              \"stderrtruncated\": false,\n              \"exitCode\": 0,\n              \"runnerError\": \"\"\n            }\n          }\n        }\n      }\n    }\n  }\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "consumes": [
@@ -573,11 +607,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "stateRequest",
+                        "name": "StateRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.stateRequest"
+                            "$ref": "#/definitions/legacymodels.StateRequest"
                         }
                     }
                 ],
@@ -585,7 +619,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.stateResponse"
+                            "$ref": "#/definitions/legacymodels.StateResponse"
                         }
                     },
                     "400": {
@@ -603,7 +637,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/requester/submit": {
+        "/api/v1/requester/submit": {
             "post": {
                 "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
@@ -620,11 +654,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "submitRequest",
+                        "name": "SubmitRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.submitRequest"
+                            "$ref": "#/definitions/legacymodels.SubmitRequest"
                         }
                     }
                 ],
@@ -632,7 +666,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.submitResponse"
+                            "$ref": "#/definitions/legacymodels.SubmitResponse"
                         }
                     },
                     "400": {
@@ -650,29 +684,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/varz": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "varz",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/version": {
+        "/api/v1/version": {
             "post": {
                 "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
                 "consumes": [
@@ -693,7 +705,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.VersionRequest"
+                            "$ref": "#/definitions/legacymodels.VersionRequest"
                         }
                     }
                 ],
@@ -701,7 +713,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.VersionResponse"
+                            "$ref": "#/definitions/legacymodels.VersionResponse"
                         }
                     },
                     "400": {
@@ -721,7 +733,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "model.BuildVersionInfo": {
+        "apimodels.GetVersionResponse": {
             "type": "object",
             "properties": {
                 "builddate": {
@@ -754,41 +766,254 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ComputeNodeInfo": {
+        "legacymodels.CancelRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCancelPayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "legacymodels.CancelResponse": {
             "type": "object",
             "properties": {
-                "AvailableCapacity": {
-                    "$ref": "#/definitions/model.ResourceUsageData"
+                "state": {
+                    "$ref": "#/definitions/model.JobState"
+                }
+            }
+        },
+        "legacymodels.EventFilterOptions": {
+            "type": "object",
+            "properties": {
+                "exclude_execution_level": {
+                    "type": "boolean"
                 },
-                "EnqueuedExecutions": {
+                "exclude_job_level": {
+                    "type": "boolean"
+                },
+                "execution_id": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "since": {
                     "type": "integer"
+                }
+            }
+        },
+        "legacymodels.EventsRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
                 },
-                "ExecutionEngines": {
+                "filters": {
+                    "description": "Records the number of seconds since the unix epoch (UTC)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/legacymodels.EventFilterOptions"
+                        }
+                    ]
+                },
+                "job_id": {
+                    "type": "string",
+                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                }
+            }
+        },
+        "legacymodels.EventsResponse": {
+            "type": "object",
+            "properties": {
+                "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Engine"
+                        "$ref": "#/definitions/model.JobHistory"
                     }
+                }
+            }
+        },
+        "legacymodels.ListRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
                 },
-                "MaxCapacity": {
-                    "$ref": "#/definitions/model.ResourceUsageData"
-                },
-                "MaxJobRequirements": {
-                    "$ref": "#/definitions/model.ResourceUsageData"
-                },
-                "Publishers": {
+                "exclude_tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Publisher"
-                    }
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
                 },
-                "RunningExecutions": {
-                    "type": "integer"
+                "id": {
+                    "type": "string",
+                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
                 },
-                "StorageSources": {
+                "include_tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.StorageSourceType"
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
+                },
+                "max_jobs": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "return_all": {
+                    "type": "boolean"
+                },
+                "sort_by": {
+                    "type": "string",
+                    "example": "created_at"
+                },
+                "sort_reverse": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "legacymodels.ListResponse": {
+            "type": "object",
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.JobWithInfo"
                     }
+                }
+            }
+        },
+        "legacymodels.LogRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.LogsPayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "legacymodels.ResultsResponse": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PublishedResult"
+                    }
+                }
+            }
+        },
+        "legacymodels.StateRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                },
+                "job_id": {
+                    "type": "string",
+                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                }
+            }
+        },
+        "legacymodels.StateResponse": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "$ref": "#/definitions/model.JobState"
+                }
+            }
+        },
+        "legacymodels.SubmitRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCreatePayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "legacymodels.SubmitResponse": {
+            "type": "object",
+            "properties": {
+                "job": {
+                    "$ref": "#/definitions/model.Job"
+                }
+            }
+        },
+        "legacymodels.VersionRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                }
+            }
+        },
+        "legacymodels.VersionResponse": {
+            "type": "object",
+            "properties": {
+                "build_version_info": {
+                    "$ref": "#/definitions/models.BuildVersionInfo"
                 }
             }
         },
@@ -826,6 +1051,31 @@ const docTemplate = `{
                 "engineDone"
             ]
         },
+        "model.EngineSpec": {
+            "type": "object",
+            "properties": {
+                "params": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ExecutionDesiredState": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "ExecutionDesiredStatePending",
+                "ExecutionDesiredStateRunning",
+                "ExecutionDesiredStateStopped"
+            ]
+        },
         "model.ExecutionState": {
             "type": "object",
             "properties": {
@@ -836,6 +1086,14 @@ const docTemplate = `{
                 "CreateTime": {
                     "description": "CreateTime is the time when the job was created.",
                     "type": "string"
+                },
+                "DesiredState": {
+                    "description": "DesiredState is the desired state of the execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ExecutionDesiredState"
+                        }
+                    ]
                 },
                 "JobID": {
                     "description": "JobID the job id",
@@ -894,12 +1152,14 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8
+                8,
+                9
             ],
             "x-enum-comments": {
                 "ExecutionStateBidAccepted": "aka running"
             },
             "x-enum-varnames": [
+                "ExecutionStateUndefined",
                 "ExecutionStateNew",
                 "ExecutionStateAskForBid",
                 "ExecutionStateAskForBidAccepted",
@@ -1162,12 +1422,11 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5
+                5,
+                6
             ],
-            "x-enum-comments": {
-                "JobStateNew": "must be first"
-            },
             "x-enum-varnames": [
+                "JobStateUndefined",
                 "JobStateNew",
                 "JobStateInProgress",
                 "JobStateCancelled",
@@ -1308,40 +1567,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.NodeInfo": {
-            "type": "object",
-            "properties": {
-                "BacalhauVersion": {
-                    "$ref": "#/definitions/model.BuildVersionInfo"
-                },
-                "ComputeNodeInfo": {
-                    "$ref": "#/definitions/model.ComputeNodeInfo"
-                },
-                "Labels": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "NodeType": {
-                    "$ref": "#/definitions/model.NodeType"
-                },
-                "PeerInfo": {
-                    "$ref": "#/definitions/peer.AddrInfo"
-                }
-            }
-        },
-        "model.NodeType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1
-            ],
-            "x-enum-varnames": [
-                "NodeTypeRequester",
-                "NodeTypeCompute"
-            ]
-        },
         "model.PublishedResult": {
             "type": "object",
             "properties": {
@@ -1405,30 +1630,6 @@ const docTemplate = `{
                 "Memory": {
                     "description": "github.com/c2h5oh/datasize string",
                     "type": "string"
-                }
-            }
-        },
-        "model.ResourceUsageData": {
-            "type": "object",
-            "properties": {
-                "CPU": {
-                    "description": "cpu units",
-                    "type": "number",
-                    "example": 9.600000000000001
-                },
-                "Disk": {
-                    "description": "bytes",
-                    "type": "integer",
-                    "example": 212663867801
-                },
-                "GPU": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "Memory": {
-                    "description": "bytes",
-                    "type": "integer",
-                    "example": 27487790694
                 }
             }
         },
@@ -1507,7 +1708,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Docker": {
-                    "description": "executor specific data",
+                    "description": "Deprecated: use EngineSpec.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.JobSpecDocker"
@@ -1515,12 +1716,15 @@ const docTemplate = `{
                     ]
                 },
                 "Engine": {
-                    "description": "e.g. docker or language",
+                    "description": "Deprecated: use EngineSpec.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Engine"
                         }
                     ]
+                },
+                "EngineSpec": {
+                    "$ref": "#/definitions/model.EngineSpec"
                 },
                 "Inputs": {
                     "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"",
@@ -1552,7 +1756,7 @@ const docTemplate = `{
                     }
                 },
                 "Publisher": {
-                    "description": "there can be multiple publishers for the job\ndeprecated: use PublisherSpec instead",
+                    "description": "Deprecated: use PublisherSpec instead",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Publisher"
@@ -1572,10 +1776,15 @@ const docTemplate = `{
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "Wasm": {
-                    "$ref": "#/definitions/model.JobSpecWasm"
+                    "description": "Deprecated: use EngineSpec.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecWasm"
+                        }
+                    ]
                 }
             }
         },
@@ -1685,6 +1894,134 @@ const docTemplate = `{
                 }
             }
         },
+        "models.BuildVersionInfo": {
+            "type": "object",
+            "properties": {
+                "builddate": {
+                    "type": "string",
+                    "example": "2022-11-16T14:03:31Z"
+                },
+                "gitcommit": {
+                    "type": "string",
+                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                },
+                "gitversion": {
+                    "type": "string",
+                    "example": "v0.3.12"
+                },
+                "goarch": {
+                    "type": "string",
+                    "example": "amd64"
+                },
+                "goos": {
+                    "type": "string",
+                    "example": "linux"
+                },
+                "major": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "minor": {
+                    "type": "string",
+                    "example": "3"
+                }
+            }
+        },
+        "models.ComputeNodeInfo": {
+            "type": "object",
+            "properties": {
+                "AvailableCapacity": {
+                    "$ref": "#/definitions/models.Resources"
+                },
+                "EnqueuedExecutions": {
+                    "type": "integer"
+                },
+                "ExecutionEngines": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "MaxCapacity": {
+                    "$ref": "#/definitions/models.Resources"
+                },
+                "MaxJobRequirements": {
+                    "$ref": "#/definitions/models.Resources"
+                },
+                "Publishers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "RunningExecutions": {
+                    "type": "integer"
+                },
+                "StorageSources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.NodeInfo": {
+            "type": "object",
+            "properties": {
+                "BacalhauVersion": {
+                    "$ref": "#/definitions/models.BuildVersionInfo"
+                },
+                "ComputeNodeInfo": {
+                    "$ref": "#/definitions/models.ComputeNodeInfo"
+                },
+                "Labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "NodeType": {
+                    "$ref": "#/definitions/models.NodeType"
+                },
+                "PeerInfo": {
+                    "$ref": "#/definitions/peer.AddrInfo"
+                }
+            }
+        },
+        "models.NodeType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "nodeTypeUndefined",
+                "NodeTypeRequester",
+                "NodeTypeCompute"
+            ]
+        },
+        "models.Resources": {
+            "type": "object",
+            "properties": {
+                "CPU": {
+                    "description": "CPU units",
+                    "type": "number"
+                },
+                "Disk": {
+                    "description": "Disk in bytes",
+                    "type": "integer"
+                },
+                "GPU": {
+                    "description": "GPU units",
+                    "type": "integer"
+                },
+                "Memory": {
+                    "description": "Memory in bytes",
+                    "type": "integer"
+                }
+            }
+        },
         "peer.AddrInfo": {
             "type": "object",
             "properties": {
@@ -1694,251 +2031,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
-                }
-            }
-        },
-        "publicapi.EventFilterOptions": {
-            "type": "object",
-            "properties": {
-                "exclude_execution_level": {
-                    "type": "boolean"
-                },
-                "exclude_job_level": {
-                    "type": "boolean"
-                },
-                "since": {
-                    "type": "integer"
-                }
-            }
-        },
-        "publicapi.VersionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "publicapi.VersionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/model.BuildVersionInfo"
-                }
-            }
-        },
-        "publicapi.cancelRequest": {
-            "type": "object",
-            "required": [
-                "client_public_key",
-                "payload",
-                "signature"
-            ],
-            "properties": {
-                "client_public_key": {
-                    "description": "The base64-encoded public key of the client:",
-                    "type": "string"
-                },
-                "payload": {
-                    "description": "The data needed to cancel a running job on the network",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobCancelPayload"
-                        }
-                    ]
-                },
-                "signature": {
-                    "description": "A base64-encoded signature of the data, signed by the client:",
-                    "type": "string"
-                }
-            }
-        },
-        "publicapi.cancelResponse": {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "$ref": "#/definitions/model.JobState"
-                }
-            }
-        },
-        "publicapi.eventsRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                },
-                "filters": {
-                    "description": "Records the number of seconds since the unix epoch (UTC)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/publicapi.EventFilterOptions"
-                        }
-                    ]
-                },
-                "job_id": {
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                }
-            }
-        },
-        "publicapi.eventsResponse": {
-            "type": "object",
-            "properties": {
-                "events": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobHistory"
-                    }
-                }
-            }
-        },
-        "publicapi.listRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                },
-                "exclude_tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "['any-tag']"
-                    ]
-                },
-                "id": {
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "include_tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "['any-tag']"
-                    ]
-                },
-                "max_jobs": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "return_all": {
-                    "type": "boolean"
-                },
-                "sort_by": {
-                    "type": "string",
-                    "example": "created_at"
-                },
-                "sort_reverse": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "publicapi.listResponse": {
-            "type": "object",
-            "properties": {
-                "jobs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobWithInfo"
-                    }
-                }
-            }
-        },
-        "publicapi.logRequest": {
-            "type": "object",
-            "required": [
-                "client_public_key",
-                "payload",
-                "signature"
-            ],
-            "properties": {
-                "client_public_key": {
-                    "description": "The base64-encoded public key of the client:",
-                    "type": "string"
-                },
-                "payload": {
-                    "description": "The data needed to cancel a running job on the network",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.LogsPayload"
-                        }
-                    ]
-                },
-                "signature": {
-                    "description": "A base64-encoded signature of the data, signed by the client:",
-                    "type": "string"
-                }
-            }
-        },
-        "publicapi.resultsResponse": {
-            "type": "object",
-            "properties": {
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PublishedResult"
-                    }
-                }
-            }
-        },
-        "publicapi.stateRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                },
-                "job_id": {
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                }
-            }
-        },
-        "publicapi.stateResponse": {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "$ref": "#/definitions/model.JobState"
-                }
-            }
-        },
-        "publicapi.submitRequest": {
-            "type": "object",
-            "required": [
-                "client_public_key",
-                "payload",
-                "signature"
-            ],
-            "properties": {
-                "client_public_key": {
-                    "description": "The base64-encoded public key of the client:",
-                    "type": "string"
-                },
-                "payload": {
-                    "description": "The data needed to cancel a running job on the network",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobCreatePayload"
-                        }
-                    ]
-                },
-                "signature": {
-                    "description": "A base64-encoded signature of the data, signed by the client:",
-                    "type": "string"
-                }
-            }
-        },
-        "publicapi.submitResponse": {
-            "type": "object",
-            "properties": {
-                "job": {
-                    "$ref": "#/definitions/model.Job"
                 }
             }
         },

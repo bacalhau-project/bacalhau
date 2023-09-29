@@ -3,17 +3,15 @@ package scenarios
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -24,27 +22,24 @@ func getSampleDockerJob() (*model.Job, error) {
 	if err != nil {
 		return nil, err
 	}
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("echo", defaultEchoMessage).
+				Build(),
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
-	}
-	j.Spec = model.Spec{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"echo",
-				defaultEchoMessage,
-			},
-		},
-		Annotations:   []string{canaryAnnotation},
-		NodeSelectors: nodeSelectors,
-	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
+		Spec:       spec,
 	}
 	return j, nil
 }
@@ -57,65 +52,58 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
-	j.Spec = model.Spec{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
 			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash",
-				"-c",
-				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
-			},
-		},
-		Inputs: []model.StorageSpec{
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint(
+					"bash",
+					"-c",
+					"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
+				).Build(),
+		),
+		job.WithInputs(
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
 			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
-			{
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "inputs",
 				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
 				Path:          "/inputs/data.tar.gz",
 			},
-		},
-		Outputs: []model.StorageSpec{
-			{
+		),
+		job.WithOutputs(
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
 				Path:          "/outputs",
 			},
-		},
-		Annotations:   []string{canaryAnnotation},
-		NodeSelectors: nodeSelectors,
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
+	j.Spec = spec
 	return j, nil
 }
 
 func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp(os.TempDir(), "")
 	if err != nil {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
-	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
-	}
-
 	return &model.DownloaderSettings{
-		Timeout:        50 * time.Second,
-		OutputDir:      dir,
-		IPFSSwarmAddrs: IPFSSwarmAddrs,
+		Timeout:   50 * time.Second,
+		OutputDir: dir,
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *client.APIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	return resolver.Wait(
 		ctx,
@@ -134,17 +122,14 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.GetAPIHost()
-	apiPort := config.GetAPIPort()
-	if apiHost == "" {
-		apiHost = system.Envs[system.GetEnvironment()].APIHost
+func getClient() *client.APIClient {
+	hostStr := os.Getenv("BACALHAU_HOST")
+	portStr := os.Getenv("BACALHAU_PORT")
+	apiport, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		panic(err)
 	}
-	if apiPort == nil {
-		defaultPort := system.Envs[system.GetEnvironment()].APIPort
-		apiPort = &defaultPort
-	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+	return client.NewAPIClient(hostStr, uint16(apiport))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

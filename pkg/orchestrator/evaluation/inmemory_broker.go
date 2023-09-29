@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
@@ -61,10 +60,10 @@ type InMemoryBroker struct {
 	evals map[string]int
 
 	// jobEvals tracks queued evaluations by a job's ID and namespace to serialize them
-	jobEvals map[model.NamespacedID]string
+	jobEvals map[models.NamespacedID]string
 
 	// pending tracks the pending evaluations by JobID in a priority queue
-	pending map[model.NamespacedID]PendingEvaluations
+	pending map[models.NamespacedID]PendingEvaluations
 
 	// cancelable tracks previously pending evaluations (for any job) that are
 	// now safe for the Eval.Ack RPC to cancel in batches
@@ -131,8 +130,8 @@ func NewInMemoryBroker(params InMemoryBrokerParams) (*InMemoryBroker, error) {
 		enabled:              false,
 		stats:                new(BrokerStats),
 		evals:                make(map[string]int),
-		jobEvals:             make(map[model.NamespacedID]string),
-		pending:              make(map[model.NamespacedID]PendingEvaluations),
+		jobEvals:             make(map[models.NamespacedID]string),
+		pending:              make(map[models.NamespacedID]PendingEvaluations),
 		cancelable:           []*models.Evaluation{},
 		ready:                make(map[string]ReadyEvaluations),
 		inflight:             make(map[string]*inflightEval),
@@ -210,8 +209,10 @@ func (b *InMemoryBroker) EnqueueAll(evals map[*models.Evaluation]string) error {
 func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle string) error {
 	// If we're not enabled, don't enable more queuing.
 	if !b.enabled {
+		log.Debug().Msgf("broker is not enabled, dropping evaluation %s for job %s", eval.ID, eval.JobID)
 		return nil
 	}
+	log.Debug().Msgf("enqueueing evaluation %s for job %s, triggered by: %s", eval.ID, eval.JobID, eval.TriggeredBy)
 
 	// Check if already enqueued
 	if _, ok := b.evals[eval.ID]; ok {
@@ -265,7 +266,7 @@ func (b *InMemoryBroker) enqueueWaiting(eval *models.Evaluation) error {
 // enqueueReady is used to enqueue with the lock held
 func (b *InMemoryBroker) enqueueReady(eval *models.Evaluation, queueName string) {
 	// Check if there is a ready evaluation for this JobID
-	namespacedID := model.NamespacedID{
+	namespacedID := models.NamespacedID{
 		ID:        eval.JobID,
 		Namespace: eval.Namespace,
 	}
@@ -542,7 +543,7 @@ func (b *InMemoryBroker) Ack(evalID, receiptHandle string) error {
 	delete(b.inflight, evalID)
 	delete(b.evals, evalID)
 
-	namespacedID := model.NamespacedID{
+	namespacedID := models.NamespacedID{
 		ID:        inflight.Eval.JobID,
 		Namespace: inflight.Eval.Namespace,
 	}
@@ -677,8 +678,8 @@ func (b *InMemoryBroker) flush() {
 	b.stats.DelayedEvals = make(map[string]*models.Evaluation)
 	b.stats.ByScheduler = make(map[string]*SchedulerStats)
 	b.evals = make(map[string]int)
-	b.jobEvals = make(map[model.NamespacedID]string)
-	b.pending = make(map[model.NamespacedID]PendingEvaluations)
+	b.jobEvals = make(map[models.NamespacedID]string)
+	b.pending = make(map[models.NamespacedID]PendingEvaluations)
 	b.cancelable = []*models.Evaluation{}
 	b.ready = make(map[string]ReadyEvaluations)
 	b.inflight = make(map[string]*inflightEval)

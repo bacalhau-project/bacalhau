@@ -6,13 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 type InputLocalityStrategySuite struct {
@@ -22,25 +24,29 @@ type InputLocalityStrategySuite struct {
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
-	s.statelessJob = bidstrategy.BidStrategyRequest{}
-	s.statefulJob = bidstrategy.BidStrategyRequest{
-		Job: model.Job{
-			Spec: model.Spec{
-				Inputs: []model.StorageSpec{
-					{
-						StorageSource: model.StorageSourceIPFS,
-						CID:           "volume-id",
-					},
-				},
-			},
+	statefulJob := mock.Job()
+	statefulJob.Task().InputSources = []*models.InputSource{
+		{
+			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
+			Target: "target",
 		},
+	}
+
+	statelessJob := mock.Job()
+	statelessJob.Task().InputSources = []*models.InputSource{}
+
+	s.statelessJob = bidstrategy.BidStrategyRequest{
+		Job: *statelessJob,
+	}
+	s.statefulJob = bidstrategy.BidStrategyRequest{
+		Job: *statefulJob,
 	}
 }
 
 func (s *InputLocalityStrategySuite) TestInputLocality() {
 	testCases := []struct {
 		name              string
-		policy            model.JobSelectionDataLocality
+		policy            semantic.JobSelectionDataLocality
 		hasStorageLocally bool
 		expectedShouldBid bool
 		request           bidstrategy.BidStrategyRequest
@@ -48,7 +54,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - we do have the file - we should accept
 		{
 			"local mode -> have file -> should accept",
-			model.Local,
+			semantic.Local,
 			true,
 			true,
 			s.statefulJob,
@@ -57,7 +63,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - we don't have the file - we should reject
 		{
 			"local mode -> don't have file -> should reject",
-			model.Local,
+			semantic.Local,
 			false,
 			false,
 			s.statefulJob,
@@ -66,7 +72,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - stateless job - we should accept
 		{
 			"local mode -> stateless job -> should accept",
-			model.Local,
+			semantic.Local,
 			false,
 			true,
 			s.statelessJob,
@@ -75,7 +81,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - we do have the file - we should accept
 		{
 			"anywhere mode -> have file -> should accept",
-			model.Anywhere,
+			semantic.Anywhere,
 			true,
 			true,
 			s.statefulJob,
@@ -84,7 +90,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - we don't have the file - we should accept
 		{
 			"anywhere mode -> don't have file -> should accept",
-			model.Anywhere,
+			semantic.Anywhere,
 			false,
 			true,
 			s.statefulJob,
@@ -93,7 +99,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - stateless job - we should accept
 		{
 			"anywhere mode ->s tateless job -> should accept",
-			model.Anywhere,
+			semantic.Anywhere,
 			false,
 			true,
 			s.statelessJob,
@@ -102,16 +108,13 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 
 	for _, test := range testCases {
 		s.Run(test.name, func() {
-			noop_executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
-				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
-						return test.hasStorageLocally, nil
-					},
-				},
-			})
+			fakeStorage := noop.NewNoopStorage()
+			fakeStorage.Config.ExternalHooks.HasStorageLocally = func(ctx context.Context, volume models.InputSource) (bool, error) {
+				return test.hasStorageLocally, nil
+			}
 			params := semantic.InputLocalityStrategyParams{
-				Locality:  test.policy,
-				Executors: model.NewNoopProvider[model.Engine, executor.Executor](noop_executor),
+				Locality: test.policy,
+				Storages: provider.NewNoopProvider[storage.Storage](fakeStorage),
 			}
 			strategy := semantic.NewInputLocalityStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), test.request)

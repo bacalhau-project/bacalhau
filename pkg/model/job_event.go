@@ -9,7 +9,7 @@ import (
 type JobEventType int
 
 const (
-	jobEventUnknown JobEventType = iota // must be first
+	jobEventUndefined JobEventType = iota // must be first
 
 	// Job has been created on the requestor node
 	JobEventCreated
@@ -49,6 +49,10 @@ const (
 	jobEventDone // must be last
 )
 
+func (je JobEventType) IsUndefined() bool {
+	return je == jobEventUndefined
+}
+
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (je JobEventType) IsTerminal() bool {
@@ -56,19 +60,19 @@ func (je JobEventType) IsTerminal() bool {
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {
-	for typ := jobEventUnknown + 1; typ < jobEventDone; typ++ {
+	for typ := jobEventUndefined + 1; typ < jobEventDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil
 		}
 	}
 
-	return jobEventUnknown, fmt.Errorf(
+	return jobEventUndefined, fmt.Errorf(
 		"executor: unknown job event type '%s'", str)
 }
 
 func JobEventTypes() []JobEventType {
 	var res []JobEventType
-	for typ := jobEventUnknown + 1; typ < jobEventDone; typ++ {
+	for typ := jobEventUndefined + 1; typ < jobEventDone; typ++ {
 		res = append(res, typ)
 	}
 

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -16,14 +18,14 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -47,12 +49,12 @@ type WasmRunOptions struct {
 	ImportModules []model.StorageSpec
 	Entrypoint    string
 
-	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   *flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings *flags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       *flags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    *flags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   *flags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
+	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
+	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
+	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
+	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
+	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
 
 }
 
@@ -60,12 +62,12 @@ func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
 		ImportModules:      []model.StorageSpec{},
 		Entrypoint:         "_start",
-		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   flags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: flags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       flags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   flags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    flags.NewDefaultRunTimeSettings(),
+		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
+		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
+		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
+		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
+		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
 	}
 }
 
@@ -87,6 +89,10 @@ func NewCmd() *cobra.Command {
 func newRunCmd() *cobra.Command {
 	opts := NewWasmOptions()
 
+	wasmRunFlags := map[string][]configflags.Definition{
+		"ipfs": configflags.IPFSFlags,
+	}
+
 	wasmRunCmd := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:   "Run a WASM job on the network",
@@ -94,6 +100,13 @@ func newRunCmd() *cobra.Command {
 		Example: wasmRunExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  util.ApplyPorcelainLogLevel,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := configflags.BindFlags(cmd, wasmRunFlags)
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+			return err
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -116,12 +129,16 @@ func newRunCmd() *cobra.Command {
 		will execute the job.`,
 	)
 
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(opts.DealSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(opts.DownloadSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(opts.NetworkingSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(opts.ResourceSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+
+	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
+		util.Fatal(wasmRunCmd, err, 1)
+	}
 
 	return wasmRunCmd
 }
@@ -154,7 +171,7 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
@@ -218,16 +235,18 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 	}, nil
 }
 
+// parseArrayAsMap accepts a string array where each entry is A=B and
+// returns a map with {A: B}
 func parseArrayAsMap(inputArray []string) (map[string]string, error) {
-	if len(inputArray)%2 != 0 {
-		return nil, fmt.Errorf("array must have an even number of elements")
-	}
-
 	resultMap := make(map[string]string)
-	for i := 0; i < len(inputArray); i += 2 {
-		key := inputArray[i]
-		value := inputArray[i+1]
-		resultMap[key] = value
+
+	for _, v := range inputArray {
+		parts := strings.Split(v, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("malformed entry, expected = in: %s", v)
+		}
+
+		resultMap[parts[0]] = parts[1]
 	}
 
 	return resultMap, nil
@@ -267,7 +286,11 @@ func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, e
 	if err != nil {
 		return nil, err
 	}
-	return &inlineData, nil
+	legacyInlineData, err := legacy.ToLegacyStorageSpec(&inlineData)
+	if err != nil {
+		return nil, err
+	}
+	return &legacyInlineData, nil
 }
 
 func newValidateCmd() *cobra.Command {
@@ -304,8 +327,7 @@ func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
 	config := wazero.NewModuleConfig()
-	storage := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop.NewNoopStorage())
-	loader := wasm.NewModuleLoader(engine, config, storage)
+	loader := wasm.NewModuleLoader(engine, config)
 	module, err := loader.Load(ctx, programPath)
 	if err != nil {
 		return err

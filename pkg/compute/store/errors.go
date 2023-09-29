@@ -81,16 +81,16 @@ func (e ErrExecutionAlreadyExists) Error() string {
 // ErrInvalidExecutionState is returned when an execution is in an invalid state.
 type ErrInvalidExecutionState struct {
 	ExecutionID string
-	Actual      ExecutionState
-	Expected    ExecutionState
+	Actual      LocalExecutionStateType
+	Expected    []LocalExecutionStateType
 }
 
-func NewErrInvalidExecutionState(id string, actual ExecutionState, expected ExecutionState) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(id string, actual LocalExecutionStateType, expected ...LocalExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	return fmt.Sprintf("execution %s is in state %s but expected one of %v", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.
@@ -111,11 +111,12 @@ func (e ErrInvalidExecutionVersion) Error() string {
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
 type ErrExecutionAlreadyTerminal struct {
 	ExecutionID string
-	Actual      ExecutionState
-	NewState    ExecutionState
+	Actual      LocalExecutionStateType
+	NewState    LocalExecutionStateType
 }
 
-func NewErrExecutionAlreadyTerminal(id string, actual ExecutionState, newState ExecutionState) ErrExecutionAlreadyTerminal {
+func NewErrExecutionAlreadyTerminal(
+	id string, actual LocalExecutionStateType, newState LocalExecutionStateType) ErrExecutionAlreadyTerminal {
 	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
 }
 

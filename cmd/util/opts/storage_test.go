@@ -83,7 +83,7 @@ func TestParseStorage(t *testing.T) {
 		},
 		{
 			name:  "s3 with endpoint and region",
-			input: "s3://myBucket/dir/file-001.txt,opt=endpoint=http://localhost:9000,opt=region=us-east-1",
+			input: "s3://myBucket/dir/file-001.txt,opt=endpoint=http://127.0.0.1:9000,opt=region=us-east-1",
 			expected: model.StorageSpec{
 				StorageSource: model.StorageSourceS3,
 				Name:          "s3://myBucket/dir/file-001.txt",
@@ -91,7 +91,7 @@ func TestParseStorage(t *testing.T) {
 				S3: &model.S3StorageSpec{
 					Bucket:   "myBucket",
 					Key:      "dir/file-001.txt",
-					Endpoint: "http://localhost:9000",
+					Endpoint: "http://127.0.0.1:9000",
 					Region:   "us-east-1",
 				},
 			},

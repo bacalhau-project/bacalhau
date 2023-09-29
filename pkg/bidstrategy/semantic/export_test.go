@@ -3,30 +3,27 @@
 package semantic_test
 
 import (
+	"testing"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
-func getBidStrategyRequest() bidstrategy.BidStrategyRequest {
+func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
+	job := mock.Job()
 	return bidstrategy.BidStrategyRequest{
 		NodeID: "node-id",
-		Job: model.Job{
-			Metadata: model.Metadata{
-				ID: "job-id",
-			},
-			Spec: model.Spec{
-				Engine: model.EngineNoop,
-			},
-		},
+		Job:    *job,
 	}
 }
 
-func getBidStrategyRequestWithInput() bidstrategy.BidStrategyRequest {
-	request := getBidStrategyRequest()
-	request.Job.Spec.Inputs = []model.StorageSpec{
+func getBidStrategyRequestWithInput(t testing.TB) bidstrategy.BidStrategyRequest {
+	request := getBidStrategyRequest(t)
+	request.Job.Task().InputSources = []*models.InputSource{
 		{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           "volume-id",
+			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
+			Target: "target",
 		},
 	}
 	return request

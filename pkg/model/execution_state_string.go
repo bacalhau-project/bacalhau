@@ -8,20 +8,21 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[ExecutionStateNew-0]
-	_ = x[ExecutionStateAskForBid-1]
-	_ = x[ExecutionStateAskForBidAccepted-2]
-	_ = x[ExecutionStateAskForBidRejected-3]
-	_ = x[ExecutionStateBidAccepted-4]
-	_ = x[ExecutionStateBidRejected-5]
-	_ = x[ExecutionStateCompleted-6]
-	_ = x[ExecutionStateFailed-7]
-	_ = x[ExecutionStateCancelled-8]
+	_ = x[ExecutionStateUndefined-0]
+	_ = x[ExecutionStateNew-1]
+	_ = x[ExecutionStateAskForBid-2]
+	_ = x[ExecutionStateAskForBidAccepted-3]
+	_ = x[ExecutionStateAskForBidRejected-4]
+	_ = x[ExecutionStateBidAccepted-5]
+	_ = x[ExecutionStateBidRejected-6]
+	_ = x[ExecutionStateCompleted-7]
+	_ = x[ExecutionStateFailed-8]
+	_ = x[ExecutionStateCancelled-9]
 }
 
-const _ExecutionStateType_name = "NewAskForBidAskForBidAcceptedAskForBidRejectedBidAcceptedBidRejectedCompletedFailedCancelled"
+const _ExecutionStateType_name = "UndefinedNewAskForBidAskForBidAcceptedAskForBidRejectedBidAcceptedBidRejectedCompletedFailedCancelled"
 
-var _ExecutionStateType_index = [...]uint8{0, 3, 12, 29, 46, 57, 68, 77, 83, 92}
+var _ExecutionStateType_index = [...]uint8{0, 9, 12, 21, 38, 55, 66, 77, 86, 92, 101}
 
 func (i ExecutionStateType) String() string {
 	if i < 0 || i >= ExecutionStateType(len(_ExecutionStateType_index)-1) {

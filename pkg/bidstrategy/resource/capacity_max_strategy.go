@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type MaxCapacityStrategyParams struct {
-	MaxJobRequirements model.ResourceUsageData
+	MaxJobRequirements models.Resources
 }
 
 type MaxCapacityStrategy struct {
-	maxJobRequirements model.ResourceUsageData
+	maxJobRequirements models.Resources
 }
 
 func NewMaxCapacityStrategy(params MaxCapacityStrategyParams) *MaxCapacityStrategy {
@@ -22,7 +22,7 @@ func NewMaxCapacityStrategy(params MaxCapacityStrategyParams) *MaxCapacityStrate
 }
 
 func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
-	ctx context.Context, request bidstrategy.BidStrategyRequest, usage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
 	if !usage.LessThanEq(s.maxJobRequirements) {
 		return bidstrategy.BidStrategyResponse{

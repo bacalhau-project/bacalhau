@@ -1,10 +1,11 @@
+//go:generate mockgen --source types.go --destination mocks.go --package compute
 package compute
 
 import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -28,9 +29,9 @@ type Endpoint interface {
 // Implementations can be synchronous or asynchronous by using Callbacks.
 type Executor interface {
 	// Run triggers the execution of a job.
-	Run(ctx context.Context, execution store.Execution) error
+	Run(ctx context.Context, localExecutionState store.LocalExecutionState) error
 	// Cancel cancels the execution of a job.
-	Cancel(ctx context.Context, execution store.Execution) error
+	Cancel(ctx context.Context, localExecutionState store.LocalExecutionState) error
 }
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
@@ -55,18 +56,21 @@ type ExecutionMetadata struct {
 	JobID       string
 }
 
-func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
+func NewExecutionMetadata(execution *models.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
-		JobID:       execution.Job.Metadata.ID,
+		JobID:       execution.Job.ID,
 	}
 }
 
 type AskForBidRequest struct {
-	ExecutionMetadata
 	RoutingMetadata
-	// Job specifies the job to be executed.
-	Job model.Job
+	// Execution specifies the job to be executed.
+	Execution *models.Execution
+	// WaitForApproval specifies whether the compute node should wait for the requester to approve the bid.
+	// if set to true, the compute node will not start the execution until the requester approves the bid.
+	// If set to false, the compute node will automatically start the execution after bidding and when resources are available.
+	WaitForApproval bool
 }
 
 type AskForBidResponse struct {
@@ -133,8 +137,8 @@ type BidResult struct {
 type RunResult struct {
 	RoutingMetadata
 	ExecutionMetadata
-	PublishResult    model.StorageSpec
-	RunCommandResult *model.RunCommandResult
+	PublishResult    *models.SpecConfig
+	RunCommandResult *models.RunCommandResult
 }
 
 // CancelResult Result of a job cancel that is returned to the caller through a Callback.
