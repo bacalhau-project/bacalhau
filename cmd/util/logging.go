@@ -78,9 +78,10 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 }
 
 // ApplyPorcelainLogLevel sets the log level of loggers running on user-facing
-// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
+// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users,
+// unless the user has specifically set a valid log level with an env var.
 func ApplyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
-	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err == nil {
+	if lvl, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); lvl != zerolog.NoLevel && err == nil {
 		return
 	}
 
