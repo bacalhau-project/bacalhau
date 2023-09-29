@@ -5,7 +5,7 @@ install-piptools:
 	
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install -r dev-requirements.in
+	python3 -m pip install -r dev-requirements.in
 
 .PHONY: test
 test: ## Run tests
