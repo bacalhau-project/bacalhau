@@ -1,7 +1,7 @@
 .PHONY: install-piptools
 install-piptools:
 	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
-	python -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
+	python3 -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
 	
 .PHONY: setup
 setup: install-piptools ## Install requirements
