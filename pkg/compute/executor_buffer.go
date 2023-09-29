@@ -3,6 +3,7 @@ package compute
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -10,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -72,11 +72,6 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		backoffDuration:            params.BackoffDuration,
 		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
-
-	r.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "ExecutorBuffer.mu",
-	})
 
 	return r
 }
