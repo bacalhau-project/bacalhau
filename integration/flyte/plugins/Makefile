@@ -15,11 +15,11 @@ export BACALHAU_API_PORT=99999
 
 .PHONY: test
 test:
-	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest --log-cli-level=DEBUG --capture=no
+	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 python3 -m pytest --log-cli-level=DEBUG --capture=no
 
 .PHONY: build_all_plugins
 build_all_plugins:
-	./run_all_plugins.sh python setup.py sdist bdist_wheel
+	./run_all_plugins.sh python3 setup.py sdist bdist_wheel
 
 .PHONY: publish_all_plugins
 publish_all_plugins:
