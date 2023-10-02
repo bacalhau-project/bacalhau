@@ -140,3 +140,12 @@ pythonhosted.org
 repo.anaconda.com
 conda.anaconda.org
 anaconda.org
+
+#Node 
+#use `npm install -dd <package name>` to get the domains to whitelist for a package
+registry.npmjs.org
+registry.yarnpkg.com
+npm.pkg.github.com
+
+#Packages
+ghcr.io
