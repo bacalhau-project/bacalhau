@@ -1,12 +1,13 @@
 package requester
 
 import (
+	"sync"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -16,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 const newJobComment = "Job created"
@@ -63,10 +63,6 @@ func NewInMemoryJobStore(options ...Option) *InMemoryJobStore {
 		opt(res)
 	}
 
-	res.mtx.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "InMemoryJobStore.mtx",
-	})
 	return res
 }
 
