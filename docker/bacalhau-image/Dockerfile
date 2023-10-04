@@ -20,9 +20,9 @@ RUN make modtidy
 RUN make build-bacalhau
 RUN find ./bin -name 'bacalhau' -exec mv -t ./bin {} +
 
-FROM cgr.dev/chainguard/static:latest
+FROM cgr.dev/chainguard/nvidia-device-plugin
 COPY --from=build /work/bin/bacalhau /usr/local/bin/bacalhau
-ENV PATH="/usr/local/bin"
+ENV PATH="/usr/local/bin:/usr/bin"
 ENTRYPOINT ["bacalhau"]
 LABEL org.opencontainers.image.source https://github.com/bacalhau-project/bacalhau
 LABEL org.opencontainers.image.title "Bacalhau"
