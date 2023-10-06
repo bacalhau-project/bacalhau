@@ -2,9 +2,9 @@ package capacity
 
 import (
 	"context"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 type LocalTrackerParams struct {

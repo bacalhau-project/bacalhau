@@ -2,12 +2,11 @@ package s3
 
 import (
 	"fmt"
-	"time"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 type ClientWrapper struct {
@@ -29,16 +28,10 @@ type ClientProvider struct {
 }
 
 func NewClientProvider(params ClientProviderParams) *ClientProvider {
-	c := &ClientProvider{
+	return &ClientProvider{
 		awsConfig: params.AWSConfig,
 		clients:   make(map[string]*ClientWrapper),
 	}
-
-	c.clientsMu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 50 * time.Millisecond,
-		Id:        "S3SClients.mu",
-	})
-	return c
 }
 
 // IsInstalled returns true if the S3 client is installed.
