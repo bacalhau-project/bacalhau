@@ -155,7 +155,7 @@ Backend: Docker backend here for running the job
 
 * `input/liechtenstein-latest.osm.pbf`: Upload the .osm.pbf file
 
-* `-i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/inpu`: mount dataset to the folder inside the container so it can be used by the script
+* `-i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input`: mount dataset to the folder inside the container so it can be used by the script
 
 * `jsace/coreset`:  the name and the tag of the docker image we are using
 
