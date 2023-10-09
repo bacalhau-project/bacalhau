@@ -20,7 +20,7 @@ type BaseEndpointParams struct {
 	Store            jobstore.Store
 	EventEmitter     EventEmitter
 	ComputeProxy     compute.Endpoint
-	Transformer      transformer.Job
+	Transformer      transformer.JobTransformer
 }
 
 type BaseEndpoint struct {
@@ -29,7 +29,7 @@ type BaseEndpoint struct {
 	store            jobstore.Store
 	eventEmitter     EventEmitter
 	computeProxy     compute.Endpoint
-	Transformer      transformer.Job
+	Transformer      transformer.JobTransformer
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {

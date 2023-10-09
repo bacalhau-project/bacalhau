@@ -10,7 +10,7 @@ import (
 )
 
 // ChainedJobTransformer is a slice of Transformers that runs in sequence
-type ChainedJobTransformer []Job
+type ChainedJobTransformer []JobTransformer
 
 // Transform runs all transformers in sequence.
 func (ct ChainedJobTransformer) Transform(ctx context.Context, job *models.Job) error {
@@ -35,7 +35,7 @@ type JobDefaults struct {
 }
 
 // DefaultsApplier is a transformer that applies default values to the job.
-func DefaultsApplier(defaults JobDefaults) Job {
+func DefaultsApplier(defaults JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		for _, task := range job.Tasks {
 			if task.Timeouts.GetExecutionTimeout() <= 0 {
@@ -48,7 +48,7 @@ func DefaultsApplier(defaults JobDefaults) Job {
 }
 
 // RequesterInfo is a transformer that sets the requester ID and public key in the job meta.
-func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) Job {
+func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		job.Meta[models.MetaRequesterID] = requesterNodeID
 		job.Meta[models.MetaRequesterPublicKey] = requesterPubKey.String()
@@ -58,7 +58,7 @@ func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) Job 
 }
 
 // NameOptional is a transformer that sets the job name to the job ID if it is empty.
-func NameOptional() Job {
+func NameOptional() JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		if job.Name == "" {
 			job.Name = job.ID
