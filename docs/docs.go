@@ -736,31 +736,31 @@ const docTemplate = `{
         "apimodels.GetVersionResponse": {
             "type": "object",
             "properties": {
-                "builddate": {
+                "BuildDate": {
                     "type": "string",
                     "example": "2022-11-16T14:03:31Z"
                 },
-                "gitcommit": {
-                    "type": "string",
-                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
-                },
-                "gitversion": {
-                    "type": "string",
-                    "example": "v0.3.12"
-                },
-                "goarch": {
+                "GOARCH": {
                     "type": "string",
                     "example": "amd64"
                 },
-                "goos": {
+                "GOOS": {
                     "type": "string",
                     "example": "linux"
                 },
-                "major": {
+                "GitCommit": {
+                    "type": "string",
+                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                },
+                "GitVersion": {
+                    "type": "string",
+                    "example": "v0.3.12"
+                },
+                "Major": {
                     "type": "string",
                     "example": "0"
                 },
-                "minor": {
+                "Minor": {
                     "type": "string",
                     "example": "3"
                 }
@@ -1897,31 +1897,31 @@ const docTemplate = `{
         "models.BuildVersionInfo": {
             "type": "object",
             "properties": {
-                "builddate": {
+                "BuildDate": {
                     "type": "string",
                     "example": "2022-11-16T14:03:31Z"
                 },
-                "gitcommit": {
-                    "type": "string",
-                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
-                },
-                "gitversion": {
-                    "type": "string",
-                    "example": "v0.3.12"
-                },
-                "goarch": {
+                "GOARCH": {
                     "type": "string",
                     "example": "amd64"
                 },
-                "goos": {
+                "GOOS": {
                     "type": "string",
                     "example": "linux"
                 },
-                "major": {
+                "GitCommit": {
+                    "type": "string",
+                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                },
+                "GitVersion": {
+                    "type": "string",
+                    "example": "v0.3.12"
+                },
+                "Major": {
                     "type": "string",
                     "example": "0"
                 },
-                "minor": {
+                "Minor": {
                     "type": "string",
                     "example": "3"
                 }
