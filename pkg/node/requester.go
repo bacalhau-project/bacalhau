@@ -233,6 +233,7 @@ func NewRequesterNode(
 		ComputeProxy:     computeProxy,
 		Transformer: transformer.ChainedJobTransformer{
 			transformer.JobFn(transformer.IDGenerator),
+			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 		},
