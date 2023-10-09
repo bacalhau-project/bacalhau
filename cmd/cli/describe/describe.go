@@ -92,7 +92,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	if inputJobID == "" {
 		var byteResult []byte
 		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
-		// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
+		// If there's no input and no stdin, then cmdArgs is nil and byteResult is nil.
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
