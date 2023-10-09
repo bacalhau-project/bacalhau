@@ -21,7 +21,7 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 	}
 	root.PersistentPreRun(cmd, args)
 
-	// the client will not be known until the root persisten pre run logic is executed which
+	// the client will not be known until the root persistent pre run logic is executed which
 	// sets up the repo and config
 	ctx := cmd.Context()
 	client := GetAPIClient(ctx)
