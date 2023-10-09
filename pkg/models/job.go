@@ -190,6 +190,8 @@ func (j *Job) Copy() *Job {
 // Validate is used to check a job for reasonable configuration
 func (j *Job) Validate() error {
 	mErr := new(multierror.Error)
+
+	// Validate the job ID
 	if validate.IsBlank(j.ID) {
 		mErr.Errors = append(mErr.Errors, errors.New("missing job ID"))
 	} else if validate.ContainsSpaces(j.ID) {
@@ -198,6 +200,14 @@ func (j *Job) Validate() error {
 		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a null character"))
 	}
 
+	// Validate the job name
+	if validate.IsBlank(j.Name) {
+		mErr.Errors = append(mErr.Errors, errors.New("missing job name"))
+	} else if validate.ContainsNull(j.Name) {
+		mErr.Errors = append(mErr.Errors, errors.New("job Name contains a null character"))
+	}
+
+	// Validate the job namespace
 	if validate.IsBlank(j.Namespace) {
 		mErr.Errors = append(mErr.Errors, errors.New("job must be in a namespace"))
 	}
@@ -221,11 +231,6 @@ func (j *Job) ValidateSubmission() error {
 		return errors.New("empty/nil job")
 	}
 	var mErr multierror.Error
-	if validate.IsBlank(j.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing job name"))
-	} else if validate.ContainsNull(j.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("job Name contains a null character"))
-	}
 
 	switch j.Type {
 	case JobTypeService, JobTypeBatch, JobTypeDaemon, JobTypeOps:

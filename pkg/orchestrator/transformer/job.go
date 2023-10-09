@@ -47,10 +47,22 @@ func DefaultsApplier(defaults JobDefaults) Job {
 	return JobFn(f)
 }
 
+// RequesterInfo is a transformer that sets the requester ID and public key in the job meta.
 func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) Job {
 	f := func(ctx context.Context, job *models.Job) error {
 		job.Meta[models.MetaRequesterID] = requesterNodeID
 		job.Meta[models.MetaRequesterPublicKey] = requesterPubKey.String()
+		return nil
+	}
+	return JobFn(f)
+}
+
+// NameOptional is a transformer that sets the job name to the job ID if it is empty.
+func NameOptional() Job {
+	f := func(ctx context.Context, job *models.Job) error {
+		if job.Name == "" {
+			job.Name = job.ID
+		}
 		return nil
 	}
 	return JobFn(f)
