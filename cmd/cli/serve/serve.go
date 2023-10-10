@@ -272,7 +272,6 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
-
 		if isComputeNode && !isRequesterNode {
 			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
