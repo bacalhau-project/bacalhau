@@ -2,13 +2,13 @@ package boltdb
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
 )
@@ -64,7 +64,8 @@ const (
 //
 
 type Store struct {
-	database *bolt.DB
+	database   *bolt.DB
+	marshaller marshaller.Marshaller
 
 	starting     sync.WaitGroup
 	stateCounter *StateCounter
@@ -78,6 +79,7 @@ type Store struct {
 // own reference to the bucket.
 func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	store := &Store{
+		marshaller:   marshaller.NewJSONMarshaller(),
 		starting:     sync.WaitGroup{},
 		stateCounter: NewStateCounter(),
 	}
@@ -175,7 +177,7 @@ func (s *Store) getExecution(tx *bolt.Tx, executionID string) (store.LocalExecut
 		return execution, store.NewErrExecutionNotFound(executionID)
 	}
 
-	err := json.Unmarshal(data, &execution)
+	err := s.marshaller.Unmarshal(data, &execution)
 	return execution, err
 }
 
@@ -304,7 +306,7 @@ func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.Lo
 	err := executionBucket.ForEach(func(key []byte, data []byte) error {
 		var item store.LocalStateHistory
 
-		err := json.Unmarshal(data, &item)
+		err := s.marshaller.Unmarshal(data, &item)
 		if err != nil {
 			return err
 		}
@@ -346,7 +348,7 @@ func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalExec
 	}
 
 	// Write the execution to the executions bucket
-	executionData, err := json.Marshal(localExecutionState)
+	executionData, err := s.marshaller.Marshal(localExecutionState)
 	if err != nil {
 		return err
 	}
@@ -412,7 +414,7 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 	// Having modified the execution, we're going to write it back over the top of the previous entry
 	// before appending a copy of the history to the history bucket
 
-	data, err := json.Marshal(localExecutionState)
+	data, err := s.marshaller.Marshal(localExecutionState)
 	if err != nil {
 		return emptyState, err
 	}
@@ -477,7 +479,7 @@ func (s *Store) appendHistory(
 		Comment:       comment,
 		Time:          updatedExecution.UpdateTime,
 	}
-	historyEntryData, err := json.Marshal(historyEntry)
+	historyEntryData, err := s.marshaller.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
@@ -566,7 +568,7 @@ func (s *Store) populateStateCounter(ctx context.Context) {
 			}
 
 			var entry store.LocalExecutionState
-			err = json.Unmarshal(v, &entry)
+			err = s.marshaller.Unmarshal(v, &entry)
 			if err != nil {
 				return
 			}

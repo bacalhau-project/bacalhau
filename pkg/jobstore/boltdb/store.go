@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -43,6 +44,7 @@ var SpecKey = []byte("spec")
 type BoltJobStore struct {
 	database    *bolt.DB
 	clock       clock.Clock
+	marshaller  marshaller.Marshaller
 	watchers    []*jobstore.Watcher
 	watcherLock sync.Mutex
 
@@ -89,9 +91,10 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	}
 
 	store := &BoltJobStore{
-		database: db,
-		clock:    clock.New(),
-		watchers: make([]*jobstore.Watcher, 0), //nolint:gomnd
+		database:   db,
+		clock:      clock.New(),
+		marshaller: marshaller.NewJSONMarshaller(),
+		watchers:   make([]*jobstore.Watcher, 0), //nolint:gomnd
 	}
 
 	for _, opt := range options {
@@ -165,7 +168,6 @@ func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error
 		job, err = b.getJob(tx, id)
 		return
 	})
-	job.Normalize()
 	return job, err
 }
 
@@ -182,7 +184,7 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 		return job, bacerrors.NewJobNotFound(jobID)
 	}
 
-	err = json.Unmarshal(data, &job)
+	err = b.marshaller.Unmarshal(data, &job)
 	return job, err
 }
 
@@ -233,7 +235,7 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 			return exec, jobstore.NewErrExecutionNotFound(id)
 		}
 
-		err = json.Unmarshal(data, &exec)
+		err = b.marshaller.Unmarshal(data, &exec)
 		if err != nil {
 			return exec, err
 		}
@@ -265,12 +267,11 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]models.Execut
 
 	err = bkt.ForEach(func(_ []byte, v []byte) error {
 		var es models.Execution
-		err = json.Unmarshal(v, &es)
+		err = b.marshaller.Unmarshal(v, &es)
 		if err != nil {
 			return err
 		}
 
-		es.Normalize()
 		execs = append(execs, es)
 		return nil
 	})
@@ -411,7 +412,7 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 
 		path := NewBucketPath(BucketJobs, key)
 		data := GetBucketData(tx, path, SpecKey)
-		err := json.Unmarshal(data, &job)
+		err := b.marshaller.Unmarshal(data, &job)
 		if err != nil {
 			return nil, err
 		}
@@ -523,7 +524,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 			err = bkt.ForEach(func(key []byte, data []byte) error {
 				var item models.JobHistory
 
-				err := json.Unmarshal(data, &item)
+				err := b.marshaller.Unmarshal(data, &item)
 				if err != nil {
 					return err
 				}
@@ -546,7 +547,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 			err = bkt.ForEach(func(key []byte, data []byte) error {
 				var item models.JobHistory
 
-				err := json.Unmarshal(data, &item)
+				err := b.marshaller.Unmarshal(data, &item)
 				if err != nil {
 					return err
 				}
@@ -629,7 +630,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	}
 
 	// Write the job to the Job bucket
-	jobData, err := json.Marshal(job)
+	jobData, err := b.marshaller.Marshal(job)
 	if err != nil {
 		return err
 	}
@@ -747,7 +748,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	job.Revision++
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 
-	jobStateData, err := json.Marshal(job)
+	jobStateData, err := b.marshaller.Marshal(job)
 	if err != nil {
 		return err
 	}
@@ -780,7 +781,7 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 		Comment:     comment,
 		Time:        time.Unix(0, updateJob.ModifyTime),
 	}
-	data, err := json.Marshal(historyEntry)
+	data, err := b.marshaller.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
@@ -841,7 +842,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 			return jobstore.NewErrExecutionAlreadyExists(execution.ID)
 		}
 
-		if data, err := json.Marshal(execution); err != nil {
+		if data, err := b.marshaller.Marshal(execution); err != nil {
 			return err
 		} else {
 			err = bucket.Put(execID, data)
@@ -902,7 +903,7 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		b.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, newExecution)
 	})
 
-	data, err := json.Marshal(newExecution)
+	data, err := b.marshaller.Marshal(newExecution)
 	if err != nil {
 		return err
 	}
@@ -936,7 +937,7 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 		Time:        time.Unix(0, updated.ModifyTime),
 	}
 
-	data, err := json.Marshal(historyEntry)
+	data, err := b.marshaller.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
@@ -977,7 +978,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, eval)
 	})
 
-	data, err := json.Marshal(eval)
+	data, err := b.marshaller.Marshal(eval)
 	if err != nil {
 		return err
 	}
@@ -1025,7 +1026,7 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation,
 			return eval, bacerrors.NewEvaluationNotFound(id)
 		}
 
-		err = json.Unmarshal(data, &eval)
+		err = b.marshaller.Unmarshal(data, &eval)
 		if err != nil {
 			return eval, err
 		}
