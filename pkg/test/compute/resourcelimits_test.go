@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -88,10 +88,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		var seenJobs []SeenJobRecord
 		var seenJobsMutex sync.Mutex
-		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
-			Threshold: 10 * time.Millisecond,
-			Id:        "TestTotalResourceLimits.seenJobsMutex",
-		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()

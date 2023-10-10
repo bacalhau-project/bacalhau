@@ -33,7 +33,7 @@ var (
 	checkingJobStatusMessage = i18n.T("Checking job status")
 	connectingMessage        = i18n.T("Connecting to network")
 	gettingJobMessage        = i18n.T("Verifying job state")
-	stoppingJobMessage       = i18n.T("Stoping job")
+	stoppingJobMessage       = i18n.T("Stopping job")
 
 	jobAlreadyCompleteMessage = i18n.T(`Job is already in a terminal state.
 The current state is: %s

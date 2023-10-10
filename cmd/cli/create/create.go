@@ -141,7 +141,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 		job, err := model.NewJobWithSaneProductionDefaults()
 		if err != nil {
-			// TODO this is a bit extream, maybe just ensure the above call doesn't return an error? the mergo package is a bit pointless there.
+			// TODO this is a bit extreme, maybe just ensure the above call doesn't return an error? the mergo package is a bit pointless there.
 			panic(err)
 		}
 

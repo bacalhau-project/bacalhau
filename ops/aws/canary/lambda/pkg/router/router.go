@@ -30,7 +30,7 @@ func init() {
 		os.Exit(1)
 	}
 	if _, err := setup.SetupBacalhauRepo(filepath.Join(home, ".bacalhau_canary")); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initalize bacalhau repo: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to initialize bacalhau repo: %s", err)
 		os.Exit(1)
 	}
 }

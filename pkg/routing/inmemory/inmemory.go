@@ -2,10 +2,10 @@ package inmemory
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 
@@ -30,16 +30,11 @@ type NodeInfoStore struct {
 }
 
 func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
-	res := &NodeInfoStore{
+	return &NodeInfoStore{
 		ttl:             params.TTL,
 		nodeInfoMap:     make(map[peer.ID]nodeInfoWrapper),
 		engineNodeIDMap: make(map[string]map[peer.ID]struct{}),
 	}
-	res.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "InMemoryNodeInfoStore.mu",
-	})
-	return res
 }
 
 func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
