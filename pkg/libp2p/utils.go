@@ -134,18 +134,22 @@ func upgradeAddress(ctx context.Context, address multiaddr.Multiaddr) (multiaddr
 			address = address.Decapsulate(addr)
 		}
 
-		// Swap the port to a hard-coded value until we have a better mechanism
-		// for specifying the P2P listen port
-		parts = strings.Split(address.String(), "/")
-		parts[len(parts)-1] = "1235"
-
-		address, err = multiaddr.NewMultiaddr(strings.Join(parts, "/"))
-		if err != nil {
+		// Strip the TCP/port section from the address
+		if tcp, err := multiaddr.NewMultiaddr(fmt.Sprintf("/tcp/%s", port)); err != nil {
 			return address, err
+		} else {
+			address = address.Decapsulate(tcp)
 		}
 
-		// TODO: We don't know the listening port and so we will just use the default (1235)
-		// for now, but we really should find another route for surfacing that info.
+		// TODO: Fixed to the most common port for now, until we are able to find the valid
+		// listen port but should not rely on this.
+		if tcp, err := multiaddr.NewMultiaddr("/tcp/1235"); err != nil {
+			return address, err
+		} else {
+			address = address.Encapsulate(tcp)
+		}
+
+		// Add the p2p/peerid component to the address
 		if p2pAddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", response.Peerinfo.ID)); err != nil {
 			return address, nil
 		} else {
