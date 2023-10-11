@@ -129,3 +129,27 @@ filecoin.public-rpc.com
 
 # Ethereum related API
 api.etherscan.io
+
+# Python package manager
+pypi.python.org
+pypi.org
+files.pythonhosted.org
+pythonhosted.org
+
+# Conda package manager
+repo.anaconda.com
+conda.anaconda.org
+anaconda.org
+conda-forge.org
+cloud.anaconda.org
+repo.continuum.io
+
+
+#Node 
+#use `npm install -dd <package name>` to get the domains to whitelist for a package
+registry.npmjs.org
+registry.yarnpkg.com
+npm.pkg.github.com
+
+#Packages
+ghcr.io
