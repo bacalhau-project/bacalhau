@@ -2,7 +2,6 @@ package wasm
 
 import (
 	"context"
-	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -19,6 +18,7 @@ import (
 var _ wazero.Runtime = tracedRuntime{}
 var _ api.Function = tracedFunction{}
 var _ api.Module = tracedModule{}
+var _ wazero.CompiledModule = tracedCompiledModule{}
 
 // tracedRuntime wraps a 'real' wazero.Runtime so that important events like compiling modules can be easily traced.
 type tracedRuntime struct {
@@ -40,14 +40,11 @@ type tracedFunction struct {
 	traceCtx *observe.TraceCtx
 }
 
-type globalTraceContext struct {
-	lock     sync.Mutex
+type tracedCompiledModule struct {
+	wazero.CompiledModule
+	adapter  *opentelemetry.OTelAdapter
 	traceCtx *observe.TraceCtx
 }
-
-// TODO(dylibso): hack to get TraceCtx for CompiledModules, this will hold a lock when `CompileModule` is called that is released in `InstantiateModule`
-// the real fix for this is probably to create a `tracedCompiledModule` wrapper type like the ones above
-var lastTraceCtx globalTraceContext
 
 func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Module, error) {
 	traceCtx, err := t.adapter.NewTraceCtx(ctx, t.Runtime, source, nil)
@@ -91,9 +88,8 @@ func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
 	}
-	lastTraceCtx.lock.Lock()
-	lastTraceCtx.traceCtx = traceCtx
-	return module, err
+	m := tracedCompiledModule{CompiledModule: module, adapter: t.adapter, traceCtx: traceCtx}
+	return m, err
 }
 
 func (t tracedRuntime) InstantiateModule(
@@ -103,14 +99,14 @@ func (t tracedRuntime) InstantiateModule(
 ) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateModule")
 	defer span.End()
-	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateModule(ctx, compiled, config))
+	m := compiled.(tracedCompiledModule)
+	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateModule(ctx, m.CompiledModule, config))
 	if err == nil && module != nil {
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
-		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: lastTraceCtx.traceCtx}
+		module = tracedModule{Module: module, adapter: m.adapter, traceCtx: m.traceCtx}
 	}
-	lastTraceCtx.lock.Unlock()
 	return module, err
 }
 
@@ -201,4 +197,9 @@ func (t tracedModule) CloseWithExitCode(ctx context.Context, exitCode uint32) er
 func (t tracedModule) Close(ctx context.Context) error {
 	t.traceCtx.Finish()
 	return t.Module.Close(ctx)
+}
+
+func (t tracedCompiledModule) Close(ctx context.Context) error {
+	t.traceCtx.Finish()
+	return t.CompiledModule.Close(ctx)
 }
