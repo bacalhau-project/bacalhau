@@ -51,12 +51,13 @@ func NewCmd() *cobra.Command {
 	OD := NewDescribeOptions()
 
 	describeCmd := &cobra.Command{
-		Use:     "describe [id]",
-		Short:   "Describe a job on the network",
-		Long:    describeLong,
-		Example: describeExample,
-		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "describe [id]",
+		Short:    "Describe a job on the network",
+		Long:     describeLong,
+		Example:  describeExample,
+		Args:     cobra.ExactArgs(1),
+		PreRunE:  util.ClientPreRunHooks,
+		PostRunE: util.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
 			if err := describe(cmd, cmdArgs, OD); err != nil {
 				util.Fatal(cmd, err, 1)

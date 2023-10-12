@@ -32,7 +32,7 @@ var (
 		# Job level events
 		bacalhau job history --type job e3f8c209
 
-		# Execution level events 
+		# Execution level events
 		bacalhau job history --type execution e3f8c209
 `))
 )
@@ -62,7 +62,6 @@ func NewHistoryCmd() *cobra.Command {
 		Long:    historyLong,
 		Example: historyExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		Run:     o.run,
 	}
 

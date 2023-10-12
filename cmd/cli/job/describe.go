@@ -14,7 +14,7 @@ import (
 
 var (
 	describeLong = templates.LongDesc(i18n.T(`
-		Full description of a job, in yaml format. 
+		Full description of a job, in yaml format.
 		Use 'bacalhau job list' to get a list of jobs.
 `))
 	describeExample = templates.Examples(i18n.T(`
@@ -49,7 +49,6 @@ func NewDescribeCmd() *cobra.Command {
 		Long:    describeLong,
 		Example: describeExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		Run:     o.run,
 	}
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))

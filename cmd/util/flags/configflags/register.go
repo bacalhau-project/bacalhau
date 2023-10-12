@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -60,6 +61,17 @@ func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
 		}
 	}
 	return nil
+}
+
+// PreRun returns a run hook that binds the passed flag sets onto the command.
+func PreRun(flags map[string][]Definition) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		err := BindFlags(cmd, flags)
+		if err != nil {
+			util.Fatal(cmd, err, 1)
+		}
+		return err
+	}
 }
 
 // RegisterFlags adds flags to the command based on provided definitions.

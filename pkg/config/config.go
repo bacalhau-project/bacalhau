@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 const (
@@ -190,9 +189,6 @@ func initConfig(params initParams) (types.BacalhauConfig, error) {
 	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
 		return types.BacalhauConfig{}, err
 	}
-
-	// TODO this should be a part of the config.
-	telemetry.SetupFromEnvs()
 
 	return out, nil
 }

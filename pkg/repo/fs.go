@@ -19,6 +19,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 type RepoVersion struct {
@@ -123,6 +124,9 @@ func (fsr *FsRepo) Open() error {
 		return err
 	}
 
+	// TODO this should be a part of the config.
+	telemetry.SetupFromEnvs()
+
 	if cfg.User.KeyPath == "" {
 		// if the user has not specified the location of their user key via a config file, use the default value
 		cfg.User.KeyPath = filepath.Join(fsr.path, UserPrivateKeyFileName)
@@ -213,6 +217,9 @@ func (fsr *FsRepo) Init() error {
 	if err != nil {
 		return err
 	}
+
+	// TODO this should be a part of the config.
+	telemetry.SetupFromEnvs()
 	return fsr.writeVersion()
 }
 

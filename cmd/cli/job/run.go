@@ -31,7 +31,7 @@ var (
 		bacalhau job run ./job.yaml
 
 		# Run a new job from an already executed job
-		bacalhau job describe 6e51df50 | bacalhau job run 
+		bacalhau job describe 6e51df50 | bacalhau job run
 		`))
 )
 
@@ -55,7 +55,6 @@ func NewRunCmd() *cobra.Command {
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(0),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		Run:     o.run,
 	}
 
