@@ -77,7 +77,7 @@ require (
 	go.uber.org/mock v0.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/crypto v0.11.0
+	golang.org/x/crypto v0.14.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	k8s.io/apimachinery v0.28.2
 	k8s.io/kubectl v0.28.2
@@ -340,12 +340,12 @@ require (
 	go.uber.org/dig v1.17.0 // indirect
 	go.uber.org/fx v1.19.3 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/net v0.13.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0
 	golang.org/x/tools v0.9.1 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
