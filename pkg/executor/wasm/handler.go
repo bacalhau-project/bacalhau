@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
@@ -79,18 +81,28 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
+	configuredProtocol := strings.ToLower(os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL"))
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+
+	protocol := opentelemetry.GRPC
+	if configuredProtocol != "grpc" {
+		protocol = opentelemetry.HTTP
+	}
+
 	conf := &opentelemetry.OTelConfig{
 		ServiceName:        "bacalhau",
 		EmitTracesInterval: time.Second * 1,
 		TraceBatchMax:      100,
-		Endpoint:           "localhost:4317",
-		Protocol:           opentelemetry.GRPC,
-		AllowInsecure:      true, // for localhost in dev via http
+		Endpoint:           endpoint,
+		Protocol:           protocol,
+		AllowInsecure:      strings.Contains(endpoint, "localhost") || strings.Contains(endpoint, "127.0.0.1"), // for localhost in dev via http
 	}
-	// TODO(dylibso): make endpoint configurable
-	adapter := opentelemetry.NewOTelAdapter(conf)
-	adapter.Start(ctx)
-	defer adapter.StopWithContext(ctx, true)
+	var adapter *opentelemetry.OTelAdapter
+	if endpoint != "" {
+		adapter = opentelemetry.NewOTelAdapter(conf)
+		adapter.Start(ctx)
+		defer adapter.StopWithContext(ctx, true)
+	}
 
 	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: adapter}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", tracingEngine)

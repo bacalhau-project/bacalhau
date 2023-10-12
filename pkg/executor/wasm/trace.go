@@ -47,14 +47,18 @@ type tracedCompiledModule struct {
 }
 
 func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Module, error) {
-	traceCtx, err := t.adapter.NewTraceCtx(ctx, t.Runtime, source, nil)
-	if err != nil {
-		return nil, err
+	var traceCtx *observe.TraceCtx
+	var err error
+
+	if t.adapter != nil {
+		traceCtx, err = t.adapter.NewTraceCtx(ctx, t.Runtime, source, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.Instantiate")
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.Instantiate(ctx, source))
-
 	if module != nil {
 		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: traceCtx}
 	}
@@ -62,9 +66,14 @@ func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Modu
 }
 
 func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte, config wazero.ModuleConfig) (api.Module, error) {
-	traceCtx, err := t.adapter.NewTraceCtx(ctx, t.Runtime, source, nil)
-	if err != nil {
-		return nil, err
+	var traceCtx *observe.TraceCtx
+	var err error
+
+	if t.adapter != nil {
+		traceCtx, err = t.adapter.NewTraceCtx(ctx, t.Runtime, source, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateWithConfig")
 	defer span.End()
@@ -76,9 +85,14 @@ func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte,
 }
 
 func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero.CompiledModule, error) {
-	traceCtx, err := t.adapter.NewTraceCtx(ctx, t.Runtime, binary, nil)
-	if err != nil {
-		return nil, err
+	var traceCtx *observe.TraceCtx
+	var err error
+
+	if t.adapter != nil {
+		traceCtx, err = t.adapter.NewTraceCtx(ctx, t.Runtime, binary, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.CompileModule")
 	defer span.End()
@@ -115,7 +129,9 @@ func (t tracedModule) ExportedFunction(name string) api.Function {
 }
 
 func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, error) {
-	defer t.traceCtx.Finish()
+	if t.traceCtx != nil {
+		defer t.traceCtx.Finish()
+	}
 	ctx, span := system.NewSpan(
 		ctx,
 		system.GetTracer(),
@@ -128,7 +144,9 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 }
 
 func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error {
-	defer t.traceCtx.Finish()
+	if t.traceCtx != nil {
+		defer t.traceCtx.Finish()
+	}
 	ctx, span := system.NewSpan(
 		ctx,
 		system.GetTracer(),
@@ -190,16 +208,22 @@ func (t tracedModule) ExportedGlobal(name string) api.Global {
 }
 
 func (t tracedModule) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
-	t.traceCtx.Finish()
+	if t.traceCtx != nil {
+		t.traceCtx.Finish()
+	}
 	return t.Module.CloseWithExitCode(ctx, exitCode)
 }
 
 func (t tracedModule) Close(ctx context.Context) error {
-	t.traceCtx.Finish()
+	if t.traceCtx != nil {
+		t.traceCtx.Finish()
+	}
 	return t.Module.Close(ctx)
 }
 
 func (t tracedCompiledModule) Close(ctx context.Context) error {
-	t.traceCtx.Finish()
+	if t.traceCtx != nil {
+		t.traceCtx.Finish()
+	}
 	return t.CompiledModule.Close(ctx)
 }
