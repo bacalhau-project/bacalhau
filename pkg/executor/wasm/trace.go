@@ -20,6 +20,11 @@ var _ api.Function = tracedFunction{}
 var _ api.Module = tracedModule{}
 var _ wazero.CompiledModule = tracedCompiledModule{}
 
+type observeTrace struct {
+	adapter  *opentelemetry.OTelAdapter
+	traceCtx *observe.TraceCtx
+}
+
 // tracedRuntime wraps a 'real' wazero.Runtime so that important events like compiling modules can be easily traced.
 type tracedRuntime struct {
 	wazero.Runtime
@@ -29,21 +34,20 @@ type tracedRuntime struct {
 // tracedModule wraps a 'real' wazero api.Module so that function calls made to the module can be easily traced.
 type tracedModule struct {
 	api.Module
-	adapter  *opentelemetry.OTelAdapter
-	traceCtx *observe.TraceCtx
+	observeTrace
 }
 
 // tracedFunction wraps a 'real' wazero api.Function so that calls to the function can be easily traced.
 type tracedFunction struct {
 	api.Function
-	adapter  *opentelemetry.OTelAdapter
-	traceCtx *observe.TraceCtx
+	observeTrace
 }
 
+// tracedCompiledModule wraps a 'real' wazero wazero.CompiledModule so that function calls made to the module can be
+// easily traced.
 type tracedCompiledModule struct {
 	wazero.CompiledModule
-	adapter  *opentelemetry.OTelAdapter
-	traceCtx *observe.TraceCtx
+	observeTrace
 }
 
 func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Module, error) {
@@ -60,7 +64,7 @@ func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Modu
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.Instantiate(ctx, source))
 	if module != nil {
-		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: traceCtx}
+		module = tracedModule{Module: module, observeTrace: observeTrace{adapter: t.adapter, traceCtx: traceCtx}}
 	}
 	return module, err
 }
@@ -79,7 +83,7 @@ func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte,
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateWithConfig(ctx, source, config))
 	if module != nil {
-		module = tracedModule{Module: module, adapter: t.adapter, traceCtx: traceCtx}
+		module = tracedModule{Module: module, observeTrace: observeTrace{adapter: t.adapter, traceCtx: traceCtx}}
 	}
 	return module, err
 }
@@ -102,7 +106,7 @@ func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
 	}
-	m := tracedCompiledModule{CompiledModule: module, adapter: t.adapter, traceCtx: traceCtx}
+	m := tracedCompiledModule{CompiledModule: module, observeTrace: observeTrace{adapter: t.adapter, traceCtx: traceCtx}}
 	return m, err
 }
 
@@ -119,13 +123,13 @@ func (t tracedRuntime) InstantiateModule(
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}
-		module = tracedModule{Module: module, adapter: m.adapter, traceCtx: m.traceCtx}
+		module = tracedModule{Module: module, observeTrace: m.observeTrace}
 	}
 	return module, err
 }
 
 func (t tracedModule) ExportedFunction(name string) api.Function {
-	return tracedFunction{Function: t.Module.ExportedFunction(name), adapter: t.adapter, traceCtx: t.traceCtx}
+	return tracedFunction{Function: t.Module.ExportedFunction(name), observeTrace: t.observeTrace}
 }
 
 func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, error) {
