@@ -17,7 +17,7 @@ var (
 		# Follow logs for a previously submitted job
 		bacalhau logs j-51225160-807e-48b8-88c9-28311c7899e1
 
-		# Follow output with a short ID 
+		# Follow output with a short ID
 		bacalhau logs j-ebd9bf2f
 `))
 )
@@ -35,7 +35,6 @@ func NewLogCmd() *cobra.Command {
 		Short:   logsShortDesc,
 		Example: logsExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := util.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
 				util.Fatal(cmd, err, 1)

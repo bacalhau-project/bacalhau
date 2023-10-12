@@ -47,18 +47,13 @@ func NewCmd() *cobra.Command {
 	}
 
 	getCmd := &cobra.Command{
-		Use:     "get [id]",
-		Short:   "Get the results of a job",
-		Long:    getLong,
-		Example: getExample,
-		Args:    cobra.ExactArgs(1),
-		PreRun: func(cmd *cobra.Command, args []string) {
-			if err := configflags.BindFlags(cmd, getFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-
-			util.ApplyPorcelainLogLevel(cmd, args)
-		},
+		Use:      "get [id]",
+		Short:    "Get the results of a job",
+		Long:     getLong,
+		Example:  getExample,
+		Args:     cobra.ExactArgs(1),
+		PreRunE:  util.Chain(util.ClientPreRunHooks, configflags.PreRun(getFlags)),
+		PostRunE: util.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := get(cmd, cmdArgs, OG); err != nil {
 				util.Fatal(cmd, err, 1)

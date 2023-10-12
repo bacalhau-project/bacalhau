@@ -75,7 +75,7 @@ func NewCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
 		Use:               "wasm",
 		Short:             "Run and prepare WASM jobs on the network",
-		PersistentPreRunE: util.CheckVersion,
+		PersistentPreRunE: util.AfterParentPreRunHook(util.CheckVersion),
 	}
 
 	wasmCmd.AddCommand(
@@ -94,19 +94,13 @@ func newRunCmd() *cobra.Command {
 	}
 
 	wasmRunCmd := &cobra.Command{
-		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
-		Short:   "Run a WASM job on the network",
-		Long:    wasmRunLong,
-		Example: wasmRunExample,
-		Args:    cobra.MinimumNArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			err := configflags.BindFlags(cmd, wasmRunFlags)
-			if err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-			return err
-		},
+		Use:      "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
+		Short:    "Run a WASM job on the network",
+		Long:     wasmRunLong,
+		Example:  wasmRunExample,
+		Args:     cobra.MinimumNArgs(1),
+		PreRunE:  util.Chain(util.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
+		PostRunE: util.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
 				util.Fatal(cmd, err, 1)

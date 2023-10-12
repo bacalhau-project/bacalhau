@@ -47,7 +47,6 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 		{numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
-
 	}
 
 	for _, tc := range tests {
@@ -68,8 +67,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				"--reverse", "false",
 			)
 			require.NoError(suite.T(), err)
-
-			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"), out)
 		})
 	}
 }
