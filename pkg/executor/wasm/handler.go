@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -89,13 +90,20 @@ func (h *executionHandler) run(ctx context.Context) {
 		protocol = opentelemetry.HTTP
 	}
 
+	allowInsecure := false
+	if u, err := url.Parse(endpoint); err == nil {
+		host := u.Hostname()
+		endpoint = host + ":" + u.Port()
+		allowInsecure = host == "localhost" || host == "127.0.0.1"
+	}
+
 	conf := &opentelemetry.OTelConfig{
 		ServiceName:        "bacalhau",
 		EmitTracesInterval: time.Second * 1,
 		TraceBatchMax:      100,
 		Endpoint:           endpoint,
 		Protocol:           protocol,
-		AllowInsecure:      strings.Contains(endpoint, "localhost") || strings.Contains(endpoint, "127.0.0.1"), // for localhost in dev via http
+		AllowInsecure:      allowInsecure, // for localhost in dev via http
 	}
 	var adapter *opentelemetry.OTelAdapter
 	if endpoint != "" {
