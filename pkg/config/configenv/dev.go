@@ -16,6 +16,9 @@ var Development = types.BacalhauConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
 	},
+	Update: types.UpdateConfig{
+		SkipChecks: true,
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",

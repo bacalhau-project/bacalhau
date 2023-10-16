@@ -41,6 +41,9 @@ const (
 
 	// requester paths
 	AutoCertCachePath = "autocert-cache"
+
+	// update check paths
+	UpdateCheckStatePath = "update.json"
 )
 
 type FsRepo struct {
@@ -154,12 +157,19 @@ func (fsr *FsRepo) Open() error {
 		config.SetComputeStoragesPath(cfg.Node.ComputeStoragePath)
 	}
 
+	if cfg.Update.CheckStatePath == "" {
+		cfg.Update.CheckStatePath = filepath.Join(fsr.path, UpdateCheckStatePath)
+		config.SetUpdateCheckStatePath(cfg.Update.CheckStatePath)
+	}
+
 	// Using a slice of paths to minimize repetitive checks
 	pathsToCheck := []string{
 		cfg.User.KeyPath,
 		cfg.User.Libp2pKeyPath,
 		cfg.Node.ExecutorPluginPath,
 		cfg.Node.ComputeStoragePath,
+		// Note that cfg.Update.StateCheckPath is deliberately omitted here:
+		// this file will get created on first run of the update check
 	}
 
 	for _, path := range pathsToCheck {

@@ -3,14 +3,11 @@ package cmdtesting
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
@@ -35,8 +32,6 @@ type BaseSuite struct {
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	util.Fatal = util.FakeFatalErrorHandler
-
-	os.Setenv(config.KeyAsEnvVar(types.SkipUpdateCheck), "1")
 
 	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{

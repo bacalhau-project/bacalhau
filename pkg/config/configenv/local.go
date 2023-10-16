@@ -16,6 +16,9 @@ var Local = types.BacalhauConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
 	},
+	Update: types.UpdateConfig{
+		SkipChecks: true,
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "0.0.0.0",

@@ -16,6 +16,10 @@ var Staging = types.BacalhauConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
 	},
+	Update: types.UpdateConfig{
+		SkipChecks:     false,
+		CheckFrequency: types.Duration(24 * time.Hour),
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.staging.bacalhau.org",

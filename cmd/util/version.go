@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -69,20 +68,17 @@ func GetAllVersions(ctx context.Context) (Versions, error) {
 
 var printMessage *string = nil
 
-const updateStatePath string = "update.json"
-const updateFrequency time.Duration = 24 * time.Hour
-
 // StartUpdateCheck is a Cobra pre run hook to run an update check in the
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
 func StartUpdateCheck(cmd *cobra.Command, args []string) {
-	if skip, err := config.Get[bool](types.SkipUpdateCheck); skip || err != nil {
-		log.Ctx(cmd.Context()).Debug().Err(err).Bool(types.SkipUpdateCheck, skip).Msg("Skipping update check due to config")
+	if skip, err := config.Get[bool](types.UpdateSkipChecks); skip || err != nil {
+		log.Ctx(cmd.Context()).Debug().Err(err).Bool(types.UpdateSkipChecks, skip).Msg("Skipping update check due to config")
 		return
 	}
 
 	lastCheck, err := readLastCheckTime(cmd.Context())
-	if err == nil && time.Since(lastCheck) < updateFrequency {
+	if err == nil && time.Since(lastCheck) < config.GetUpdateCheckFrequency() {
 		log.Ctx(cmd.Context()).Debug().Time("LastCheck", lastCheck).Msg("Skipping update check as there was a recent enough check")
 		return
 	} else if err != nil {
@@ -104,12 +100,12 @@ type updateState struct {
 }
 
 func readLastCheckTime(ctx context.Context) (time.Time, error) {
-	path, err := GetFSRepo(ctx).Path()
+	path, err := config.Get[string](types.UpdateCheckStatePath)
 	if err != nil {
 		return time.Now(), errors.Wrap(err, "error getting repo path")
 	}
 
-	file, err := os.Open(filepath.Join(path, updateStatePath))
+	file, err := os.Open(path)
 	if err != nil {
 		return time.Now(), errors.Wrap(err, "error opening update state file")
 	}
@@ -125,12 +121,12 @@ func readLastCheckTime(ctx context.Context) (time.Time, error) {
 }
 
 func writeNewLastCheckTime(ctx context.Context) error {
-	path, err := GetFSRepo(ctx).Path()
+	path, err := config.Get[string](types.UpdateCheckStatePath)
 	if err != nil {
 		return errors.Wrap(err, "error getting repo path")
 	}
 
-	file, err := os.Create(filepath.Join(path, updateStatePath))
+	file, err := os.Create(path)
 	if err != nil {
 		return errors.Wrap(err, "error creating update state file")
 	}
