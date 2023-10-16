@@ -327,7 +327,7 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig s3help
 		Type:   models.PublisherS3,
 		Params: publisherConfig.ToMap(),
 	}
-	return s.publisher.PublishResult(ctx, models.Execution{}, *job, resultPath)
+	return s.publisher.PublishResult(ctx, models.Execution{ID: executionID}, *job, resultPath)
 }
 
 func (s *PublisherTestSuite) equalS3Content(expected string, uploaded s3helper.SourceSpec, suffix string) {
