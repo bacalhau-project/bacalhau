@@ -25,3 +25,7 @@ func SetComputeStoragesPath(path string) {
 func SetAutoCertCachePath(path string) {
 	viper.Set(types.NodeServerAPITLSAutoCertCachePath, path)
 }
+
+func SetUpdateCheckStatePath(path string) {
+	viper.Set(types.UpdateCheckStatePath, path)
+}

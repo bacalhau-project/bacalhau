@@ -142,6 +142,10 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 	return viper.GetDuration(types.NodeVolumeSizeRequestTimeout)
 }
 
+func GetUpdateCheckFrequency() time.Duration {
+	return viper.GetDuration(types.UpdateCheckFrequency)
+}
+
 func GetStoragePath() string {
 	path := viper.GetString(types.NodeComputeStoragePath)
 	if path == "" {
