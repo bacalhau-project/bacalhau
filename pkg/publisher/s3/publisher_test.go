@@ -12,6 +12,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +75,29 @@ func (s *PublisherTestSuite) TestIsInstalled() {
 	res, err := s.publisher.IsInstalled(ctx)
 	s.Require().NoError(err)
 	s.True(res)
+}
+
+func (s *PublisherTestSuite) TestDateSubstitution() {
+
+	job := mock.Job()
+	job.ID = jobID
+	job.Task().Publisher = &models.SpecConfig{
+		Type: models.PublisherS3,
+		Params: s3helper.PublisherSpec{
+			Bucket: "test",
+			Key:    "{date}/{time}",
+		}.ToMap(),
+	}
+
+	str := ParsePublishedKey("{date}/{time}", "e1", *job, false)
+	parts := strings.Split(str, "/")
+
+	n := time.Now()
+	s.Require().Equal(fmt.Sprintf("%d%d%d", n.Year(), n.Month(), n.Day()), parts[0], "date was incorrect")
+
+	// Check the time is all numbers
+	_, err := strconv.Atoi(parts[1])
+	s.Require().NoError(err, "time was not numerc")
 }
 
 func (s *PublisherTestSuite) TestValidateJob() {

@@ -19,10 +19,11 @@ func ParsePublishedKey(key string, executionID string, job models.Job, archive b
 	if !archive && !strings.HasSuffix(key, "/") {
 		key = key + "/"
 	}
+
 	key = strings.ReplaceAll(key, "{executionID}", executionID)
 	key = strings.ReplaceAll(key, "{jobID}", job.ID)
-	key = strings.ReplaceAll(key, "{date}", time.Now().Format("YYYYMMDD"))
-	key = strings.ReplaceAll(key, "{time}", time.Now().Format("HHMMSS"))
+	key = strings.ReplaceAll(key, "{date}", time.Now().Format("20060102"))
+	key = strings.ReplaceAll(key, "{time}", time.Now().Format("150405"))
 	return key
 }
 
