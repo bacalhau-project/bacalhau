@@ -1,7 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: daily
-    open-pull-requests-limit: 1
+- package-ecosystem: "gomod"
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 1
+- package-ecosystem: "pip"
+  directory: "/integration/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 1

@@ -6,6 +6,8 @@ type BacalhauConfig struct {
 	Node    NodeConfig    `yaml:"Node"`
 	User    UserConfig    `yaml:"User"`
 	Metrics MetricsConfig `yaml:"Metrics"`
+
+	SkipUpdateCheck bool `yaml:"SkipUpdateCheck"`
 }
 
 type UserConfig struct {

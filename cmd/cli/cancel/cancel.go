@@ -53,12 +53,13 @@ func NewCmd() *cobra.Command {
 	cancelOptions := NewCancelOptions()
 
 	cancelCmd := &cobra.Command{
-		Use:     "cancel [id]",
-		Short:   "Cancel a previously submitted job",
-		Long:    cancelLong,
-		Example: cancelExample,
-		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "cancel [id]",
+		Short:    "Cancel a previously submitted job",
+		Long:     cancelLong,
+		Example:  cancelExample,
+		Args:     cobra.ExactArgs(1),
+		PreRunE:  util.ClientPreRunHooks,
+		PostRunE: util.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			return cancel(cmd, cmdArgs, cancelOptions)
 		},

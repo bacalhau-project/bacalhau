@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -118,6 +119,20 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 
 	// Group up the peers by ID, so we only connect to a peer once rather than multiple times
 	for _, peerAddress := range peers {
+		// Lookup whether the address we've been given might be a http(s) multiaddress and if so then
+		// we will attempt to fetch the peer id from the remote address, and encapsulate a new address
+		// from that data.
+		isHTTP := func(p multiaddr.Protocol) bool { return p.Name == "http" || p.Name == "https" }
+		if slices.ContainsFunc(peerAddress.Protocols(), isHTTP) {
+			var err error
+			peerAddress, err = upgradeAddress(ctx, peerAddress)
+			if err != nil {
+				log.Ctx(ctx).Warn().Err(err).Msg("Error attempting to upgrade peer address")
+			} else {
+				log.Ctx(ctx).Debug().Stringer("Address", peerAddress).Msg("Upgraded multiaddress to P2P")
+			}
+		}
+
 		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
 		if err != nil {
 			errors = append(errors, err)

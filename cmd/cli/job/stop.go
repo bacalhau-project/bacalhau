@@ -59,7 +59,6 @@ func NewStopCmd() *cobra.Command {
 		Long:    stopLong,
 		Example: stopExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		RunE:    o.run,
 	}
 

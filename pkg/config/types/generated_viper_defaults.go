@@ -123,6 +123,7 @@ func SetDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(Metrics, cfg.Metrics)
 	viper.SetDefault(MetricsLibp2pTracerPath, cfg.Metrics.Libp2pTracerPath)
 	viper.SetDefault(MetricsEventTracerPath, cfg.Metrics.EventTracerPath)
+	viper.SetDefault(SkipUpdateCheck, cfg.SkipUpdateCheck)
 }
 
 func Set(cfg BacalhauConfig) {
@@ -244,4 +245,5 @@ func Set(cfg BacalhauConfig) {
 	viper.Set(Metrics, cfg.Metrics)
 	viper.Set(MetricsLibp2pTracerPath, cfg.Metrics.Libp2pTracerPath)
 	viper.Set(MetricsEventTracerPath, cfg.Metrics.EventTracerPath)
+	viper.Set(SkipUpdateCheck, cfg.SkipUpdateCheck)
 }
