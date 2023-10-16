@@ -89,7 +89,7 @@ func (s *PublisherTestSuite) TestDateSubstitution() {
 		}.ToMap(),
 	}
 
-	str := ParsePublishedKey("{date}/{time}", "e1", *job, false)
+	str := ParsePublishedKey("{date}/{time}", models.Execution{ID: "e1"}, *job, false)
 	parts := strings.Split(str, "/")
 
 	n := time.Now()
@@ -327,7 +327,7 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig s3help
 		Type:   models.PublisherS3,
 		Params: publisherConfig.ToMap(),
 	}
-	return s.publisher.PublishResult(ctx, executionID, *job, resultPath)
+	return s.publisher.PublishResult(ctx, models.Execution{}, *job, resultPath)
 }
 
 func (s *PublisherTestSuite) equalS3Content(expected string, uploaded s3helper.SourceSpec, suffix string) {

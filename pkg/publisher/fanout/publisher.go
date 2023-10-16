@@ -136,7 +136,7 @@ func (f *fanoutPublisher) ValidateJob(ctx context.Context, j models.Job) error {
 // PublishResult implements publisher.Publisher
 func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,
-	executionID string,
+	execution models.Execution,
 	job models.Job,
 	resultPath string,
 ) (models.SpecConfig, error) {
@@ -144,7 +144,7 @@ func (f *fanoutPublisher) PublishResult(
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (models.SpecConfig, error) {
-		return p.PublishResult(ctx, executionID, job, resultPath)
+		return p.PublishResult(ctx, execution, job, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)

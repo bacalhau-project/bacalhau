@@ -43,7 +43,7 @@ func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j models.Job) e
 
 func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
-	executionID string,
+	execution models.Execution,
 	j models.Job,
 	resultPath string,
 ) (models.SpecConfig, error) {
