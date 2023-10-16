@@ -164,8 +164,8 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 			StorageSource: model.StorageSourceLocalDirectory,
 			Path:          storage.Params["SourcePath"].(string),
 		}
-		if storage.Params["ReadWrite"] != nil {
-			storageSpec.ReadWrite = storage.Params["ReadWrite"].(bool)
+		if readWrite, ok := storage.Params["ReadWrite"].(bool); ok {
+			storageSpec.ReadWrite = readWrite
 		}
 		return storageSpec, nil
 	case models.StorageSourceS3:
