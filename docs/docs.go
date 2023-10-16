@@ -457,7 +457,7 @@ const docTemplate = `{
         },
         "/api/v1/requester/logs": {
             "post": {
-                "description": "Shows the output from the job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nThe ouput will be continuous until either, the client disconnects or the execution completes.",
+                "description": "Shows the output from the job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nThe output will be continuous until either, the client disconnects or the execution completes.",
                 "consumes": [
                     "application/json"
                 ],
