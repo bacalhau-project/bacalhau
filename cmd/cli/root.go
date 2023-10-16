@@ -49,6 +49,7 @@ func NewRootCmd() *cobra.Command {
 		PreRun:  util.StartUpdateCheck,
 		PostRun: util.PrintUpdateCheck,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			repoDir, err := config.Get[string]("repo")
 			if err != nil {
 				util.Fatal(cmd, fmt.Errorf("failed to read --repo value: %w", err), 1)
@@ -58,15 +59,15 @@ func NewRootCmd() *cobra.Command {
 				// didn't provide on.
 				util.Fatal(cmd, fmt.Errorf("bacalhau repo not set, please use BACALHAU_DIR or --repo"), 1)
 			}
-			if _, err := setup.SetupBacalhauRepo(repoDir); err != nil {
+			if fsRepo, err := setup.SetupBacalhauRepo(repoDir); err != nil {
 				util.Fatal(cmd, fmt.Errorf("failed to initialize bacalhau repo at '%s': %w", repoDir, err), 1)
+			} else {
+				ctx = context.WithValue(ctx, util.FSRepoKey, fsRepo)
 			}
 
 			if err := configflags.BindFlags(cmd, rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
-
-			ctx := cmd.Context()
 
 			logger.ConfigureLogging(util.LoggingMode)
 
