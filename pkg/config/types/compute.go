@@ -19,8 +19,6 @@ type CapacityConfig struct {
 	JobResourceLimits        model.ResourceUsageConfig `yaml:"JobResourceLimits"`
 	DefaultJobResourceLimits model.ResourceUsageConfig `yaml:"DefaultJobResourceLimits"`
 	QueueResourceLimits      model.ResourceUsageConfig `yaml:"QueueResourceLimits"`
-	// The maximum time a job can execute for.
-	MaxJobExecutionTimeout Duration `yaml:"MaxJobExecutionTimeout"`
 }
 
 type JobTimeoutConfig struct {

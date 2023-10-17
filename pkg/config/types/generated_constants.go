@@ -51,7 +51,6 @@ const NodeComputeCapacityQueueResourceLimitsCPU = "Node.Compute.Capacity.QueueRe
 const NodeComputeCapacityQueueResourceLimitsMemory = "Node.Compute.Capacity.QueueResourceLimits.Memory"
 const NodeComputeCapacityQueueResourceLimitsDisk = "Node.Compute.Capacity.QueueResourceLimits.Disk"
 const NodeComputeCapacityQueueResourceLimitsGPU = "Node.Compute.Capacity.QueueResourceLimits.GPU"
-const NodeComputeCapacityMaxJobExecutionTimeout = "Node.Compute.Capacity.MaxJobExecutionTimeout"
 const NodeComputeExecutionStore = "Node.Compute.ExecutionStore"
 const NodeComputeExecutionStoreType = "Node.Compute.ExecutionStore.Type"
 const NodeComputeExecutionStorePath = "Node.Compute.ExecutionStore.Path"
