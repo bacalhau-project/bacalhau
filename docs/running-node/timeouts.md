@@ -27,7 +27,7 @@ property to the `Spec`.
 
 ## Configuring execution time limits for a node
 
-Node operators can pass the `--max-timeout` flag to `bacalhau serve` to
+Node operators can pass the `--max-job-execution-timeout` flag to `bacalhau serve` to
 configure the maximum job time limit. The supplied value should be a numeric
 value followed by a time unit (one of `s` for seconds, `m` for minutes or `h`
 for hours).
