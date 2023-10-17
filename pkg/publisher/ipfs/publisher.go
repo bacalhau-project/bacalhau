@@ -43,8 +43,7 @@ func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j models.Job) e
 
 func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
-	execution models.Execution,
-	j models.Job,
+	execution *models.Execution,
 	resultPath string,
 ) (models.SpecConfig, error) {
 	cid, err := publisher.IPFSClient.Put(ctx, resultPath)

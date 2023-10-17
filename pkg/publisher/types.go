@@ -30,8 +30,7 @@ type Publisher interface {
 	// (e.g. notify slack)
 	PublishResult(
 		ctx context.Context,
-		execution models.Execution,
-		job models.Job,
+		execution *models.Execution,
 		resultPath string,
 	) (models.SpecConfig, error)
 }

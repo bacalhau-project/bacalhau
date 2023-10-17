@@ -78,7 +78,7 @@ func (m *FakePublisher) ValidateJob(context.Context, models.Job) error {
 }
 
 // PublishResult implements publisher.Publisher
-func (m *FakePublisher) PublishResult(context.Context, models.Execution, models.Job, string) (models.SpecConfig, error) {
+func (m *FakePublisher) PublishResult(context.Context, *models.Execution, string) (models.SpecConfig, error) {
 	time.Sleep(m.sleepTime)
 	return m.PublishedResult, m.PublishedResultErr
 }
@@ -131,7 +131,7 @@ func runTestCase(t *testing.T, name string, testCase fanoutTestCase) {
 		require.Equal(t, testCase.expectPublisher.isInstalled, result)
 	})
 	t.Run(name+"/PublishResult", func(t *testing.T) {
-		result, err := testCase.publisher.PublishResult(context.Background(), models.Execution{}, models.Job{}, "")
+		result, err := testCase.publisher.PublishResult(context.Background(), &models.Execution{}, "")
 		require.Equal(t, testCase.expectPublisher.PublishedResultErr == nil, err == nil, err)
 		require.Equal(t, testCase.expectPublisher.PublishedResult, result)
 	})

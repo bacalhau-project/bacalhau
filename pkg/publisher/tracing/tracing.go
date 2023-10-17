@@ -34,12 +34,12 @@ func (t *tracingPublisher) ValidateJob(ctx context.Context, j models.Job) error 
 }
 
 func (t *tracingPublisher) PublishResult(
-	ctx context.Context, execution models.Execution, j models.Job, resultPath string,
+	ctx context.Context, execution *models.Execution, resultPath string,
 ) (models.SpecConfig, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
 	defer span.End()
 
-	return t.delegate.PublishResult(ctx, execution, j, resultPath)
+	return t.delegate.PublishResult(ctx, execution, resultPath)
 }
 
 var _ publisher.Publisher = &tracingPublisher{}
