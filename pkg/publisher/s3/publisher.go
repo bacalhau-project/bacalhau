@@ -48,30 +48,28 @@ func (publisher *Publisher) ValidateJob(_ context.Context, j models.Job) error {
 
 func (publisher *Publisher) PublishResult(
 	ctx context.Context,
-	executionID string,
-	j models.Job,
+	execution *models.Execution,
 	resultPath string,
 ) (models.SpecConfig, error) {
-	spec, err := s3helper.DecodePublisherSpec(j.Task().Publisher)
+	spec, err := s3helper.DecodePublisherSpec(execution.Job.Task().Publisher)
 	if err != nil {
 		return models.SpecConfig{}, err
 	}
 
 	if spec.Compress {
-		return publisher.publishArchive(ctx, spec, executionID, j, resultPath)
+		return publisher.publishArchive(ctx, spec, execution, resultPath)
 	}
-	return publisher.publishDirectory(ctx, spec, executionID, j, resultPath)
+	return publisher.publishDirectory(ctx, spec, execution, resultPath)
 }
 
 func (publisher *Publisher) publishArchive(
 	ctx context.Context,
 	spec s3helper.PublisherSpec,
-	executionID string,
-	j models.Job,
+	execution *models.Execution,
 	resultPath string,
 ) (models.SpecConfig, error) {
 	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
-	key := ParsePublishedKey(spec.Key, executionID, j, true)
+	key := ParsePublishedKey(spec.Key, execution, true)
 
 	// Create a new GZIP writer that writes to the file.
 	targetFile, err := os.CreateTemp(publisher.localDir, "bacalhau-archive-*.tar.gz")
@@ -120,12 +118,11 @@ func (publisher *Publisher) publishArchive(
 func (publisher *Publisher) publishDirectory(
 	ctx context.Context,
 	spec s3helper.PublisherSpec,
-	executionID string,
-	j models.Job,
+	execution *models.Execution,
 	resultPath string,
 ) (models.SpecConfig, error) {
 	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
-	key := ParsePublishedKey(spec.Key, executionID, j, false)
+	key := ParsePublishedKey(spec.Key, execution, false)
 
 	// Walk the directory tree and upload each file to S3.
 	err := filepath.Walk(resultPath, func(path string, info os.FileInfo, err error) error {

@@ -405,7 +405,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 		return
 	}
-	publishedResult, err = jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
+	publishedResult, err = jobPublisher.PublishResult(ctx, execution, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to publish result: %w", err)
 		return
