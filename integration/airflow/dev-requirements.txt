@@ -1,6 +1,6 @@
 pip==22.3.1
 bump2version==0.5.11
-wheel==0.33.6
+wheel==0.41.2
 watchdog==3.0.0
 flake8==6.0.0
 tox==4.2.6
