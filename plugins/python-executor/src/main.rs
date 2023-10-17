@@ -1,4 +1,5 @@
 pub mod btypes;
+pub mod docker;
 pub mod executor;
 pub mod service;
 
