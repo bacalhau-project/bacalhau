@@ -117,22 +117,25 @@ func (n NetworkConfig) DomainSet() []string {
 		return []string{}
 	}
 	domains := slices.Clone(n.Domains)
-	slices.SortFunc(domains, func(a, b string) bool {
+	slices.SortFunc(domains, func(a, b string) int {
 		// If the domains "match", the match may be the result of a wildcard. We
 		// want to keep the wildcard because it matches more things. Wildcards
 		// will always be shorter than any subdomain they match, so we can
 		// simply sort on string length. Compact will then remove non-wildcards.
 		ret := matchDomain(a, b)
 		if ret == 0 {
-			return len(a) < len(b)
+			return len(a) - len(b)
 		} else {
-			return ret < 0
+			return ret
 		}
 	})
-	domains = slices.CompactFunc(domains, func(a, b string) bool {
-		return matchDomain(a, b) == 0
-	})
-	return domains
+	compacted := make([]string, 0, len(domains))
+	for i, domain := range domains {
+		if i == 0 || matchDomain(compacted[len(compacted)-1], domain) != 0 {
+			compacted = append(compacted, domain)
+		}
+	}
+	return slices.Clip(compacted)
 }
 
 func matchDomain(left, right string) (diff int) {
