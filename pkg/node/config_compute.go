@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -186,6 +187,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	if err := validateConfig(config, physicalResources); err != nil {
 		return ComputeConfig{}, fmt.Errorf("validating compute config: %w", err)
 	}
+	log.Debug().Msgf("Compute config: %+v", config)
 	return config, nil
 }
 
