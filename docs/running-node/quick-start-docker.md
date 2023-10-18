@@ -201,7 +201,7 @@ Notes about the command:
 * It runs the Bacalhau container in the specified Docker network
 * It uses the `root` user, which is the default system user that has access to the Docker socket on a Mac. You may need to change this to suit your environment
 * It mounts the Docker Socket
-* It mounts the `/tmp` directory
+* It mounts the `/tmp` directory and specifies this as the location where Bacalhau will write temporary execution data (`BACALHAU_NODE_COMPUTESTORAGEPATH`)
 * It exposes the Bacalhau API ports to the local host only, to prevent accidentally exposing the API to the public internet
 * The container version should match that of the Bacalhau installed on your system
 * The IPFS connect string points to the RPC port of the IPFS node. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP.
@@ -213,6 +213,7 @@ docker run \
     -u root \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /tmp:/tmp \
+    -e BACALHAU_NODE_COMPUTESTORAGEPATH=/tmp \
     -p 127.0.0.1:1234:1234 -p 127.0.0.1:1235:1235 -p 127.0.0.1:1235:1235/udp \
     ghcr.io/bacalhau-project/bacalhau:latest \
     serve \
