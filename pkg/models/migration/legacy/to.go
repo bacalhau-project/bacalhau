@@ -87,6 +87,18 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		deal.TargetingMode = model.TargetAll
 	}
 
+	// Older jobs may not have resource config and to avoid a nil pointer
+	// we'll use a default one when there is a nil ResourcesConfig
+	resourcesConfig := job.Task().ResourcesConfig
+	if resourcesConfig == nil {
+		resourcesConfig = new(models.ResourcesConfig)
+	}
+
+	timeouts := job.Task().Timeouts
+	if timeouts == nil {
+		timeouts = new(models.TimeoutConfig)
+	}
+
 	legacy := &model.Spec{
 		EngineSpec: model.EngineSpec{
 			Type:   job.Task().Engine.Type,
@@ -94,13 +106,13 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		},
 		PublisherSpec: publisherSpec,
 		Resources: model.ResourceUsageConfig{
-			CPU:    job.Task().ResourcesConfig.CPU,
-			Memory: job.Task().ResourcesConfig.Memory,
-			Disk:   job.Task().ResourcesConfig.Disk,
-			GPU:    job.Task().ResourcesConfig.GPU,
+			CPU:    resourcesConfig.CPU,
+			Memory: resourcesConfig.Memory,
+			Disk:   resourcesConfig.Disk,
+			GPU:    resourcesConfig.GPU,
 		},
 		Network:       networkConfig,
-		Timeout:       job.Task().Timeouts.ExecutionTimeout,
+		Timeout:       timeouts.ExecutionTimeout,
 		Inputs:        inputs,
 		Outputs:       outputs,
 		Annotations:   annotations,
