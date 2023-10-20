@@ -6,7 +6,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
-	// "github.com/dylibso/observe-sdk/go"
 	observe "github.com/dylibso/observe-sdk/go"
 	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
 	"github.com/tetratelabs/wazero"
@@ -144,6 +143,7 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 	)
 	defer span.End()
 
+	t.traceCtx.SetTraceId(span.SpanContext().TraceID().String())
 	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.Function.Call(ctx, params...))
 }
 
@@ -158,6 +158,8 @@ func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error
 		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)
 	defer span.End()
+
+	t.traceCtx.SetTraceId(span.SpanContext().TraceID().String())
 	return telemetry.RecordErrorOnSpan(span)(t.Function.CallWithStack(ctx, stack))
 }
 
