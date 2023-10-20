@@ -92,6 +92,7 @@ func NewCmd() *cobra.Command {
 		"libp2p":           configflags.Libp2pFlags,
 		"ipfs":             configflags.IPFSFlags,
 		"capacity":         configflags.CapacityFlags,
+		"job-timeouts":     configflags.ComputeTimeoutFlags,
 		"job-selection":    configflags.JobSelectionFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"labels":           configflags.LabelFlags,
