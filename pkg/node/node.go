@@ -278,6 +278,18 @@ func NewNode(
 		IntervalConfig:   nodeInfoPublisherInterval,
 	})
 
+	// Start periodic software update checks.
+	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
+	version.RunUpdateChecker(
+		updateCheckCtx,
+		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
+		version.LogUpdateResponse,
+	)
+	config.CleanupManager.RegisterCallback(func() error {
+		stopUpdateChecks()
+		return nil
+	})
+
 	// cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
