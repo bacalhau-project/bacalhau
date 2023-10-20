@@ -2,10 +2,7 @@ package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
@@ -13,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
@@ -72,73 +68,11 @@ var printMessage *string = nil
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
 func StartUpdateCheck(cmd *cobra.Command, args []string) {
-	if skip, err := config.Get[bool](types.UpdateSkipChecks); skip || err != nil {
-		log.Ctx(cmd.Context()).Debug().Err(err).Bool(types.UpdateSkipChecks, skip).Msg("Skipping update check due to config")
-		return
-	}
-
-	lastCheck, err := readLastCheckTime(cmd.Context())
-	if err == nil && time.Since(lastCheck) < config.GetUpdateCheckFrequency() {
-		log.Ctx(cmd.Context()).Debug().Time("LastCheck", lastCheck).Msg("Skipping update check as there was a recent enough check")
-		return
-	} else if err != nil {
-		log.Ctx(cmd.Context()).Warn().Err(err).Msg("Error reading update check state – will perform check anyway")
-	}
-
-	go func(ctx context.Context) {
-		versions, err := GetAllVersions(ctx)
-		if err == nil {
-			printMessage = &versions.UpdateMessage
-			err = writeNewLastCheckTime(ctx)
-			log.Ctx(ctx).Debug().Err(err).Str("LatestVersion", versions.LatestVersion.GitVersion).Msg("Performed update check")
-		}
-	}(cmd.Context())
-}
-
-type updateState struct {
-	LastCheck time.Time
-}
-
-func readLastCheckTime(ctx context.Context) (time.Time, error) {
-	path, err := config.Get[string](types.UpdateCheckStatePath)
-	if err != nil {
-		return time.Now(), errors.Wrap(err, "error getting repo path")
-	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return time.Now(), errors.Wrap(err, "error opening update state file")
-	}
-	defer file.Close()
-
-	var state updateState
-	err = json.NewDecoder(file).Decode(&state)
-	if err != nil {
-		return time.Now(), errors.Wrap(err, "error reading update state")
-	}
-
-	return state.LastCheck, nil
-}
-
-func writeNewLastCheckTime(ctx context.Context) error {
-	path, err := config.Get[string](types.UpdateCheckStatePath)
-	if err != nil {
-		return errors.Wrap(err, "error getting repo path")
-	}
-
-	file, err := os.Create(path)
-	if err != nil {
-		return errors.Wrap(err, "error creating update state file")
-	}
-	defer file.Close()
-
-	state := updateState{LastCheck: time.Now()}
-	err = json.NewEncoder(file).Encode(&state)
-	if err != nil {
-		return errors.Wrap(err, "error writing update state")
-	}
-
-	return nil
+	version.RunUpdateChecker(
+		cmd.Context(),
+		client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version,
+		func(_ context.Context, ucr *version.UpdateCheckResponse) { printMessage = &ucr.Message },
+	)
 }
 
 // PrintUpdateCheck is a Cobra post run hook to print the results of an update
