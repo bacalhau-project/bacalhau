@@ -48,7 +48,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 		s.Run(name, func() {
 			args := []string{}
 			if tc.configuredMax != nil {
-				args = append(args, "--max-timeout", tc.configuredMax.String())
+				args = append(args, "--max-job-execution-timeout", tc.configuredMax.String())
 			}
 
 			port, err := s.serve(args...)
