@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
@@ -140,6 +141,12 @@ func (fsr *FsRepo) Open() error {
 		// if the user has not specified the location of their libp2p key via a config file, use the default value
 		cfg.User.Libp2pKeyPath = filepath.Join(fsr.path, Libp2pPrivateKeyFileName)
 		config.SetLibp2pKey(cfg.User.Libp2pKeyPath)
+	}
+
+	if cfg.User.UserID == "" {
+		ID, _ := config.GetClientID()
+		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
+		config.SetUserID(uuidFromUserID.String())
 	}
 
 	if cfg.Node.ExecutorPluginPath == "" {
