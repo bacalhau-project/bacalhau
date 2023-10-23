@@ -81,9 +81,9 @@ func encodePublicKey(key *rsa.PublicKey) string {
 }
 
 func loadInstallationUserIDKey() (string, error) {
-	key := viper.GetString(types.UserUserID)
+	key := viper.GetString(types.UserInstallationID)
 	if key == "" {
-		return "", fmt.Errorf("config error: user-id-key not set")
+		return "", fmt.Errorf("config error: user-installation-id-key not set")
 	}
 	return key, nil
 }

@@ -143,7 +143,7 @@ func (fsr *FsRepo) Open() error {
 		config.SetLibp2pKey(cfg.User.Libp2pKeyPath)
 	}
 
-	if cfg.User.UserID == "" {
+	if cfg.User.InstallationID == "" {
 		ID, _ := config.GetClientID()
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
 		config.SetUserID(uuidFromUserID.String())

@@ -29,7 +29,7 @@ func CheckForUpdate(
 	ctx context.Context,
 	currentClientVersion, currentServerVersion *models.BuildVersionInfo,
 	clientID string,
-	userID string,
+	InstallationID string,
 ) (*UpdateCheckResponse, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {
@@ -46,7 +46,7 @@ func CheckForUpdate(
 		q.Set("serverVersion", currentServerVersion.GitVersion)
 	}
 	q.Set("clientID", clientID)
-	q.Set("userID", userID)
+	q.Set("InstallationID", InstallationID)
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
