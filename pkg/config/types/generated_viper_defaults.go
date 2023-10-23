@@ -244,7 +244,7 @@ func Set(cfg BacalhauConfig) {
 	viper.Set(User, cfg.User)
 	viper.Set(UserKeyPath, cfg.User.KeyPath)
 	viper.Set(UserLibp2pKeyPath, cfg.User.Libp2pKeyPath)
-	viper.Set(UserUserID, cfg.User.UserID)
+	viper.Set(UserInstallationID, cfg.User.InstallationID)
 	viper.Set(Metrics, cfg.Metrics)
 	viper.Set(MetricsLibp2pTracerPath, cfg.Metrics.Libp2pTracerPath)
 	viper.Set(MetricsEventTracerPath, cfg.Metrics.EventTracerPath)
