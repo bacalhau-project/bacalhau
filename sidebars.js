@@ -10,8 +10,8 @@
 module.exports = {
   // By default, Docusaurus generates a sidebar from the docs folder structure
   documentationSidebar: [
-    { 
-    
+    {
+
     },
     'intro',
     {
@@ -48,7 +48,7 @@ module.exports = {
           label: 'Case Studies',
           link: {
             type: 'generated-index',
-            description: "Case Studies",  
+            description: "Case Studies",
           },
           items: [
             'examples/case-studies/duckdb-log-processing/index',
@@ -84,7 +84,7 @@ module.exports = {
           label: 'Data Engineering',
           link: {
             type: 'generated-index',
-            description: "This directory contains examples relating to data engineering workloads. The goal is to provide a range of examples that show you how to work with Bacalhau in a variety of use cases.",  
+            description: "This directory contains examples relating to data engineering workloads. The goal is to provide a range of examples that show you how to work with Bacalhau in a variety of use cases.",
           },
           items: [
             'examples/data-engineering/blockchain-etl/index',
@@ -155,7 +155,7 @@ module.exports = {
       items: [
         'topic-guides/job-types'
       ],
-    },    
+    },
     {
       type: 'category',
       label: 'Data Ingestion',
@@ -184,6 +184,7 @@ module.exports = {
         'next-steps/gpu',
         'next-steps/networking',
         'next-steps/private-cluster',
+        'next-steps/update-checks',
       ],
     },
     {
@@ -239,7 +240,7 @@ module.exports = {
       collapsed: true,
       items: [
         'troubleshooting/debugging',
-        'troubleshooting/faqs',   
+        'troubleshooting/faqs',
         'all-flags',
       ],
     },
