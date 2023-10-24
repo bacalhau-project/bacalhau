@@ -66,7 +66,7 @@ func NewCmd() *cobra.Command {
 func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 	ctx := cmd.Context()
 	INSTALLATIONID := os.Getenv("BACALHAU_USER_INSTALLATIONID")
-	if INSTALLATIONID != ""{
+	if INSTALLATIONID != "" && config.GetInstallationUserID()==""{
 		config.SetIntallationID(INSTALLATIONID)
 	}
 	err := oV.Run(ctx, cmd)
