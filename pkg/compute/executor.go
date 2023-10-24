@@ -342,10 +342,6 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	expectedState := store.ExecutionStateRunning
 	publishedResult := models.SpecConfig{}
-	resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
-	if err != nil {
-		return err
-	}
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
@@ -359,6 +355,21 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 
 		expectedState = store.ExecutionStatePublishing
+
+		resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			// cleanup resources
+			log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+			err = os.RemoveAll(resultsDir)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
+			}
+		}()
+
 		publishedResult, err = e.publish(ctx, state, resultsDir)
 		if err != nil {
 			return err
@@ -372,13 +383,6 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		NewState:       store.ExecutionStateCompleted,
 	}); err != nil {
 		return err
-	}
-
-	// cleanup resources
-	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
-	err = os.RemoveAll(resultsDir)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
 	}
 
 	// notify requester
