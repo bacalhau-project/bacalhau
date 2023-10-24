@@ -146,7 +146,7 @@ func (fsr *FsRepo) Open() error {
 	if cfg.User.InstallationID == "" {
 		ID, _ := config.GetClientID()
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		config.SetUserID(uuidFromUserID.String())
+		config.SetIntallationID(uuidFromUserID.String())
 	}
 
 	if cfg.Node.ExecutorPluginPath == "" {
