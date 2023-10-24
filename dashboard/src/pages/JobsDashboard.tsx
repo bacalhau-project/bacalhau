@@ -1,6 +1,7 @@
 // src/pages/JobsDashboard.tsx
 
 import React from 'react'
+import styles from '../../styles/JobsDashboard.module.scss';
 import Table from '../components/Table'
 
 const JobsDashboard: React.FC = () => {
@@ -35,11 +36,11 @@ const JobsDashboard: React.FC = () => {
       'Complete',
       'View',
     ],
-    // ... other rows
+    // ... test data
   ]
 
   return (
-    <div>
+    <div className={styles.jobsdashboard}>
       <h1>Jobs Dashboard</h1>
       <Table headers={headers} data={data} />
     </div>
