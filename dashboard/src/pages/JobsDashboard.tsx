@@ -5,7 +5,6 @@ import styles from "../../styles/JobsDashboard.module.scss";
 import JobsTable from "../components/JobsTable";
 import Layout from "../components/Layout";
 import { Job } from "../interfaces";
-// import { list } from "../../../../nodejs-sdk/src/sdk/api"; //TODO: Temporary import of NodeJS SDK
 import { bacalhauAPI } from "./api/bacalhau";
 
 const JobsDashboard: React.FC = () => {
