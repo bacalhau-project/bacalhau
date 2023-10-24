@@ -18,11 +18,13 @@ package version
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -63,7 +65,10 @@ func NewCmd() *cobra.Command {
 
 func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 	ctx := cmd.Context()
-
+	INSTALLATIONID := os.Getenv("BACALHAU_USER_INSTALLATIONID")
+	if INSTALLATIONID != ""{
+		config.SetIntallationID(INSTALLATIONID)
+	}
 	err := oV.Run(ctx, cmd)
 	if err != nil {
 		return fmt.Errorf("error running version: %w", err)
