@@ -37,9 +37,13 @@ type JobDefaults struct {
 // DefaultsApplier is a transformer that applies default values to the job.
 func DefaultsApplier(defaults JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-		for _, task := range job.Tasks {
-			if task.Timeouts.GetExecutionTimeout() <= 0 {
-				task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
+
+		// only apply default execution timeout to non-long running jobs
+		if !job.IsLongRunning() {
+			for _, task := range job.Tasks {
+				if task.Timeouts.GetExecutionTimeout() <= 0 {
+					task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
+				}
 			}
 		}
 		return nil
