@@ -4,15 +4,10 @@ module.exports = {
         "es2021": true
     },
     "extends": [
-<<<<<<< HEAD
         'next',
         'plugin:@typescript-eslint/recommended',
         'plugin:prettier/recommended',
         "eslint:recommended",
-=======
-        "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
->>>>>>> 1fa7e1ed (updated lint config)
         "plugin:react/recommended"
     ],
     "overrides": [
@@ -34,10 +29,7 @@ module.exports = {
     },
     "plugins": [
         "@typescript-eslint",
-<<<<<<< HEAD
         'prettier',
-=======
->>>>>>> 1fa7e1ed (updated lint config)
         "react"
     ],
     "rules": {
