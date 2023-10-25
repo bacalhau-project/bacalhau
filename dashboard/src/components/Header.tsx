@@ -1,5 +1,7 @@
 import React from "react";
 import styles from "../../styles/Header.module.scss";
+import bacLogo from "../../images/bacalhau-logo-black.png";
+import Image from 'next/image';
 
 interface HeaderProps {
   pageTitle: string;
@@ -10,8 +12,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
     <header className={styles.header}>
       <div className={styles.left}>
         <div className={styles.logo}>
-          {/* Logo goes here */}
-          <img src="/logo.png" alt="Logo" />
+          <Image src={bacLogo} alt="Logo" width={150} height={150} /> 
         </div>
         <div className={styles.pageTitle}>{pageTitle}</div>
         <div className={styles.searchBar}>

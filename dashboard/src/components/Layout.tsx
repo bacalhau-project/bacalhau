@@ -10,7 +10,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   return (
