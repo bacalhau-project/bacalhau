@@ -138,7 +138,12 @@ func RunUpdateChecker(
 
 	lastCheck, err := readLastCheckTime()
 	if err != nil {
-		log.Ctx(ctx).Warn().Err(err).Msg("Error reading update check state – will perform check anyway")
+		// Only log if the error is not about a missing update.json
+		if !os.IsNotExist(err) {
+			log.Ctx(ctx).Warn().Err(err).Msg("Error reading update check state – will perform check anyway")
+		} else {
+			log.Ctx(ctx).Debug().Msg("No update check state found – will perform check")
+		}
 		lastCheck = time.UnixMilli(0)
 	}
 
@@ -178,6 +183,9 @@ func readLastCheckTime() (time.Time, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return time.Time{}, err // File not found, return zero time and the error
+		}
 		return time.Now(), errors.Wrap(err, "error opening update state file")
 	}
 	defer file.Close()
