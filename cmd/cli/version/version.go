@@ -18,13 +18,11 @@ package version
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
