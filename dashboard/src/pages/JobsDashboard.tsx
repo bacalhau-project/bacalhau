@@ -43,7 +43,6 @@ const JobsDashboard: React.FC = () => {
   return (
     <Layout pageTitle="Jobs Dashboard">
       <div className={styles.jobsdashboard}>
-        <h1>Jobs Dashboard</h1>
         <Table headers={headers} data={data} />
       </div>
     </Layout>
