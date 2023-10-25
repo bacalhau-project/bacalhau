@@ -3,6 +3,7 @@
 import React from 'react'
 import styles from '../../styles/JobsDashboard.module.scss';
 import Table from '../components/Table'
+import Layout from '../components/Layout';
 
 const JobsDashboard: React.FC = () => {
   const headers = [
@@ -40,10 +41,12 @@ const JobsDashboard: React.FC = () => {
   ]
 
   return (
-    <div className={styles.jobsdashboard}>
-      <h1>Jobs Dashboard</h1>
-      <Table headers={headers} data={data} />
-    </div>
+    <Layout pageTitle="Jobs Dashboard">
+      <div className={styles.jobsdashboard}>
+        <h1>Jobs Dashboard</h1>
+        <Table headers={headers} data={data} />
+      </div>
+    </Layout>
   )
 }
 
