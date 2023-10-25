@@ -12,6 +12,7 @@ type BacalhauConfig struct {
 type UserConfig struct {
 	KeyPath       string `yaml:"KeyPath"`
 	Libp2pKeyPath string `yaml:"Libp2PKeyPath"`
+	InstallationID        string `yaml:"InstallationID"`
 }
 
 type MetricsConfig struct {

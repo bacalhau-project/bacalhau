@@ -48,6 +48,10 @@ func GetClientID() (string, error) {
 	return loadClientID()
 }
 
+func GetInstallationUserID() (string, error) {
+	return loadInstallationUserIDKey()
+}
+
 // loadClientID loads a hash identifying a user based on their ID key.
 func loadClientID() (string, error) {
 	key, err := loadUserIDKey()
@@ -74,6 +78,14 @@ func convertToClientID(key *rsa.PublicKey) string {
 // encodePublicKey encodes a public key as a string:
 func encodePublicKey(key *rsa.PublicKey) string {
 	return base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(key))
+}
+
+func loadInstallationUserIDKey() (string, error) {
+	key := viper.GetString(types.UserInstallationID)
+	if key == "" {
+		return "", fmt.Errorf("config error: user-installation-id-key not set")
+	}
+	return key, nil
 }
 
 // loadUserIDKey loads the user ID key from whatever source is configured.
