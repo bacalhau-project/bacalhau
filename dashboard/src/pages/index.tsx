@@ -1,16 +1,16 @@
 // src/pages/index.tsx
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/router'
+import { useEffect } from "react";
+import { useRouter } from "next/router";
 
 const Home = () => {
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
-    router.replace('/JobsDashboard')
-  }, [])
+    router.replace("/JobsDashboard");
+  }, []);
 
-  return null
-}
+  return null;
+};
 
-export default Home
+export default Home;
