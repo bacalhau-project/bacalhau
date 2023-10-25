@@ -1,0 +1,27 @@
+// styles/Sidebar.module.scss
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transition: width 0.3s ease;
+    background-color: purple;
+}
+
+.collapsed {
+    width: 50px;
+}
+
+.expanded {
+    width: 200px;
+}
+
+.menu, .settings {
+    display: flex;
+    flex-direction: column;
+}
+
+.menuItem {
+    /* Your menu item styles */
+}
