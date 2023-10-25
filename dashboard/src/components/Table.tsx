@@ -1,11 +1,11 @@
 // src/components/Table.tsx
 
-import React from 'react'
+import React from "react";
 
 type Props = {
-  headers: string[]
-  data: string[][]
-}
+  headers: string[];
+  data: string[][];
+};
 
 const Table: React.FC<Props> = ({ headers, data }) => {
   return (
@@ -27,7 +27,7 @@ const Table: React.FC<Props> = ({ headers, data }) => {
         ))}
       </tbody>
     </table>
-  )
-}
+  );
+};
 
-export default Table
+export default Table;

@@ -1,29 +1,27 @@
 // components/Layout.tsx
-import React, { useState } from 'react';
-import styles from '../../styles/Layout.module.scss'
-import Header from './Header';
-import Sidebar from './Sidebar';
+import React, { useState } from "react";
+import styles from "../../styles/Layout.module.scss";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
 
 interface LayoutProps {
-    pageTitle: string;
-    children: React.ReactNode;
+  pageTitle: string;
+  children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
-    return (
-        <div className={styles.layout}>
-            <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
-            <div className={styles.rightSide}>
-                <Header pageTitle={pageTitle} />
-                <main>
-                    {children}
-                </main>
-            </div>
-        </div>
-    );
+  return (
+    <div className={styles.layout}>
+      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+      <div className={styles.rightSide}>
+        <Header pageTitle={pageTitle} />
+        <main>{children}</main>
+      </div>
+    </div>
+  );
 };
 
 export default Layout;
