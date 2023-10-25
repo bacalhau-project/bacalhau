@@ -411,7 +411,7 @@ func AutoOutputLabels() map[string]string {
 	m["Architecture"] = arch
 
 	gpus, err := system_capacity.GetSystemGPUs()
-	if err != nil {
+	if err == nil {
 		// Print the GPU names
 		for i, gpu := range gpus {
 			// Model label e.g. GPU-0: Tesla-T1
