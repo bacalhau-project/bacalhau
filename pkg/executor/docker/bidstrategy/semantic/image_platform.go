@@ -67,7 +67,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		// TODO: Once we have an LRU cache we can use that instead and not worry
 		// about managing eviction. In the meantime we get this through calling
 		// Set even when don't have to, to reset the expiry time.
-		defer func() {
+		go func() {
 			err = (*ManifestCache).Set(
 				dockerEngine.Image, manifest, 1, oneDayInSeconds,
 			) //nolint:gomnd
