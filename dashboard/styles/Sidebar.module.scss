@@ -21,10 +21,12 @@
 .menu, .settings {
     display: flex;
     flex-direction: column;
+    color: $text-colour-light;
+    font-size: 21px;
 }
 
-.menuItem {
-    color: $text-colour-light;
+.menuItem, .settings {
+    padding: 10px;
 }
 
 .buttonIcon {
