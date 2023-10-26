@@ -82,8 +82,8 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 			GPU:    "",
 		},
 		DefaultJobResourceLimits: model.ResourceUsageConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
+			CPU:    "500m",
+			Memory: "1Gb",
 			Disk:   "",
 			GPU:    "",
 		},
