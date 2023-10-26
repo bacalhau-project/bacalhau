@@ -2,13 +2,13 @@
 @import 'fonts';
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: '@font-face';
 }
 
 html, body {
     padding: 0;
     margin: 0;
-    font-family: 'Open Sans', sans-serif;
+    font-family: '@font-face';
   
     a {
       color: inherit;
