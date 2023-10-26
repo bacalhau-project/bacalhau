@@ -7,7 +7,25 @@
     left: 0;
     height: 100vh;
     transition: width 0.3s ease;
-    background-color: $primary-blue;
+    background-color: $bgd-color-dark;
+    white-space: nowrap; 
+}
+
+.link {
+    text-decoration: none;
+    color: inherit;  // Inherit color from parent
+}
+
+.menuItem, .settings {
+    padding: 10px;
+    opacity: 0;
+    visibility: hidden;  // Hide text when sidebar is collapsed
+    transition: opacity 0.05s ease, visibility 0.05s ease;  // Transition both opacity and visibility
+}
+
+.expanded .menuItem, .expanded .settings {
+    opacity: 1;
+    visibility: visible;  // Show text when sidebar is expanded
 }
 
 .collapsed {
@@ -33,7 +51,7 @@
     display: inline-block;
     width: 30px;
     height: 2px;
-    background-color: white;
+    background-color: $text-colour-light;
     position: relative;
     transition: all 0.3s ease;
   
@@ -43,7 +61,7 @@
       position: absolute;
       width: 100%;
       height: 2px;
-      background-color: white;
+      background-color: $text-colour-light;
       transition: all 0.3s ease;
     }
   

@@ -1,4 +1,5 @@
 @import 'variables';
+@import 'fonts';
 
 .header {
     display: flex;
@@ -15,12 +16,12 @@
 
 .logo img {
     width: auto;
-    height: 50px;
+    height: 55px;
 }
 
 .pageTitle {
     margin-left: 20px;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
 }
 
@@ -36,8 +37,8 @@
     align-items: center;
 
     img {
-        width: 40px;
-        height: 40px;
+        width: 35px;
+        height: 35px;
         border-radius: 50%;
         margin-right: 10px;
     }

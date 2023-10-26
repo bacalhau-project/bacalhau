@@ -4,9 +4,10 @@ import styles from '../../styles/SidebarButton.module.scss';
 
 interface SidebarButtonProps {
   toggleSidebar: () => void;
+  isCollapsed: boolean; 
 }
 
-const SidebarButton: React.FC<SidebarButtonProps> = ({ toggleSidebar }) => {
+const SidebarButton: React.FC<SidebarButtonProps> = ({ toggleSidebar, isCollapsed }) => {
   return (
     <section className={styles.mb3}>
       <nav className={`${styles.navbar} ${styles.navbarInfo} ${styles.bgInfo}`}>
@@ -19,7 +20,7 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({ toggleSidebar }) => {
             aria-expanded="false"
             aria-label="Toggle navigation"
           >
-            <div className={`${styles.animatedIcon3} ${styles.open}`}>
+            <div className={`${styles.animatedIcon3} ${!isCollapsed ? styles.open : ''}`}>
               <span></span>
               <span></span>
               <span></span>

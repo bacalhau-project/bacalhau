@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "../../styles/Header.module.scss";
 import bacLogo from "../../images/bacalhau-logo-black.png";
+import profile from "../../images/profile.png";
 import Image from "next/image";
 
 interface HeaderProps {
@@ -23,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
       <div className={styles.right}>
         {/* Profile section */}
         <div className={styles.profile}>
-          <img src="/profile-pic.png" alt="Profile" />
+            <Image src={profile} alt="Logo" width={150} height={150} />        
         </div>
       </div>
     </header>
