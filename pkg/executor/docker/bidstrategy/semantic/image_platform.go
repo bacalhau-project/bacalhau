@@ -3,9 +3,10 @@ package semantic
 import (
 	"context"
 
+	"go.uber.org/multierr"
+
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"go.uber.org/multierr"
 
 	"github.com/rs/zerolog/log"
 
@@ -61,6 +62,24 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		if m != nil {
 			manifest = *m
 		}
+		// Cache the platform info for this image tag for a day. We could cache
+		// for longer but we only have in-memory caches with time-based eviction.
+		// TODO: Once we have an LRU cache we can use that instead and not worry
+		// about managing eviction. In the meantime we get this through calling
+		// Set even when don't have to, to reset the expiry time.
+		defer func() {
+			err = (*ManifestCache).Set(
+				dockerEngine.Image, manifest, 1, oneDayInSeconds,
+			) //nolint:gomnd
+			if err != nil {
+				// Log the error but continue as it is not serious enough to stop
+				// processing
+				log.Ctx(ctx).Warn().
+					Str("Image", dockerEngine.Image).
+					Str("Error", err.Error()).
+					Msg("Failed to save to manifest cache")
+			}
+		}()
 	} else {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
 	}
@@ -71,23 +90,6 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 			ShouldBid: false,
 			Reason:    errs.Error(),
 		}, nil
-	}
-
-	// Cache the platform info for this image tag for a day. We could cache
-	// for longer but we only have in-memory caches with time-based eviction.
-	// TODO: Once we have an LRU cache we can use that instead and not worry
-	// about managing eviction. In the meantime we get this through calling
-	// Set even when don't have to, to reset the expiry time.
-	err = (*ManifestCache).Set(
-		dockerEngine.Image, manifest, 1, oneDayInSeconds,
-	) //nolint:gomnd
-	if err != nil {
-		// Log the error but continue as it is not serious enough to stop
-		// processing
-		log.Ctx(ctx).Warn().
-			Str("Image", dockerEngine.Image).
-			Str("Error", err.Error()).
-			Msg("Failed to save to manifest cache")
 	}
 
 	for _, canRun := range supported {
