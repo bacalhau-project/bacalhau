@@ -1,8 +1,9 @@
 // components/Sidebar.tsx
+
 import React from "react";
 import styles from "../../styles/Sidebar.module.scss";
 import SidebarButton from './SidebarButton';
-
+import Link from 'next/link';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -16,20 +17,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
             isCollapsed ? styles.collapsed : styles.expanded
             }`}
         >
-            <SidebarButton toggleSidebar={toggleSidebar}/>
+            <SidebarButton toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
             <div className={styles.menu}>
-            <div className={styles.menuItem}>
-                {/* Jobs Dashboard Icon */}
-                {!isCollapsed && "Jobs Dashboard"}
-            </div>
-            <div className={styles.menuItem}>
-                {/* Nodes Dashboard Icon */}
-                {!isCollapsed && "Nodes Dashboard"}
-            </div>
+                <div className={styles.menuItem}>
+                    {/* Jobs Dashboard Icon */}
+                    <Link href="/JobsDashboard" className={styles.link}>Jobs Dashboard</Link>  
+                </div>
+                <div className={styles.menuItem}>
+                    {/* Nodes Dashboard Icon */}
+                    <Link href="/NodesDashboard" className={styles.link}>Nodes Dashboard</Link>  
+                </div>
             </div>
             <div className={styles.settings}>
                 {/* Settings Icon */}
-                {!isCollapsed && "Settings"}
+                Settings
             </div>
         </div>
     );
