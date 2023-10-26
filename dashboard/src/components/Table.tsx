@@ -5,7 +5,7 @@ import styles from "../../styles/Table.module.scss";
 
 interface TableProps {
   headers: string[];
-  data: string[][];
+  data: any[][];
 }
 
 const Table: React.FC<TableProps> = ({ headers, data }) => {
