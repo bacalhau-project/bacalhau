@@ -26,3 +26,46 @@
 .menuItem {
     color: $text-colour-light;
 }
+
+.buttonIcon {
+    display: inline-block;
+    width: 30px;
+    height: 2px;
+    background-color: white;
+    position: relative;
+    transition: all 0.3s ease;
+  
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background-color: white;
+      transition: all 0.3s ease;
+    }
+  
+    &::before {
+      top: -10px;
+    }
+  
+    &::after {
+      bottom: -10px;
+    }
+  }
+  
+  .xIcon {
+    .buttonIcon {
+      background-color: transparent;
+    }
+  
+    .buttonIcon::before {
+      top: 0;
+      transform: rotate(45deg);
+    }
+  
+    .buttonIcon::after {
+      bottom: 0;
+      transform: rotate(-45deg);
+    }
+  }
