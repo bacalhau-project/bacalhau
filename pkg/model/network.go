@@ -50,12 +50,14 @@ const (
 	// job specifiers who can have their job picked up only by someone who will
 	// run it successfully.
 	NetworkHTTP
+
+	NetworkBridge
 )
 
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	for typ := NetworkNone; typ <= NetworkHTTP; typ++ {
+	for typ := NetworkNone; typ <= NetworkBridge; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil
 		}
@@ -88,7 +90,7 @@ func (n NetworkConfig) Disabled() bool {
 // IsValid returns an error if any of the fields do not pass validation, or nil
 // otherwise.
 func (n NetworkConfig) IsValid() (err error) {
-	if n.Type < NetworkNone || n.Type > NetworkHTTP {
+	if n.Type < NetworkNone || n.Type > NetworkBridge {
 		err = multierr.Append(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 

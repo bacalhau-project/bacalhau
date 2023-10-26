@@ -289,13 +289,14 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 		return container.CreateResponse{}, fmt.Errorf("decoding engine spec: %w", err)
 	}
 	containerConfig := &container.Config{
-		Image:      dockerArgs.Image,
-		Tty:        false,
-		Env:        dockerArgs.EnvironmentVariables,
-		Entrypoint: dockerArgs.Entrypoint,
-		Cmd:        dockerArgs.Parameters,
-		Labels:     e.containerLabels(params.ExecutionID, params.JobID),
-		WorkingDir: dockerArgs.WorkingDirectory,
+		Image:        dockerArgs.Image,
+		Tty:          false,
+		Env:          dockerArgs.EnvironmentVariables,
+		Entrypoint:   dockerArgs.Entrypoint,
+		Cmd:          dockerArgs.Parameters,
+		Labels:       e.containerLabels(params.ExecutionID, params.JobID),
+		WorkingDir:   dockerArgs.WorkingDirectory,
+		ExposedPorts: dockerArgs.GetExposedPorts(),
 	}
 
 	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, params.ResultsDir)
@@ -323,6 +324,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 			NanoCPUs:       int64(params.Resources.CPU * NanoCPUCoefficient),
 			DeviceRequests: deviceRequests,
 		},
+		PortBindings: dockerArgs.GetPortBindings(),
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {

@@ -243,6 +243,8 @@ func FromLegacyNetworkConfig(legacy model.NetworkConfig) (*models.NetworkConfig,
 		typ = models.NetworkFull
 	case model.NetworkHTTP:
 		typ = models.NetworkHTTP
+	case model.NetworkBridge:
+		typ = models.NetworkBridge
 	default:
 		return nil, fmt.Errorf("unhandled network type: %s", legacy.Type)
 	}

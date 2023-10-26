@@ -7,7 +7,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/docker/go-connections/nat"
 	"github.com/fatih/structs"
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -30,17 +32,45 @@ type EngineSpec struct {
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// WorkingDirectory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
+	// Ports is a map of ports to expose
+	Ports map[string]string `json:"Ports,omitempty"`
 }
 
 func (c EngineSpec) Validate() error {
+	var err *multierror.Error
 	if validate.IsBlank(c.Image) {
-		return errors.New("invalid docker engine params: image cannot be empty")
+		err = multierror.Append(err, errors.New("invalid docker engine params: image cannot be empty"))
 	}
-	return nil
+	for hostPort, containerPort := range c.Ports {
+		_, perr := nat.ParsePort(hostPort)
+		err = multierror.Append(err, perr)
+		_, perr = nat.ParsePort(containerPort)
+		err = multierror.Append(err, perr)
+	}
+	return err.ErrorOrNil()
 }
 
 func (c EngineSpec) ToMap() map[string]interface{} {
 	return structs.Map(c)
+}
+
+// GetExposedPorts returns a set of ports that should be exposed
+func (c EngineSpec) GetExposedPorts() nat.PortSet {
+	portSet := make(nat.PortSet)
+	for _, containerPort := range c.Ports {
+		portSet[nat.Port(containerPort)] = struct{}{}
+	}
+	return portSet
+}
+
+// GetPortBindings returns a map of ports to expose
+func (c EngineSpec) GetPortBindings() map[nat.Port][]nat.PortBinding {
+	portMap := make(nat.PortMap)
+	for hostPort, containerPort := range c.Ports {
+		hostBinding := nat.PortBinding{HostPort: hostPort}
+		portMap[nat.Port(containerPort)] = []nat.PortBinding{hostBinding}
+	}
+	return portMap
 }
 
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
@@ -105,6 +135,13 @@ func (b *DockerEngineBuilder) WithWorkingDirectory(e string) *DockerEngineBuilde
 // It returns the DockerEngineBuilder for further chaining of builder methods.
 func (b *DockerEngineBuilder) WithParameters(e ...string) *DockerEngineBuilder {
 	b.eb.WithParam(EngineKeyParametersDocker, e)
+	return b
+}
+
+// WithPorts is a builder method that sets the Docker engine's ports.
+// It returns the DockerEngineBuilder for further chaining of builder methods.
+func (b *DockerEngineBuilder) WithPorts(e map[string]string) *DockerEngineBuilder {
+	b.eb.WithParam("Ports", e)
 	return b
 }
 

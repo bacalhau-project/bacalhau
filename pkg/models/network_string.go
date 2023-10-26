@@ -11,11 +11,12 @@ func _() {
 	_ = x[NetworkNone-0]
 	_ = x[NetworkFull-1]
 	_ = x[NetworkHTTP-2]
+	_ = x[NetworkBridge-3]
 }
 
-const _Network_name = "NoneFullHTTP"
+const _Network_name = "NoneFullHTTPBridge"
 
-var _Network_index = [...]uint8{0, 4, 8, 12}
+var _Network_index = [...]uint8{0, 4, 8, 12, 18}
 
 func (i Network) String() string {
 	if i < 0 || i >= Network(len(_Network_index)-1) {

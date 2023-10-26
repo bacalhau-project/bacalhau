@@ -88,6 +88,8 @@ func (e *Executor) setupNetworkForJob(
 			fmt.Sprintf("http_proxy=%s", proxyAddr.String()),
 			fmt.Sprintf("https_proxy=%s", proxyAddr.String()),
 		)
+	case models.NetworkBridge:
+		hostConfig.NetworkMode = dockerNetworkBridge
 	default:
 		err = fmt.Errorf("unsupported network type %q", network.Type.String())
 	}
