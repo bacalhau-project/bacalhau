@@ -7,8 +7,7 @@ import Layout from "../components/Layout";
 const NodesDashboard: React.FC = () => {
   return (
     <Layout pageTitle="Nodes Dashboard">
-      <div className={styles.nodesdashboard}>
-      </div>
+      <div className={styles.nodesdashboard}></div>
     </Layout>
   );
 };

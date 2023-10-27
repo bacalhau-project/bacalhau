@@ -6,7 +6,7 @@ import cogwheel from "../../images/cogwheel-dark.png";
 import Image from "next/image";
 
 interface ProgramSummaryProps {
-    data: string;
+  data: string;
 }
 
 const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
