@@ -8,7 +8,7 @@ const Home = () => {
 
   useEffect(() => {
     router.replace("/JobsDashboard");
-  }, []);
+  }, [router]);
 
   return null;
 };
