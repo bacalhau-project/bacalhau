@@ -24,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
       <div className={styles.right}>
         {/* Profile section */}
         <div className={styles.profile}>
-            <Image src={profile} alt="Logo" width={150} height={150} />        
+          <Image src={profile} alt="Logo" width={150} height={150} />
         </div>
       </div>
     </header>
