@@ -2,6 +2,9 @@ module github.com/bacalhau-project/bacalhau
 
 go 1.20
 
+//quic-go is tied to a specific go version: look at https://github.com/quic-go/quic-go/wiki/quic-go-and-Go-versions
+toolchain go1.20
+
 require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
