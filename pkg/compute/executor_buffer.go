@@ -122,17 +122,22 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	ctx = system.AddJobIDToBaggage(ctx, task.localExecutionState.Execution.Job.ID)
+	job := task.localExecutionState.Execution.Job
+	ctx = system.AddJobIDToBaggage(ctx, job.ID)
 	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
-	timeout := task.localExecutionState.Execution.Job.Task().Timeouts.GetExecutionTimeout()
-	if timeout == 0 {
-		timeout = s.defaultJobExecutionTimeout
+	var timeout time.Duration
+	if !job.IsLongRunning() {
+		timeout = job.Task().Timeouts.GetExecutionTimeout()
+		if timeout == 0 {
+			timeout = s.defaultJobExecutionTimeout
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 
 	ch := make(chan error)
 	go func() {

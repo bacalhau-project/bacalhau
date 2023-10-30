@@ -51,7 +51,12 @@ func GetAllVersions(ctx context.Context) (Versions, error) {
 		return versions, errors.Wrap(err, "error getting client ID")
 	}
 
-	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID)
+	InstallationID, err := config.GetInstallationUserID()
+	if err != nil {
+		return versions, errors.Wrap(err, "error getting Installation ID")
+	}
+
+	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID, InstallationID)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")
 	} else {

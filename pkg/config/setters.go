@@ -14,6 +14,10 @@ func SetLibp2pKey(path string) {
 	viper.Set(types.UserLibp2pKeyPath, path)
 }
 
+func SetIntallationID(path string) {
+	viper.Set(types.UserInstallationID, path)
+}
+
 func SetExecutorPluginPath(path string) {
 	viper.Set(types.NodeExecutorPluginPath, path)
 }
