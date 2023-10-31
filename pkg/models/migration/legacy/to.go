@@ -162,7 +162,7 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 	case models.StorageSourceLocalDirectory:
 		storageSpec := model.StorageSpec{
 			StorageSource: model.StorageSourceLocalDirectory,
-			Path:          storage.Params["SourcePath"].(string),
+			SourcePath:    storage.Params["SourcePath"].(string),
 		}
 		if readWrite, ok := storage.Params["ReadWrite"].(bool); ok {
 			storageSpec.ReadWrite = readWrite
