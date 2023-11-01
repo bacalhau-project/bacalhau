@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
         <div className={styles.pageTitle}>{pageTitle}</div>
         <div className={styles.searchBar}>
           {/* Placeholder for search bar */}
-          <input type="text" placeholder="Search..." />
+          {/* <input type="text" placeholder="Search..." /> */}
         </div>
       </div>
       <div className={styles.right}>
