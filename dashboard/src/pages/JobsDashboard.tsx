@@ -26,6 +26,33 @@ const JobsDashboard: React.FC = () => {
     getJobsData();
   }, []);
 
+  // const [data2, setData] = useState<MyType[]>([]);
+
+  // useEffect(() => {
+  //   async function getList() {
+  //     try {
+  //       const listData = await fetchList();
+  //       setData(listData);
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+  //   }
+
+  //   getList();
+  // }, []);
+
+  const [jobs, setJobs] = useState<any[]>([]);  // Adjust the type of jobs based on your data structure
+  const [loading, setLoading] = useState<boolean>(true);
+
+  async function getJobsData() {
+    const listttt = await list()
+    console.log("HIIII", listttt);  // Log the data here
+  }
+
+  useEffect(() => {
+    getJobsData();
+  }, []);
+
   return (
     <Layout pageTitle="Jobs Dashboard">
       <div className={styles.jobsdashboard}>
