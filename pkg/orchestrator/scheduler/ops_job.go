@@ -91,6 +91,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 			plan.MarkJobCompleted()
 		}
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 

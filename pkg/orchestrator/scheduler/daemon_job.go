@@ -73,6 +73,8 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
