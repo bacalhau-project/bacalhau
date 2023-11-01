@@ -39,8 +39,6 @@ type JobTimeoutConfig struct {
 }
 
 type QueueConfig struct {
-	// How long the buffer would backoff before polling the queue again for new jobs
-	ExecutorBufferBackoffDuration Duration `yaml:"ExecutorBufferBackoffDuration"`
 }
 
 type LoggingConfig struct {

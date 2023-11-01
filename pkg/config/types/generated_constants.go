@@ -67,7 +67,6 @@ const NodeComputeJobSelectionAcceptNetworkedJobs = "Node.Compute.JobSelection.Ac
 const NodeComputeJobSelectionProbeHTTP = "Node.Compute.JobSelection.ProbeHTTP"
 const NodeComputeJobSelectionProbeExec = "Node.Compute.JobSelection.ProbeExec"
 const NodeComputeQueue = "Node.Compute.Queue"
-const NodeComputeQueueExecutorBufferBackoffDuration = "Node.Compute.Queue.ExecutorBufferBackoffDuration"
 const NodeComputeLogging = "Node.Compute.Logging"
 const NodeComputeLoggingLogRunningExecutionsInterval = "Node.Compute.Logging.LogRunningExecutionsInterval"
 const NodeRequester = "Node.Requester"
