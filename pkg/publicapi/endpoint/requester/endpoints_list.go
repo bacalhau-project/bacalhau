@@ -28,9 +28,6 @@ import (
 //	@Router					/api/v1/requester/list [post]
 //
 //nolint:lll
-
-// TODO: add access control allow header (CORS) here
-
 func (s *Endpoint) list(c echo.Context) error {
 	var listReq legacymodels.ListRequest
 
