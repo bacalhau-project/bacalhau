@@ -29,8 +29,6 @@ import (
 //
 //nolint:lll
 
-// TODO: add access control allow header (CORS) here
-
 func (s *Endpoint) list(c echo.Context) error {
 	var listReq legacymodels.ListRequest
 
