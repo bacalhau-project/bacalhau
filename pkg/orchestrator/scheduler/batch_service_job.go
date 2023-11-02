@@ -108,10 +108,13 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
 	overSubscriptions.markStopped(execNotNeeded, plan)
 
-	// mark job as completed
+	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
+		// If there are no remaining tasks to be done, mark the job as completed.
 		plan.MarkJobCompleted()
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 

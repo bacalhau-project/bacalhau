@@ -33,7 +33,6 @@ type ExecutorBufferParams struct {
 	RunningCapacityTracker     capacity.Tracker
 	EnqueuedCapacityTracker    capacity.Tracker
 	DefaultJobExecutionTimeout time.Duration
-	BackoffDuration            time.Duration
 }
 
 // ExecutorBuffer is a backend.Executor implementation that buffers executions locally until enough capacity is
@@ -51,8 +50,6 @@ type ExecutorBuffer struct {
 	running                    map[string]*bufferTask
 	queuedTasks                *collections.HashedPriorityQueue[string, *bufferTask]
 	defaultJobExecutionTimeout time.Duration
-	backoffDuration            time.Duration
-	backoffUntil               time.Time
 	mu                         sync.Mutex
 }
 
@@ -69,7 +66,6 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
 		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-		backoffDuration:            params.BackoffDuration,
 		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
 
@@ -168,12 +164,8 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 // deque tries to run the next execution in the queue if there is enough capacity.
 // It is called every time a job is finished or enqueued, where a lock is already held.
+// TODO: We loop through the queue every time a job runs or finishes, which is not very efficient.
 func (s *ExecutorBuffer) deque() {
-	// If last attempt was very recent, and we still have jobs running,
-	// then we need to wait until backoffDuration has passed
-	if len(s.running) != 0 && time.Now().Before(s.backoffUntil) {
-		return
-	}
 	ctx := context.Background()
 
 	// There are at most max matches, so try at most that many times
@@ -206,8 +198,6 @@ func (s *ExecutorBuffer) deque() {
 
 		go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 	}
-
-	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
 func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalExecutionState) error {

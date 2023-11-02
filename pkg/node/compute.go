@@ -102,7 +102,6 @@ func NewComputeNode(
 		RunningCapacityTracker:     runningCapacityTracker,
 		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
-		BackoffDuration:            config.ExecutorBufferBackoffDuration,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
