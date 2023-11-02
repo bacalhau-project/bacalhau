@@ -57,6 +57,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:               evaluation,
+		JobState:                 models.JobStateTypeRunning,
 		NewExecutionDesiredState: models.ExecutionDesiredStateRunning,
 		NewExecutionsNodes: []peer.ID{
 			nodeInfos[0].PeerInfo.ID,
