@@ -128,9 +128,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		require.NoError(suite.T(), err)
 
 		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
-			TotalResourceLimits:           *parsedResources,
-			IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
-			ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
+			TotalResourceLimits:          *parsedResources,
+			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 		})
 		suite.Require().NoError(err)
 		stack := teststack.Setup(ctx,

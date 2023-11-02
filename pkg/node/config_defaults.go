@@ -19,7 +19,6 @@ var DefaultComputeConfig = ComputeConfigParams{
 		CPU:    0.1,               // 100m
 		Memory: 100 * 1024 * 1024, // 100Mi
 	},
-	ExecutorBufferBackoffDuration: 50 * time.Millisecond,
 
 	JobNegotiationTimeout:      3 * time.Minute,
 	MinJobExecutionTimeout:     500 * time.Millisecond,
