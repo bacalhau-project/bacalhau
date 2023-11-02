@@ -21,6 +21,11 @@ const getImageSource = (type: string) => {
   }
 }
 
+const truncateInput = (text: string[], length: number) => {
+  if (text[0].length <= length) return text;
+  return text[0].substring(0, length) + "[cont]";
+};
+
 const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   const { Image: image, Parameters: input } = data.Params;
   const imageSource = getImageSource(data.Type);
@@ -31,7 +36,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
       </div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
-        <div className={styles.input}>{input}</div>
+        <div className={styles.input}>{truncateInput(input, 100)}</div>
       </div>
     </div>
   );
