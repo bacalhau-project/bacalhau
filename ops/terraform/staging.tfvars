@@ -1,5 +1,7 @@
-bacalhau_version            = ""
-bacalhau_branch             = "main"
+bacalhau_version            = "v1.1.3-rc1"
+# Uncomment following line to deploy a branch to staging instead of 
+# a specific version
+# bacalhau_branch             = "main"
 bacalhau_port               = "1235"
 bacalhau_node_id_0          = "QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC"
 bacalhau_node_id_1          = "QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk"
