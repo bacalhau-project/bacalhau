@@ -1,8 +1,10 @@
 // src/components/JobsTable.tsx
 import React from "react";
 import ProgramSummary from "./ProgramSummary";
+import Label from "./Label";
 import styles from "../../styles/JobsTable.module.scss";
 import { Job, EngineSpec } from "../interfaces";
+import ActionButton from "./ActionButton";
 
 interface TableProps {
   data: Job[];
@@ -37,6 +39,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
+  console.log(data)
   const parsedData = parseData(data);
   return (
     <div className={styles.tableContainer}>
@@ -59,13 +62,13 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               <td>{jobData.id}</td>
               <td>{jobData.name}</td>
               <td className={styles.dateCreated}>{jobData.createdAt}</td>
-              <td>
+              <td className={styles.program}>
                 <ProgramSummary data={jobData.engineSpec} />
               </td>
               <td>{jobData.jobType}</td>
               <td>{jobData.label}</td>
-              <td>{jobData.status}</td>
-              <td>{jobData.action}</td>
+              <td className={styles.status}><Label text="Running" backgroundColor="#4CAF50" textColor="white"/></td>
+              <td className={styles.action}><ActionButton text="View"/></td>
             </tr>
           ))}
         </tbody>
