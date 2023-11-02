@@ -45,8 +45,12 @@ const JobsDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   async function getJobsData() {
-    const listttt = await list()
-    console.log("HIIII", listttt);  // Log the data here
+    try {
+      const listData = await list();
+      setData(listData);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   useEffect(() => {
