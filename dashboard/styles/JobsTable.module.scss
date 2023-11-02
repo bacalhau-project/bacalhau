@@ -3,7 +3,6 @@
 
 .tableContainer {
     width: 98%;
-    height: 200px;  // This makes the table span the whole viewport height.
     overflow: auto;  // This allows scrolling if the content is larger than the container.
     padding: 0px 10px;
     margin-top: 20px;
@@ -32,6 +31,14 @@
         th, td {
             padding: 8px;  // This adds some padding inside the cells.
             border: 1px solid $border-color;  // This adds a border to the cells.
+        }
+
+        .jobID {
+            width: 100px !important;
+        }
+
+        .dateCreated {
+            width: 200px !important;
         }
     
         tr:nth-child(even) {
