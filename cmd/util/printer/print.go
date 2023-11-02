@@ -25,11 +25,11 @@ import (
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 
 var eventsWorthPrinting = map[models.JobStateType]eventStruct{
-	models.JobStateTypePending:   {Message: "Creating job for submission", IsTerminal: false, IsError: false},
-	models.JobStateTypeRunning:   {Message: "Job in progress", IsTerminal: false, IsError: false},
+	models.JobStateTypePending:   {Message: "Creating job for submission"},
+	models.JobStateTypeRunning:   {Message: "Job in progress"},
 	models.JobStateTypeFailed:    {Message: "Error while executing the job", IsTerminal: true, IsError: true},
-	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true, IsError: false},
-	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true, IsError: false},
+	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true},
+	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true},
 }
 
 type eventStruct struct {
@@ -265,6 +265,13 @@ To cancel the job, run:
 			} else {
 				spinner.Done(StopSuccess)
 			}
+			cmdShuttingDown = true
+			break
+		}
+
+		// If the job is long running, and it's running, we can stop the spinner
+		if resp.Job.IsLongRunning() && resp.Job.State.StateType == models.JobStateTypeRunning {
+			spinner.Done(StopSuccess)
 			cmdShuttingDown = true
 			break
 		}
