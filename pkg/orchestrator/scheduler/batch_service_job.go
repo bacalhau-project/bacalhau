@@ -154,7 +154,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 		}
 		i := 0
 		for _, exec := range execs {
-			exec.NodeID = selectedNodes[i].PeerInfo.ID.String()
+			exec.NodeID = selectedNodes[i].ID()
 			i++
 		}
 	}
