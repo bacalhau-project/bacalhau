@@ -20,16 +20,15 @@ interface ParsedJobData {
 }
 
 function parseData(jobs: Job[]): ParsedJobData[] {
-  console.log("JOBS", jobs);
   return jobs.map((job) => {
     const { Metadata, Spec } = job.Job;
     const shortenedJobID = job.Job.Metadata.ID.split("-")[0];
     return {
       id: shortenedJobID,
-      name: "Name",
+      name: shortenedJobID,
       createdAt: new Date(Metadata.CreatedAt).toLocaleString(),
       engineSpec: Spec.EngineSpec,
-      jobType: "Job Type",
+      jobType: "Batch",
       label: "Labels",
       status: "Status",
       action: "Action",
