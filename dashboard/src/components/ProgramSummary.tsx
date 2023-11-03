@@ -6,20 +6,20 @@ import { EngineSpec } from "../interfaces";
 
 // Image imports
 import cogwheel from "../../images/cogwheel-dark.png";
-import dockerImage from "../../images/docker.png"; 
+import dockerImage from "../../images/docker.png";
 
 interface ProgramSummaryProps {
   data: EngineSpec;
 }
 
 const getImageSource = (type: string) => {
-  switch(type) {
-    case 'docker':
+  switch (type) {
+    case "docker":
       return dockerImage;
     default:
       return cogwheel;
   }
-}
+};
 
 const truncateInput = (text: string[], length: number) => {
   if (text[0].length <= length) return text;

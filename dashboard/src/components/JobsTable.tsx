@@ -10,6 +10,10 @@ interface TableProps {
   data: Job[];
 }
 
+interface FlexibleJob {
+  [key: string]: any;
+}
+
 interface ParsedJobData {
   id: string;
   name: string;
@@ -25,12 +29,13 @@ function parseData(jobs: Job[]): ParsedJobData[] {
   return jobs.map((job) => {
     const { Metadata, Spec } = job.Job;
     const shortenedJobID = job.Job.Metadata.ID.split("-")[0];
+    const jobType = (job.Job as FlexibleJob).jobType ?? "Batch"; // TODO: link up `Job Type` when inplementing new api version
     return {
       id: shortenedJobID,
       name: shortenedJobID,
       createdAt: new Date(Metadata.CreatedAt).toLocaleString(),
       engineSpec: Spec.EngineSpec,
-      jobType: "Batch",
+      jobType: jobType,
       label: "Labels",
       status: "Status",
       action: "Action",
@@ -39,7 +44,6 @@ function parseData(jobs: Job[]): ParsedJobData[] {
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
-  console.log(data)
   const parsedData = parseData(data);
   return (
     <div className={styles.tableContainer}>
@@ -67,8 +71,16 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               </td>
               <td>{jobData.jobType}</td>
               <td>{jobData.label}</td>
-              <td className={styles.status}><Label text="Running" backgroundColor="#4CAF50" textColor="white"/></td>
-              <td className={styles.action}><ActionButton text="View"/></td>
+              <td className={styles.status}>
+                <Label
+                  text="Running"
+                  backgroundColor="#4CAF50"
+                  textColor="white"
+                />
+              </td>
+              <td className={styles.action}>
+                <ActionButton text="View" />
+              </td>
             </tr>
           ))}
         </tbody>
