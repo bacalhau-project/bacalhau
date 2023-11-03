@@ -17,7 +17,6 @@
 }
 
 .menuItem, .settings {
-    padding: 10px;
     opacity: 0;
     visibility: hidden;  // Hide text when sidebar is collapsed
     transition: opacity 0.05s ease, visibility 0.05s ease;  // Transition both opacity and visibility
@@ -29,22 +28,40 @@
 }
 
 .collapsed {
-    width: 50px;
+    width: 80px;
 }
 
 .expanded {
-    width: 200px;
+    width: 300px;
 }
 
-.menu, .settings {
+.menu {
     display: flex;
     flex-direction: column;
     color: $text-colour-light;
-    font-size: 21px;
 }
 
 .menuItem, .settings {
+    font-size: 21px;
+    margin: 10px 25px;
     padding: 10px;
+    border-radius: 10px;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+
+    // Add transitions for smooth hover effects
+    transition: background-color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      background-color: darken($primary-blue, 10%); // Darken on hover for a subtle effect
+      transform: scale(1.05); // Scale up a bit on hover for emphasis
+    }
+
+    .menuText {
+      padding-left: 20px;
+    }
 }
 
 .buttonIcon {

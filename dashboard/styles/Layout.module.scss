@@ -8,10 +8,10 @@
 
 .rightSide {
     transition: margin-left 0.3s ease;
-    margin-left: 50px;  // for collapsed sidebar
-    width: calc(100% - 50px);
+    margin-left: 80px;  // for collapsed sidebar
+    width: calc(100% - 80px);
 }
 
 .expandedSidebar {
-    margin-left: 200px;  // for expanded sidebar
+    margin-left: 300px;  // for expanded sidebar
 }
