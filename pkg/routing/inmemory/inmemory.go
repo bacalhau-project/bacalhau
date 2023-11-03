@@ -110,14 +110,17 @@ func (r *NodeInfoStore) GetByPrefix(ctx context.Context, prefix string) (models.
 
 	// look for a node with the prefix. if there are multiple nodes with the same prefix, return ErrMultipleNodesFound error
 	var nodeIDsWithPrefix []string
+	var toEvict []nodeInfoWrapper
 	for nodeID, infoWrapper := range r.nodeInfoMap {
 		if time.Now().After(infoWrapper.evictAt) {
-			go r.evict(ctx, infoWrapper)
-			continue
-		}
-		if nodeID[:len(prefix)] == prefix {
+			toEvict = append(toEvict, infoWrapper)
+		} else if nodeID[:len(prefix)] == prefix {
 			nodeIDsWithPrefix = append(nodeIDsWithPrefix, nodeID)
 		}
+	}
+
+	if len(toEvict) > 0 {
+		go r.evict(ctx, toEvict...)
 	}
 
 	if len(nodeIDsWithPrefix) == 0 {
