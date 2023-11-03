@@ -114,7 +114,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.PeerInfo.ID.String(),
+			NodeID:       node.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution
