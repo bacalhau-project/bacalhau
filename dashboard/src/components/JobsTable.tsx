@@ -57,7 +57,6 @@ function parseData(jobs: Job[]): ParsedJobData[] {
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
-  console.log(data)
   const parsedData = parseData(data);
   return (
     <div className={styles.tableContainer}>
