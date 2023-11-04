@@ -24,9 +24,10 @@ const (
 )
 
 const (
-	EngineNoop   = "noop"
-	EngineDocker = "docker"
-	EngineWasm   = "wasm"
+	EngineNoop    = "noop"
+	EngineDocker  = "docker"
+	EngineWasm    = "wasm"
+	EngineProcess = "process"
 )
 
 const (

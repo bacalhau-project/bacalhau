@@ -6,6 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/process"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -118,9 +119,15 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
+	processExecutor, err := process.NewExecutor()
+	if err != nil {
+		return nil, err
+	}
+
 	return provider.NewMappedProvider(map[string]executor.Executor{
-		models.EngineDocker: dockerExecutor,
-		models.EngineWasm:   wasmExecutor,
+		models.EngineDocker:  dockerExecutor,
+		models.EngineWasm:    wasmExecutor,
+		models.EngineProcess: processExecutor,
 	}), nil
 }
 
