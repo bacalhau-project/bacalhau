@@ -110,7 +110,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 
 		discoveredNodeIDs := make([]string, len(discoveredNodes))
 		for i, discoveredNode := range discoveredNodes {
-			discoveredNodeIDs[i] = discoveredNode.PeerInfo.ID.String()
+			discoveredNodeIDs[i] = discoveredNode.ID()
 		}
 		require.ElementsMatch(t, expectedNodes, discoveredNodeIDs)
 	}
