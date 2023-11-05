@@ -58,17 +58,15 @@ func (*Executor) ShouldBidBasedOnUsage(
 }
 
 // Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
-// Web Assembly 1: specs
 //
-// WebAssembly linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
+// WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
 // In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
 
 const WASM_ARCH = 32
 const WASM_PAGE_SIZE = 1 << (WASM_ARCH / 2)
 const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
 
-// TODO: wait for support for https://github.com/WebAssembly/memory64/blob/master/proposals/memory64/Overview.md in wazero
-// Issues: https://github.com/bacalhau-project/bacalhau/pull/2988
+// TODO: wait for support for wasm64 in wazero
 
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
