@@ -170,6 +170,12 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 func (d *InMemoryJobStore) GetExecutions(_ context.Context, jobID string) ([]models.Execution, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
+
+	jobID, err := d.reifyJobID(jobID)
+	if err != nil {
+		return nil, err
+	}
+
 	executionIDs, ok := d.jobExecutions[jobID]
 	if !ok {
 		return nil, bacerrors.NewJobNotFound(jobID)
@@ -195,6 +201,12 @@ func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
+
+	jobID, err := d.reifyJobID(jobID)
+	if err != nil {
+		return nil, err
+	}
+
 	history, ok := d.history[jobID]
 	if !ok {
 		return nil, jobstore.NewErrJobNotFound(jobID)
@@ -277,15 +289,9 @@ func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
 // It is important that we don't attempt to acquire a lock inside this method to avoid deadlocks since
 // the callers are expected to be holding a lock, and golang doesn't support reentrant locks.
 func (d *InMemoryJobStore) getJob(id string) (models.Job, error) {
-	// support for short job IDs
-	if idgen.ShortID(id) == id {
-		// passed in a short id, need to resolve the long id first
-		for k := range d.jobs {
-			if idgen.ShortID(k) == id {
-				id = k
-				break
-			}
-		}
+	id, err := d.reifyJobID(id)
+	if err != nil {
+		return models.Job{}, err
 	}
 
 	j, ok := d.jobs[id]
@@ -295,6 +301,29 @@ func (d *InMemoryJobStore) getJob(id string) (models.Job, error) {
 	}
 
 	return j, nil
+}
+
+// reifyJobID ensures the provided job ID is a full-length ID. This is either through
+// returning the ID, or resolving the short ID to a single job id.
+func (d *InMemoryJobStore) reifyJobID(id string) (string, error) {
+	if idgen.ShortID(id) == id {
+		found := make([]string, 0, 1)
+		// passed in a short id, need to resolve the long id first
+		for k := range d.jobs {
+			if idgen.ShortID(k) == id {
+				found = append(found, k)
+			}
+		}
+		switch len(found) {
+		case 0:
+			return "", bacerrors.NewJobNotFound(id)
+		case 1:
+			return found[0], nil
+		default:
+			return "", bacerrors.NewMultipleJobsFound(id, found)
+		}
+	}
+	return id, nil
 }
 
 func (d *InMemoryJobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobStateRequest) error {
