@@ -57,10 +57,6 @@ func (*Executor) ShouldBidBasedOnUsage(
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
-/*
-
- */
-
 // Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
 // Web Assembly 1: specs
 //
