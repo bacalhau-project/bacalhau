@@ -58,13 +58,15 @@ func (*Executor) ShouldBidBasedOnUsage(
 }
 
 /*
-Web Assembly 1: specs
 
-WebAssembly linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
-In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
-*/
+ */
+
+// Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
+// Web Assembly 1: specs
+//
+// WebAssembly linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
+// In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
 const WASM_ARCH = 32
-
 const WASM_PAGE_SIZE = 1 << (WASM_ARCH / 2)
 const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
 
