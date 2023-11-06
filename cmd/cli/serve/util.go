@@ -35,7 +35,6 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		JobResourceLimits:                     models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)),
 		DefaultJobResourceLimits:              models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)),
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
-		ExecutorBufferBackoffDuration:         time.Duration(cfg.Queue.ExecutorBufferBackoffDuration),
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
 		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
 		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),

@@ -93,7 +93,7 @@ func (s *PublisherTestSuite) TestDateSubstitution() {
 	parts := strings.Split(str, "/")
 
 	n := time.Now()
-	s.Require().Equal(fmt.Sprintf("%d%d%d", n.Year(), n.Month(), n.Day()), parts[0], "date was incorrect")
+	s.Require().Equal(fmt.Sprintf("%d%02d%02d", n.Year(), n.Month(), n.Day()), parts[0], "date was incorrect")
 
 	// Check the time is all numbers
 	_, err := strconv.Atoi(parts[1])

@@ -127,6 +127,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
+		JobState:           models.JobStateTypeRunning,
 		ApprovedExecutions: []string{executions[0].ID},
 		StoppedExecutions:  []string{executions[1].ID},
 	})

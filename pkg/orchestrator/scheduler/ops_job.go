@@ -91,6 +91,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 			plan.MarkJobCompleted()
 		}
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
@@ -112,7 +114,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.PeerInfo.ID.String(),
+			NodeID:       node.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

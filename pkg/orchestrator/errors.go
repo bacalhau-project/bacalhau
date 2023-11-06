@@ -39,7 +39,7 @@ func (e ErrNotEnoughNodes) Error() string {
 		if rank.MeetsRequirement() {
 			available += 1
 		} else {
-			nodeErrors += fmt.Sprintf("\n\tNode %s: %s", idgen.ShortID(rank.NodeInfo.PeerInfo.ID.String()), rank.Reason)
+			nodeErrors += fmt.Sprintf("\n\tNode %s: %s", idgen.ShortID(rank.NodeInfo.ID()), rank.Reason)
 		}
 	}
 	return fmt.Sprintf("not enough nodes to run job. requested: %d, available: %d. %s", e.RequestedNodes, available, nodeErrors)

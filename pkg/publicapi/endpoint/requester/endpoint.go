@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	echo_middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type EndpointParams struct {
@@ -43,6 +44,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 
 	g := e.router.Group("/api/v1/requester")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.Use(echo_middleware.CORS())
 	g.POST("/list", e.list)
 	g.GET("/nodes", e.nodes)
 	g.POST("/states", e.states)

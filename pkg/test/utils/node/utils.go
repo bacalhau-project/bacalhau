@@ -29,7 +29,7 @@ func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCo
 		require.NoError(t, err)
 		if time.Now().After(waitLoggingUntil) {
 			t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t models.NodeInfo) string {
-				return t.PeerInfo.ID.String()
+				return t.ID()
 			}))
 			waitLoggingUntil = time.Now().Add(loggingGap)
 		}
@@ -40,6 +40,6 @@ func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCo
 	}
 	require.FailNowf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
 		"expected 4 node infos, got %d. %+v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t models.NodeInfo) string {
-			return t.PeerInfo.ID.String()
+			return t.ID()
 		}))
 }

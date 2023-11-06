@@ -34,7 +34,7 @@ func (s *ServerSuite) TestAgentNode() {
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.Host.ID())
+	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.Host.ID().String())
 	s.Require().NoError(err)
 
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
@@ -46,7 +46,7 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.Host.ID())
+	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.Host.ID().String())
 	s.Require().NoError(err)
 
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -35,7 +36,7 @@ func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	if !usage.LessThanEq(*totalCapacity) {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    "not enough capacity available",
+			Reason:    fmt.Sprintf("not enough capacity available. Total: %s Requested: %s", totalCapacity, &usage),
 		}, nil
 	}
 

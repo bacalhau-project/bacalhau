@@ -88,8 +88,8 @@ var StagingComputeConfig = types.ComputeConfig{
 			GPU:    "",
 		},
 		DefaultJobResourceLimits: model.ResourceUsageConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
+			CPU:    "500m",
+			Memory: "1Gb",
 			Disk:   "",
 			GPU:    "",
 		},
@@ -118,9 +118,7 @@ var StagingComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{
-		ExecutorBufferBackoffDuration: types.Duration(50 * time.Millisecond),
-	},
+	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
