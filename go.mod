@@ -44,6 +44,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.9.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
+	github.com/n0-computer/iroh-ffi v0.0.0-00010101000000-000000000000
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -368,3 +369,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
+
+replace github.com/n0-computer/iroh-ffi => ../../n0-computer/iroh-ffi/go

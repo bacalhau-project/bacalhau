@@ -15,6 +15,7 @@ import (
 	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/iroh"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -82,6 +83,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 		}
 		peers = append(peers, parsed)
 	}
+	iroh.New()
 	return peers, nil
 }
 
