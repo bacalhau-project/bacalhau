@@ -25,7 +25,20 @@ interface ParsedJobData {
   action: string;
 }
 
+const labelColorMap: { [key: string]: string } = {
+  running: "green",
+  warning: "orange",
+  error: "red",
+  paused: "blue",
+  stopped: "grey",
+  complete: "green",
+  progress: "orange",
+  failed: "red"
+};
+
 function parseData(jobs: Job[]): ParsedJobData[] {
+  const status = "Complete" // TODO: hardcoded as not yet available
+
   return jobs.map((job) => {
     const { Metadata, Spec } = job.Job;
     const shortenedJobID = job.Job.Metadata.ID.split("-")[0];
@@ -36,8 +49,8 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       createdAt: new Date(Metadata.CreatedAt).toLocaleString(),
       engineSpec: Spec.EngineSpec,
       jobType: jobType,
-      label: "Labels",
-      status: "Status",
+      label: "",
+      status: status,
       action: "Action",
     };
   });
@@ -73,9 +86,8 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               <td>{jobData.label}</td>
               <td className={styles.status}>
                 <Label
-                  text="Running"
-                  backgroundColor="#4CAF50"
-                  textColor="white"
+                  text={jobData.status}
+                  color={labelColorMap[jobData.status.toLowerCase()]}
                 />
               </td>
               <td className={styles.action}>

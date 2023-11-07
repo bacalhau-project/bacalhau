@@ -1,25 +1,20 @@
 import React from "react";
+import styles from "../../styles/Label.module.scss";
 
 interface LabelProps {
   text: string;
-  backgroundColor: string;
-  textColor: string;
+  color: string;
 }
 
-const Label: React.FC<LabelProps> = ({ text, backgroundColor, textColor }) => {
+const Label: React.FC<LabelProps> = ({ text, color }) => {
+  const labelClass = `${styles.label} ${styles[`label-${color}`] || ''}`;
+  console.log(`${styles[`label-${color}`] || ''}`)
   return (
-    <button
-      style={{
-        backgroundColor,
-        color: textColor,
-        padding: "5px 15px",
-        borderRadius: "20px",
-        border: "none",
-        fontSize: "14px",
-      }}
-    >
-      {text}
-    </button>
+    <div className={styles.column}>
+      <button className={labelClass}>
+        {text}
+      </button>
+    </div>
   );
 };
 
