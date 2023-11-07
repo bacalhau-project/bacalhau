@@ -9,10 +9,12 @@ interface ActionButtonProps {
 
 const ActionButton: React.FC<ActionButtonProps> = ({ text }) => {
   return (
-    <button className={styles.actionButton}>
-      <Image src={icon} alt="Logo" width={20} />
-      {text}
-    </button>
+    <div className={styles.column}>
+      <button className={styles.actionButton}>
+        <Image src={icon} alt="Logo" width={20} />
+        {text}
+      </button>
+    </div>
   );
 };
 
