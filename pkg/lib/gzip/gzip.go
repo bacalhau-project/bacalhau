@@ -18,7 +18,7 @@ func Decompress(tarGzPath, destDir string) error {
 }
 
 // DecompressWithMaxBytes takes the path to a .tar.gz file and decompresses it into the specified directory.
-// It enforces a maximum decompressed file size to prevent decompression bombs.
+// It enforces a maximum decompressed file size (per file) to prevent decompression bombs.
 func DecompressWithMaxBytes(tarGzPath, destDir string, maxDecompressSize int64) error {
 	// Open the tar.gz file for reading.
 	file, err := os.Open(tarGzPath)
