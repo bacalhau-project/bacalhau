@@ -111,8 +111,8 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 	}
 
 	cid := sourceSpec.CID
-	cidPath := filepath.Join(item.ParentPath, cid)
-	downloadPath := cidPath
+	resultPath := filepath.Join(item.ParentPath, cid)
+	downloadPath := resultPath
 
 	// If we're downloading a single file, we need to find the CID of that file,
 	if item.SingleFile != "" {
@@ -125,7 +125,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 			return "", fmt.Errorf("failed to find cid for %s", item.SingleFile)
 		}
 		cid = fileCID
-		downloadPath = filepath.Join(downloadPath, item.SingleFile)
+		downloadPath = filepath.Join(resultPath, item.SingleFile)
 		err = os.MkdirAll(filepath.Dir(downloadPath), downloader.DownloadFolderPerm)
 		if err != nil {
 			return "", err
@@ -141,7 +141,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		log.Ctx(ctx).Debug().
 			Str("CID", cid).
 			Msg("asked to download a CID a second time")
-		return downloadPath, nil
+		return resultPath, nil
 	}
 
 	ipfsClient, err := d.getClient(ctx)
@@ -164,5 +164,5 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		return "", err
 	}
 	// we always return the path of the result cid, even if it's a single file
-	return filepath.Join(item.ParentPath, cid), nil
+	return resultPath, nil
 }
