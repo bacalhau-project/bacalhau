@@ -46,9 +46,11 @@ const JobsDashboard: React.FC = () => {
 
   async function getJobsData() {
     try {
-      const listData = await list();
+      const listData = await bacalhauAPI.listJobs();
       setData(listData);
+      console.log("JOBS", listData)
     } catch (error) {
+      setError('Failed to fetch jobs');
       console.error(error);
     }
   }
