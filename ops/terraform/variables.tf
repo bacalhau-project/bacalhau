@@ -74,6 +74,10 @@ variable "ingress_cidrs" {
   type    = set(string)
   default = []
 }
+variable "egress_cidrs" {
+  type    = set(string)
+  default = []
+}
 variable "ssh_access_cidrs" {
   type    = set(string)
   default = []
