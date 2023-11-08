@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -214,6 +215,24 @@ func NewRequesterNode(
 		return nil, err
 	}
 
+	// result transformers that are applied to the result before it is returned to the user
+	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
+
+	if !requesterConfig.S3PreSignedURLDisabled {
+		// S3 result signer
+		s3Config, err := s3helper.DefaultAWSConfig()
+		if err != nil {
+			return nil, err
+		}
+		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
+			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
+				AWSConfig: s3Config,
+			}),
+			Expiration: requesterConfig.S3PreSignedURLExpiration,
+		})
+		resultTransformers = append(resultTransformers, resultSigner)
+	}
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
@@ -231,12 +250,13 @@ func NewRequesterNode(
 		Store:            jobStore,
 		EventEmitter:     eventEmitter,
 		ComputeProxy:     computeProxy,
-		Transformer: transformer.ChainedJobTransformer{
+		JobTransformer: transformer.ChainedTransformer[*models.Job]{
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 		},
+		ResultTransformer: resultTransformers,
 	})
 
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{

@@ -33,6 +33,22 @@ func (c SourceSpec) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }
 
+type PreSignedResultSpec struct {
+	SourceSpec
+	PreSignedURL string
+}
+
+func (c PreSignedResultSpec) Validate() error {
+	if c.PreSignedURL == "" {
+		return errors.New("invalid s3 signed storage params: signed url cannot be empty")
+	}
+	return c.SourceSpec.Validate()
+}
+
+func (c PreSignedResultSpec) ToMap() map[string]interface{} {
+	return structs.Map(c)
+}
+
 type PublisherSpec struct {
 	Bucket   string `json:"Bucket"`
 	Key      string `json:"Key"`
@@ -51,6 +67,25 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	}
 
 	var c SourceSpec
+	if err := mapstructure.Decode(spec.Params, &c); err != nil {
+		return c, err
+	}
+
+	return c, c.Validate()
+}
+
+func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
+	if !spec.IsType(models.StorageSourceS3PreSigned) {
+		return PreSignedResultSpec{}, errors.New(
+			"invalid storage source type. expected " + models.StorageSourceS3PreSigned + ", but received: " + spec.Type)
+	}
+
+	inputParams := spec.Params
+	if inputParams == nil {
+		return PreSignedResultSpec{}, errors.New("invalid signed result params. cannot be nil")
+	}
+
+	var c PreSignedResultSpec
 	if err := mapstructure.Decode(spec.Params, &c); err != nil {
 		return c, err
 	}

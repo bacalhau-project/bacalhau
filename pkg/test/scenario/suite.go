@@ -2,8 +2,11 @@ package scenario
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 
@@ -146,6 +149,9 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	apiServer := stack.Nodes[0].APIServer
 	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
+	apiClientV2 := clientv2.New(clientv2.Options{
+		Address: fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port),
+	})
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()
@@ -166,7 +172,9 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	// Check outputs
 	if scenario.ResultsChecker != nil {
 		s.T().Log("Checking output")
-		results, err := apiClient.GetResults(s.Ctx, submittedJob.Metadata.ID)
+		results, err := apiClientV2.Jobs().Results(&apimodels.ListJobResultsRequest{
+			JobID: submittedJob.Metadata.ID,
+		})
 		s.Require().NoError(err)
 
 		resultsDir = s.T().TempDir()
@@ -180,19 +188,19 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		viper.Set(types.NodeIPFSSwarmAddresses, swarmAddresses)
 		viper.Set(types.NodeIPFSPrivateInternal, true)
 
-		downloaderSettings := &model.DownloaderSettings{
+		downloaderSettings := &downloader.DownloaderSettings{
 			Timeout:   time.Second * 10,
 			OutputDir: resultsDir,
 		}
 
-		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
+		ipfsDownloader := ipfs.NewIPFSDownloader(cm)
 		s.Require().NoError(err)
 
 		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{
 			models.StorageSourceIPFS: ipfsDownloader,
 		})
 
-		err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)
+		err = downloader.DownloadResults(s.Ctx, results.Results, downloaderProvider, downloaderSettings)
 		s.Require().NoError(err)
 
 		err = scenario.ResultsChecker(resultsDir)

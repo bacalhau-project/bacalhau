@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -261,8 +262,8 @@ func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image stri
 		checkResults = nil
 	} else {
 		checkResults = scenario.ManyChecks(
-			scenario.FileEquals(model.DownloadFilenameStderr, expectedStderr),
-			scenario.FileEquals(model.DownloadFilenameStdout, expectedStdout),
+			scenario.FileEquals(downloader.DownloadFilenameStderr, expectedStderr),
+			scenario.FileEquals(downloader.DownloadFilenameStdout, expectedStdout),
 		)
 	}
 	testScenario := scenario.Scenario{
