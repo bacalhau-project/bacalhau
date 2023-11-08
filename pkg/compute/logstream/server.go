@@ -3,11 +3,8 @@ package logstream
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"reflect"
-
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -39,23 +36,6 @@ func NewLogStreamServer(options LogStreamServerOptions) *LogStreamServer {
 	}
 	svr.host.SetStreamHandler(LogsProcotolID, svr.Handle)
 	return svr
-}
-
-func findTCPAddress(host host.Host) string {
-	peerID := host.ID().Pretty()
-	hostAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", peerID))
-
-	for _, addr := range host.Addrs() {
-		for _, protocol := range addr.Protocols() {
-			if protocol.Name == "tcp" {
-				return addr.Encapsulate(hostAddr).String()
-			}
-		}
-	}
-
-	// If we can't find TCP, then we'll go with the first record
-	addr := host.Addrs()[0]
-	return addr.Encapsulate(hostAddr).String()
 }
 
 func (s *LogStreamServer) Handle(stream network.Stream) {
