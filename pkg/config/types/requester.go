@@ -10,7 +10,7 @@ type RequesterConfig struct {
 	ExternalVerifierHook string `yaml:"ExternalVerifierHook"`
 	// How the node decides what jobs to run.
 	JobSelectionPolicy model.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
-	JobStore           StorageConfig            `yaml:"JobStore"`
+	JobStore           JobStoreConfig           `yaml:"JobStore"`
 
 	HousekeepingBackgroundTaskInterval Duration                              `yaml:"HousekeepingBackgroundTaskInterval"`
 	NodeRankRandomnessRange            int                                   `yaml:"NodeRankRandomnessRange"`
@@ -19,7 +19,7 @@ type RequesterConfig struct {
 
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
-	S3SignedURL      S3SignedURLConfig      `yaml:"S3SignedURL"`
+	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`
 }
 
 type EvaluationBrokerConfig struct {
@@ -36,9 +36,13 @@ type WorkerConfig struct {
 	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
-type S3SignedURLConfig struct {
-	Disabled   bool     `yaml:"S3SignedURLDisabled"`
-	Expiration Duration `yaml:"S3SignedURLExpiration"`
+type StorageProviderConfig struct {
+	S3 S3StorageProviderConfig `yaml:"S3"`
+}
+
+type S3StorageProviderConfig struct {
+	PreSignedURLDisabled   bool     `yaml:"PreSignedURLDisabled"`
+	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
 }
 
 type JobDefaults struct {

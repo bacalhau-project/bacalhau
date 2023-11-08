@@ -34,7 +34,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		return "", errors.New("s3signed downloader does not support single file downloads")
 	}
 
-	sourceSpec, err := s3.DecodeSignedResultSpec(item.Result)
+	sourceSpec, err := s3.DecodePreSignedResultSpec(item.Result)
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +42,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 	urlSourceSpec := &models.SpecConfig{
 		Type: models.StorageSourceURL,
 		Params: urldownload.Source{
-			URL: sourceSpec.SignedURL,
+			URL: sourceSpec.PreSignedURL,
 		}.ToMap(),
 	}
 

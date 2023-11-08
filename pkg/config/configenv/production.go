@@ -102,7 +102,7 @@ var ProductionComputeConfig = types.ComputeConfig{
 			GPU:    "",
 		},
 	},
-	ExecutionStore: types.StorageConfig{
+	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -135,7 +135,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	JobStore: types.StorageConfig{
+	JobStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -160,7 +160,9 @@ var ProductionRequesterConfig = types.RequesterConfig{
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
-	S3SignedURL: types.S3SignedURLConfig{
-		Expiration: types.Duration(30 * time.Minute),
+	StorageProvider: types.StorageProviderConfig{
+		S3: types.S3StorageProviderConfig{
+			PreSignedURLExpiration: types.Duration(30 * time.Minute),
+		},
 	},
 }

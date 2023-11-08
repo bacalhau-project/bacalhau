@@ -13,12 +13,12 @@ import (
 func NewStandardDownloaders(
 	cm *system.CleanupManager) downloader.DownloaderProvider {
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm)
-	s3SignedDownloader := s3signed.NewDownloader(s3signed.DownloaderParams{
+	s3PreSignedDownloader := s3signed.NewDownloader(s3signed.DownloaderParams{
 		HTTPDownloader: http.NewHTTPDownloader(),
 	})
 
 	return provider.NewMappedProvider(map[string]downloader.Downloader{
-		models.StorageSourceIPFS:     ipfsDownloader,
-		models.StorageSourceS3Signed: s3SignedDownloader,
+		models.StorageSourceIPFS:        ipfsDownloader,
+		models.StorageSourceS3PreSigned: s3PreSignedDownloader,
 	})
 }

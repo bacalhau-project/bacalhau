@@ -95,6 +95,7 @@ func (httpDownloader *Downloader) fetch(ctx context.Context, url string, filepat
 }
 
 func checkHTTPResponse(resp *http.Response, url string) error {
+	// TODO: Add support for redirects
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}

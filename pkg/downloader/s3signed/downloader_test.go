@@ -58,7 +58,7 @@ func (s *DownloaderTestSuite) TestDownloadCompressed() {
 
 	// get pre-signed url
 	s.Require().NoError(s.signer.Transform(s.Ctx, &storageSpec))
-	s.Require().Equal(models.StorageSourceS3Signed, storageSpec.Type)
+	s.Require().Equal(models.StorageSourceS3PreSigned, storageSpec.Type)
 
 	// download signed url
 	downloadParentPath, err := os.MkdirTemp(s.TempDir, "")

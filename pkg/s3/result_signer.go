@@ -58,10 +58,10 @@ func (signer *ResultSigner) Transform(ctx context.Context, spec *models.SpecConf
 	if err != nil {
 		return err
 	}
-	spec.Type = models.StorageSourceS3Signed
-	spec.Params = SignedResultSpec{
-		SourceSpec: sourceSpec,
-		SignedURL:  resp.URL,
+	spec.Type = models.StorageSourceS3PreSigned
+	spec.Params = PreSignedResultSpec{
+		SourceSpec:   sourceSpec,
+		PreSignedURL: resp.URL,
 	}.ToMap()
 	return nil
 }

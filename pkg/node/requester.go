@@ -218,7 +218,7 @@ func NewRequesterNode(
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
-	if !requesterConfig.S3SignedURLDisabled {
+	if !requesterConfig.S3PreSignedURLDisabled {
 		// S3 result signer
 		s3Config, err := s3helper.DefaultAWSConfig()
 		if err != nil {
@@ -228,7 +228,7 @@ func NewRequesterNode(
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
 			}),
-			Expiration: requesterConfig.S3SignedURLExpiration,
+			Expiration: requesterConfig.S3PreSignedURLExpiration,
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
 	}

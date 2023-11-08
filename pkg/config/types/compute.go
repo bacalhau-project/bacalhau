@@ -4,7 +4,7 @@ import "github.com/bacalhau-project/bacalhau/pkg/model"
 
 type ComputeConfig struct {
 	Capacity       CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore StorageConfig            `yaml:"ExecutionStore"`
+	ExecutionStore JobStoreConfig           `yaml:"ExecutionStore"`
 	JobTimeouts    JobTimeoutConfig         `yaml:"JobTimeouts"`
 	JobSelection   model.JobSelectionPolicy `yaml:"JobSelection"`
 	Queue          QueueConfig              `yaml:"Queue"`

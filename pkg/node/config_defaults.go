@@ -52,8 +52,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 1 * time.Second,
 	WorkerEvalDequeueMaxBackoff:  30 * time.Second,
 
-	S3SignedURLDisabled:   false,
-	S3SignedURLExpiration: 30 * time.Minute,
+	S3PreSignedURLDisabled:   false,
+	S3PreSignedURLExpiration: 30 * time.Minute,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -78,8 +78,8 @@ var TestRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
 	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
 
-	S3SignedURLDisabled:   false,
-	S3SignedURLExpiration: 30 * time.Minute,
+	S3PreSignedURLDisabled:   false,
+	S3PreSignedURLExpiration: 30 * time.Minute,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

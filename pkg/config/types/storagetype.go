@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type StorageConfig struct {
+type JobStoreConfig struct {
 	Type StorageType `yaml:"Type"`
 	Path string      `yaml:"Path"`
 }

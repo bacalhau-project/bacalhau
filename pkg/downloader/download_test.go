@@ -83,7 +83,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	ds.downloadProvider = provider.NewMappedProvider(
 		map[string]downloader.Downloader{
 			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm),
-			models.StorageSourceS3Signed: s3signed.NewDownloader(s3signed.DownloaderParams{
+			models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
 				HTTPDownloader: http.NewHTTPDownloader(),
 			}),
 		},
@@ -186,14 +186,14 @@ var publishers = map[string]struct {
 	rawMatcher func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string
 	shouldFail bool
 }{
-	models.StorageSourceS3Signed: {
+	models.StorageSourceS3PreSigned: {
 		publishFn: publishToS3,
 		rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
 			dirEntries, err := os.ReadDir(rawParentPath)
 			ds.Require().NoError(err)
 
 			for _, entry := range dirEntries {
-				sanitizedFileName, err := http.SanitizeFileName(result.Params["SignedURL"].(string))
+				sanitizedFileName, err := http.SanitizeFileName(result.Params["PreSignedURL"].(string))
 				require.NoError(ds.T(), err)
 				if entry.Name() == sanitizedFileName {
 					sourcePath := filepath.Join(rawParentPath, entry.Name())
@@ -202,7 +202,7 @@ var publishers = map[string]struct {
 					return filepath.Base(uncompressedName)
 				}
 			}
-			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["SignedURL"])
+			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["PreSignedURL"])
 			return ""
 		},
 	},
