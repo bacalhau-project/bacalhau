@@ -1,11 +1,13 @@
 package logstream
 
 import (
+	"context"
 	"fmt"
 	"net"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
@@ -19,7 +21,7 @@ const (
 	LinkLocal       = 4
 )
 
-func findTCPAddress(host host.Host) string {
+func findTCPAddress(ctx context.Context, host host.Host) string {
 	peerID := host.ID().Pretty()
 	hostAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", peerID))
 
@@ -28,6 +30,7 @@ func findTCPAddress(host host.Host) string {
 	for _, addr := range addresses {
 		for _, protocol := range addr.Protocols() {
 			if protocol.Name == "tcp" {
+				log.Ctx(ctx).Info().Stringer("Address", addr).Msg("Selected address for logstreams")
 				return addr.Encapsulate(hostAddr).String()
 			}
 		}

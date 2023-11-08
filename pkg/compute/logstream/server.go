@@ -32,7 +32,7 @@ func NewLogStreamServer(options LogStreamServerOptions) *LogStreamServer {
 		host:           options.Host,
 		executionStore: options.ExecutionStore,
 		executors:      options.Executors,
-		Address:        findTCPAddress(options.Host),
+		Address:        findTCPAddress(options.Ctx, options.Host),
 	}
 	svr.host.SetStreamHandler(LogsProcotolID, svr.Handle)
 	return svr
