@@ -6,10 +6,10 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    # this bucket lives in the bacalhau-cicd google project
-    # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
-    bucket = "bacalhau-global-storage"
-    prefix = "terraform/state"
+    # this bucket lives in the bacalhau-infra google project
+    # https://console.cloud.google.com/storage/browser/bacalhau-infrastructure-state;tab=objects?project=bacalhau-infra
+    bucket = "bacalhau-infrastructure-state"
+    prefix = "terraform"
   }
 }
 
@@ -277,7 +277,7 @@ resource "google_compute_attached_disk" "default" {
   zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
 }
 
-resource "google_compute_firewall" "bacalhau_firewall" {
+resource "google_compute_firewall" "bacalhau_ingress_firewall" {
   name    = "bacalhau-ingress-firewall-${terraform.workspace}"
   network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
 
@@ -298,7 +298,40 @@ resource "google_compute_firewall" "bacalhau_firewall" {
     ]
   }
 
+  allow {
+    protocol = "udp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
   source_ranges = var.ingress_cidrs
+}
+
+resource "google_compute_firewall" "bacalhau_egress_firewall" {
+  name    = "bacalhau-egress-firewall-${terraform.workspace}"
+  network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
+
+  direction = "EGRESS"
+
+  allow {
+    protocol = "tcp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
+  allow {
+    protocol = "udp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
+  source_ranges = var.egress_cidrs
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
