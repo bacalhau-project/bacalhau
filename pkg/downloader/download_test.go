@@ -90,6 +90,10 @@ func (ds *DownloaderSuite) SetupTest() {
 	)
 }
 
+func (ds *DownloaderSuite) TearDownSuite() {
+	ds.Destroy()
+}
+
 func TestDownloaderSuite(t *testing.T) {
 	helperSuite := s3test.NewTestHelper(t, s3test.HelperSuiteParams{
 		BasePrefix: "integration-tests-downloader",
