@@ -9,19 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
-// ChainedJobTransformer is a slice of Transformers that runs in sequence
-type ChainedJobTransformer []JobTransformer
-
-// Transform runs all transformers in sequence.
-func (ct ChainedJobTransformer) Transform(ctx context.Context, job *models.Job) error {
-	for _, t := range ct {
-		if err := t.Transform(ctx, job); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // IDGenerator is a transformer that generates a new ID for the job if it is empty.
 func IDGenerator(_ context.Context, job *models.Job) error {
 	if job.ID == "" {
@@ -37,7 +24,6 @@ type JobDefaults struct {
 // DefaultsApplier is a transformer that applies default values to the job.
 func DefaultsApplier(defaults JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-
 		// only apply default execution timeout to non-long running jobs
 		if !job.IsLongRunning() {
 			for _, task := range job.Tasks {

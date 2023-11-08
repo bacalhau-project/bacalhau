@@ -269,7 +269,6 @@ func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState
 		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
 		return nil, err
 	}
-
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.

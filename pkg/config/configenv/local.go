@@ -143,4 +143,7 @@ var LocalRequesterConfig = types.RequesterConfig{
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
+	S3SignedURL: types.S3SignedURLConfig{
+		Expiration: types.Duration(30 * time.Minute),
+	},
 }

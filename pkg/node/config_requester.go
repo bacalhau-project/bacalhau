@@ -40,6 +40,9 @@ type RequesterConfigParams struct {
 	WorkerEvalDequeueTimeout     time.Duration
 	WorkerEvalDequeueBaseBackoff time.Duration
 	WorkerEvalDequeueMaxBackoff  time.Duration
+
+	S3SignedURLDisabled   bool
+	S3SignedURLExpiration time.Duration
 }
 
 type RequesterConfig struct {

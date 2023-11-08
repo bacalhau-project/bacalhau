@@ -3,14 +3,13 @@ package cliflags
 import (
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/spf13/pflag"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func NewDefaultDownloaderSettings() *DownloaderSettings {
 	return &DownloaderSettings{
-		Timeout: model.DefaultDownloadTimeout,
+		Timeout: downloader.DefaultDownloadTimeout,
 		// we leave this blank so the CLI will auto-create a job folder in pwd
 		SingleFile: "",
 		OutputDir:  "",

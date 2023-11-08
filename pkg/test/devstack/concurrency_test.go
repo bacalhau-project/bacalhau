@@ -5,6 +5,7 @@ package devstack
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -32,7 +33,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	}
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(
-		model.DownloadFilenameStdout,
+		downloader.DownloadFilenameStdout,
 		"Hello, world!\n",
 	)
 	testCase.JobCheckers = []job.CheckStatesFunction{

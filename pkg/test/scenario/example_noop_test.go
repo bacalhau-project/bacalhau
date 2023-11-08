@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -33,7 +33,7 @@ func noopScenario(t testing.TB) Scenario {
 			},
 		},
 		Spec:           testutils.MakeSpecWithOpts(t),
-		ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
+		ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
 		JobCheckers:    WaitUntilSuccessful(1),
 	}
 }

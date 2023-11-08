@@ -2,89 +2,126 @@ package http
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
-	"time"
+	"path/filepath"
+	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
 
+// Replace slashes with some other character that is valid for filenames in most operating systems
+var urlSanitizer = strings.NewReplacer("/", "_", "\\", "_", ":", "_", "*", "_", "?", "_", "\"", "_", "<", "_", ">", "_", "|", "_")
+
 type Downloader struct {
-	Settings *model.DownloaderSettings
+	httpClient *http.Client
 }
 
-func NewHTTPDownloader(settings *model.DownloaderSettings) *Downloader {
-	return &Downloader{
-		Settings: settings,
-	}
+// NewHTTPDownloader creates a new HTTPDownloader with the given settings.
+func NewHTTPDownloader() *Downloader {
+	return &Downloader{httpClient: http.DefaultClient}
 }
 
-func (httpDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
+// IsInstalled checks if the downloader is ready to be used.
+func (httpDownloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+	// For HTTPDownloader, we can always return true as there's no installation needed.
 	return true, nil
 }
 
-func (httpDownloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
-	return nil, errors.New("not implemented for httpdownloader")
-}
-
-func (httpDownloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
-	defer span.End()
-
-	err := func() error {
-		log.Ctx(ctx).Debug().Msgf(
-			"Downloading result URL %s '%s' to '%s'...",
-			item.Name,
-			item.CID, item.Target,
-		)
-
-		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
-		defer cancel()
-
-		return fetch(innerCtx, item.CID, item.Target)
-	}()
-
+// FetchResult downloads the result of a computation and saves it to a local file.
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, item downloader.DownloadItem) (string, error) {
+	sourceSpec, err := urldownload.DecodeSpec(item.Result)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			log.Ctx(ctx).Error().Msg("Timed out while downloading result.")
-		}
-
-		return err
+		return "", err
 	}
-	return nil
+
+	// Get the path and sanitize it for use as a flat filename
+	flatFileName, err := SanitizeFileName(sourceSpec.URL)
+	if err != nil {
+		return "", err
+	}
+
+	// Full path to the file
+	localPath := filepath.Join(item.ParentPath, flatFileName)
+	alreadyExists, err := downloader.IsAlreadyDownloaded(localPath)
+	if err != nil {
+		return "", err
+	}
+	if alreadyExists {
+		log.Ctx(ctx).Debug().
+			Str("URL", sourceSpec.URL).
+			Msg("File already downloaded.")
+		return localPath, nil
+	}
+
+	return localPath, httpDownloader.fetch(ctx, sourceSpec.URL, localPath)
 }
 
-func fetch(ctx context.Context, url string, filepath string) error {
-	// Create a new file at the specified filepath
-	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
+// fetch makes an HTTP GET request to the given URL and writes the response to the given filepath.
+func (httpDownloader *Downloader) fetch(ctx context.Context, url string, filepath string) error {
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, downloader.DownloadFilePerm)
 	if err != nil {
 		return err
 	}
 	defer closer.CloseWithLogOnError("file", out)
 
-	// Make an HTTP GET request to the URL
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
 
-	response, err := http.DefaultClient.Do(req) //nolint
+	response, err := httpDownloader.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
-
 	defer closer.DrainAndCloseWithLogOnError(ctx, "http response", response.Body)
 
-	// Write the contents of the response body to the file
+	if err = checkHTTPResponse(response, url); err != nil {
+		return err
+	}
+
 	_, err = io.Copy(out, response.Body)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func checkHTTPResponse(resp *http.Response, url string) error {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+
+	// Read the response body for additional context.
+	// Limit the size of the body we will read to avoid large allocations.
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) //nolint:gomnd // 1MB max
+	if err != nil {
+		// If we can't read the body, just return an error with the status code
+		return fmt.Errorf("request to %s failed with status code %d and unable to read response body", url, resp.StatusCode)
+	}
+
+	// Close the body before returning the error
+	resp.Body.Close()
+
+	// Return an error with the status code and the body content for context
+	return fmt.Errorf("request to %s failed with status code %d: %s", url, resp.StatusCode, string(bodyBytes))
+}
+
+// SanitizeFileName creates a flat filename from a URL path.
+func SanitizeFileName(fullURL string) (string, error) {
+	// Parse the URL
+	parsedURL, err := url.Parse(fullURL)
+	if err != nil {
+		return "", err
+	}
+
+	urlPath := parsedURL.Host + parsedURL.Path
+	return urlSanitizer.Replace(urlPath), nil
 }

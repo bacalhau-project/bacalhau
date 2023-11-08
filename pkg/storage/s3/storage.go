@@ -186,7 +186,7 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
-	if !strings.HasSuffix(storageSpec.Key, "*") {
+	if !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),
 			Key:    aws.String(storageSpec.Key),

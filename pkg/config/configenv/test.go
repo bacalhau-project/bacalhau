@@ -147,4 +147,7 @@ var TestingRequesterConfig = types.RequesterConfig{
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Second),
 	},
+	S3SignedURL: types.S3SignedURLConfig{
+		Expiration: types.Duration(30 * time.Minute),
+	},
 }

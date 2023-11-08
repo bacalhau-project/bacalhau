@@ -36,6 +36,7 @@ const (
 	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
+	StorageSourceS3Signed       = "s3Signed"
 	StorageSourceInline         = "inline"
 	StorageSourceLocalDirectory = "localDirectory"
 )

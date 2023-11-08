@@ -19,6 +19,7 @@ type RequesterConfig struct {
 
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
+	S3SignedURL      S3SignedURLConfig      `yaml:"S3SignedURL"`
 }
 
 type EvaluationBrokerConfig struct {
@@ -33,6 +34,11 @@ type WorkerConfig struct {
 	WorkerEvalDequeueTimeout     Duration `yaml:"WorkerEvalDequeueTimeout"`
 	WorkerEvalDequeueBaseBackoff Duration `yaml:"WorkerEvalDequeueBaseBackoff"`
 	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
+}
+
+type S3SignedURLConfig struct {
+	Disabled   bool     `yaml:"S3SignedURLDisabled"`
+	Expiration Duration `yaml:"S3SignedURLExpiration"`
 }
 
 type JobDefaults struct {
