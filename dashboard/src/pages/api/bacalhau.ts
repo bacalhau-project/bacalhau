@@ -1,63 +1,103 @@
-// import axios from "axios";
-// import { resolve } from "../utils/resolver";
+import axios from 'axios';
+import { Job } from "../../interfaces";
 
-// export const SERVER_URL = process.env.REACT_APP_SERVER_URL;
 
-// export interface Resolved {
-//     statusCode: number;
-//     data: any;
-// }
+// Base configuration for Bacalhau API
+const apiConfig = {
+  baseURL: 'http://0.0.0.0:52509/api/v1',
+//   port: '52509',
+//   endpointPrefix: '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+};
 
-// export const getJobs = async (query?: string, forExplorer?: boolean): Promise<Resolved | void> => {
-//     try {
-//         const token = forExplorer ? "" : localStorage.getItem("token");
+// Creating an instance of axios with the base configuration
+const apiClient = axios.create(apiConfig);
+console.log("apiClient", apiClient)
 
-//         const resolved: Resolved = await resolve(
-//             axios.get(`${SERVER_URL}/jobs?query=${query ?? ""}`, {
-//                 headers: {
-//                     "Content-Type": `application/json`,
-//                     Authorization: `Bearer ${token}`,
-//                 },
-//             })
-//         );
-//         return resolved;
-//     } catch (error: any) {
-//         console.log(error.message);
-//     }
-// };
+interface NodeList {
+  // Define the structure for NodeList object
+}
 
-// export const getJobEvents = async (job_id: string): Promise<Resolved | void> => {
-//     try {
-//         const resolved: Resolved = await resolve(
-//             axios.get(`${SERVER_URL}/jobs/events/${job_id}`, {
-//                 headers: {
-//                     "Content-Type": `application/json`,
-//                 },
-//             })
-//         );
-//         return resolved;
-//     } catch (error: any) {
-//         console.log(error.message);
-//     }
-// };
+class BacalhauAPI {
+  // List jobs with optional label filtering and pagination
+  async listJobs(labels?: string[], nextToken?: string): Promise<Job[]> {
+    try {
+      const params: any = {};
+      if (labels) {
+        params.labels = `env in (${labels.join(',')})`;
+      }
+      if (nextToken) {
+        params.next_token = nextToken;
+      }
+      const response = await apiClient.get('/orchestrator/jobs', { params });
+      console.log("RESPPONNNSEEE", response)
+      return response.data;
 
-// export const getJob = async (
-//     id: string,
-//     type: string
-// ): Promise<Resolved | void> => {
-//     try {
-//         const token = localStorage.getItem("token");
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
 
-//         const resolved: Resolved = await resolve(
-//             axios.get(`${SERVER_URL}/jobs/state/${id}`, {
-//                 headers: {
-//                     "Content-Type": `application/json`,
-//                     Authorization: `Bearer ${token}`,
-//                 },
-//             })
-//         );
-//         return resolved;
-//     } catch (error: any) {
-//         console.log(error.message);
-//     }
-// };
+  // Submit a new job
+  async submitJob(jobData: any): Promise<Job> {
+    try {
+      const response = await apiClient.put('/orchestrator/jobs', jobData);
+      return response.data;
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
+
+  // Stop a job
+  async stopJob(jobId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/orchestrator/jobs/${jobId}`);
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
+
+  // List nodes with optional label filtering
+  async listNodes(labels?: string[]): Promise<NodeList> {
+    try {
+      const params: any = {};
+      if (labels) {
+        params.labels = `env in (${labels.join(',')})`;
+      }
+      const response = await apiClient.get('/orchestrator/nodes', { params });
+      return response.data;
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
+  
+  // Fetch agent info
+  async getAgentInfo(): Promise<any> {
+    try {
+      const response = await apiClient.get('/agent/info');
+      return response.data;
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
+
+  // Check agent health
+  async checkAgentHealth(): Promise<any> {
+    try {
+      const response = await apiClient.get('/agent/health');
+      return response.data;
+    } catch (error) {
+      // Handle error
+      throw error;
+    }
+  }
+}
+
+export const bacalhauAPI = new BacalhauAPI();
