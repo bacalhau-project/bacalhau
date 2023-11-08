@@ -1,5 +1,6 @@
 // styles/Table.module.scss
 @import 'variables';
+@import 'breakpoints';
 
 .tableContainer {
     width: 98%;
@@ -34,20 +35,36 @@
             border: 1px solid $border-color;  // This adds a border to the cells.
         }
 
-        .program {
-            max-width: 250px !important;
+        .name, .program {
+            width: 200px;
+
+            @include small {
+                min-width: 200px;
+            }
+          
+            @include medium {
+                min-width: 200px;
+            }
+          
+            @include large {
+                min-width: 250px;
+            }
         }
+        
+        .jobID, .status, .action, .dateCreated, .label, .jobType {
+            width: 100px;
 
-        .jobID, .status, .action {
-            width: 100px !important;
-        }
-
-        .status {
-
-        }
-
-        .dateCreated {
-            width: 200px !important;
+            @include small {
+                min-width: 80px;
+            }
+          
+            @include medium {
+                min-width: 90px;
+            }
+          
+            @include large {
+                min-width: 90px;
+            }
         }
     
         tr:nth-child(even) {

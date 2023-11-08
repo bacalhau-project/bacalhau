@@ -1,15 +1,13 @@
 // src/components/ProgramSummary.tsx
 import React from "react";
-import styles from "../../styles/ProgramSummary.module.scss";
 import Image from "next/image";
-import { EngineSpec } from "../interfaces";
-
-// Image imports
-import cogwheel from "../../images/cogwheel-dark.png";
-import dockerImage from "../../images/docker.png";
+import styles from "../../styles/ProgramSummary.module.scss";
+import { Tasks } from "../helpers/interfaces";
+import cogwheel from "../assets/images/cogwheel-dark.png";
+import dockerImage from "../assets/images/docker.png";
 
 interface ProgramSummaryProps {
-  data: EngineSpec;
+  data: Tasks;
 }
 
 const getImageSource = (type: string) => {
@@ -32,8 +30,14 @@ const truncateInput = (text: string[], length: number) => {
 };
 
 const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
-  const { Image: image, Parameters: input } = data.Params;
-  const imageSource = getImageSource(data.Type);
+  const {
+    Type: engineType,
+    Params: { Image: image, Parameters: parameters },
+  } = data.Engine;
+
+  const imageSource = getImageSource(engineType);
+  const truncatedInput = truncateInput(parameters, 100);
+
   return (
     <div className={styles.programSummary}>
       <div className={styles.logo}>
@@ -41,7 +45,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
       </div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
-        <div className={styles.input}>{truncateInput(input, 100)}</div>
+        <div className={styles.input}>{truncatedInput}</div>
       </div>
     </div>
   );

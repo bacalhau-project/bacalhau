@@ -7,13 +7,10 @@ interface LabelProps {
 }
 
 const Label: React.FC<LabelProps> = ({ text, color }) => {
-  const labelClass = `${styles.label} ${styles[`label-${color}`] || ''}`;
-  console.log(`${styles[`label-${color}`] || ''}`)
+  const labelClass = `${styles.label} ${styles[`label-${color}`] || ""}`;
   return (
     <div className={styles.column}>
-      <button className={labelClass}>
-        {text}
-      </button>
+      <button className={labelClass}>{text}</button>
     </div>
   );
 };

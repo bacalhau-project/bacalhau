@@ -9,15 +9,14 @@ import { bacalhauAPI } from "./api/bacalhau";
 
 const JobsDashboard: React.FC = () => {
   const [data, setData] = useState<Job[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   async function getJobsData() {
     try {
-      const listData = await bacalhauAPI.listJobs();
-      setData(listData);
-      console.log("JOBS", listData)
+      const response = await bacalhauAPI.listJobs();
+      if (response.Jobs) {
+        setData(response.Jobs);
+      }
     } catch (error) {
-      setError('Failed to fetch jobs');
       console.error(error);
     }
   }
@@ -62,7 +61,7 @@ const JobsDashboard: React.FC = () => {
   return (
     <Layout pageTitle="Jobs Dashboard">
       <div className={styles.jobsdashboard}>
-        {/* <JobsTable data={data.jobs} /> */}
+        <JobsTable data={data} />
       </div>
     </Layout>
   );

@@ -1,28 +1,17 @@
 // src/components/JobsTable.tsx
 import React from "react";
+import styles from "../../styles/JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary";
 import Label from "./Label";
-import styles from "../../styles/JobsTable.module.scss";
-import { Job, EngineSpec } from "../interfaces";
 import ActionButton from "./ActionButton";
+import {
+  capitalizeFirstLetter,
+  formatTimestamp,
+} from "../helpers/helperFunctions";
+import { Job, ParsedJobData } from "../helpers/interfaces";
 
 interface TableProps {
   data: Job[];
-}
-
-interface FlexibleJob {
-  [key: string]: any;
-}
-
-interface ParsedJobData {
-  id: string;
-  name: string;
-  createdAt: string;
-  engineSpec: EngineSpec;
-  jobType: string;
-  label: string;
-  status: string;
-  action: string;
 }
 
 const labelColorMap: { [key: string]: string } = {
@@ -33,24 +22,26 @@ const labelColorMap: { [key: string]: string } = {
   stopped: "grey",
   complete: "green",
   progress: "orange",
-  failed: "red"
+  failed: "red",
 };
 
 function parseData(jobs: Job[]): ParsedJobData[] {
-  const status = "Complete" // TODO: hardcoded as not yet available
-
   return jobs.map((job) => {
-    const { Metadata, Spec } = job.Job;
-    const shortenedJobID = job.Job.Metadata.ID.split("-")[0];
-    const jobType = (job.Job as FlexibleJob).jobType ?? "Batch"; // TODO: link up `Job Type` when inplementing new api version
+    if (!job.Tasks || job.Tasks.length === 0) {
+      throw new Error(`Job with ID: ${job.ID} has no tasks.`);
+    }
+    const shortenedID = job.ID.split("-")[0];
+    const firstTask = job.Tasks[0];
+    const jobType = job.Type ?? "batch";
+
     return {
-      id: shortenedJobID,
-      name: shortenedJobID,
-      createdAt: new Date(Metadata.CreatedAt).toLocaleString(),
-      engineSpec: Spec.EngineSpec,
-      jobType: jobType,
+      id: shortenedID,
+      name: job.Name,
+      createdAt: formatTimestamp(job.CreateTime),
+      tasks: firstTask,
+      jobType: capitalizeFirstLetter(jobType),
       label: "",
-      status: status,
+      status: job.State.StateType,
       action: "Action",
     };
   });
@@ -76,14 +67,14 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
         <tbody>
           {parsedData.map((jobData, index) => (
             <tr key={index}>
-              <td>{jobData.id}</td>
-              <td>{jobData.name}</td>
+              <td className={styles.id}>{jobData.id}</td>
+              <td className={styles.name}>{jobData.name}</td>
               <td className={styles.dateCreated}>{jobData.createdAt}</td>
               <td className={styles.program}>
-                <ProgramSummary data={jobData.engineSpec} />
+                <ProgramSummary data={jobData.tasks} />
               </td>
-              <td>{jobData.jobType}</td>
-              <td>{jobData.label}</td>
+              <td className={styles.jobType}>{jobData.jobType}</td>
+              <td className={styles.label}>{jobData.label}</td>
               <td className={styles.status}>
                 <Label
                   text={jobData.status}

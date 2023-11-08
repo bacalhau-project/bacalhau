@@ -1,13 +1,12 @@
 // components/Sidebar.tsx
-
 import React from "react";
-import styles from "../../styles/Sidebar.module.scss";
-import SidebarButton from "./SidebarButton";
 import Link from "next/link";
 import Image from "next/image";
-import jobsIcon from "../../images/jobs-icon.png";
-import nodesIcon from "../../images/nodes-icon.png";
-import settingsIcon from "../../images/settings-icon.png";
+import styles from "../../styles/Sidebar.module.scss";
+import SidebarButton from "./SidebarButton";
+import jobsIcon from "../assets/images/jobs-icon.png";
+import nodesIcon from "../assets/images/nodes-icon.png";
+import settingsIcon from "../assets/images/settings-icon.png";
 
 interface SidebarProps {
   isCollapsed: boolean;
