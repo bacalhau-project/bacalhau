@@ -197,21 +197,21 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 			return "", err
 		}
 
-		found := make([][]byte, 0, 1)
+		found := make([]string, 0, 1)
 
 		cursor := bktJobs.Cursor()
 		prefix := []byte(jobID)
 		for k, _ := cursor.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = cursor.Next() {
-			found = append(found, k)
+			found = append(found, string(k))
 		}
 
 		switch len(found) {
 		case 0:
 			return "", bacerrors.NewJobNotFound(jobID)
 		case 1:
-			return string(found[0]), nil
+			return found[0], nil
 		default:
-			return "", bacerrors.NewDuplicateJob(jobID)
+			return "", bacerrors.NewMultipleJobsFound(jobID, found)
 		}
 	}
 
@@ -258,6 +258,11 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 }
 
 func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]models.Execution, error) {
+	jobID, err := b.reifyJobID(tx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return nil, err
@@ -516,6 +521,11 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	var history []models.JobHistory
+
+	jobID, err := b.reifyJobID(tx, jobID)
+	if err != nil {
+		return history, err
+	}
 
 	if !options.ExcludeJobLevel {
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false); err != nil {
