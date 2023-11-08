@@ -7,10 +7,10 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/iroh"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
@@ -29,20 +29,30 @@ func NewIPFSPublishers(
 	cm *system.CleanupManager,
 	cl ipfsClient.Client,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher := noop.NewNoopPublisher()
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
+	/*
+		noopPublisher := noop.NewNoopPublisher()
+		ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
+		if err != nil {
+			return nil, err
+		}
+
+		s3Publisher, err := configureS3Publisher(cm)
+		if err != nil {
+			return nil, err
+		}
+
+
+	*/
+	client, err := iroh.New("/Users/frrist/Workspace/src/github.com/bacalhau-project/bacalhau/irohrepo_publish")
 	if err != nil {
 		return nil, err
 	}
 
-	s3Publisher, err := configureS3Publisher(cm)
-	if err != nil {
-		return nil, err
-	}
 	return provider.NewMappedProvider(map[string]publisher.Publisher{
-		models.PublisherNoop: tracing.Wrap(noopPublisher),
-		models.PublisherIPFS: tracing.Wrap(ipfsPublisher),
-		models.PublisherS3:   tracing.Wrap(s3Publisher),
+		models.PublisherIroh: tracing.Wrap(client),
+		//models.PublisherNoop: tracing.Wrap(noopPublisher),
+		//models.PublisherIPFS: tracing.Wrap(ipfsPublisher),
+		//models.PublisherS3:   tracing.Wrap(s3Publisher),
 	}), nil
 }
 

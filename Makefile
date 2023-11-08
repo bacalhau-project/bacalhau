@@ -14,7 +14,7 @@ endif
 
 # Env Variables
 export GO111MODULE = on
-export CGO_ENABLED = 0
+export CGO_ENABLED = 1
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau

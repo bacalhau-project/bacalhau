@@ -183,6 +183,16 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 			StorageSource: model.StorageSourceS3,
 			S3:            s3Spec,
 		}, nil
+	case models.StorageSourceIroh:
+		return model.StorageSpec{
+			StorageSource: model.StorageSourceIroh,
+			Metadata: map[string]string{
+				"doc":    storage.Params["doc"].(string),
+				"ticket": storage.Params["ticket"].(string),
+				"hash":   storage.Params["hash"].(string),
+			},
+		}, nil
+
 	default:
 		return model.StorageSpec{}, fmt.Errorf("unhandled storage source type: %s", storage.Type)
 	}

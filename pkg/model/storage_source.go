@@ -20,6 +20,7 @@ const (
 	StorageSourceInline
 	StorageSourceLocalDirectory
 	StorageSourceS3
+	StorageSourceIroh
 	storageSourceDone // must be last
 )
 
@@ -32,6 +33,7 @@ var storageSourceNames = map[StorageSourceType]string{
 	StorageSourceInline:         "inline",
 	StorageSourceLocalDirectory: "localDirectory",
 	StorageSourceS3:             "s3",
+	StorageSourceIroh:           "iroh",
 }
 
 func ParseStorageSourceType(str string) (StorageSourceType, error) {

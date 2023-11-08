@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -16,6 +12,11 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -129,6 +130,10 @@ func NewNode(
 	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
+	}
+
+	for key := range publishers.Keys(context.Background()) {
+		fmt.Println(key)
 	}
 
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)

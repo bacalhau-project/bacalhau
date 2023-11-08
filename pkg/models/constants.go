@@ -38,12 +38,14 @@ const (
 	StorageSourceS3             = "s3"
 	StorageSourceInline         = "inline"
 	StorageSourceLocalDirectory = "localDirectory"
+	StorageSourceIroh           = "iroh"
 )
 
 const (
 	PublisherNoop = "noop"
 	PublisherIPFS = "ipfs"
 	PublisherS3   = "s3"
+	PublisherIroh = "iroh"
 )
 
 const (

@@ -150,6 +150,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 				CID:        publishedResult.Data.CID,
 				SourceType: publishedResult.Data.StorageSource,
 				Target:     cidDownloadDir,
+				Metadata:   publishedResult.Data.Metadata,
 			}
 
 			err = downloader.FetchResult(ctx, item)

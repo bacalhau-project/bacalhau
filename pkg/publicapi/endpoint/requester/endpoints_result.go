@@ -3,14 +3,15 @@ package requester
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/labstack/echo/v4"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // results godoc
@@ -46,6 +47,7 @@ func (s *Endpoint) results(c echo.Context) error {
 	results := make([]model.PublishedResult, 0)
 	for _, execution := range executions {
 		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
+			// TODO this is making adding different publishers really hard.
 			storageConfig, err := legacy.ToLegacyStorageSpec(execution.PublishedResult)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, err.Error())

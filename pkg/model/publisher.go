@@ -12,6 +12,7 @@ const (
 	PublisherIpfs
 	PublisherEstuary
 	PublisherS3
+	PublisherIroh
 	publisherDone // must be last
 )
 
@@ -20,6 +21,7 @@ var publisherNames = map[Publisher]string{
 	PublisherIpfs:    "ipfs",
 	PublisherEstuary: "estuary",
 	PublisherS3:      "s3",
+	PublisherIroh:    "iroh",
 }
 
 func ParsePublisher(str string) (Publisher, error) {

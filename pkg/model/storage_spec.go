@@ -63,4 +63,5 @@ type DownloadItem struct {
 	URL        string
 	SourceType StorageSourceType
 	Target     string
+	Metadata   map[string]string
 }
