@@ -39,6 +39,8 @@ type NodeConfig struct {
 	DisabledFeatures FeatureConfig `yaml:"DisabledFeatures"`
 	// Labels to apply to the node that can be used for node selection and filtering
 	Labels map[string]string `yaml:"Labels"`
+
+	WebUI bool `yaml:"WebUI"`
 }
 
 type APIConfig struct {
