@@ -27,8 +27,11 @@ function getMultiaddress() {
 # we start with none as the default ("none" prevents the node connecting to our default bootstrap list)
 export CONNECT_PEER="none"
 
+# use the BACALHAU_CONNECT_PEER env var if it is set
+if [[ -n "${BACALHAU_CONNECT_PEER}" ]]; then
+  export CONNECT_PEER=$BACALHAU_CONNECT_PEER
 # if we are node0 then we do not connect to anything
-if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
+elif [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
   # if we are in unsafe mode - then we connect to a single node and it's ID
   # is pre-determined by the $BACALHAU_NODE0_UNSAFE_ID variable
   if [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]]; then
@@ -60,7 +63,7 @@ TRUSTED_CLIENT_IDS="\
 b43517b5449d383ab00ca1d2b1c558d710ba79f51c800fbf4c35ed4d0198aec5"
 
 bacalhau serve \
-  --node-type requester,compute \
+  --node-type "${BACALHAU_NODE_TYPE}" \
   --job-selection-data-locality anywhere \
   --job-selection-accept-networked \
   --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \

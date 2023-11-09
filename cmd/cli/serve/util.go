@@ -79,6 +79,8 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
+		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 	})
 }
 

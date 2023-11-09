@@ -10,11 +10,30 @@ import (
 )
 
 type ClientWrapper struct {
-	S3         *s3.Client
-	Downloader *manager.Downloader
-	Uploader   *manager.Uploader
-	Endpoint   string
-	Region     string
+	S3            *s3.Client
+	presignClient *s3.PresignClient
+	Downloader    *manager.Downloader
+	Uploader      *manager.Uploader
+	Endpoint      string
+	Region        string
+	mu            sync.RWMutex
+}
+
+func (c *ClientWrapper) PresignClient() *s3.PresignClient {
+	c.mu.RLock()
+	if c.presignClient != nil {
+		defer c.mu.RUnlock()
+		return c.presignClient
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.presignClient != nil {
+		return c.presignClient
+	}
+	c.presignClient = s3.NewPresignClient(c.S3)
+	return c.presignClient
 }
 
 type ClientProviderParams struct {

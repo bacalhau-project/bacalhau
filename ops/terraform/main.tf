@@ -6,10 +6,10 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    # this bucket lives in the bacalhau-cicd google project
-    # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
-    bucket = "bacalhau-global-storage"
-    prefix = "terraform/state"
+    # this bucket lives in the bacalhau-infra google project
+    # https://console.cloud.google.com/storage/browser/bacalhau-infrastructure-state;tab=objects?project=bacalhau-infra
+    bucket = "bacalhau-infrastructure-state"
+    prefix = "terraform"
   }
 }
 
@@ -18,7 +18,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
   machine_type = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
-  zone         = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
+  zone         = var.zone
 
   boot_disk {
     initialize_params {
@@ -48,7 +48,7 @@ export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.public_ip_addresses[1]
 export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? var.public_ip_addresses[2] : ""}"
 export IPFS_VERSION="${var.ipfs_version}"
 export LOG_LEVEL="${var.log_level}"
-export BACALHAU_ENVIRONMENT="${terraform.workspace}"
+export BACALHAU_ENVIRONMENT="${var.bacalhau_environment != "" ? var.bacalhau_environment : terraform.workspace}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
 export BACALHAU_BRANCH="${var.bacalhau_branch}"
 export BACALHAU_PORT="${var.bacalhau_port}"
@@ -56,7 +56,9 @@ export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_NODE_ID_0="${var.bacalhau_node_id_0}"
 export BACALHAU_NODE_ID_1="${var.instance_count > 1 ? var.bacalhau_node_id_1 : ""}"
 export BACALHAU_NODE_ID_2="${var.instance_count > 2 ? var.bacalhau_node_id_2 : ""}"
+export BACALHAU_NODE_TYPE="${var.bacalhau_node_type}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
+export BACALHAU_CONNECT_PEER="${var.bacalhau_connect_peer}"
 export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "true" : "false"}"
 export GRAFANA_CLOUD_PROMETHEUS_USER="${var.grafana_cloud_prometheus_user}"
 export GRAFANA_CLOUD_PROMETHEUS_ENDPOINT="${var.grafana_cloud_prometheus_endpoint}"
@@ -196,9 +198,8 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  region = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
-  # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
-  name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
+  region = var.region
+  name  = "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.protect_resources ? var.instance_count : 0
   lifecycle {
     prevent_destroy = true
@@ -206,8 +207,7 @@ resource "google_compute_address" "ipv4_address" {
 }
 
 resource "google_compute_address" "ipv4_address_unprotected" {
-  # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
-  name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
+  name  = "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.protect_resources ? 0 : var.instance_count
 }
 
@@ -216,38 +216,36 @@ output "public_ip_address" {
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
-  # keep the same disk names if we are production because the libp2p ids are in the auto connect serve codebase
-  name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
+  name     = "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
-  size     = count.index == 4 ? 1000 : var.volume_size_gb
-  snapshot = count.index == 4 ? "bacalhau-disk-4-migration" : var.restore_from_backup
+  zone     = var.zone
+  size     = var.volume_size_gb
+  snapshot = var.restore_from_backup
   lifecycle {
     prevent_destroy = true
   }
 }
 
 resource "google_compute_disk" "bacalhau_disk_unprotected" {
-  # keep the same disk names if we are production because the libp2p ids are in the auto connect serve codebase
-  name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
+  name     = "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? 0 : var.instance_count
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
-  size     = count.index == 4 ? 1000 : var.volume_size_gb
+  zone     = var.zone
+  size     = var.volume_size_gb
   snapshot = var.restore_from_backup
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
   name  = google_compute_resource_policy.bacalhau_disk_backups[count.index].name
   disk  = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].name : google_compute_disk.bacalhau_disk_unprotected[count.index].name
-  zone  = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
+  zone  = var.zone
   count = var.instance_count
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
   name   = "bacalhau-disk-backups-${terraform.workspace}-${count.index}"
-  region = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
+  region = var.region
   count  = var.instance_count
   snapshot_schedule_policy {
     schedule {
@@ -274,10 +272,10 @@ resource "google_compute_attached_disk" "default" {
   disk     = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].self_link : google_compute_disk.bacalhau_disk_unprotected[count.index].self_link
   instance = google_compute_instance.bacalhau_vm[count.index].self_link
   count    = var.instance_count
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
+  zone     = var.zone
 }
 
-resource "google_compute_firewall" "bacalhau_firewall" {
+resource "google_compute_firewall" "bacalhau_ingress_firewall" {
   name    = "bacalhau-ingress-firewall-${terraform.workspace}"
   network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
 
@@ -298,7 +296,40 @@ resource "google_compute_firewall" "bacalhau_firewall" {
     ]
   }
 
+  allow {
+    protocol = "udp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
   source_ranges = var.ingress_cidrs
+}
+
+resource "google_compute_firewall" "bacalhau_egress_firewall" {
+  name    = "bacalhau-egress-firewall-${terraform.workspace}"
+  network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
+
+  direction = "EGRESS"
+
+  allow {
+    protocol = "tcp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
+  allow {
+    protocol = "udp"
+    ports = [
+      "4001",  // ipfs swarm
+      "1235",  // bacalhau swarm
+    ]
+  }
+
+  source_ranges = var.egress_cidrs
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
@@ -338,21 +369,4 @@ resource "google_compute_subnetwork" "bacalhau_subnetwork_manual" {
   region        = var.region
   network       = google_compute_network.bacalhau_network_manual[0].id
   count         = var.auto_subnets ? 0 : 1
-}
-
-
-# Bucket to store data for bacalhau-examples
-resource "google_storage_bucket" "examples_bucket" {
-  count                       = terraform.workspace == "production" ? 1 : 0
-  name                        = "bacalhau-examples"
-  storage_class               = "STANDARD"
-  location                    = "US"
-  uniform_bucket_level_access = true
-}
-
-resource "google_storage_bucket_iam_member" "public_view" {
-  count  = terraform.workspace == "production" ? 1 : 0
-  bucket = google_storage_bucket.examples_bucket[count.index].name
-  role   = "roles/storage.legacyObjectReader"
-  member = "allUsers"
 }

@@ -1,13 +1,12 @@
-bacalhau_version            = "v1.1.3-rc1"
-# Uncomment following line to deploy a branch to staging instead of 
-# a specific version
-# bacalhau_branch             = "main"
+bacalhau_version            = "v1.1.4-rc2"
+bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
-bacalhau_node_id_0          = "QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC"
-bacalhau_node_id_1          = "QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk"
-bacalhau_node_id_2          = "QmVXwmdZUHsa88UHRKwQvvapguAXgHxd2uvVEpHrhjchAH"
+bacalhau_node_id_0          = "QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv"
+bacalhau_node_id_1          = "QmVHCeiLzhFJPCyCj5S1RTAk1vBEvxd8r5A6E4HyJGQtbJ"
+bacalhau_node_id_2          = "QmRr9qPTe4mU7aS9faKnWgvn1NtXt36FT8YUULRPCn2f3K"
+bacalhau_environment        = "staging"
 ipfs_version                = "v0.12.2"
-gcp_project                 = "bacalhau-staging"
+gcp_project                 = "bacalhau-stage"
 grafana_cloud_prometheus_user      = "1008771"
 grafana_cloud_prometheus_endpoint  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 loki_version                = "2.7.1"
@@ -24,10 +23,11 @@ machine_type                = "e2-standard-4"
 protect_resources           = true
 auto_subnets                = true
 ingress_cidrs               = ["0.0.0.0/0"]
+egress_cidrs                = ["0.0.0.0/0"]
 ssh_access_cidrs            = ["0.0.0.0/0"]
 num_gpu_machines            = 1
 internal_ip_addresses       = ["10.150.0.5", "10.150.0.6", "10.150.0.7", "10.150.0.8"]
-public_ip_addresses         = ["34.85.197.247", "35.245.163.45", "35.199.63.137", "35.188.227.44", ]
+public_ip_addresses         = ["34.85.228.65", "34.86.73.105", "34.150.138.100", "35.245.247.85", ]
 log_level                   = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"

@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -91,13 +93,13 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 	return j, nil
 }
 
-func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
+func getIPFSDownloadSettings() (*downloader.DownloaderSettings, error) {
 	dir, err := os.MkdirTemp(os.TempDir(), "")
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.DownloaderSettings{
+	return &downloader.DownloaderSettings{
 		Timeout:   50 * time.Second,
 		OutputDir: dir,
 	}, nil
@@ -130,6 +132,18 @@ func getClient() *client.APIClient {
 		panic(err)
 	}
 	return client.NewAPIClient(hostStr, uint16(apiport))
+}
+
+func getClientV2() *clientv2.Client {
+	hostStr := os.Getenv("BACALHAU_HOST")
+	portStr := os.Getenv("BACALHAU_PORT")
+	apiport, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return clientv2.New(clientv2.Options{
+		Address: fmt.Sprintf("http://%s:%d", hostStr, uint16(apiport)),
+	})
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -35,12 +35,14 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	results, err := client.GetResults(ctx, submittedJob.Metadata.ID)
+	results, err := getClientV2().Jobs().Results(&apimodels.ListJobResultsRequest{
+		JobID: submittedJob.Metadata.ID,
+	})
 	if err != nil {
 		return err
 	}
 
-	if len(results) == 0 {
+	if len(results.Results) == 0 {
 		return fmt.Errorf("no results found")
 	}
 
@@ -56,16 +58,16 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm)
 	if err != nil {
 		return err
 	}
 
-	err = downloader.DownloadResults(ctx, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadResults(ctx, results.Results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadFilenameStdout))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, downloader.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}

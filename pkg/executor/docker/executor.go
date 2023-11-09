@@ -390,7 +390,6 @@ func makeContainerMounts(
 		srcd := filepath.Join(resultsDir, output.Name)
 		if err := os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
-
 		}
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)

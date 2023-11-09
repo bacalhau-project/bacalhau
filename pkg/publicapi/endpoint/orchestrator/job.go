@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slices"
@@ -224,17 +225,13 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 		return err
 	}
 
-	executions, err := e.store.GetExecutions(ctx, jobID)
+	resp, err := e.orchestrator.GetResults(ctx, &orchestrator.GetResultsRequest{
+		JobID: jobID,
+	})
 	if err != nil {
 		return err
 	}
-	results := make([]*models.SpecConfig, 0)
-	for _, execution := range executions {
-		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
-			results = append(results, execution.PublishedResult)
-		}
-	}
-	return c.JSON(http.StatusOK, &apimodels.ListJobResultsResponse{
-		Results: results,
+	return publicapi.UnescapedJSON(c, http.StatusOK, &apimodels.ListJobResultsResponse{
+		Results: resp.Results,
 	})
 }

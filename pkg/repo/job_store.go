@@ -26,7 +26,7 @@ func (fsr *FsRepo) InitJobStore(ctx context.Context, prefix string) (jobstore.St
 		return nil, fmt.Errorf("repo is uninitialized, cannot create JobStore")
 	}
 	// load the compute nodes execution store config
-	var storeCfg types.StorageConfig
+	var storeCfg types.JobStoreConfig
 	if err := config.ForKey(types.NodeRequesterJobStore, &storeCfg); err != nil {
 		return nil, err
 	}
