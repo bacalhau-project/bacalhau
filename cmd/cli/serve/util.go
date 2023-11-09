@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"net/http"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
@@ -165,6 +166,27 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	}
 
 	return client, nil
+}
+
+func StartWebUIServer() {
+    // Set up your routes
+    http.Handle("/", http.FileServer(http.Dir("./dashboard")))
+
+    // Define the server
+    server := &http.Server{
+        Addr: ":8080",
+    }
+
+    // Start the server
+    go func() {
+        if err := server.ListenAndServe(); err != nil {
+            if err == http.ErrServerClosed {
+                fmt.Errorf("Server closed under request")
+            } else {
+                fmt.Errorf("Server closed unexpected: %v", err)
+            }
+        }
+    }()    
 }
 
 func getNodeLabels(autoLabel bool) map[string]string {
