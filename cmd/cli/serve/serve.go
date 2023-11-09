@@ -241,6 +241,7 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
+		WebUI:			   	   startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
@@ -254,6 +255,12 @@ func serve(cmd *cobra.Command) error {
 		cert, key := config.GetRequesterCertificateSettings()
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
+	}
+
+	if startWebUI {
+        // Logic to start the web UI goes here.
+        // For example, you could call a function that starts an HTTP server to serve the dashboard.
+        go StartWebUIServer()
 	}
 
 	// Create node
