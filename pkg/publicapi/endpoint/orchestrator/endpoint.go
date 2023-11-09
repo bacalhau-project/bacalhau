@@ -6,6 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/labstack/echo/v4"
+	echo_middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type EndpointParams struct {
@@ -33,6 +34,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	// JSON group
 	g := e.router.Group("/api/v1/orchestrator")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.Use(echo_middleware.CORS())
 	g.PUT("/jobs", e.putJob)
 	g.POST("/jobs", e.putJob)
 	g.GET("/jobs", e.listJobs)
