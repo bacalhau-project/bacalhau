@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"time"
+	"net/http"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
