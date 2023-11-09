@@ -69,7 +69,7 @@ const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
 // TODO: wait for support for wasm64 in wazero
 
 // Start initiates an execution based on the provided RunCommandRequest.
-func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) (err error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
 	defer span.End()
 
@@ -93,8 +93,8 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	if request.Resources.Memory > 0 {
 		requestedPages := request.Resources.Memory/WASM_PAGE_SIZE + math.Min(request.Resources.Memory%WASM_PAGE_SIZE, 1)
 		if requestedPages > WASM_MAX_PAGES_LIMIT {
-			err := fmt.Errorf("requested memory exceeds maximum limit: %d > %d", requestedPages, WASM_MAX_PAGES_LIMIT)
-			log.Err(err).Msg("execution aborted")
+			err = fmt.Errorf("requested memory exceeds the wasm limit - %d > 4GB", request.Resources.Memory)
+			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WASM_MAX_PAGES_LIMIT)
 			return err
 		}
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
