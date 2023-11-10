@@ -257,9 +257,8 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSKeyFile = key
 	}
 
+	// Start up Dashboard
 	if startWebUI {
-        // Logic to start the web UI goes here.
-        // For example, you could call a function that starts an HTTP server to serve the dashboard.
         go StartWebUIServer()
 	}
 
