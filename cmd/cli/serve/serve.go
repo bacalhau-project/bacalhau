@@ -241,7 +241,7 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
-		WebUI:			   	   startWebUI,
+		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
@@ -259,7 +259,7 @@ func serve(cmd *cobra.Command) error {
 
 	// Start up Dashboard
 	if startWebUI {
-        go StartWebUIServer()
+		go StartWebUIServer()
 	}
 
 	// Create node
