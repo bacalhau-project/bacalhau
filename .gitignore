@@ -56,3 +56,5 @@ coverage.out
 docker/.images
 docker/.pulled
 clients/pyproject.toml
+.next
+.node_modules
