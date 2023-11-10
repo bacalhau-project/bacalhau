@@ -24,11 +24,6 @@ const truncateInput = (text: string[], length: number) => {
   return text[0].substring(0, length) + "[cont]";
 };
 
-const truncateInput = (text: string[], length: number) => {
-  if (text[0].length <= length) return text;
-  return text[0].substring(0, length) + "[cont]";
-};
-
 const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   const {
     Type: engineType,
