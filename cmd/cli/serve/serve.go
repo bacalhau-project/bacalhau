@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -259,7 +260,13 @@ func serve(cmd *cobra.Command) error {
 
 	// Start up Dashboard
 	if startWebUI {
-		go StartWebUIServer()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		err := StartWebUIServer(ctx)
+		if err != nil {
+			return fmt.Errorf("error starting up dashboard: %w", err)
+		}
 	}
 
 	// Create node
