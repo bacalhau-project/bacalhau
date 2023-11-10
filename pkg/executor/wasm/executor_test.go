@@ -7,24 +7,33 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func TestFailingRequestedMemGreaterThan4GB(t *testing.T) {
+type ExecutorTestSuite struct {
+	suite.Suite
+}
+
+func TestExecutorTestSuite(t *testing.T) {
+	suite.Run(t, new(ExecutorTestSuite))
+}
+
+func (s *ExecutorTestSuite) TestFailingRequestedMemGreaterThan4GB() {
 	e, err := NewExecutor()
 
-	assert.Nil(t, err)
+	s.Require().NoError(err)
 
 	resourcesConfig, err := models.NewResourcesConfigBuilder().
 		Memory("5GB").
 		Build()
 
-	assert.Nil(t, err)
+	s.Require().NoError(err)
 
 	resources, err := resourcesConfig.ToResources()
-	assert.Nil(t, err)
+	s.Require().NoError(err)
 
 	r := &executor.RunCommandRequest{
 		JobID:       "1",
@@ -38,7 +47,7 @@ func TestFailingRequestedMemGreaterThan4GB(t *testing.T) {
 
 	err = e.Start(context.Background(), r)
 
-	assert.NotNil(t, err)
+	s.Require().Error(err)
 
-	assert.Contains(t, err.Error(), "requested memory exceeds the wasm limit")
+	assert.Contains(s.T(), err.Error(), "requested memory exceeds the wasm limit")
 }
