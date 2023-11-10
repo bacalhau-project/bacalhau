@@ -1,0 +1,45 @@
+@import 'variables';
+@import 'fonts';
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    // padding-left: 50px;
+}
+
+.left, .right {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    width: auto;
+    height: 55px;
+}
+
+.pageTitle {
+    margin-left: 20px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.searchBar input {
+    margin-left: 20px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid $border-color;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+
+    img {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+}
