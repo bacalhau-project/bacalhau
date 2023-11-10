@@ -62,7 +62,6 @@ type NodeConfig struct {
 	WebUI						bool
 
 
-
 	FsRepo *repo.FsRepo
 }
 
