@@ -135,19 +135,17 @@ func getClientHostAndPort() (string, uint16) {
 	if err != nil {
 		panic(err)
 	}
+	log.Debug().Msgf("Connecting to %s:%d", host, port)
 	return host, port
 }
 
 func getClient() *client.APIClient {
 	host, port := getClientHostAndPort()
-	log.Info().Msgf("Connecting to %s:%d", host, port)
 	return client.NewAPIClient(host, port)
 }
 
 func getClientV2() *clientv2.Client {
 	host, port := getClientHostAndPort()
-	log.Info().Msgf("Connecting to %s:%d", host, port)
-
 	return clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://%s:%d", host, port),
 	})
