@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-	"net/http"
+	"os/exec"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
@@ -168,25 +168,25 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
-func StartWebUIServer() {
-    // Set up your routes
-    http.Handle("/", http.FileServer(http.Dir("./dashboard")))
+func StartWebUIServer() (error) {
+     // Define the command to start the React server
+	 cmd := exec.Command("npm", "run", "start")
 
-    // Define the server
-    server := &http.Server{
-        Addr: ":8080",
-    }
-
-    // Start the server
-    go func() {
-        if err := server.ListenAndServe(); err != nil {
-            if err == http.ErrServerClosed {
-                fmt.Errorf("Server closed under request")
-            } else {
-                fmt.Errorf("Server closed unexpected: %v", err)
-            }
-        }
-    }()    
+	 // Set the working directory to the dashboard directory
+	 cmd.Dir = "./dashboard"
+ 
+	 // Start the command asynchronously
+	 if err := cmd.Start(); err != nil {
+		 return fmt.Errorf("failed to start the server: %w", err)
+	 }
+ 
+	 // Wait for the command to finish
+	 err := cmd.Wait()
+	 if err != nil {
+		 return fmt.Errorf("server stopped unexpectedly: %w", err)
+	 }
+ 
+	 return nil
 }
 
 func getNodeLabels(autoLabel bool) map[string]string {

@@ -59,6 +59,8 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval   routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector          NodeDependencyInjector
 	AllowListedLocalPaths       []string
+	WebUI						bool
+
 
 	FsRepo *repo.FsRepo
 }
