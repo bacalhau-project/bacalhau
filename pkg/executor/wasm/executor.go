@@ -81,11 +81,6 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		}
 	}
 
-	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
-	if err != nil {
-		return fmt.Errorf("decoding wasm arguments: %w", err)
-	}
-
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
@@ -98,6 +93,11 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 			return err
 		}
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
+	}
+
+	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
+	if err != nil {
+		return fmt.Errorf("decoding wasm arguments: %w", err)
 	}
 
 	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)
