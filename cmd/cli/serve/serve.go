@@ -100,7 +100,7 @@ func NewCmd() *cobra.Command {
 		"list-local":       configflags.AllowListLocalPathsFlags,
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
-		"web-ui":			configflags.WebUIFlags,
+		"web-ui":           configflags.WebUIFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -175,9 +175,9 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	startWebUI, err := config.Get[bool](types.NodeWebUI)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	libp2pCfg, err := config.GetLibp2pConfig()
 	if err != nil {
@@ -241,7 +241,7 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
-		WebUI:			   	   startWebUI,
+		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
@@ -259,7 +259,7 @@ func serve(cmd *cobra.Command) error {
 
 	// Start up Dashboard
 	if startWebUI {
-        go StartWebUIServer()
+		go StartWebUIServer()
 	}
 
 	// Create node
