@@ -259,9 +259,6 @@ func serve(cmd *cobra.Command) error {
 
 	// Start up Dashboard
 	if startWebUI {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		err := StartWebUIServer(ctx)
 		if err != nil {
 			return fmt.Errorf("error starting up dashboard: %w", err)
