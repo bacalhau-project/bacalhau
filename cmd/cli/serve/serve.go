@@ -241,7 +241,7 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
-		WebUI:			   	   startWebUI,
+		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
