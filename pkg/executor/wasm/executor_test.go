@@ -45,7 +45,7 @@ func TestFailingRequestedMemGreaterThan4GB(t *testing.T) {
 	assert.Nil(t, err)
 
 	resourcesConfig, err := models.NewResourcesConfigBuilder().
-		Memory("4GB").
+		Memory("5GB").
 		Build()
 
 	assert.Nil(t, err)
@@ -59,7 +59,7 @@ func TestFailingRequestedMemGreaterThan4GB(t *testing.T) {
 		Resources:   resources,
 		EngineParams: &models.SpecConfig{
 			Type:   models.EngineWasm,
-			Params: ,
+			Params: map[string]any{},
 		},
 	}
 
