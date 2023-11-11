@@ -66,8 +66,6 @@ const WASM_ARCH = 32
 const WASM_PAGE_SIZE = 1 << (WASM_ARCH / 2)
 const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
 
-// TODO: wait for support for wasm64 in wazero
-
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) (err error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
