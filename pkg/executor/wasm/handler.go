@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
-	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
@@ -24,7 +21,7 @@ import (
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -83,33 +80,20 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
-	configuredProtocol := strings.ToLower(os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL"))
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-
-	protocol := opentelemetry.GRPC
-	if configuredProtocol != "grpc" {
-		protocol = opentelemetry.HTTP
-	}
-
-	allowInsecure := false
-	if u, err := url.Parse(endpoint); err == nil {
-		host := u.Hostname()
-		endpoint = host + ":" + u.Port()
-		allowInsecure = host == "localhost" || host == "127.0.0.1"
-	}
-
-	conf := &opentelemetry.OTelConfig{
+	var adapter *opentelemetry.OTelAdapter
+	conf := opentelemetry.OTelConfig{
 		ServiceName:        "bacalhau",
 		EmitTracesInterval: time.Second * 1,
-		TraceBatchMax:      100,
-		Endpoint:           endpoint,
-		Protocol:           protocol,
-		AllowInsecure:      allowInsecure, // for localhost in dev via http
+		TraceBatchMax:      10,
+		// the remaining fields are completed from a system-configured client
+		// by using the `UseCustomClient` method on the adapter below
 	}
-	var adapter *opentelemetry.OTelAdapter
-	traceClient := system.GetTracingClient()
+	traceClient, err := telemetry.GetTraceClient()
+	if err != nil {
+		h.logger.Err(err).Msg("Failed to create OTLP client")
+	}
 	if traceClient != nil {
-		adapter = opentelemetry.NewOTelAdapter(conf)
+		adapter = opentelemetry.NewOTelAdapter(&conf)
 		adapter.UseCustomClient(traceClient)
 		adapter.Start(ctx)
 		defer adapter.StopWithContext(ctx, true)

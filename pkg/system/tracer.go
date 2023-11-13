@@ -24,14 +24,6 @@ func GetTracer() oteltrace.Tracer {
 	return otel.GetTracerProvider().Tracer("bacalhau")
 }
 
-func SetTracingClient(client otlptrace.Client) {
-	tracingClient = client
-}
-
-func GetTracingClient() otlptrace.Client {
-	return tracingClient
-}
-
 // ----------------------------------------
 // Span helpers
 // ----------------------------------------
