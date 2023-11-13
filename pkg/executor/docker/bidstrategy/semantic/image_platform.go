@@ -36,7 +36,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	if request.Job.Task().Engine.Type != models.EngineDocker {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, "examine images for non-Docker jobs"), nil
 	}
 
 	supported, serr := s.client.SupportedPlatforms(ctx)
@@ -92,16 +92,25 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		}, nil
 	}
 
+	imageHasPlatforms := make([]string, 0, len(manifest.Platforms))
+	for _, imageHas := range manifest.Platforms {
+		imageHasPlatforms = append(imageHasPlatforms, imageHas.OS+"/"+imageHas.Architecture)
+	}
+
+	canRunPlatforms := make([]string, 0, len(supported))
+	for _, canRun := range supported {
+		canRunPlatforms = append(canRunPlatforms, canRun.OS+"/"+canRun.Architecture)
+	}
+
+	shouldBid := false
 	for _, canRun := range supported {
 		for _, imageHas := range manifest.Platforms {
 			if canRun.OS == imageHas.OS && canRun.Architecture == imageHas.Architecture {
-				return bidstrategy.NewShouldBidResponse(), nil
+				shouldBid = true
 			}
 		}
 	}
 
-	return bidstrategy.BidStrategyResponse{
-		ShouldBid: false,
-		Reason:    "Node does not support any of the published image platforms",
-	}, nil
+	const platformReason = "support the available image platforms %v (supports %v)"
+	return bidstrategy.NewBidResponse(shouldBid, platformReason, imageHasPlatforms, canRunPlatforms), nil
 }

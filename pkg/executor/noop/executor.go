@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -188,7 +187,7 @@ func (e *NoopExecutor) ShouldBid(ctx context.Context, request bidstrategy.BidStr
 		}
 		return strategy.ShouldBid(ctx, request)
 	}
-	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
+	return bidstrategy.NewBidResponse(true, ""), nil
 }
 
 func (e *NoopExecutor) ShouldBidBasedOnUsage(
@@ -205,7 +204,7 @@ func (e *NoopExecutor) ShouldBidBasedOnUsage(
 		return strategy.ShouldBidBasedOnUsage(ctx, request, usage)
 	}
 	// TODO(forrest): [correctness] this returns the correct response, but could be made specific to this method.
-	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
+	return bidstrategy.NewBidResponse(true, ""), nil
 }
 
 func (e *NoopExecutor) Run(
