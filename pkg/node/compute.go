@@ -161,11 +161,6 @@ func NewComputeNode(
 				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
 				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
 			}),
-			// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-			//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
-			semantic.NewDistanceDelayStrategy(semantic.DistanceDelayStrategyParams{
-				NetworkSize: 1,
-			}),
 		)
 	}
 
