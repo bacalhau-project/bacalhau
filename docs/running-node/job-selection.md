@@ -5,22 +5,19 @@ sidebar_position: 140
 
 # Job selection policy
 
-When running a node, you can choose which jobs you want to run. This is done by passing a combination of `--job-selection` type flags to `bacalhau serve`.
+When running a node, you can choose which jobs you want to run by using
+configuration options, environment variables or flags to specify a job selection
+policy.
 
-```
-  --job-selection-data-locality string   Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")
-  --job-selection-probe-exec string      Use the result of a exec an external program to decide if we should take on the job.
-  --job-selection-probe-http string      Use the result of a HTTP POST to decide if we should take on the job.
-  --job-selection-reject-stateless       Reject jobs that don't specify any data.
-```
+| Config property | `serve` flag | Default value | Meaning |
+|---|---|---|---|
+| Node.Compute.JobSelection.Locality | `--job-selection-data-locality` | Anywhere | Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). |
+| Node.Compute.JobSelection.ProbeExec | `--job-selection-probe-exec` | unused | Use the result of an external program to decide if we should take on the job. |
+| Node.Compute.JobSelection.ProbeHttp | `--job-selection-probe-http` | unused | Use the result of a HTTP POST to decide if we should take on the job. |
+| Node.Compute.JobSelection.RejectStatelessJobs | `--job-selection-reject-stateless` | False | Reject jobs that don't specify any [input data](../data-ingestion/index.md). |
+| Node.Compute.JobSelection.AcceptNetworkedJobs | `--job-selection-accept-networked` | False | Accept jobs that require [network connections](../next-steps/networking.md). |
 
-These are the flags that control how the Bacalhau node selects jobs to run.
-
-The `--job-selection-data-locality` flag (which can be "local" or "anywhere") controls whether the data used for a job is actually live on the IPFS server you are connected to.
-
-The `--job-selection-reject-stateless` controls whether you want to accept jobs that don't use any data volumes.
-
-## Job selection hooks
+## Job selection probes
 
 If you want more control over making the decision to take on jobs, you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags.
 
@@ -48,4 +45,46 @@ These are external programs that are passed the following data structure so that
 
 The `exec` probe is a script to run that will be given the job data on `stdin`, and must exit with status code 0 if the job should be run.
 
-The `http` probe is a URL to POST the job data, and must return a 200 status code if the job should be run.
+The `http` probe is a URL to POST the job data to. The job will be rejected if
+the HTTP request returns a non-positive status code (e.g. >= 400).
+
+If the HTTP response is a JSON blob, it should match the [following
+schema](https://github.com/bacalhau-project/bacalhau/blob/885d53e93b01fb343294d7ddbdbffe89918db800/pkg/bidstrategy/type.go#L18-L22)
+and will be used to respond to the bid directly:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "shouldBid": {
+      "description": "If the job should be accepted",
+      "type": "boolean"
+    },
+    "shouldWait": {
+      "description": "If the node should wait for an async response that will come later. `shouldBid` will be ignored",
+      "type": "boolean",
+      "default": false,
+    },
+    "reason": {
+      "description": "Human-readable string explaining why the job should be accepted or rejected, or why the wait is required",
+      "type": "string"
+    }
+  },
+  "required": [
+    "shouldBid",
+    "reason"
+  ]
+}
+```
+
+For example, the following response will reject the job:
+
+```json
+{
+  "shouldBid": false,
+  "reason": "The job did not pass this specific validation: ...",
+}
+```
+
+If the HTTP response is not a JSON blob, the content is ignored and any non-error status code will accept the job.
