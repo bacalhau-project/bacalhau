@@ -35,7 +35,7 @@
             border: 1px solid $border-color;  // This adds a border to the cells.
         }
 
-        .name, .program {
+        .id, .name, .type, .label, .action {
             width: 200px;
 
             @include small {
@@ -51,7 +51,7 @@
             }
         }
         
-        .jobID, .status, .action, .dateCreated, .label, .jobType {
+        .placeholder {
             width: 100px;
 
             @include small {

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import styles from "../../styles/JobsDashboard.module.scss";
 import JobsTable from "../components/JobsTable";
 import Layout from "../components/Layout";
-import { Job } from "../helpers/interfaces";
+import { Job } from "../helpers/jobInterfaces";
 import { bacalhauAPI } from "./api/bacalhau";
 
 const JobsDashboard: React.FC = () => {

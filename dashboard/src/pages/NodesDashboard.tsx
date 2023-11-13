@@ -4,29 +4,26 @@ import React, { useEffect, useState } from "react";
 import styles from "../../styles/NodesDashboard.module.scss";
 import JobsTable from "../components/NodesTable";
 import Layout from "../components/Layout";
-// import { Nodes } from "../helpers/interfaces";
+import { Node } from "../helpers/nodeInterfaces";
 import { bacalhauAPI } from "./api/bacalhau";
 
 const NodesDashboard: React.FC = () => {
-  // const [data, setData] = useState<Nodes[]>([]);
+  const [data, setData] = useState<Node[]>([]);
 
-  // async function getNodesData() {
-  //   try {
-  //     const response = await bacalhauAPI.listNodes();
-  //     if (response.Nodes) {
-  //       setData(response.Nodes);
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //   }
-  // }
+  async function getNodesData() {
+    try {
+      const response = await bacalhauAPI.listNodes();
+      if (response.Nodes) {
+        setData(response.Nodes);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
-  // useEffect(() => {
-  //   getJobsData();
-  // }, []);
-
-  //TEMP
-  const data: any = ["dataa"]
+  useEffect(() => {
+    getNodesData();
+  }, []);
 
   return (
     <Layout pageTitle="Nodes Dashboard">
