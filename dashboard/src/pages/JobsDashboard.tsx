@@ -27,7 +27,7 @@ const JobsDashboard: React.FC = () => {
 
   return (
     <Layout pageTitle="Jobs Dashboard">
-      <div className={styles.jobsdashboard}>
+      <div className={styles.jobsDashboard}>
         <JobsTable data={data} />
       </div>
     </Layout>
