@@ -168,9 +168,10 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
+
 func StartWebUIServer(ctx context.Context) error {
 	// Define command to start React server
-	cmd := exec.Command("npm", "run", "build")
+	cmd := exec.CommandContext(ctx, "npm", "run", "build")
 
 	// Set working directory to the dashboard directory
 	cmd.Dir = "./dashboard"
@@ -180,25 +181,7 @@ func StartWebUIServer(ctx context.Context) error {
 		return fmt.Errorf("failed to start the server: %w", err)
 	}
 
-	// Use a channel to signal when the command finishes
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	select {
-	case <-ctx.Done():
-		if err := cmd.Process.Kill(); err != nil {
-			return fmt.Errorf("failed to kill the server process: %w", err)
-		}
-		<-done
-		return fmt.Errorf("server stopped due to context cancellation")
-	case err := <-done:
-		if err != nil {
-			return fmt.Errorf("server stopped unexpectedly: %w", err)
-		}
-		return nil
-	}
+	return cmd.Wait()
 }
 
 func getNodeLabels(autoLabel bool) map[string]string {

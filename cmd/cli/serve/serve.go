@@ -1,7 +1,6 @@
 package serve
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -242,7 +241,6 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
-		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
@@ -256,17 +254,6 @@ func serve(cmd *cobra.Command) error {
 		cert, key := config.GetRequesterCertificateSettings()
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
-	}
-
-	// Start up Dashboard
-	if startWebUI {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		err := StartWebUIServer(ctx)
-		if err != nil {
-			return fmt.Errorf("error starting up dashboard: %w", err)
-		}
 	}
 
 	// Create node
@@ -284,6 +271,14 @@ func serve(cmd *cobra.Command) error {
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		err := StartWebUIServer(ctx)
+		if err != nil {
+			return fmt.Errorf("error starting up dashboard: %w", err)
+		}
 	}
 
 	// only in station logging output
