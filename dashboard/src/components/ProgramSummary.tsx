@@ -2,7 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import styles from "../../styles/ProgramSummary.module.scss";
-import { Tasks } from "../helpers/interfaces";
+import { Tasks } from "../helpers/jobInterfaces";
 import cogwheel from "../assets/images/cogwheel-dark.png";
 import dockerImage from "../assets/images/docker.png";
 
@@ -20,6 +20,7 @@ const getImageSource = (type: string) => {
 };
 
 const truncateInput = (text: string[], length: number) => {
+  if (text.length === 0) return "[No input provided]";
   if (text[0].length <= length) return text;
   return text[0].substring(0, length) + "[cont]";
 };
