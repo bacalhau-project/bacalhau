@@ -3,72 +3,63 @@ import React from "react";
 import styles from "../../styles/NodesTable.module.scss";
 import Label from "./Label";
 import ActionButton from "./ActionButton";
-import {
-  capitalizeFirstLetter,
-  formatTimestamp,
-} from "../helpers/helperFunctions";
-import { Job, ParsedJobData } from "../helpers/interfaces";
+import { Node, ParsedNodeData } from "../helpers/nodeInterfaces";
 
 interface TableProps {
-  data: Job[];
+  data: Node[];
 }
 
 const labelColorMap: { [key: string]: string } = {
-  running: "green",
+  healthy: "green",
   warning: "orange",
-  error: "red",
-  paused: "blue",
-  stopped: "grey",
-  complete: "green",
-  progress: "orange",
-  failed: "red",
+  critical: "red",
+  offline: "blue",
+  unknown: "grey"
 };
 
-// function parseData(nodes: Node[]): ParsedNodeData[] {
-//   return nodes.map((node) => {
-
-//   });
-// }
+function parseData(nodes: Node[]): ParsedNodeData[] {
+  return nodes.map((node) => {
+    return {
+      id: node.PeerInfo.ID,
+      name: node.Labels.name ? node.Labels.name : node.PeerInfo.ID,
+      type: node.NodeType,
+      labels: node.Labels.env, // TODO
+      action: "Action"
+    };
+  });
+}
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
-  // const parsedData = parseData(data);
+  const parsedData = parseData(data);
   return (
     <div className={styles.tableContainer}>
       <table>
         <thead>
           <tr>
-            <th className={styles.jobID}>Job ID</th>
+            <th>Node ID</th>
             <th>Name</th>
-            <th className={styles.dateCreated}>Created</th>
-            <th>Program</th>
-            <th>Job Type</th>
-            <th>Label</th>
-            <th>Status</th>
+            <th>Type</th>
+            <th>Labels</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {/* {parsedData.map((jobData, index) => (
+          {parsedData.map((nodeData, index) => (
             <tr key={index}>
-              <td className={styles.id}>{jobData.id}</td>
-              <td className={styles.name}>{jobData.name}</td>
-              <td className={styles.dateCreated}>{jobData.createdAt}</td>
-              <td className={styles.program}>
-                <ProgramSummary data={jobData.tasks} />
-              </td>
-              <td className={styles.jobType}>{jobData.jobType}</td>
-              <td className={styles.label}>{jobData.label}</td>
-              <td className={styles.status}>
+              <td className={styles.id}>{nodeData.id}</td>
+              <td className={styles.name}>{nodeData.name}</td>
+              <td className={styles.type}>{nodeData.type}</td>
+              <td className={styles.label}>
                 <Label
-                  text={jobData.status}
-                  color={labelColorMap[jobData.status.toLowerCase()]}
+                  text={nodeData.labels}
+                  color="green"
                 />
               </td>
               <td className={styles.action}>
                 <ActionButton text="View" />
               </td>
             </tr>
-          ))} */}
+          ))}
         </tbody>
       </table>
     </div>

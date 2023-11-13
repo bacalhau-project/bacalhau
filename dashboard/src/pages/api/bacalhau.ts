@@ -1,9 +1,10 @@
 import axios from "axios";
-import { JobsResponse } from "../../helpers/interfaces";
+import { JobsResponse } from "../../helpers/jobInterfaces";
+import { NodesResponse } from "../../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API
 const apiConfig = {
-  baseURL: "http://0.0.0.0:54565/api/v1", // TODO: replace this with flexible port
+  baseURL: "http://0.0.0.0:52662/api/v1", // TODO: replace this with flexible port
   headers: {
     "Content-Type": "application/json",
   },
@@ -33,7 +34,7 @@ class BacalhauAPI {
     await apiClient.delete(`/orchestrator/jobs/${jobId}`);
   }
 
-  async listNodes(labels?: string[]): Promise<NodeList> {
+  async listNodes(labels?: string[]): Promise<NodesResponse> {
     const params: any = {};
     if (labels) {
       params.labels = `env in (${labels.join(",")})`;

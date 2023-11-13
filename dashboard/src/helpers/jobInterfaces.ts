@@ -68,38 +68,6 @@ export interface EngineParams {
   WorkingDirectory: string;
 }
 
-export interface Publisher {
-  Type: string;
-}
-
-export interface ResultPath {
-  Name: string;
-  Path: string;
-}
-
-export interface JobMetadata {
-  ID: string;
-  CreatedAt: string;
-}
-
-export interface JobSpec {
-  EngineSpec: EngineSpec;
-}
-
-export interface EngineSpec {
-  Type: string;
-  Params: Params;
-}
-
-export interface JobState {
-  State: string;
-}
-
-export interface Params {
-  Image: string;
-  Parameters: string[];
-}
-
 export interface ParsedJobData {
   id: string;
   name: string;
@@ -110,12 +78,3 @@ export interface ParsedJobData {
   status: string;
   action: string;
 }
-
-// Old API structure
-// export interface Job {
-//   Job: {
-//     Metadata: JobMetadata;
-//     Spec: JobSpec;
-//   };
-//   State: JobState;
-// }
