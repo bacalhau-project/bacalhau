@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
@@ -132,9 +133,9 @@ func NewComputeNode(
 		},
 	})
 
-	semanticBidStrat := config.BidSemanticStrategy
-	if semanticBidStrat == nil {
-		semanticBidStrat = semantic.NewChainedSemanticBidStrategy(
+	semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
+	if config.BidSemanticStrategy == nil {
+		semanticBidStrat = bidstrategy.WithSemantics(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
 			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
@@ -168,9 +169,9 @@ func NewComputeNode(
 		)
 	}
 
-	resourceBidStrat := config.BidResourceStrategy
-	if resourceBidStrat == nil {
-		resourceBidStrat = resource.NewChainedResourceBidStrategy(
+	resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
+	if config.BidResourceStrategy == nil {
+		resourceBidStrat = bidstrategy.WithResources(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
 				MaxJobRequirements: config.JobResourceLimits,
@@ -206,10 +207,11 @@ func NewComputeNode(
 		MaxJobRequirements: config.JobResourceLimits,
 	})
 
+	bidStrat := bidstrategy.NewChainedBidStrategy(semanticBidStrat, resourceBidStrat)
 	bidder := compute.NewBidder(compute.BidderParams{
 		NodeID:           host.ID().String(),
-		SemanticStrategy: semanticBidStrat,
-		ResourceStrategy: resourceBidStrat,
+		SemanticStrategy: bidStrat,
+		ResourceStrategy: bidStrat,
 		Store:            executionStore,
 		Callback:         computeCallback,
 		Executor:         bufferRunner,
