@@ -2,7 +2,6 @@ package semantic
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -32,9 +31,16 @@ func NewTimeoutStrategy(params TimeoutStrategyParams) *TimeoutStrategy {
 	}
 }
 
+const (
+	maxReason    = "accept jobs with timeout %v (the maximum allowed is %v)"
+	minReason    = "accept jobs with timeout %v (the minimum allowed is %v)"
+	bypassReason = "allow client %q to bypass timeout limits" //nolint:gosec
+)
+
 func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Task().Timeouts.ExecutionTimeout <= 0 {
-		return bidstrategy.NewShouldBidResponse(), nil
+	timeoutSeconds := request.Job.Task().Timeouts.ExecutionTimeout
+	if timeoutSeconds <= 0 {
+		return bidstrategy.NewBidResponse(true, minReason, timeoutSeconds, 0), nil
 	}
 
 	// Timeout will be multiplied by 1000000000 (time.Second) when it gets
@@ -42,33 +48,21 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 	// that it can fit into it.
 	var maxTimeout = int64(model.NoJobTimeout.Seconds())
 	if request.Job.Task().Timeouts.ExecutionTimeout > maxTimeout {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason: fmt.Sprintf("job timeout %d exceeds maximum possible value %d",
-				request.Job.Task().Timeouts.ExecutionTimeout, maxTimeout),
-		}, nil
+		return bidstrategy.NewBidResponse(false, maxReason, timeoutSeconds, maxTimeout), nil
 	}
 
 	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
 		if request.Job.Namespace == clientID {
-			return bidstrategy.NewShouldBidResponse(), nil
+			return bidstrategy.NewBidResponse(true, bypassReason, clientID), nil
 		}
 	}
 
 	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
-	if s.maxJobExecutionTimeout > 0 && request.Job.Task().Timeouts.GetExecutionTimeout() > s.maxJobExecutionTimeout {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason: fmt.Sprintf("job timeout %s exceeds maximum allowed %s",
-				request.Job.Task().Timeouts.GetExecutionTimeout(), s.maxJobExecutionTimeout),
-		}, nil
+	timeoutDuration := request.Job.Task().Timeouts.GetExecutionTimeout()
+	if timeoutDuration < s.minJobExecutionTimeout {
+		return bidstrategy.NewBidResponse(false, minReason, timeoutDuration.String(), s.minJobExecutionTimeout.String()), nil
 	}
-	if request.Job.Task().Timeouts.GetExecutionTimeout() < s.minJobExecutionTimeout {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason: fmt.Sprintf("job timeout %s below minimum allowed %s",
-				request.Job.Task().Timeouts.GetExecutionTimeout(), s.minJobExecutionTimeout),
-		}, nil
-	}
-	return bidstrategy.NewShouldBidResponse(), nil
+
+	success := s.maxJobExecutionTimeout <= 0 || (s.maxJobExecutionTimeout > 0 && timeoutDuration <= s.maxJobExecutionTimeout)
+	return bidstrategy.NewBidResponse(success, maxReason, timeoutDuration.String(), s.maxJobExecutionTimeout.String()), nil
 }
