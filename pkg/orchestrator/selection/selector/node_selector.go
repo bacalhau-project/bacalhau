@@ -33,7 +33,7 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 }
 
 func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
-	filteredNodes, err := n.rankAndFilterNodes(ctx, job)
+	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job)
 	if err != nil {
 		return nil, err
 	}
@@ -42,45 +42,46 @@ func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]
 	return nodeInfos, nil
 }
 func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
-	filteredNodes, err := n.rankAndFilterNodes(ctx, job)
+	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	if len(filteredNodes) < desiredCount {
+	if len(possibleNodes) < desiredCount {
 		// TODO: evaluate if we should run the job if some nodes where found
-		err = orchestrator.NewErrNotEnoughNodes(desiredCount, filteredNodes)
+		err = orchestrator.NewErrNotEnoughNodes(desiredCount, append(possibleNodes, rejectedNodes...))
 		return nil, err
 	}
 
-	sort.Slice(filteredNodes, func(i, j int) bool {
-		return filteredNodes[i].Rank > filteredNodes[j].Rank
+	sort.Slice(possibleNodes, func(i, j int) bool {
+		return possibleNodes[i].Rank > possibleNodes[j].Rank
 	})
 
-	selectedNodes := filteredNodes[:math.Min(len(filteredNodes), desiredCount)]
+	selectedNodes := possibleNodes[:math.Min(len(possibleNodes), desiredCount)]
 	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
 	return selectedInfos, nil
 }
 
-func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) ([]orchestrator.NodeRank, error) {
+func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (selected, rejected []orchestrator.NodeRank, err error) {
 	nodeIDs, err := n.nodeDiscoverer.FindNodes(ctx, *job)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// filter nodes with rank bellow 0
-	var filteredNodes []orchestrator.NodeRank
 	for _, nodeRank := range rankedNodes {
 		if nodeRank.MeetsRequirement() {
-			filteredNodes = append(filteredNodes, nodeRank)
+			selected = append(selected, nodeRank)
+		} else {
+			rejected = append(rejected, nodeRank)
 		}
 	}
-	log.Ctx(ctx).Debug().Int("Matched", len(filteredNodes)).Msg("Matched nodes for job")
-	return filteredNodes, nil
+	log.Ctx(ctx).Debug().Int("Matched", len(selected)).Int("Rejected", len(rejected)).Msg("Matched nodes for job")
+	return selected, rejected, nil
 }
 
 // compile-time interface assertions
