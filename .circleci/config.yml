@@ -628,14 +628,14 @@ jobs:
       - run:
           name: Build Python Bacalhau Flyte plugin
           command: |
-            cd plugins/
+            cd integration/flyte/plugins/
             make build_all_plugins
       - persist_to_workspace:
           root: integration/airflow/dist
           paths:
             - bacalhau_airflow-*.tar.gz
             - bacalhau_airflow-*.whl
-            
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -655,16 +655,6 @@ workflows:
     - build_canary:
         name: Check canary build
         filters:
-          tags:
-            ignore: /.*/
-
-  build_swagger_spec:
-    jobs:
-    - build_swagger:
-        name: build-swagger-spec
-        filters:
-          branches:
-            ignore: main
           tags:
             ignore: /.*/
 
@@ -842,14 +832,6 @@ workflows:
         - build-generic
         - build-windows
         - build-arm
-    - build_swagger:
-        name: build-swagger-spec
-        filters: *filters_main_only
-    - build_python_packages:
-        name: build-python-packages
-        requires:
-        - build-swagger-spec
-        filters: *filters_main_only
 
   build_jsonschema: # Runs on new tags starting with 'v.'
     jobs:
@@ -866,6 +848,21 @@ workflows:
             # only run on tags that look like release tags e.g. v0.1.2 or
             # v0.1.3alpha19 (actually v0.1.3anything...)
             only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+
+  python:
+    jobs:
+    - build_swagger:
+        name: build-swagger-spec
+    - build_python_packages:
+        name: build-python-packages
+        requires:
+        - build-swagger-spec
+    - release_python:
+        name: release-python-packages
+        requires:
+        - build-swagger-spec
+        - build-python-packages
+        filters: *filters_tags_only
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
@@ -907,20 +904,6 @@ workflows:
             # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
             # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
             only: /^v([0-9]+).([0-9]+).([0-9]+)$/
-    - build_swagger:
-        name: build-swagger-spec
-        filters: *filters_tags_only
-    - build_python_packages:
-        name: build-python-packages
-        requires:
-        - build-swagger-spec
-        filters: *filters_tags_only
-    - release_python:
-        name: release-python-packages
-        requires:
-        - build-swagger-spec
-        - build-python-packages
-        filters: *filters_tags_only
 
 
   # TODO: Disabling performance until we get a runner up and running again
