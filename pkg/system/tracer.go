@@ -10,8 +10,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
+
+var tracingClient otlptrace.Client
 
 // ----------------------------------------
 // Tracer helpers
@@ -19,6 +22,14 @@ import (
 
 func GetTracer() oteltrace.Tracer {
 	return otel.GetTracerProvider().Tracer("bacalhau")
+}
+
+func SetTracingClient(client otlptrace.Client) {
+	tracingClient = client
+}
+
+func GetTracingClient() otlptrace.Client {
+	return tracingClient
 }
 
 // ----------------------------------------

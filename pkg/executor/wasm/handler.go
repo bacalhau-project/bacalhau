@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 
@@ -24,6 +25,7 @@ import (
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -106,8 +108,10 @@ func (h *executionHandler) run(ctx context.Context) {
 		AllowInsecure:      allowInsecure, // for localhost in dev via http
 	}
 	var adapter *opentelemetry.OTelAdapter
-	if endpoint != "" {
+	traceClient := system.GetTracingClient()
+	if traceClient != nil {
 		adapter = opentelemetry.NewOTelAdapter(conf)
+		adapter.UseCustomClient(traceClient)
 		adapter.Start(ctx)
 		defer adapter.StopWithContext(ctx, true)
 	}

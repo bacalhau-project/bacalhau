@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -32,6 +33,8 @@ func newTraceProvider() {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP trace client")
 		return
 	}
+
+	system.SetTracingClient(client)
 
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
