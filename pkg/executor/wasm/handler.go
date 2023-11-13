@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
-	"go.opentelemetry.io/otel"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 
