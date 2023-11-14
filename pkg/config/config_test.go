@@ -71,7 +71,7 @@ func TestConfig(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				defer Reset()
 
-				// since BACALHAU_ENVIRONMENT is set to testing we exptect the testing config
+				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
 				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
 				expected := configenv.Testing
 
@@ -106,7 +106,7 @@ func TestConfig(t *testing.T) {
 				defer Reset()
 				// First, set up an expected configuration and save it using Init.
 				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
-				// since BACALHAU_ENVIRONMENT is set to testing we exptect the testing config
+				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
 				expected := configenv.Testing
 				configPath := t.TempDir()
 

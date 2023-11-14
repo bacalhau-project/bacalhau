@@ -180,7 +180,7 @@ func Get[T any](key string) (T, error) {
 	if !ok {
 		err := ForKey(key, &val)
 		if err != nil {
-			return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T", raw)
+			return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T: %w", raw, err)
 		}
 	}
 
@@ -231,7 +231,9 @@ func unmarshalCompositeKey(key string, output interface{}) error {
 		if !ok {
 			// NB(forrest): this case should never happen as we ensure all configuration values
 			// have a corresponding key via code gen. If this does occur it represents an error we need to debug.
-			return fmt.Errorf("CRITICAL ERROR: invalid configuration detected for key: %s. Config value not found", key)
+			err := fmt.Errorf("CRITICAL ERROR: invalid configuration detected for key: %s. Config value not found", key)
+			log.Err(err).Msg("invalid configuration detected")
+			return err
 		}
 		return decoder.Decode(val)
 	}
