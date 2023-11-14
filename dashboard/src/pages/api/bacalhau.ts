@@ -3,12 +3,17 @@ import { JobsResponse } from "../../helpers/jobInterfaces";
 import { NodesResponse } from "../../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API
+const apiHost = process.env.REACT_APP_BACALHAU_API_HOST || '0.0.0.0';
+const apiPort = process.env.REACT_APP_BACALHAU_API_PORT || '51331';
+
 const apiConfig = {
-  baseURL: "http://0.0.0.0:52662/api/v1", // TODO: replace this with flexible port
+  baseURL: `http://${apiHost}:${apiPort}/api/v1`,
   headers: {
     "Content-Type": "application/json",
   },
 };
+
+// http://0.0.0.0:51331/api/v1/orchestrator/nodes
 
 const apiClient = axios.create(apiConfig);
 

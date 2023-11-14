@@ -20,7 +20,7 @@ const getImageSource = (type: string) => {
 };
 
 const truncateInput = (text: string[], length: number) => {
-  if (text.length === 0) return "[No input provided]";
+  if (text.length === 0) return "";
   if (text[0].length <= length) return text;
   return text[0].substring(0, length) + "[cont]";
 };
