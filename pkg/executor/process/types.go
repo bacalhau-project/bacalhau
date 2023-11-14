@@ -17,15 +17,12 @@ func EngineSpecFromDict(m map[string]interface{}) (*EngineSpec, error) {
 	errs := new(multierror.Error)
 
 	if name, ok := m["Name"]; !ok {
-		errs = multierror.Append(errs, errors.New("Name was not found in parameter"))
+		errs = multierror.Append(errs, errors.New("name was not found in parameter"))
 	} else {
 		e.Name = name.(string)
 	}
 
-	if args, ok := m["Arguments"]; !ok {
-		errs = multierror.Append(errs, errors.New("Arguments were not found in parameters"))
-	} else {
-
+	if args, ok := m["Arguments"]; ok {
 		for _, s := range args.([]interface{}) {
 			e.Arguments = append(e.Arguments, s.(string))
 		}
