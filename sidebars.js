@@ -256,7 +256,8 @@ module.exports = {
       items: [
         'integration/apache-airflow',
         'integration/amplify',
-        'integration/lilypad'
+        'integration/lilypad',
+        'integration/wasm-observe'
       ],
     },
     {
