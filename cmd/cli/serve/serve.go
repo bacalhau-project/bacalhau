@@ -100,6 +100,7 @@ func NewCmd() *cobra.Command {
 		"list-local":       configflags.AllowListLocalPathsFlags,
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
+		"web-ui":           configflags.WebUIFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -173,6 +174,11 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
+	startWebUI, err := config.Get[bool](types.NodeWebUI)
+	if err != nil {
+		return err
+	}
+
 	libp2pCfg, err := config.GetLibp2pConfig()
 	if err != nil {
 		return err
@@ -235,6 +241,7 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
+		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}
@@ -248,6 +255,14 @@ func serve(cmd *cobra.Command) error {
 		cert, key := config.GetRequesterCertificateSettings()
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		err := StartWebUIServer(ctx)
+		if err != nil {
+			return fmt.Errorf("error starting up dashboard: %w", err)
+		}
 	}
 
 	// Create node
@@ -265,6 +280,14 @@ func serve(cmd *cobra.Command) error {
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		err := StartWebUIServer(ctx)
+		if err != nil {
+			return fmt.Errorf("error starting up dashboard: %w", err)
+		}
 	}
 
 	// only in station logging output
