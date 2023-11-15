@@ -21,17 +21,12 @@ func NewMaxCapacityStrategy(params MaxCapacityStrategyParams) *MaxCapacityStrate
 	}
 }
 
+const resourceReason = "run jobs that require this many resources (%s requested but only %s is allowed)"
+
 func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
-	if !usage.LessThanEq(s.maxJobRequirements) {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason:    "job requirements exceed max allowed per job",
-		}, nil
-	}
-
-	return bidstrategy.NewShouldBidResponse(), nil
+	return bidstrategy.NewBidResponse(usage.LessThanEq(s.maxJobRequirements), resourceReason, usage, s.maxJobRequirements), nil
 }
 
 // compile-time interface check

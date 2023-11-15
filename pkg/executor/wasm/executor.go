@@ -18,8 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
@@ -46,7 +44,7 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 }
 
 func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
 func (*Executor) ShouldBidBasedOnUsage(
@@ -54,7 +52,7 @@ func (*Executor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
-	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
 // Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
