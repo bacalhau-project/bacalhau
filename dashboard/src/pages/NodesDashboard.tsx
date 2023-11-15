@@ -1,14 +1,15 @@
 // src/pages/NodesDashboard.tsx
-
 import React, { useEffect, useState } from "react";
 import styles from "../../styles/NodesDashboard.module.scss";
-import JobsTable from "../components/NodesTable";
+import NodesTable from "../components/NodesTable";
 import Layout from "../components/Layout";
 import { Node } from "../helpers/nodeInterfaces";
 import { bacalhauAPI } from "./api/bacalhau";
+import { useTableSettings } from "../context/TableSettingsContext";
 
 const NodesDashboard: React.FC = () => {
   const [data, setData] = useState<Node[]>([]);
+  const { settings } = useTableSettings();
 
   async function getNodesData() {
     try {
@@ -28,7 +29,7 @@ const NodesDashboard: React.FC = () => {
   return (
     <Layout pageTitle="Nodes Dashboard">
       <div className={styles.nodesDashboard}>
-        <JobsTable data={data} />
+        <NodesTable key={JSON.stringify(settings)} data={data} />
       </div>
     </Layout>
   );
