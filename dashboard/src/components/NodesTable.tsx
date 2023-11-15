@@ -9,13 +9,13 @@ interface TableProps {
   data: Node[];
 }
 
-const labelColorMap: { [key: string]: string } = {
-  healthy: "green",
-  warning: "orange",
-  critical: "red",
-  offline: "blue",
-  unknown: "grey"
-};
+// const labelColorMap: { [key: string]: string } = {
+//   healthy: "green",
+//   warning: "orange",
+//   critical: "red",
+//   offline: "blue",
+//   unknown: "grey"
+// };
 
 function parseData(nodes: Node[]): ParsedNodeData[] {
   return nodes.map((node) => {
@@ -24,7 +24,7 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
       name: node.Labels.name ? node.Labels.name : node.PeerInfo.ID,
       type: node.NodeType,
       labels: node.Labels.env, // TODO
-      action: "Action"
+      action: "Action",
     };
   });
 }
@@ -50,10 +50,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               <td className={styles.name}>{nodeData.name}</td>
               <td className={styles.type}>{nodeData.type}</td>
               <td className={styles.label}>
-                <Label
-                  text={nodeData.labels}
-                  color="green"
-                />
+                <Label text={nodeData.labels} color="green" />
               </td>
               <td className={styles.action}>
                 <ActionButton text="View" />

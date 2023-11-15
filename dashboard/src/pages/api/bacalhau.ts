@@ -1,10 +1,10 @@
 import axios from "axios";
-import { JobsResponse } from "../../helpers/jobInterfaces";
-import { NodesResponse } from "../../helpers/nodeInterfaces";
+import { Job, JobListRequest, JobsResponse } from "../../helpers/jobInterfaces";
+import { NodeListRequest, NodesResponse } from "../../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API
-const apiHost = process.env.REACT_APP_BACALHAU_API_HOST || '0.0.0.0';
-const apiPort = process.env.REACT_APP_BACALHAU_API_PORT || '51331';
+const apiHost = process.env.REACT_APP_BACALHAU_API_HOST || "0.0.0.0";
+const apiPort = process.env.REACT_APP_BACALHAU_API_PORT || "51331";
 
 const apiConfig = {
   baseURL: `http://${apiHost}:${apiPort}/api/v1`,
@@ -19,18 +19,16 @@ const apiClient = axios.create(apiConfig);
 
 class BacalhauAPI {
   async listJobs(labels?: string[], nextToken?: string): Promise<JobsResponse> {
-    const params: any = {};
-    if (labels) {
-      params.labels = `env in (${labels.join(",")})`;
-    }
-    if (nextToken) {
-      params.next_token = nextToken;
-    }
+    const params: JobListRequest = {
+      labels: labels ? `env in (${labels.join(",")})` : undefined,
+      next_token: nextToken,
+    };
+
     const response = await apiClient.get("/orchestrator/jobs", { params });
     return response.data;
   }
 
-  async submitJob(jobData: any): Promise<JobsResponse> {
+  async submitJob(jobData: Job): Promise<JobsResponse> {
     const response = await apiClient.put("/orchestrator/jobs", jobData);
     return response.data;
   }
@@ -40,10 +38,10 @@ class BacalhauAPI {
   }
 
   async listNodes(labels?: string[]): Promise<NodesResponse> {
-    const params: any = {};
-    if (labels) {
-      params.labels = `env in (${labels.join(",")})`;
-    }
+    const params: NodeListRequest = {
+      labels: labels ? `env in (${labels.join(",")})` : undefined,
+    };
+
     const response = await apiClient.get("/orchestrator/nodes", { params });
     return response.data;
   }

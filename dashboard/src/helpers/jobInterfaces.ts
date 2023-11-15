@@ -12,7 +12,7 @@ export interface Job {
   Type: string;
   Priority: number;
   Count: number;
-  Constraints: any[];
+  Constraints: object[];
   Meta: {
     [key: string]: string; // Assuming all values in Meta are strings
   };
@@ -46,7 +46,7 @@ export interface Tasks {
     Name: string;
     Path: string;
   }[];
-  Resources: any;
+  Resources: object;
   Network: {
     Type: string;
   };
@@ -77,4 +77,9 @@ export interface ParsedJobData {
   label: string;
   status: string;
   action: string;
+}
+
+export interface JobListRequest {
+  labels: undefined | string;
+  next_token: undefined | string;
 }
