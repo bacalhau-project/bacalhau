@@ -27,7 +27,9 @@ const labelColorMap: { [key: string]: string } = {
 
 function parseData(jobs: Job[]): ParsedJobData[] {
   return jobs.map((job) => {
-    if (!job.Tasks || job.Tasks.length === 0) throw new Error(`Job with ID: ${job.ID} has no tasks.`);
+    if (!job.Tasks || job.Tasks.length === 0) {
+      throw new Error(`Job with ID: ${job.ID} has no tasks.`);
+    }
     const shortenedID = job.ID.split("-")[0];
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
@@ -40,7 +42,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       jobType: capitalizeFirstLetter(jobType),
       label: "",
       status: job.State.StateType,
-      action: "Action"
+      action: "Action",
     };
   });
 }

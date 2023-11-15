@@ -20,10 +20,10 @@ export interface PeerInfo {
 
 export interface Labels {
   Architecture: string;
-  'Operating-System': string;
-  'git-lfs': string;
-  name: string,
-  env: string
+  "Operating-System": string;
+  "git-lfs": string;
+  name: string;
+  env: string;
 }
 
 export interface ComputeNodeInfo {
@@ -61,4 +61,8 @@ export interface ParsedNodeData {
   // nodeHealth: string; // TODO: Add when available
   // healthCheck: string; // TODO: Add when available
   action: string;
+}
+
+export interface NodeListRequest {
+  labels: string | undefined;
 }
