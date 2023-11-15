@@ -3,7 +3,7 @@
 
 const lightCodeTheme = require("prism-react-renderer/themes/github");
 const darkCodeTheme = require("prism-react-renderer/themes/dracula");
-const redirects = require('./redirects');
+const redirects = require("./redirects");
 
 const simplePlantUML = require("@akebifiky/remark-simple-plantuml");
 
@@ -19,8 +19,13 @@ const config = {
   organizationName: "bacalhau-project", // Usually your GitHub org/user name.
   projectName: "docs.bacalhau.org", // Usually your repo name.
   scripts: [
-    { src: 'https://plausible.io/js/plausible.js', async: true, defer: true, 'data-domain': 'docs.bacalhau.org' },
-    '/koala-script.js'
+    {
+      src: "https://plausible.io/js/plausible.js",
+      async: true,
+      defer: true,
+      "data-domain": "docs.bacalhau.org",
+    },
+    "/koala-script.js",
   ],
 
   presets: [
@@ -36,10 +41,13 @@ const config = {
           showLastUpdateTime: true,
         },
         gtag: {
-          trackingID: 'G-10GYL172V9',
+          trackingID: "G-10GYL172V9",
+        },
+        googleTagManager: {
+          containerId: "GTM-PK3F9FC9",
         },
         theme: {
-          customCss: [require.resolve('./static/css/custom.css')],
+          customCss: [require.resolve("./static/css/custom.css")],
         },
       },
     ],
@@ -49,10 +57,10 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       colorMode: {
-        defaultMode: 'light',
+        defaultMode: "light",
         disableSwitch: true,
       },
-      image: '/static/logo_assets/Icon/JPG/Bacalhau-icon.jpg',
+      image: "/static/logo_assets/Icon/JPG/Bacalhau-icon.jpg",
       navbar: {
         title: "Bacalhau Docs",
         logo: {
@@ -74,13 +82,19 @@ const config = {
           },
         ],
       },
-      metadata: [{name: 'keywords', content: 'Bacalhau Docs contains ifnormation for fast, cost efficient, and secure computation by explaining how to run jobs where the data is generated and stored.'}],
-      image: 'img/logo.png',
+      metadata: [
+        {
+          name: "keywords",
+          content:
+            "Bacalhau Docs contains ifnormation for fast, cost efficient, and secure computation by explaining how to run jobs where the data is generated and stored.",
+        },
+      ],
+      image: "img/logo.png",
       blog: false,
-      algolia :{
-        appId: '15JCWQAGM1',
-        apiKey: '39072848f0a096cfb14729dd0ece6ce7',
-        indexName: 'dev_bac'
+      algolia: {
+        appId: "15JCWQAGM1",
+        apiKey: "39072848f0a096cfb14729dd0ece6ce7",
+        indexName: "dev_bac",
       },
       footer: {
         style: "dark",
@@ -171,7 +185,7 @@ const config = {
 
   plugins: [
     [
-      '@docusaurus/plugin-client-redirects',
+      "@docusaurus/plugin-client-redirects",
       {
         redirects: redirects,
       },
