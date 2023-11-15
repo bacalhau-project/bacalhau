@@ -2,13 +2,17 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/migrations"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -69,6 +73,77 @@ func Load(path string) (types.BacalhauConfig, error) {
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 
 	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
+}
+
+func Migrate(path string) error {
+	// check if the config file exists, if one is not found we don't need to migrate it
+	configPath := filepath.Join(path, "config.yaml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to stat config file for migration: %w", err)
+	}
+
+	// open the config file
+	f, err := os.Open(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file at %q: %w", configPath, err)
+	}
+
+	// read it all and unmarshal into yaml
+	b, err := io.ReadAll(f)
+	if err != nil {
+		if err := f.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close config file after failing to read it.")
+		}
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+	// we can close the file now that we read everything.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close config file: %w", err)
+	}
+
+	var cfg types.BacalhauConfig
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return fmt.Errorf("failed to unmarshal config file: %w", err)
+	}
+
+	// get all the migrations we need to apply to it.
+	migs, err := migrations.GetMigrations()
+	if err != nil {
+		return fmt.Errorf("failed to load migration list: %w", err)
+	}
+
+	// apply the migrations
+	currentCfg := cfg
+	for _, m := range migs {
+		log.Info().Msgf("applying migration sequence %d", m.Sequence())
+		currentCfg, err = m.Migrate(currentCfg)
+		if err != nil {
+			return err
+		}
+	}
+	log.Info().Msgf("config migration complete")
+
+	// marshal the migrated config back to yaml
+	marshaledCfg, err := yaml.Marshal(currentCfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal migrated config: %w", err)
+	}
+
+	// open the file for writing and truncate it.
+	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to open config file for writing at %q: %w", configPath, err)
+	}
+	defer fw.Close()
+
+	// write the marshaled data back to the file
+	if _, err := fw.Write(marshaledCfg); err != nil {
+		return fmt.Errorf("failed to write migrated config to file: %w", err)
+	}
+
+	return nil
 }
 
 type Params struct {

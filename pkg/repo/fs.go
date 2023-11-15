@@ -65,7 +65,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if version != RepoVersion1 {
+	if version != RepoVersion1 && version != RepoVersion2 {
 		return false, fmt.Errorf("unknown repo version %d", version)
 	}
 	return true, nil
@@ -96,7 +96,7 @@ func (fsr *FsRepo) Init() error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.writeVersion()
+	return fsr.writeVersion(RepoVersion2)
 }
 
 func (fsr *FsRepo) Open() error {
@@ -105,6 +105,17 @@ func (fsr *FsRepo) Open() error {
 		return err
 	} else if !exists {
 		return fmt.Errorf("repo does not exist")
+	}
+
+	if repoVersion, err := fsr.readVersion(); err != nil {
+		return fmt.Errorf("failed to read repo version: %w", err)
+	} else if repoVersion == RepoVersion1 {
+		if err := config.Migrate(fsr.path); err != nil {
+			return fmt.Errorf("failed to migrate config: %w", err)
+		}
+		if err := fsr.writeVersion(RepoVersion2); err != nil {
+			return fmt.Errorf("failed to update repo version: %w", err)
+		}
 	}
 
 	// load the configuration for the repo.

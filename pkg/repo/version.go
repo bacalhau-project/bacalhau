@@ -9,7 +9,9 @@ import (
 )
 
 const (
-	// RepoVersion1 is the current repo versioning.
+	// RepoVersion2 is the current repo versioning.
+	RepoVersion2 = 2
+	// RepoVersion1 is the current repo versioning for v1-v1.1.4
 	RepoVersion1 = 1
 	// RepoVersionFile is the name of the repo file containing the repo version.
 	RepoVersionFile = "repo.version"
@@ -19,8 +21,8 @@ type RepoVersion struct {
 	Version int
 }
 
-func (fsr *FsRepo) writeVersion() error {
-	repoVersion := RepoVersion{Version: RepoVersion1}
+func (fsr *FsRepo) writeVersion(version int) error {
+	repoVersion := RepoVersion{Version: version}
 	versionJSON, err := json.Marshal(repoVersion)
 	if err != nil {
 		return err
