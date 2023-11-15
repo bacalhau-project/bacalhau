@@ -20,9 +20,12 @@ Converting CSV stored in public storage with Bacalhau
 ## Prerequisites
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+```
 !command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
 path=!echo $PATH
 %env PATH=./:{path[0]}
+```
+
 ## Running CSV to Arvo or Parquet Locally​
 
 
@@ -227,7 +230,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 - **Job status**: You can check the status of the job using `bacalhau list`.
 
 :::note
-Replace the {JOB_ID} with your generated ID.
+Replace the `{JOB_ID}` with your generated ID.
 :::
 
 

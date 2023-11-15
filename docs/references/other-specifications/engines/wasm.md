@@ -8,7 +8,7 @@ sidebar_label: Wasm
 
 ## `WASM` Engine Parameters
 
-- **EntryModule** <code>(<a href="../../job-specification/input-source">InputSource</a> : <required\>)</code>: Specifies the WASM module that contains the start function or the main execution code of the task. The InputSource should point to the location of the WASM binary.
+- **EntryModule** `(`[`InputSource`](../../job-specification/input-source.md)` : required)`: Specifies the WASM module that contains the start function or the main execution code of the task. The InputSource should point to the location of the WASM binary.
 
 - **Entrypoint** `(string: <optional>)`: The name of the function within the EntryModule to execute. For WASI jobs, this should typically be `_start`. The entrypoint function should have zero parameters and zero results.
 
@@ -16,7 +16,7 @@ sidebar_label: Wasm
 
 - **EnvironmentVariables** `(map[string]string: <optional>)`: A mapping of environment variable keys to their values, made available within the executing WASM environment.
 
-- **ImportModules** <code>(<a href="../../job-specification/input-source">InputSource</a>[] : <optional\>)</code>: An array of InputSources pointing to additional WASM modules. The exports from these modules will be available as imports to the EntryModule, enabling modular and reusable WASM code.
+- **ImportModules** `(`[`InputSource`](../../job-specification/input-source.md)`[] : optional)`: An array of InputSources pointing to additional WASM modules. The exports from these modules will be available as imports to the EntryModule, enabling modular and reusable WASM code.
 
 ### Example
 

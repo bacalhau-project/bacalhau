@@ -407,8 +407,8 @@ by specifying credentials as environment variables wherever your compute node is
 
 |Environment variable|Description|
 |---|---|
-|DOCKER_USERNAME|The username with which you are registered at <https://hub.docker.com/>|
-|DOCKER_PASSWORD|A read-only access token, generated from the page at <https://hub.docker.com/settings/security> |
+|DOCKER_USERNAME|The username with which you are registered at [https://hub.docker.com/](https://hub.docker.com/)|
+|DOCKER_PASSWORD|A read-only access token, generated from the page at [https://hub.docker.com/settings/security](https://hub.docker.com/settings/security)> |
 
 :::info
 Currently, this authentication is only available (and required) by the [Docker Hub](https://hub.docker.com/)

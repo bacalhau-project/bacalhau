@@ -21,7 +21,7 @@ Using the `--autocert [hostname]` parameter to the CLI (in the `serve` and `devs
 Alternatively, you may set these options via the environment variable, `BACALHAU_AUTO_TLS`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.AutoCert` instead.
 
 :::info
-As a result of the Lets Encrypt verification step, it is necessary for the server to be able to handle requests on port 443. This typically requires elevated privileges, and rather than obtain these through a privileged account (such as root), you should instead use setcap to grant the executable the right to bind to ports <1024.
+As a result of the Lets Encrypt verification step, it is necessary for the server to be able to handle requests on port 443. This typically requires elevated privileges, and rather than obtain these through a privileged account (such as root), you should instead use setcap to grant the executable the right to bind to ports \<1024.
 
 ```
 sudo setcap CAP_NET_BIND_SERVICE+ep $(which bacalhau)

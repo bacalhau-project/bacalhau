@@ -88,7 +88,7 @@ compress
 - On a second machine, once per hour, trigger a job to run across all nodes identified across regions
 - Pass the log path to the job spec. (Use the local mount feature (can’t use it currently))
 - This job should do the following:
-  - If the file is not present in raw_logs, write information to stdout: “{ warning: raw_logs_not_found, date: <-ISO9660 Timestamp->}” - and quit
+  - If the file is not present in raw_logs, write information to stdout: `“{ warning: raw_logs_not_found, date: <-ISO9660 Timestamp->}”` - and quit
   - If file is present:
 
 #### **Step 3a: Use DuckDB to process the logs:**
