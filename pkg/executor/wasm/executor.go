@@ -60,9 +60,8 @@ func (*Executor) ShouldBidBasedOnUsage(
 // WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
 // In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
 
-const WASM_ARCH = 32
-const WASM_PAGE_SIZE = 1 << (WASM_ARCH / 2)
-const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
+const WASM_PAGE_SIZE = 65536
+const WASM_MAX_PAGES_LIMIT = 65536
 
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
