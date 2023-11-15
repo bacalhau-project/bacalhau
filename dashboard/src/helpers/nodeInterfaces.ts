@@ -57,7 +57,10 @@ export interface ParsedNodeData {
   id: string;
   name: string;
   type: string;
-  labels: string;
+  environment: string;
+  inputs: string[];
+  outputs: string[];
+  version: string;
   // nodeHealth: string; // TODO: Add when available
   // healthCheck: string; // TODO: Add when available
   action: string;

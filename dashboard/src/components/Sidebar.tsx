@@ -38,8 +38,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         </div>
         <div className={styles.menuItem}>
           {/* Settings Icon */}
-          <Image src={settingsIcon} alt="Icon" width={20} height={20} />
-          <span className={styles.menuText}>Settings</span>
+          <Link href="/Settings" className={styles.link}>
+            <Image src={settingsIcon} alt="Icon" width={20} height={20} />
+            <span className={styles.menuText}>Settings</span>
+          </Link>
         </div>
       </div>
     </div>
