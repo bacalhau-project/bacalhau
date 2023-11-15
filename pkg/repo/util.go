@@ -34,10 +34,6 @@ func initRepoFiles(cfg types.BacalhauConfig) error {
 		return fmt.Errorf("failed to create executor storage dir: %w", err)
 	}
 
-	if err := initDir(cfg.Node.ServerAPI.TLS.AutoCertCachePath); err != nil {
-		return fmt.Errorf("failed to create tls auto certificate path: %w", err)
-	}
-
 	return nil
 }
 
@@ -65,12 +61,6 @@ func validateRepoConfig(cfg types.BacalhauConfig) error {
 		return err
 	} else if !exists {
 		return fmt.Errorf("compute storage path does not exist at: %q", cfg.Node.ComputeStoragePath)
-	}
-
-	if exists, err := fileExists(cfg.Node.ServerAPI.TLS.AutoCertCachePath); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("TLS auto certification cache path does not exist at: %q", cfg.Node.ServerAPI.TLS.AutoCertCachePath)
 	}
 
 	return nil

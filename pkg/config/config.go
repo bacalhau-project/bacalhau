@@ -51,7 +51,6 @@ func Init(path string) (types.BacalhauConfig, error) {
 	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
 	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
 	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Node.ServerAPI.TLS.AutoCertCachePath = filepath.Join(path, AutoCertCachePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 
 	// initialize the configuration with default values.
@@ -67,7 +66,6 @@ func Load(path string) (types.BacalhauConfig, error) {
 	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
 	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
 	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Node.ServerAPI.TLS.AutoCertCachePath = filepath.Join(path, AutoCertCachePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 
 	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
