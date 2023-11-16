@@ -28,17 +28,23 @@ func NewInputLocalityStrategy(params InputLocalityStrategyParams) *InputLocality
 	}
 }
 
+const (
+	anywhereReason = "download data that is not available locally"
+	nonLocalReason = "have all input data locally (%d inputs require downloading)"
+)
+
 func (s *InputLocalityStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// if we have an "anywhere" policy for the data then we accept the job
 	if s.locality == Anywhere {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, anywhereReason), nil
 	}
 
+	inputSources := request.Job.Task().InputSources
 	foundInputs := 0
-	for _, input := range request.Job.Task().InputSources {
+	for _, input := range inputSources {
 		// see if the storage engine reports that we have the resource locally
 		strg, err := s.storages.Get(ctx, input.Source.Type)
 		if err != nil {
@@ -53,8 +59,5 @@ func (s *InputLocalityStrategy) ShouldBid(
 		}
 	}
 
-	if foundInputs >= len(request.Job.Task().InputSources) {
-		return bidstrategy.NewShouldBidResponse(), nil
-	}
-	return bidstrategy.BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil
+	return bidstrategy.NewBidResponse(foundInputs >= len(inputSources), nonLocalReason, len(inputSources)-foundInputs), nil
 }

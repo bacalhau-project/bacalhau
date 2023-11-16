@@ -18,7 +18,7 @@ import (
 var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "id"},
-		Value:        func(node *models.NodeInfo) string { return idgen.ShortID(node.PeerInfo.ID.String()) },
+		Value:        func(node *models.NodeInfo) string { return idgen.ShortID(node.ID()) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "type"},

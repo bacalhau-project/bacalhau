@@ -53,6 +53,11 @@ type NodeInfo struct {
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
 }
 
+// ID returns the node ID
+func (n NodeInfo) ID() string {
+	return n.PeerInfo.ID.String()
+}
+
 // IsComputeNode returns true if the node is a compute node
 func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute

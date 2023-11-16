@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
@@ -102,7 +103,6 @@ func NewComputeNode(
 		RunningCapacityTracker:     runningCapacityTracker,
 		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
-		BackoffDuration:            config.ExecutorBufferBackoffDuration,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
@@ -133,46 +133,40 @@ func NewComputeNode(
 		},
 	})
 
-	semanticBidStrat := config.BidSemanticStrategy
-	if semanticBidStrat == nil {
-		semanticBidStrat = semantic.NewChainedSemanticBidStrategy(
-			executor_util.NewExecutorSpecificBidStrategy(executors),
+	semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
+	if config.BidSemanticStrategy == nil {
+		semanticBidStrat = bidstrategy.WithSemantics(
 			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-				Command: config.JobSelectionPolicy.ProbeExec,
-			}),
-			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-				URL: config.JobSelectionPolicy.ProbeHTTP,
+			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
+				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
+				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
 			}),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
-			}),
-			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality: config.JobSelectionPolicy.Locality,
-				Storages: storages,
 			}),
 			semantic.NewProviderInstalledStrategy(
 				publishers,
 				func(j *models.Job) string { return j.Task().Publisher.Type },
 			),
 			semantic.NewStorageInstalledBidStrategy(storages),
-			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
 			}),
-			// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-			//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
-			semantic.NewDistanceDelayStrategy(semantic.DistanceDelayStrategyParams{
-				NetworkSize: 1,
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
 			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
 		)
 	}
 
-	resourceBidStrat := config.BidResourceStrategy
-	if resourceBidStrat == nil {
-		resourceBidStrat = resource.NewChainedResourceBidStrategy(
-			executor_util.NewExecutorSpecificBidStrategy(executors),
+	resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
+	if config.BidResourceStrategy == nil {
+		resourceBidStrat = bidstrategy.WithResources(
 			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
 				MaxJobRequirements: config.JobResourceLimits,
 			}),
@@ -180,6 +174,7 @@ func NewComputeNode(
 				RunningCapacityTracker:  runningCapacityTracker,
 				EnqueuedCapacityTracker: enqueuedCapacityTracker,
 			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
 		)
 	}
 
@@ -207,10 +202,11 @@ func NewComputeNode(
 		MaxJobRequirements: config.JobResourceLimits,
 	})
 
+	bidStrat := bidstrategy.NewChainedBidStrategy(semanticBidStrat, resourceBidStrat)
 	bidder := compute.NewBidder(compute.BidderParams{
 		NodeID:           host.ID().String(),
-		SemanticStrategy: semanticBidStrat,
-		ResourceStrategy: resourceBidStrat,
+		SemanticStrategy: bidStrat,
+		ResourceStrategy: bidStrat,
 		Store:            executionStore,
 		Callback:         computeCallback,
 		Executor:         bufferRunner,

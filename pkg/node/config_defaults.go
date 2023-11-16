@@ -19,7 +19,6 @@ var DefaultComputeConfig = ComputeConfigParams{
 		CPU:    0.1,               // 100m
 		Memory: 100 * 1024 * 1024, // 100Mi
 	},
-	ExecutorBufferBackoffDuration: 50 * time.Millisecond,
 
 	JobNegotiationTimeout:      3 * time.Minute,
 	MinJobExecutionTimeout:     500 * time.Millisecond,
@@ -52,6 +51,9 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueTimeout:     5 * time.Second,
 	WorkerEvalDequeueBaseBackoff: 1 * time.Second,
 	WorkerEvalDequeueMaxBackoff:  30 * time.Second,
+
+	S3PreSignedURLDisabled:   false,
+	S3PreSignedURLExpiration: 30 * time.Minute,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -75,6 +77,9 @@ var TestRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueTimeout:     200 * time.Millisecond,
 	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
 	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
+
+	S3PreSignedURLDisabled:   false,
+	S3PreSignedURLExpiration: 30 * time.Minute,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

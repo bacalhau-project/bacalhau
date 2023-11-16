@@ -5,6 +5,7 @@ package devstack
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -46,7 +47,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 					Build(),
 			),
 		),
-		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, stdoutText),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),
 		},

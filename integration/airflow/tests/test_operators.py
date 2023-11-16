@@ -2,14 +2,14 @@
 
 import unittest
 from datetime import datetime
+
 import pendulum
 
-from bacalhau_airflow.operators import BacalhauSubmitJobOperator
-from bacalhau_airflow.hooks import BacalhauHook
-
 from airflow.models.dag import DAG
-from airflow.utils.types import DagRunType
 from airflow.utils.state import DagRunState
+from airflow.utils.types import DagRunType
+from bacalhau_airflow.hooks import BacalhauHook
+from bacalhau_airflow.operators import BacalhauSubmitJobOperator
 
 DEFAULT_DATE = pendulum.datetime(2022, 3, 4, tz="America/Toronto")
 
@@ -64,7 +64,6 @@ class TestBacalhauAirflowOperator(unittest.TestCase):
         self.assertIsInstance(hook, BacalhauHook)
 
     def test_execute(self):
-
         dagrun = self.dag.create_dagrun(
             state=DagRunState.RUNNING,
             execution_date=DEFAULT_DATE,

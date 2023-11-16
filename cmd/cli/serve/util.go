@@ -35,7 +35,6 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		JobResourceLimits:                     models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)),
 		DefaultJobResourceLimits:              models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)),
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
-		ExecutorBufferBackoffDuration:         time.Duration(cfg.Queue.ExecutorBufferBackoffDuration),
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
 		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
 		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),
@@ -80,6 +79,8 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
+		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 	})
 }
 

@@ -108,10 +108,13 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
 	overSubscriptions.markStopped(execNotNeeded, plan)
 
-	// mark job as completed
+	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
+		// If there are no remaining tasks to be done, mark the job as completed.
 		plan.MarkJobCompleted()
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
@@ -151,7 +154,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 		}
 		i := 0
 		for _, exec := range execs {
-			exec.NodeID = selectedNodes[i].PeerInfo.ID.String()
+			exec.NodeID = selectedNodes[i].ID()
 			i++
 		}
 	}

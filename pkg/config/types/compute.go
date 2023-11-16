@@ -4,7 +4,7 @@ import "github.com/bacalhau-project/bacalhau/pkg/model"
 
 type ComputeConfig struct {
 	Capacity       CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore StorageConfig            `yaml:"ExecutionStore"`
+	ExecutionStore JobStoreConfig           `yaml:"ExecutionStore"`
 	JobTimeouts    JobTimeoutConfig         `yaml:"JobTimeouts"`
 	JobSelection   model.JobSelectionPolicy `yaml:"JobSelection"`
 	Queue          QueueConfig              `yaml:"Queue"`
@@ -39,8 +39,6 @@ type JobTimeoutConfig struct {
 }
 
 type QueueConfig struct {
-	// How long the buffer would backoff before polling the queue again for new jobs
-	ExecutorBufferBackoffDuration Duration `yaml:"ExecutorBufferBackoffDuration"`
 }
 
 type LoggingConfig struct {

@@ -3,9 +3,10 @@ package semantic
 import (
 	"context"
 
+	"go.uber.org/multierr"
+
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"go.uber.org/multierr"
 
 	"github.com/rs/zerolog/log"
 
@@ -35,7 +36,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	if request.Job.Task().Engine.Type != models.EngineDocker {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, "examine images for non-Docker jobs"), nil
 	}
 
 	supported, serr := s.client.SupportedPlatforms(ctx)
@@ -61,6 +62,24 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		if m != nil {
 			manifest = *m
 		}
+		// Cache the platform info for this image tag for a day. We could cache
+		// for longer but we only have in-memory caches with time-based eviction.
+		// TODO: Once we have an LRU cache we can use that instead and not worry
+		// about managing eviction. In the meantime we get this through calling
+		// Set even when don't have to, to reset the expiry time.
+		defer func() {
+			err = (*ManifestCache).Set(
+				dockerEngine.Image, manifest, 1, oneDayInSeconds,
+			) //nolint:gomnd
+			if err != nil {
+				// Log the error but continue as it is not serious enough to stop
+				// processing
+				log.Ctx(ctx).Warn().
+					Str("Image", dockerEngine.Image).
+					Str("Error", err.Error()).
+					Msg("Failed to save to manifest cache")
+			}
+		}()
 	} else {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
 	}
@@ -73,33 +92,25 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		}, nil
 	}
 
-	// Cache the platform info for this image tag for a day. We could cache
-	// for longer but we only have in-memory caches with time-based eviction.
-	// TODO: Once we have an LRU cache we can use that instead and not worry
-	// about managing eviction. In the meantime we get this through calling
-	// Set even when don't have to, to reset the expiry time.
-	err = (*ManifestCache).Set(
-		dockerEngine.Image, manifest, 1, oneDayInSeconds,
-	) //nolint:gomnd
-	if err != nil {
-		// Log the error but continue as it is not serious enough to stop
-		// processing
-		log.Ctx(ctx).Warn().
-			Str("Image", dockerEngine.Image).
-			Str("Error", err.Error()).
-			Msg("Failed to save to manifest cache")
+	imageHasPlatforms := make([]string, 0, len(manifest.Platforms))
+	for _, imageHas := range manifest.Platforms {
+		imageHasPlatforms = append(imageHasPlatforms, imageHas.OS+"/"+imageHas.Architecture)
 	}
 
+	canRunPlatforms := make([]string, 0, len(supported))
+	for _, canRun := range supported {
+		canRunPlatforms = append(canRunPlatforms, canRun.OS+"/"+canRun.Architecture)
+	}
+
+	shouldBid := false
 	for _, canRun := range supported {
 		for _, imageHas := range manifest.Platforms {
 			if canRun.OS == imageHas.OS && canRun.Architecture == imageHas.Architecture {
-				return bidstrategy.NewShouldBidResponse(), nil
+				shouldBid = true
 			}
 		}
 	}
 
-	return bidstrategy.BidStrategyResponse{
-		ShouldBid: false,
-		Reason:    "Node does not support any of the published image platforms",
-	}, nil
+	const platformReason = "support the available image platforms %v (supports %v)"
+	return bidstrategy.NewBidResponse(shouldBid, platformReason, imageHasPlatforms, canRunPlatforms), nil
 }

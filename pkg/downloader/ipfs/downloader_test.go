@@ -13,8 +13,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/stretchr/testify/require"
@@ -63,18 +65,20 @@ func TestIPFSDownload(t *testing.T) {
 	config.Set(cfg)
 
 	outputDir := t.TempDir()
-	downloader := NewIPFSDownloader(cm, &model.DownloaderSettings{
-		Timeout:   time.Minute,
-		OutputDir: outputDir,
-	})
+	ipfsDownloader := NewIPFSDownloader(cm)
 
-	err = downloader.FetchResult(ctx, model.DownloadItem{
-		CID:        cid,
-		SourceType: model.StorageSourceIPFS,
-		Target:     filepath.Join(outputDir, "output.txt"),
+	resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
+		Result: &models.SpecConfig{
+			Type: models.StorageSourceIPFS,
+			Params: ipfssource.Source{
+				CID: cid,
+			}.ToMap(),
+		},
+		ParentPath: outputDir,
 	})
 	require.NoError(t, err)
-	require.FileExists(t, filepath.Join(outputDir, "output.txt"))
+	require.FileExists(t, filepath.Join(outputDir, cid))
+	require.Equal(t, filepath.Join(outputDir, cid), resultPath)
 }
 
 func TestDownloadFromPrivateSwarm(t *testing.T) {
@@ -103,18 +107,21 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 
 	t.Run("download success with swarm key", func(t *testing.T) {
 		outputDir := t.TempDir()
-		downloader := NewIPFSDownloader(cm, &model.DownloaderSettings{
-			Timeout:   time.Minute,
-			OutputDir: outputDir,
+		ipfsDownloader := NewIPFSDownloader(cm)
+
+		resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
+			Result: &models.SpecConfig{
+				Type: models.StorageSourceIPFS,
+				Params: ipfssource.Source{
+					CID: cid,
+				}.ToMap(),
+			},
+			ParentPath: outputDir,
 		})
 
-		err = downloader.FetchResult(ctx, model.DownloadItem{
-			CID:        cid,
-			SourceType: model.StorageSourceIPFS,
-			Target:     filepath.Join(outputDir, "output.txt"),
-		})
 		require.NoError(t, err)
-		require.FileExists(t, filepath.Join(outputDir, "output.txt"))
+		require.FileExists(t, filepath.Join(outputDir, cid))
+		require.Equal(t, filepath.Join(outputDir, cid), resultPath)
 	})
 
 	cfg = configenv.Testing
@@ -124,17 +131,18 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 
 	t.Run("download failure without swarm key", func(t *testing.T) {
 		outputDir := t.TempDir()
-		downloader := NewIPFSDownloader(cm, &model.DownloaderSettings{
-			Timeout:   10 * time.Second,
-			OutputDir: outputDir,
-		})
-
-		err = downloader.FetchResult(ctx, model.DownloadItem{
-			CID:        cid,
-			SourceType: model.StorageSourceIPFS,
-			Target:     filepath.Join(outputDir, "output.txt"),
+		ipfsDownloader := NewIPFSDownloader(cm)
+		resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
+			Result: &models.SpecConfig{
+				Type: models.StorageSourceIPFS,
+				Params: ipfssource.Source{
+					CID: cid,
+				}.ToMap(),
+			},
+			ParentPath: outputDir,
 		})
 		require.Error(t, err)
-		require.NoFileExists(t, filepath.Join(outputDir, "output.txt"))
+		require.NoFileExists(t, filepath.Join(outputDir, cid))
+		require.Equal(t, "", resultPath)
 	})
 }

@@ -3,6 +3,7 @@ package scenario
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
@@ -17,7 +18,7 @@ func basicScenario(t testing.TB) Scenario {
 			StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
 		),
 		Outputs:        []model.StorageSpec{},
-		ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
+		ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
 		JobCheckers:    WaitUntilSuccessful(1),
 		Spec: testutils.MakeSpecWithOpts(t,
 			jobutils.WithEngineSpec(

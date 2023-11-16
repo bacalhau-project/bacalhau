@@ -20,7 +20,6 @@ import (
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -101,8 +100,7 @@ func (e *Executor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
-	// TODO(forrest): should this just return true always?
-	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on Docker jobs"), nil
 }
 
 // Start initiates an execution based on the provided RunCommandRequest.
@@ -390,7 +388,6 @@ func makeContainerMounts(
 		srcd := filepath.Join(resultsDir, output.Name)
 		if err := os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
-
 		}
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)

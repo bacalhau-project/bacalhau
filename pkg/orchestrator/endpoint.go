@@ -15,31 +15,34 @@ import (
 )
 
 type BaseEndpointParams struct {
-	ID               string
-	EvaluationBroker EvaluationBroker
-	Store            jobstore.Store
-	EventEmitter     EventEmitter
-	ComputeProxy     compute.Endpoint
-	Transformer      transformer.JobTransformer
+	ID                string
+	EvaluationBroker  EvaluationBroker
+	Store             jobstore.Store
+	EventEmitter      EventEmitter
+	ComputeProxy      compute.Endpoint
+	JobTransformer    transformer.JobTransformer
+	ResultTransformer transformer.ResultTransformer
 }
 
 type BaseEndpoint struct {
-	id               string
-	evaluationBroker EvaluationBroker
-	store            jobstore.Store
-	eventEmitter     EventEmitter
-	computeProxy     compute.Endpoint
-	Transformer      transformer.JobTransformer
+	id                string
+	evaluationBroker  EvaluationBroker
+	store             jobstore.Store
+	eventEmitter      EventEmitter
+	computeProxy      compute.Endpoint
+	jobTransformer    transformer.JobTransformer
+	resultTransformer transformer.ResultTransformer
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
-		id:               params.ID,
-		evaluationBroker: params.EvaluationBroker,
-		store:            params.Store,
-		eventEmitter:     params.EventEmitter,
-		computeProxy:     params.ComputeProxy,
-		Transformer:      params.Transformer,
+		id:                params.ID,
+		evaluationBroker:  params.EvaluationBroker,
+		store:             params.Store,
+		eventEmitter:      params.EventEmitter,
+		computeProxy:      params.ComputeProxy,
+		jobTransformer:    params.JobTransformer,
+		resultTransformer: params.ResultTransformer,
 	}
 }
 
@@ -49,7 +52,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
 
-	if err := e.Transformer.Transform(ctx, job); err != nil {
+	if err := e.jobTransformer.Transform(ctx, job); err != nil {
 		return nil, err
 	}
 
@@ -191,5 +194,38 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (R
 	return ReadLogsResponse{
 		Address:           response.Address,
 		ExecutionComplete: response.ExecutionFinished,
+	}, nil
+}
+
+// GetResults returns the results of a job
+func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsRequest) (GetResultsResponse, error) {
+	job, err := e.store.GetJob(ctx, request.JobID)
+	if err != nil {
+		return GetResultsResponse{}, err
+	}
+
+	if job.Type != models.JobTypeBatch && job.Type != models.JobTypeOps {
+		return GetResultsResponse{}, fmt.Errorf("job type %s does not support results", job.Type)
+	}
+
+	executions, err := e.store.GetExecutions(ctx, job.ID)
+	if err != nil {
+		return GetResultsResponse{}, err
+	}
+
+	results := make([]*models.SpecConfig, 0)
+	for _, execution := range executions {
+		if execution.ComputeState.StateType == models.ExecutionStateCompleted {
+			result := execution.PublishedResult.Copy()
+			err = e.resultTransformer.Transform(ctx, result)
+			if err != nil {
+				return GetResultsResponse{}, err
+			}
+			results = append(results, result)
+		}
+	}
+
+	return GetResultsResponse{
+		Results: results,
 	}, nil
 }

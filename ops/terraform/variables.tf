@@ -1,3 +1,7 @@
+variable "bacalhau_environment" {
+  type = string
+  default = ""
+}
 variable "bacalhau_version" {
   type = string
 }
@@ -27,6 +31,14 @@ variable "bacalhau_node_id_1" {
   default = ""
 }
 variable "bacalhau_node_id_2" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_type" {
+  type    = string
+  default = "requester,compute"
+}
+variable "bacalhau_connect_peer" {
   type    = string
   default = ""
 }
@@ -71,6 +83,10 @@ variable "zone" {
   type = string
 }
 variable "ingress_cidrs" {
+  type    = set(string)
+  default = []
+}
+variable "egress_cidrs" {
   type    = set(string)
   default = []
 }

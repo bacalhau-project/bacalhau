@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
@@ -17,8 +18,6 @@ import (
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -65,8 +64,8 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expecte
 			"/data/file.txt",
 			"/exitCode",
 			"/outputs",
-			"/" + model.DownloadFilenameStderr,
-			"/" + model.DownloadFilenameStdout,
+			"/" + downloader.DownloadFilenameStderr,
+			"/" + downloader.DownloadFilenameStdout,
 		}
 	}
 
