@@ -1,12 +1,28 @@
 package shared
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/ricochet2200/go-disk-usage/du"
 )
 
-func GenerateHealthData() types.HealthInfo {
-	var healthInfo types.HealthInfo
+type HealthInfo struct {
+	DiskFreeSpace FreeSpace `json:"FreeSpace"`
+}
+
+type FreeSpace struct {
+	IPFSMount MountStatus `json:"IPFSMount"`
+	TMP       MountStatus `json:"tmp"`
+	ROOT      MountStatus `json:"root"`
+}
+
+// Creating structure for DiskStatus
+type MountStatus struct {
+	All  uint64 `json:"All"`
+	Used uint64 `json:"Used"`
+	Free uint64 `json:"Free"`
+}
+
+func GenerateHealthData() HealthInfo {
+	var healthInfo HealthInfo
 
 	// Generating all, free, used amounts for each - in case these are different mounts, they'll have different
 	// All and Free values, if they're all on the same machine, then those values should be the same
@@ -19,7 +35,7 @@ func GenerateHealthData() types.HealthInfo {
 }
 
 // Function to get disk usage of path/disk
-func MountUsage(path string) (disk types.MountStatus) {
+func MountUsage(path string) (disk MountStatus) {
 	usage := du.NewDiskUsage(path)
 	if usage == nil {
 		return

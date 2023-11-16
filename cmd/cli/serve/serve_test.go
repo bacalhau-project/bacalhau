@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
@@ -32,7 +33,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -165,7 +165,7 @@ func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
 	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
-	var healthzJSON types.HealthInfo
+	var healthzJSON shared.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
 }
