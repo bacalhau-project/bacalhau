@@ -29,11 +29,27 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
 	}
+	total, err := model.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+	queue, err := model.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+	job, err := model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+	def, err := model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits)),
-		QueueResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits)),
-		JobResourceLimits:                     models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)),
-		DefaultJobResourceLimits:              models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)),
+		TotalResourceLimits:                   models.Resources(total),
+		QueueResourceLimits:                   models.Resources(queue),
+		JobResourceLimits:                     models.Resources(job),
+		DefaultJobResourceLimits:              models.Resources(def),
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
 		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),

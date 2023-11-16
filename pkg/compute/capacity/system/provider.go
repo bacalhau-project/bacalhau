@@ -54,6 +54,26 @@ func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (mo
 	}, nil
 }
 
+func (p *PhysicalCapacityProvider) GetTotalCapacity() (models.Resources, error) {
+	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
+	if err != nil {
+		return models.Resources{}, err
+	}
+	gpus, err := numSystemGPUs()
+	if err != nil {
+		return models.Resources{}, err
+	}
+
+	// the actual resources we have
+	return models.Resources{
+		CPU:    float64(runtime.NumCPU()),
+		Memory: memory.TotalMemory(),
+		Disk:   diskSpace,
+		GPU:    gpus,
+	}, nil
+
+}
+
 // get free disk space for storage path
 // returns bytes
 func getFreeDiskSpace(path string) (uint64, error) {

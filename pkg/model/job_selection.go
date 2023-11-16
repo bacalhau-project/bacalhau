@@ -45,7 +45,7 @@ func ParseJobSelectionDataLocality(s string) (ret JobSelectionDataLocality, err 
 		}
 	}
 
-	return Local, fmt.Errorf("%T: unknown type '%s'", Local, s)
+	return Local, fmt.Errorf("%T: unknown type %q (valid values: %q)", Local, s, []JobSelectionDataLocality{Local, Anywhere})
 }
 
 // describe the rules for how a compute node selects an incoming job
