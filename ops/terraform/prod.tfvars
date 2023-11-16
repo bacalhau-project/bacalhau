@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.1.4"
+bacalhau_version            = "v1.1.5"
 bacalhau_port               = "1235"
 bacalhau_node_id_0          = "QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws"
 bacalhau_node_id_1          = "QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe"
@@ -17,8 +17,8 @@ instance_count              = 5
 region                      = "us-east4"
 zone                        = "us-east4-c"
 # When increasing the volume size, you may need to manually resize the filesystem
-# on the virtual machine. If `df -h` shows only 1000, then `sudo resize2fs /dev/sdb` 
-# will resize the /data (/dev/sdb) drive to use all of the space. Do not use for 
+# on the virtual machine. If `df -h` shows only 1000, then `sudo resize2fs /dev/sdb`
+# will resize the /data (/dev/sdb) drive to use all of the space. Do not use for
 # boot disk.
 volume_size_gb              = 2000 # when increasing this value you need to claim the new space manually
 boot_disk_size_gb           = 1000

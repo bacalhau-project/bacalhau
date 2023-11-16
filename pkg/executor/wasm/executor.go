@@ -18,8 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
@@ -46,7 +44,7 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 }
 
 func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
 func (*Executor) ShouldBidBasedOnUsage(
@@ -54,8 +52,17 @@ func (*Executor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
-	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
+
+// Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
+//
+// WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
+// In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
+
+const WASM_ARCH = 32
+const WASM_PAGE_SIZE = 65536
+const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
 
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
@@ -70,19 +77,23 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		}
 	}
 
-	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
-	if err != nil {
-		return fmt.Errorf("decoding wasm arguments: %w", err)
-	}
-
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
 	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
 	if request.Resources.Memory > 0 {
-		const pageSize = 65536
-		pageLimit := request.Resources.Memory/pageSize + math.Min(request.Resources.Memory%pageSize, 1)
-		engineConfig = engineConfig.WithMemoryLimitPages(uint32(pageLimit))
+		requestedPages := request.Resources.Memory/WASM_PAGE_SIZE + math.Min(request.Resources.Memory%WASM_PAGE_SIZE, 1)
+		if requestedPages > WASM_MAX_PAGES_LIMIT {
+			err := fmt.Errorf("requested memory exceeds the wasm limit - %d > 4GB", request.Resources.Memory)
+			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WASM_MAX_PAGES_LIMIT)
+			return err
+		}
+		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
+	}
+
+	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
+	if err != nil {
+		return fmt.Errorf("decoding wasm arguments: %w", err)
 	}
 
 	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)

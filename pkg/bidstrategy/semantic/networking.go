@@ -2,7 +2,6 @@ package semantic
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 )
@@ -17,13 +16,19 @@ func NewNetworkingStrategy(accept bool) *NetworkingStrategy {
 	return &NetworkingStrategy{accept}
 }
 
+const (
+	docsLink        = "(see https://docs.bacalhau.org/next-steps/networking)"
+	accessReason    = "run jobs that require network access " + docsLink
+	localOnlyReason = "run jobs that do not require network access " + docsLink
+)
+
 // ShouldBid implements BidStrategy
 func (s *NetworkingStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	shouldBid := s.Accept || request.Job.Task().Network.Disabled()
-	return bidstrategy.BidStrategyResponse{
-		ShouldBid: shouldBid,
-		Reason:    fmt.Sprintf("networking is enabled: %t", s.Accept),
-	}, nil
+	if request.Job.Task().Network.Disabled() {
+		return bidstrategy.NewBidResponse(true, localOnlyReason), nil
+	}
+
+	return bidstrategy.NewBidResponse(s.Accept, accessReason), nil
 }

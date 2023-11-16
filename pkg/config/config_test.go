@@ -3,6 +3,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,20 +70,24 @@ func TestConfig(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				defer Reset()
-				expectedConfig := configenv.Testing
+
+				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
+				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
+				expected := configenv.Testing
+
 				configPath := t.TempDir()
 
-				_, err := Init(expectedConfig, configPath, tc.name, tc.configType)
+				_, err := Init(configPath)
 				require.NoError(t, err)
 
 				var out types.NodeConfig
 				err = ForKey(types.Node, &out)
 				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.ServerAPI, out.ServerAPI)
+				assert.Equal(t, expected.Node.Requester, out.Requester)
 
-				retrieved, err := Get[string](types.NodeServerAPIHost)
-				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
+				var retrieved types.RequesterConfig
+				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
+				assert.Equal(t, expected.Node.Requester, retrieved)
 			})
 		}
 
@@ -100,29 +105,30 @@ func TestConfig(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				defer Reset()
 				// First, set up an expected configuration and save it using Init.
-				expectedConfig := configenv.Testing
+				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
+				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
+				expected := configenv.Testing
 				configPath := t.TempDir()
-				configFile := "config"
 
-				_, err := Init(expectedConfig, configPath, configFile, tc.configType)
+				_, err := Init(configPath)
 				require.NoError(t, err)
 
 				// Now, try to load the configuration we just saved.
-				loadedConfig, err := Load(configPath, configFile, tc.configType)
+				loadedConfig, err := Load(configPath)
 				require.NoError(t, err)
 
 				// After loading, compare the loaded configuration with the expected configuration.
-				assert.Equal(t, expectedConfig.Node.ServerAPI, loadedConfig.Node.ServerAPI)
+				assert.Equal(t, expected.Node.Requester, loadedConfig.Node.Requester)
 
 				// Further, test specific parts:
-				var out types.APIConfig
-				err = ForKey(types.NodeServerAPI, &out)
+				var out types.NodeConfig
+				err = ForKey(types.Node, &out)
 				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.ServerAPI, out)
+				assert.Equal(t, expected.Node.Requester, out.Requester)
 
-				retrieved, err := Get[string](types.NodeServerAPIHost)
-				assert.NoError(t, err)
-				assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
+				var retrieved types.RequesterConfig
+				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
+				assert.Equal(t, expected.Node.Requester, retrieved)
 			})
 		}
 	})
