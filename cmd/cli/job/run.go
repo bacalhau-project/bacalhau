@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/spf13/cobra"
@@ -38,6 +40,8 @@ var (
 type RunOptions struct {
 	RunTimeSettings *cliflags.RunTimeSettings // Run time settings for execution (e.g. follow, wait after submission)
 	ShowWarnings    bool                      // Show warnings when submitting a job
+	NoTemplate      bool
+	TemplateVars    map[string]string
 }
 
 func NewRunOptions() *RunOptions {
@@ -60,6 +64,10 @@ func NewRunCmd() *cobra.Command {
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
 	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
+	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
+		"Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements")
+	runCmd.Flags().StringToStringVarP(&o.TemplateVars, "template-vars", "V", nil,
+		"Replace a placeholder in the job spec with a value. e.g. --template-vars foo=bar")
 	return runCmd
 }
 
@@ -91,6 +99,18 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 		util.Fatal(cmd, errors.New(userstrings.JobSpecBad), 1)
 	}
 
+	if !o.NoTemplate {
+		parser := template.NewParser(template.ParserParams{
+			Replacements: o.TemplateVars,
+			UseEnvVars:   true,
+		})
+		byteResult, err = parser.ParseBytes(byteResult)
+		if err != nil {
+			util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
+			return
+		}
+	}
+
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 	// so we can just use that
 	var j *models.Job
@@ -112,6 +132,10 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 		warnings := j.SanitizeSubmission()
 		if len(warnings) > 0 {
 			o.printWarnings(cmd, warnings)
+		}
+		outputOps := output.NonTabularOutputOptions{Format: output.YAMLFormat}
+		if err = output.OutputOneNonTabular(cmd, outputOps, j); err != nil {
+			util.Fatal(cmd, fmt.Errorf("failed to write job: %w", err), 1)
 		}
 		return
 	}
