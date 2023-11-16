@@ -10,6 +10,7 @@ interface TableProps {
   data: Node[];
 }
 
+const localData = { env: true };
 // const labelColorMap: { [key: string]: string } = {
 //   healthy: "green",
 //   warning: "orange",
@@ -22,6 +23,9 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
   return nodes.map((node) => {
     const inputs: string[] = node.ComputeNodeInfo?.StorageSources ?? [];
     const outputs: string[] = node.ComputeNodeInfo?.Publishers ?? [];
+    // NEED to look at this again – does this mean all false or will it change per node?
+    localData.env = node.Labels.env != undefined;
+    console.log("node.Labels.env", localData.env);
 
     return {
       id: node.PeerInfo.ID,
@@ -39,20 +43,20 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
 const NodesTable: React.FC<TableProps> = ({ data }) => {
   const parsedData = parseData(data);
   const { settings } = useContext(TableSettingsContext);
-  console.log("settings.showNodeId", settings.showNodeId);
+
   return (
     <div className={styles.tableContainer}>
       <table>
         <thead>
           <tr>
             {settings.showNodeId && <th>Node ID</th>}
-            <th>Name</th>
-            <th>Type</th>
-            <th>Environment</th>
-            <th>Inputs From</th>
-            <th>Outputs</th>
-            <th>Version</th>
-            <th>Action</th>
+            {settings.showName && <th>Name</th>}
+            {settings.showType && <th>Type</th>}
+            {settings.showEnv && <th>Environment</th>}
+            {settings.showInputs && <th>Inputs From</th>}
+            {settings.showOutputs && <th>Outputs</th>}
+            {settings.showVersion && <th>Version</th>}
+            {settings.showAction && <th>Action</th>}
           </tr>
         </thead>
         <tbody>
@@ -61,25 +65,41 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               {settings.showNodeId && (
                 <td className={styles.id}>{nodeData.id}</td>
               )}
-              <td className={styles.name}>{nodeData.name}</td>
-              <td className={styles.type}>{nodeData.type}</td>
-              <td className={styles.label}>
-                <Label text={nodeData.environment} color="green" />
-              </td>
-              <td className={styles.inputs}>
-                {nodeData.inputs.map((input, index) => (
-                  <div key={`input-${index}`}>{input}</div>
-                ))}
-              </td>
-              <td className={styles.outputs}>
-                {nodeData.outputs.map((output, index) => (
-                  <div key={`output-${index}`}>{output}</div>
-                ))}
-              </td>
-              <td className={styles.version}>{nodeData.version}</td>
-              <td className={styles.action}>
-                <ActionButton text="View" />
-              </td>
+              {settings.showName && (
+                <td className={styles.name}>{nodeData.name}</td>
+              )}
+              {settings.showType && (
+                <td className={styles.type}>{nodeData.type}</td>
+              )}
+              {settings.showEnv && (
+                <td className={styles.label}>
+                  {localData.env && (
+                    <Label text={nodeData.environment} color="green" />
+                  )}
+                </td>
+              )}
+              {settings.showInputs && (
+                <td className={styles.inputs}>
+                  {nodeData.inputs.map((input, index) => (
+                    <div key={`input-${index}`}>{input}</div>
+                  ))}
+                </td>
+              )}
+              {settings.showOutputs && (
+                <td className={styles.outputs}>
+                  {nodeData.outputs.map((output, index) => (
+                    <div key={`output-${index}`}>{output}</div>
+                  ))}
+                </td>
+              )}
+              {settings.showVersion && (
+                <td className={styles.version}>{nodeData.version}</td>
+              )}
+              {settings.showAction && (
+                <td className={styles.action}>
+                  <ActionButton text="View" />
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

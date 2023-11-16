@@ -3,7 +3,13 @@ import React, { useState, useContext, useEffect, ReactNode } from "react";
 
 export interface TableSettings {
   showNodeId: boolean;
-  // ... add other settings as needed
+  showName: boolean;
+  showType: boolean;
+  showEnv: boolean;
+  showInputs: boolean;
+  showOutputs: boolean;
+  showVersion: boolean;
+  showAction: boolean;
 }
 
 interface TableSettingsContextType {
@@ -13,7 +19,13 @@ interface TableSettingsContextType {
 
 const defaultState: TableSettings = {
   showNodeId: true,
-  // ... default values for other settings
+  showName: true,
+  showType: true,
+  showEnv: true,
+  showInputs: true,
+  showOutputs: true,
+  showVersion: true,
+  showAction: true
 };
 
 const defaultContextValue: TableSettingsContextType = {
@@ -46,7 +58,6 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
     setSettings((prev) => {
       const newSettings = { ...prev, [key]: !prev[key] };
       localStorage.setItem("tableSettings", JSON.stringify(newSettings));
-      console.log("newSettings", newSettings);
       return newSettings;
     });
   };
@@ -59,8 +70,6 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
 };
 
 export const useTableSettings = (): TableSettingsContextType => {
-  console.log("IM HERE");
-
   const context = useContext(TableSettingsContext);
   if (!context) {
     throw new Error(
