@@ -8,10 +8,14 @@ interface CheckboxProps {
 
 const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange, label }) => {
   return (
-    <label>
-      {label && <span>{label}</span>}
-      <input type="checkbox" checked={checked} onChange={onChange} />
-    </label>
+    <div>
+        <label>
+        <span>
+            {label && <span>{label}</span>}
+        </span>
+        <input type="checkbox" checked={checked} onChange={onChange} />
+        </label>
+    </div>
   );
 };
 
