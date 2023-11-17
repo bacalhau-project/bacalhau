@@ -21,6 +21,8 @@ const (
 
 type GRPCServer struct {
 	Impl executor.Executor
+
+	proto.UnimplementedExecutorServer
 }
 
 func (s *GRPCServer) Start(_ context.Context, request *proto.RunCommandRequest) (*proto.StartResponse, error) {
