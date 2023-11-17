@@ -4,7 +4,7 @@ import { NodeListRequest, NodesResponse } from "../../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API
 const apiHost = process.env.REACT_APP_BACALHAU_API_HOST || "0.0.0.0";
-const apiPort = process.env.REACT_APP_BACALHAU_API_PORT || "51562";
+const apiPort = process.env.REACT_APP_BACALHAU_API_PORT || "1234";
 
 const apiConfig = {
   baseURL: `http://${apiHost}:${apiPort}/api/v1`,
