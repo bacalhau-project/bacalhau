@@ -70,7 +70,7 @@ const Settings = () => {
         label="Action"
         checked={tempSettings.showAction}
         onChange={() => handleToggle("showAction")}
-      />      
+      />
       <button onClick={handleSave}>Save</button>
     </Layout>
   );

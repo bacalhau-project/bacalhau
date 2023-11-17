@@ -2,7 +2,6 @@
 import React, { useContext } from "react";
 import styles from "../../styles/NodesTable.module.scss";
 import TableSettingsContext from "../context/TableSettingsContext";
-import Label from "./Label";
 import ActionButton from "./ActionButton";
 import { Node, ParsedNodeData } from "../helpers/nodeInterfaces";
 
@@ -61,7 +60,7 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showEnv && (
                 <td className={styles.label}>
-                  {nodeData.environment && ( nodeData.environment)}
+                  {nodeData.environment && nodeData.environment}
                 </td>
               )}
               {settings.showInputs && (

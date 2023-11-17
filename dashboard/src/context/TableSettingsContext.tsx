@@ -14,7 +14,7 @@ export interface TableSettings {
 
 interface TableSettingsContextType {
   settings: TableSettings;
-  toggleSetting: (key: keyof TableSettings) => void;
+  toggleSetting: (_key: keyof TableSettings) => void;
 }
 
 const defaultState: TableSettings = {
@@ -25,7 +25,7 @@ const defaultState: TableSettings = {
   showInputs: true,
   showOutputs: true,
   showVersion: true,
-  showAction: true
+  showAction: true,
 };
 
 const defaultContextValue: TableSettingsContextType = {
