@@ -41,7 +41,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/mattn/go-isatty v0.0.19
 	github.com/mitchellh/go-wordwrap v1.0.1
-	github.com/multiformats/go-multiaddr v0.9.0
+	github.com/multiformats/go-multiaddr v0.12.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/image-spec v1.0.2
@@ -78,7 +78,7 @@ require (
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.14.0
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
+	golang.org/x/exp v0.0.0-20230725012225-302865e7556b
 	k8s.io/apimachinery v0.28.2
 	k8s.io/kubectl v0.28.2
 	sigs.k8s.io/yaml v1.3.0
