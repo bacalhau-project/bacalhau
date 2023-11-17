@@ -3,19 +3,25 @@ package shared
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type EndpointParams struct {
 	Router           *echo.Echo
 	NodeID           string
 	PeerStore        peerstore.Peerstore
+	Host             host.Host
 	NodeInfoProvider models.NodeInfoProvider
 }
 
@@ -23,6 +29,7 @@ type Endpoint struct {
 	router           *echo.Echo
 	nodeID           string
 	peerStore        peerstore.Peerstore
+	host             host.Host
 	nodeInfoProvider models.NodeInfoProvider
 }
 
@@ -32,12 +39,16 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		nodeID:           params.NodeID,
 		peerStore:        params.PeerStore,
 		nodeInfoProvider: params.NodeInfoProvider,
+		host:             params.Host,
 	}
 
 	// JSON group
 	g := e.router.Group("/api/v1")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
 	g.GET("/peers", e.peers)
+	g.POST("/connect", e.connect)
+	g.POST("/disconnect", e.disconnect)
+	g.POST("/ping", e.ping)
 	g.GET("/node_info", e.nodeInfo)
 	g.POST("/version", e.version)
 	g.GET("/healthz", e.healthz)
@@ -79,7 +90,56 @@ func (e *Endpoint) peers(c echo.Context) error {
 	for _, p := range e.peerStore.Peers() {
 		peerInfos = append(peerInfos, e.peerStore.PeerInfo(p))
 	}
-	return c.JSON(http.StatusOK, peerInfos)
+	return c.JSON(http.StatusOK, &client.PeersResponse{Peers: peerInfos})
+}
+
+func (e *Endpoint) connect(c echo.Context) error {
+	var req client.ConnectPeersRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if swrm, ok := e.host.Network().(*swarm.Swarm); ok {
+		swrm.Backoff().Clear(req.Peer.ID)
+	}
+
+	if err := e.host.Connect(c.Request().Context(), req.Peer); err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, client.ConnectPeersResponse{
+		Success: true,
+	})
+}
+
+func (e *Endpoint) disconnect(c echo.Context) error {
+	var req client.DisconnectPeersRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := e.host.Network().ClosePeer(req.Peer); err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, client.DisconnectPeersResponse{
+		Success: true,
+	})
+}
+
+func (e *Endpoint) ping(c echo.Context) error {
+	var req client.PingPeerRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	result, ok := <-ping.Ping(c.Request().Context(), e.host, req.Peer)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, "no ping received")
+	}
+	msg := ""
+	if result.Error != nil {
+		msg = result.Error.Error()
+	}
+	return c.JSON(http.StatusOK, &client.PingPeerResponse{TTL: result.RTT, Msg: msg})
 }
 
 // nodeInfo godoc

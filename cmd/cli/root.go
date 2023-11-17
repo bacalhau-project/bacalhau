@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/net"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
@@ -156,6 +157,8 @@ func NewRootCmd() *cobra.Command {
 	RootCmd.AddCommand(serve.NewCmd())
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
+
+	RootCmd.AddCommand(net.NewCmd())
 
 	return RootCmd
 }
