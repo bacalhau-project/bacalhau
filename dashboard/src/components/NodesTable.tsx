@@ -10,22 +10,10 @@ interface TableProps {
   data: Node[];
 }
 
-const localData = { env: true };
-// const labelColorMap: { [key: string]: string } = {
-//   healthy: "green",
-//   warning: "orange",
-//   critical: "red",
-//   offline: "blue",
-//   unknown: "grey"
-// };
-
 function parseData(nodes: Node[]): ParsedNodeData[] {
   return nodes.map((node) => {
     const inputs: string[] = node.ComputeNodeInfo?.StorageSources ?? [];
     const outputs: string[] = node.ComputeNodeInfo?.Publishers ?? [];
-    // NEED to look at this again – does this mean all false or will it change per node?
-    localData.env = node.Labels.env != undefined;
-    console.log("node.Labels.env", localData.env);
 
     return {
       id: node.PeerInfo.ID,
@@ -73,9 +61,7 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showEnv && (
                 <td className={styles.label}>
-                  {localData.env && (
-                    <Label text={nodeData.environment} color="green" />
-                  )}
+                  {nodeData.environment && ( nodeData.environment)}
                 </td>
               )}
               {settings.showInputs && (
