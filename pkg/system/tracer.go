@@ -10,11 +10,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
-
-var tracingClient otlptrace.Client
 
 // ----------------------------------------
 // Tracer helpers
