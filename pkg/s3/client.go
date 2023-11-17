@@ -2,9 +2,15 @@ package s3
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -17,6 +23,36 @@ type ClientWrapper struct {
 	Endpoint      string
 	Region        string
 	mu            sync.RWMutex
+}
+
+// RecalculateV4Signature struct and its methods
+type RecalculateV4Signature struct {
+	next   http.RoundTripper
+	signer *v4.Signer
+	cfg    aws.Config
+}
+
+func (lt *RecalculateV4Signature) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Store for later use
+	val := req.Header.Get("Accept-Encoding")
+
+	// Delete the header so it doesn't account for in the signature
+	req.Header.Del("Accept-Encoding")
+
+	// Sign with the same date
+	timeString := req.Header.Get("X-Amz-Date")
+	timeDate, _ := time.Parse("20060102T150405Z", timeString)
+
+	creds, _ := lt.cfg.Credentials.Retrieve(req.Context())
+	err := lt.signer.SignHTTP(req.Context(), creds, req, v4.GetPayloadHash(req.Context()), "s3", lt.cfg.Region, timeDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reset Accept-Encoding if needed
+	req.Header.Set("Accept-Encoding", val)
+
+	return lt.next.RoundTrip(req)
 }
 
 func (c *ClientWrapper) PresignClient() *s3.PresignClient {
@@ -53,12 +89,10 @@ func NewClientProvider(params ClientProviderParams) *ClientProvider {
 	}
 }
 
-// IsInstalled returns true if the S3 client is installed.
 func (s *ClientProvider) IsInstalled() bool {
 	return HasValidCredentials(s.awsConfig)
 }
 
-// GetConfig returns the AWS config used by the client provider.
 func (s *ClientProvider) GetConfig() aws.Config {
 	return s.awsConfig
 }
@@ -75,7 +109,6 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 	s.clientsMu.Lock()
 	defer s.clientsMu.Unlock()
 
-	// Check again in case another goroutine created the client while we were waiting for the lock.
 	client, ok = s.clients[clientIdentifier]
 	if ok {
 		return client
@@ -99,6 +132,26 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 				}, nil
 			})
 	}
+	// Set the custom HTTP client with signature recalculating logic
+	if strings.Contains(endpoint, "https://storage.googleapis.com") {
+		s3Config.EndpointResolverWithOptions = aws.EndpointResolverWithOptionsFunc(func(service, resolvedRegion string, options ...any) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:               endpoint,
+				SigningRegion:     "auto",
+				Source:            aws.EndpointSourceCustom,
+				HostnameImmutable: true,
+			}, nil
+		})
+		s3Config.Region = "auto"
+		s3Config.Credentials = credentials.NewStaticCredentialsProvider(os.Getenv("GCP_ACCESS_KEY_ID"), os.Getenv("GCP_SECRET_ACCESS_KEY"), "session")
+		s3Config.HTTPClient = &http.Client{
+			Transport: &RecalculateV4Signature{
+				next:   http.DefaultTransport,
+				signer: v4.NewSigner(),
+				cfg:    s3Config,
+			}}
+	}
+
 	s3Client := s3.NewFromConfig(s3Config)
 
 	client = &ClientWrapper{
