@@ -67,10 +67,19 @@
 
 Go to the folder directory that you want to store your job results
 
-Install the bacalhau client
+### Install the bacalhau client
+<hr>
+
+#### Option 1: Install with latest binary
 
 ```bash
 curl -sL https://get.bacalhau.org/install.sh | bash
+```
+
+#### Option 2: Install with Go 1.18
+
+```bash
+go install github.com/bacalhau-project/bacalhau@latest
 ```
 
 Submit a "Hello World" job
