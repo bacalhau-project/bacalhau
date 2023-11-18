@@ -1,7 +1,7 @@
 
 # Executor plugins 
 
-Executors are responsible for running code in Bacalhau, and this directory is the home of the builtin Bacalhau plugins for Docker and WebAssembly jobs. 
+Executors are responsible for running jobs in Bacalhau, and this directory is the home of the builtin Bacalhau plugins for Docker and WebAssembly jobs. 
 
 
 ## WIP: Building plugins 
