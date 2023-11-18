@@ -76,7 +76,7 @@ Go to the folder directory that you want to store your job results
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
-#### Option 2: Install with Go 1.18
+#### Option 2: Install with Go 1.20
 
 ```bash
 go install github.com/bacalhau-project/bacalhau@latest
