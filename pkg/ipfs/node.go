@@ -431,7 +431,15 @@ func createRepo(path string, nodeConfig types.IpfsConfig) error {
 
 // loadPlugins initializes and injects the standard set of ipfs plugins.
 func loadPlugins(cm *system.CleanupManager) error {
-	plugins, err := loader.NewPluginLoader("")
+	// We use a temporary folder for the plugin loader so that when it
+	// does the dynamic plugin loading (which cannot be turned off) it
+	// does not break when it finds a binary in a local ./plugins folder
+	repoDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		return err
+	}
+
+	plugins, err := loader.NewPluginLoader(repoDir)
 	if err != nil {
 		return fmt.Errorf("error loading plugins: %s", err)
 	}
@@ -446,7 +454,10 @@ func loadPlugins(cm *system.CleanupManager) error {
 
 	// Set the global cache so we can use it in the ipfs daemon:
 	pluginLoader = plugins
-	cm.RegisterCallback(plugins.Close)
+	cm.RegisterCallback(func() error {
+		plugins.Close()
+		return os.RemoveAll(repoDir)
+	})
 	return nil
 }
 
