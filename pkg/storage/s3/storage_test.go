@@ -118,7 +118,7 @@ func (s *StorageTestSuite) TestStorage() {
 			},
 		},
 		{
-			name:    "single directory regex pattern",
+			name:    "single directory filter",
 			key:     prefix1 + "*",
 			pattern: "[0-1]01.txt",
 			expectedOutputs: []expectedOutput{
@@ -127,7 +127,7 @@ func (s *StorageTestSuite) TestStorage() {
 			},
 		},
 		{
-			name:    "nested directory regex pattern",
+			name:    "nested directory filter",
 			key:     prefix2,
 			pattern: "nested/.*",
 			expectedOutputs: []expectedOutput{
@@ -136,13 +136,13 @@ func (s *StorageTestSuite) TestStorage() {
 			},
 		},
 		{
-			name:            "regex pattern filters all",
+			name:            "filter filters all",
 			key:             prefix1 + "*",
 			pattern:         "nonexistent",
 			expectedOutputs: []expectedOutput{},
 		},
 		{
-			name:    "regex pattern with no key",
+			name:    "filter with no key",
 			pattern: fmt.Sprintf("^%s.*", prefix1),
 			expectedOutputs: []expectedOutput{
 				{"001", prefix1 + "001.txt"},
@@ -218,7 +218,7 @@ func (s *StorageTestSuite) TestStorage() {
 					Params: s3helper.SourceSpec{
 						Bucket:         s.Bucket,
 						Key:            tc.key,
-						Pattern:        tc.pattern,
+						Filter:         tc.pattern,
 						Region:         s.Region,
 						ChecksumSHA256: tc.checksum,
 						VersionID:      tc.versionID,

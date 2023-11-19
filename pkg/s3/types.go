@@ -13,7 +13,7 @@ import (
 type SourceSpec struct {
 	Bucket         string
 	Key            string
-	Pattern        string
+	Filter         string
 	Region         string
 	Endpoint       string
 	VersionID      string

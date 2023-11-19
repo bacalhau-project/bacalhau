@@ -222,7 +222,7 @@ func (s *StorageProvider) explodeKey(
 	}
 
 	// Compile the regex pattern
-	regex, err := regexp.Compile(storageSpec.Pattern)
+	regex, err := regexp.Compile(storageSpec.Filter)
 	if err != nil {
 		return nil, fmt.Errorf("invalid regex pattern: %w", err)
 	}
@@ -241,7 +241,7 @@ func (s *StorageProvider) explodeKey(
 			return nil, err
 		}
 		for _, object := range resp.Contents {
-			if storageSpec.Pattern != "" {
+			if storageSpec.Filter != "" {
 				trimmedKey := strings.TrimPrefix(aws.ToString(object.Key), sanitizedKey)
 				if !regex.MatchString(trimmedKey) {
 					continue
