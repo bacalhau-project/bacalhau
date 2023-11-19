@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -186,7 +187,7 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
-	if !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
+	if storageSpec.Key != "" && !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),
 			Key:    aws.String(storageSpec.Key),
@@ -220,6 +221,12 @@ func (s *StorageProvider) explodeKey(
 		}
 	}
 
+	// Compile the regex pattern
+	regex, err := regexp.Compile(storageSpec.Pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex pattern: %w", err)
+	}
+
 	// if the key is a directory, or ends with a wildcard, we need to list the objects starting with the key
 	sanitizedKey := s.sanitizeKey(storageSpec.Key)
 	res := make([]s3ObjectSummary, 0)
@@ -234,6 +241,12 @@ func (s *StorageProvider) explodeKey(
 			return nil, err
 		}
 		for _, object := range resp.Contents {
+			if storageSpec.Pattern != "" {
+				trimmedKey := strings.TrimPrefix(aws.ToString(object.Key), sanitizedKey)
+				if !regex.MatchString(trimmedKey) {
+					continue
+				}
+			}
 			res = append(res, s3ObjectSummary{
 				key:   object.Key,
 				size:  object.Size,

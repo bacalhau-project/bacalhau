@@ -13,6 +13,7 @@ import (
 type SourceSpec struct {
 	Bucket         string
 	Key            string
+	Pattern        string
 	Region         string
 	Endpoint       string
 	VersionID      string
@@ -22,9 +23,6 @@ type SourceSpec struct {
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
 		return errors.New("invalid s3 storage params: bucket cannot be empty")
-	}
-	if c.Key == "" {
-		return errors.New("invalid s3 storage params: key cannot be empty")
 	}
 	return nil
 }
