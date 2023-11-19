@@ -4,11 +4,11 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
@@ -63,8 +63,8 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	t.Log("Host set to", host)
 	t.Log("Port set to", port)
 
-	os.Setenv("BACALHAU_HOST", host)
-	os.Setenv("BACALHAU_PORT", fmt.Sprint(port))
+	viper.Set(types.NodeClientAPIHost, host)
+	viper.Set(types.NodeClientAPIPort, port)
 	os.Setenv("BACALHAU_NODE_SELECTORS", "owner=bacalhau")
 
 	for name := range router.TestcasesMap {
