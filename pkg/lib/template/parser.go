@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 )
 
 type ParserParams struct {
 	Replacements map[string]string
-	UseEnvVars   bool
+	EnvPattern   string
 }
 
 type DefaultParser struct {
@@ -18,22 +19,33 @@ type DefaultParser struct {
 	template     *template.Template
 }
 
-func NewParser(params ParserParams) *DefaultParser {
+func NewParser(params ParserParams) (*DefaultParser, error) {
 	if params.Replacements == nil {
 		params.Replacements = make(map[string]string)
 	}
-	if params.UseEnvVars {
+	if params.EnvPattern != "" {
+		// If the pattern is "*", we want to match all environment variables
+		if params.EnvPattern == "*" {
+			params.EnvPattern = ".*"
+		}
+		pattern, err := regexp.Compile(params.EnvPattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile environment variable pattern: %w", err)
+		}
+
 		for _, envVar := range os.Environ() {
 			parts := strings.SplitN(envVar, "=", 2)
-			if _, ok := params.Replacements[parts[0]]; !ok {
-				params.Replacements[parts[0]] = parts[1]
+			if pattern != nil && pattern.MatchString(parts[0]) {
+				if _, ok := params.Replacements[parts[0]]; !ok {
+					params.Replacements[parts[0]] = parts[1]
+				}
 			}
 		}
 	}
 	return &DefaultParser{
 		replacements: params.Replacements,
 		template:     template.New("").Option("missingkey=error"),
-	}
+	}, nil
 }
 
 func (p *DefaultParser) parse(content string) (*bytes.Buffer, error) {
@@ -65,3 +77,6 @@ func (p *DefaultParser) ParseBytes(content []byte) ([]byte, error) {
 	}
 	return tpl.Bytes(), nil
 }
+
+// compile time check if the interface is implemented
+var _ Parser = &DefaultParser{}
