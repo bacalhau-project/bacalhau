@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -22,11 +23,10 @@ func NewViperWithDefaultConfig(cfg types.BacalhauConfig) *viper.Viper {
 func parseStringSliceToMap(slice []string) (map[string]string, error) {
 	result := make(map[string]string)
 	for _, item := range slice {
-		parts := strings.SplitN(item, "=", 2)
-		if len(parts) != 2 {
+		key, value, err := flags.SeparatorParser("=")(item)
+		if err != nil {
 			return nil, fmt.Errorf("expected 'key=value', receieved invalid format for key-value pair: %s", item)
 		}
-		key, value := parts[0], parts[1]
 		result[key] = value
 	}
 	return result, nil
@@ -38,8 +38,6 @@ func singleValueOrError(v ...string) (string, error) {
 	}
 	return v[0], nil
 }
-
-// TODO for the node type methods below. Make the NodeType a concrete type so we can make type assertions on it.
 
 // validNodeTypes returns true of the slice params contains strictly valid node types, false otherwise.
 func validNodeTypes(slice []string) bool {

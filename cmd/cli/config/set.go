@@ -71,6 +71,10 @@ func setConfig(key string, values ...string) error {
 			return fmt.Errorf("setting: %q, invalid node type value: %q, must be one of: 'requester' 'compute' 'requester compute'", key, values)
 		}
 	}
+
+	type parserFunc func(string) (any, error)
+	var parser parserFunc
+
 	switch curValue.(type) {
 	case []string:
 		viperWriter.Set(key, values)
@@ -81,101 +85,39 @@ func setConfig(key string, values ...string) error {
 		}
 		viperWriter.Set(key, sts)
 	case string:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-		viperWriter.Set(key, value)
+		parser = func(s string) (any, error) { return s, nil } // identity by default
 	case bool:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		boolValue, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid boolean value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, boolValue)
+		parser = func(s string) (any, error) { return strconv.ParseBool(s) }
 	case int, int8, int16, int32, int64:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		intValue, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid integer value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, intValue)
+		parser = func(s string) (any, error) { return strconv.ParseInt(s, 10, 64) }
 	case uint, uint8, uint16, uint32, uint64:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		uintValue, err := strconv.ParseUint(value, 10, 64)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid integer value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, uintValue)
+		parser = func(s string) (any, error) { return strconv.ParseUint(s, 10, 64) }
 	case float32, float64:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		floatValue, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid float value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, floatValue)
+		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 10) }
 	case types.Duration:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		dur, err := time.ParseDuration(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid duration value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, dur)
+		parser = func(s string) (any, error) { return time.ParseDuration(s) }
 	case model.JobSelectionDataLocality:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		dl, err := model.ParseJobSelectionDataLocality(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid data locality value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, dl)
+		parser = func(s string) (any, error) { return model.ParseJobSelectionDataLocality(s) }
 	case logger.LogMode:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		lm, err := logger.ParseLogMode(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid log mode value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, lm)
+		parser = func(s string) (any, error) { return logger.ParseLogMode(s) }
 	case types.StorageType:
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		st, err := types.ParseStorageType(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: invalid storage type value: %q: %w", key, value, err)
-		}
-		viperWriter.Set(key, st)
+		parser = func(s string) (any, error) { return types.ParseStorageType(s) }
 	default:
 		return fmt.Errorf("unsupported type %T for key: %q", curValue, key)
 	}
+
+	if parser != nil {
+		value, err := singleValueOrError(values...)
+		if err != nil {
+			return fmt.Errorf("setting %q: %w", key, err)
+		}
+
+		configValue, err := parser(value)
+		if err != nil {
+			return fmt.Errorf("setting %q: %w", key, err)
+		}
+		viperWriter.Set(key, configValue)
+	}
+
 	return viperWriter.WriteConfig()
 }
