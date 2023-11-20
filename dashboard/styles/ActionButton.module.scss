@@ -1,0 +1,22 @@
+@import 'variables';
+
+.column {
+    display: flex;
+    flex-direction: column;
+    align-items: center; // Centers horizontally in column flexbox
+    justify-content: center; // Centers vertically in column flexbox
+    height: 100%; // You might need to set a height
+}
+
+.actionButton{
+    background-color: rgba($light-blue, .5);
+    color: $primary-blue; 
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center   
+}
+
