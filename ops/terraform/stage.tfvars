@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.1.5-rc1"
+bacalhau_version            = "v1.1.6-rc1"
 bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
 bacalhau_node_id_0          = "QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv"
