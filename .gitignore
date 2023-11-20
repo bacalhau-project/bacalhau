@@ -5,7 +5,6 @@ data
 node_modules
 yarn-error.log
 build
-public
 lib
 !pkg/lib
 .DS_Store

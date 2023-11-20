@@ -4,9 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import styles from "../../styles/Sidebar.module.scss";
 import SidebarButton from "./SidebarButton";
-import jobsIcon from "../assets/images/jobs-icon.png";
-import nodesIcon from "../assets/images/nodes-icon.png";
-import settingsIcon from "../assets/images/settings-icon.png";
+import jobsIcon from "../public/images/jobs-icon.png";
+import nodesIcon from "../public/images/nodes-icon.png";
+import settingsIcon from "../public/images/settings-icon.png";
 
 interface SidebarProps {
   isCollapsed: boolean;
