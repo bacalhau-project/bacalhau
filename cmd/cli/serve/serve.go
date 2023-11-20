@@ -51,6 +51,9 @@ var (
 
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
+
+		# Start a public bacalhau node with the WebUI
+		bacalhau serve --webui
 `))
 )
 
@@ -241,7 +244,6 @@ func serve(cmd *cobra.Command) error {
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                getNodeLabels(autoLabel),
-		WebUI:                 startWebUI,
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 	}

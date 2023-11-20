@@ -171,7 +171,7 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 
 func StartWebUIServer(ctx context.Context) error {
 	// Define command to start React server
-	cmd := exec.CommandContext(ctx, "npm", "run", "build")
+	cmd := exec.CommandContext(ctx, "npm", "start")
 
 	// Set working directory to the dashboard directory
 	cmd.Dir = "./dashboard"
