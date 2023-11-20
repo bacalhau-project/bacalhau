@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -124,25 +126,28 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *client.APIClient {
-	hostStr := os.Getenv("BACALHAU_HOST")
-	portStr := os.Getenv("BACALHAU_PORT")
-	apiport, err := strconv.ParseInt(portStr, 10, 64)
+func getClientHostAndPort() (string, uint16) {
+	host, err := config.Get[string](types.NodeClientAPIHost)
 	if err != nil {
 		panic(err)
 	}
-	return client.NewAPIClient(hostStr, uint16(apiport))
+	port, err := config.Get[uint16](types.NodeClientAPIPort)
+	if err != nil {
+		panic(err)
+	}
+	log.Debug().Msgf("Connecting to %s:%d", host, port)
+	return host, port
+}
+
+func getClient() *client.APIClient {
+	host, port := getClientHostAndPort()
+	return client.NewAPIClient(host, port)
 }
 
 func getClientV2() *clientv2.Client {
-	hostStr := os.Getenv("BACALHAU_HOST")
-	portStr := os.Getenv("BACALHAU_PORT")
-	apiport, err := strconv.ParseInt(portStr, 10, 64)
-	if err != nil {
-		panic(err)
-	}
+	host, port := getClientHostAndPort()
 	return clientv2.New(clientv2.Options{
-		Address: fmt.Sprintf("http://%s:%d", hostStr, uint16(apiport)),
+		Address: fmt.Sprintf("http://%s:%d", host, port),
 	})
 }
 

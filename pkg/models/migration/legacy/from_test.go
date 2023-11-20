@@ -62,6 +62,7 @@ func (s *LegacyFromSuite) TestLegacyStorageSpec() {
 					"ChecksumSHA256": "",
 					"Endpoint":       "",
 					"Key":            "",
+					"Filter":         "",
 					"Region":         "",
 					"VersionID":      "",
 				},
