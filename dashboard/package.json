@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1 -p 8080",
     "lint": "eslint . --ext .ts,.tsx --fix"
   },
   "dependencies": {

@@ -14,6 +14,7 @@ export interface TableSettings {
 
 interface TableSettingsContextType {
   settings: TableSettings;
+  // eslint-disable-next-line no-unused-vars
   toggleSetting: (_key: keyof TableSettings) => void;
 }
 

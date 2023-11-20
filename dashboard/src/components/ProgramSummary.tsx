@@ -3,8 +3,8 @@ import React from "react";
 import Image from "next/image";
 import styles from "../../styles/ProgramSummary.module.scss";
 import { Tasks } from "../helpers/jobInterfaces";
-import cogwheel from "../assets/images/cogwheel-dark.png";
-import dockerImage from "../assets/images/docker.png";
+import cogwheel from "../public/images/cogwheel-dark.png";
+import dockerImage from "../public/images/docker.png";
 
 interface ProgramSummaryProps {
   data: Tasks;

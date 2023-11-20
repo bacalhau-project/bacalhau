@@ -1,8 +1,8 @@
 import React from "react";
 import Image from "next/image";
 import styles from "../../styles/Header.module.scss";
-import bacLogo from "../assets/images/bacalhau-logo-black.png";
-import profile from "../assets/images/profile.png";
+import bacLogo from "../public/images/bacalhau-logo-black.png";
+import profile from "../public/images/profile.png";
 
 interface HeaderProps {
   pageTitle: string;

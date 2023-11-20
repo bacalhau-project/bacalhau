@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import styles from "../../styles/ActionButton.module.scss";
-import icon from "../assets/images/view-icon.png";
+import icon from "../public/images/view-icon.png";
 
 interface ActionButtonProps {
   text: string;
