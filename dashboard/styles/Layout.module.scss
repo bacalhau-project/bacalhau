@@ -1,9 +1,9 @@
 // styles/Layout.module.scss
-@import 'fonts';
+@import "@fontsource/open-sans/300.css";
 
 .layout {
     display: flex;
-    font-family: 'Open Sans Light';
+    font-family: 'Open Sans', sans-serif;
 }
 
 .rightSide {
