@@ -30,8 +30,21 @@ You can start editing the page by modifying `pages/index.tsx`. The page auto-upd
 
 The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
 
-**N.b. (still in development):**
-For testing the API connection look at [bacalhau.ts](https://github.com/bacalhau-project/bacalhau/blob/e61b1ebb669043b8b4113437b3035064c0d28f46/dashboard/src/pages/api/bacalhau.ts). Here you will find the HOST and PORT cofiguration. To test the connection with `go run . devstack` you will need to change the port configuration.
+### Spnning up the Dashboard (still in development):
+For spinning up & testing the dashboard with the API connection to the bacalhau network you can run:
+
+```bash
+bacalhau serve --node-type requester,compute
+``` 
+
+to spin up your own bacalhau cluster. This will use the default port `1234`.
+
+In [`bacalhau.ts`](https://github.com/bacalhau-project/bacalhau/blob/e61b1ebb669043b8b4113437b3035064c0d28f46/dashboard/src/pages/api/bacalhau.ts) you will find the HOST and PORT cofiguration. Test the connection with: 
+
+```bash
+go run . devstack
+``` 
+You will need to change the port configuration in [`bacalhau.ts`](https://github.com/bacalhau-project/bacalhau/blob/e61b1ebb669043b8b4113437b3035064c0d28f46/dashboard/src/pages/api/bacalhau.ts) to the one generated when you run the command.
 
 ## Project Set Up
 
