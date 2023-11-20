@@ -119,138 +119,138 @@ jobs:
         type: string
         default: ""
     steps:
-      - checkout
+    - checkout
 
-      - when:
-          condition:
-            equal: ["windows", << parameters.target_os >>]
-          steps:
-            - run:
-                name: Install GNU Make
-                command: |
-                  choco install -y make
-                  choco install -y jq
-                shell: powershell.exe
+    - when:
+        condition:
+          equal: ["windows", << parameters.target_os >>]
+        steps:
+        - run:
+            name: Install GNU Make
+            command: |
+              choco install -y make
+              choco install -y jq
+            shell: powershell.exe
 
-      - install_go:
-          executor: << parameters.executor >>
+    - install_go:
+        executor: << parameters.executor >>
 
-      - run:
-          name: Init tools
-          command: |
-            make init
-            go version
-            which go
+    - run:
+        name: Init tools
+        command: |
+          make init
+          go version
+          which go
 
-      - run:
-          name: Build
-          command: make build-ci
+    - run:
+        name: Build
+        command: make build-ci
 
-      - when:
-          condition:
-            equal: [true, << parameters.run_tests >>]
-          steps:
-            - run:
-                name: "Setup BACALHAU_ENVIRONMENT environment variable"
-                command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
-            - run:
-                name: Test Go
-                environment:
-                  LOG_LEVEL: debug
-                  TEST_BUILD_TAGS: << parameters.build_tags >>
-                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
-                command: |
-                  export GOBIN=${HOME}/bin
-                  export PATH=$GOBIN:$PATH
-                  go install gotest.tools/gotestsum@v1.8.2
-                  make test-and-report
+    - when:
+        condition:
+          equal: [true, << parameters.run_tests >>]
+        steps:
+        - run:
+            name: "Setup BACALHAU_ENVIRONMENT environment variable"
+            command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
+        - run:
+            name: Test Go
+            environment:
+              LOG_LEVEL: debug
+              TEST_BUILD_TAGS: << parameters.build_tags >>
+              TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+            command: |
+              export GOBIN=${HOME}/bin
+              export PATH=$GOBIN:$PATH
+              go install gotest.tools/gotestsum@v1.8.2
+              make test-and-report
 
-                no_output_timeout: 20m
-            - store_test_results:
-                path: .
-            - persist_to_workspace:
-                root: coverage/
-                paths:
-                  - "*.coverage"
+            no_output_timeout: 20m
+        - store_test_results:
+            path: .
+        - persist_to_workspace:
+            root: coverage/
+            paths:
+            - "*.coverage"
 
-      - when:
-          condition:
-            and:
-              - equal: ["linux", << parameters.target_os >>]
-              - equal: ["amd64", << parameters.target_arch >>]
-              - equal: [true, << parameters.run_tests >>]
-          steps:
-            - run:
-                name: Test Python SDK
-                command: |
-                  sudo apt install python3.10 -y
-                  curl -sSL https://install.python-poetry.org | python3 -
-                  cd python
-                  # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
-                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
-                  # Using '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
-                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
-                  # Run tests
-                  cd ..
-                  make test-python
-            - run:
-                name: Test Python Airflow Provider
-                command: |
-                  cd integration/airflow
-                  pip3 install -r dev-requirements.txt
-                  tox
-                  cd ../..
-            - run:
-                name: Test Python Flyte plugin
-                command: |
-                  cd integration/flyte
-                  make setup
-                  make test
-                  cd ../..
-            - run:
-                name: Upload results
-                command: |
-                  export DEBIAN_FRONTEND=noninteractive
-                  sudo apt install python3.10 -y
-                  python3 -m pip install --upgrade pip
-                  pip3 install gsutil
-                  export SHA="<< pipeline.git.revision >>"
-                  export DATETIME="$(date -u +"%FT%H%MZ")"
-                  if [ "<<pipeline.git.tag>>" != "" ]; then
-                    export TEST_RESULTS_FILENAME="<<pipeline.git.tag>>-$DATETIME-$SHA.xml"
-                  else
-                    export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
-                  fi
-                  # Credentials for project: bacalhau-cicd
-                  # Account:
-                  echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-                  if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
-                    mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
-                  fi
-                  mv unittests.xml "${TEST_RESULTS_FILENAME}"
-                  gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
+    - when:
+        condition:
+          and:
+          - equal: ["linux", << parameters.target_os >>]
+          - equal: ["amd64", << parameters.target_arch >>]
+          - equal: [true, << parameters.run_tests >>]
+        steps:
+        - run:
+            name: Test Python SDK
+            command: |
+              sudo apt install python3.10 -y
+              curl -sSL https://install.python-poetry.org | python3 -
+              cd python
+              # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
+              env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
+              # Using '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
+              env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
+              # Run tests
+              cd ..
+              make test-python
+        - run:
+            name: Test Python Airflow Provider
+            command: |
+              cd integration/airflow
+              pip3 install -r dev-requirements.txt
+              tox
+              cd ../..
+        - run:
+            name: Test Python Flyte plugin
+            command: |
+              cd integration/flyte
+              make setup
+              make test
+              cd ../..
+            # - run:
+            #     name: Upload results
+            #     command: |
+            #       export DEBIAN_FRONTEND=noninteractive
+            #       sudo apt install python3.10 -y
+            #       python3 -m pip install --upgrade pip
+            #       pip3 install gsutil
+            #       export SHA="<< pipeline.git.revision >>"
+            #       export DATETIME="$(date -u +"%FT%H%MZ")"
+            #       if [ "<<pipeline.git.tag>>" != "" ]; then
+            #         export TEST_RESULTS_FILENAME="<<pipeline.git.tag>>-$DATETIME-$SHA.xml"
+            #       else
+            #         export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
+            #       fi
+            #       # Credentials for project: bacalhau-cicd
+            #       # Account:
+            #       echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            #       if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
+            #         mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
+            #       fi
+            #       mv unittests.xml "${TEST_RESULTS_FILENAME}"
+            #       gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
-      - run:
-          name: Build tarball
-          command: |
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            make build-bacalhau-tgz
+    - run:
+        name: Build tarball
+        command: |
+          echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+          echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+          export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+          make build-bacalhau-tgz
 
-      - when:
-          condition:
-            not:
-              equal: ["integration", << parameters.build_tags >>]
-          steps:
-            - persist_to_workspace:
-                root: dist/
-                paths:
-                  - "*.tar.gz"
-                  - "*.sha256"
+    - when:
+        condition:
+          not:
+            equal: ["integration", << parameters.build_tags >>]
+        steps:
+        - persist_to_workspace:
+            root: dist/
+            paths:
+            - "*.tar.gz"
+            - "*.sha256"
 
-      - store_artifacts:
-          path: dist/
+    - store_artifacts:
+        path: dist/
 
 
   build_canary:
@@ -386,18 +386,18 @@ jobs:
             cd benchmark
             bash start_and_run.sh
           )
-    - run:
-        name: Upload results
-        env:
-        command: |
-          export PATH="$HOME/.local/bin:${PATH}"
-          export DATETIME="$(date -u +"%FT%H%MZ")"
-          if test -z "${CIRCLE_TAG}"; then
-            export CIRCLE_TAG="v0.0.0-xxxxxxx"
-          fi
-          pip3 install gsutil
-          echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-          gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
+    # - run:
+    #     name: Upload results
+    #     env:
+    #     command: |
+    #       export PATH="$HOME/.local/bin:${PATH}"
+    #       export DATETIME="$(date -u +"%FT%H%MZ")"
+    #       if test -z "${CIRCLE_TAG}"; then
+    #         export CIRCLE_TAG="v0.0.0-xxxxxxx"
+    #       fi
+    #       pip3 install gsutil
+    #       echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+    #       gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
     - heroku/install
     - run:
         name: Update dashboard
@@ -428,60 +428,63 @@ jobs:
     executor: linux-amd64
     working_directory: ~/repo
     steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/py_dist
-      - run:
-          name: Copy dist files
-          command: |
-            mkdir -p clients/python/dist
-            cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
-            mkdir -p python/dist
-            cp /tmp/py_dist/bacalhau_sdk* python/dist
-            mkdir -p integration/airflow/dist
-            cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
-      - run :
-          name: Release python apiclient
-          command: |
-            make release-python-apiclient
-      - run:
-          name: Install Python SDK pre-requistes
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-      - run :
-          name: Release python sdk
-          command: |
-            make release-python-sdk
-      - run :
-          name: Release python Airflow integration
-          command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-airflow
-      - run :
-          name: Release python Flyte integration
-          command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-flyte
-
-
-  update_metadata:
-    executor: linux-amd64
-    parameters:
-      METADATA_BUCKET:
-        type: string
-      METADATA_FILENAME:
-        type: string
-    steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/py_dist
     - run:
-        name: Update Metadata
+        name: Copy dist files
         command: |
-          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
-          echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
-          cd ops
-          pip3 install -r requirements.txt
-          python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+          mkdir -p clients/python/dist
+          cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
+          mkdir -p python/dist
+          cp /tmp/py_dist/bacalhau_sdk* python/dist
+          mkdir -p integration/airflow/dist
+          cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
+    - run:
+        name: Release python apiclient
+        command: |
+          make release-python-apiclient
+    - run:
+        name: Install Python SDK pre-requistes
+        command: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+          echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+    - run:
+        name: Release python sdk
+        command: |
+          make release-python-sdk
+    - run:
+        name: Release python Airflow integration
+        command: |
+          pip3 install twine==4.0.2
+          make release-bacalhau-airflow
+    - run:
+        name: Release python Flyte integration
+        command: |
+          pip3 install twine==4.0.2
+          make release-bacalhau-flyte
+
+
+  # Temporarily disabled until UPDATE_METADATA_CREDENTIALS_CONTENT_B64 and METADATA_BUCKET
+  # are moved
+  # 
+  # update_metadata:
+  #   executor: linux-amd64
+  #   parameters:
+  #     METADATA_BUCKET:
+  #       type: string
+  #     METADATA_FILENAME:
+  #       type: string
+  #   steps:
+  #   - checkout
+  #   - run:
+  #       name: Update Metadata
+  #       command: |
+  #         export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
+  #         echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
+  #         cd ops
+  #         pip3 install -r requirements.txt
+  #         python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
   build_swagger:
     executor: linux-amd64
@@ -571,70 +574,70 @@ jobs:
       # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
     working_directory: ~/repo
     steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/swagger_spec
-      - run:
-          name: Copy swagger.json from workspace
-          command: |
-            cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
-      - run:
-          name: Install Python API client pre-requistes
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
-          name: Build Python API client
-          command: |
-            make build-python-apiclient
-      - persist_to_workspace:
-          root: clients/python/dist
-          paths:
-            - bacalhau_apiclient-*.tar.gz
-            - bacalhau_apiclient-*.whl
-      - run:
-          name: Install Python SDK pre-requistes
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-            cd python
-            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
-      - run:
-          name: Build Python SDK
-          command: |
-            make build-python-sdk
-      - persist_to_workspace:
-          root: python/dist
-          paths:
-            - bacalhau_sdk-*.tar.gz
-            - bacalhau_sdk-*.whl
-      - run:
-          name: Install bacalhau-airflow pre-requistes
-          command: |
-            cd integration/airflow
-            pip3 install -r dev-requirements.txt
-      - run:
-          name: Build Python Bacalhau Airflow
-          command: |
-            make build-bacalhau-airflow
-      - run:
-          name: Install Flyte plugin pre-requistes
-          command: |
-            cd integration/flyte
-            # installs flytekit, flyteidl and deps.
-            make setup
-      - run:
-          name: Build Python Bacalhau Flyte plugin
-          command: |
-            cd integration/flyte/plugins/
-            make build_all_plugins
-      - persist_to_workspace:
-          root: integration/airflow/dist
-          paths:
-            - bacalhau_airflow-*.tar.gz
-            - bacalhau_airflow-*.whl
+    - checkout
+    - attach_workspace:
+        at: /tmp/swagger_spec
+    - run:
+        name: Copy swagger.json from workspace
+        command: |
+          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+    - run:
+        name: Install Python API client pre-requistes
+        command: |
+          CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+          wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+          chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+          ${HOME}/bin/swagger-codegen-cli.jar version
+    - run:
+        name: Build Python API client
+        command: |
+          make build-python-apiclient
+    - persist_to_workspace:
+        root: clients/python/dist
+        paths:
+        - bacalhau_apiclient-*.tar.gz
+        - bacalhau_apiclient-*.whl
+    - run:
+        name: Install Python SDK pre-requistes
+        command: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+          echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+          cd python
+          /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
+    - run:
+        name: Build Python SDK
+        command: |
+          make build-python-sdk
+    - persist_to_workspace:
+        root: python/dist
+        paths:
+        - bacalhau_sdk-*.tar.gz
+        - bacalhau_sdk-*.whl
+    - run:
+        name: Install bacalhau-airflow pre-requistes
+        command: |
+          cd integration/airflow
+          pip3 install -r dev-requirements.txt
+    - run:
+        name: Build Python Bacalhau Airflow
+        command: |
+          make build-bacalhau-airflow
+    - run:
+        name: Install Flyte plugin pre-requistes
+        command: |
+          cd integration/flyte
+          # installs flytekit, flyteidl and deps.
+          make setup
+    - run:
+        name: Build Python Bacalhau Flyte plugin
+        command: |
+          cd integration/flyte/plugins/
+          make build_all_plugins
+    - persist_to_workspace:
+        root: integration/airflow/dist
+        paths:
+        - bacalhau_airflow-*.tar.gz
+        - bacalhau_airflow-*.whl
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -675,12 +678,12 @@ workflows:
             ignore: main
           tags:
             ignore: /.*/
-    - update_metadata:
-        name: Update metadata for dev branch test runs
-        METADATA_BUCKET: "bacalhau-global-storage"
-        METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
-        requires:
-        - test-linux-amd64-unit
+    # - update_metadata:
+    #     name: Update metadata for dev branch test runs
+    #     METADATA_BUCKET: "bacalhau-global-storage"
+    #     METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+    #     requires:
+    #     - test-linux-amd64-unit
     - coverage:
         name: Build coverage report
         requires:
@@ -820,12 +823,12 @@ workflows:
           parameters:
             target_arch: ["armv6", "armv7"]
         filters: *filters_main_only
-    - update_metadata:
-        name: Update metadata for main test runs
-        requires:
-        - build-linux-amd64-unit
-        METADATA_BUCKET: "bacalhau-global-storage"
-        METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+        # - update_metadata:
+        #     name: Update metadata for main test runs
+        #     requires:
+        #     - build-linux-amd64-unit
+        #     METADATA_BUCKET: "bacalhau-global-storage"
+        #     METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
     - coverage:
         name: Build coverage report
         requires:

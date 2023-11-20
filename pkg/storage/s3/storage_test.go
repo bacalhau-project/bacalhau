@@ -4,6 +4,7 @@ package s3_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,6 +52,7 @@ func (s *StorageTestSuite) TestStorage() {
 	for _, tc := range []struct {
 		name            string
 		key             string
+		pattern         string
 		expectedOutputs []expectedOutput
 		checksum        string
 		versionID       string
@@ -113,6 +115,40 @@ func (s *StorageTestSuite) TestStorage() {
 				{"202", "set2/202.txt"},
 				{"301", "set2/nested/301.txt"},
 				{"302", "set2/nested/302.txt"},
+			},
+		},
+		{
+			name:    "single directory filter",
+			key:     prefix1 + "*",
+			pattern: "[0-1]01.txt",
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+				{"101", "101.txt"},
+			},
+		},
+		{
+			name:    "nested directory filter",
+			key:     prefix2,
+			pattern: "nested/.*",
+			expectedOutputs: []expectedOutput{
+				{"301", "nested/301.txt"},
+				{"302", "nested/302.txt"},
+			},
+		},
+		{
+			name:            "filter filters all",
+			key:             prefix1 + "*",
+			pattern:         "nonexistent",
+			expectedOutputs: []expectedOutput{},
+		},
+		{
+			name:    "filter with no key",
+			pattern: fmt.Sprintf("^%s.*", prefix1),
+			expectedOutputs: []expectedOutput{
+				{"001", prefix1 + "001.txt"},
+				{"002", prefix1 + "002.txt"},
+				{"101", prefix1 + "101.txt"},
+				{"102", prefix1 + "102.txt"},
 			},
 		},
 		{
@@ -182,6 +218,7 @@ func (s *StorageTestSuite) TestStorage() {
 					Params: s3helper.SourceSpec{
 						Bucket:         s.Bucket,
 						Key:            tc.key,
+						Filter:         tc.pattern,
 						Region:         s.Region,
 						ChecksumSHA256: tc.checksum,
 						VersionID:      tc.versionID,
