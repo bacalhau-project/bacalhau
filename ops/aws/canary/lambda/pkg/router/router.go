@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 
@@ -23,13 +22,15 @@ var TestcasesMap = map[string]Handler{
 }
 
 func init() {
-	// init system configs and repo.
-	home, err := os.UserHomeDir()
+	repoPath, err := os.MkdirTemp("", "bacalhau_canary_repo_*")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get home dir: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to create repo dir: %s", err)
 		os.Exit(1)
 	}
-	if _, err := setup.SetupBacalhauRepo(filepath.Join(home, ".bacalhau_canary")); err != nil {
+
+	// init system configs and repo.
+	_, err = setup.SetupBacalhauRepo(repoPath)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize bacalhau repo: %s", err)
 		os.Exit(1)
 	}
