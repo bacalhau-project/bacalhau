@@ -94,7 +94,7 @@ func setConfig(key string, values ...string) error {
 		parser = func(s string) (any, error) { return strconv.ParseUint(s, 10, 64) }
 	case float32, float64:
 		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 10) }
-	case types.Duration:
+	case types.Duration, time.Duration:
 		parser = func(s string) (any, error) { return time.ParseDuration(s) }
 	case model.JobSelectionDataLocality:
 		parser = func(s string) (any, error) { return model.ParseJobSelectionDataLocality(s) }

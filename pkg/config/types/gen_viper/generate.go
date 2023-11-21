@@ -65,6 +65,11 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 			constantPath := strings.Join(newPath, ".")
 			defaultValue := "cfg." + constantPath
 
+			typeDurationToTimeDurationMethod := fieldValue.MethodByName("AsTimeDuration")
+			if typeDurationToTimeDurationMethod.IsValid() {
+				defaultValue = "cfg." + constantPath + ".AsTimeDuration()"
+			}
+
 			fmt.Fprintf(writer, "\tp.Viper.%s(%s, %s)\n", methodName, constantName, defaultValue)
 		}
 	}
