@@ -90,13 +90,20 @@ func (publisher *Publisher) publishArchive(
 		return models.SpecConfig{}, err
 	}
 
+	putObjectInput := &s3.PutObjectInput{
+		Bucket: aws.String(spec.Bucket),
+		Key:    aws.String(key),
+		Body:   targetFile,
+	}
+
+	// If the endpoint is AWS, use SHA256 checksums as it is
+	// not supported by other S3-compatible providers, such as GCP buckets
+	if client.IsAWSEndpoint() {
+		putObjectInput.ChecksumAlgorithm = types.ChecksumAlgorithmSha256
+	}
+
 	// Upload the GZIP archive to S3.
-	res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket:            aws.String(spec.Bucket),
-		Key:               aws.String(key),
-		Body:              targetFile,
-		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
-	})
+	res, err := client.Uploader.Upload(ctx, putObjectInput)
 	if err != nil {
 		return models.SpecConfig{}, err
 	}

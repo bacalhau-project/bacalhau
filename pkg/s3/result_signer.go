@@ -52,6 +52,13 @@ func (signer *ResultSigner) Transform(ctx context.Context, spec *models.SpecConf
 		Bucket: &sourceSpec.Bucket,
 		Key:    &sourceSpec.Key,
 	}
+
+	// Pre-signed URLs are only supported for AWS endpoints.
+	// TODO: look into supporting pre-signed URLs for non-AWS endpoints.
+	if !client.IsAWSEndpoint() {
+		return nil
+	}
+
 	log.Ctx(ctx).Debug().Msgf("Signing URL for s3://%s/%s", sourceSpec.Bucket, sourceSpec.Key)
 
 	resp, err := client.PresignClient().PresignGetObject(ctx, request, s3.WithPresignExpires(signer.expiration))

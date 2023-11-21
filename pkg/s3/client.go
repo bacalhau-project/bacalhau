@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/s3/middleware"
 )
 
 type ClientWrapper struct {
@@ -34,6 +35,11 @@ func (c *ClientWrapper) PresignClient() *s3.PresignClient {
 	}
 	c.presignClient = s3.NewPresignClient(c.S3)
 	return c.presignClient
+}
+
+// IsAWSEndpoint checks if the given S3 endpoint URL is an AWS endpoint by its suffix.
+func (c *ClientWrapper) IsAWSEndpoint() bool {
+	return IsAWSEndpoint(c.Endpoint)
 }
 
 type ClientProviderParams struct {
@@ -99,7 +105,7 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 				}, nil
 			})
 	}
-	s3Client := s3.NewFromConfig(s3Config)
+	s3Client := s3.NewFromConfig(s3Config, middleware.DropAcceptEncoding)
 
 	client = &ClientWrapper{
 		S3:         s3Client,
