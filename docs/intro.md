@@ -34,9 +34,9 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 📚 Bacalhau operates at scale over parallel jobs. You can batch process petabytes (quadrillion bytes) of data.
 
-## Fast Track ⏱️
+## Quick Start ⏱️
 
-Understand Bacalhau in 1 minute 
+> Understand Bacalhau in 1 minute 
 
 Install the bacalhau client:
 
