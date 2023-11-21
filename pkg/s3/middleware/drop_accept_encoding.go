@@ -31,6 +31,12 @@ const (
 // https://stackoverflow.com/questions/73717477/gcp-cloud-storage-golang-aws-sdk2-upload-file-with-s3-interoperability-creds/74382598#74382598
 func DropAcceptEncoding(o *s3.Options) {
 	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+		// Return early if the signing middleware is not present, such as with PresignGetObject requests.
+		_, ok := stack.Finalize.Get(SigningMiddlewareID)
+		if !ok {
+			return nil
+		}
+
 		// Insert the middleware to drop the Accept-Encoding header before the request is signed.
 		if err := stack.Finalize.Insert(dropAcceptEncodingHeader, SigningMiddlewareID, middleware.Before); err != nil {
 			return err
