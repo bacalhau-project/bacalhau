@@ -40,8 +40,16 @@ Understand Bacalhau in 1 minute
 
 Install the bacalhau client:
 
+- Option 1: Official installer for Windows, Linux & Mac OS
+
 ```bash
 curl -sL https://get.bacalhau.org/install.sh | bash
+```
+
+- Option 2: Install with Go 1.20 
+
+```bash
+go install github.com/bacalhau-project/bacalhau@latest
 ```
 
 Submit a "Hello World" job:
