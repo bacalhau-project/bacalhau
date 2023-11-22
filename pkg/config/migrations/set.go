@@ -12,6 +12,7 @@ func GetMigrations() ([]Migration, error) {
 	return set.GetMigrations()
 }
 
+//nolint:gochecknoinits
 func init() {
 	set = NewMigrationList()
 }
