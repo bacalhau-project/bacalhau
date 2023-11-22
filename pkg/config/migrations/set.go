@@ -39,7 +39,7 @@ type migrationList struct {
 	ms map[int]mig
 }
 
-func NewMigrationList() migrationList { // nolint: revive
+func NewMigrationList() migrationList {
 	return migrationList{map[int]mig{}}
 }
 
