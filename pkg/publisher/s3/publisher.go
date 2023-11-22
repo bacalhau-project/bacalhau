@@ -96,7 +96,7 @@ func (publisher *Publisher) publishArchive(
 		Body:   targetFile,
 	}
 
-	// If the endpoint is AWS, use SHA256 checksums as it is
+	// Only use SHA256 checksums if the endpoint is AWS, as it is
 	// not supported by other S3-compatible providers, such as GCP buckets
 	if client.IsAWSEndpoint() {
 		putObjectInput.ChecksumAlgorithm = types.ChecksumAlgorithmSha256
@@ -150,13 +150,21 @@ func (publisher *Publisher) publishDirectory(
 		if err != nil {
 			return err
 		}
+
+		putObjectInput := &s3.PutObjectInput{
+			Bucket: aws.String(spec.Bucket),
+			Key:    aws.String(key + filepath.ToSlash(relativePath)),
+			Body:   data,
+		}
+
+		// Only use SHA256 checksums if the endpoint is AWS, as it is
+		// not supported by other S3-compatible providers, such as GCP buckets
+		if client.IsAWSEndpoint() {
+			putObjectInput.ChecksumAlgorithm = types.ChecksumAlgorithmSha256
+		}
+
 		// Upload the file to S3.
-		res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
-			Bucket:            aws.String(spec.Bucket),
-			Key:               aws.String(key + filepath.ToSlash(relativePath)),
-			Body:              data,
-			ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
-		})
+		res, err := client.Uploader.Upload(ctx, putObjectInput)
 		if err != nil {
 			return err
 		}
