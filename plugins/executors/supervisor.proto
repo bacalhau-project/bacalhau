@@ -1,0 +1,11 @@
+
+syntax = "proto3";
+package supervisor;
+
+import "status.proto";
+
+option go_package = "./proto/";
+
+service Supervisor {
+  rpc Status(status.StatusRequest) returns (status.StatusResponse);
+}

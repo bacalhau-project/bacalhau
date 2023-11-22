@@ -1,75 +1,114 @@
 
 syntax = "proto3";
-package proto;
+package executor;
 
-option go_package = "./pkg/executor/plugins/grpc/proto";
+import "status.proto";
 
-// TODO: Complete these structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
-// Details in: https://github.com/bacalhau-project/bacalhau/issues/2700
+option go_package = "./proto/";
 
-message StartResponse {
 
+/***
+* Run() allows the compute node to request that the plugin runs a task 
+* using the information contained in the RunRequest.  
+***/
+
+message RunRequest {
+  LoggingMeta Logs = 1; 
+  Job Job = 2;  
 }
 
-message RunCommandRequest {
-  bytes Params = 1;
+message RunResponse {
+  string STDOUT = 1; 
+	bool StdoutTruncated = 2; 
+	string STDERR = 3; 
+	bool StderrTruncated = 4; 
+	int32 ExitCode = 5;
+	string ErrorMsg = 6;
 }
 
-message RunCommandResponse {
-  bytes Params = 1;
+
+message Job {
+  string JobID = 1; 
+	string ExecutionID = 2; 
+	Resources Resources = 3; 
+	NetworkConfig Network = 4; 
+	repeated ResultPath Outputs = 5; 
+	repeated PreparedStorage Inputs = 6;
+	string ResultsDir = 7;
+	map<string, string> EngineParams = 8;
 }
 
-message CancelCommandRequest {
-  string ExecutionID =1;
+message Resources {
+	uint64 CPU    = 1;
+	uint64 Memory = 2;
+	uint64 Disk   = 3;
+	uint64 GPU    = 4;
 }
 
-message CancelCommandResponse {
-
+message NetworkConfig {
+  int32 Type = 1;
+  repeated string Domains = 2;
 }
 
-message IsInstalledRequest {
-
+message PreparedStorage {
+	InputSource InputSource = 1;
+	StorageVolume Volume = 2;
 }
 
-message IsInstalledResponse {
-  bool Installed = 1;
+message InputSource {
+	map<string, string> Source = 1;
+	string Alias = 2;
+	string Target = 3;
 }
 
-message ShouldBidRequest {
-  bytes BidRequest = 1;
+message StorageVolume{
+	int32 Type = 1;
+	bool ReadOnly = 2;
+	string Source = 3;
+	string Target = 4;
 }
 
-message ShouldBidBasedOnUsageRequest {
-  bytes BidRequest = 1;
-  bytes Usage = 2;
+message ResultPath {
+	string Name = 1;
+	string Path = 2;
 }
 
-// shared by both semantic and resource bid
-message ShouldBidResponse {
-  bytes BidResponse = 1;
+message LoggingMeta {
+  string Stdout = 1;
+  string Stderr = 2; 
+	OutputLimits OutputLimits = 3;
 }
 
-message OutputStreamRequest {
+message OutputLimits{
+  uint64 MaxStdoutFileLength   = 1;
+  uint64 MaxStdoutReturnLength = 2;
+  uint64 MaxStderrFileLength   = 3;
+  uint64 MaxStderrReturnLength = 4;
+}
+
+
+/***
+* Stop() allows a previously started execution to be stopped, or cancelled.
+* A reason for the request will be passed to let the plugin decide how 
+* urgently to stop processing.
+***/
+message StopRequest {
   string ExecutionID = 1;
-  bool History = 2;
-  bool Follow = 3;
+  StopReason Reader = 2;
 }
 
-message OutputStreamResponse {
-  bytes Data =1;
-}
-
-message WaitRequest {
+message StopResponse {
   string ExecutionID = 1;
 }
+
+enum StopReason {
+  Completed = 0;
+  Canceled = 1;
+}
+
 
 service Executor {
-  rpc Run(RunCommandRequest) returns (RunCommandResponse);
-  rpc Start(RunCommandRequest) returns (StartResponse);
-  rpc Wait(WaitRequest) returns (stream RunCommandResponse);
-  rpc Cancel(CancelCommandRequest) returns (CancelCommandResponse);
-  rpc IsInstalled(IsInstalledRequest) returns (IsInstalledResponse);
-  rpc ShouldBid(ShouldBidRequest) returns (ShouldBidResponse);
-  rpc ShouldBidBasedOnUsage(ShouldBidBasedOnUsageRequest) returns (ShouldBidResponse);
-  rpc GetOutputStream(OutputStreamRequest) returns (stream OutputStreamResponse);
+  rpc Run(RunRequest) returns (RunResponse);
+  rpc Stop(StopRequest) returns (StopResponse);
+  rpc Status(status.StatusRequest) returns (status.StatusResponse);
 }

@@ -1,0 +1,32 @@
+
+syntax = "proto3";
+package status;
+
+option go_package = "./proto/";
+
+/***
+* Status() is called by the compute node when it hasn't received a status 
+* update after a period of time.  This allows it to act as a heartbeat but 
+* also to check it's understanding of the current state. 
+*
+* It is also implemented in the plugin supervisor for the plugin to report
+* changes in status.
+***/
+message StatusRequest {
+    string ExecutionID = 1;
+    optional ExecutionStatus Status = 2;
+}
+  
+message StatusResponse {
+    string ExecutionID = 1;
+    ExecutionStatus Status = 2;
+}
+  
+enum ExecutionStatus {
+    Preparing = 0;
+    Running = 1;
+    Finishing = 2;
+    Completed = 3;
+    FailedUser = 4;
+    FailedSystem = 5;
+}

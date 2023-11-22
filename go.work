@@ -4,4 +4,5 @@ use (
 	.
 	./apps/job-info-consumer/consumer
 	./ops/aws/canary/lambda
+	./plugins/executors/skeleton
 )
