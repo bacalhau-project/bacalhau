@@ -1,0 +1,108 @@
+// styles/Sidebar.module.scss
+@import '../../styles/variables';
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transition: width 0.3s ease;
+    background-color: $bgd-color-dark;
+    white-space: nowrap; 
+}
+
+.link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.menuItem, .settings {
+    opacity: 0;
+    visibility: hidden;  // Hide text when sidebar is collapsed
+    transition: opacity 0.05s ease, visibility 0.05s ease;  // Transition both opacity and visibility
+}
+
+.expanded .menuItem, .expanded .settings {
+    opacity: 1;
+    visibility: visible;  // Show text when sidebar is expanded
+}
+
+.collapsed {
+    width: 80px;
+}
+
+.expanded {
+    width: 300px;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    color: $text-colour-light;
+}
+
+.menuItem, .settings {
+    font-size: 21px;
+    margin: 10px 25px;
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+
+    // Add transitions for smooth hover effects
+    transition: background-color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      background-color: darken($primary-blue, 10%); // Darken on hover for a subtle effect
+      transform: scale(1.05); // Scale up a bit on hover for emphasis
+    }
+
+    .menuText {
+      padding-left: 20px;
+    }
+}
+
+.buttonIcon {
+    display: inline-block;
+    width: 30px;
+    height: 2px;
+    background-color: $text-colour-light;
+    position: relative;
+    transition: all 0.3s ease;
+  
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background-color: $text-colour-light;
+      transition: all 0.3s ease;
+    }
+  
+    &::before {
+      top: -10px;
+    }
+  
+    &::after {
+      bottom: -10px;
+    }
+  }
+  
+  .xIcon {
+    .buttonIcon {
+      background-color: transparent;
+    }
+  
+    .buttonIcon::before {
+      top: 0;
+      transform: rotate(45deg);
+    }
+  
+    .buttonIcon::after {
+      bottom: 0;
+      transform: rotate(-45deg);
+    }
+  }

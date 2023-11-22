@@ -1,0 +1,24 @@
+.programSummary {
+    display: flex;
+    align-items: center;
+    text-align: left;
+
+    .logo {
+        margin-right: 10px;
+    }
+
+    .text {
+        display: flex;
+        flex-direction: column;
+        font-size: 12px;
+
+        .header {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .input {
+            font-family: monospace;
+        }
+    }
+}
