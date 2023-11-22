@@ -23,7 +23,7 @@ var (
 	}
 )
 
-//noling:gochecknoinits
+//nolint:gochecknoinits
 func init() {
 	// this migration removes any IPFS swarm peers or Bootstrap peers that are incorrect from the v1.0.4 upgrade.
 	// if no incorrect values are present they are left as is.
