@@ -27,7 +27,7 @@ See the section about [running tests](https://facebook.github.io/create-react-ap
 Before commiting new code, you will need to lint it by running:
 
 ```bash
-npm lint
+npm run lint
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

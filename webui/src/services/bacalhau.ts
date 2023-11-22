@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Job, JobListRequest, JobsResponse } from "../helpers/jobInterfaces";
+import { JobListRequest, JobsResponse } from "../helpers/jobInterfaces";
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API

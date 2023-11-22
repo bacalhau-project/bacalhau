@@ -10,7 +10,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({ text }) => {
   return (
     <div className={styles.column}>
       <button className={styles.actionButton}>
-        <img src={icon} width={20}/>
+        <img src={icon} alt="icon" width={20}/>
         {text}
       </button>
     </div>

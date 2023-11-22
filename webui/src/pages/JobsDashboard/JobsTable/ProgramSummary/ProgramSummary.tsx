@@ -36,7 +36,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   return (
     <div className={styles.programSummary}>
       <div className={styles.logo}>
-        <img src={imageSource} alt="Logo" width={20} height={20} />
+        <img src={imageSource} alt="Engine" width={20} height={20} />
       </div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
