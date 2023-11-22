@@ -1,21 +1,24 @@
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import { JobListRequest, JobsResponse } from "../helpers/jobInterfaces";
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces";
 
 // Base configuration for Bacalhau API
-const apiHost = "0.0.0.0";
+const apiHost = "bootstrap.production.bacalhau.org";
 const apiPort = "1234";
 
-const apiConfig = {
-  baseURL: `http://${apiHost}:${apiPort}/api/v1`,
-  headers: {
-    "Content-Type": "application/json",
-  },
-};
-
-const apiClient = axios.create(apiConfig);
-
 class BacalhauAPI {
+  apiClient: AxiosInstance
+
+  constructor(baseURL: string) {
+    console.log(baseURL);
+    this.apiClient = axios.create({
+      baseURL: baseURL,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  }
+
   async listJobs(labels?: string[], nextToken?: string): Promise<JobsResponse> {
     try {
       const params: JobListRequest = {
@@ -23,8 +26,8 @@ class BacalhauAPI {
         labels: labels ? `env in (${labels.join(",")})` : undefined,
         next_token: nextToken,
       };
-  
-      const response = await apiClient.get("/orchestrator/jobs", { params });
+
+      const response = await this.apiClient.get("/orchestrator/jobs", { params });
       return response.data;
     } catch (error) {
       console.error("An error occurred while listing jobs:", error);
@@ -37,14 +40,16 @@ class BacalhauAPI {
       const params: NodeListRequest = {
         labels: labels ? `env in (${labels.join(",")})` : undefined,
       };
-      const response = await apiClient.get("/orchestrator/nodes", { params });
+      const response = await this.apiClient.get("/orchestrator/nodes", { params });
       return response.data;
     } catch (error) {
       console.error("An error occurred while listing nodes:", error);
       throw error;
     }
   }
-  
+
 }
 
-export const bacalhauAPI = new BacalhauAPI();
+const defaultBaseURL = ""
+const declaredBaseURL = document.querySelector("link[rel=api-base]")?.getAttribute("href");
+export const bacalhauAPI = new BacalhauAPI(declaredBaseURL || defaultBaseURL);
