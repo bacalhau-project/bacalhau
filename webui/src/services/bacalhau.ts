@@ -19,6 +19,7 @@ class BacalhauAPI {
   async listJobs(labels?: string[], nextToken?: string): Promise<JobsResponse> {
     try {
       const params: JobListRequest = {
+        limit: 10,
         labels: labels ? `env in (${labels.join(",")})` : undefined,
         next_token: nextToken,
       };

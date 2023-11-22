@@ -71,6 +71,7 @@ export interface ParsedJobData {
 }
 
 export interface JobListRequest {
+  limit: number | undefined;
   labels: undefined | string;
   next_token: undefined | string;
 }
