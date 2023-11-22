@@ -29,16 +29,7 @@ export interface Job {
 
 export interface Tasks {
   Name: string;
-  Engine: {
-    Type: string;
-    Params: {
-      Entrypoint: null | string;
-      EnvironmentVariables: string[];
-      Image: string;
-      Parameters: string[];
-      WorkingDirectory: string;
-    };
-  };
+  Engine: Engine;
   Publisher: {
     Type: string;
   };
@@ -57,11 +48,11 @@ export interface Tasks {
 
 export interface Engine {
   Type: string;
-  Params: EngineParams;
+  Params: Partial<EngineParams>;
 }
 
 export interface EngineParams {
-  Entrypoint: null | string;
+  Entrypoint: string;
   EnvironmentVariables: string[];
   Image: string;
   Parameters: string[];

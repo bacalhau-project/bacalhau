@@ -31,7 +31,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   } = data.Engine;
 
   const imageSource = getImageSource(engineType);
-  const truncatedInput = truncateInput(parameters, 100);
+  const truncatedInput = truncateInput(parameters || [], 100);
 
   return (
     <div className={styles.programSummary}>
