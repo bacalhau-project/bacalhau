@@ -67,7 +67,7 @@ install-pre-commit:
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit:
+precommit: webui/build
 	${PRECOMMIT} run --all
 	cd python && make pre-commit
 
@@ -170,6 +170,22 @@ build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
+# Target: build-webui
+################################################################################
+WEB_GO_FILES := $(shell find webui -name '*.go')
+WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
+WEB_BUILD_FILES := $(shell find webui/build) webui/build/index.html
+
+.PHONY: build-webui
+build-webui: ${WEB_BUILD_FILES}
+
+webui/build:
+	mkdir -p $@ && touch $@/.keep
+
+$(WEB_BUILD_FILES): $(WEB_SRC_FILES) webui/build
+	cd webui && npm run build
+
+################################################################################
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
@@ -178,19 +194,8 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-WEB_GO_FILES = $(shell find webui -name '*.go')
-WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui)
-
-.PHONY: build-webui
-build-webui:
-	cd webui && npm run build
-
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
-
-$(WEB_BUILD_FILES): $(WEB_SRC_FILES)
-	cd webui && npm run build
 
 ################################################################################
 # Target: build-docker-images
