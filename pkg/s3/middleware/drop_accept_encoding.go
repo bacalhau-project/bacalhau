@@ -28,7 +28,7 @@ const (
 // that modifies the request headers to be compatible with S3-like services that
 // do not support the Accept-Encoding header.
 // It does this by dropping the Accept-Encoding header before the request is signed, and restoring it after the request is signed.
-// https://stackoverflow.com/questions/73717477/gcp-cloud-storage-golang-aws-sdk2-upload-file-with-s3-interoperability-creds/74382598#74382598
+// https://stackoverflow.com/a/74382598
 func DropAcceptEncoding(o *s3.Options) {
 	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
 		// Return early if the signing middleware is not present, such as with PresignGetObject requests.
@@ -54,7 +54,9 @@ func DropAcceptEncoding(o *s3.Options) {
 // dropAcceptEncodingHeader is a middleware function that removes the Accept-Encoding header from the request.
 // This is necessary for compatibility with certain S3-like storage providers.
 var dropAcceptEncodingHeader = middleware.FinalizeMiddlewareFunc(DropAcceptEncodingMiddlewareID,
-	func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (out middleware.FinalizeOutput, metadata middleware.Metadata, err error) {
+	func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
+		out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
+	) {
 		req, ok := in.Request.(*smithyhttp.Request)
 		if !ok {
 			// Return an error if the request type is unexpected.
@@ -77,7 +79,9 @@ var dropAcceptEncodingHeader = middleware.FinalizeMiddlewareFunc(DropAcceptEncod
 // restoreAcceptEncodingHeader is a middleware function that restores the Accept-Encoding header to the request.
 // This is done after the request is signed to maintain compatibility with certain S3-like storage providers.
 var restoreAcceptEncodingHeader = middleware.FinalizeMiddlewareFunc(RestoreAcceptEncodingMiddlewareID,
-	func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (out middleware.FinalizeOutput, metadata middleware.Metadata, err error) {
+	func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
+		out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
+	) {
 		req, ok := in.Request.(*smithyhttp.Request)
 		if !ok {
 			// Return an error if the request type is unexpected.
