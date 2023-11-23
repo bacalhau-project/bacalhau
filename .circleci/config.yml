@@ -2,6 +2,9 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+orbs:
+  node: circleci/node@5.1.0
+
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
@@ -91,7 +94,6 @@ commands:
         - ~/.cache/go-build
         - ~/go/pkg/mod
 
-
 jobs:
   build:
     parallelism: 1
@@ -120,6 +122,9 @@ jobs:
         default: ""
     steps:
     - checkout
+
+    - attach_workspace:
+        at: ~/repo
 
     - when:
         condition:
@@ -252,6 +257,19 @@ jobs:
     - store_artifacts:
         path: dist/
 
+  build_webui:
+    executor: node/default
+    steps:
+      - checkout
+      - node/install-packages:
+          app-dir: webui
+      - run:
+          working_directory: webui
+          command: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - "webui/build/*"
 
   build_canary:
     parallelism: 1
@@ -361,49 +379,6 @@ jobs:
         command: |
           make precommit
 
-  performance_job:
-    resource_class: bacalhau-project/self-hosted-bacalhau
-    machine: true
-    parallelism: 1
-    environment:
-      GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
-    steps:
-    - checkout
-    - attach_workspace:
-        at: dist/
-    - run:
-        name: Unpack build
-        command: |
-          mkdir -p bin/linux_amd64
-          tar -C bin/linux_amd64 -xf dist/*.tar.gz
-    - run:
-        name: Run performance test
-        command: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
-          source $HOME/.cargo/env
-          cargo install hyperfine
-          (
-            cd benchmark
-            bash start_and_run.sh
-          )
-    # - run:
-    #     name: Upload results
-    #     env:
-    #     command: |
-    #       export PATH="$HOME/.local/bin:${PATH}"
-    #       export DATETIME="$(date -u +"%FT%H%MZ")"
-    #       if test -z "${CIRCLE_TAG}"; then
-    #         export CIRCLE_TAG="v0.0.0-xxxxxxx"
-    #       fi
-    #       pip3 install gsutil
-    #       echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-    #       gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
-    - heroku/install
-    - run:
-        name: Update dashboard
-        command: |
-          heroku run build --app bacalhau-dashboards
-
   release:
     executor: linux-amd64
     steps:
@@ -463,28 +438,6 @@ jobs:
         command: |
           pip3 install twine==4.0.2
           make release-bacalhau-flyte
-
-
-  # Temporarily disabled until UPDATE_METADATA_CREDENTIALS_CONTENT_B64 and METADATA_BUCKET
-  # are moved
-  # 
-  # update_metadata:
-  #   executor: linux-amd64
-  #   parameters:
-  #     METADATA_BUCKET:
-  #       type: string
-  #     METADATA_FILENAME:
-  #       type: string
-  #   steps:
-  #   - checkout
-  #   - run:
-  #       name: Update Metadata
-  #       command: |
-  #         export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
-  #         echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
-  #         cd ops
-  #         pip3 install -r requirements.txt
-  #         python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
   build_swagger:
     executor: linux-amd64
@@ -639,9 +592,6 @@ jobs:
         - bacalhau_airflow-*.tar.gz
         - bacalhau_airflow-*.whl
 
-orbs:
-  heroku: circleci/heroku@1.2.6
-
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
@@ -664,9 +614,12 @@ workflows:
   # These workflow will run on all branches except 'main' and will not run on tags
   test_linux_amd64:
     jobs:
+    - build_webui
     - build:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           parameters:
             target_os: ["linux"]
@@ -678,12 +631,6 @@ workflows:
             ignore: main
           tags:
             ignore: /.*/
-    # - update_metadata:
-    #     name: Update metadata for dev branch test runs
-    #     METADATA_BUCKET: "bacalhau-global-storage"
-    #     METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
-    #     requires:
-    #     - test-linux-amd64-unit
     - coverage:
         name: Build coverage report
         requires:
@@ -691,9 +638,12 @@ workflows:
 
   test_linux_arm64:
     jobs:
+    - build_webui
     - build:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           parameters:
             target_os: ["linux"]
@@ -708,9 +658,12 @@ workflows:
 
   test_linux_armv6:
     jobs:
+    - build_webui
     - build:
         name: test-linux-armv6
         executor: linux-arm64
+        requires:
+          - build_webui
         target_os: linux
         target_arch: armv6
         run_tests: false
@@ -722,9 +675,12 @@ workflows:
 
   test_linux_armv7:
     jobs:
+    - build_webui
     - build:
         name: test-linux-armv7
         executor: linux-arm64
+        requires:
+          - build_webui
         target_os: linux
         target_arch: armv7
         run_tests: false
@@ -736,9 +692,12 @@ workflows:
 
   test_darwin_amd64:
     jobs:
+    - build_webui
     - build:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           parameters:
             target_os: ["darwin"]
@@ -753,9 +712,12 @@ workflows:
 
   test_darwin_arm64:
     jobs:
+    - build_webui
     - build:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           parameters:
             target_os: ["darwin"]
@@ -770,9 +732,12 @@ workflows:
 
   test_windows_amd64:
     jobs:
+    - build_webui
     - build:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           parameters:
             target_os: ["windows"]
@@ -787,9 +752,17 @@ workflows:
 
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
+    - build_webui:
+        filters: &filters_main_only
+          branches: # this yaml anchor is setting these values to "filters_main_only"
+            only: main
+          tags:
+            ignore: /.*/
     - build:
         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
+        requires:
+          - build_webui
         matrix:
           alias: build-generic
           parameters:
@@ -797,11 +770,7 @@ workflows:
             target_arch: ["amd64", "arm64"]
             run_tests: [true]
             build_tags: ["unit", "integration"]
-        filters: &filters_main_only
-          branches: # this yaml anchor is setting these values to "filters_main_only"
-            only: main
-          tags:
-            ignore: /.*/
+        filters: *filters_main_only
     - build:
         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
@@ -907,19 +876,3 @@ workflows:
             # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
             # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
             only: /^v([0-9]+).([0-9]+).([0-9]+)$/
-
-
-  # TODO: Disabling performance until we get a runner up and running again
-  #
-  # performance: # This workflow will run on all branches except 'main' and will not run on tags
-  #   jobs:
-  #     - build:
-  #         name: Build
-  #         executor: linux-amd64
-  #         target_os: linux
-  #         target_arch: amd64
-  #         run_tests: false
-  #     - performance_job:
-  #         name: Running Performance
-  #         requires:
-  #           - Build
