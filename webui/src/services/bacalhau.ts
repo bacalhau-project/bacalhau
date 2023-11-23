@@ -2,10 +2,6 @@ import axios, { AxiosInstance } from "axios";
 import { JobListRequest, JobsResponse } from "../helpers/jobInterfaces";
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces";
 
-// Base configuration for Bacalhau API
-const apiHost = "bootstrap.production.bacalhau.org";
-const apiPort = "1234";
-
 class BacalhauAPI {
   apiClient: AxiosInstance
 
@@ -50,6 +46,6 @@ class BacalhauAPI {
 
 }
 
-const defaultBaseURL = ""
+const defaultBaseURL = "http://bootstrap.production.bacalahu.org/api/v1"
 const declaredBaseURL = document.querySelector("link[rel=api-base]")?.getAttribute("href");
 export const bacalhauAPI = new BacalhauAPI(declaredBaseURL || defaultBaseURL);

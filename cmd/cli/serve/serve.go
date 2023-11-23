@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/webui"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -259,14 +260,6 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSKeyFile = key
 	}
 
-	// Start up Dashboard
-	if startWebUI {
-		err := StartWebUIServer(ctx)
-		if err != nil {
-			return fmt.Errorf("error starting up dashboard: %w", err)
-		}
-	}
-
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
@@ -286,10 +279,13 @@ func serve(cmd *cobra.Command) error {
 
 	// Start up Dashboard
 	if startWebUI {
-		err := StartWebUIServer(ctx)
-		if err != nil {
-			return fmt.Errorf("error starting up dashboard: %w", err)
-		}
+		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		go func() {
+			err := webui.ListenAndServe(ctx, apiURL.String())
+			if err != nil {
+				cmd.PrintErrln(err)
+			}
+		}()
 	}
 
 	// only in station logging output

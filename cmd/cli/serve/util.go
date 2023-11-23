@@ -3,7 +3,6 @@ package serve
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -166,22 +165,6 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	}
 
 	return client, nil
-}
-
-
-func StartWebUIServer(ctx context.Context) error {
-	// Define command to start React server
-	cmd := exec.CommandContext(ctx, "npm", "start")
-
-	// Set working directory to the dashboard directory
-	cmd.Dir = "./dashboard"
-
-	// Start the command asynchronously
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start the server: %w", err)
-	}
-
-	return cmd.Wait()
 }
 
 func getNodeLabels(autoLabel bool) map[string]string {
