@@ -180,7 +180,7 @@ PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --
 
 WEB_GO_FILES = $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui/build)
+WEB_BUILD_FILES := $(shell find webui)
 
 ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} $(WEB_BUILD_FILES) ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
@@ -189,7 +189,7 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} $(WEB_BUILD_FILES) ${WEB_GO_FILES} mai
 build-webui: $(WEB_BUILD_FILES)
 
 $(WEB_BUILD_FILES): $(WEB_SRC_FILES)
-	cd webui/build && npm run build
+	cd webui && npm run build
 
 ################################################################################
 # Target: build-docker-images
