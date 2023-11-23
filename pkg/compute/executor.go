@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type BaseExecutorParams struct {
@@ -38,7 +37,6 @@ type BaseExecutor struct {
 	ID               string
 	callback         Callback
 	store            store.ExecutionStore
-	cancellers       generic.SyncMap[string, context.CancelFunc]
 	Storages         storage.StorageProvider
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
