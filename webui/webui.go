@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"fmt"
 	"html/template"
 	"io/fs"
 	"net"
@@ -26,7 +25,6 @@ func IndexPage(apiURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(len(rawIndex))
 
 	indexTemplate, err := template.New("script").Parse(string(rawIndex))
 	if err != nil {
