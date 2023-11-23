@@ -14,10 +14,15 @@ type ConfigOption = func(cfg *DevStackConfig)
 
 func defaultDevStackConfig() (*DevStackConfig, error) {
 	computeConfig, err := node.NewComputeConfigWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	if err != nil {
 		return nil, err
 	}
+
 	return &DevStackConfig{
 		ComputeConfig:          computeConfig,
 		RequesterConfig:        requesterConfig,

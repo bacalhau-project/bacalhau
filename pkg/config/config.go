@@ -42,8 +42,9 @@ var (
 )
 
 const (
-	configType = "yaml"
-	configName = "config"
+	configType     = "yaml"
+	configName     = "config"
+	configFileMode = 0666
 )
 
 func Init(path string) (types.BacalhauConfig, error) {
@@ -132,7 +133,7 @@ func Migrate(path string) error {
 	}
 
 	// open the file for writing and truncate it.
-	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, 0666)
+	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, configFileMode)
 	if err != nil {
 		return fmt.Errorf("failed to open config file for writing at %q: %w", configPath, err)
 	}

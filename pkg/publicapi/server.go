@@ -50,6 +50,7 @@ type Server struct {
 	useTLS     bool
 }
 
+//nolint:funlen
 func NewAPIServer(params ServerParams) (*Server, error) {
 	server := &Server{
 		Router:  params.Router,
