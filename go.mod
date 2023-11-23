@@ -22,7 +22,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-plugin v1.5.2
+	github.com/hashicorp/go-plugin v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/imdario/mergo v0.3.16
 	github.com/invopop/jsonschema v0.11.0
@@ -117,7 +117,7 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
