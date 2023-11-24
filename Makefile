@@ -65,10 +65,15 @@ install-pre-commit:
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
+#
+# Temporarily creates a build directory so that go vet does not complain that
+# it is missing.
 ################################################################################
 .PHONY: precommit
 precommit:
+	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
+	@rm webui/build/stub
 	cd python && make pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
@@ -181,8 +186,8 @@ build-webui: webui/build webui-install ${WEB_BUILD_FILES}
 webui/build:
 	mkdir -p $@
 
-webui-install: 
-	cd webui && npm install 
+webui-install:
+	cd webui && npm install
 
 $(WEB_BUILD_FILES): webui/build
 	cd webui && npm run build
