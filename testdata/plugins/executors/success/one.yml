@@ -1,0 +1,5 @@
+Name: one
+Type: single
+Executable: ../test.sh
+Network: false
+MaxInstances: 10
