@@ -4,7 +4,6 @@ data
 .cache
 node_modules
 yarn-error.log
-build
 lib
 !pkg/lib
 .DS_Store

@@ -67,7 +67,7 @@ install-pre-commit:
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit: webui/build
+precommit:
 	${PRECOMMIT} run --all
 	cd python && make pre-commit
 
@@ -160,7 +160,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: build-webui build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -174,15 +174,17 @@ build-dev: build-ci
 ################################################################################
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui/build) webui/build/index.html
+WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
-.PHONY: build-webui
-build-webui: ${WEB_BUILD_FILES}
+build-webui: webui/build webui-install ${WEB_BUILD_FILES}
 
 webui/build:
-	mkdir -p $@ && touch $@/.keep
+	mkdir -p $@
 
-$(WEB_BUILD_FILES): $(WEB_SRC_FILES) webui/build
+webui-install: 
+	cd webui && npm install 
+
+$(WEB_BUILD_FILES): webui/build
 	cd webui && npm run build
 
 ################################################################################
@@ -287,6 +289,8 @@ images: docker/.pulled
 clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
+	${RM} -r webui/build/*
+	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled

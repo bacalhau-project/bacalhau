@@ -8,8 +8,9 @@
 # testing
 /coverage
 
-# production
-/build
+# # production
+/build/*
+!/build/.gitkeep
 
 # misc
 .DS_Store
