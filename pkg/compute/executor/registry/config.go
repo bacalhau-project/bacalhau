@@ -1,9 +1,11 @@
-package executor
+package registry
 
 import (
 	"errors"
 	"fmt"
 	"path/filepath"
+
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/compute/executor/util"
 
 	"github.com/hashicorp/go-multierror"
 	"gopkg.in/yaml.v3"
@@ -60,7 +62,7 @@ func (c *config) validate(pluginHome string) error {
 			c.Executable = filepath.Join(pluginHome, c.Executable)
 		}
 
-		if executable, reason := isFileExecutable(c.Executable); !executable {
+		if executable, reason := executor_util.IsFileExecutable(c.Executable); !executable {
 			errs = multierror.Append(errs, errors.New(reason))
 		}
 	}

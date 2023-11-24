@@ -1,4 +1,4 @@
-package executor
+package registry
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type Registry struct {
 
 // NewRegistry creates a new registry to contain the configuration details
 // for all of the known plugins
-func NewRegistry() *Registry {
+func New() *Registry {
 	return &Registry{
 		entries: make(map[string]*config),
 	}

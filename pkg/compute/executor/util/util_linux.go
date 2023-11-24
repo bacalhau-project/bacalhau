@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-package executor
+package util
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ const execBits = 0111
 
 // isFileExecutable checks if the provided absolute path is
 // a proper file and executable.
-func isFileExecutable(absFilePath string) (bool, string) {
+func IsFileExecutable(absFilePath string) (bool, string) {
 	fileInfo, err := os.Stat(absFilePath)
 	if err != nil {
 		return false, err.Error()

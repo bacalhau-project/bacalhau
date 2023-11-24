@@ -1,7 +1,7 @@
 //go:build darwin
 // +build darwin
 
-package executor
+package util
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 
 const execBits = 0111
 
-func isFileExecutable(absFilePath string) (bool, string) {
+func IsFileExecutable(absFilePath string) (bool, string) {
 	fileInfo, err := os.Stat(absFilePath)
 	if err != nil {
 		return false, err.Error()

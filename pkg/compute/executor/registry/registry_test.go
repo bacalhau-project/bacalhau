@@ -1,13 +1,13 @@
 //go:build unit || !integration
 
-package executor_test
+package registry_test
 
 import (
 	"path"
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/executor/registry"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,7 +20,7 @@ func TestRegistryTestSuite(t *testing.T) {
 }
 
 func lengthenPath(dir string) string {
-	return path.Join("../../../testdata/plugins/executors", dir)
+	return path.Join("../../../../testdata/plugins/executors", dir)
 }
 
 func (s *RegistryTestSuite) TestConfigLoading() {
@@ -48,7 +48,7 @@ func (s *RegistryTestSuite) TestConfigLoading() {
 		},
 	}
 
-	registry := executor.NewRegistry()
+	registry := registry.New()
 
 	for _, tc := range testcases {
 		s.Run(tc.testname, func() {
