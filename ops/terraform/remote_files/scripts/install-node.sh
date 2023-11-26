@@ -404,11 +404,11 @@ function start-services() {
   sudo systemctl enable bacalhau
   sudo systemctl enable otel
   sudo systemctl enable promtail
+  sudo service openresty reload
   sudo systemctl start ipfs
   sudo systemctl start bacalhau
   sudo systemctl start otel
   sudo systemctl start promtail
-  sudo service openresty reload
 }
 
 function install() {
