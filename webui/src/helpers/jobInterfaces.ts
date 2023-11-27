@@ -67,7 +67,7 @@ export interface ParsedJobData {
   jobType: string;
   label: string;
   status: string;
-  action: string;
+  // action: string;
 }
 
 export interface JobListRequest {
