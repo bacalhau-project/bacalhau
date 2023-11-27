@@ -1,16 +1,21 @@
-@import "@fontsource/open-sans/300.css";
+@import "@fontsource/open-sans/400.css";
 
 .layout {
     display: flex;
     font-family: 'Open Sans', sans-serif;
+    font-weight: 400;
 }
+
+$mainPadding: 15px;
 
 .rightSide {
     transition: margin-left 0.3s ease;
-    margin-left: 80px;  // for collapsed sidebar
+    margin-left: 80px + $mainPadding;  // for collapsed sidebar
+    margin-right: $mainPadding;
     width: calc(100% - 80px);
 }
 
 .expandedSidebar {
-    margin-left: 300px;  // for expanded sidebar
+    margin-left: 300px + $mainPadding;  // for expanded sidebar
+    margin-right: $mainPadding;
 }

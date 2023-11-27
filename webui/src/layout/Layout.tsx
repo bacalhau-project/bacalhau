@@ -21,7 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
           isSidebarCollapsed ? "" : styles.expandedSidebar
         }`}
       >
-        <Header pageTitle={pageTitle} />
+        <Header pageTitle={pageTitle} collapsed={!isSidebarCollapsed} />
         <main>{children}</main>
       </div>
     </div>

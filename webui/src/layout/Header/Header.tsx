@@ -1,19 +1,18 @@
 import React from "react";
 import styles from "./Header.module.scss";
-import bacLogo from "../../images/bacalhau-logo-black.png";
+import { ReactComponent as BacalhauLogo} from "../../images/bacalhau.svg";
 import profile from "../../images/profile.png";
 
 interface HeaderProps {
+  collapsed: boolean;
   pageTitle: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
+const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-collapsed={collapsed}>
       <div className={styles.left}>
-        <div className={styles.logo}>
-          <img src={bacLogo} alt="Logo" width={150} height={150} />
-        </div>
+        <BacalhauLogo className={styles.logo} height="24"/>
         <div className={styles.pageTitle}>{pageTitle}</div>
         <div className={styles.searchBar}>
           {/* Placeholder for search bar */}
