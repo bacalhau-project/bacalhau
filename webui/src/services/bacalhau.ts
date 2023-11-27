@@ -45,7 +45,13 @@ class BacalhauAPI {
 
 }
 
-const host = document.querySelector("link[rel=api-host]")?.getAttribute("href") || document.location.host;
-const port = document.querySelector("link[rel=api-port]")?.getAttribute("href") || "1234";
-const base = document.querySelector("link[rel=api-base]")?.getAttribute("href") || "api/v1";
+function getAPIConfig(property: "host" | "port" | "base", defaultValue: string): string {
+  const declared = document.querySelector(`link[rel=api-${property}]`)?.getAttribute("href");
+  const useDefault = declared === undefined || declared?.match(/\{{2}/) || declared === "" || declared === null;
+  return useDefault ? defaultValue : (declared || "");
+}
+
+const host = getAPIConfig("host", document.location.hostname)
+const port = getAPIConfig("port", "1234")
+const base = getAPIConfig("base", "api/v1")
 export const bacalhauAPI = new BacalhauAPI(`${document.location.protocol}//${host}:${port}/${base}`);
