@@ -46,6 +46,7 @@ class BacalhauAPI {
 
 }
 
-const defaultBaseURL = "http://bootstrap.production.bacalahu.org/api/v1"
-const declaredBaseURL = document.querySelector("link[rel=api-base]")?.getAttribute("href");
-export const bacalhauAPI = new BacalhauAPI(declaredBaseURL || defaultBaseURL);
+const host = document.querySelector("link[rel=api-host]")?.getAttribute("href") || document.location.host;
+const port = document.querySelector("link[rel=api-port]")?.getAttribute("href") || "1234";
+const base = document.querySelector("link[rel=api-base]")?.getAttribute("href") || "api/v1";
+export const bacalhauAPI = new BacalhauAPI(`${document.location.protocol}//${host}:${port}/${base}`);
