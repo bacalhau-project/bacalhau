@@ -19,7 +19,7 @@ func TestRegistryTestSuite(t *testing.T) {
 	suite.Run(t, new(RegistryTestSuite))
 }
 
-func lengthenPath(dir string) string {
+func testDirPath(dir string) string {
 	return path.Join("../../../../testdata/plugins/executors", dir)
 }
 
@@ -33,17 +33,17 @@ func (s *RegistryTestSuite) TestConfigLoading() {
 	testcases := []testcase{
 		{
 			testname:             "Only a name",
-			directory:            lengthenPath("empty"),
+			directory:            testDirPath("empty"),
 			expectedErrorStrings: []string{"path to executable is required"},
 		},
 		{
 			testname:             "Duplicate name",
-			directory:            lengthenPath("duplicate"),
+			directory:            testDirPath("duplicate"),
 			expectedErrorStrings: []string{"name 'test' already registered"},
 		},
 		{
 			testname:             "Success",
-			directory:            lengthenPath("success"),
+			directory:            testDirPath("success"),
 			expectedErrorStrings: []string{},
 		},
 	}

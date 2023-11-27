@@ -12,20 +12,20 @@ import (
 // Registry manages a register mapping plugin names to config structures
 // for that plugin.
 type Registry struct {
-	entries map[string]*config
+	entries map[string]*Config
 }
 
 // NewRegistry creates a new registry to contain the configuration details
 // for all of the known plugins
 func New() *Registry {
 	return &Registry{
-		entries: make(map[string]*config),
+		entries: make(map[string]*Config),
 	}
 }
 
 // Load will inspect the folder defined by pluginHome and after identifying
 // configuration files, attempts to load them into the registry against the
-// reported name.
+// reported name. Once imported data is only ever read from the registry.
 func (r *Registry) Load(pluginHome string) error {
 	entries, err := os.ReadDir(pluginHome)
 	if err != nil {
@@ -74,4 +74,23 @@ func (r *Registry) Load(pluginHome string) error {
 	}
 
 	return errs.ErrorOrNil()
+}
+
+func (r *Registry) Get(name string) (*Config, bool) {
+	c, b := r.entries[strings.ToLower(name)]
+	return c, b
+}
+
+// ForEachEntry will iterate over each key-value pair in the registry and
+// call fn(k, v) on each pair.  The first time one of these calls returns
+// an error then the loop will exit and it will be returned from this
+// function.
+func (r *Registry) ForEachEntry(fn func(key string, c *Config) error) error {
+	for k, v := range r.entries {
+		if err := fn(k, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
