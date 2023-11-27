@@ -6,7 +6,6 @@ class BacalhauAPI {
   apiClient: AxiosInstance
 
   constructor(baseURL: string) {
-    console.log(baseURL);
     this.apiClient = axios.create({
       baseURL: baseURL,
       headers: {

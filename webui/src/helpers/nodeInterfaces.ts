@@ -63,7 +63,7 @@ export interface ParsedNodeData {
   version: string;
   // nodeHealth: string; // TODO: Add when available
   // healthCheck: string; // TODO: Add when available
-  action: string;
+  // action: string;
 }
 
 export interface NodeListRequest {

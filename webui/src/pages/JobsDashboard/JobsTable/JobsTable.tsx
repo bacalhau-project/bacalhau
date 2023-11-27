@@ -2,7 +2,7 @@ import React from "react";
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
-import ActionButton from "../../../components/ActionButton/ActionButton";
+// import ActionButton from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
   formatTimestamp,
@@ -41,7 +41,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       jobType: capitalizeFirstLetter(jobType),
       label: "",
       status: job.State.StateType,
-      action: "Action",
+      // action: "Action",
     };
   });
 }
@@ -60,7 +60,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
             <th>Job Type</th>
             <th>Label</th>
             <th>Status</th>
-            <th>Action</th>
+            {/* <th>Action</th> */}
           </tr>
         </thead>
         <tbody>
@@ -80,9 +80,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                   color={labelColorMap[jobData.status.toLowerCase()]}
                 />
               </td>
-              <td className={styles.action}>
+              {/* <td className={styles.action}>
                 <ActionButton text="View" />
-              </td>
+              </td> */}
             </tr>
           ))}
         </tbody>
