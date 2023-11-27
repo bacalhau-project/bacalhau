@@ -124,6 +124,10 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 	var wg multierrgroup.Group
 	for _, importedFunc := range module.ImportedFunctions() {
 		moduleName, _, _ := importedFunc.Import()
+		// Skip observe functions
+		if moduleName == "dylibso_observe" {
+			continue
+		}
 		wg.Go(func() error {
 			_, err := loader.loadModuleByName(ctx, moduleName)
 			return err
