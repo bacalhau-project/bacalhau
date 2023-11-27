@@ -62,7 +62,7 @@ export interface EngineParams {
 export interface ParsedJobData {
   id: string;
   name: string;
-  createdAt: string;
+  createdAt: Date;
   tasks: Tasks;
   jobType: string;
   label: string;
@@ -71,6 +71,8 @@ export interface ParsedJobData {
 }
 
 export interface JobListRequest {
+  order_by: string | undefined;
+  reverse: boolean | undefined;
   limit: number | undefined;
   labels: undefined | string;
   next_token: undefined | string;
