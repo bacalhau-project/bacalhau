@@ -18,7 +18,7 @@ const getImageSource = (type: string) => {
   }
 };
 
-const truncateInput = (text: string[], length: number) => {
+const truncateInput = (text: string, length: number) => {
   if (text.length === 0) return "";
   if (text[0].length <= length) return text;
   return text[0].substring(0, length) + "[cont]";
@@ -31,7 +31,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   } = data.Engine;
 
   const imageSource = getImageSource(engineType);
-  const truncatedInput = truncateInput(parameters || [], 100);
+  const truncatedInput = truncateInput((parameters || []).join(" "), 100);
 
   return (
     <div className={styles.programSummary}>
