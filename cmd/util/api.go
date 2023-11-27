@@ -15,6 +15,7 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 
 func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 	return clientv2.New(clientv2.Options{
+		Context: ctx,
 		Address: fmt.Sprintf("http://%s:%d", config.ClientAPIHost(), config.ClientAPIPort()),
 	})
 }

@@ -65,10 +65,15 @@ install-pre-commit:
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
+#
+# Temporarily creates a build directory so that go vet does not complain that
+# it is missing.
 ################################################################################
 .PHONY: precommit
 precommit:
+	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
+	@rm webui/build/stub
 	cd python && make pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
@@ -160,7 +165,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: build-webui build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -168,6 +173,24 @@ build-ci: build-bacalhau install-plugins
 .PHONY: build-dev
 build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
+
+################################################################################
+# Target: build-webui
+################################################################################
+WEB_GO_FILES := $(shell find webui -name '*.go')
+WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
+WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
+
+build-webui: webui/build webui-install ${WEB_BUILD_FILES}
+
+webui/build:
+	mkdir -p $@
+
+webui-install:
+	cd webui && npm install
+
+$(WEB_BUILD_FILES): webui/build
+	cd webui && npm run build
 
 ################################################################################
 # Target: build-bacalhau
@@ -178,7 +201,7 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
@@ -271,6 +294,8 @@ images: docker/.pulled
 clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
+	${RM} -r webui/build/*
+	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled

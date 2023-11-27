@@ -1,0 +1,16 @@
+@import "@fontsource/open-sans/300.css";
+
+.layout {
+    display: flex;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.rightSide {
+    transition: margin-left 0.3s ease;
+    margin-left: 80px;  // for collapsed sidebar
+    width: calc(100% - 80px);
+}
+
+.expandedSidebar {
+    margin-left: 300px;  // for expanded sidebar
+}

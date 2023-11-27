@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/webui"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -51,6 +52,9 @@ var (
 
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
+
+		# Start a public bacalhau node with the WebUI
+		bacalhau serve --webui
 `))
 )
 
@@ -100,6 +104,7 @@ func NewCmd() *cobra.Command {
 		"list-local":       configflags.AllowListLocalPathsFlags,
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
+		"web-ui":           configflags.WebUIFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -169,6 +174,11 @@ func serve(cmd *cobra.Command) error {
 
 	// configure node type
 	isRequesterNode, isComputeNode, err := getNodeType()
+	if err != nil {
+		return err
+	}
+
+	startWebUI, err := config.Get[bool](types.NodeWebUI)
 	if err != nil {
 		return err
 	}
@@ -265,6 +275,19 @@ func serve(cmd *cobra.Command) error {
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		go func() {
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			err := webui.ListenAndServe(ctx, "", apiURL.Port(), apiURL.Path)
+			if err != nil {
+				cmd.PrintErrln(err)
+			}
+		}()
 	}
 
 	// only in station logging output
