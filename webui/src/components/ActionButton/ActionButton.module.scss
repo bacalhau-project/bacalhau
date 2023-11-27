@@ -10,13 +10,13 @@
 
 .actionButton{
     background-color: rgba($light-blue, .5);
-    color: $primary-blue; 
+    color: $text-color-dark;
     padding: 5px 15px;
     border-radius: 20px;
     border: none;
     font-size: 14px;
     cursor: pointer;
     display: flex;
-    align-items: center   
+    column-gap: 1ch;
+    align-items: center
 }
-
