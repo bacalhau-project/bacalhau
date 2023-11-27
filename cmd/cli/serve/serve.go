@@ -281,7 +281,9 @@ func serve(cmd *cobra.Command) error {
 	if startWebUI {
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
 		go func() {
-			err := webui.ListenAndServe(ctx, apiURL.String())
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			err := webui.ListenAndServe(ctx, "", apiURL.Port(), apiURL.Path)
 			if err != nil {
 				cmd.PrintErrln(err)
 			}

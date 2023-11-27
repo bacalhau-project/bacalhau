@@ -20,7 +20,7 @@ var buildFiles embed.FS
 // Return the index page for the web app with the passed API URL used. The app
 // running on each client will attempt to connect to the API URL to retrieve job
 // and node information.
-func IndexPage(apiURL string) ([]byte, error) {
+func IndexPage(host, port, base string) ([]byte, error) {
 	rawIndex, err := buildFiles.ReadFile("build/index.html")
 	if err != nil {
 		return nil, err
@@ -32,12 +32,12 @@ func IndexPage(apiURL string) ([]byte, error) {
 	}
 
 	var output bytes.Buffer
-	err = indexTemplate.Execute(&output, struct{ BaseURL string }{apiURL})
+	err = indexTemplate.Execute(&output, struct{ Host, Port, Base string }{host, port, base})
 	return output.Bytes(), err
 }
 
-func ListenAndServe(ctx context.Context, baseURL string) error {
-	indexPage, err := IndexPage(baseURL)
+func ListenAndServe(ctx context.Context, host, port, base string) error {
+	indexPage, err := IndexPage(host, port, base)
 	if err != nil {
 		return err
 	}
