@@ -90,9 +90,10 @@ function install-ipfs() {
   wget "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   # TODO should reset PWD to home dir after each function call
-  cd go-ipfs
+  pushd go-ipfs
   sudo bash install.sh
   ipfs --version
+  popd
 }
 
 function install-bacalhau() {
@@ -116,11 +117,13 @@ function install-bacalhau-from-release() {
 
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
-  sudo apt-get -y install --no-install-recommends jq
-  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
-  cd bacalhau
-  GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
-  sudo mv ./bacalhau /usr/local/bin/bacalhau
+  sudo apt-get -y install --no-install-recommends jq nodejs npm make
+  git clone --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
+  pushd bacalhau
+  pushd webui && npm install && popd
+  make build-bacalhau
+  sudo mv ./bin/*/bacalhau /usr/local/bin/bacalhau
+  popd
 }
 
 function install-otel-collector() {
@@ -367,7 +370,7 @@ function install-secrets() {
   fi
   if [[ -n "${SECRETS_DOCKER_PASSWORD}" ]]; then
     export DOCKER_PASSWORD="${SECRETS_DOCKER_PASSWORD}"
-  fi  
+  fi
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
