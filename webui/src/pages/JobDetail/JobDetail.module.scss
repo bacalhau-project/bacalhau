@@ -1,3 +1,19 @@
+@import '../../styles/breakpoints';
+
 .jobDetail {
     min-height: 100vh !important;
+    display: grid;
+    gap: 20px;
+
+    @include small {
+        grid-template-columns: 100%;
+    }
+
+    @include medium {
+        grid-template-columns: 50% 50%;
+    }
+
+    @include large {
+        grid-template-columns: 33% 33% 33%;
+    }
 }
