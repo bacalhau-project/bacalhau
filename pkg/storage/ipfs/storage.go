@@ -83,6 +83,15 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory s
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, vol storage.StorageVolume) error {
+	fileInfo, err := os.Stat(vol.Source)
+	if err != nil {
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		return os.RemoveAll(vol.Source)
+	}
+
 	return os.Remove(vol.Source)
 }
 
