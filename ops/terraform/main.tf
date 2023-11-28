@@ -57,6 +57,7 @@ export BACALHAU_NODE_ID_0="${var.bacalhau_node_id_0}"
 export BACALHAU_NODE_ID_1="${var.instance_count > 1 ? var.bacalhau_node_id_1 : ""}"
 export BACALHAU_NODE_ID_2="${var.instance_count > 2 ? var.bacalhau_node_id_2 : ""}"
 export BACALHAU_NODE_TYPE="${var.bacalhau_node_type}"
+export BACALHAU_NODE_WEBUI="${strcontains(var.bacalhau_node_type, "requester") ? "true" : "false"}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
 export BACALHAU_CONNECT_PEER="${var.bacalhau_connect_peer}"
 export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "true" : "false"}"
@@ -286,6 +287,7 @@ resource "google_compute_firewall" "bacalhau_ingress_firewall" {
   allow {
     protocol = "tcp"
     ports = [
+      "80",    // web ui
       "4001",  // ipfs swarm
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm

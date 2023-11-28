@@ -1,11 +1,12 @@
 import React from "react";
+import Moment from 'react-moment';
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
-import ActionButton from "../../../components/ActionButton/ActionButton";
+// import ActionButton from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
-  formatTimestamp,
+  fromTimestamp,
 } from "../../../helpers/helperFunctions";
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
 
@@ -36,12 +37,12 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     return {
       id: shortenedID,
       name: job.Name,
-      createdAt: formatTimestamp(job.CreateTime),
+      createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
       label: "",
       status: job.State.StateType,
-      action: "Action",
+      // action: "Action",
     };
   });
 }
@@ -60,7 +61,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
             <th>Job Type</th>
             <th>Label</th>
             <th>Status</th>
-            <th>Action</th>
+            {/* <th>Action</th> */}
           </tr>
         </thead>
         <tbody>
@@ -68,7 +69,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
             <tr key={index}>
               <td className={styles.id}>{jobData.id}</td>
               <td className={styles.name}>{jobData.name}</td>
-              <td className={styles.dateCreated}>{jobData.createdAt}</td>
+              <td className={styles.dateCreated}>
+                <Moment fromNow withTitle>{jobData.createdAt}</Moment>
+              </td>
               <td className={styles.program}>
                 <ProgramSummary data={jobData.tasks} />
               </td>
@@ -80,9 +83,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                   color={labelColorMap[jobData.status.toLowerCase()]}
                 />
               </td>
-              <td className={styles.action}>
+              {/* <td className={styles.action}>
                 <ActionButton text="View" />
-              </td>
+              </td> */}
             </tr>
           ))}
         </tbody>

@@ -1,4 +1,3 @@
-// styles/Table.module.scss
 @import '../../../styles/variables';
 @import '../../../styles/breakpoints';
 
@@ -35,7 +34,7 @@
             border: 1px solid $border-color;  // This adds a border to the cells.
         }
 
-        .name, .program {
+        .program {
             width: 200px;
 
             @include small {
@@ -51,7 +50,7 @@
             }
         }
         
-        .jobID, .status, .action, .dateCreated, .label, .jobType {
+        .id, .name, .dateCreated, .label, .jobType, .status, .action {
             width: 100px;
 
             @include small {
@@ -72,4 +71,3 @@
         }
     }
 }
-

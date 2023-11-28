@@ -6,25 +6,32 @@
     top: 0;
     left: 0;
     height: 100vh;
+    padding-bottom: 1em;
+    box-sizing: border-box;
     transition: width 0.3s ease;
-    background-color: $bgd-color-dark;
-    white-space: nowrap; 
+    background: linear-gradient(133.28deg, $primary-blue, $primary-blue 0%, $primary-blue 0%, $light-blue 97.21%);
+    white-space: nowrap;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    row-gap: 1em;
 }
 
-.link {
-    text-decoration: none;
-    color: inherit;
-}
+.header {
+    display: flex;
+    width: calc(300px - 25px - 25px);
+    margin-top: 30px;
+    margin-left: 25px;
+    margin-right: 25px;
 
-.menuItem, .settings {
-    opacity: 0;
-    visibility: hidden;  // Hide text when sidebar is collapsed
-    transition: opacity 0.05s ease, visibility 0.05s ease;  // Transition both opacity and visibility
-}
+    svg {
+      margin-left: auto;
+    }
 
-.expanded .menuItem, .expanded .settings {
-    opacity: 1;
-    visibility: visible;  // Show text when sidebar is expanded
+    svg path {
+      fill: $text-colour-light;
+    }
 }
 
 .collapsed {
@@ -36,31 +43,47 @@
 }
 
 .menu {
+    flex-grow: 1;
+
     display: flex;
     flex-direction: column;
     color: $text-colour-light;
+
+    > :last-child {
+      margin-top: auto;
+    }
 }
 
-.menuItem, .settings {
-    font-size: 21px;
-    margin: 10px 25px;
+.menuItem {
+    font-size: 13pt;
+    font-weight: 600;
+    margin: 10px 20px;
     padding: 10px;
     border-radius: 10px;
     color: white;
     display: inline-flex;
     align-items: center;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    overflow-x: hidden;
+
+    text-decoration: none;
+    color: inherit;
 
     // Add transitions for smooth hover effects
     transition: background-color 0.2s ease, transform 0.2s ease;
 
     &:hover {
-      background-color: darken($primary-blue, 10%); // Darken on hover for a subtle effect
+      background-color: rgba(0,0,0,0.2); // Darken on hover for a subtle effect
       transform: scale(1.05); // Scale up a bit on hover for emphasis
     }
 
     .menuText {
       padding-left: 20px;
+      font-weight: 600;
+    }
+
+    &[data-selected=true] {
+      background-color: rgba(0,0,0,0.2);
+      box-shadow: inset 0px 5px 10px 5px rgba(0,0,0,0.2);
     }
 }
 
@@ -71,7 +94,7 @@
     background-color: $text-colour-light;
     position: relative;
     transition: all 0.3s ease;
-  
+
     &::before,
     &::after {
       content: '';
@@ -81,26 +104,26 @@
       background-color: $text-colour-light;
       transition: all 0.3s ease;
     }
-  
+
     &::before {
       top: -10px;
     }
-  
+
     &::after {
       bottom: -10px;
     }
   }
-  
+
   .xIcon {
     .buttonIcon {
       background-color: transparent;
     }
-  
+
     .buttonIcon::before {
       top: 0;
       transform: rotate(45deg);
     }
-  
+
     .buttonIcon::after {
       bottom: 0;
       transform: rotate(-45deg);

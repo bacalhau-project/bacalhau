@@ -65,11 +65,11 @@ const Settings = () => {
         checked={tempSettings.showVersion}
         onChange={() => handleToggle("showVersion")}
       />
-      <Checkbox
+      {/* <Checkbox
         label="Action"
         checked={tempSettings.showAction}
         onChange={() => handleToggle("showAction")}
-      />
+      /> */}
       <button onClick={handleSave}>Save</button>
     </Layout>
   );

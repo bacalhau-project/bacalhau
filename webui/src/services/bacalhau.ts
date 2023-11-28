@@ -6,7 +6,6 @@ class BacalhauAPI {
   apiClient: AxiosInstance
 
   constructor(baseURL: string) {
-    console.log(baseURL);
     this.apiClient = axios.create({
       baseURL: baseURL,
       headers: {
@@ -18,6 +17,8 @@ class BacalhauAPI {
   async listJobs(labels?: string[], nextToken?: string): Promise<JobsResponse> {
     try {
       const params: JobListRequest = {
+        order_by: "created_at",
+        reverse: true,
         limit: 10,
         labels: labels ? `env in (${labels.join(",")})` : undefined,
         next_token: nextToken,
@@ -46,6 +47,13 @@ class BacalhauAPI {
 
 }
 
-const defaultBaseURL = "http://bootstrap.production.bacalahu.org/api/v1"
-const declaredBaseURL = document.querySelector("link[rel=api-base]")?.getAttribute("href");
-export const bacalhauAPI = new BacalhauAPI(declaredBaseURL || defaultBaseURL);
+function getAPIConfig(property: "host" | "port" | "base", defaultValue: string): string {
+  const declared = document.querySelector(`link[rel=api-${property}]`)?.getAttribute("href");
+  const useDefault = declared === undefined || declared?.match(/\{{2}/) || declared === "" || declared === null;
+  return useDefault ? defaultValue : (declared || "");
+}
+
+const host = getAPIConfig("host", document.location.hostname)
+const port = getAPIConfig("port", "1234")
+const base = getAPIConfig("base", "api/v1")
+export const bacalhauAPI = new BacalhauAPI(`${document.location.protocol}//${host}:${port}/${base}`);

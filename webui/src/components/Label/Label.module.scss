@@ -6,7 +6,7 @@
     justify-content: center;
     height: 100%;
 }
-    
+
 .label {
     padding: 5px 15px;
     margin: 2px;
@@ -25,6 +25,7 @@
 .label-red {
     background-color: $red-label;
     color: $red-text;
+    font-weight: 600;
 }
 
 .label-green {

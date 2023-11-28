@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import styles from "./NodesTable.module.scss";
 import TableSettingsContext from "../../../context/TableSettingsContext";
-import ActionButton from "../../../components/ActionButton/ActionButton";
+// import ActionButton from "../../../components/ActionButton/ActionButton";
 import { Node, ParsedNodeData } from "../../../helpers/nodeInterfaces";
 
 interface TableProps {
@@ -21,7 +21,7 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
       inputs: inputs,
       outputs: outputs,
       version: node.BacalhauVersion.GitVersion,
-      action: "Action",
+      // action: "Action",
     };
   });
 }
@@ -42,7 +42,7 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
             {settings.showInputs && <th>Inputs From</th>}
             {settings.showOutputs && <th>Outputs</th>}
             {settings.showVersion && <th>Version</th>}
-            {settings.showAction && <th>Action</th>}
+            {/* {settings.showAction && <th>Action</th>} */}
           </tr>
         </thead>
         <tbody>
@@ -79,11 +79,11 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               {settings.showVersion && (
                 <td className={styles.version}>{nodeData.version}</td>
               )}
-              {settings.showAction && (
+              {/* {settings.showAction && (
                 <td className={styles.action}>
                   <ActionButton text="View" />
                 </td>
-              )}
+              )} */}
             </tr>
           ))}
         </tbody>
