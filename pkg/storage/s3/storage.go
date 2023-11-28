@@ -178,7 +178,7 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
-	return nil
+	return os.Remove(volume.Source)
 }
 
 func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig, error) {

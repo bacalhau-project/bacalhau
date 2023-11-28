@@ -136,7 +136,7 @@ func (sp *StorageProvider) CleanupStorage(
 	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
-	return nil
+	return os.Remove(volume.Source)
 }
 
 func createSHA1CIDPair(ctx context.Context, data url.Values) error {

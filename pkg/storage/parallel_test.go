@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -80,8 +79,15 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
 	for _, v := range volumes {
-		_, err := os.Stat(v.Volume.Source)
-		s.Require().NoError(err)
+		s.Require().FileExists(v.Volume.Source)
+	}
+
+	// Cleanup the directory and make sure there are no longer any assets left
+	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	s.Require().NoError(err)
+
+	for _, v := range volumes {
+		s.Require().NoFileExists(v.Volume.Source)
 	}
 }
 
@@ -109,7 +115,13 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
 	for _, v := range volumes {
-		_, err := os.Stat(v.Volume.Source)
-		s.Require().NoError(err)
+		s.Require().FileExists(v.Volume.Source)
+	}
+
+	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	s.Require().NoError(err)
+
+	for _, v := range volumes {
+		s.Require().NoFileExists(v.Volume.Source)
 	}
 }

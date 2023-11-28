@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
@@ -81,8 +82,8 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory s
 	return volume, nil
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, _ storage.StorageVolume) error {
-	return nil
+func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, vol storage.StorageVolume) error {
+	return os.Remove(vol.Source)
 }
 
 func (s *StorageProvider) Upload(ctx context.Context, localPath string) (models.SpecConfig, error) {

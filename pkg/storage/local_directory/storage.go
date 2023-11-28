@@ -84,8 +84,8 @@ func (driver *StorageProvider) PrepareStorage(
 	}, nil
 }
 
-func (driver *StorageProvider) CleanupStorage(context.Context, models.InputSource, storage.StorageVolume) error {
-	return nil
+func (driver *StorageProvider) CleanupStorage(ctx context.Context, src models.InputSource, vol storage.StorageVolume) error {
+	return os.Remove(vol.Source)
 }
 
 func (driver *StorageProvider) Upload(context.Context, string) (models.SpecConfig, error) {
