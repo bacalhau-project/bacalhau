@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -17,7 +18,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -253,6 +254,9 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
+
+		storagePath := pkgconfig.GetStoragePath()
+
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -260,6 +264,7 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
+			storagePath,
 			storageProviders,
 			executors,
 			publishers,

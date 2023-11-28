@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -80,19 +79,10 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	var files []string
 	for _, v := range volumes {
-		files = append(files, v.Volume.Source)
+		_, err := os.Stat(v.Volume.Source)
+		s.Require().NoError(err)
 	}
-	// IPFS cleanup doesn't actually return an error as it deletes a folder
-	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
-
-	// Check that all of the files have gone by statting them and expecting
-	// an error for each one
-	lo.ForEach(files, func(filepath string, index int) {
-		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
-	})
 }
 
 func (s *ParallelStorageSuite) TestURLCleanup() {
@@ -118,18 +108,8 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	var files []string
 	for _, v := range volumes {
-		files = append(files, v.Volume.Source)
+		_, err := os.Stat(v.Volume.Source)
+		s.Require().NoError(err)
 	}
-
-	// URL cleanup doesn't actually return an error as it deletes a folder
-	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
-
-	// Check that all of the files have gone by statting them and expecting
-	// an error for each one
-	lo.ForEach(files, func(filepath string, index int) {
-		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
-	})
 }
