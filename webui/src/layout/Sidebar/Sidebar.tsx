@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       </div>
       <div className={styles.menu}>
         {links.map(link =>
-          <Link to={link.path} className={styles.menuItem} data-selected={document.location.pathname.startsWith(link.path)} title={link.title}>
+          <Link key={link.title} to={link.path} className={styles.menuItem} data-selected={document.location.pathname.startsWith(link.path)} title={link.title}>
             <img src={link.icon} alt="" width={20} height={20} />
             <span className={styles.menuText}>{link.title}</span>
           </Link>
