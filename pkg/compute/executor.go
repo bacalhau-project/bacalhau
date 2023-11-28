@@ -222,6 +222,10 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 	}
 
 	executionStorage := filepath.Join(e.storageDirectory, fmt.Sprintf("%s/%s", execution.JobID, execution.ID))
+	if err := os.MkdirAll(executionStorage, os.ModePerm); err != nil {
+		result.Err = fmt.Errorf("preparing storage path: %w", err)
+		return
+	}
 
 	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
 	result.cleanup = cleanup
