@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { bacalhauAPI } from "../../services/bacalhau";
+import { Job } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
 import Layout from "../../layout/Layout";
 import Container from "../../components/Container/Container";
-import { bacalhauAPI } from "../../services/bacalhau";
-import { Job } from "../../helpers/jobInterfaces";
-
+import JobInfo from './JobInfo/JobInfo';
 
 const JobDetail: React.FC = () => {
   const { jobId } = useParams<{ jobId?: string }>();
@@ -38,11 +38,17 @@ const JobDetail: React.FC = () => {
     <Layout pageTitle={pageTitle}>
       <div className={styles.jobDetail}>
         <div>
-          <Container title={"Job Overview"}/>
-          <Container title={"Execution Record"}/>
+          <Container title={"Job Overview"}>
+            <JobInfo job={data} section="overview"/>
+          </Container>
+          <Container title={"Execution Record"}>
+            <JobInfo job={data} section="executionRecord"/>
+          </Container>
         </div>
         <div>
-          <Container title={"Execution Details"}/>
+          <Container title={"Execution Details"}>
+            <JobInfo job={data} section="executionDetails"/>
+          </Container>
           <Container title={"Standard Output"}/>
           <Container title={"Execution Logs"}/>
         </div>
