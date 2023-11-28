@@ -5,6 +5,10 @@ export interface JobsResponse {
   Jobs: Job[];
 }
 
+export interface JobResponse {
+  Job: Job;
+}
+
 export interface Job {
   ID: string;
   Name: string;
@@ -20,6 +24,7 @@ export interface Job {
   Tasks: Tasks[];
   State: {
     StateType: string;
+    Message: string;
   };
   Version: number;
   Revision: number;
@@ -61,13 +66,14 @@ export interface EngineParams {
 
 export interface ParsedJobData {
   id: string;
+  longId: string;
   name: string;
   createdAt: Date;
   tasks: Tasks;
   jobType: string;
   label: string;
   status: string;
-  // action: string;
+  action: string;
 }
 
 export interface JobListRequest {

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { JobListRequest, JobsResponse } from "../helpers/jobInterfaces";
+import { JobListRequest, JobsResponse, JobResponse } from "../helpers/jobInterfaces";
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces";
 
 class BacalhauAPI {
@@ -23,7 +23,6 @@ class BacalhauAPI {
         labels: labels ? `env in (${labels.join(",")})` : undefined,
         next_token: nextToken,
       };
-
       const response = await this.apiClient.get("/orchestrator/jobs", { params });
       return response.data;
     } catch (error) {
@@ -41,6 +40,16 @@ class BacalhauAPI {
       return response.data;
     } catch (error) {
       console.error("An error occurred while listing nodes:", error);
+      throw error;
+    }
+  }
+
+  async describeJob(jobId: string): Promise<JobResponse> {
+    try {
+      const response = await this.apiClient.get(`/orchestrator/jobs/${jobId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`An error occurred while fetching details for job ID: ${jobId}`, error);
       throw error;
     }
   }

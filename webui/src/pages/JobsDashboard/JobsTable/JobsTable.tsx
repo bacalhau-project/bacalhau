@@ -3,7 +3,7 @@ import Moment from 'react-moment';
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
-// import ActionButton from "../../../components/ActionButton/ActionButton";
+import ActionButton from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
   fromTimestamp,
@@ -36,13 +36,14 @@ function parseData(jobs: Job[]): ParsedJobData[] {
 
     return {
       id: shortenedID,
+      longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
       label: "",
       status: job.State.StateType,
-      // action: "Action",
+      action: "Action",
     };
   });
 }
@@ -61,7 +62,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
             <th>Job Type</th>
             <th>Label</th>
             <th>Status</th>
-            {/* <th>Action</th> */}
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -83,9 +84,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                   color={labelColorMap[jobData.status.toLowerCase()]}
                 />
               </td>
-              {/* <td className={styles.action}>
-                <ActionButton text="View" />
-              </td> */}
+              <td className={styles.action}>
+                <ActionButton text="View" to="/JobDetail" id={jobData.longId} />
+              </td>
             </tr>
           ))}
         </tbody>

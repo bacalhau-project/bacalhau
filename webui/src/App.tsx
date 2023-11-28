@@ -15,7 +15,7 @@ const App = () => {
           <Route path="/JobsDashboard" element={<JobsDashboard />} />
           <Route path="/NodesDashboard" element={<NodesDashboard />} />
           <Route path="/Settings" element={<Settings />} />
-          <Route path="/JobDetail" element={<JobDetail />} />
+          <Route path="/JobDetail/:jobId" element={<JobDetail />} />
         </Routes>
       </Router>
     </TableSettingsProvider>
