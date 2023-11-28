@@ -67,13 +67,14 @@ func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSp
 
 func (driver *ComboStorageProvider) PrepareStorage(
 	ctx context.Context,
+	storageDirectory string,
 	storageSpec models.InputSource,
 ) (storage.StorageVolume, error) {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-	return provider.PrepareStorage(ctx, storageSpec)
+	return provider.PrepareStorage(ctx, storageDirectory, storageSpec)
 }
 
 func (driver *ComboStorageProvider) CleanupStorage(

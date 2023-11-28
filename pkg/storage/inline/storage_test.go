@@ -30,7 +30,7 @@ func TestPlaintextInlineStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")), size)
 
-	root, err := storage.PrepareStorage(context.Background(), inputSource)
+	root, err := storage.PrepareStorage(context.Background(), t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(root.Source)
@@ -57,7 +57,7 @@ func TestDirectoryInlineStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")+len("more")), size)
 
-	root, err := storage.PrepareStorage(context.Background(), inputSource)
+	root, err := storage.PrepareStorage(context.Background(), t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Join(root.Source, filepath.Base(tempdir), "file1"))

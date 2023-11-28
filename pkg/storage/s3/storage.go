@@ -39,18 +39,15 @@ type s3ObjectSummary struct {
 }
 
 type StorageProviderParams struct {
-	LocalDir       string
 	ClientProvider *s3helper.ClientProvider
 }
 
 type StorageProvider struct {
-	localDir       string
 	clientProvider *s3helper.ClientProvider
 }
 
 func NewStorage(params StorageProviderParams) *StorageProvider {
 	return &StorageProvider{
-		localDir:       params.LocalDir,
 		clientProvider: params.ClientProvider,
 	}
 }
@@ -91,15 +88,18 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := s3helper.DecodeSourceSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 	log.Debug().Msgf("Preparing storage for s3://%s/%s", source.Bucket, source.Key)
 
-	// create random directory to store the content and to avoid conflicts with other downloads
-	outputDir, err := os.MkdirTemp(s.localDir, "s3-input-*")
+	// create random directory within the provided directory to store the content
+	// and to avoid conflicts with other downloads. If we wanted all downloads from
+	// s3 to be allowed just in `storagePath` we'd have to be sure the names didn't
+	// clash.
+	outputDir, err := os.MkdirTemp(storageDirectory, "s3-input-*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -178,7 +178,7 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
-	return os.RemoveAll(volume.Source)
+	return nil
 }
 
 func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig, error) {

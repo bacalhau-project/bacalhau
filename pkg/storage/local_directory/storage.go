@@ -66,6 +66,7 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.In
 
 func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
+	_ string,
 	storageSpec models.InputSource,
 ) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)

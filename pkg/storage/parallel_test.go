@@ -75,7 +75,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 		},
 		Target: "/inputs/test.txt",
 	}
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, artifact)
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
@@ -113,7 +113,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		Target: "/inputs/test.txt",
 	}
 
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, artifact)
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are

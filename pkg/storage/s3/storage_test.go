@@ -233,7 +233,7 @@ func (s *StorageTestSuite) TestStorage() {
 			s.Require().NoError(err)
 			s.Equal(uint64(len(tc.expectedOutputs)*4), size) // each file is 4 bytes long
 
-			volume, err := s.Storage.PrepareStorage(ctx, storageSpec)
+			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
 			s.Require().NoError(err)
 
 			// check that the files are there
@@ -271,7 +271,7 @@ func (s *StorageTestSuite) TestNotFound() {
 	_, err := s.Storage.GetVolumeSize(ctx, storageSpec)
 	s.Require().Error(err)
 
-	_, err = s.Storage.PrepareStorage(ctx, storageSpec)
+	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
 	s.Require().Error(err)
 }
 

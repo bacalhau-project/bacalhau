@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
@@ -25,6 +26,7 @@ type BaseExecutorParams struct {
 	Callback               Callback
 	Store                  store.ExecutionStore
 	Storages               storage.StorageProvider
+	StorageDirectory       string
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
@@ -38,6 +40,7 @@ type BaseExecutor struct {
 	callback         Callback
 	store            store.ExecutionStore
 	Storages         storage.StorageProvider
+	storageDirectory string
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
@@ -50,6 +53,7 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		callback:         params.Callback,
 		store:            params.Store,
 		Storages:         params.Storages,
+		storageDirectory: params.StorageDirectory,
 		executors:        params.Executors,
 		publishers:       params.Publishers,
 		failureInjection: params.FailureInjectionConfig,
@@ -57,9 +61,9 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) (
+func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, storageDirectory string, inputSources ...*models.InputSource) (
 	[]storage.PreparedStorage, func(context.Context) error, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,14 +72,14 @@ func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvid
 	}, nil
 }
 
-func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (
+func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
+	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -113,12 +117,13 @@ type InputCleanupFn = func(context.Context) error
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
+	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, execution.Job.Task().InputSources...)
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, storageDirectory, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -147,7 +152,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, wasmEngine)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, storageDirectory, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -216,7 +221,9 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 		return
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
+	executionStorage := filepath.Join(e.storageDirectory, fmt.Sprintf("%s/%s", execution.JobID, execution.ID))
+
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
