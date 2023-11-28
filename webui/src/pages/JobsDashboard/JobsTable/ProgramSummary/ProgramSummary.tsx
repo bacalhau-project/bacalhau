@@ -2,8 +2,8 @@
 import React from "react";
 import styles from "./ProgramSummary.module.scss";
 import { Tasks } from "../../../../helpers/jobInterfaces";
-import cogwheel from "../../../../images/cogwheel-dark.png";
-import dockerImage from "../../../../images/docker.png";
+import { ReactComponent as Cogwheel } from "../../../../images/cogwheel.svg";
+import { ReactComponent as DockerLogo } from "../../../../images/docker.svg";
 
 interface ProgramSummaryProps {
   data: Tasks;
@@ -12,9 +12,9 @@ interface ProgramSummaryProps {
 const getImageSource = (type: string) => {
   switch (type) {
     case "docker":
-      return dockerImage;
+      return <DockerLogo/>;
     default:
-      return cogwheel;
+      return <Cogwheel/>;
   }
 };
 
@@ -36,7 +36,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   return (
     <div className={styles.programSummary}>
       <div className={styles.logo}>
-        <img src={imageSource} alt="Engine" width={20} height={20} />
+        {imageSource}
       </div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
