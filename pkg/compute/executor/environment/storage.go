@@ -18,8 +18,11 @@ type Mount struct {
 	ReadOnly bool
 }
 
-func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) (
+func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputPath string, inputSources ...*models.InputSource) (
 	[]storage.PreparedStorage, func(context.Context) error, error) {
+
+	// insert inputPath ...
+
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
 	if err != nil {
 		return nil, nil, err

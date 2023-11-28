@@ -44,17 +44,18 @@ func New(options ...Option) *Environment {
 	return e
 }
 
-func (e *Environment) Build(ctx context.Context, execution *models.Execution) error {
+func (e *Environment) Build(ctx context.Context, execution *models.Execution, rootDirectory string) error {
 
 	task := execution.Job.Task()
-	if err := e.buildInputs(ctx, task); err != nil {
+
+	executionRoot := filepath.Join(rootDirectory, execution.JobID, execution.ID)
+	executionLogs := filepath.Join(executionRoot, "logs")
+	executionInput := filepath.Join(executionRoot, "input")
+	executionOutput := filepath.Join(executionRoot, "output")
+
+	if err := e.buildInputs(ctx, task, executionInput); err != nil {
 		return err
 	}
-
-	rootDir := "/tmp/devel" // BACALHAU_DATA
-	executionRoot := filepath.Join(rootDir, execution.JobID, execution.ID)
-	executionLogs := filepath.Join(executionRoot, "logs")
-	executionOutput := filepath.Join(executionRoot, "output")
 
 	if err := e.buildOutputs(ctx, task, executionOutput); err != nil {
 		return err
@@ -67,13 +68,15 @@ func (e *Environment) Build(ctx context.Context, execution *models.Execution) er
 	return nil
 }
 
-func (e *Environment) buildInputs(ctx context.Context, task *models.Task) error {
+func (e *Environment) buildInputs(ctx context.Context, task *models.Task, inputPath string) error {
 	if e.storage == nil {
 		// TODO: Not this
 		return nil
 	}
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, *e.storage, task.InputSources...)
+	// We want for the inputs to be written underneath a specific directory, unfortunatelyROSS
+
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, *e.storage, inputPath, task.InputSources...)
 	if err != nil {
 		return err
 	}
