@@ -7,6 +7,7 @@ import ActionButton from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
   fromTimestamp,
+  getShortenedJobID,
 } from "../../../helpers/helperFunctions";
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
 
@@ -30,12 +31,12 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`);
     }
-    const shortenedID = job.ID.split("-")[0];
+
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
 
     return {
-      id: shortenedID,
+      id: getShortenedJobID(job.ID),
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),

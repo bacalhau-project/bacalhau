@@ -1,4 +1,4 @@
-// src/interfaces.ts
+// interfaces.ts
 
 export interface JobsResponse {
   NextToken: string;
@@ -7,6 +7,11 @@ export interface JobsResponse {
 
 export interface JobResponse {
   Job: Job;
+}
+
+export interface JobExecutionsResponse {
+  NextToken: string;
+  Executions: Execution[];
 }
 
 export interface Job {
@@ -82,4 +87,47 @@ export interface JobListRequest {
   limit: number | undefined;
   labels: undefined | string;
   next_token: undefined | string;
+}
+
+export interface Execution {
+  ID: string;
+  Namespace: string;
+  EvalID: string;
+  Name: string;
+  NodeID: string;
+  JobID: string;
+  AllocatedResources: AllocatedResources;
+  DesiredState: StateInfo;
+  ComputeState: StateInfo;
+  PublishedResult: PublishedResult;
+  RunOutput: RunOutput;
+  PreviousExecution: string;
+  NextExecution: string;
+  FollowupEvalID: string;
+  Revision: number;
+  CreateTime: number;
+  ModifyTime: number;
+}
+
+interface AllocatedResources {
+  Tasks: Record<string, unknown>; // Assuming Tasks is an object with dynamic keys
+}
+
+interface StateInfo {
+  StateType: number;
+  Message: string;
+}
+
+interface PublishedResult {
+  Type: string;
+  Params: null | Record<string, unknown>; // Assuming Params can be an object with dynamic keys
+}
+
+interface RunOutput {
+  stdout: string;
+  stdouttruncated: boolean;
+  stderr: string;
+  stderrtruncated: boolean;
+  exitCode: number;
+  runnerError: string;
 }
