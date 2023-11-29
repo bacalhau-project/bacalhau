@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from 'react-router-dom';
 import styles from "./ActionButton.module.scss";
-import icon from "../../images/view-icon.png";
+import { ReactComponent as ViewIcon } from "../../images/view-icon.svg";
 
 interface ActionButtonProps {
   text: string;
@@ -23,8 +23,8 @@ const ActionButton: React.FC<ActionButtonProps> = ({ text, onClick, to, id }) =>
 
   return (
     <div className={styles.column}>
-      <button className={styles.actionButton} onClick={handleClick}>
-        <img src={icon} alt="icon" width={20}/>
+      <button className={styles.actionButton}>
+        <ViewIcon/>
         {text}
       </button>
     </div>

@@ -265,6 +265,8 @@ jobs:
           app-dir: webui
       - run:
           working_directory: webui
+          environment:
+            GENERATE_SOURCEMAP: "false"
           command: npm run build
       - persist_to_workspace:
           root: .
