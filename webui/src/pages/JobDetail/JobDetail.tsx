@@ -81,7 +81,9 @@ const JobDetail: React.FC = () => {
             <JobInfo job={jobData} section="executionDetails"/>
             <Table headers={tableHeaders} data={tableData} style={{ fontSize: '12px' }}></Table>
           </Container>
-          <Container title={"Standard Output"}/>
+          <Container title={"Standard Output"}>
+            {/* <CliView data={} /> */}
+          </Container>
           <Container title={"Execution Logs"}/>
         </div>
         <div>

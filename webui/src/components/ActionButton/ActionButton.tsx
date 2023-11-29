@@ -23,8 +23,8 @@ const ActionButton: React.FC<ActionButtonProps> = ({ text, onClick, to, id }) =>
 
   return (
     <div className={styles.column}>
-      <button className={styles.actionButton}>
-        <ViewIcon/>
+      <button className={styles.actionButton} onClick={handleClick}>
+      <ViewIcon className={styles.viewIcon} />
         {text}
       </button>
     </div>
