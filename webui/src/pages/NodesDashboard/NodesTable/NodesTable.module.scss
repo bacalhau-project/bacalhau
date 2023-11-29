@@ -1,11 +1,14 @@
+// styles/Table.module.scss
 @import '../../../styles/variables';
 @import '../../../styles/breakpoints';
 
 .tableContainer {
     width: 98%;
     overflow: auto;  // This allows scrolling if the content is larger than the container.
-    padding: 0px 10px;
+    padding: 15px;
     margin-top: 20px;
+    box-shadow: 0 0 10px 5px $table-color;
+    border-radius: 10px;
 
     table {
         width: 100%;  // This makes the table span the full width of its container.
@@ -13,12 +16,12 @@
         text-align: center;
         align-items: center;
 
-        thead th:first-child {
+        th:first-child, td:first-child {
             border-top-left-radius: 10px;
             border-bottom-left-radius: 10px;
         }
 
-        thead th:last-child {
+        th:last-child, td:last-child {
             border-top-right-radius: 10px;
             border-bottom-right-radius: 10px;
         }
@@ -28,45 +31,28 @@
             color: $text-colour-light;
             height: 40px;
         }
-    
-        th, td {
+
+        td {
             padding: 8px;  // This adds some padding inside the cells.
-            border: 1px solid $border-color;  // This adds a border to the cells.
         }
 
-        .id {
-            width: 200px;
-
-            @include small {
-                min-width: 200px;
-            }
-          
-            @include medium {
-                min-width: 200px;
-            }
-          
-            @include large {
-                min-width: 250px;
-            }
-        }
-        
-        .name, .type, .label, .action, .inputs, .outputs, .version {
+        .id, .name, .type, .label, .action, .inputs, .outputs, .version  {
             width: 100px;
 
             @include small {
                 min-width: 80px;
             }
-          
+
             @include medium {
                 min-width: 90px;
             }
-          
+
             @include large {
                 min-width: 90px;
             }
         }
-    
-        tr:nth-child(even) {
+
+        tr:nth-child(even) td {
             background-color: $table-color;
         }
     }
