@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 var Production = types.BacalhauConfig{
@@ -77,25 +78,25 @@ var Production = types.BacalhauConfig{
 var ProductionComputeConfig = types.ComputeConfig{
 	Capacity: types.CapacityConfig{
 		IgnorePhysicalResourceLimits: false,
-		TotalResourceLimits: model.ResourceUsageConfig{
+		TotalResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		JobResourceLimits: model.ResourceUsageConfig{
+		JobResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		DefaultJobResourceLimits: model.ResourceUsageConfig{
+		DefaultJobResourceLimits: models.ResourcesConfig{
 			CPU:    "500m",
 			Memory: "1Gb",
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: model.ResourceUsageConfig{
+		QueueResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
