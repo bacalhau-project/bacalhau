@@ -23,7 +23,7 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.6.0
-	github.com/hashicorp/go-retryablehttp v0.7.4
+	github.com/hashicorp/go-retryablehttp v0.7.5
 	github.com/imdario/mergo v0.3.16
 	github.com/invopop/jsonschema v0.11.0
 	github.com/ipfs/boxo v0.10.2
