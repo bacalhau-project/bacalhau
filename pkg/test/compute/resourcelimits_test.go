@@ -297,6 +297,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			Memory: 1 * 1024 * 1024 * 1024,
 			Disk:   1 * 1024 * 1024 * 1024,
 			GPU:    1,
+			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 	})

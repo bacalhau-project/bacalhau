@@ -10,6 +10,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 )
 
 type ResourcesConfig struct {
@@ -147,6 +148,24 @@ func (r *ResourcesConfigBuilder) BuildOrDie() *ResourcesConfig {
 	return resources
 }
 
+type GPUVendor string
+
+const (
+	GPUVendorNvidia GPUVendor = "NVIDIA"
+	GPUVendorAMDATI GPUVendor = "AMD/ATI"
+)
+
+type GPU struct {
+	// Self-reported index of the device in the system
+	Index uint64
+	// Model name of the GPU e.g. Tesla T4
+	Name string
+	// Maker of the GPU, e.g. NVidia, AMD, Intel
+	Vendor GPUVendor
+	// Total GPU memory in mebibytes (MiB)
+	Memory uint64
+}
+
 type Resources struct {
 	// CPU units
 	CPU float64 `json:"CPU,omitempty"`
@@ -156,6 +175,8 @@ type Resources struct {
 	Disk uint64 `json:"Disk,omitempty"`
 	// GPU units
 	GPU uint64 `json:"GPU,omitempty"`
+	// GPU details
+	GPUs []GPU `json:"GPUs,omitempty"`
 }
 
 // Copy returns a deep copy of the resources
@@ -177,6 +198,14 @@ func (r *Resources) Validate() error {
 	if r.CPU < 0 {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid CPU value: %f", r.CPU))
 	}
+	if len(r.GPUs) > int(r.GPU) {
+		// It's not an error for the GPUs specified to be less than the number
+		// given by the GPU field – that just signifies that either:
+		// - the user is requesting "generic GPUs" without specifying more information
+		// - the system knows it has GPUs but no further information about them
+		// But the number should always be at least the length of the GPUs array
+		mErr.Errors = append(mErr.Errors, fmt.Errorf("%d GPUs specified but have details for %d", r.GPU, len(r.GPUs)))
+	}
 	return mErr.ErrorOrNil()
 }
 
@@ -195,6 +224,9 @@ func (r *Resources) Merge(other Resources) *Resources {
 	if newR.GPU <= 0 {
 		newR.GPU = other.GPU
 	}
+	if len(newR.GPUs) <= 0 {
+		newR.GPUs = other.GPUs
+	}
 	return newR
 }
 
@@ -205,6 +237,7 @@ func (r *Resources) Add(other Resources) *Resources {
 		Memory: r.Memory + other.Memory,
 		Disk:   r.Disk + other.Disk,
 		GPU:    r.GPU + other.GPU,
+		GPUs:   append(r.GPUs, other.GPUs...),
 	}
 }
 
@@ -215,6 +248,8 @@ func (r *Resources) Sub(other Resources) *Resources {
 		Disk:   r.Disk - other.Disk,
 		GPU:    r.GPU - other.GPU,
 	}
+
+	usage.GPUs, _ = lo.Difference(r.GPUs, other.GPUs)
 
 	if r.LessThan(other) {
 		log.Warn().Msgf("Subtracting larger resource usage %s from %s. Replacing negative values with zeros",
