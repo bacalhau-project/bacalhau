@@ -4,15 +4,12 @@ import { bacalhauAPI } from "../../services/bacalhau";
 import { Job, Execution } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
 import Layout from "../../layout/Layout";
-import { getShortenedJobID, fromTimestamp, capitalizeFirstLetter } from "../../helpers/helperFunctions";
+import { getShortenedJobID } from "../../helpers/helperFunctions";
 import Container from "../../components/Container/Container";
-import Table from '../../components/Table/Table';
 import JobInfo from './JobInfo/JobInfo';
 
 const JobDetail: React.FC = () => {
   const { jobId } = useParams<{ jobId?: string }>();
-  const pageTitle = `Job Detail | ${jobId}`;
-
   const [jobData, setJobData] = useState<Job | null>(null);
   const [jobExData, setjobExData] = useState<Execution[] | null>(null);
 
@@ -51,44 +48,19 @@ const JobDetail: React.FC = () => {
     return <div>Loading...</div>;
   }
 
-  console.log("jobData", jobData)
-  console.log("jobExData", jobExData)
-
-  getShortenedJobID(jobData.ID)
-
-  const manyExecutions = jobExData.length > 1;
-
-  const tableData = {
-    headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
-    rows: jobExData.map(item => ({
-      "ID": item.ID,
-      "Created": fromTimestamp(item.CreateTime).toString(),
-      "Modified": fromTimestamp(item.ModifyTime).toString(),
-      "Node ID": item.NodeID,
-      "Status": capitalizeFirstLetter(item.DesiredState.Message),
-      "Action": <button onClick={() => handleShowClick(item)}>Show</button>
-    }))
-  };
-  
-  const handleShowClick = (item: any) => {
-    // Implement your logic here. For example, navigating to a detail page or showing more info
-    console.log('Showing details for:', item.ID);
-  };
+  const pageTitle = `Job Detail | ${ getShortenedJobID(jobData.ID)}`;
 
   return (
     <Layout pageTitle={pageTitle}>
       <div className={styles.jobDetail}>
         <div>
           <Container title={"Job Overview"}>
-            <JobInfo job={jobData} section="overview"/>
-            {manyExecutions && (
-              <Table data={tableData} style={{ fontSize: '12px' }}></Table>
-            )}
+            <JobInfo job={jobData} executions={jobExData} section="overview"/>
           </Container>
         </div>
         <div>
           <Container title={"Execution Record"}>
-            <JobInfo job={jobData} section="executionRecord"/>
+            <JobInfo job={jobData} executions={jobExData} section="executionRecord"/>
           </Container>
           <Container title={"Standard Output"}>
             {/* <CliView data={} /> */}
