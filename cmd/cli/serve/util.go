@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -18,8 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -29,27 +28,18 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
 	}
-	total, err := model.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits)
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
-	queue, err := model.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits)
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
-	job, err := model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
-	def, err := model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)
-	if err != nil {
+	totalResources, totalErr := cfg.Capacity.TotalResourceLimits.ToResources()
+	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
+	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
+	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
+	if err := multierr.Combine(totalErr, queueErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits:                   models.Resources(total),
-		QueueResourceLimits:                   models.Resources(queue),
-		JobResourceLimits:                     models.Resources(job),
-		DefaultJobResourceLimits:              models.Resources(def),
+		TotalResourceLimits:                   *totalResources,
+		QueueResourceLimits:                   *queueResources,
+		JobResourceLimits:                     *jobResources,
+		DefaultJobResourceLimits:              *defaultResources,
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
 		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
