@@ -36,18 +36,18 @@ func TestParsingAMDGPUsWithOne(t *testing.T) {
 
 func TestParsingAMDGPUsWithMany(t *testing.T) {
 	output := strings.NewReader(
-		`{"card0": {"VRAM Total Memory (B)": "68702699520", "VRAM Total Used ` +
-			`Memory (B)": "10960896", "Card series": "Instinct MI210", "Card ` +
+		`{"card0": {"VRAM Total Memory (B)": "0", "VRAM Total Used ` +
+			`Memory (B)": "0", "Card series": "Instinct MI210", "Card ` +
 			`model": "0x0c34", "Card vendor": "Advanced Micro Devices, Inc. ` +
 			`[AMD/ATI]", "Card SKU": "D67301"}, "card1": {"VRAM Total Memory (B)": ` +
-			`"68702699520", "VRAM Total Used Memory (B)": "10960896", "Card ` +
+			`"8587837440", "VRAM Total Used Memory (B)": "10960896", "Card ` +
 			`series": "Instinct MI210", "Card model": "0x0c34", "Card vendor": ` +
 			`"Advanced Micro Devices, Inc. [AMD/ATI]", "Card SKU": "D67301"}, ` +
-			`"card2": {"VRAM Total Memory (B)": "68702699520", "VRAM Total Used ` +
+			`"card2": {"VRAM Total Memory (B)": "17175674880", "VRAM Total Used ` +
 			`Memory (B)": "10960896", "Card series": "Instinct MI210", "Card ` +
 			`model": "0x0c34", "Card vendor": "Advanced Micro Devices, Inc. ` +
 			`[AMD/ATI]", "Card SKU": "D67301"}, "card3": {"VRAM Total Memory (B)": ` +
-			`"68702699520", "VRAM Total Used Memory (B)": "10960896", "Card ` +
+			`"25763512320", "VRAM Total Used Memory (B)": "10960896", "Card ` +
 			`series": "Instinct MI210", "Card model": "0x0c34", "Card vendor": ` +
 			`"Advanced Micro Devices, Inc. [AMD/ATI]", "Card SKU": "D67301"} }`,
 	)
@@ -65,7 +65,7 @@ func TestParsingAMDGPUsWithMany(t *testing.T) {
 		require.Equal(t, models.GPUVendorAMDATI, gpu.Vendor)
 		require.Equal(t, uint64(index), gpu.Index)
 		require.Equal(t, "Instinct MI210", gpu.Name)
-		require.Equal(t, uint64(65520), gpu.Memory)
+		require.Equal(t, uint64(index*8190), gpu.Memory)
 	}
 }
 

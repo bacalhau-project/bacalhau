@@ -106,9 +106,16 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		err = fmt.Errorf("execution %s already running", execution.ID)
 		return
 	}
-	if !s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()) {
+	if added := s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()); added == nil {
 		err = fmt.Errorf("not enough capacity to enqueue job")
 		return
+	} else {
+		// Update the execution to include all the resources that have
+		// actually been allocated. Effectively this is picking the GPU(s)
+		// that the job will use. Note that this is not persisted here, as
+		// it was based on current usage information which would change
+		// under a restart, so it will only persist if the job starts
+		execution.AllocateResources(execution.Job.Task().Name, *added)
 	}
 
 	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), execution.Job.Priority)
@@ -173,13 +180,21 @@ func (s *ExecutorBuffer) deque() {
 	for i := 0; i < max; i++ {
 		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
 			// If we don't have enough resources to run this task, then we will skip it
-			add := s.runningCapacity.AddIfHasCapacity(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
-			if !add {
+			queued := task.localExecutionState.Execution.TotalAllocatedResources()
+			added := s.runningCapacity.AddIfHasCapacity(ctx, *queued)
+			if added == nil {
 				return false
 			}
 
+			// Update the execution to include all the resources that have
+			// actually been allocated
+			task.localExecutionState.Execution.AllocateResources(
+				task.localExecutionState.Execution.Job.Task().Name,
+				*added,
+			)
+
 			// Claim the resources now so that we don't count allocated resources
-			s.enqueuedCapacity.Remove(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
+			s.enqueuedCapacity.Remove(ctx, *queued)
 			return true
 		})
 

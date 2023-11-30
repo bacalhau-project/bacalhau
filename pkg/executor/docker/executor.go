@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
@@ -303,16 +304,11 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 
 	// Create GPU request if the job requests it
 	// TODO we need to use the resource units requested by for the GPU.
-	var deviceRequests []container.DeviceRequest
-	if params.Resources.GPU > 0 {
-		deviceRequests = append(deviceRequests,
-			container.DeviceRequest{
-				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
-				Capabilities: [][]string{{"gpu"}},
-			},
-		)
-		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
+	deviceRequests, deviceMappings, err := configureDevices(ctx, params.Resources)
+	if err != nil {
+		return container.CreateResponse{}, fmt.Errorf("creating container devices: %w", err)
 	}
+	log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
 
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
@@ -320,6 +316,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 			Memory:         int64(params.Resources.Memory),
 			NanoCPUs:       int64(params.Resources.CPU * NanoCPUCoefficient),
 			DeviceRequests: deviceRequests,
+			Devices:        deviceMappings,
 		},
 	}
 
@@ -350,6 +347,46 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 		return container.CreateResponse{}, fmt.Errorf("creating container: %w", err)
 	}
 	return jobContainer, nil
+}
+
+func configureDevices(ctx context.Context, resources *models.Resources) ([]container.DeviceRequest, []container.DeviceMapping, error) {
+	requests := []container.DeviceRequest{}
+	mappings := []container.DeviceMapping{}
+	vendorGroups := lo.GroupBy(resources.GPUs, func(gpu models.GPU) models.GPUVendor { return gpu.Vendor })
+
+	for vendor, gpus := range vendorGroups {
+		switch vendor {
+		case models.GPUVendorNvidia:
+			requests = append(requests, container.DeviceRequest{
+				DeviceIDs:    lo.Map(gpus, func(gpu models.GPU, _ int) string { return fmt.Sprint(gpu.Index) }),
+				Capabilities: [][]string{{"gpu"}},
+			})
+		case models.GPUVendorAMDATI:
+			// https://docs.amd.com/en/latest/deploy/docker.html
+			mappings = append(mappings, container.DeviceMapping{
+				PathOnHost:        "/dev/kfd",
+				PathInContainer:   "/dev/kfd",
+				CgroupPermissions: "rwm",
+			})
+			for _, gpu := range gpus {
+				mappings = append(mappings,
+					container.DeviceMapping{
+						PathOnHost:        fmt.Sprintf("/dev/dri/card%d", gpu.Index),
+						PathInContainer:   fmt.Sprintf("/dev/dri/card%d", gpu.Index),
+						CgroupPermissions: "rwm",
+					},
+					container.DeviceMapping{
+						PathOnHost:        fmt.Sprintf("/dev/dri/renderD%d", (128 + gpu.Index)),
+						PathInContainer:   fmt.Sprintf("/dev/dri/renderD%d", (128 + gpu.Index)),
+						CgroupPermissions: "rwm",
+					},
+				)
+			}
+		default:
+			return nil, nil, fmt.Errorf("job requires GPU from unsupported vendor %q", vendor)
+		}
+	}
+	return requests, mappings, nil
 }
 
 func makeContainerMounts(

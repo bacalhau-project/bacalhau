@@ -28,6 +28,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
 	}
+
 	totalResources, totalErr := cfg.Capacity.TotalResourceLimits.ToResources()
 	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
@@ -35,6 +36,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 	if err := multierr.Combine(totalErr, queueErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,

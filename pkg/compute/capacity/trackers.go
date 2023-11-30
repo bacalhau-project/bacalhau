@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -28,16 +29,25 @@ func (t *LocalTracker) IsWithinLimits(ctx context.Context, usage models.Resource
 	return usage.LessThanEq(t.maxCapacity)
 }
 
-func (t *LocalTracker) AddIfHasCapacity(ctx context.Context, usage models.Resources) bool {
+func (t *LocalTracker) AddIfHasCapacity(ctx context.Context, usage models.Resources) *models.Resources {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	newUsedCapacity := t.usedCapacity.Add(usage)
-	if newUsedCapacity.LessThanEq(t.maxCapacity) {
-		t.usedCapacity = *newUsedCapacity
-		return true
+	if !newUsedCapacity.LessThanEq(t.maxCapacity) {
+		return nil
 	}
-	return false
+
+	// Allocate any GPUs that have been asked for but not chosen
+	unspecifiedGPUs := math.Max(usage.GPU-uint64(len(usage.GPUs)), 0)
+	availableGPUs := t.maxCapacity.Sub(t.usedCapacity).GPUs
+	if unspecifiedGPUs > uint64(len(availableGPUs)) {
+		return nil
+	}
+	usage.GPUs = append(usage.GPUs, availableGPUs[:unspecifiedGPUs]...)
+
+	t.usedCapacity = *t.usedCapacity.Add(usage)
+	return &usage
 }
 
 func (t *LocalTracker) GetAvailableCapacity(ctx context.Context) models.Resources {
