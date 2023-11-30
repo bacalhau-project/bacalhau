@@ -178,6 +178,15 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
+	fileInfo, err := os.Stat(volume.Source)
+	if err != nil {
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		return os.RemoveAll(volume.Source)
+	}
+
 	return os.Remove(volume.Source)
 }
 
