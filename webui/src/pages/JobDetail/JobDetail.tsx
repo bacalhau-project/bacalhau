@@ -4,7 +4,7 @@ import { bacalhauAPI } from "../../services/bacalhau";
 import { Job, Execution } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
 import Layout from "../../layout/Layout";
-import { getShortenedJobID } from "../../helpers/helperFunctions";
+import { getShortenedJobID, fromTimestamp, capitalizeFirstLetter } from "../../helpers/helperFunctions";
 import Container from "../../components/Container/Container";
 import Table from '../../components/Table/Table';
 import JobInfo from './JobInfo/JobInfo';
@@ -56,13 +56,23 @@ const JobDetail: React.FC = () => {
 
   getShortenedJobID(jobData.ID)
 
-  const tableHeaders = ["ID", "Created", "Modified", "Node ID", "Status", "Action"];
-  // TEMP
+  const manyExecutions = jobExData.length > 1;
+
   const tableData = {
-    rows: [
-      { ID: 1, "Node ID": "Node 1", Status: "Active" },
-      { ID: 2, "Node ID": "Node 2", Status: "Inactive" },
-    ]
+    headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
+    rows: jobExData.map(item => ({
+      "ID": item.ID,
+      "Created": fromTimestamp(item.CreateTime).toString(),
+      "Modified": fromTimestamp(item.ModifyTime).toString(),
+      "Node ID": item.NodeID,
+      "Status": capitalizeFirstLetter(item.DesiredState.Message),
+      "Action": <button onClick={() => handleShowClick(item)}>Show</button>
+    }))
+  };
+  
+  const handleShowClick = (item: any) => {
+    // Implement your logic here. For example, navigating to a detail page or showing more info
+    console.log('Showing details for:', item.ID);
   };
 
   return (
@@ -71,26 +81,23 @@ const JobDetail: React.FC = () => {
         <div>
           <Container title={"Job Overview"}>
             <JobInfo job={jobData} section="overview"/>
-          </Container>
-          <Container title={"Execution Record"}>
-            <JobInfo job={jobData} section="executionRecord"/>
+            {manyExecutions && (
+              <Table data={tableData} style={{ fontSize: '12px' }}></Table>
+            )}
           </Container>
         </div>
         <div>
-          <Container title={"Execution Details"}>
-            <JobInfo job={jobData} section="executionDetails"/>
-            <Table headers={tableHeaders} data={tableData} style={{ fontSize: '12px' }}></Table>
+          <Container title={"Execution Record"}>
+            <JobInfo job={jobData} section="executionRecord"/>
           </Container>
           <Container title={"Standard Output"}>
             {/* <CliView data={} /> */}
           </Container>
-          <Container title={"Execution Logs"}/>
-        </div>
-        <div>
+          <Container title={"Standard Error"}>
+            {/* <CliView data={} /> */}
+          </Container>
           <Container title={"Inputs"}/>
-          <Container title={"Input"}/>
           <Container title={"Outputs"}/>
-          <Container title={"Output"}/>
         </div>
       </div>
     </Layout>

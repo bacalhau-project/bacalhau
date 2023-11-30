@@ -47,7 +47,7 @@ export interface Tasks {
     Name: string;
     Path: string;
   }[];
-  Resources: object;
+  Resources: Resources;
   Network: {
     Type: string;
   };
@@ -67,6 +67,13 @@ export interface EngineParams {
   Image: string;
   Parameters: string[];
   WorkingDirectory: string;
+}
+
+export interface Resources {
+  CPU: string;
+  Memory: string;
+  Disk: string;
+  GPU: string;
 }
 
 export interface ParsedJobData {

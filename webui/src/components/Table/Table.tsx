@@ -2,18 +2,17 @@ import React from "react";
 import styles from "./Table.module.scss";
 
 interface TableProps {
-  headers: string[];
-  data: {rows: { [key: string]: React.ReactNode }[]};
+  data: {headers: string[], rows: { [key: string]: React.ReactNode }[]};
   style?: React.CSSProperties;
 }
 
-const Table: React.FC<TableProps> = ({ headers, data, style }) => {
+const Table: React.FC<TableProps> = ({ data, style }) => {
   return (
     <div className={styles.tableContainer} style={style}>
       <table>
         <thead>
           <tr>
-            {headers.map((header) => (
+            {data.headers.map((header) => (
               <th key={header}>{header}</th>
             ))}
           </tr>
@@ -21,7 +20,7 @@ const Table: React.FC<TableProps> = ({ headers, data, style }) => {
         <tbody>
           {data.rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-            {headers.map((header) => (
+            {data.headers.map((header) => (
               <td key={`${header}-${rowIndex}`}>{row[header]}</td>
             ))}
             </tr>

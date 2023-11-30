@@ -1,5 +1,7 @@
 import React from 'react';
 import { Job } from '../../../helpers/jobInterfaces';
+import { getShortenedJobID, fromTimestamp, capitalizeFirstLetter } from "../../../helpers/helperFunctions";
+
 
 interface JobInfoProps {
   job: Job;
@@ -17,12 +19,18 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, section }) => {
     switch (section) {
         case 'overview':
             dataToDisplay = [
-                { label: 'Job ID', value: job.ID },
-                { label: 'Job Type', value: job.Type },
-                { label: 'Created', value: job.CreateTime.toString() },
-                { label: 'Modified', value: job.ModifyTime.toString() },
+                { label: 'Job ID', value: getShortenedJobID(job.ID) },
+                { label: 'Job Type', value: capitalizeFirstLetter(job.Type) },
+                { label: 'Created', value: fromTimestamp(job.CreateTime).toString() },
+                { label: 'Modified', value: fromTimestamp(job.ModifyTime).toString() },
                 { label: 'Status', value: job.State.StateType },
-                { label: 'Timeout Deadline', value: job.Tasks[0].Timeouts.ExecutionTimeout.toString() }
+                { label: 'Timeout Deadline', value: job.Tasks[0].Timeouts.ExecutionTimeout.toString() },
+                { label: 'Executor Type', value: capitalizeFirstLetter(job.Tasks[0].Engine.Type) },
+                { label: 'Image', value: job.Tasks[0].Engine.Params.Image },
+                { label: 'GPU Details', value: job?.Tasks[0]?.Resources?.GPU ? job?.Tasks[0]?.Resources?.GPU : "Not specified" },
+                { label: 'Timeout', value: job?.Tasks[0]?.Timeouts.ExecutionTimeout.toString() },
+                { label: 'Requestor Node', value: 'Some value' },
+                { label: 'Concurrency', value: 'Some value' }
             ];
             break;
         case 'executionRecord':
@@ -36,17 +44,12 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, section }) => {
             break;
         case 'executionDetails':
             dataToDisplay = [
-                { label: 'Executor Type', value: job.Tasks[0].Engine.Type },
-                { label: 'Image', value: job.Tasks[0].Engine.Params.Image },
-                { label: 'GPU Details', value: 'Some value' },
-                { label: 'Timeout', value: 'Some value' },
-                { label: 'Requestor Node', value: 'Some value' },
-                { label: 'Concurrency', value: 'Some value' }
+
             ];
             break;
         default:
             break;
-    }
+    }      
 
     return (
         <div>
