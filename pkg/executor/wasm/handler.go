@@ -129,9 +129,6 @@ func (h *executionHandler) run(ctx context.Context) {
 	// v1.0.3: https://github.com/bacalhau-project/bacalhau/blob/v1.0.3/pkg/executor/wasm/executor.go#L243
 	// current: https://github.com/bacalhau-project/bacalhau/blob/ff1bd9cb1c09fa3652c4a68943a97476340dbe33/pkg/executor/wasm/executor.go#L216
 	for _, importModule := range h.arguments.ImportModules {
-		if importModule.InputSource.Alias == "dylibso_observe" {
-			continue
-		}
 		_, err := loader.InstantiateRemoteModule(ctx, importModule)
 		if err != nil {
 			h.logger.Warn().
