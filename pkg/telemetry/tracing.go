@@ -27,7 +27,7 @@ func newTraceProvider() {
 		return
 	}
 
-	client, err := getTraceClient()
+	client, err := GetTraceClient()
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP trace client")
 		return
@@ -55,7 +55,7 @@ func newTraceProvider() {
 	)
 }
 
-func getTraceClient() (client otlptrace.Client, err error) {
+func GetTraceClient() (client otlptrace.Client, err error) {
 	protocol := otlpProtocolHTTP
 	if v := os.Getenv(otlpProtocol); v != "" {
 		protocol = v
