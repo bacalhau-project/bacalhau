@@ -15,7 +15,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/docker v24.0.7+incompatible
-	github.com/dylibso/observe-sdk/go v0.0.0-20231013213337-563c057079f4
+	github.com/dylibso/observe-sdk/go v0.0.0-20231201001953-88f29e77adf0
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.2.0
@@ -108,6 +108,7 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/dylibso/observe-sdk v0.1.2-0.20231201001953-88f29e77adf0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
