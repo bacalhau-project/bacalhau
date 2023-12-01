@@ -71,7 +71,6 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity() (models.Resources, error) 
 		Disk:   diskSpace,
 		GPU:    gpus,
 	}, nil
-
 }
 
 // get free disk space for storage path
