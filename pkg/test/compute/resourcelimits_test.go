@@ -120,7 +120,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume models.InputSource) (uint64, error) {
-			return model.ConvertBytesString(volume.Target), nil
+			return model.ConvertBytesString(volume.Target)
 		}
 
 		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)

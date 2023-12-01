@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
+	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/describe"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
@@ -156,6 +157,9 @@ func NewRootCmd() *cobra.Command {
 	RootCmd.AddCommand(serve.NewCmd())
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
+
+	// config command...obviously
+	RootCmd.AddCommand(configcli.NewCmd())
 
 	return RootCmd
 }

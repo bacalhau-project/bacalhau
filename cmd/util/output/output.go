@@ -44,6 +44,7 @@ type OutputOptions struct {
 	HideHeader bool         // Hide the column headers
 	NoStyle    bool         // Remove all styling from table output.
 	Wide       bool         // Print full values in the table results
+	SortBy     []table.SortBy
 }
 
 // toNonTabularOptions converts OutputOptions to NonTabularOutputOptions
@@ -127,6 +128,9 @@ func OutputOneNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOpti
 func outputTable[T any](cmd *cobra.Command, columns []TableColumn[T], options OutputOptions, items []T) {
 	tw := table.NewWriter()
 	tw.SetOutputMirror(cmd.OutOrStdout())
+	if options.SortBy != nil {
+		tw.SortBy(options.SortBy)
+	}
 
 	configs := lo.Map(columns, func(c TableColumn[T], i int) table.ColumnConfig {
 		config := c.ColumnConfig
