@@ -15,7 +15,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/docker v24.0.7+incompatible
-	github.com/dylibso/observe-sdk/go v0.0.0-20231103164645-1689aab15b7c
+	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.2.0

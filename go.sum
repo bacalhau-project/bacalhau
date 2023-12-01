@@ -246,6 +246,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/dylibso/observe-sdk/go v0.0.0-20231103164645-1689aab15b7c h1:C3UX792ML2Tc+S/NFaE3eH/kfNJPMOT18UoPuIMhG+Y=
 github.com/dylibso/observe-sdk/go v0.0.0-20231103164645-1689aab15b7c/go.mod h1:7h4vx/+0cUjKN2f+ynM4tcC8kIjJqP6W2cLcn7buXl4=
+github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659 h1:RGgHymaENttkVRf0YEzly0Cr2q8xB56WuDEsn8oFXHE=
+github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659/go.mod h1:7h4vx/+0cUjKN2f+ynM4tcC8kIjJqP6W2cLcn7buXl4=
 github.com/elastic/gosigar v0.12.0/go.mod h1:iXRIGg2tLnu7LBdpqzyQfGDEidKCfWcCMS0WKyPWoMs=
 github.com/elastic/gosigar v0.14.2 h1:Dg80n8cr90OZ7x+bAax/QjoW/XqTI11RmA79ZwIm9/4=
 github.com/elastic/gosigar v0.14.2/go.mod h1:iXRIGg2tLnu7LBdpqzyQfGDEidKCfWcCMS0WKyPWoMs=
