@@ -169,7 +169,7 @@ func (s *MapValueFlag[K, V]) Type() string {
 
 var _ pflag.Value = (*MapValueFlag[int, int])(nil)
 
-func separatorParser(sep string) KeyValueParser[string, string] {
+func SeparatorParser(sep string) KeyValueParser[string, string] {
 	return func(input string) (string, string, error) {
 		slices := strings.Split(input, sep)
 		if len(slices) != 2 {
@@ -180,7 +180,7 @@ func separatorParser(sep string) KeyValueParser[string, string] {
 }
 
 func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
-	cid, path, err := separatorParser(":")(input)
+	cid, path, err := SeparatorParser(":")(input)
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceIPFS,
 		CID:           cid,
