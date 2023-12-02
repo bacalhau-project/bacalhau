@@ -165,7 +165,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-webui build-bacalhau build-plugins
+build: build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -180,16 +180,19 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
+WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
 
-build-webui: webui/build webui-install ${WEB_BUILD_FILES}
+.PHONY: build-webui
+build-webui: ${WEB_BUILD_FILES}
 
 webui/build:
 	mkdir -p $@
 
-webui-install:
+$(WEB_INSTALL_GUARD): webui/package.json
 	cd webui && npm install
 
-$(WEB_BUILD_FILES): webui/build
+export GENERATE_SOURCEMAP := false
+$(WEB_BUILD_FILES): $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
 	cd webui && npm run build
 
 ################################################################################

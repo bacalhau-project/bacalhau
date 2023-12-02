@@ -60,7 +60,7 @@
     margin: 10px 20px;
     padding: 10px;
     border-radius: 10px;
-    color: white;
+    color: $text-colour-light;
     display: inline-flex;
     align-items: center;
     overflow-x: hidden;
@@ -84,6 +84,16 @@
     &[data-selected=true] {
       background-color: rgba(0,0,0,0.2);
       box-shadow: inset 0px 5px 10px 5px rgba(0,0,0,0.2);
+    }
+
+    svg {
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+
+      path {
+        fill: $text-colour-light !important;
+      }
     }
 }
 

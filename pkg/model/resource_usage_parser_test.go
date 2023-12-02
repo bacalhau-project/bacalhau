@@ -30,7 +30,8 @@ func TestResourceUsageConfigParser(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		data := ParseResourceUsageConfig(tc.usageConfig)
+		data, err := ParseResourceUsageConfig(tc.usageConfig)
+		require.NoError(t, err)
 		require.Equal(t, tc.expectedData, data)
 	}
 }
