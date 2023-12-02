@@ -40,11 +40,23 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
-      label: "",
+      label: createLabelString(job.Labels),
       status: job.State.StateType,
       // action: "Action",
     };
   });
+}
+
+function createLabelString(label: {[key: string]: string}): string {
+  const labelString: string[] = []
+  for (const [key, value] of Object.entries(label)) {
+    if (value === "") {
+      labelString.push(key)
+    } else {
+      labelString.push(value)
+    }
+  }
+  return labelString.join(', ')
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
