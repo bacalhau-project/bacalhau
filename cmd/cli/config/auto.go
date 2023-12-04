@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -97,7 +98,7 @@ func newAutoResourceCmd() *cobra.Command {
 			if err := settings.validate(); err != nil {
 				return err
 			}
-			return autoConfig(settings)
+			return autoConfig(cmd.Context(), settings)
 		},
 	}
 
@@ -106,9 +107,9 @@ func newAutoResourceCmd() *cobra.Command {
 	return autoCmd
 }
 
-func autoConfig(settings *autoSettings) error {
+func autoConfig(ctx context.Context, settings *autoSettings) error {
 	pp := system.NewPhysicalCapacityProvider()
-	physicalResources, err := pp.GetTotalCapacity()
+	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)
 	}

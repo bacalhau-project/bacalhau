@@ -1,6 +1,9 @@
 package types
 
-import "github.com/bacalhau-project/bacalhau/pkg/model"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
 
 type ComputeConfig struct {
 	Capacity       CapacityConfig           `yaml:"Capacity"`
@@ -14,11 +17,11 @@ type ComputeConfig struct {
 type CapacityConfig struct {
 	IgnorePhysicalResourceLimits bool `yaml:"IgnorePhysicalResourceLimits"`
 	// Total amount of resource the system can be using at one time in aggregate for all jobs.
-	TotalResourceLimits model.ResourceUsageConfig `yaml:"TotalResourceLimits"`
+	TotalResourceLimits models.ResourcesConfig `yaml:"TotalResourceLimits"`
 	// Per job amount of resource the system can be using at one time.
-	JobResourceLimits        model.ResourceUsageConfig `yaml:"JobResourceLimits"`
-	DefaultJobResourceLimits model.ResourceUsageConfig `yaml:"DefaultJobResourceLimits"`
-	QueueResourceLimits      model.ResourceUsageConfig `yaml:"QueueResourceLimits"`
+	JobResourceLimits        models.ResourcesConfig `yaml:"JobResourceLimits"`
+	DefaultJobResourceLimits models.ResourcesConfig `yaml:"DefaultJobResourceLimits"`
+	QueueResourceLimits      models.ResourcesConfig `yaml:"QueueResourceLimits"`
 }
 
 type JobTimeoutConfig struct {

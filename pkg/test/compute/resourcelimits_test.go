@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -120,7 +121,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume models.InputSource) (uint64, error) {
-			return model.ConvertBytesString(volume.Target)
+			size, err := datasize.ParseString(volume.Target)
+			return size.Bytes(), err
 		}
 
 		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)
@@ -295,6 +297,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			Memory: 1 * 1024 * 1024 * 1024,
 			Disk:   1 * 1024 * 1024 * 1024,
 			GPU:    1,
+			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 	})

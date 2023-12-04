@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -433,10 +434,11 @@ func AutoOutputLabels() map[string]string {
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
 
-	gpus, err := system_capacity.GetSystemGPUs()
+	provider := system_capacity.NewPhysicalCapacityProvider()
+	resources, err := provider.GetAvailableCapacity(context.Background())
 	if err == nil {
 		// Print the GPU names
-		for i, gpu := range gpus {
+		for i, gpu := range resources.GPUs {
 			// Model label e.g. GPU-0: Tesla-T1
 			key := fmt.Sprintf("GPU-%d", gpu.Index)
 			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
