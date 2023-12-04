@@ -73,9 +73,7 @@ This repository comprises four directories and seven files:
 
 Within a `.bacalhau` repository, a `config.yaml` file may be present. This file serves as the configuration source for the bacalhau node and adheres to the YAML format.
 
-**Note:** On the initialization of a new `.bacalhau` repository, Bacalhau will generate a `config.yaml` file. However, if Bacalhau is opening an existing repository, it will not create this file if it's absent.
-
- Although the `config.yaml` file is optional, its presence allows Bacalhau to load custom configurations; otherwise, Bacalhau is configured with built-in default values, environment variables and command line flags.
+Although the `config.yaml` file is optional, its presence allows Bacalhau to load custom configurations; otherwise, Bacalhau is configured with built-in default values, environment variables and command line flags.
 
 Modifications to the `config.yaml` file will not be dynamically loaded by the Bacalhau node. A restart of the node is required for any changes to take effect. Bacalhau determines its configuration based on the following precedence order, with each item superseding the subsequent:
 
