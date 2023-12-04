@@ -3,12 +3,11 @@ package capacity
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os/exec"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
+	"github.com/pkg/errors"
 )
 
 // ToolBasedProvider will run an external tool and parse the results in a
@@ -27,28 +26,22 @@ type ToolBasedProvider struct {
 func (tool *ToolBasedProvider) GetAvailableCapacity(ctx context.Context) (models.Resources, error) {
 	toolPath, err := exec.LookPath(tool.Command)
 	if err != nil {
-		// If the tool is not installed, we can't know the number of GPUs.
-		// It is not an error to assume zero.
-		log.Ctx(ctx).Info().Msgf("cannot inspect system %s: %s not installed. %s will not be used.", tool.Provides, tool.Command, tool.Provides)
-		return models.Resources{}, nil
+		// If the tool is not installed, we can't know the available resources.
+		return models.Resources{}, errors.Wrapf(err, "tool %q is not installed or not on PATH", tool.Command)
 	}
 
 	cmd := exec.Command(toolPath, tool.Args...)
 	resp, err := cmd.Output()
 	if err != nil {
-		// we won't error here since some hosts may have the tool installed but
-		// in a misconfigured state e.g. their drivers are missing, the smi
-		// can't communicate with the drivers, etc. instead we provide a warning
-		// show the args to the command we tried and its response.
-		// motivation: https://expanso.atlassian.net/browse/GDAY-90
-		log.Warn().Err(err).
-			Str("command", fmt.Sprintf("%s %v", toolPath, tool.Args)).
-			Str("response", string(resp)).
-			Msgf("inspecting system failed")
-		return models.Resources{}, nil
+		return models.Resources{}, errors.Wrapf(err, "tool `%s %v` had bad exit and returned: %q", toolPath, tool.Args, string(resp))
 	}
 
-	return tool.Parser(bytes.NewReader(resp))
+	resources, err := tool.Parser(bytes.NewReader(resp))
+	if err != nil {
+		return models.Resources{}, errors.Wrapf(err, "tool `%s %v` had unparsable output: %q", toolPath, tool.Args, string(resp))
+	}
+
+	return resources, nil
 }
 
 var _ Provider = (*ToolBasedProvider)(nil)
