@@ -1965,6 +1965,42 @@ const docTemplate = `{
                 }
             }
         },
+        "models.GPU": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "description": "Self-reported index of the device in the system",
+                    "type": "integer"
+                },
+                "memory": {
+                    "description": "Total GPU memory in mebibytes (MiB)",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Model name of the GPU e.g. Tesla T4",
+                    "type": "string"
+                },
+                "vendor": {
+                    "description": "Maker of the GPU, e.g. NVidia, AMD, Intel",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.GPUVendor"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.GPUVendor": {
+            "type": "string",
+            "enum": [
+                "NVIDIA",
+                "AMD/ATI"
+            ],
+            "x-enum-varnames": [
+                "GPUVendorNvidia",
+                "GPUVendorAMDATI"
+            ]
+        },
         "models.NodeInfo": {
             "type": "object",
             "properties": {
@@ -2015,6 +2051,13 @@ const docTemplate = `{
                 "GPU": {
                     "description": "GPU units",
                     "type": "integer"
+                },
+                "GPUs": {
+                    "description": "GPU details",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GPU"
+                    }
                 },
                 "Memory": {
                     "description": "Memory in bytes",
