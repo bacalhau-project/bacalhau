@@ -1,5 +1,5 @@
 import React from "react";
-import Moment from 'react-moment';
+import Moment from "react-moment";
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
@@ -72,7 +72,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               <td className={styles.id}>{jobData.id}</td>
               <td className={styles.name}>{jobData.name}</td>
               <td className={styles.dateCreated}>
-                <Moment fromNow withTitle>{jobData.createdAt}</Moment>
+                <Moment fromNow withTitle>
+                  {jobData.createdAt}
+                </Moment>
               </td>
               <td className={styles.program}>
                 <ProgramSummary data={jobData.tasks} />

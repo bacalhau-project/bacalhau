@@ -1,10 +1,10 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { TableSettingsProvider } from './context/TableSettingsContext';
-import Home from './pages/Home/Home';
-import JobsDashboard from './pages/JobsDashboard/JobsDashboard';
-import NodesDashboard from './pages/NodesDashboard/NodesDashboard';
-import Settings from './pages/Settings/Settings';
-import JobDetail from './pages/JobDetail/JobDetail';
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { TableSettingsProvider } from "./context/TableSettingsContext";
+import Home from "./pages/Home/Home";
+import JobsDashboard from "./pages/JobsDashboard/JobsDashboard";
+import NodesDashboard from "./pages/NodesDashboard/NodesDashboard";
+import Settings from "./pages/Settings/Settings";
+import JobDetail from "./pages/JobDetail/JobDetail";
 
 const App = () => {
   return (

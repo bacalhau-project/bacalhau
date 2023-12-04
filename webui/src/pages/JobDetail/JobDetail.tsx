@@ -1,21 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { bacalhauAPI } from "../../services/bacalhau";
 import { Job, Execution } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
 import Layout from "../../layout/Layout";
-import { getShortenedJobID, fromTimestamp, capitalizeFirstLetter } from "../../helpers/helperFunctions";
+import {
+  getShortenedJobID,
+  fromTimestamp,
+  capitalizeFirstLetter,
+} from "../../helpers/helperFunctions";
 import Container from "../../components/Container/Container";
-import ActionButton from '../../components/ActionButton/ActionButton';
-import Table from '../../components/Table/Table';
-import JobInfo from './JobInfo/JobInfo';
-import CliView from './CliView/CliView';
+import ActionButton from "../../components/ActionButton/ActionButton";
+import Table from "../../components/Table/Table";
+import JobInfo from "./JobInfo/JobInfo";
+import CliView from "./CliView/CliView";
 
 const JobDetail: React.FC = () => {
   const { jobId } = useParams<{ jobId?: string }>();
   const [jobData, setJobData] = useState<Job | null>(null);
   const [jobExData, setJobExData] = useState<Execution[] | null>(null);
-  const [selectedExecution, setSelectedExecution] = useState<Execution | undefined>(undefined);
+  const [selectedExecution, setSelectedExecution] = useState<
+    Execution | undefined
+  >(undefined);
 
   useEffect(() => {
     async function fetchData() {
@@ -31,7 +37,7 @@ const JobDetail: React.FC = () => {
         setJobExData(executionsResponse.Executions);
         setSelectedExecution(executionsResponse.Executions?.[0]);
       } catch (error) {
-        console.error('Failed to fetch job data:', error);
+        console.error("Failed to fetch job data:", error);
       }
     }
 
@@ -45,28 +51,40 @@ const JobDetail: React.FC = () => {
   const manyExecutions = jobExData.length > 1;
   const tableData = {
     headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
-    rows: jobExData.map(item => ({
-      "ID": item.ID,
-      "Created": fromTimestamp(item.CreateTime).toString(),
-      "Modified": fromTimestamp(item.ModifyTime).toString(),
+    rows: jobExData.map((item) => ({
+      ID: item.ID,
+      Created: fromTimestamp(item.CreateTime).toString(),
+      Modified: fromTimestamp(item.ModifyTime).toString(),
       "Node ID": item.NodeID,
-      "Status": capitalizeFirstLetter(item.DesiredState.Message),
-      "Action": <ActionButton text="Show" onClick={() => setSelectedExecution(item)} />
-    }))
+      Status: capitalizeFirstLetter(item.DesiredState.Message),
+      Action: (
+        <ActionButton text="Show" onClick={() => setSelectedExecution(item)} />
+      ),
+    })),
   };
 
   return (
-    <Layout pageTitle={`Job Detail | ${ getShortenedJobID(jobData.ID)}`}>
+    <Layout pageTitle={`Job Detail | ${getShortenedJobID(jobData.ID)}`}>
       <div className={styles.jobDetail}>
         <div>
           <Container title={"Job Overview"}>
-            <JobInfo job={jobData} execution={selectedExecution} section="overview"/>
-            {manyExecutions && <Table data={tableData} style={{ fontSize: '12px' }} />}
+            <JobInfo
+              job={jobData}
+              execution={selectedExecution}
+              section="overview"
+            />
+            {manyExecutions && (
+              <Table data={tableData} style={{ fontSize: "12px" }} />
+            )}
           </Container>
         </div>
         <div>
           <Container title={"Execution Record"}>
-            <JobInfo job={jobData} execution={selectedExecution} section="executionRecord"/>
+            <JobInfo
+              job={jobData}
+              execution={selectedExecution}
+              section="executionRecord"
+            />
           </Container>
           <Container title={"Standard Output"}>
             <CliView data={selectedExecution?.RunOutput.Stdout} />

@@ -2,7 +2,7 @@ import React from "react";
 import styles from "./Table.module.scss";
 
 interface TableProps {
-  data: {headers: string[], rows: { [key: string]: React.ReactNode }[]};
+  data: { headers: string[]; rows: { [key: string]: React.ReactNode }[] };
   style?: React.CSSProperties;
 }
 
@@ -20,9 +20,9 @@ const Table: React.FC<TableProps> = ({ data, style }) => {
         <tbody>
           {data.rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-            {data.headers.map((header) => (
-              <td key={`${header}-${rowIndex}`}>{row[header]}</td>
-            ))}
+              {data.headers.map((header) => (
+                <td key={`${header}-${rowIndex}`}>{row[header]}</td>
+              ))}
             </tr>
           ))}
         </tbody>

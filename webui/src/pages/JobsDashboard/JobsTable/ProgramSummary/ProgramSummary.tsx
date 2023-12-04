@@ -35,9 +35,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
 
   return (
     <div className={styles.programSummary}>
-      <div className={styles.iconContainer}>
-        {imageSource}
-      </div>
+      <div className={styles.iconContainer}>{imageSource}</div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
         <div className={styles.input}>{truncatedInput}</div>

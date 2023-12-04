@@ -1,9 +1,9 @@
 // components/Sidebar.tsx
 import React from "react";
-import { Link } from 'react-router-dom'
+import { Link } from "react-router-dom";
 import styles from "./Sidebar.module.scss";
 import Button from "./Button/Button";
-import { ReactComponent as BacalhauLogo} from "../../images/bacalhau.svg";
+import { ReactComponent as BacalhauLogo } from "../../images/bacalhau.svg";
 import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg";
 import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg";
 import { ReactComponent as Cogwheel } from "../../images/cogwheel.svg";
@@ -17,18 +17,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <JobsIcon/>,
+      icon: <JobsIcon />,
       title: "Jobs Dashboard",
-    }, {
+    },
+    {
       path: "/NodesDashboard",
-      icon: <NodesIcon/>,
+      icon: <NodesIcon />,
       title: "Nodes Dashboard",
-    }, {
+    },
+    {
       path: "/Settings",
-      icon: <Cogwheel/>,
+      icon: <Cogwheel />,
       title: "Settings",
     },
-  ]
+  ];
 
   return (
     <div
@@ -41,12 +43,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         <BacalhauLogo height="24" width="" />
       </div>
       <div className={styles.menu}>
-        {links.map(link =>
-          <Link key={link.title} to={link.path} className={styles.menuItem} data-selected={document.location.pathname.startsWith(link.path)} title={link.title}>
+        {links.map((link) => (
+          <Link
+            key={link.title}
+            to={link.path}
+            className={styles.menuItem}
+            data-selected={document.location.pathname.startsWith(link.path)}
+            title={link.title}
+          >
             {link.icon}
             <span className={styles.menuText}>{link.title}</span>
           </Link>
-        )}
+        ))}
       </div>
     </div>
   );

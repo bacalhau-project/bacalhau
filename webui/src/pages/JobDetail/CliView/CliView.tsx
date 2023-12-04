@@ -1,16 +1,12 @@
-import React from 'react';
+import React from "react";
 import styles from "./CliView.module.scss";
 
 interface CliViewProps {
-    data?: string;
+  data?: string;
 }
 
 const CliView: React.FC<CliViewProps> = ({ data = "" }) => {
-    return (
-        <div className={styles.cliView}>
-            {data !== "" ? data : "λ"}
-        </div>
-    );
+  return <div className={styles.cliView}>{data !== "" ? data : "λ"}</div>;
 };
 
 export default CliView;
