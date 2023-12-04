@@ -72,7 +72,7 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             default:
                 break;
         }
-    }, [section, execution]);
+    }, [section, execution, job]);
 
     return (
         <div className={styles.jobInfo}>
