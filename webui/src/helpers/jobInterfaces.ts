@@ -131,10 +131,10 @@ interface PublishedResult {
 }
 
 interface RunOutput {
-  stdout: string;
-  stdouttruncated: boolean;
+  Stdout: string;
+  StdoutTruncated: boolean;
   stderr: string;
-  stderrtruncated: boolean;
+  StderrTruncated: boolean;
   exitCode: number;
   runnerError: string;
 }

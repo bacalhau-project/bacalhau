@@ -5,17 +5,18 @@ import { ReactComponent as ViewIcon } from "../../images/view-icon.svg";
 
 interface ActionButtonProps {
   text: string;
-  onClick?: () => void; // Optional, if you want to handle the click within the parent component
-  to?: string; // Optional, path to navigate to
-  id?: string; // Optional, id
+  onClick?: () => void;
+  to?: string;
+  id?: string;
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ text, onClick, to, id }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    // If a path is provided, navigate to that path, appending jobId if it exists
-    if (to) {
+    if (onClick) {
+      onClick();
+    } else if (to) {
       const path = id ? `${to}/${id}` : to;
       navigate(path);
     }
@@ -24,7 +25,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({ text, onClick, to, id }) =>
   return (
     <div className={styles.column}>
       <button className={styles.actionButton} onClick={handleClick}>
-      <ViewIcon className={styles.viewIcon} />
+        <ViewIcon className={styles.viewIcon} />
         {text}
       </button>
     </div>

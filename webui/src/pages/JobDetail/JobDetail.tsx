@@ -6,8 +6,10 @@ import styles from "./JobDetail.module.scss";
 import Layout from "../../layout/Layout";
 import { getShortenedJobID, fromTimestamp, capitalizeFirstLetter } from "../../helpers/helperFunctions";
 import Container from "../../components/Container/Container";
+import ActionButton from '../../components/ActionButton/ActionButton';
 import Table from '../../components/Table/Table';
 import JobInfo from './JobInfo/JobInfo';
+import CliView from './CliView/CliView';
 
 const JobDetail: React.FC = () => {
   const { jobId } = useParams<{ jobId?: string }>();
@@ -15,68 +17,43 @@ const JobDetail: React.FC = () => {
   const [jobExData, setJobExData] = useState<Execution[] | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<Execution | undefined>(undefined);
 
-
-  // TODO: WHY IS THIS AN INFINITE LOOOOPPPPP????
-  async function getJobData() {
-    if (jobId) {
-      try {
-        const response = await bacalhauAPI.describeJob(jobId);
-        if (response.Job) {
-          setJobData(response.Job);
-        }
-      } catch (error) {
-        console.error('Failed to fetch job data:', error);
-      }
-    }
-  }
-
-  async function getJobExecutionsData() {
-    if (jobId) {
-      try {
-        const response = await bacalhauAPI.jobExecution(jobId);
-        if (response.Executions) {
-          setJobExData(response.Executions);
-        }
-      } catch (error) {
-        console.error('Failed to fetch job data:', error);
-      }
-    }
-  }
-
   useEffect(() => {
-    getJobData();
-    getJobExecutionsData();
-  }, []);
+    async function fetchData() {
+      if (!jobId) return;
 
-  const manyExecutions = jobExData != null && jobExData.length > 1;
-  
+      try {
+        const [jobResponse, executionsResponse] = await Promise.all([
+          bacalhauAPI.describeJob(jobId),
+          bacalhauAPI.jobExecution(jobId),
+        ]);
+
+        setJobData(jobResponse.Job);
+        setJobExData(executionsResponse.Executions);
+        setSelectedExecution(executionsResponse.Executions?.[0]);
+      } catch (error) {
+        console.error('Failed to fetch job data:', error);
+      }
+    }
+
+    fetchData();
+  }, [jobId]);
+
+  if (!jobData || !jobExData) {
+    return <div className={styles.loading}>Loading...</div>;
+  }
+
+  const manyExecutions = jobExData.length > 1;
   const tableData = {
     headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
-    rows: jobExData?.map(item => ({
+    rows: jobExData.map(item => ({
       "ID": item.ID,
       "Created": fromTimestamp(item.CreateTime).toString(),
       "Modified": fromTimestamp(item.ModifyTime).toString(),
       "Node ID": item.NodeID,
       "Status": capitalizeFirstLetter(item.DesiredState.Message),
-      "Action": <button onClick={() => handleShowClick(item)}>Show</button>
-    })) || []
+      "Action": <ActionButton text="Show" onClick={() => setSelectedExecution(item)} />
+    }))
   };
-
-  useEffect(() => {
-    if (jobExData && jobExData.length > 0) {
-      setSelectedExecution(jobExData[0]);
-    } else {
-      setSelectedExecution(undefined);
-    }
-  }, [jobExData]);
-
-  const handleShowClick = (item: Execution) => {
-    setSelectedExecution(item);
-  };
-
-  if (!jobData || !jobExData) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <Layout pageTitle={`Job Detail | ${ getShortenedJobID(jobData.ID)}`}>
@@ -84,12 +61,7 @@ const JobDetail: React.FC = () => {
         <div>
           <Container title={"Job Overview"}>
             <JobInfo job={jobData} execution={selectedExecution} section="overview"/>
-            {manyExecutions && (
-              <div>
-                <span className={styles.key}>Executions List:</span>
-                    <Table data={tableData} style={{ fontSize: '12px' }}></Table>
-              </div>
-            )}
+            {manyExecutions && <Table data={tableData} style={{ fontSize: '12px' }} />}
           </Container>
         </div>
         <div>
@@ -97,13 +69,11 @@ const JobDetail: React.FC = () => {
             <JobInfo job={jobData} execution={selectedExecution} section="executionRecord"/>
           </Container>
           <Container title={"Standard Output"}>
-            {/* <CliView data={} /> */}
+            <CliView data={selectedExecution?.RunOutput.Stdout} />
           </Container>
           <Container title={"Standard Error"}>
-            {/* <CliView data={} /> */}
+            <CliView data={selectedExecution?.RunOutput.stderr} />
           </Container>
-          <Container title={"Inputs"}/>
-          <Container title={"Outputs"}/>
         </div>
       </div>
     </Layout>
