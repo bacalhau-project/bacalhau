@@ -53,7 +53,7 @@ function createLabelArray(label: {[key: string]: string}): string[] {
     if (value === "") {
       labelArray.push(key)
     } else {
-      labelArray.push(value)
+      labelArray.push(`${key}: ${value}`)
     }
   }
   return labelArray
@@ -88,7 +88,12 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                 <ProgramSummary data={jobData.tasks} />
               </td>
               <td className={styles.jobType}>{jobData.jobType}</td>
-              <td className={styles.label}>{jobData.label.map((label) => <ul>{label}</ul>)}</td>
+              <td className={styles.label}>{jobData.label.map((label) => 
+                <Label 
+                  text={label}
+                  color={'lavender'}
+                />)}
+              </td>
               <td className={styles.status}>
                 <Label
                   text={jobData.status}
