@@ -36,8 +36,8 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
         <thead>
           <tr>
             {settings.showNodeId && <th>Node ID</th>}
-            {settings.showName && <th>Name</th>}
-            {settings.showType && <th>Type</th>}
+            {settings.showNodeName && <th>Name</th>}
+            {settings.showNodeType && <th>Type</th>}
             {settings.showEnv && <th>Environment</th>}
             {settings.showInputs && <th>Inputs From</th>}
             {settings.showOutputs && <th>Outputs</th>}
@@ -51,10 +51,10 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               {settings.showNodeId && (
                 <td className={styles.id}>{nodeData.id}</td>
               )}
-              {settings.showName && (
+              {settings.showNodeName && (
                 <td className={styles.name}>{nodeData.name}</td>
               )}
-              {settings.showType && (
+              {settings.showNodeType && (
                 <td className={styles.type}>{nodeData.type}</td>
               )}
               {settings.showEnv && (

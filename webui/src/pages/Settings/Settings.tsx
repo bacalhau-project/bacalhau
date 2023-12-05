@@ -3,8 +3,10 @@ import {
   useTableSettings,
   TableSettings,
 } from "../../context/TableSettingsContext";
+import styles from "./Settings.module.scss";
 import Layout from "../../layout/Layout";
 import Checkbox from "../../components/Checkbox/Checkbox";
+import Container from "../../components/Container/Container";
 
 const Settings = () => {
   const { settings, toggleSetting } = useTableSettings();
@@ -26,51 +28,58 @@ const Settings = () => {
     });
   };
 
+  const jobsOptions: { label: string; key: keyof TableSettings }[] = [
+    { label: "Job ID", key: "showJobId" },
+    { label: "Name", key: "showJobName" },
+    { label: "Created", key: "showCreated" },
+    { label: "Program", key: "showProgram" },
+    { label: "Job Type", key: "showJobType" },
+    { label: "Label", key: "showLabel" },
+    { label: "Status", key: "showStatus" },
+  ];
+
+  const nodesOptions: { label: string; key: keyof TableSettings }[] = [
+    { label: "Node ID", key: "showNodeId" },
+    { label: "Name", key: "showNodeName" },
+    { label: "Type", key: "showNodeType" },
+    { label: "Environment", key: "showEnv" },
+    { label: "Inputs In", key: "showInputs" },
+    { label: "Outputs", key: "showOutputs" },
+    { label: "Version", key: "showVersion" },
+  ];
+
   return (
     <Layout pageTitle="Settings">
+      {/* Jobs Dashboard Settings */}
+      <Container title={"Jobs Dashboard Settings"}>
+        {jobsOptions.map(({ label, key }) => (
+          <div className={styles.checkboxGroup}>
+            <Checkbox
+              label={label}
+              checked={tempSettings[key]}
+              onChange={() => handleToggle(key)}
+            />
+          </div>
+        ))}
+        <button onClick={handleSave} className={styles.saveButton}>
+          Save
+        </button>
+      </Container>
       {/* Node Dashboard Settings */}
-      <h3>Nodes Dashboard Settings:</h3>
-      <Checkbox
-        label="Node ID"
-        checked={tempSettings.showNodeId}
-        onChange={() => handleToggle("showNodeId")}
-      />
-      <Checkbox
-        label="Name"
-        checked={tempSettings.showName}
-        onChange={() => handleToggle("showName")}
-      />
-      <Checkbox
-        label="Type"
-        checked={tempSettings.showType}
-        onChange={() => handleToggle("showType")}
-      />
-      <Checkbox
-        label="Environment"
-        checked={tempSettings.showEnv}
-        onChange={() => handleToggle("showEnv")}
-      />
-      <Checkbox
-        label="Inputs In"
-        checked={tempSettings.showInputs}
-        onChange={() => handleToggle("showInputs")}
-      />
-      <Checkbox
-        label="Outputs"
-        checked={tempSettings.showOutputs}
-        onChange={() => handleToggle("showOutputs")}
-      />
-      <Checkbox
-        label="Version"
-        checked={tempSettings.showVersion}
-        onChange={() => handleToggle("showVersion")}
-      />
-      {/* <Checkbox
-        label="Action"
-        checked={tempSettings.showAction}
-        onChange={() => handleToggle("showAction")}
-      /> */}
-      <button onClick={handleSave}>Save</button>
+      <Container title={"Nodes Dashboard Settings"}>
+        {nodesOptions.map(({ label, key }) => (
+          <div className={styles.checkboxGroup}>
+            <Checkbox
+              label={label}
+              checked={tempSettings[key]}
+              onChange={() => handleToggle(key)}
+            />
+          </div>
+        ))}
+        <button onClick={handleSave} className={styles.saveButton}>
+          Save
+        </button>
+      </Container>
     </Layout>
   );
 };
