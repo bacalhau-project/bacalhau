@@ -18,7 +18,7 @@ const (
 	nvidiaCLIFormatArg = "--format=csv,noheader,nounits"
 )
 
-func NewNvidiaGPUProvider() capacity.Provider {
+func NewNvidiaGPUProvider() *capacity.ToolBasedProvider {
 	return &capacity.ToolBasedProvider{
 		Command:  nvidiaCLI,
 		Provides: "Nvidia GPUs",
