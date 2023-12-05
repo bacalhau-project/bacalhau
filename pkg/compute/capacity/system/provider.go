@@ -7,6 +7,7 @@ import (
 
 	"github.com/pbnjay/memory"
 	"github.com/ricochet2200/go-disk-usage/du"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system/gpu"
@@ -15,12 +16,12 @@ import (
 )
 
 type PhysicalCapacityProvider struct {
-	gpuCapacityProviders []capacity.Provider
+	gpuCapacityProviders []*capacity.ToolBasedProvider
 }
 
 func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
 	return &PhysicalCapacityProvider{
-		gpuCapacityProviders: []capacity.Provider{
+		gpuCapacityProviders: []*capacity.ToolBasedProvider{
 			gpu.NewNvidiaGPUProvider(),
 			gpu.NewAMDGPUProvider(),
 		},
@@ -58,7 +59,13 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models
 	for _, gpuProvider := range p.gpuCapacityProviders {
 		gpuCapacity, err := gpuProvider.GetAvailableCapacity(ctx)
 		if err != nil {
-			return resources, err
+			// we won't error here since some hosts may have the tool installed
+			// but in a misconfigured state e.g. their drivers are missing, the
+			// smi can't communicate with the drivers, etc. instead we provide a
+			// warning, show the args to the command we tried and its response.
+			// motivation: https://expanso.atlassian.net/browse/GDAY-90
+			log.Ctx(ctx).Warn().Err(err).Msgf("Cannot inspect %s so they will not be used", gpuProvider.Provides)
+			continue
 		}
 
 		resources = *resources.Add(gpuCapacity)
