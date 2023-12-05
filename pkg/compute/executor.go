@@ -21,6 +21,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
+const StorageDirectoryPerms = 0755
+
 type BaseExecutorParams struct {
 	ID                     string
 	Callback               Callback
@@ -221,8 +223,8 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 		return
 	}
 
-	executionStorage := filepath.Join(e.storageDirectory, fmt.Sprintf("%s/%s", execution.JobID, execution.ID))
-	if err := os.MkdirAll(executionStorage, os.ModePerm); err != nil {
+	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
+	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
 		result.Err = fmt.Errorf("preparing storage path: %w", err)
 		return
 	}
