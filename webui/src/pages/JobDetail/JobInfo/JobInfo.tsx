@@ -80,6 +80,7 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
         if (execution !== undefined)
           setDataToDisplay([
             { label: "Execution ID", value: execution.ID },
+            { label: "Node ID", value: execution.NodeID },
             {
               label: "Initiation Time",
               value: (

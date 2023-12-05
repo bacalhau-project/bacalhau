@@ -51,9 +51,16 @@ const JobDetail: React.FC = () => {
 
   const manyExecutions = jobExData.length > 1;
   const executionsData = {
-    headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
+    headers: [
+      "Execution ID",
+      "Created",
+      "Modified",
+      "Node ID",
+      "Status",
+      "Action",
+    ],
     rows: jobExData.map((item) => ({
-      ID: item.ID,
+      "Execution ID": item.ID,
       Created: (
         <Moment fromNow withTitle>
           {fromTimestamp(item.CreateTime)}
@@ -64,7 +71,7 @@ const JobDetail: React.FC = () => {
           {fromTimestamp(item.ModifyTime)}
         </Moment>
       ),
-      "Node ID": item.NodeID,
+      "Node ID": item.NodeID.slice(0, 7),
       Status: capitalizeFirstLetter(item.DesiredState.Message),
       Action: (
         <ActionButton text="Show" onClick={() => setSelectedExecution(item)} />
