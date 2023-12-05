@@ -33,10 +33,21 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
         setDataToDisplay([
           { label: "Job ID", value: job.ID },
           { label: "Job Type", value: capitalizeFirstLetter(job.Type) },
-          { label: "Created", value: fromTimestamp(job.CreateTime).toString() },
+          {
+            label: "Created",
+            value: (
+              <Moment fromNow withTitle>
+                {fromTimestamp(job.CreateTime)}
+              </Moment>
+            ),
+          },
           {
             label: "Modified",
-            value: fromTimestamp(job.ModifyTime).toString(),
+            value: (
+              <Moment fromNow withTitle>
+                {fromTimestamp(job.ModifyTime)}
+              </Moment>
+            ),
           },
           { label: "Status", value: job.State.StateType },
           {
