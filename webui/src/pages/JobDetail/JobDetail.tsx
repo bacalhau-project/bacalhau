@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import Moment from "react-moment";
 import { bacalhauAPI } from "../../services/bacalhau";
 import { Job, Execution } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
@@ -49,12 +50,20 @@ const JobDetail: React.FC = () => {
   }
 
   const manyExecutions = jobExData.length > 1;
-  const tableData = {
+  const executionsData = {
     headers: ["ID", "Created", "Modified", "Node ID", "Status", "Action"],
     rows: jobExData.map((item) => ({
       ID: item.ID,
-      Created: fromTimestamp(item.CreateTime).toString(),
-      Modified: fromTimestamp(item.ModifyTime).toString(),
+      Created: (
+        <Moment fromNow withTitle>
+          {fromTimestamp(item.CreateTime)}
+        </Moment>
+      ),
+      Modified: (
+        <Moment fromNow withTitle>
+          {fromTimestamp(item.ModifyTime)}
+        </Moment>
+      ),
       "Node ID": item.NodeID,
       Status: capitalizeFirstLetter(item.DesiredState.Message),
       Action: (
@@ -74,7 +83,7 @@ const JobDetail: React.FC = () => {
               section="overview"
             />
             {manyExecutions && (
-              <Table data={tableData} style={{ fontSize: "12px" }} />
+              <Table data={executionsData} style={{ fontSize: "12px" }} />
             )}
           </Container>
         </div>
@@ -92,6 +101,12 @@ const JobDetail: React.FC = () => {
           <Container title={"Standard Error"}>
             <CliView data={selectedExecution?.RunOutput.stderr} />
           </Container>
+          {/* <Container title={"Inputs"}>
+            <Table data={inData} style={{ fontSize: "12px" }} />
+          </Container>
+          <Container title={"Outputs"}>
+            <Table data={outData} style={{ fontSize: "12px" }} />
+          </Container> */}
         </div>
       </div>
     </Layout>

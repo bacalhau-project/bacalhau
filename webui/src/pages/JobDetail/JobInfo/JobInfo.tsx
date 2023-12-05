@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Moment from "react-moment";
 import { Execution, Job } from "../../../helpers/jobInterfaces";
 import {
   fromTimestamp,
@@ -20,7 +21,7 @@ interface JobInfoProps {
 
 interface DataItem {
   label: string;
-  value: string | undefined;
+  value: string | JSX.Element | undefined;
 }
 
 const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
@@ -70,11 +71,19 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             { label: "Execution ID", value: execution.ID },
             {
               label: "Initiation Time",
-              value: fromTimestamp(execution.CreateTime).toString(),
+              value: (
+                <Moment fromNow withTitle>
+                  {fromTimestamp(execution.CreateTime)}
+                </Moment>
+              ),
             },
             {
               label: "Completion Time",
-              value: fromTimestamp(execution.ModifyTime).toString(),
+              value: (
+                <Moment fromNow withTitle>
+                  {fromTimestamp(execution.ModifyTime)}
+                </Moment>
+              ),
             },
             {
               label: "Exit Code",
@@ -83,42 +92,6 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             {
               label: "Execution Note",
               value: capitalizeFirstLetter(execution.DesiredState.Message),
-            },
-          ]);
-        break;
-      case "stdout":
-        if (execution !== undefined)
-          setDataToDisplay([
-            {
-              label: "Initiation Time",
-              value: fromTimestamp(execution.CreateTime).toString(),
-            },
-          ]);
-        break;
-      case "stderr":
-        if (execution !== undefined)
-          setDataToDisplay([
-            {
-              label: "Initiation Time",
-              value: fromTimestamp(execution.CreateTime).toString(),
-            },
-          ]);
-        break;
-      case "inputs":
-        if (execution !== undefined)
-          setDataToDisplay([
-            {
-              label: "Initiation Time",
-              value: fromTimestamp(execution.CreateTime).toString(),
-            },
-          ]);
-        break;
-      case "outputs":
-        if (execution !== undefined)
-          setDataToDisplay([
-            {
-              label: "Initiation Time",
-              value: fromTimestamp(execution.CreateTime).toString(),
             },
           ]);
         break;
