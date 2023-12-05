@@ -16,7 +16,7 @@ export interface Job {
   Meta: {
     [key: string]: string; // Assuming all values in Meta are strings
   };
-  Labels: { [key: string]: string }; // Assuming all values in Labels are strings
+  Labels: {[key: string]: string}; // Assuming all values in Labels are strings
   Tasks: Tasks[];
   State: {
     StateType: string;
@@ -65,7 +65,7 @@ export interface ParsedJobData {
   createdAt: Date;
   tasks: Tasks;
   jobType: string;
-  label: string;
+  label: string[];
   status: string;
   // action: string;
 }
