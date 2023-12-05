@@ -11,7 +11,7 @@ In outline form:
 * New span for every short lived action (e.g. < 10 min)
 * New trace for jobs longer than 1 hour
 * Try very hard to break up traces into smaller pieces
-* In tail sampling: the decision to keep or drop information is done at the traceid level. 
+* In tail sampling: the decision to keep or drop information is done at the traceid level.
   * There's usually a pretty short timeout for decision-time so if something happens 30 minutes into the trace that means you'd want to keep it (errors), the decision to drop it may have been made 28 minutes ago.
   * For this reason I recommend keeping traceid to each job executed in an async queue.
 * You can also add your own custom identifiers to things for aggregation sake later.
@@ -107,4 +107,3 @@ Further, you may want to create spans inside functions to trace particular block
 Some good reading:
  - https://github.com/honeycombio/honeycomb-opentelemetry-go
  - https://github.com/honeycombio/example-greeting-service/blob/main/golang/year-service/main.go
-

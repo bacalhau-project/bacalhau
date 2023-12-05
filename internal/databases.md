@@ -4,22 +4,22 @@
 
 Requester nodes store job state and history in an in-memory store (pkg/jobstore/inmemory), but can be configured to persist this information in a boltdb database on disk by setting the `BACALHAU_JOB_STORE_TYPE` environment variable to `boltdb`. To explicitly set to inmemory, the value should be `inmemory`.
 
-The location of the database file can be specified using the `BACALHAU_JOB_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-requester.db`. 
+The location of the database file can be specified using the `BACALHAU_JOB_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-requester.db`.
 
 
 ## Compute node database (execution store)
 
 By default, compute nodes store their execution information in an in-memory store (pkg/compute/store/inmemory), but can be configured to persist this information in a boltdb database on disk by setting the `BACALHAU_COMPUTE_STORE_TYPE` environment variable to `boltdb`.
 
-The location of the database file (for a single node) can be specified using the `BACALHAU_COMPUTE_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-compute.db`. 
+The location of the database file (for a single node) can be specified using the `BACALHAU_COMPUTE_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-compute.db`.
 
 
 ### Compute node restarts
 
 As compute nodes restart, they will find they have existing state in the boltdb database.
-At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use.  
+At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use.
 
-Currently only batch jobs are possible, and so for each of the listed states below, no action is taken at restart. In future it would make sense to remove records older than a certain age, or moved them to failed, depending on their current state.  For other job types (to be implemented) this may require restarting jobs, resetting jobs, 
+Currently only batch jobs are possible, and so for each of the listed states below, no action is taken at restart. In future it would make sense to remove records older than a certain age, or moved them to failed, depending on their current state.  For other job types (to be implemented) this may require restarting jobs, resetting jobs,
 
 |State|Batch jobs|
 |--|--|
@@ -37,10 +37,10 @@ Currently only batch jobs are possible, and so for each of the listed states bel
 
 ## Inspecting the databases
 
-The databases can be inspected using the bbolt tool. 
+The databases can be inspected using the bbolt tool.
 The bbolt tool can be installed to $GOBIN with:
 
-```shell 
+```shell
 go install go.etcd.io/bbolt/cmd/bbolt
 ```
 
@@ -53,10 +53,10 @@ $ bbolt check $FILE
 OK
 ```
 
-### List all buckets 
+### List all buckets
 
-```shell 
-$ bbolt buckets $FILE 
+```shell
+$ bbolt buckets $FILE
 execution
 execution-history
 execution-index
@@ -70,7 +70,7 @@ $ bolt compact -o DESTINATION_FILE $FILE
 ```
 
 
-### Get some DB stats 
+### Get some DB stats
 
 ```shell
 $ bbolt stats $FILE
@@ -95,7 +95,7 @@ Bucket statistics
         Bytes used for inlined buckets: 2743 (30%)
 ```
 
-### List keys in a bucket 
+### List keys in a bucket
 
 ```shell
 $ bbolt keys $FILE execution
@@ -105,11 +105,9 @@ e-d81034b8-c7c6-422d-af3f-87d680862a58
 e-fb54458c-5bad-496e-a1cb-4fc091d882a1
 ```
 
-### View a single key 
+### View a single key
 
 ```shell
 bbolt get $FILE execution e-9a937556-ac83-49ec-b794-a94c3aa068b2
 {"ID":"e-9a937556-ac83-49ec-b794-a94c3aa068b2","Job":{"APIVersion":"V1beta2","Metadata": .... more JSON}
 ```
-
-
