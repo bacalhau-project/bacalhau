@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -19,6 +20,7 @@ import (
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/node/baas"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -267,7 +269,25 @@ func serve(cmd *cobra.Command) error {
 		return fmt.Errorf("error creating node: %w", err)
 	}
 
+	pidStr := "QmVQbF6NsmEr9vmrF3Kyy2s93cP4r3goGe8J8fLtqZyHUT"
 	// Start transport layer
+	maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/1235/p2p/%s", pidStr))
+	if err != nil {
+		return err
+	}
+
+	if err := bac_libp2p.ConnectToPeers(ctx, libp2pHost, []multiaddr.Multiaddr{maddr}); err != nil {
+		return err
+	}
+	pid, err := peer.Decode(pidStr)
+	if err != nil {
+		return err
+	}
+	rsp, err := baas.NewService(libp2pHost, "dc8e4401-cee7-4eed-9ddc-f476b439f4b0").DoTheThing(ctx, pid)
+	if err != nil {
+		return err
+	}
+	fmt.Println(rsp)
 	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
 		return err

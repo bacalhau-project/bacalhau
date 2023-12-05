@@ -66,7 +66,7 @@ func ConnectToPeer(ctx context.Context, h host.Host, peer host.Host) error {
 		Stringer("peer", peer.ID()).
 		Int("addresses", len(peerAddresses)).
 		Msg("Connecting to peer")
-	if err := connectToPeers(ctx, h, peerAddresses); err != nil {
+	if err := ConnectToPeers(ctx, h, peerAddresses); err != nil {
 		return err
 	}
 

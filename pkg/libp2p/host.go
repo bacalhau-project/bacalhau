@@ -78,7 +78,7 @@ func ConnectToPeersContinuouslyWithRetryDuration(
 	peers []multiaddr.Multiaddr,
 	tickDuration time.Duration,
 ) error {
-	if err := connectToPeers(ctx, h, peers); err != nil {
+	if err := ConnectToPeers(ctx, h, peers); err != nil {
 		return err
 	}
 	ticker := time.NewTicker(tickDuration)
@@ -93,7 +93,7 @@ func ConnectToPeersContinuouslyWithRetryDuration(
 		for {
 			select {
 			case <-ticker.C:
-				if err := connectToPeers(ctx, h, peers); err != nil {
+				if err := ConnectToPeers(ctx, h, peers); err != nil {
 					log.Ctx(ctx).Info().
 						Err(err).
 						Stringer("tick", tickDuration).
@@ -108,7 +108,7 @@ func ConnectToPeersContinuouslyWithRetryDuration(
 	return nil
 }
 
-func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiaddr) error {
+func ConnectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiaddr) error {
 	// The call to `Connect` will "block until a connection is open, or an error is returned". This could mean the
 	// request to open a connection is never seen if the peer has only just started up. The default dial timeout
 	// is 60 seconds.
