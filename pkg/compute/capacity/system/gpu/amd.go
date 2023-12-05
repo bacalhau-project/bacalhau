@@ -55,7 +55,7 @@ func parseRocmSMIOutput(output io.Reader) (models.Resources, error) {
 	return models.Resources{GPU: uint64(len(gpus)), GPUs: gpus}, nil
 }
 
-func NewAMDGPUProvider() capacity.Provider {
+func NewAMDGPUProvider() *capacity.ToolBasedProvider {
 	return &capacity.ToolBasedProvider{
 		Command:  rocmCommand,
 		Provides: "AMD GPUs",
