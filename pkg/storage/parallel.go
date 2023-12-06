@@ -20,6 +20,7 @@ type PreparedStorage struct {
 func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
+	storageDirectory string,
 	specs ...*models.InputSource,
 ) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
@@ -30,7 +31,7 @@ func ParallelPrepareStorage(
 			return err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(ctx, input)
+		volumeMount, err := storageProvider.PrepareStorage(ctx, storageDirectory, input)
 		if err != nil {
 			return err
 		}

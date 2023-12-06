@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"net/http"
 	"net/url"
@@ -17,7 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -28,32 +26,20 @@ type Response struct {
 }
 
 type StorageProvider struct {
-	LocalDir    string
 	CloneClient *clone.Clone
 	IPFSClient  *apicopy.StorageProvider
 }
 
-func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvider) (*StorageProvider, error) {
+func NewStorage(IPFSapiclient *apicopy.StorageProvider) (*StorageProvider, error) {
 	c, err := clone.NewCloneClient()
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-repo")
-	if err != nil {
-		return nil, err
-	}
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to remove storage folder: %w", err)
-		}
-		return nil
-	})
 	storageHandler := &StorageProvider{
-		LocalDir:    dir,
 		IPFSClient:  IPFSapiclient,
 		CloneClient: c,
 	}
-	log.Debug().Msgf("Repo download driver created with output dir: %s", dir)
+	log.Debug().Msgf("Repo download driver created")
 	return storageHandler, nil
 }
 
@@ -72,7 +58,7 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (u
 }
 
 //nolint:gocyclo
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 
@@ -87,8 +73,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 
-	// # create a tmp directory
-	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
+	// # create a tmp directory inside the provided directory
+	outputPath, err := os.MkdirTemp(storageDirectory, "*")
 	log.Ctx(ctx).Debug().Str("Output ResultPath", outputPath).Msg("created temp folder for repo")
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -150,12 +136,7 @@ func (sp *StorageProvider) CleanupStorage(
 	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
-	defer span.End()
-
-	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
-	return os.RemoveAll(pathToCleanup)
+	return os.Remove(volume.Source)
 }
 
 func createSHA1CIDPair(ctx context.Context, data url.Values) error {

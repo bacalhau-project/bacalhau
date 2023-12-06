@@ -51,7 +51,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(api)
 		},
 	)
 }
@@ -63,7 +63,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(api)
 		},
 	)
 }
@@ -97,7 +97,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, inputSource)
+	volume, err := storageDriver.PrepareStorage(ctx, t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	// we should now be able to read our file content
@@ -144,7 +144,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, inputSource)
+	volume, err := storageDriver.PrepareStorage(ctx, t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	// we should now be able to read our file content

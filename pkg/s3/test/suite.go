@@ -83,7 +83,6 @@ func NewTestHelper(t *testing.T, params HelperSuiteParams) *HelperSuite {
 
 	storage := s3storage.NewStorage(s3storage.StorageProviderParams{
 		ClientProvider: clientProvider,
-		LocalDir:       t.TempDir(),
 	})
 
 	return &HelperSuite{
@@ -210,10 +209,13 @@ func (s *HelperSuite) PrepareAndPublish(compressed bool) (models.SpecConfig, str
 
 // GetResult fetches the result from S3 and returns the local path.
 func (s *HelperSuite) GetResult(published *models.SpecConfig) string {
-	volume, err := s.Storage.PrepareStorage(s.Ctx, models.InputSource{
-		Source: published,
-		Target: "/", // ignored as it is the mount point within the job
-	})
+	volume, err := s.Storage.PrepareStorage(
+		s.Ctx,
+		s.T().TempDir(),
+		models.InputSource{
+			Source: published,
+			Target: "/", // ignored as it is the mount point within the job
+		})
 	s.Require().NoError(err)
 
 	// if the input was an archive, then the returned source is the parent directory and not the archive itself.
