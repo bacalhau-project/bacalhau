@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package models
 
 import (
@@ -6,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResourceMemory(t *testing.T) {
+func TestResourceBytes(t *testing.T) {
 	tests := []struct {
 		in  string
 		exp uint64
@@ -19,12 +21,13 @@ func TestResourceMemory(t *testing.T) {
 	}
 
 	for _, p := range tests {
-		cfg, err := NewResourcesConfigBuilder().Memory(p.in).Build()
+		cfg, err := NewResourcesConfigBuilder().Memory(p.in).Disk(p.in).Build()
 		require.NoError(t, err)
 		// TODO I think this is where the bug occurs
 		actual, err := cfg.ToResources()
 		require.NoError(t, err)
 
 		require.Equal(t, p.exp, actual.Memory)
+		require.Equal(t, p.exp, actual.Disk)
 	}
 }

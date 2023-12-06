@@ -5,6 +5,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -189,11 +190,17 @@ func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID strin
 }
 
 const (
-	CPU_LIMIT    = "100m"
-	MEMORY_LIMIT = "100MB"
+	CPU_LIMIT = "100m"
+	// 100 mebibytes is 104,857,600 bytes
+	MEBIBYTE_MEMORY_LIMIT = "100MiB"
+	// 100 megabytes is 100,000,000 bytes
+	MEGABYTE_MEMORY_LIMIT = "100MB"
 
-	CPU_LIMIT_UNITS    = 0.1
-	MEMORY_LIMIT_BYTES = 100 * 1024 * 1024
+	CPU_LIMIT_UNITS = 0.1
+	// 104,857,600 bytes
+	MEBIBYTE_MEMORY_LIMIT_BYTES = 100 * 1024 * 1024
+	// 100,000,000 bytes
+	MEGABYTE_MEMORY_LIMIT_BYTES = 100 * 1000 * 1000
 )
 
 func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
@@ -209,7 +216,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 		Engine(dockermodels.NewDockerEngineBuilder("ubuntu").
 			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
 			Build()).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
+		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
 	result, err := s.runJobGetStdout(task, uuid.New().String())
@@ -237,26 +244,39 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 		s.T().Skip("Resource limits don't apply to containers running on Windows")
 	}
 
-	// this will give us a numerator and denominator that should end up at the
-	// same 0.1 value that 100m means
-	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
+	tests := []struct {
+		in  string
+		exp int
+	}{
+		{MEGABYTE_MEMORY_LIMIT, MEGABYTE_MEMORY_LIMIT_BYTES},
+		{MEBIBYTE_MEMORY_LIMIT, MEBIBYTE_MEMORY_LIMIT_BYTES},
+	}
 
-	task := mock.TaskBuilder().
-		Engine(
-			dockermodels.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
-				Build()).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
-		BuildOrDie()
+	for _, p := range tests {
+		task := mock.TaskBuilder().
+			Engine(
+				dockermodels.NewDockerEngineBuilder("ubuntu").
+					WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
+					Build()).
+			ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(p.in).BuildOrDie()).
+			BuildOrDie()
 
-	result, err := s.runJobGetStdout(task, uuid.New().String())
-	require.NoError(s.T(), err)
+		result, err := s.runJobGetStdout(task, uuid.New().String())
+		require.NoError(s.T(), err)
 
-	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), MEMORY_LIMIT_BYTES, intVar, "the container reported memory does not equal the configured limit")
+		intVar, err := strconv.Atoi(strings.TrimSpace(result))
+		require.NoError(s.T(), err)
+
+		// Docker adjusts the memory limit to align with the Linux kernel's memory management,
+		// which works at the granularity of a memory page size (generally 4096 bytes or 4KiB).
+		// When setting the memory limit, Docker will round down to an even division of the page size.
+		// Therefore, this test checks if the absolute difference between the actual memory limit inside the container
+		// and the expected memory limit is less than or equal to one memory page size (4096 bytes or 4KiB).
+		// This means that even with the rounding down, the memory limit inside the Docker container does not exceed our limit by more than one page size.
+		diff := int(math.Abs(float64(intVar - p.exp)))
+		require.LessOrEqual(s.T(), diff, 4096, "the difference between the container reported memory and the configured limit exceeds the page size")
+	}
 }
-
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	task := mock.TaskBuilder().
 		Network(models.NewNetworkConfigBuilder().
@@ -452,7 +472,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 			dockermodels.NewDockerEngineBuilder("ubuntu").
 				WithEntrypoint("bash", "cat /sys/fs/cgroup/cpu.max").
 				Build()).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
+		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
 	go func() {
@@ -475,7 +495,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 			dockermodels.NewDockerEngineBuilder("ubuntu").
 				WithEntrypoint("bash", "-c", "echo hello && sleep 20").
 				Build()).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEMORY_LIMIT).BuildOrDie()).
+		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
 	s.startJob(task, id)
