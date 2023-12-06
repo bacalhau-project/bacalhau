@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/BTBurke/k8sresource"
-	"github.com/c2h5oh/datasize"
+	"github.com/dustin/go-humanize"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -16,9 +16,9 @@ import (
 type ResourcesConfig struct {
 	// CPU https://github.com/BTBurke/k8sresource string
 	CPU string `json:"CPU,omitempty"`
-	// Memory github.com/c2h5oh/datasize string
+	// Memory github.com/dustin/go-humanize string
 	Memory string `json:"Memory,omitempty"`
-	// Memory github.com/c2h5oh/datasize string
+	// Memory github.com/dustin/go-humanize string
 	Disk string `json:"Disk,omitempty"`
 	GPU  string `json:"GPU,omitempty"`
 }
@@ -82,18 +82,18 @@ func (r *ResourcesConfig) ToResources() (*Resources, error) {
 		res.CPU = cpu.ToFloat64()
 	}
 	if r.Memory != "" {
-		mem, err := datasize.ParseString(r.Memory)
+		mem, err := humanize.ParseBytes(r.Memory)
 		if err != nil {
 			mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid memory value: %s", r.Memory))
 		}
-		res.Memory = mem.Bytes()
+		res.Memory = mem
 	}
 	if r.Disk != "" {
-		disk, err := datasize.ParseString(r.Disk)
+		disk, err := humanize.ParseBytes(r.Disk)
 		if err != nil {
 			mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid disk value: %s", r.Disk))
 		}
-		res.Disk = disk.Bytes()
+		res.Disk = disk
 	}
 	if r.GPU != "" {
 		gpu, err := strconv.ParseUint(r.GPU, 10, 64)
@@ -303,9 +303,9 @@ func (r *Resources) IsZero() bool {
 
 // return string representation of ResourceUsageData
 func (r *Resources) String() string {
-	mem := datasize.ByteSize(r.Memory)
-	disk := datasize.ByteSize(r.Disk)
-	return fmt.Sprintf("{CPU: %f, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem.HR(), disk.HR(), r.GPU)
+	mem := humanize.Bytes(r.Memory)
+	disk := humanize.Bytes(r.Disk)
+	return fmt.Sprintf("{CPU: %f, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem, disk, r.GPU)
 }
 
 // AllocatedResources is the set of resources to be used by an execution, which
