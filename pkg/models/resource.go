@@ -29,15 +29,8 @@ func (r *ResourcesConfig) Normalize() {
 		return
 	}
 	sanitizeResourceString := func(s string) string {
-		// TODO(forrest) [bug] Mi and Mb mean different things:
-		// - 'i' generally denotes ebi e.g.  Mebibytes
-		// - 'b' is usually bit e.g. Megabit or in this context Megabyte
-		// 1 Megabyte ~= .96 Mebibyte so we are losing meaning in this conversion
-		// need to fix this.
-
-		// lower case, allow Mi, Gi to mean Mb, Gb, and remove spaces
+		// lower case and remove spaces
 		s = strings.ToLower(s)
-		s = strings.ReplaceAll(s, "i", "b")
 		s = strings.ReplaceAll(s, " ", "")
 		s = strings.ReplaceAll(s, "\n", "")
 		return s
