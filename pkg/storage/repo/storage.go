@@ -82,7 +82,11 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory 
 
 	// The `Output` method executes the command and
 	// collects the output, returning its value
-	cmd := exec.Command("git", "clone", repoURL, outputPath)
+	cmd := exec.Command("git", "clone", repoURL)
+	cmd.Dir = outputPath
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Println("git", "clone", repoURL)
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 	out, err := cmd.Output()
 	log.Ctx(ctx).Debug().Msgf("git clone output is %s", string(out))
 	if err != nil {

@@ -6,11 +6,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -28,45 +29,43 @@ import (
 type StorageSuite struct {
 	suite.Suite
 	RootCmd *cobra.Command
+
+	ctx context.Context
+	cm  *system.CleanupManager
+
+	node   *ipfs.Node
+	client ipfs.Client
+
+	copyProvider *apicopy.StorageProvider
 }
 
 func TestStorageSuite(t *testing.T) {
 	suite.Run(t, new(StorageSuite))
 }
 
-// Before each test
-func (s *StorageSuite) SetupTest() {
+func (s *StorageSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
 	setup.SetupBacalhauRepoForTesting(s.T())
+
+	s.ctx = context.Background()
+	s.cm = system.NewCleanupManager()
+
+	node, _ := ipfs.NewNodeWithConfig(s.ctx, s.cm, types.IpfsConfig{PrivateInternal: true})
+	s.node = node
+
+	s.client = ipfs.NewClient(s.node.Client().API)
+	s.copyProvider, _ = apicopy.NewStorage(s.client)
 }
 
-func getIpfsStorage() (*apicopy.StorageProvider, error) {
-	ctx := context.Background()
-	cm := system.NewCleanupManager()
-
-	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
-	if err != nil {
-		return nil, err
-
-	}
-
-	cl := ipfs.NewClient(node.Client().API)
-	storage, err := apicopy.NewStorage(cl)
-	if err != nil {
-		return nil, err
-	}
-
-	return storage, nil
+func (s *StorageSuite) TearDownSuite() {
+	s.node.Close(s.ctx)
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
 	ctx := context.Background()
-	storage, err := getIpfsStorage()
-	if err != nil {
-		panic(err)
-	}
-	sp, err := NewStorage(storage)
-	require.NoError(s.T(), err, "failed to create storage provider")
+
+	sp, err := NewStorage(s.copyProvider)
+	s.Require().NoError(err, "failed to create storage provider")
 
 	spec := models.InputSource{
 		Source: &models.SpecConfig{
@@ -77,12 +76,13 @@ func (s *StorageSuite) TestHasStorageLocally() {
 		},
 		Target: "bar",
 	}
+
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
-	require.NoError(s.T(), err, "failed to check if storage is locally available")
+	s.Require().NoError(err, "failed to check if storage is locally available")
 
 	if locally != false {
-		require.Fail(s.T(), "storage should not be locally available")
+		s.Fail("storage should not be locally available")
 	}
 }
 
@@ -91,77 +91,87 @@ func (s *StorageSuite) TestCloneRepo() {
 	// is connected to the internet and skip this test if they are not.
 	// This test will also fail if the URL is not reachable.
 	// Using -test.short flag for now
-	s.T().Skip("Skipping test that requires internet connection")
+	// s.T().Skip("Skipping test that requires internet connection")
 
 	type repostruct struct {
-		Site     string
-		URL      string
+		name     string
+		url      string
 		repoName string
 	}
+
+	tmpDirectory := s.T().TempDir()
+	projectDirectory := "test/project.git"
+
+	projectDirectoryActual := path.Join(tmpDirectory, projectDirectory)
+	err := os.MkdirAll(projectDirectoryActual, 0755)
+	s.Require().NoError(err)
+
+	exampleFile := filepath.Join(projectDirectoryActual, "example.txt")
+	err = os.WriteFile(exampleFile, []byte("hello"), 0755)
+	s.Require().NoError(err)
+
+	// Create and initialise the local git server
+	gs, err := NewGitServer(tmpDirectory, projectDirectory)
+	s.Require().NoError(err)
+
+	err = gs.Init("example.txt")
+	s.Require().NoError(err)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	c, err := gs.Serve(ctx)
+	s.Require().NoError(err)
+
+	defer func() {
+		fmt.Println("Calling cancel")
+		c.Process.Kill()
+	}()
+
 	// Rewrite this test replacing it with the clone part
 	filetypeCases := []repostruct{
-		{Site: "github", URL: "https://github.com/bacalhau-project/get.bacalhau.org.git",
-			repoName: "bacalhau-project/get.bacalhau.org",
+		{
+			name:     "simple clone",
+			url:      "git://127.0.0.1:9418/test/project.git",
+			repoName: "test/project",
 		}}
 
 	for _, ftc := range filetypeCases {
-		name := fmt.Sprintf("%s-%s", ftc.Site, ftc.URL)
-
-		hash, err := func() (string, error) {
-			ctx := context.Background()
-			storage, err := getIpfsStorage()
-			if err != nil {
-				panic(err)
-			}
-			sp, err := NewStorage(storage)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to create storage provider", name)
-			}
+		s.Run(ftc.name, func() {
+			sp, err := NewStorage(s.copyProvider)
+			s.Require().NoError(err)
 
 			spec := models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceRepoClone,
 					Params: Source{
-						Repo: ftc.URL,
+						Repo: ftc.url,
 					}.ToMap(),
 				},
 				Target: "/inputs/" + ftc.repoName,
 			}
 
-			volume, err := sp.PrepareStorage(ctx, s.T().TempDir(), spec)
-
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
-			}
+			tempRunFolder := s.T().TempDir()
+			volume, err := sp.PrepareStorage(ctx, tempRunFolder, spec)
+			s.Require().NoError(err)
 
 			r, err := git.PlainOpen(volume.Source)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			s.Require().NoError(err, "failed to call git.PlainOpen on %s", volume.Source)
 
 			ref, err := r.Head()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			s.Require().NoError(err)
 
 			commit, err := r.CommitObject(ref.Hash())
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			headhash := commit.Hash.String()
-			return headhash, nil
-		}()
-		if err != nil {
-			fmt.Print(err)
-		}
-		urlhash, _ := urltoLatestCommitHash(context.Background(), ftc.URL)
-		if urlhash != "" {
-			require.Equal(s.T(), urlhash, hash, "%s: content of file does not match", name)
-		}
-		fmt.Printf("HASH: %s", hash)
+			s.Require().NoError(err)
 
+			headhash := commit.Hash.String()
+
+			urlhash, _ := urltoLatestCommitHash(context.Background(), ftc.url)
+			if urlhash != "" {
+				s.Require().Equal(urlhash, headhash, "%s: content of file does not match", ftc.name)
+			}
+
+		})
 	}
 }
