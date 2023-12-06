@@ -190,7 +190,7 @@ func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID strin
 
 const (
 	CPU_LIMIT    = "100m"
-	MEMORY_LIMIT = "100mb"
+	MEMORY_LIMIT = "100MB"
 
 	CPU_LIMIT_UNITS    = 0.1
 	MEMORY_LIMIT_BYTES = 100 * 1024 * 1024
