@@ -25,7 +25,7 @@ export interface Job {
   Meta: {
     [key: string]: string; // Assuming all values in Meta are strings
   };
-  Labels: {[key: string]: string}; // Assuming all values in Labels are strings
+  Labels: { [key: string]: string }; // Assuming all values in Labels are strings
   Tasks: Tasks[];
   State: {
     StateType: string;
