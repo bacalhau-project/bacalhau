@@ -79,6 +79,16 @@ const JobDetail: React.FC = () => {
     })),
   };
 
+  // TODO: figure out usful Inputs and Outputs data to display
+  // const outData = {
+  //   headers: ["Node Outputs"],
+  //   rows: jobData.Tasks.flatMap((item) =>
+  //     item.ResultPaths.map((path) => ({
+  //       "Node Outputs": path.Name,
+  //     })),
+  //   ),
+  // };
+
   return (
     <Layout pageTitle={`Job Detail | ${getShortenedJobID(jobData.ID)}`}>
       <div className={styles.jobDetail}>
@@ -110,8 +120,8 @@ const JobDetail: React.FC = () => {
           </Container>
           {/* <Container title={"Inputs"}>
             <Table data={inData} style={{ fontSize: "12px" }} />
-          </Container>
-          <Container title={"Outputs"}>
+          </Container> */}
+          {/* <Container title={"Outputs"}>
             <Table data={outData} style={{ fontSize: "12px" }} />
           </Container> */}
         </div>

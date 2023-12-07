@@ -45,7 +45,7 @@ func newTraceProvider() {
 	)
 
 	// set the global trace provider
-	otel.SetTracerProvider(loggingTracerProvider{tp})
+	otel.SetTracerProvider(loggingTracerProvider{delegate: tp})
 
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(

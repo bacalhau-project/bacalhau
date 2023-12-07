@@ -83,7 +83,7 @@ export interface ParsedJobData {
   createdAt: Date;
   tasks: Tasks;
   jobType: string;
-  label: string;
+  label: string[];
   status: string;
   action: string;
 }

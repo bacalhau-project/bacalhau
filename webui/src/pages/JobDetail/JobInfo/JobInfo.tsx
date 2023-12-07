@@ -51,10 +51,6 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
           },
           { label: "Status", value: job.State.StateType },
           {
-            label: "Timeout Deadline",
-            value: job.Tasks[0].Timeouts.ExecutionTimeout.toString(),
-          },
-          {
             label: "Executor Type",
             value: capitalizeFirstLetter(job.Tasks[0].Engine.Type),
           },
@@ -62,12 +58,17 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
           {
             label: "GPU Details",
             value: job?.Tasks[0]?.Resources?.GPU
-              ? job?.Tasks[0]?.Resources?.GPU
+              ? job?.Tasks[0]?.Resources?.GPU.toString()
               : "Not specified",
           },
           {
             label: "Timeout",
-            value: job?.Tasks[0]?.Timeouts.ExecutionTimeout.toString(),
+            value:
+              job?.Tasks[0]?.Timeouts?.ExecutionTimeout != null
+                ? `${job?.Tasks[0]?.Timeouts?.ExecutionTimeout} second${
+                    job?.Tasks[0]?.Timeouts?.ExecutionTimeout === 1 ? "" : "s"
+                  }`
+                : "No timeout set",
           },
           {
             label: "Requestor Node",

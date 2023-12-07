@@ -43,11 +43,23 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
-      label: "",
+      label: createLabelArray(job.Labels),
       status: job.State.StateType,
       action: "Action",
     };
   });
+}
+
+function createLabelArray(label: { [key: string]: string }): string[] {
+  const labelArray: string[] = [];
+  for (const [key, value] of Object.entries(label)) {
+    if (value === "") {
+      labelArray.push(key);
+    } else {
+      labelArray.push(`${key}: ${value}`);
+    }
+  }
+  return labelArray;
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
@@ -59,16 +71,14 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            {settings.showJobId && <th className={styles.jobID}>Job ID</th>}
-            {settings.showJobName && <th>Name</th>}
-            {settings.showCreated && (
-              <th className={styles.dateCreated}>Created</th>
-            )}
-            {settings.showProgram && <th>Program</th>}
-            {settings.showJobType && <th>Job Type</th>}
-            {settings.showLabel && <th>Label</th>}
-            {settings.showStatus && <th>Status</th>}
-            {settings.showAction && <th>Action</th>}
+            <th className={styles.jobID}>Job ID</th>
+            <th>Name</th>
+            <th className={styles.dateCreated}>Created</th>
+            <th>Program</th>
+            <th>Job Type</th>
+            <th>Label</th>
+            <th>Status</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>

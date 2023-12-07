@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
@@ -27,36 +26,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// a storage driver runs the downloads content
-// from a public URL source and copies it to
-// a local directory in preparation for
-// a job to run - it will remove the folder/file once complete
+// StorageProvider downloads data on request from a URL to a local
+// directory.
 
 type StorageProvider struct {
-	localDir string
-	client   *retryablehttp.Client
+	client *retryablehttp.Client
 }
 
-func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
-	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-url")
-	if err != nil {
-		return nil, err
-	}
+func NewStorage() *StorageProvider {
+	log.Debug().Msg("URL download driver created")
 
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to remove storage folder: %w", err)
-		}
-		return nil
-	})
-
-	log.Debug().Str("dir", dir).Msg("URL download driver created with output dir")
-
-	return newStorage(dir), nil
-}
-
-func newStorage(dir string) *StorageProvider {
 	client := retryablehttp.NewClient()
 	client.HTTPClient = &http.Client{
 		Timeout: config.GetDownloadURLRequestTimeout(),
@@ -84,8 +63,7 @@ func newStorage(dir string) *StorageProvider {
 	}
 
 	return &StorageProvider{
-		localDir: dir,
-		client:   client,
+		client: client,
 	}
 }
 
@@ -103,7 +81,7 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (u
 }
 
 // PrepareStorage will download the file from the URL
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -113,7 +91,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 
-	outputPath, err := os.MkdirTemp(sp.localDir, "*")
+	// Create a temporary folder inside the provided directory
+	outputPath, err := os.MkdirTemp(storageDirectory, "*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
