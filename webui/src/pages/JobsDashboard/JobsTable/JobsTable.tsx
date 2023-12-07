@@ -42,11 +42,23 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
-      label: "",
+      label: createLabelArray(job.Labels),
       status: job.State.StateType,
       action: "Action",
     };
   });
+}
+
+function createLabelArray(label: {[key: string]: string}): string[] {
+  const labelArray: string[] = []
+  for (const [key, value] of Object.entries(label)) {
+    if (value === "") {
+      labelArray.push(key)
+    } else {
+      labelArray.push(`${key}: ${value}`)
+    }
+  }
+  return labelArray
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
@@ -80,7 +92,12 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                 <ProgramSummary data={jobData.tasks} />
               </td>
               <td className={styles.jobType}>{jobData.jobType}</td>
-              <td className={styles.label}>{jobData.label}</td>
+              <td className={styles.label}>{jobData.label.map((label) => 
+                <Label 
+                  text={label}
+                  color={'lavender'}
+                />)}
+              </td>
               <td className={styles.status}>
                 <Label
                   text={jobData.status}
