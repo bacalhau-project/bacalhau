@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -17,6 +12,12 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/net"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -233,6 +234,8 @@ func NewNode(
 		NodeInfoProvider: nodeInfoProvider,
 	})
 
+	net.NewAPI(config.Host).RegisterRoutes(apiServer.Router)
+
 	var requesterNode *Requester
 	var computeNode *Compute
 
@@ -346,7 +349,7 @@ func (n *Node) IsComputeNode() bool {
 }
 
 func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}
