@@ -12,9 +12,9 @@ interface ProgramSummaryProps {
 const getImageSource = (type: string) => {
   switch (type) {
     case "docker":
-      return <DockerLogo/>;
+      return <DockerLogo className={styles.icon} />;
     default:
-      return <Cogwheel/>;
+      return <Cogwheel className={styles.icon} />;
   }
 };
 
@@ -35,9 +35,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
 
   return (
     <div className={styles.programSummary}>
-      <div className={styles.logo}>
-        {imageSource}
-      </div>
+      <div className={styles.iconContainer}>{imageSource}</div>
       <div className={styles.text}>
         <div className={styles.header}>{image}</div>
         <div className={styles.input}>{truncatedInput}</div>

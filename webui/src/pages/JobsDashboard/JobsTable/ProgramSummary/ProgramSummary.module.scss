@@ -3,8 +3,13 @@
     align-items: center;
     text-align: left;
 
-    .logo {
+    .iconContainer {
         margin-right: 10px;
+    }
+
+    .icon {
+        width: 18px;
+        height: 18px;
     }
 
     .text {

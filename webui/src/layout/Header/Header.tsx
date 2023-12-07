@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./Header.module.scss";
-import { ReactComponent as BacalhauLogo} from "../../images/bacalhau.svg";
+import { ReactComponent as BacalhauLogo } from "../../images/bacalhau.svg";
 import { ReactComponent as ProfileIcon } from "../../images/profile.svg";
 
 interface HeaderProps {
@@ -12,7 +12,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
   return (
     <header className={styles.header} data-collapsed={collapsed}>
       <div className={styles.left}>
-        <BacalhauLogo className={styles.logo} height="24"/>
+        <BacalhauLogo className={styles.logo} height="24" />
         <div className={styles.pageTitle}>{pageTitle}</div>
         <div className={styles.searchBar}>
           {/* Placeholder for search bar */}
@@ -22,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
       <div className={styles.right}>
         {/* Profile section */}
         <div className={styles.profile}>
-          <ProfileIcon/>
+          <ProfileIcon />
         </div>
       </div>
     </header>

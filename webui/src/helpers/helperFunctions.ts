@@ -9,3 +9,7 @@ export function fromTimestamp(timestamp: number): Date {
   // Create a new Date object
   return new Date(milliseconds);
 }
+
+export function getShortenedJobID(jobID: string) {
+  return jobID.split("-")[0];
+}

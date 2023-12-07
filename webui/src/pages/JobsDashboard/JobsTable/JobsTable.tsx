@@ -1,12 +1,13 @@
 import React from "react";
-import Moment from 'react-moment';
+import Moment from "react-moment";
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
-// import ActionButton from "../../../components/ActionButton/ActionButton";
+import ActionButton from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
   fromTimestamp,
+  getShortenedJobID,
 } from "../../../helpers/helperFunctions";
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
 
@@ -30,33 +31,34 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`);
     }
-    const shortenedID = job.ID.split("-")[0];
+
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
 
     return {
-      id: shortenedID,
+      id: getShortenedJobID(job.ID),
+      longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
       tasks: firstTask,
       jobType: capitalizeFirstLetter(jobType),
       label: createLabelArray(job.Labels),
       status: job.State.StateType,
-      // action: "Action",
+      action: "Action",
     };
   });
 }
 
-function createLabelArray(label: {[key: string]: string}): string[] {
-  const labelArray: string[] = []
+function createLabelArray(label: { [key: string]: string }): string[] {
+  const labelArray: string[] = [];
   for (const [key, value] of Object.entries(label)) {
     if (value === "") {
-      labelArray.push(key)
+      labelArray.push(key);
     } else {
-      labelArray.push(`${key}: ${value}`)
+      labelArray.push(`${key}: ${value}`);
     }
   }
-  return labelArray
+  return labelArray;
 }
 
 const JobsTable: React.FC<TableProps> = ({ data }) => {
@@ -73,7 +75,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
             <th>Job Type</th>
             <th>Label</th>
             <th>Status</th>
-            {/* <th>Action</th> */}
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -82,17 +84,18 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
               <td className={styles.id}>{jobData.id}</td>
               <td className={styles.name}>{jobData.name}</td>
               <td className={styles.dateCreated}>
-                <Moment fromNow withTitle>{jobData.createdAt}</Moment>
+                <Moment fromNow withTitle>
+                  {jobData.createdAt}
+                </Moment>
               </td>
               <td className={styles.program}>
                 <ProgramSummary data={jobData.tasks} />
               </td>
               <td className={styles.jobType}>{jobData.jobType}</td>
-              <td className={styles.label}>{jobData.label.map((label) => 
-                <Label 
-                  text={label}
-                  color={'lavender'}
-                />)}
+              <td className={styles.label}>
+                {jobData.label.map((label) => (
+                  <Label text={label} color={"lavender"} />
+                ))}
               </td>
               <td className={styles.status}>
                 <Label
@@ -100,9 +103,9 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                   color={labelColorMap[jobData.status.toLowerCase()]}
                 />
               </td>
-              {/* <td className={styles.action}>
-                <ActionButton text="View" />
-              </td> */}
+              <td className={styles.action}>
+                <ActionButton text="View" to="/JobDetail" id={jobData.longId} />
+              </td>
             </tr>
           ))}
         </tbody>

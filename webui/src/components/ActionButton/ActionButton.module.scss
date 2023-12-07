@@ -20,3 +20,12 @@
     column-gap: 1ch;
     align-items: center
 }
+
+.actionButton:active {
+    background-color: rgba($light-blue, .7);
+}
+
+.viewIcon {
+    width: 18px;
+    height: 18px;
+}
