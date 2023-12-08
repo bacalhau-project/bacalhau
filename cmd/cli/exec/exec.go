@@ -33,7 +33,7 @@ var (
 		bacalhau exec python app.py
 
 		# Run a duckdb query against a CSV file
-		bacalhau -i src=...,dst=/inputs/data.csv duckdb "select * from /inputs/data.csv"
+		bacalhau exec -i src=...,dst=/inputs/data.csv duckdb "select * from /inputs/data.csv"
 `))
 )
 
@@ -62,7 +62,7 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		Long:               getLong,
 		Example:            getExample,
 		Args:               cobra.MinimumNArgs(1),
-		PreRunE:            util.Chain(util.ClientPreRunHooks),
+		PreRunE:            util.ClientPreRunHooks,
 		PostRunE:           util.ClientPostRunHooks,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
@@ -119,8 +119,27 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	// Determine the job type and lookup the template for that type. If we
 	// don't have a template, then we don't know how to submit that job type.
 	jobType = cmdArgs[0]
-	if templateString, err = Template(jobType); err != nil {
-		return nil, fmt.Errorf("the job type '%s' is not supported", jobType)
+
+	tpl, err := NewTemplateMap(embeddedFiles, "templates")
+	if err != nil {
+		return nil, fmt.Errorf("failed to find supported job types, templates missing")
+	}
+
+	// Get the template string, or if we can't find one for this type, then
+	// provide a list of ones we _do_ support.
+	if templateString, err = tpl.Get(jobType); err != nil {
+		knownTypes := tpl.AllTemplates()
+
+		supportedTypes := ""
+		if len(knownTypes) > 0 {
+			supportedTypes = "\nSupported types:\n"
+
+			for _, kt := range knownTypes {
+				supportedTypes = supportedTypes + fmt.Sprintf("  * %s\n", kt)
+			}
+		}
+
+		return nil, fmt.Errorf("the job type '%s' is not supported."+supportedTypes, jobType)
 	}
 
 	// Convert the unknown args to a map which we can use to fill in the template

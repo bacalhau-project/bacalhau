@@ -1,28 +1,65 @@
 package exec
 
 import (
+	"bufio"
+	"embed"
 	"fmt"
+	"io"
+	"io/fs"
+	"path/filepath"
 	"strings"
+
+	"golang.org/x/exp/maps"
 )
 
-var templateMap map[string]string = nil
-
-func init() {
-	templateMap = make(map[string]string)
-	templateMap["python"] = pythonTemplate()
-	templateMap["duckdb"] = duckdbTemplate()
-}
+//go:embed templates/*.json
+var embeddedFiles embed.FS
 
 func ErrUnknownTemplate(name string) error {
 	return fmt.Errorf("unknown template specified: %s", name)
 }
 
-// Template returns a string template (with yaml format) for the specified
-// job type. Initially these templates are encoded in this file, but in future
-// the first use of a name should load and cache a versioned template from the
-// server.
-func Template(name string) (string, error) {
-	tpl, found := templateMap[strings.ToLower(name)]
+type TemplateMap struct {
+	m map[string]string
+}
+
+func NewTemplateMap(fsys fs.ReadDirFS, path string) (*TemplateMap, error) {
+	entries, err := fsys.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	tpl := &TemplateMap{
+		m: make(map[string]string),
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := nameFromFile(entry.Name())
+
+		fd, err := fsys.Open(filepath.Join(path, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		defer fd.Close()
+
+		reader := bufio.NewReader(fd)
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+
+		tpl.m[strings.ToLower(name)] = string(data)
+	}
+
+	return tpl, nil
+}
+
+func (t *TemplateMap) Get(name string) (string, error) {
+	tpl, found := t.m[strings.ToLower(name)]
 	if !found {
 		return "", ErrUnknownTemplate(name)
 	}
@@ -30,40 +67,10 @@ func Template(name string) (string, error) {
 	return tpl, nil
 }
 
-func pythonTemplate() string {
-	t := `
-{"Name":"Python",
- "Namespace":"default",
- "Type":"batch",
- "Count":1,
- "Tasks":[{
-    "Name":"execute",
-	"Engine": {
-	    "Type":"python",
-		"Params":{
-			"Version": "{{or (index . "version") "3.11"}}"
-		}
-	}
- }]
-}`
-
-	return strings.TrimSpace(t)
+func (t *TemplateMap) AllTemplates() []string {
+	return maps.Keys(t.m)
 }
 
-func duckdbTemplate() string {
-	t := `
-{"Name":"DuckDB",
- "Namespace":"default",
- "Type":"batch",
- "Count":1,
- "Tasks":[{
-    "Name":"execute",
-	"Engine": {
-	    "Type":"duckdb",
-		"Params":{}
-	}
- }]
-}`
-
-	return strings.TrimSpace(t)
+func nameFromFile(filename string) string {
+	return strings.TrimSuffix(filename, filepath.Ext(filename))
 }

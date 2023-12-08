@@ -128,7 +128,7 @@ func (s *ExecSuite) testFuncForTestCase(tc testCase) func(*models.Job, error) bo
 			s.Require().NoError(err)
 		} else {
 			s.Require().Error(err)
-			s.Require().Equal(tc.expectedErrMsg, err.Error())
+			s.Require().Contains(err.Error(), tc.expectedErrMsg)
 			return false
 		}
 
