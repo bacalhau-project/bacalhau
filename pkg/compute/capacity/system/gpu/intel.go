@@ -18,6 +18,7 @@ type xpuDeviceList struct {
 	List []struct {
 		DeviceID   uint64 `json:"device_id"`
 		DeviceName string `json:"device_name"`
+		PCIAddress string `json:"pci_bdf_address"`
 	} `json:"device_list"`
 }
 
@@ -47,13 +48,14 @@ type xpuDeviceInfo struct {
 	DeviceID    uint64 `json:"device_id"`
 	DeviceName  string `json:"device_name"`
 	TotalMemory string `json:"memory_physical_size_byte"`
+	PCIAddress  string `json:"pci_bdf_address"`
 }
 
 var xpuDeviceInfoProvider = capacity.ToolBasedProvider{
 	Command:  "xpu-smi",
 	Provides: "Intel GPUs",
 	// note: Args require a device ID, appended later
-	Args:     []string{"discovery", "--json", "--device"},
+	Args: []string{"discovery", "--json", "--device"},
 	Parser: func(output io.Reader) (models.Resources, error) {
 		var record xpuDeviceInfo
 		err := json.NewDecoder(output).Decode(&record)
@@ -69,8 +71,9 @@ var xpuDeviceInfoProvider = capacity.ToolBasedProvider{
 		gpu := models.GPU{
 			Index:      record.DeviceID,
 			Name:       record.DeviceName,
-			Vendor: models.GPUVendorIntel,
-			Memory: parsedMemoryBytes / bytesPerMebibyte,
+			Vendor:     models.GPUVendorIntel,
+			Memory:     parsedMemoryBytes / bytesPerMebibyte,
+			PCIAddress: record.PCIAddress,
 		}
 
 		return models.Resources{GPU: 1, GPUs: []models.GPU{gpu}}, nil

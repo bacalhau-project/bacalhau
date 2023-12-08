@@ -12,7 +12,7 @@ import (
 
 func TestParsingAMDGPUsWithOne(t *testing.T) {
 	output := strings.NewReader(
-		`{"card0": {"VRAM Total Memory (B)": "68702699520", ` +
+		`{"card0": {"PCI Bus": "0000:E7:00.0", "VRAM Total Memory (B)": "68702699520", ` +
 			`"VRAM Total Used Memory (B)": "10960896", ` +
 			`"Card series": "Instinct MI210", "Card model": "0x0c34", ` +
 			`"Card vendor": "Advanced Micro Devices, Inc. [AMD/ATI]", "Card SKU":` +
@@ -32,6 +32,7 @@ func TestParsingAMDGPUsWithOne(t *testing.T) {
 	require.Equal(t, uint64(0), gpus[0].Index)
 	require.Equal(t, "Instinct MI210", gpus[0].Name)
 	require.Equal(t, uint64(65520), gpus[0].Memory)
+	require.Equal(t, "0000:e7:00.0", gpus[0].PCIAddress)
 }
 
 func TestParsingAMDGPUsWithMany(t *testing.T) {

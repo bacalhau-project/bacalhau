@@ -164,6 +164,9 @@ type GPU struct {
 	Vendor GPUVendor
 	// Total GPU memory in mebibytes (MiB)
 	Memory uint64
+	// PCI address of the device, in the format AAAA:BB:CC.C
+	// Used to discover the correct device rendering cards
+	PCIAddress string
 }
 
 type Resources struct {

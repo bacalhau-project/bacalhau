@@ -72,6 +72,7 @@ func TestParsingIntelGPUsWithOne(t *testing.T) {
 	gpu := output.GPUs[0]
 	require.Equal(t, models.GPUVendorIntel, gpu.Vendor)
 	require.Equal(t, uint64(0), gpu.Index)
+	require.Equal(t, "0000:e9:00.0", gpu.PCIAddress)
 	require.Equal(t, "Intel Corporation Device 56c1 (rev 05)", gpu.Name)
 	require.Equal(t, uint64(5068), gpu.Memory)
 
@@ -87,6 +88,7 @@ func TestParsingIntelGPUsWithMany(t *testing.T) {
 	for _, gpu := range output.GPUs {
 		require.Equal(t, models.GPUVendorIntel, gpu.Vendor)
 		require.Equal(t, uint64(0), gpu.Index)
+		require.Equal(t, "0000:e9:00.0", gpu.PCIAddress)
 		require.Equal(t, "Intel Corporation Device 56c1 (rev 05)", gpu.Name)
 		require.Equal(t, uint64(5068), gpu.Memory)
 	}
