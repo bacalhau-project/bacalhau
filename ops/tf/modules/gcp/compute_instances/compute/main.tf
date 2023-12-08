@@ -23,6 +23,16 @@ resource "google_compute_instance" "compute" {
   }
 }
 
+locals {
+  compute_config_content = templatefile("${path.module}/../../../instance_files/compute_config.yaml", {
+    requester_ip = var.requester_ip
+  })
+  bacalhau_service_content = templatefile("${path.module}/../../../instance_files/bacalhau.service", {
+    args = "" # replace with your actual arguments
+  })
+}
+
+
 data "cloudinit_config" "compute_cloud_init" {
   gzip        = false
   base64_encode = false
@@ -31,10 +41,10 @@ data "cloudinit_config" "compute_cloud_init" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content      = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
-      bacalhau_config_file    : filebase64("${path.module}/../../../instance_files/compute_config.yaml"),
-      bacalhau_service_file   : filebase64("${path.module}/../../../instance_files/bacalhau.service"),
-      requester_ip            : var.requester_ip,
+    content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
+      bacalhau_config_file  : base64encode(local.compute_config_content),
+      bacalhau_service_file : base64encode(local.bacalhau_service_content),
+      requester_ip          : var.requester_ip,
     })
   }
 }
