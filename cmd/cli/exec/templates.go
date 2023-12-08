@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -23,8 +24,8 @@ type TemplateMap struct {
 	m map[string]string
 }
 
-func NewTemplateMap(fsys fs.ReadDirFS, path string) (*TemplateMap, error) {
-	entries, err := fsys.ReadDir(path)
+func NewTemplateMap(fsys fs.ReadDirFS, tplPath string) (*TemplateMap, error) {
+	entries, err := fsys.ReadDir(tplPath)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func NewTemplateMap(fsys fs.ReadDirFS, path string) (*TemplateMap, error) {
 
 		name := nameFromFile(entry.Name())
 
-		fd, err := fsys.Open(filepath.Join(path, entry.Name()))
+		fd, err := fsys.Open(path.Join(tplPath, entry.Name()))
 		if err != nil {
 			return nil, err
 		}
