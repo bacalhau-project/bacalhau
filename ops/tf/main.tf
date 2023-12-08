@@ -1,6 +1,7 @@
 provider "google" {
   project = var.gcp_project_id
   region  = var.gcp_region
+  zone = var.gcp_zone
 }
 
 
@@ -17,7 +18,7 @@ module "compute_instance" {
 
   zone = var.gcp_zone
   cloud_init_content = ""
-  requester_ip = module.requester_instance.requester_private_ips
+  requester_ip = module.requester_instance.requester_private_ips[0]
   compute_instance_count = var.compute_count
   compute_instance_type = var.compute_machine_type
 

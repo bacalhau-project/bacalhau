@@ -1,5 +1,7 @@
 #cloud-config
 
+# Boot-time commands
+
 # Update package database and upgrade the system
 package_update: true
 package_upgrade: true
@@ -9,6 +11,7 @@ packages:
   - git
   - git-lfs
   - make
+  - npm
   - curl
   - jq
   - wget
@@ -17,7 +20,7 @@ packages:
   - lsb-release
 
 write_files:
-  - path: /data/config.yaml
+  - path: /etc/config.yaml
     encoding: b64
     owner: root:root
     permissions: "0600"
@@ -31,20 +34,13 @@ write_files:
     content: |
       ${bacalhau_service_file}
 
-  - path: /etc/bacalhau-node-info
-    owner: root:root
-    permissions: "0444"
-    content: |
-      export REGION=${ region }
-      export ZONE=${ zone }
-      export APPNAME=${ app_name }
-
 runcmd:
   #
   # Setup Bacalhau Repo
   #
   - mkdir /data
   - chmod 0700 /data
+  - mv /etc/config.yaml /data/config.yaml
   #
   # Install go
   #
@@ -75,3 +71,5 @@ runcmd:
   - sudo systemctl restart docker
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
+
+

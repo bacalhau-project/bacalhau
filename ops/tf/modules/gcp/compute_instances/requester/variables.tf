@@ -3,11 +3,6 @@ variable "requester_instance_type" {
   type        = string
 }
 
-variable "requester_ip" {
-  description = "Private IP of the requester instance"
-  type        = string
-}
-
 variable "zone" {
   description = "The zone in which to provision instances"
   type        = string
