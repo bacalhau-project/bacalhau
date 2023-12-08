@@ -12,7 +12,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-//go:embed templates/*.json
+//go:embed templates/*.tpl
 var embeddedFiles embed.FS
 
 func ErrUnknownTemplate(name string) error {
