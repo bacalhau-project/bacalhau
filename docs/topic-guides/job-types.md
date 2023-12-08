@@ -1,7 +1,7 @@
 ---
-sidebar_label: 'Job types'
+sidebar_label: 'Job Types'
 sidebar_position: 0
-title: 'Job types'
+title: 'Job Types'
 description: The different job types available in Bacalhau
 ---
 

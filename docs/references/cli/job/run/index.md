@@ -24,11 +24,21 @@ bacalhau job run [flags]
 - `--id-only`:
     - Description: On successful job submission, only the Job ID will be printed.
 
+- `--no-template`:
+    - Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements
+  
 - `--node-details`:
     - Description: Displays details of all nodes. Note that this flag is overridden if `--id-only` is provided.
 
 - `--show-warnings`:
     - Description: Shows any warnings that occur during the job submission.
+
+- `-E`, `--template-envs`:
+    - Specify a regular expression pattern for selecting environment variables to be included as template variables in the job spec.
+      e.g. `--template-envs ".*"` will include all environment variables.
+
+- `-V`, `--template-vars`:
+    - Replace a placeholder in the job spec with a value. e.g. `--template-vars foo=bar`
 
 - `--wait`:
     - Description: Waits for the job to finish execution. To set this to false, use --wait=false
@@ -224,3 +234,6 @@ This configuration describes a batch job that runs a Docker task. It utilizes th
    To get more details about the run executions, execute:
 	bacalhau job executions j-d8625929-83f4-411a-b9aa-7bcfecb27a8b
    ```
+
+## Templating
+`bacalhau job run` providing users with the ability to dynamically inject variables into their job specifications. This feature is particularly useful when running multiple jobs with varying parameters such as S3 buckets, prefixes, and time ranges without the need to edit each job specification file manually. You can find more information about templating [here](/topic-guides/job-templating.md).
