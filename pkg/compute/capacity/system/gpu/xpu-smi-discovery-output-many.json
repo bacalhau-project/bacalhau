@@ -1,0 +1,26 @@
+{
+    "device_list": [
+        {
+            "device_function_type": "physical",
+            "device_id": 0,
+            "device_name": "Intel Corporation Device 56c1 (rev 05)",
+            "device_type": "GPU",
+            "drm_device": "/dev/dri/card1",
+            "pci_bdf_address": "0000:e9:00.0",
+            "pci_device_id": "0x56c1",
+            "uuid": "00000000-0000-0000-9fa4-990c9e0150e4",
+            "vendor_name": "Intel(R) Corporation"
+        },
+        {
+            "device_function_type": "physical",
+            "device_id": 1,
+            "device_name": "Intel Corporation Device 56c1 (rev 05)",
+            "device_type": "GPU",
+            "drm_device": "/dev/dri/card2",
+            "pci_bdf_address": "0000:ea:00.0",
+            "pci_device_id": "0x56c1",
+            "uuid": "00000000-0000-0000-99d0-827e7a3952af",
+            "vendor_name": "Intel(R) Corporation"
+        }
+    ]
+}

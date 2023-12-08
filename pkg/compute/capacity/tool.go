@@ -30,7 +30,7 @@ func (tool *ToolBasedProvider) GetAvailableCapacity(ctx context.Context) (models
 		return models.Resources{}, errors.Wrapf(err, "tool %q is not installed or not on PATH", tool.Command)
 	}
 
-	cmd := exec.Command(toolPath, tool.Args...)
+	cmd := exec.CommandContext(ctx, toolPath, tool.Args...)
 	resp, err := cmd.Output()
 	if err != nil {
 		return models.Resources{}, errors.Wrapf(err, "tool `%s %v` had bad exit and returned: %q", toolPath, tool.Args, string(resp))
@@ -42,6 +42,11 @@ func (tool *ToolBasedProvider) GetAvailableCapacity(ctx context.Context) (models
 	}
 
 	return resources, nil
+}
+
+// ResourceTypes implements Subprovider.
+func (tool *ToolBasedProvider) ResourceTypes() []string {
+	return []string{tool.Provides}
 }
 
 var _ Provider = (*ToolBasedProvider)(nil)
