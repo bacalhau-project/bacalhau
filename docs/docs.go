@@ -1980,6 +1980,10 @@ const docTemplate = `{
                     "description": "Model name of the GPU e.g. Tesla T4",
                     "type": "string"
                 },
+                "pciaddress": {
+                    "description": "PCI address of the device, in the format AAAA:BB:CC.C\nUsed to discover the correct device rendering cards",
+                    "type": "string"
+                },
                 "vendor": {
                     "description": "Maker of the GPU, e.g. NVidia, AMD, Intel",
                     "allOf": [
@@ -1994,11 +1998,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "NVIDIA",
-                "AMD/ATI"
+                "AMD/ATI",
+                "Intel"
             ],
             "x-enum-varnames": [
                 "GPUVendorNvidia",
-                "GPUVendorAMDATI"
+                "GPUVendorAMDATI",
+                "GPUVendorIntel"
             ]
         },
         "models.NodeInfo": {
