@@ -368,6 +368,9 @@ func configureDevices(ctx context.Context, resources *models.Resources) ([]conta
 				PathInContainer:   "/dev/kfd",
 				CgroupPermissions: "rwm",
 			})
+			fallthrough
+		case models.GPUVendorIntel:
+			// https://github.com/openvinotoolkit/docker_ci/blob/master/docs/accelerators.md
 			for _, gpu := range gpus {
 				mappings = append(mappings,
 					container.DeviceMapping{

@@ -152,6 +152,7 @@ type GPUVendor string
 const (
 	GPUVendorNvidia GPUVendor = "NVIDIA"
 	GPUVendorAMDATI GPUVendor = "AMD/ATI"
+	GPUVendorIntel  GPUVendor = "Intel"
 )
 
 type GPU struct {
