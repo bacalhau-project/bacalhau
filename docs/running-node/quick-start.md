@@ -102,7 +102,7 @@ To install a single IPFS node locally on Ubuntu you can follow the [official ins
 Using the command below:
 
 ```bash
-export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
+export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/prod.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
 ```
 
 Install:
