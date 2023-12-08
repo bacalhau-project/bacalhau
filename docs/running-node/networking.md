@@ -35,11 +35,18 @@ By default, running `bacalhau serve` will connect to the following nodes (which 
 
 Bacalhau uses libp2p [multiaddresses](https://docs.libp2p.io/concepts/addressing/) to identify nodes on the network.
 
-If you want to connect to other nodes, you can use the `--peer` flag to specify additional peers to connect to (comma-separated list).
+If you want to connect to other nodes, and you know their Peer IDs you can use the `--peer` flag to specify additional peers to connect to (comma-separated list).
 
 ```bash
 bacalhau serve \
   --peer /ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL,/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+```
+
+If you want to connect to a requester node, and you know it's IP but not it's Peer ID, you can use the following which will contact the requester API directly and ask for the current Peer ID instead.
+
+```bash
+bacalhau serve \
+  --peer /ip4/35.245.115.191/tcp/1234/http
 ```
 
 ## libp2p swarm port
