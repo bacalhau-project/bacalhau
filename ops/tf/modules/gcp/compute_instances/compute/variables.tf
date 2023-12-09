@@ -35,3 +35,13 @@ variable "cloud_init_content" {
   type        = string
 }
 
+variable "network" {
+  description = "The VPC network to attach to the instances"
+  type        = string
+}
+
+variable "subnetwork" {
+  description = "The subnetwork to attach to the instances"
+  type        = string
+}
+

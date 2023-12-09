@@ -14,11 +14,13 @@ resource "google_compute_instance" "requester" {
   }
 
   network_interface {
-    network = "default"
+    network = var.network
+    subnetwork = var.subnetwork
     access_config {
-      // Ephemeral IP
+      nat_ip = var.requester_static_ip // Static IP
     }
   }
+
 }
 
 locals {

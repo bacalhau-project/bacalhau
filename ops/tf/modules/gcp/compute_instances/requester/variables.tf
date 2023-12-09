@@ -3,6 +3,11 @@ variable "requester_instance_type" {
   type        = string
 }
 
+variable "requester_static_ip" {
+  description = "The static IP address for the requester instance"
+  type        = string
+}
+
 variable "zone" {
   description = "The zone in which to provision instances"
   type        = string
@@ -22,6 +27,16 @@ variable "boot_size" {
 
 variable "cloud_init_content" {
   description = "Content of the cloud-init script"
+  type        = string
+}
+
+variable "network" {
+  description = "The VPC network to attach to the instances"
+  type        = string
+}
+
+variable "subnetwork" {
+  description = "The subnetwork to attach to the instances"
   type        = string
 }
 
