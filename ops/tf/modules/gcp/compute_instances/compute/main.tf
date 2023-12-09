@@ -31,6 +31,7 @@ locals {
   bacalhau_service_content = templatefile("${path.module}/../../../instance_files/bacalhau.service", {
     args = "" # replace with your actual arguments
   })
+  bacalhau_install_content = filebase64("${path.module}/../../../instance_files/install-bacalhau.sh")
 }
 
 
@@ -38,6 +39,7 @@ data "cloudinit_config" "compute_cloud_init" {
   gzip        = false
   base64_encode = false
 
+  // provide parameters to cloud-init like files and arguments to scripts in the above part.
   part {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
@@ -45,6 +47,8 @@ data "cloudinit_config" "compute_cloud_init" {
     content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
       bacalhau_config_file  : base64encode(local.compute_config_content),
       bacalhau_service_file : base64encode(local.bacalhau_service_content),
+      bacalhau_install_file : local.bacalhau_install_content,
+      bacalhau_install_args : var.install_bacalhau_argument
       requester_ip          : var.requester_ip,
     })
   }

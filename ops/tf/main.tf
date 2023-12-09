@@ -20,6 +20,7 @@ module "requester_instance" {
 
   cloud_init_content = ""
   requester_instance_type = var.requester_machine_type
+  install_bacalhau_argument = var.install_bacalhau_argument
 }
 
 module "compute_instance" {
@@ -33,5 +34,6 @@ module "compute_instance" {
   requester_ip = module.requester_instance.requester_private_ips[0]
   compute_instance_count = var.compute_count
   compute_instance_type = var.compute_machine_type
+  install_bacalhau_argument = var.install_bacalhau_argument
 
 }

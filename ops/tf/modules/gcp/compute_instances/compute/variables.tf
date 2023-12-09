@@ -45,3 +45,10 @@ variable "subnetwork" {
   type        = string
 }
 
+// Usage: install-bacalhau [release <version> | branch <branch-name>]
+variable "install_bacalhau_argument" {
+  description = "Argument to pass to the install bacalhau script"
+  type        = string
+  default     = ""
+}
+

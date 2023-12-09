@@ -34,6 +34,13 @@ write_files:
     content: |
       ${bacalhau_service_file}
 
+  - path: /etc/install-bacalhau.sh
+    encoding: b64
+    owner: root:root
+    permissions: "0700"
+    content: |
+      ${bacalhau_install_file}
+
 runcmd:
   #
   # Setup Bacalhau Repo
@@ -44,9 +51,22 @@ runcmd:
   #
   # Install go
   #
+  - export HOME=/root
+  - export GOCACHE="$HOME/.cache/go-build"
+  - export GOPATH="/root/go"
+  - export PATH="$PATH:$GOPATH/bin:/usr/local/go/bin"
+  - mkdir -p "$GOPATH"
+  # the above steps are from
+  # build cache is required, but could not be located: GOCACHE is not defined and neither $XDG_CACHE_HOME nor $HOME are defined
+  # go build -ldflags "-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=v1.1.7-rc1-5-g298e129b" -trimpath -o bin/linux_amd64/bacalhau .
+  # go: module cache not found: neither GOMODCACHE nor GOPATH is set
+  # go: module cache not found: neither GOMODCACHE nor GOPATH is set
+  # make: *** [Makefile:208: bin/linux_amd64/bacalhau] Error 1
+  # Failed to build bacalhau
   - sudo rm -fr /usr/local/go /usr/local/bin/go
   - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
   - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  - go version
   #
   # Install docker
   #
@@ -60,9 +80,7 @@ runcmd:
   #
   # Install Bacalhau
   #
-  - |
-    curl -sL https://get.bacalhau.org/install.sh | bash
-  - echo "Bacalhau downloaded."
+  - /etc/install-bacalhau.sh ${bacalhau_install_args}
   #
   # Start services
   #
