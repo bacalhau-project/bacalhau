@@ -348,7 +348,7 @@ var randomPortsProfile = config.Profile{
 	Transform: func(c *config.Config) error {
 		c.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
 		c.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
-		c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001", "/ip6/::1/tcp/4001"}
 		return nil
 	},
 }
@@ -403,7 +403,7 @@ func createRepo(path string, nodeConfig types.IpfsConfig) error {
 	// serve an IPFS swarm client on some local port. Else, make sure we are
 	// only serving the API on a local connection
 	if nodeConfig.PrivateInternal {
-		profiles = append(profiles, config.Profiles["test"], localOnlyProfile)
+		profiles = append(profiles, config.Profiles["test"], localOnlyProfile, randomPortsProfile)
 	}
 
 	if nodeConfig.SwarmAddresses != nil {
