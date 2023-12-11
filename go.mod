@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.44
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.86
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.39.0
-	github.com/aws/smithy-go v1.15.0
+	github.com/aws/smithy-go v1.19.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
@@ -18,7 +18,7 @@ require (
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-playground/validator/v10 v10.2.0
+	github.com/go-playground/validator/v10 v10.16.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/hashicorp/go-hclog v1.5.0
@@ -112,8 +112,8 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
-	github.com/go-playground/locales v0.13.0 // indirect
-	github.com/go-playground/universal-translator v0.17.0 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
@@ -125,7 +125,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
-	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
@@ -182,7 +182,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect

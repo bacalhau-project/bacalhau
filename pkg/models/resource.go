@@ -152,6 +152,7 @@ type GPUVendor string
 const (
 	GPUVendorNvidia GPUVendor = "NVIDIA"
 	GPUVendorAMDATI GPUVendor = "AMD/ATI"
+	GPUVendorIntel  GPUVendor = "Intel"
 )
 
 type GPU struct {
@@ -163,6 +164,9 @@ type GPU struct {
 	Vendor GPUVendor
 	// Total GPU memory in mebibytes (MiB)
 	Memory uint64
+	// PCI address of the device, in the format AAAA:BB:CC.C
+	// Used to discover the correct device rendering cards
+	PCIAddress string
 }
 
 type Resources struct {

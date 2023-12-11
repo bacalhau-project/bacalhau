@@ -35,5 +35,9 @@ type UsageCalculator interface {
 // Implementation can return local node capacity if operating with a single node, or capacity of a cluster if compute
 // is backed by a fleet of nodes.
 type Provider interface {
+	// GetAvailableCapacity returns the resources that are available for use by this node.
 	GetAvailableCapacity(ctx context.Context) (models.Resources, error)
+
+	// A set of human-readable strings that explains what this subprovider can detect.
+	ResourceTypes() []string
 }

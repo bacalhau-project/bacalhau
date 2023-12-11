@@ -256,6 +256,7 @@ func NewRequesterNode(
 			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
+			transformer.NewInlineStoragePinner(storageProviders),
 		},
 		ResultTransformer: resultTransformers,
 	})

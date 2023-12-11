@@ -368,19 +368,28 @@ func configureDevices(ctx context.Context, resources *models.Resources) ([]conta
 				PathInContainer:   "/dev/kfd",
 				CgroupPermissions: "rwm",
 			})
-			for _, gpu := range gpus {
-				mappings = append(mappings,
-					container.DeviceMapping{
-						PathOnHost:        fmt.Sprintf("/dev/dri/card%d", gpu.Index),
-						PathInContainer:   fmt.Sprintf("/dev/dri/card%d", gpu.Index),
-						CgroupPermissions: "rwm",
-					},
-					container.DeviceMapping{
-						PathOnHost:        fmt.Sprintf("/dev/dri/renderD%d", (128 + gpu.Index)),
-						PathInContainer:   fmt.Sprintf("/dev/dri/renderD%d", (128 + gpu.Index)),
-						CgroupPermissions: "rwm",
-					},
-				)
+			fallthrough
+		case models.GPUVendorIntel:
+			// https://github.com/openvinotoolkit/docker_ci/blob/master/docs/accelerators.md
+			paths := lo.FlatMap[models.GPU, string](gpus, func(gpu models.GPU, _ int) []string {
+				return []string{
+					filepath.Join("/dev/dri/by-path/", fmt.Sprintf("pci-%s-card", gpu.PCIAddress)),
+					filepath.Join("/dev/dri/by-path/", fmt.Sprintf("pci-%s-render", gpu.PCIAddress)),
+				}
+			})
+
+			for _, path := range paths {
+				// We need to use the PCI address of the GPU to look up the correct devices to expose
+				absPath, err := filepath.EvalSymlinks(path)
+				if err != nil {
+					return nil, nil, errors.Wrapf(err, "could not find attached device for GPU at %q", path)
+				}
+
+				mappings = append(mappings, container.DeviceMapping{
+					PathOnHost:        absPath,
+					PathInContainer:   absPath,
+					CgroupPermissions: "rwm",
+				})
 			}
 		default:
 			return nil, nil, fmt.Errorf("job requires GPU from unsupported vendor %q", vendor)

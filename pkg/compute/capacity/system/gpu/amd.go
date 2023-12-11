@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -12,12 +13,12 @@ import (
 const rocmCommand = "rocm-smi"
 const bytesPerMebibyte = 1048576
 
-var rocmArgs = []string{"--showproductname", "--showmeminfo", "vram", "--json"}
+var rocmArgs = []string{"--showproductname", "--showbus", "--showmeminfo", "vram", "--json"}
 
-// {"card0": {"VRAM Total Memory (B)": "68702699520", "VRAM Total Used Memory
-// (B)": "10960896", "Card series": "Instinct MI210", "Card model": "0x0c34",
-// "Card vendor": "Advanced Micro Devices, Inc. [AMD/ATI]", "Card SKU":
-// "D67301"}}
+// {"card0": {"PCI Bus": "0000:E7:00.0", "VRAM Total Memory (B)": "68702699520",
+// "VRAM Total Used Memory (B)": "10960896", "Card series": "Instinct MI210",
+// "Card model": "0x0c34", "Card vendor": "Advanced Micro Devices, Inc.
+// [AMD/ATI]", "Card SKU": "D67301"}}
 type rocmGPU struct {
 	TotalMemory string `json:"VRAM Total Memory (B)"`
 	UsedMemory  string `json:"VRAM Total Used Memory (B)"`
@@ -25,6 +26,7 @@ type rocmGPU struct {
 	Model       string `json:"Card model"`
 	Vendor      string `json:"Card vendor"`
 	SKU         string `json:"Card SKU"`
+	PCIAddress  string `json:"PCI Bus"`
 }
 
 type rocmGPUList map[string]rocmGPU
@@ -50,6 +52,7 @@ func parseRocmSMIOutput(output io.Reader) (models.Resources, error) {
 		}
 		gpus[index].Memory = memBytes / bytesPerMebibyte // convert to mebibytes
 		gpus[index].Vendor = models.GPUVendorAMDATI
+		gpus[index].PCIAddress = strings.ToLower(record.PCIAddress) // hex letters are uppercase
 	}
 
 	return models.Resources{GPU: uint64(len(gpus)), GPUs: gpus}, nil

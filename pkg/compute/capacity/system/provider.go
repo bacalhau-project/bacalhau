@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/pbnjay/memory"
 	"github.com/ricochet2200/go-disk-usage/du"
@@ -16,14 +17,15 @@ import (
 )
 
 type PhysicalCapacityProvider struct {
-	gpuCapacityProviders []*capacity.ToolBasedProvider
+	gpuCapacityProviders []capacity.Provider
 }
 
 func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
 	return &PhysicalCapacityProvider{
-		gpuCapacityProviders: []*capacity.ToolBasedProvider{
+		gpuCapacityProviders: []capacity.Provider{
 			gpu.NewNvidiaGPUProvider(),
 			gpu.NewAMDGPUProvider(),
+			gpu.NewIntelGPUProvider(),
 		},
 	}
 }
@@ -64,7 +66,10 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models
 			// smi can't communicate with the drivers, etc. instead we provide a
 			// warning, show the args to the command we tried and its response.
 			// motivation: https://expanso.atlassian.net/browse/GDAY-90
-			log.Ctx(ctx).Warn().Err(err).Msgf("Cannot inspect %s so they will not be used", gpuProvider.Provides)
+			log.Ctx(ctx).Warn().Err(err).Msgf(
+				"Cannot inspect %s so they will not be used",
+				strings.Join(gpuProvider.ResourceTypes(), " or "),
+			)
 			continue
 		}
 
@@ -72,6 +77,15 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models
 	}
 
 	return resources, nil
+}
+
+// ResourceTypes implements capacity.Provider.
+func (p *PhysicalCapacityProvider) ResourceTypes() []string {
+	ownTypes := []string{"CPU", "Memory", "Disk"}
+	for _, gpuProvider := range p.gpuCapacityProviders {
+		ownTypes = append(ownTypes, gpuProvider.ResourceTypes()...)
+	}
+	return ownTypes
 }
 
 // get free disk space for storage path
