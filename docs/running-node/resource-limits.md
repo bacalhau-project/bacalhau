@@ -20,4 +20,7 @@ The `--limit-total-*` flags control the total system resources you want to give 
 
 The `--limit-job-*` flags control the maximum amount of resources a single job can consume for it to be selected for execution.
 
-Resource limits are not supported for nodes running on Windows, and will be silently ignored.
+Resource limits are not supported for Docker jobs running on Windows. Resource
+limits will be applied at the job bid stage based on reported job requirements
+but will be silently unenforced. Jobs will be able to access as many resources
+as requested at runtime.

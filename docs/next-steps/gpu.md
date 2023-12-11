@@ -24,6 +24,5 @@ bacalhau docker run --gpu=1 nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
 The following limitations currently exist within Bacalhau. Bacalhau supports:
 
-* NVIDIA GPUs only
-* a single GPU only
-* the Docker executor only
+* NVIDIA, Intel or AMD GPUs only
+* GPUs for the Docker executor only
