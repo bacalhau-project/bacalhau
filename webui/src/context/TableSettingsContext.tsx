@@ -1,27 +1,44 @@
-// src/context/TableSettingsContext.tsx
 import React, { useState, useContext, useEffect, ReactNode } from "react";
 
+// Combined table settings interface
 export interface TableSettings {
-  showNodeId: boolean;
-  showName: boolean;
-  showType: boolean;
-  showEnv: boolean;
-  showInputs: boolean;
-  showOutputs: boolean;
-  showVersion: boolean;
-  showAction: boolean;
+  // Jobs Table
+  showJobId?: boolean;
+  showJobName?: boolean;
+  showCreated?: boolean;
+  showProgram?: boolean;
+  showJobType?: boolean;
+  showLabel?: boolean;
+  showStatus?: boolean;
+  // Nodes Table
+  showNodeId?: boolean;
+  showNodeName?: boolean;
+  showNodeType?: boolean;
+  showEnv?: boolean;
+  showInputs?: boolean;
+  showOutputs?: boolean;
+  showVersion?: boolean;
+  showAction?: boolean;
 }
 
 interface TableSettingsContextType {
   settings: TableSettings;
-  // eslint-disable-next-line no-unused-vars
-  toggleSetting: (_key: keyof TableSettings) => void;
+  toggleSetting: (key: keyof TableSettings) => void;
 }
 
 const defaultState: TableSettings = {
+  // Jobs Table
+  showJobId: true,
+  showJobName: true,
+  showCreated: true,
+  showProgram: true,
+  showJobType: true,
+  showLabel: true,
+  showStatus: true,
+  // Nodes Table
   showNodeId: true,
-  showName: true,
-  showType: true,
+  showNodeName: true,
+  showNodeType: true,
   showEnv: true,
   showInputs: true,
   showOutputs: true,
@@ -29,13 +46,10 @@ const defaultState: TableSettings = {
   showAction: true,
 };
 
-const defaultContextValue: TableSettingsContextType = {
+const TableSettingsContext = React.createContext<TableSettingsContextType>({
   settings: defaultState,
   toggleSetting: () => {},
-};
-
-const TableSettingsContext =
-  React.createContext<TableSettingsContextType>(defaultContextValue);
+});
 
 export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
   children,

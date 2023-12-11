@@ -50,7 +50,6 @@ const JobDetail: React.FC = () => {
   }
 
   const manyExecutions = jobExData.length > 1;
-
   const executionsData = {
     headers: [
       "Execution ID",

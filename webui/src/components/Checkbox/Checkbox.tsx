@@ -1,7 +1,7 @@
 import React from "react";
 
 interface CheckboxProps {
-  checked: boolean;
+  checked: boolean | undefined;
   onChange: () => void;
   label?: string;
 }
