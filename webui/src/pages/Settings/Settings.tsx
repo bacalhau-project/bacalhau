@@ -26,6 +26,7 @@ const Settings = () => {
         localStorage.setItem("tableSettings", JSON.stringify(tempSettings));
       }
     });
+    window.alert("Settings updated");
   };
 
   const jobsOptions: { label: string; key: keyof TableSettings }[] = [

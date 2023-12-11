@@ -71,14 +71,15 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            <th className={styles.jobID}>Job ID</th>
-            <th>Name</th>
-            <th className={styles.dateCreated}>Created</th>
-            <th>Program</th>
-            <th>Job Type</th>
-            <th>Label</th>
-            <th>Status</th>
-            <th>Action</th>
+            {settings.showJobId && <th className={styles.jobID}>Job ID</th>}
+            {settings.showJobName && <th>Name</th>}
+            {settings.showCreated && (
+              <th className={styles.dateCreated}>Created</th>
+            )}
+            {settings.showProgram && <th>Program</th>}
+            {settings.showJobType && <th>Job Type</th>}
+            {settings.showLabel && <th>Label</th>}
+            {settings.showStatus && <th>Status</th>}
           </tr>
         </thead>
         <tbody>
