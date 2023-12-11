@@ -1,3 +1,11 @@
+// This file includes unmodified functions from the HashiCorp Nomad project.
+// The original file can be found at:
+// https://github.com/hashicorp/nomad/blob/fc9076731c7c920ab0373c224ba8e9fd5544d386/api/api.go
+//
+// This entire file is licensed under the Mozilla Public License 2.0
+// Original Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package client
 
 import (
