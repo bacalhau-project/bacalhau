@@ -214,7 +214,8 @@ module.exports = {
         'running-node/configuring-tls',
         'running-node/windows-support',
         'running-node/observability',
-        'running-node/configuration'
+        'running-node/configuration',
+        'running-node/webui'
       ],
     },
     {
