@@ -25,7 +25,7 @@ BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
 endif
 
-BINARY_PATH = bin/${GOOS}_${GOARCH}${GOARM}/${BINARY_NAME}
+BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
@@ -192,7 +192,7 @@ $(WEB_INSTALL_GUARD): webui/package.json
 	cd webui && npm install
 
 export GENERATE_SOURCEMAP := false
-$(WEB_BUILD_FILES): $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
+${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
 	cd webui && npm run build
 
 ################################################################################
@@ -229,27 +229,24 @@ ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BA
 	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
 endif
 
+BACALHAU_IMAGE_FLAGS := \
+	--progress=plain \
+	--platform linux/amd64,linux/arm64 \
+	--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+	${LATEST_TAG} \
+	--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+	--label org.opencontainers.image.version=${BACALHAU_TAG} \
+	--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+	--file docker/bacalhau-image/Dockerfile \
+	.
+
 .PHONY: build-bacalhau-image
 build-bacalhau-image:
-	docker build --progress=plain \
-		--build-arg TAG=${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: push-bacalhau-image
 push-bacalhau-image:
-	docker buildx build --push --progress=plain \
-		--platform linux/amd64,linux/arm64 \
-		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		${LATEST_TAG} \
-		--build-arg TAG=${BACALHAU_TAG} \
-		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		--label org.opencontainers.image.version=${BACALHAU_TAG} \
-		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build --push ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
