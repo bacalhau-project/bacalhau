@@ -8,6 +8,7 @@ import {
   capitalizeFirstLetter,
   fromTimestamp,
   getShortenedJobID,
+  createLabelArray,
 } from "../../../helpers/helperFunctions";
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
 
@@ -31,12 +32,17 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`);
     }
-
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
+    const jobID = getShortenedJobID(job.ID);
+    const jobName = job.Name;
 
+    if (jobType === "batch") {
+      job.Name = jobID;
+    } else {
+      job.Name = jobName;
+    }
     return {
-      id: getShortenedJobID(job.ID),
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
@@ -49,18 +55,6 @@ function parseData(jobs: Job[]): ParsedJobData[] {
   });
 }
 
-function createLabelArray(label: { [key: string]: string }): string[] {
-  const labelArray: string[] = [];
-  for (const [key, value] of Object.entries(label)) {
-    if (value === "") {
-      labelArray.push(key);
-    } else {
-      labelArray.push(`${key}: ${value}`);
-    }
-  }
-  return labelArray;
-}
-
 const JobsTable: React.FC<TableProps> = ({ data }) => {
   const parsedData = parseData(data);
   return (
@@ -68,8 +62,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            <th className={styles.jobID}>Job ID</th>
-            <th>Name</th>
+            <th className={styles.jobID}>Job</th>
             <th className={styles.dateCreated}>Created</th>
             <th>Program</th>
             <th>Job Type</th>
@@ -81,7 +74,6 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
         <tbody>
           {parsedData.map((jobData, index) => (
             <tr key={index}>
-              <td className={styles.id}>{jobData.id}</td>
               <td className={styles.name}>{jobData.name}</td>
               <td className={styles.dateCreated}>
                 <Moment fromNow withTitle>

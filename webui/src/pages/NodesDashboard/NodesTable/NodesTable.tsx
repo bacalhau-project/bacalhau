@@ -15,7 +15,6 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
 
     return {
       id: node.PeerInfo.ID,
-      name: node.Labels.name ? node.Labels.name : node.PeerInfo.ID,
       type: node.NodeType,
       environment: node.Labels.env,
       inputs: inputs,
@@ -35,8 +34,7 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            {settings.showNodeId && <th>Node ID</th>}
-            {settings.showName && <th>Name</th>}
+            {settings.showNodeId && <th>Node</th>}
             {settings.showType && <th>Type</th>}
             {settings.showEnv && <th>Environment</th>}
             {settings.showInputs && <th>Inputs From</th>}
@@ -50,9 +48,6 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
             <tr key={index}>
               {settings.showNodeId && (
                 <td className={styles.id}>{nodeData.id}</td>
-              )}
-              {settings.showName && (
-                <td className={styles.name}>{nodeData.name}</td>
               )}
               {settings.showType && (
                 <td className={styles.type}>{nodeData.type}</td>
