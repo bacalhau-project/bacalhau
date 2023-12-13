@@ -25,8 +25,8 @@ Error while executing the job.
 Or when you list the jobs you might see a state of `ERROR`, like:
 
 ```
-CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-11:05:47  bab5f64c  Docker ubuntu echo "...  Error    
+CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
+11:05:47  bab5f64c  Docker ubuntu echo "...  Error
 ```
 
 ## 2. Inspecting the Status of the Job
@@ -125,7 +125,7 @@ Inside your code:
 * `print` out the hardware resources observed by your code, to ensure that hardware is visible and behaving as expected (e.g. GPU information)
 * For longer-running or hardware intensive jobs, `print` status updates and current consumption metrics to ensure that the job is progressing as expected
 
-More tips: 
+More tips:
 
 * [Tips for debugging with print()](https://adamj.eu/tech/2021/10/08/tips-for-debugging-with-print/)
 * [Debugging: print statements and logging](https://firstmncsa.org/2018/12/09/debugging-print-statements-and-logging/)
@@ -153,5 +153,4 @@ If you're still having trouble, please reach out to the [Bacalhau team via Slack
 
 ## Contributing
 
-If you have any hints or tips to add, then please submit a PR to [the Bacalhau Documentation repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
-
+If you have any hints or tips to add, then please submit a PR to [the Bacalhau Documentation repository](https://github.com/bacalhau-project/bacalhau/tree/main/docs/).

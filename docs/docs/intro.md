@@ -7,12 +7,12 @@ hide_title: true
 ---
 
 <p align="center">
-<img src="img/bacalhau-horizontal.jpg" alt="Bacalhau Logo" width="300" />
+<img src="img/logo/Bacalhau-horizontal.svg" alt="Bacalhau" width="300" />
 </p>
 
 # What is Bacalhau?
 
-Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_. 
+Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_.
 
 Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals is to create an open, collaborative compute ecosystem that enables unparalleled collaboration. We ([Expanso.io](https://expanso.io)) offer a demo network so you can try out jobs without even installing. Give it a shot!
 
@@ -26,7 +26,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
-💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source. 
+💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source.
 
 🤓 You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data.
 
@@ -36,7 +36,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ## Quick Start ⏱️
 
-> Understand Bacalhau in 1 minute 
+> Understand Bacalhau in 1 minute
 
 Install the bacalhau client:
 
@@ -46,7 +46,7 @@ Install the bacalhau client:
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
-- Option 2: Install with Go 1.20 
+- Option 2: Install with Go 1.20
 
 ```bash
 go install github.com/bacalhau-project/bacalhau@latest
@@ -73,7 +73,7 @@ For a more detailed tutorial, check out our [Getting Started Tutorial](https://d
 
 ## How it works
 
-The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data. 
+The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data.
 
 ### Data ingestion
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:

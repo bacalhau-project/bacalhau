@@ -20,7 +20,7 @@ You are always welcome to make code contribution to Bacalhau. This can be done b
 
 With lots of code comes the need for lots of good documentation! If writing technical documentation is your area or you love writing, we would greatly value your contribution!
 
-Before contributing to the Bacalhau docs, please read through our Style guide and check out the [Bacalhau documentation](https://github.com/bacalhau-project/docs.bacalhau.org) repo.
+Before contributing to the Bacalhau docs, please read through our Style guide and check out the [Bacalhau documentation](https://github.com/bacalhau-project/bacalhau/tree/main/docs) repo.
 
 ## Community
 

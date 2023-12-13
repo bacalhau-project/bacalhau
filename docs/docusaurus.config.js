@@ -35,7 +35,7 @@ const config = {
         docs: {
           routeBasePath: "/",
           sidebarPath: require.resolve("./sidebars.js"),
-          editUrl: `https://github.com/bacalhau-project/docs.bacalhau.org/blob/main/`,
+          editUrl: `https://github.com/bacalhau-project/bacalhau/tree/main/docs`,
           remarkPlugins: [simplePlantUML],
           showLastUpdateAuthor: false,
           showLastUpdateTime: true,
@@ -60,12 +60,12 @@ const config = {
         defaultMode: "light",
         disableSwitch: true,
       },
-      image: "/static/logo_assets/Icon/JPG/Bacalhau-icon.jpg",
+      image: "/static/img/logo/Bacalhau-icon.svg",
       navbar: {
         title: "Bacalhau Docs",
         logo: {
-          alt: "Bacalhau Docs Logo",
-          src: "img/logo.png",
+          alt: "🐟",
+          src: "img/logo/Bacalhau-icon.svg",
         },
         items: [
           {
@@ -89,7 +89,6 @@ const config = {
             "Bacalhau Docs contains ifnormation for fast, cost efficient, and secure computation by explaining how to run jobs where the data is generated and stored.",
         },
       ],
-      image: "img/logo.png",
       blog: false,
       algolia: {
         appId: "15JCWQAGM1",
@@ -108,11 +107,11 @@ const config = {
               },
               {
                 label: "Examples",
-                to: "https://docs.bacalhau.org/examples/",
+                to: "/examples/",
               },
               {
                 label: "FAQs",
-                to: "https://docs.bacalhau.org/troubleshooting/faqs",
+                to: "/troubleshooting/faqs",
               },
             ],
           },
@@ -142,7 +141,7 @@ const config = {
               },
               {
                 label: "Ways To Contribute",
-                href: "https://docs.bacalhau.org/community/ways-to-contribute/",
+                href: "/community/ways-to-contribute",
               },
             ],
           },

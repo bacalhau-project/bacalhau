@@ -20,9 +20,9 @@ We welcome all contributions to Bacalhau  documentation ❤️
 
 ## Issues
 
-All issues involving the Bacalhau docs themselves can be found here in the [docs](https://github.com/bacalhau-project/docs.bacalhau.org) repo under the [**Issues** tab](https://github.com/bacalhau-project/docs.bacalhau.org/issues). Here you can see all the issues that are currently open. 
+All issues involving the Bacalhau docs themselves can be found here in the Bacalhau repo under the [**Issues** tab](https://github.com/bacalhau-project/bacalhau/issues). Here you can see all the issues that are currently open.
 
-If you spot anything that conflicts in our docs or have feedbacks, suggestions, hints etc, you can create an issue. 
+If you spot anything that conflicts in our docs or have feedbacks, suggestions, hints etc, you can create an issue.
 
 **Note**: For a step by step process on how to create an issue, please refer to this [Github guide](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue)
 
@@ -30,10 +30,10 @@ If you spot anything that conflicts in our docs or have feedbacks, suggestions, 
 
 If you want to make documentation changes, you can submit a pull request.
 
-For minor changes like typos, sentence fixes, click **Edit this page**, located at the bottom of each document. This will take you to the source file on GitHub, where you can submit a pull request for your changes. 
+For minor changes like typos, sentence fixes, click **Edit this page**, located at the bottom of each document. This will take you to the source file on GitHub, where you can submit a pull request for your changes.
 
-For larger edits or new documents, you can choose to edit [docs locally](https://github.com/bacalhau-project/docs.bacalhau.org#develop-docs-locally). 
- 
+For larger edits or new documents, you can choose to edit [docs locally](#editing-docs-locally).
+
 
 ## Editing Docs Locally
 

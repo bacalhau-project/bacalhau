@@ -133,4 +133,4 @@ However, it must be noted they may complain when trying to install advanced prer
 
 All of the examples are open source and available on GitHub. The examples exist in a separate repository located at https://github.com/bacalhau-project/examples/. Please see the [README.md for more instructions on how to contribute](https://github.com/bacalhau-project/examples/README.md).
 
-Note that the code for the rest of the documentation (this website) [is located in a separate repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
+Note that the code for the rest of the documentation (this website) [is located in a separate repository](https://github.com/bacalhau-project/bacalhau/tree/main/docs).

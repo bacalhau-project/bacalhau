@@ -93,7 +93,6 @@ swagger-docs:
 		--parseDependency \
 		--parseInternal \
 		--parseDepth 1 \
-		--markdownFiles docs/swagger \
 		-g "pkg/publicapi/server.go" \
 		--overridesFile .swaggo
 	@echo "Swagger docs built."
