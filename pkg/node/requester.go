@@ -135,6 +135,12 @@ func NewRequesterNode(
 			EventEmitter: eventEmitter,
 		}),
 
+		// planner that generates new evaluations to defer jobs
+		planner.NewReEvaluator(planner.ReEvaluatorParams{
+			ID: host.ID().String(),
+			EvaluationBroker: evalBroker,
+		}),
+
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
 	)

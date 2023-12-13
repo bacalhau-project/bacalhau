@@ -62,8 +62,14 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	existingExecs := execSetFromSliceOfValues(jobExecutions)
 	nonTerminalExecs := existingExecs.filterNonTerminal()
 
+	log.Debug().Msgf("ABS DEBUG: bsj begins")
+	log.Debug().Msgf("ABS DEBUG: executions: %#v", jobExecutions)
+	log.Debug().Msgf("ABS DEBUG: existingExecs: %#v", existingExecs)
+	log.Debug().Msgf("ABS DEBUG: nonTerminalExecs: %#v", nonTerminalExecs)
+
 	// early exit if the job is stopped
 	if job.IsTerminal() {
+		log.Debug().Msgf("ABS DEBUG: early exit as the job is stopped")
 		nonTerminalExecs.markStopped(execNotNeeded, plan)
 		return b.planner.Process(ctx, plan)
 	}
@@ -73,11 +79,13 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	if err != nil {
 		return err
 	}
-
+	log.Debug().Msgf("ABS DEBUG: nodeInfos: %#v", nodeInfos)
+	
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(execLost, plan)
-
+	log.Debug().Msgf("ABS DEBUG: lost: %#v", lost)
+	
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
 	// remaining count equals the count specified in the job spec.
@@ -86,23 +94,31 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	if job.Type == models.JobTypeBatch {
 		desiredRemainingCount = math.Max(0, job.Count-existingExecs.countCompleted())
 	}
-
+	log.Debug().Msgf("ABS DEBUG: desiredRemainingCount: %#v", desiredRemainingCount)
+	
 	// Approve/Reject nodes
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
-
+	log.Debug().Msgf("ABS DEBUG: execsByApprovalStatus: %#v", execsByApprovalStatus)
+	
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
+	log.Debug().Msgf("ABS DEBUG: remainingExecutionCount: %#v", remainingExecutionCount)
 	if remainingExecutionCount > 0 {
 		allFailed := existingExecs.filterFailed().union(lost)
+		log.Debug().Msgf("ABS DEBUG: allFailed: %#v", allFailed)
 		var placementErr error
 		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
+			log.Debug().Msgf("ABS DEBUG: exceeded max retries")
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
 		} else {
+			log.Debug().Msgf("ABS DEBUG: creating missing execs")
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
 		if placementErr != nil {
+			log.Debug().Msgf("ABS DEBUG: placementErr %#v", placementErr)
+			// Do we fail the job, or defer it to try again later?
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		}
@@ -110,10 +126,12 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// stop executions if we over-subscribed and exceeded the desired number of executions
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
+	log.Debug().Msgf("ABS DEBUG: overSubscriptions: %#v", overSubscriptions)
 	overSubscriptions.markStopped(execNotNeeded, plan)
 
 	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
+		log.Debug().Msgf("ABS DEBUG: completed")
 		// If there are no remaining tasks to be done, mark the job as completed.
 		plan.MarkJobCompleted()
 	}
@@ -167,17 +185,23 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
-	// mark all non-terminal executions as failed
-	nonTerminalExecs.markStopped(jobFailed, plan)
-
-	// mark the job as failed, using the error message of the latest failed execution, if any, or use
-	// the error message passed by the scheduler
-	latestErr := err.Error()
-	if len(failed) > 0 {
-		latestErr = failed.latest().ComputeState.Message
+	// TODO: decide if we should retry or give up, by consulting a "maximum wait deadline" in the job
+	if false { // FIXME: If now > maximum wait deadline
+		// mark all non-terminal executions as failed
+		nonTerminalExecs.markStopped(jobFailed, plan)
+		
+		// mark the job as failed, using the error message of the latest failed execution, if any, or use
+		// the error message passed by the scheduler
+		latestErr := err.Error()
+		if len(failed) > 0 {
+			latestErr = failed.latest().ComputeState.Message
+		}
+		plan.MarkJobFailed(latestErr)
+	} else {
+		// Schedule a new evaluation
+		log.Debug().Msgf("ABS DEBUG: Deferring for 1 second")
+		plan.DeferEvaluation(1000000000) // FIXME: Configurable time, not 1s
 	}
-	plan.MarkJobFailed(latestErr)
 }
 
 // compile-time assertion that BatchServiceJobScheduler satisfies the Scheduler interface

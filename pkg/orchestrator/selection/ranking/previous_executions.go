@@ -53,16 +53,17 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 		rank := 3 * orchestrator.RankPreferred
 		reason := "job not executed yet"
 		if previousExecutions, ok := previousExecutors[node.ID()]; ok {
-			if previousExecutions > 1 {
-				rank = orchestrator.RankUnsuitable
-				reason = "job already executed on this node more than once"
-			} else if _, filterOut := toFilterOut[node.ID()]; filterOut {
-				rank = orchestrator.RankUnsuitable
-				reason = "job rejected"
-			} else {
+			// if previousExecutions > 1 {
+			// 	rank = orchestrator.RankUnsuitable
+			// 	reason = "job already executed on this node more than once"
+			// } else if _, filterOut := toFilterOut[node.ID()]; filterOut {
+			// 	rank = orchestrator.RankUnsuitable
+			// 	reason = "job rejected"
+			// } else {
+			_ = previousExecutions // ABS FIXME
 				rank = orchestrator.RankPossible
 				reason = "job already executed on this node"
-			}
+			// }
 		}
 		ranks[i] = orchestrator.NodeRank{
 			NodeInfo: node,
