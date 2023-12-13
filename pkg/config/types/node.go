@@ -84,11 +84,17 @@ type IpfsConfig struct {
 	// Whether the in-process IPFS should automatically discover other IPFS nodes
 	PrivateInternal bool `yaml:"PrivateInternal"`
 	// IPFS multiaddresses that the in-process IPFS should connect to
+	// TODO call this Peers, its peers the node will try and stay connected to.
 	SwarmAddresses []string `yaml:"SwarmAddresses"`
 	// Optional IPFS swarm key required to connect to a private IPFS swarm
 	SwarmKeyPath string `yaml:"SwarmKeyPath"`
 	// Path of the IPFS repo
 	ServePath string `yaml:"ServePath"`
+
+	Profile                string `yaml:"Profile"`
+	SwarmListenAddresses   []string
+	GatewayListenAddresses []string
+	APIListenAddresses     []string
 }
 
 // Due to a bug in Viper (https://github.com/spf13/viper/issues/380), string

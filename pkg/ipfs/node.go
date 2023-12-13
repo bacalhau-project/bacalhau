@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,14 +16,12 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/ipfs/kubo/commands"
-	"github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"
 	"github.com/ipfs/kubo/core/corehttp"
@@ -74,7 +71,7 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types
 		return nil, err
 	}
 
-	api, ipfsNode, repoPath, err := createNode(ctx, cm, cfg)
+	api, ipfsNode, repoPath, err := createNode(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
@@ -174,8 +171,8 @@ func (n *Node) Close(ctx context.Context) error {
 		}
 	}
 
-	// don't delete repo if we've setup BACALHAU_SERVE_IPFS_PATH
-	if n.RepoPath != "" && n.cfg.ServePath != "" {
+	// delete repo if user didn't specify a repo path.
+	if n.cfg.ServePath == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -184,26 +181,42 @@ func (n *Node) Close(ctx context.Context) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, _ *system.CleanupManager, ipfsConfig types.IpfsConfig) (icore.CoreAPI, *core.IpfsNode, string, error) {
-	var err error
-	repoPath := ipfsConfig.ServePath
-	if repoPath == "" {
-		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
-	} else {
-		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)
-	}
+func createNode(ctx context.Context, cfg types.IpfsConfig) (icore.CoreAPI, *core.IpfsNode,
+	string, error) {
+	// generate an IPFS configuration
+	ipfsCfg, err := buildIPFSConfig(cfg)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to build IPFS config")
 	}
 
-	if err = createRepo(repoPath, ipfsConfig); err != nil {
-		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
+	// we need to check if the user wants a custom repo path and if there is already a repo present there.
+	repoPath := cfg.ServePath
+	if repoPath == "" {
+		// user doesn't want a custom repo path, we will make temporary repo that's removed when the node calls Close()
+		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to make temporary IPFS repo: %w", err)
+		}
+		if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
+			return nil, nil, "", fmt.Errorf("failed to initalize IPFS repo at %s: %w", repoPath, err)
+		}
+	} else {
+		// user wants deterministic repo path, check if one is already present
+		if _, err := os.Stat(repoPath); err != nil {
+			if os.IsNotExist(err) {
+				if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
+					return nil, nil, "", fmt.Errorf("failed to initalize IPFS repo at %s: %w", repoPath, err)
+				}
+			} else {
+				return nil, nil, "", err
+			}
+		}
 	}
 
 	// If we have a swarm key, copy it into the repo
-	if ipfsConfig.SwarmKeyPath != "" {
+	if cfg.SwarmKeyPath != "" {
 		destinationPath := filepath.Join(repoPath, "swarm.key")
-		err = copyFile(ipfsConfig.SwarmKeyPath, destinationPath)
+		err = copyFile(cfg.SwarmKeyPath, destinationPath)
 		if err != nil {
 			return nil, nil, "", fmt.Errorf("failed to copy swarm key: %w", err)
 		} else {
@@ -214,6 +227,23 @@ func createNode(ctx context.Context, _ *system.CleanupManager, ipfsConfig types.
 	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to open repo: %w", err)
+	}
+
+	// if the user provided an IPFS repo then we need to copy the peerID and private key
+	// from the existing repo to the configuration we built. This will allow the embedded IPFS node to keep
+	// its identity across restarts.
+	if cfg.ServePath != "" {
+		repoCfg, err := repo.Config()
+		if err != nil {
+			return nil, nil, "", err
+		}
+		ipfsCfg.Identity.PeerID = repoCfg.Identity.PeerID
+		ipfsCfg.Identity.PrivKey = repoCfg.Identity.PrivKey
+	}
+
+	// write the configuration we built to the IPFS repo.
+	if err := repo.SetConfig(ipfsCfg); err != nil {
+		return nil, nil, "", err
 	}
 
 	nodeOptions := &core.BuildCfg{
@@ -321,112 +351,6 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 
 	wg.Wait()
 	return anyErr
-}
-
-// Switch off networking services that might connect to public nodes
-var localOnlyProfile = config.Profile{
-	Transform: func(c *config.Config) error {
-		c.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
-		c.Swarm.EnableHolePunching = config.False
-		c.Swarm.RelayClient.Enabled = config.False
-		c.Swarm.RelayService.Enabled = config.False
-		c.Swarm.Transports.Network.Relay = config.False
-		return nil
-	},
-}
-
-// Serve the IPFS HTTP API on a local-only address
-var localAPIProfile = config.Profile{
-	Transform: func(c *config.Config) error {
-		c.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
-		return nil
-	},
-}
-
-// Serve the IPFS services on random ports to ensure no port clashes
-var randomPortsProfile = config.Profile{
-	Transform: func(c *config.Config) error {
-		c.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
-		c.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
-		c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
-		return nil
-	},
-}
-
-// Only serve the swarm on the preferred listen address.
-func preferredAddressProfile(preferredAddress string) config.Profile {
-	return config.Profile{
-		Transform: func(c *config.Config) error {
-			c.Addresses.Swarm = []string{fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)}
-			return nil
-		},
-	}
-}
-
-// Continuously connect to the swarm. If the swarm is private, don't bootstrap
-// with public nodes, only with swarm nodes.
-func connectToSwarmProfile(swarmAddrs []string, privateSwarm bool) config.Profile {
-	return config.Profile{
-		Transform: func(c *config.Config) error {
-			// establish peering with the passed nodes. This is different than
-			// bootstrapping or manually connecting to peers, and kubo will
-			// create sticky connections with these nodes and reconnect if the
-			// connection is lost
-			// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
-			swarmPeers, err := ParsePeersString(swarmAddrs)
-			if err != nil {
-				return fmt.Errorf("failed to parse peer addresses: %w", err)
-			}
-			c.Peering = config.Peering{Peers: swarmPeers}
-			if privateSwarm {
-				c.Bootstrap = swarmAddrs
-			}
-			return nil
-		},
-	}
-}
-
-// createRepo creates an IPFS repository in a given directory.
-func createRepo(path string, nodeConfig types.IpfsConfig) error {
-	cfg, err := config.Init(io.Discard, defaultKeypairSize)
-	if err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	profiles := []config.Profile{
-		config.Profiles["flatfs"],
-		randomPortsProfile,
-		localAPIProfile,
-	}
-
-	// If we're in local mode, then we need to manually change the config to
-	// serve an IPFS swarm client on some local port. Else, make sure we are
-	// only serving the API on a local connection
-	if nodeConfig.PrivateInternal {
-		profiles = append(profiles, config.Profiles["test"], localOnlyProfile)
-	}
-
-	if nodeConfig.SwarmAddresses != nil {
-		privateSwarm := nodeConfig.SwarmKeyPath != ""
-		profiles = append(profiles, connectToSwarmProfile(nodeConfig.GetSwarmAddresses(), privateSwarm))
-	}
-
-	if preferredAddress := bac_config.PreferredAddress(); preferredAddress != "" {
-		profiles = append(profiles, preferredAddressProfile(preferredAddress))
-	}
-
-	for _, transformer := range profiles {
-		if err = transformer.Transform(cfg); err != nil {
-			return err
-		}
-	}
-
-	err = fsrepo.Init(path, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to init ipfs repo: %w", err)
-	}
-
-	return nil
 }
 
 // loadPlugins initializes and injects the standard set of ipfs plugins.
