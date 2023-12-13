@@ -20,6 +20,7 @@ const (
 	EvalTriggerJobCancel       = "job-cancel"
 	EvalTriggerRetryFailedExec = "exec-failure"
 	EvalTriggerExecUpdate      = "exec-update"
+	EvalTriggerDefer           = "defer"
 )
 
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
