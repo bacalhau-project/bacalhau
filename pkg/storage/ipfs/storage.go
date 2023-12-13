@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,7 +49,8 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.I
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
-	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout())
+	timeoutDuration := config.GetVolumeSizeRequestTimeout()
+	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()
 
 	source, err := DecodeSpec(volume.Source)
@@ -56,7 +58,17 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 		return 0, err
 	}
 
-	return s.ipfsClient.GetCidSize(ctx, source.CID)
+	size, err := s.ipfsClient.GetCidSize(ctx, source.CID)
+	if err != nil {
+		// we failed to find the content before the context timeout
+		if errors.Is(err, context.DeadlineExceeded) {
+			return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q before timeout %s: %w",
+				source.CID,
+				timeoutDuration, err)
+		}
+		return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q: %w", source.CID, err)
+	}
+	return size, nil
 }
 
 func (s *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
