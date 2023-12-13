@@ -34,8 +34,7 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            {settings.showNodeId && <th>Node ID</th>}
-            {settings.showNodeName && <th>Name</th>}
+            {settings.showNodeId && <th>Node</th>}
             {settings.showNodeType && <th>Type</th>}
             {settings.showEnv && <th>Environment</th>}
             {settings.showInputs && <th>Inputs From</th>}

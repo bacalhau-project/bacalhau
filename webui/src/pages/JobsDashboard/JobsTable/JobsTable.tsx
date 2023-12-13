@@ -44,7 +44,6 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       job.Name = jobName;
     }
     return {
-      id: job.ID,
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
@@ -66,8 +65,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            {settings.showJobId && <th className={styles.jobID}>Job ID</th>}
-            {settings.showJobName && <th>Name</th>}
+            {settings.showJobName && <th className={styles.jobName}>Job</th>}
             {settings.showCreated && (
               <th className={styles.dateCreated}>Created</th>
             )}
@@ -80,33 +78,6 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
         <tbody>
           {parsedData.map((jobData, index) => (
             <tr key={index}>
-              <td className={styles.name}>{jobData.name}</td>
-              <td className={styles.dateCreated}>
-                <Moment fromNow withTitle>
-                  {jobData.createdAt}
-                </Moment>
-              </td>
-              <td className={styles.program}>
-                <ProgramSummary data={jobData.tasks} />
-              </td>
-              <td className={styles.jobType}>{jobData.jobType}</td>
-              <td className={styles.label}>
-                {jobData.label.map((label) => (
-                  <Label text={label} color={"lavender"} />
-                ))}
-              </td>
-              <td className={styles.status}>
-                <Label
-                  text={jobData.status}
-                  color={labelColorMap[jobData.status.toLowerCase()]}
-                />
-              </td>
-              <td className={styles.action}>
-                <ActionButton text="View" to="/JobDetail" id={jobData.longId} />
-              </td>
-              {settings.showJobId && (
-                <td className={styles.id}>{jobData.id}</td>
-              )}
               {settings.showJobName && (
                 <td className={styles.name}>{jobData.name}</td>
               )}
@@ -126,7 +97,11 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                 <td className={styles.jobType}>{jobData.jobType}</td>
               )}
               {settings.showLabel && (
-                <td className={styles.label}>{jobData.label}</td>
+                <td className={styles.label}>
+                  {jobData.label.map((label) => (
+                    <Label text={label} color={"grey"} />
+                  ))}
+                </td>
               )}
               {settings.showStatus && (
                 <td className={styles.status}>

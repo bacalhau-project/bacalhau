@@ -36,7 +36,7 @@
             padding: 8px;  // This adds some padding inside the cells.
         }
 
-        .name, .program {
+        .program {
             width: 200px;
 
             @include small {
@@ -52,7 +52,7 @@
             }
         }
 
-        .jobID, .status, .action, .dateCreated, .label, .jobType {
+        .name, .status, .action, .dateCreated, .label, .jobType {
             width: 100px;
 
             @include small {
