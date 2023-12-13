@@ -1,4 +1,11 @@
-//nolint:unused
+// This file includes unmodified code from the HashiCorp Nomad project.
+// The original file can be found at:
+// https://github.com/hashicorp/nomad/blob/60e0404bb5b6eae2f1281f6702a1c6bddfbbaf0c/api/error_unexpected_response.go
+//
+// This entire file is licensed under the Mozilla Public License 2.0
+// Original Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package client
 
 import (
