@@ -34,7 +34,7 @@ func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	runningCapacity := s.runningCapacityTracker.GetAvailableCapacity(ctx)
 	enqueuedCapacity := s.enqueuedCapacityTracker.GetAvailableCapacity(ctx)
 	totalCapacity := runningCapacity.Add(enqueuedCapacity)
-	return bidstrategy.NewBidResponse(usage.LessThanEq(*totalCapacity), capacityReason, totalCapacity, usage), nil
+	return bidstrategy.NewBidResponse(usage.LessThanEq(*totalCapacity), capacityReason, totalCapacity, &usage), nil
 }
 
 // compile-time interface check
