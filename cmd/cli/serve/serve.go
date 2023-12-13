@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -106,6 +107,7 @@ func NewCmd() *cobra.Command {
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
 		"web-ui":           configflags.WebUIFlags,
+		"node-info-store":  configflags.NodeInfoStoreFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -229,6 +231,11 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
+	nodeInfoStoreTTL, err := config.Get[time.Duration](types.NodeNodeInfoStoreTTL)
+	if err != nil {
+		return err
+	}
+
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
 	// TODO (forrest): [ux] in the future we should make this configurable to users.
@@ -248,6 +255,7 @@ func serve(cmd *cobra.Command) error {
 		Labels:                getNodeLabels(autoLabel),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
+		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 	}
 
 	if isRequesterNode {

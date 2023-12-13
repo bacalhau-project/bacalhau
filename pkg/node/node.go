@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -17,6 +12,12 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -61,6 +62,7 @@ type NodeConfig struct {
 	DependencyInjector          NodeDependencyInjector
 	AllowListedLocalPaths       []string
 	WebUI                       bool
+	NodeInfoStoreTTL            time.Duration
 
 	FsRepo *repo.FsRepo
 }
@@ -181,7 +183,7 @@ func NewNode(
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: 10 * time.Minute,
+		TTL: config.NodeInfoStoreTTL,
 	})
 	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
 

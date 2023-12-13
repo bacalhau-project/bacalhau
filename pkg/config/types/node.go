@@ -23,6 +23,7 @@ type NodeConfig struct {
 	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
 	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
 	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
+	NodeInfoStoreTTL          Duration `yaml:"NodeInfoStoreTTL"`
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 

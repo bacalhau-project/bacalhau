@@ -106,9 +106,9 @@ func Setup(
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		// IPFS
-		//////////////////////////////////////
+		// ////////////////////////////////////
 
 		var ipfsSwarmAddresses []string
 		if i > 0 {
@@ -127,9 +127,9 @@ func Setup(
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		// libp2p
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		var libp2pPeer []multiaddr.Multiaddr
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
@@ -180,18 +180,18 @@ func Setup(
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		// port for API
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		apiPort := uint16(0)
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			const startPort = 20000
 			apiPort = uint16(startPort + i)
 		}
 
-		//////////////////////////////////////
+		// ////////////////////////////////////
 		// Create and Run Node
-		//////////////////////////////////////
+		// ////////////////////////////////////
 
 		// here is where we can parse string based CLI stackConfig
 		// into more meaningful model.FailureInjectionConfig values
@@ -231,6 +231,7 @@ func Setup(
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 			FsRepo:                    fsRepo,
+			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
 		}
 
 		if isRequesterNode {
@@ -293,9 +294,9 @@ func createIPFSNode(ctx context.Context,
 	ipfsSwarmAddresses []string) (*ipfs.Node, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
 	defer span.End()
-	//////////////////////////////////////
+	// ////////////////////////////////////
 	// IPFS
-	//////////////////////////////////////
+	// ////////////////////////////////////
 	return ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{SwarmAddresses: ipfsSwarmAddresses, PrivateInternal: !publicIPFSMode})
 }
 
