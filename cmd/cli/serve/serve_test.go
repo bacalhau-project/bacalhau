@@ -11,13 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"

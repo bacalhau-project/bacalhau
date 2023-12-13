@@ -10,6 +10,9 @@ import (
 )
 
 func buildIPFSConfig(cfg types.IpfsConfig) (*config.Config, error) {
+	// NB(forrest): these empty checks are here because some tests pass
+	// partial configs to these methods, and we cannot depend on the config being
+	// fully populated with default values.
 	profileName := cfg.Profile
 	if profileName == "" {
 		profileName = "flatfs"
@@ -43,8 +46,10 @@ func buildIPFSConfig(cfg types.IpfsConfig) (*config.Config, error) {
 	if cfg.PrivateInternal {
 		profile = config.Profiles["test"]
 		transformers = append(transformers,
-			// disable autonat, hole puncing and relays
+			// disable autonat, UPnP, hole-punching and relays
 			withLocalOnly(),
+			// only listen for swarm connections on local endpoint.
+			withSwarmListenAddresses("/ip4/127.0.0.1/tcp/0"),
 		)
 	}
 	if len(cfg.SwarmAddresses) > 0 {
