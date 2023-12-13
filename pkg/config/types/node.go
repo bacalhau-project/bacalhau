@@ -91,10 +91,10 @@ type IpfsConfig struct {
 	// Path of the IPFS repo
 	ServePath string `yaml:"ServePath"`
 
-	Profile                string `yaml:"Profile"`
-	SwarmListenAddresses   []string
-	GatewayListenAddresses []string
-	APIListenAddresses     []string
+	Profile                string   `yaml:"Profile"`
+	SwarmListenAddresses   []string `yaml:"SwarmListenAddresses"`
+	GatewayListenAddresses []string `yaml:"GatewayListenAddresses"`
+	APIListenAddresses     []string `yaml:"APIListenAddresses"`
 }
 
 // Due to a bug in Viper (https://github.com/spf13/viper/issues/380), string
