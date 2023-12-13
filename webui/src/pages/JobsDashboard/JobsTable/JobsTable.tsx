@@ -35,11 +35,11 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     }
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
-    const jobID = getShortenedJobID(job.ID);
+    const jobShortID = getShortenedJobID(job.ID);
     const jobName = job.Name;
 
     if (jobType === "batch") {
-      job.Name = jobID;
+      job.Name = jobShortID;
     } else {
       job.Name = jobName;
     }
@@ -66,13 +66,6 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            <th className={styles.jobID}>Job</th>
-            <th className={styles.dateCreated}>Created</th>
-            <th>Program</th>
-            <th>Job Type</th>
-            <th>Label</th>
-            <th>Status</th>
-            <th>Action</th>
             {settings.showJobId && <th className={styles.jobID}>Job ID</th>}
             {settings.showJobName && <th>Name</th>}
             {settings.showCreated && (
