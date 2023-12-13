@@ -1,5 +1,10 @@
 package models
 
+import (
+	"time"
+	"github.com/google/uuid"
+)
+
 type PlanExecutionDesiredUpdate struct {
 	Execution    *Execution                `json:"Execution"`
 	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
@@ -21,6 +26,8 @@ type Plan struct {
 
 	// NewExecutions holds the executions to be created.
 	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
+
+	NewEvaluation *Evaluation `json:"NewEvaluation,omitempty"`
 
 	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate `json:"UpdatedExecutions,omitempty"`
 }
@@ -64,6 +71,22 @@ func (p *Plan) AppendApprovedExecution(execution *Execution) {
 func (p *Plan) MarkJobCompleted() {
 	p.DesiredJobState = JobStateTypeCompleted
 	p.NewExecutions = []*Execution{}
+}
+
+// Defer this job, to be re-evaluated after the given delay
+func (p *Plan) DeferEvaluation(delay time.Duration) {
+	now := time.Now()
+	p.NewEvaluation = &Evaluation{
+		ID:uuid.NewString(),
+		JobID: p.Job.ID,
+		TriggeredBy: EvalTriggerDefer,
+		Type: p.Job.Type,
+		Status: EvalStatusPending,
+		CreateTime: now.UTC().UnixNano(),
+		ModifyTime: now.UTC().UnixNano(),
+		WaitUntil: now.Add(delay),
+	}
+	p.DesiredJobState = JobStateTypePending
 }
 
 // MarkJobRunningIfEligible updates the job state to "Running" under certain conditions.
