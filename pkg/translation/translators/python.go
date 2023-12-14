@@ -22,9 +22,14 @@ func (p *PythonTranslator) IsInstalled(context.Context) (bool, error) {
 }
 
 func (p *PythonTranslator) Translate(original *models.Task) (*models.Task, error) {
+	dkrSpec, err := p.dockerEngine(original.Engine)
+	if err != nil {
+		return nil, err
+	}
+
 	builder := original.
 		ToBuilder().
-		Engine(p.dockerEngine(original.Engine))
+		Engine(dkrSpec)
 
 	original.Network = &models.NetworkConfig{
 		Type:    models.NetworkHTTP,
@@ -34,18 +39,22 @@ func (p *PythonTranslator) Translate(original *models.Task) (*models.Task, error
 	return builder.BuildOrDie(), nil
 }
 
-func (p *PythonTranslator) dockerEngine(origin *models.SpecConfig) *models.SpecConfig {
+func (p *PythonTranslator) dockerEngine(origin *models.SpecConfig) (*models.SpecConfig, error) {
 	// It'd be nice to use pkg/executor/docker/types/EngineSpec here, but it
 	// would mean adding a dependency on yet another package.
-	cmd := origin.Params["Command"].(string)
-	args := origin.Params["Arguments"].([]string)
+	cmd, cmdFound := origin.Params["Command"]
+	args, argsFound := origin.Params["Arguments"]
+
+	if !cmdFound || !argsFound {
+		return nil, ErrMissingParameters("python")
+	}
 
 	params := []string{
 		"/build/launcher.py", "--",
 	}
 
-	params = append(params, cmd)
-	params = append(params, args...)
+	params = append(params, cmd.(string))
+	params = append(params, args.([]string)...)
 
 	spec := models.NewSpecConfig(models.EngineDocker)
 	spec.Params["Image"] = "bacalhauproject/exec-python-3.11:0.1"
@@ -54,5 +63,5 @@ func (p *PythonTranslator) dockerEngine(origin *models.SpecConfig) *models.SpecC
 	spec.Params["EnvironmentVariables"] = []string{}
 	spec.Params["WorkingDirectory"] = ""
 
-	return spec
+	return spec, nil
 }

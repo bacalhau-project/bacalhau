@@ -43,9 +43,11 @@ var testcases = []struct {
 		expected: &models.SpecConfig{
 			Type: "docker",
 			Params: map[string]interface{}{
-				"Image":                "bacalhauproject/exec-python-3.11:0.1",
-				"Entrypoint":           []string{},
-				"Parameters":           []string{},
+				"Image":      "bacalhauproject/exec-python-3.11:0.1",
+				"Entrypoint": []string{},
+				"Parameters": []string{
+					"/build/launcher.py", "--", "python", "-c", "print('Hello, world!')",
+				},
 				"EnvironmentVariables": []string{},
 				"WorkingDirectory":     "",
 			},
@@ -123,6 +125,10 @@ func (s *TranslationTestSuite) TestTranslateWithMixedEngines() {
 				Name: "task2",
 				Engine: &models.SpecConfig{
 					Type: "duckdb",
+					Params: map[string]interface{}{
+						"Command":   "duckdb",
+						"Arguments": []string{"-csv", "-c", "select * from table;"},
+					},
 				},
 			},
 		},
