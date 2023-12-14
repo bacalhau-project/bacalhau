@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -120,6 +121,14 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	// don't have a template, then we don't know how to submit that job type.
 	jobType = cmdArgs[0]
 
+	for i := range cmdArgs {
+		// If any parameters were quoted, we should make sure we try and add
+		// them back in after they were stripped for us.
+		if strings.Contains(cmdArgs[i], " ") {
+			cmdArgs[i] = fmt.Sprintf(`"%s"`, cmdArgs[i])
+		}
+	}
+
 	tpl, err := NewTemplateMap(embeddedFiles, "templates")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find supported job types, templates missing")
@@ -198,6 +207,13 @@ func addInlineContent(ctx context.Context, codeLocation string, job *models.Job)
 		return err
 	}
 
+	target := "/code"
+
+	finfo, _ := os.Stat(absPath)
+	if !finfo.IsDir() {
+		target = fmt.Sprintf("/code/%s", finfo.Name())
+	}
+
 	specConfig, err := inline.NewStorage().Upload(ctx, absPath)
 	if err != nil {
 		return fmt.Errorf("failed to attach code '%s' to job submission: %w", codeLocation, err)
@@ -206,7 +222,7 @@ func addInlineContent(ctx context.Context, codeLocation string, job *models.Job)
 	job.Tasks[0].InputSources = append(job.Tasks[0].InputSources, &models.InputSource{
 		Source: &specConfig,
 		Alias:  "code",
-		Target: "/code",
+		Target: target,
 	})
 
 	return nil
