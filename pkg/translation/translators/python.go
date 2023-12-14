@@ -6,6 +6,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+var PythonPackageDomains = []string{
+	"pypi.python.org",
+	"pypi.org",
+	"pythonhosted.org",
+	"repo.anaconda.com",
+	"repo.continuum.io",
+	"conda.anaconda.org",
+}
+
 type PythonTranslator struct{}
 
 func (p *PythonTranslator) IsInstalled(context.Context) (bool, error) {
@@ -16,6 +25,11 @@ func (p *PythonTranslator) Translate(original *models.Task) (*models.Task, error
 	builder := original.
 		ToBuilder().
 		Engine(p.dockerEngine(original.Engine))
+
+	original.Network = &models.NetworkConfig{
+		Type:    models.NetworkHTTP,
+		Domains: PythonPackageDomains,
+	}
 
 	return builder.BuildOrDie(), nil
 }
