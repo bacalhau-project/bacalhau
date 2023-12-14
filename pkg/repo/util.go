@@ -54,7 +54,7 @@ func validateRepoConfig(cfg types.BacalhauConfig) error {
 	if exists, err := fileExists(cfg.Node.ExecutorPluginPath); err != nil {
 		return err
 	} else if !exists {
-		return fmt.Errorf("executor plugin path does not exist at: %q", cfg.User.Libp2pKeyPath)
+		return fmt.Errorf("executor plugin path does not exist at: %q", cfg.Node.ExecutorPluginPath)
 	}
 
 	if exists, err := fileExists(cfg.Node.ComputeStoragePath); err != nil {
