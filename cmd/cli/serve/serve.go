@@ -448,7 +448,7 @@ func AutoOutputLabels() map[string]string {
 		// Print the GPU names
 		for i, gpu := range resources.GPUs {
 			// Model label e.g. GPU-0: Tesla-T1
-			key := fmt.Sprintf("GPU-%d", gpu.Index)
+			key := fmt.Sprintf("GPU-%d", i)
 			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
 			m[key] = name
 
