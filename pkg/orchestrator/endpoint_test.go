@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/stretchr/testify/suite"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -82,6 +83,7 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
+		TaskTranslator: translation.NewStandardTranslators(),
 	})
 
 	sb := strings.Builder{}
@@ -96,11 +98,11 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 			Name: "testjob",
 			Type: "batch",
 			Tasks: []*models.Task{
-				&models.Task{
+				{
 					Name:   "Task 1",
 					Engine: &models.SpecConfig{Type: models.EngineNoop},
 					InputSources: []*models.InputSource{
-						&models.InputSource{
+						{
 							Source: &models.SpecConfig{
 								Type: models.StorageSourceInline,
 								Params: map[string]interface{}{

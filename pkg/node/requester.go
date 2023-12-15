@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -258,6 +259,7 @@ func NewRequesterNode(
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
+		TaskTranslator:    translation.NewStandardTranslators(),
 		ResultTransformer: resultTransformers,
 	})
 
