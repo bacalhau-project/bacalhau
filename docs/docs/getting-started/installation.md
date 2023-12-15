@@ -3,7 +3,7 @@ sidebar_label: 'Installation'
 sidebar_position: 2
 ---
 
-# Getting Started with Bacalhau
+# Quick Start
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client using the Bacalhau CLI or Docker.
 
@@ -17,47 +17,41 @@ By default, you will submit to the Bacalhau public network, but the same CLI can
 
 ### Install the Bacalhau CLI
 
-You can install or update the Bacalhau CLI or pull a Docker image by running the commands in a terminal.
-You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
+- **Installation on Linux, macOS**
+
+You can install or update the Bacalhau CLI by running the commands in a terminal. You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
+
+curl -sL https://get.bacalhau.org/install.sh | bash
+
+This command downloads and installs Bacalhau CLI using the installation script. Execute this command in the terminal.
+
+- **Installation on Windows**  
+
+Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to any location available in the PATH environment variable.
+
+- **Download Bacalhau image using Docker** 
+
+```shell
+docker pull ghcr.io/bacalhau-project/bacalhau:latest
+```
 
 :::tip
-Using the **CLI**: Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere on the PATH.
+To remove old image if it exists run                                   
+docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest
 :::
 
 :::info
 To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
 :::
 
-
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-<Tabs
-defaultValue="CLI"
-values={[
-{label: 'CLI', value: 'CLI'},
-{label: 'Docker', value: 'Docker'},
-]}>
-<TabItem value="CLI">
-
-    curl -sL https://get.bacalhau.org/install.sh | bash
-
-</TabItem>
-<TabItem value="Docker">
-
-    docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest # Remove old image if it exists
-    docker pull ghcr.io/bacalhau-project/bacalhau:latest
-
-</TabItem>
-</Tabs>
 
 ### Verify the Installation
 
-To run and Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
-
-To verify installation and check the version of the client and server, use the `version` command, you can run the command:
-
+To verify installation and check the version of the client and server, use the `version` command.
+To run a Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
 
 <Tabs
 defaultValue="CLI"
@@ -82,63 +76,62 @@ If you're wondering which server is being used, the Bacalhau Project has a [publ
 
 ## Let's submit a Hello World job
 
-To submit a job in Bacalhau, we will use the `bacalhau docker run` command. Let's take a quick look at its syntax:
+To submit a job in Bacalhau, we will use the `bacalhau docker run` command. The command runs a job using the Docker executor on the node. Let's take a quick look at its syntax:
 
 `bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]`
 
-The command below submits a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu):
+To submit a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu) we will use the following command:
 
-<Tabs
-defaultValue="CLI"
-values={[
-{label: 'CLI', value: 'CLI'},
-{label: 'Docker', value: 'Docker'},
-]}>
-<TabItem value="CLI">
+```shell
+bacalhau docker run ubuntu echo Hello World
+```
 
-    bacalhau docker run ubuntu echo Hello World
+Let's take a look at the results of the command execution in the terminal: 
 
-</TabItem>
-<TabItem value="Docker">
+![image](../../static/img/Installation/bacalhau-docker-run1.png 'bacalhau-docker-run1')
 
-    docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
-    docker run \
-        --id-only \
-        --wait \
-        ubuntu:latest -- \
-            sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
+After the above command is run, the job is submitted to the public network, which processes the job and Bacalhau prints out the related job id:
 
-</TabItem>
-</Tabs>
+```
+Job successfully submitted. Job ID: 9d20bbad-c3fc-48f8-907b-1da61c927fbd
+Checking job status...
+```
+
+The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `9d20bbad`. 
 
 :::info
 While this command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [flags (see CLI Reference)](https://docs.bacalhau.org/all-flags#docker-run) to support its computing model.
 :::
 
-After the above command is run, the job is submitted to the public network, which processes the job and Bacalhau prints out the related job id:
+Now let's use the standard Docker CLI syntax to run the Bacalhau Docker image:
 
-```
-Job successfully submitted. Job ID: 3b39baee-5714-4f17-aa71-1f5824665ad6
-Checking job status...
+```shell
+docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
+docker run \
+--id-only \
+--wait \
+ubuntu:latest -- \
+sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
-The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `3b39baee`. 
+Let's take a look at the results of the command execution in the terminal:
+
+![image](../../static/img/Installation/docker-run1.png 'docker-run')
+
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+- **Job status**: You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
 
 
 ```shell
-bacalhau list --id-filter 3b39baee
+bacalhau list --id-filter 9d20bbad
 ```
+Let's take a look at the results of the command execution in the terminal: 
+
+![image](../../static/img/Installation/bacalhau-list1.png 'bacalhau-list')
 
 When it says `Completed`, that means the job is done, and we can get the results.
-
-```
- CREATED   ID        JOB                      STATE      VERIFIED  COMPLETED
- 07:20:32  3b39baee  Docker ubuntu echo H...  Published            /ipfs/bafybeidu4zm6w...
-```
 
 :::info
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
@@ -147,46 +140,55 @@ For a comprehensive list of flags you can pass to the list command check out [th
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 ```shell
-bacalhau describe 3b39baee
+bacalhau describe 9d20bbad
 ```
+Let's take a look at the results of the command execution in the terminal: 
+
+![image](../../static/img/Installation/bacalhau-describe1.png 'bacalhau-describe')
 
 This outputs all information about the job, including stdout, stderr, where the job was scheduled, and so on.
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. In the command below, we created a directory called `myfolder` and download our job output to be stored in that directory.
+- **Job download**: You can download your job results directly by using `bacalhau get`. 
 
 
 ```shell
-bacalhau get 3b39baee
+bacalhau get 9d20bbad
 ```
+
+![image](../../static/img/Installation/bacalhau-get-jobid.png 'bacalhau-get')
+
+In the command below, we created a directory called `myfolder` and download our job output to be stored in that directory.
+
+![image](../../static/img/Installation/bacalhau-get-myfolder1.png 'bacalhau-get')
+
+:::info
+While executing this command, you may encounter warnings regarding receive and send buffer sizes: `failed to sufficiently increase receive buffer size`. These warnings can arise due to limitations in the UDP buffer used by Bacalhau to process tasks. Additional information can be found in [https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes](https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes). 
+:::
 
 After the download has finished you should see the following contents in the results directory.
 
-```shell
-$ tree job-3b39baee
-job-3b39baee
-├── exitCode
-├── outputs
-├── stderr
-└── stdout
-```
+![image](../../static/img/Installation/tree-jobid1.png 'tree-jobid')
+
 
 ## Viewing your Job Output
 
 ```shell
-$ cat job-3b39baee/stdout
+$ cat job-9d20bbad/stdout
 ```
 
 That should print out the string `Hello World`.
+
+![image](../../static/img/Installation/cat-jobid1.png 'cat-jobid')
 
 With that, you have just successfully run a job on the Bacalhau network! :fish:
 
 ## Where to go next?
 
-Here are a few resources that provide a deeper dive into running jobs with Bacalhau:
+Here are few resources that provide a deeper dive into running jobs with Bacalhau:
 
-* [How to run an existing workload on Bacalhau](../getting-started/docker-workload-onboarding.md)
-* [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)
-* [Check out the Bacalhau CLI Reference page](../all-flags.md)
+* [How Bacalhau works]
+* [Setting up Bacalhau]
+* [Examples & Use Cases]
 
 
 ## Need Support?
