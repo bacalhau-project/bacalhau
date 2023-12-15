@@ -82,22 +82,6 @@ $(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'mak
 endif
 
 ################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs:
-	@echo "Building swagger docs..."
-	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init \
-		--outputTypes "go,json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo
-	@echo "Swagger docs built."
-
-################################################################################
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
@@ -269,6 +253,25 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+################################################################################
+# Target: swagger-docs
+################################################################################
+.PHONY: swagger-docs
+swagger-docs: docs/swagger.json
+
+docs/swagger.json: ${PKG_FILES} .swaggo
+	@echo "Building swagger docs..."
+	swag fmt -g "pkg/publicapi/server.go" && \
+	swag init \
+		--outputTypes "json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo && \
+	echo >> $@
+#   ^ add newline to appease linter
+	@echo "Swagger docs built."
 
 ################################################################################
 # Target: images
