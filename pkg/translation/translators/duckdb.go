@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 type DuckDBTranslator struct{}
@@ -28,17 +29,16 @@ func (d *DuckDBTranslator) Translate(original *models.Task) (*models.Task, error
 func (d *DuckDBTranslator) dockerEngine(origin *models.SpecConfig) (*models.SpecConfig, error) {
 	// It'd be nice to use pkg/executor/docker/types/EngineSpec here, but it
 	// would mean adding a dependency on yet another package.
-	cmd, cmdFound := origin.Params["Command"]
-	args, argsFound := origin.Params["Arguments"]
-
-	if !cmdFound || !argsFound {
-		return nil, ErrMissingParameters("duckdb")
+	cmd := origin.Params["Command"].(string)
+	args, err := util.InterfaceToStringArray(origin.Params["Arguments"])
+	if err != nil {
+		return nil, err
 	}
 
 	params := []string{}
 
-	params = append(params, cmd.(string))
-	params = append(params, args.([]string)...)
+	params = append(params, cmd)
+	params = append(params, args...)
 
 	spec := models.NewSpecConfig(models.EngineDocker)
 	spec.Params["Image"] = "bacalhauproject/exec-duckdb:0.1"
