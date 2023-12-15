@@ -22,6 +22,6 @@
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
-    "src", "src/**/*.tsx", "src/**/*.ts", "src/**/*.d.ts"
-  ]
+    "src", "src/**/*.tsx", "src/**/*.ts", "src/**/*.d.ts", "./src/**/*"
+, "babel.config.js"  ]
 }
