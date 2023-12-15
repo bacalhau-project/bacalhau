@@ -37,13 +37,13 @@ var testcases = []struct {
 			Type: "python",
 			Params: map[string]interface{}{
 				"Command":   "python",
-				"Arguments": []string{"-c", "print('Hello, world!')"},
+				"Arguments": []interface{}{"-c", "print('Hello, world!')"},
 			},
 		},
 		expected: &models.SpecConfig{
 			Type: "docker",
 			Params: map[string]interface{}{
-				"Image":      "bacalhauproject/exec-python-3.11:0.1",
+				"Image":      "rossjones73/exec-python-3.11:0.5",
 				"Entrypoint": []string{},
 				"Parameters": []string{
 					"/build/launcher.py", "--", "python", "-c", "print('Hello, world!')",
@@ -127,7 +127,7 @@ func (s *TranslationTestSuite) TestTranslateWithMixedEngines() {
 					Type: "duckdb",
 					Params: map[string]interface{}{
 						"Command":   "duckdb",
-						"Arguments": []string{"-csv", "-c", "select * from table;"},
+						"Arguments": []interface{}{"-csv", "-c", "select * from table;"},
 					},
 				},
 			},

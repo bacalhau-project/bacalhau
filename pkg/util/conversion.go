@@ -10,6 +10,12 @@ func InterfaceToStringArray(source interface{}) ([]string, error) {
 		return nil, nil
 	}
 
+	// // If it is already a string array, then return it.
+	// strArray, ok := source.([]string)
+	// if ok {
+	// 	return strArray, nil
+	// }
+
 	sourceArray, ok := source.([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("expected []interface{} but got %T", source)
