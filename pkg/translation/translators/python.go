@@ -40,6 +40,7 @@ func (p *PythonTranslator) Translate(original *models.Task) (*models.Task, error
 
 	builder := original.
 		ToBuilder().
+		Meta(models.MetaTranslatedBy, "translators/python").
 		Engine(dkrSpec)
 
 	original.Network = &models.NetworkConfig{

@@ -7,6 +7,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
+const DuckDBImage = "bacalhauproject/exec-duckdb:0.1"
+
 type DuckDBTranslator struct{}
 
 func (d *DuckDBTranslator) IsInstalled(context.Context) (bool, error) {
@@ -21,6 +23,7 @@ func (d *DuckDBTranslator) Translate(original *models.Task) (*models.Task, error
 
 	builder := original.
 		ToBuilder().
+		Meta(models.MetaTranslatedBy, "translators/duckdb").
 		Engine(dkrSpec)
 
 	return builder.BuildOrDie(), nil
@@ -41,7 +44,7 @@ func (d *DuckDBTranslator) dockerEngine(origin *models.SpecConfig) (*models.Spec
 	params = append(params, args...)
 
 	spec := models.NewSpecConfig(models.EngineDocker)
-	spec.Params["Image"] = "bacalhauproject/exec-duckdb:0.1"
+	spec.Params["Image"] = DuckDBImage
 	spec.Params["Entrypoint"] = []string{}
 	spec.Params["Parameters"] = params
 	spec.Params["EnvironmentVariables"] = []string{}

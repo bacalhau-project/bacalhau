@@ -73,9 +73,15 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	}
 
 	// If we have translated the job (i.e. at least one task was translated) then we will switch
-	// to using the translated job after we have saved it in the jobstore.  We should resave the
-	// original job to ensure it's metadata changes are preserved.
+	// to using the translated job after we have saved it in the jobstore.
+	//
+	// TODO: We want to return to the user the JobID of the original job, not the translated job.
+	// But this means the evaluation will not match as we only have an evaluation for the translated
+	// job. We need to think about how we can handle this or whether we have to move the translation
+	// to the compute node (where it will end up being run anyway).
 	if translatedJob != nil {
+		translatedJob.Meta[models.MetaDerivedFrom] = job.ID
+
 		job = translatedJob
 		if err := e.store.CreateJob(ctx, *job); err != nil {
 			return nil, err
