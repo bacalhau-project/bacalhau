@@ -130,9 +130,13 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 	config.Set(cfg)
 
 	t.Run("download failure without swarm key", func(t *testing.T) {
+		// This fails by timing out, but does so after 2minutes. We should give it
+		// 5 seconds to find the file, which is plenty given success takes ms.
+		cTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+
 		outputDir := t.TempDir()
 		ipfsDownloader := NewIPFSDownloader(cm)
-		resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
+		resultPath, err := ipfsDownloader.FetchResult(cTimeout, downloader.DownloadItem{
 			Result: &models.SpecConfig{
 				Type: models.StorageSourceIPFS,
 				Params: ipfssource.Source{
@@ -141,6 +145,8 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 			},
 			ParentPath: outputDir,
 		})
+		cancel()
+
 		require.Error(t, err)
 		require.NoFileExists(t, filepath.Join(outputDir, cid))
 		require.Equal(t, "", resultPath)
