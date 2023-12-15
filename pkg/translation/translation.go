@@ -94,7 +94,7 @@ func ShouldTranslate(ctx context.Context, provider TranslatorProvider, tasks []*
 		kind := tasks[i].Engine.Type
 		if provider.Has(ctx, kind) {
 			needTranslationCount += 1
-		} else if kind == models.EngineDocker || kind == models.EngineWasm {
+		} else if kind == models.EngineDocker || kind == models.EngineWasm || kind == models.EngineNoop {
 			continue
 		} else {
 			errs = multierror.Append(errs, fmt.Errorf("unknown task type identified in translation: '%s'", kind))
