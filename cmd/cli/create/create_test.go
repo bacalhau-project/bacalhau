@@ -35,14 +35,10 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 		Name    string
 		Fixture *testdata.FixtureLegacy
 	}{
-		// TODO: This test is not running. With this test enabled, the test will block
-		// waiting for stdin, and does not run, instead timing out. The result is all
-		// tests here take 1 minute, without this test, 25s. Turns out it is not an
-		// artifact of the first test, and the content from the embed is accurate.
-		// {
-		// 	Name:    "noop json",
-		// 	Fixture: testdata.JsonJobNoop,
-		// },
+		{
+			Name:    "noop json",
+			Fixture: testdata.JsonJobNoop,
+		},
 		{
 			Name:    "noop yaml",
 			Fixture: testdata.YamlJobNoop,
