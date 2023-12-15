@@ -71,7 +71,10 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err

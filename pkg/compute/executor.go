@@ -63,7 +63,10 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, storageDirectory string, inputSources ...*models.InputSource) (
+func prepareInputVolumes(
+	ctx context.Context,
+	strgprovider storage.StorageProvider,
+	storageDirectory string, inputSources ...*models.InputSource) (
 	[]storage.PreparedStorage, func(context.Context) error, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
 	if err != nil {
@@ -74,7 +77,10 @@ func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvid
 	}, nil
 }
 
-func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
+func prepareWasmVolumes(
+	ctx context.Context,
+	strgprovider storage.StorageProvider,
+	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
