@@ -43,7 +43,7 @@ var testcases = []struct {
 		expected: &models.SpecConfig{
 			Type: "docker",
 			Params: map[string]interface{}{
-				"Image":      "rossjones73/exec-python-3.11:0.5",
+				"Image":      "bacalhauproject/exec-python-3.11:0.5",
 				"Entrypoint": []string{},
 				"Parameters": []string{
 					"/build/launcher.py", "--", "python", "-c", "print('Hello, world!')",

@@ -1,5 +1,5 @@
 MACHINE = $(shell uname -m)
-USERNAME ?= rossjones73
+USERNAME ?= bacalhauproject
 VERSION ?= 0.5
 
 ifeq ($(MACHINE),x86_64)

@@ -23,7 +23,7 @@ var PythonPackageDomains = []string{
 // SupportedPythonVersions maps the python version to the docker image that
 // provides support for that version.
 var SupportedPythonVersions = map[string]string{
-	"3.11": "rossjones73/exec-python-3.11:0.5",
+	"3.11": "bacalhauproject/exec-python-3.11:0.5",
 }
 
 type PythonTranslator struct{}
