@@ -53,6 +53,28 @@ var testcases = []struct {
 			},
 		},
 	},
+	{
+		name: "python with spaces",
+		spec: &models.SpecConfig{
+			Type: "python",
+			Params: map[string]interface{}{
+				"Command":   "python",
+				"Arguments": []interface{}{"-c", `"import this"`},
+			},
+		},
+		expected: &models.SpecConfig{
+			Type: "docker",
+			Params: map[string]interface{}{
+				"Image":      "bacalhauproject/exec-python-3.11:0.5",
+				"Entrypoint": []string{},
+				"Parameters": []string{
+					"/build/launcher.py", "--", "python", "-c", `"import this"`,
+				},
+				"EnvironmentVariables": []string{},
+				"WorkingDirectory":     "",
+			},
+		},
+	},
 }
 
 func (s *TranslationTestSuite) TestTranslate() {

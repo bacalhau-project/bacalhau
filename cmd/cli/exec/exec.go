@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	shellescape "gopkg.in/alessio/shellescape.v1"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -125,7 +126,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		// If any parameters were quoted, we should make sure we try and add
 		// them back in after they were stripped for us.
 		if strings.Contains(cmdArgs[i], " ") {
-			cmdArgs[i] = fmt.Sprintf(`"%s"`, cmdArgs[i])
+			cmdArgs[i] = shellescape.Quote(cmdArgs[i])
 		}
 	}
 
