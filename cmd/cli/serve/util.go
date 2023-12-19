@@ -64,6 +64,7 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
 		return node.RequesterConfig{}, err
 	}
+
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
@@ -89,6 +90,7 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
 		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
+		TranslationEnabled:             cfg.TranslationEnabled,
 	})
 }
 

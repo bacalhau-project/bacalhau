@@ -246,6 +246,11 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
+	var translationProvider translation.TranslatorProvider
+	if requesterConfig.TranslationEnabled {
+		translationProvider = translation.NewStandardTranslatorsProvider()
+	}
+
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:               host.ID().String(),
 		EvaluationBroker: evalBroker,
@@ -259,7 +264,7 @@ func NewRequesterNode(
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
-		TaskTranslator:    translation.NewStandardTranslators(),
+		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
 

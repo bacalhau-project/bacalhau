@@ -1,6 +1,19 @@
 // Package translation provides interfaces for translating from a Job to a
-// different Job.  This is triggered by the presence of an Engine type that
-// is not one of the core executors (docker or wasm).
+// different Job. This allow us to accept more job types than we have
+// executors as we translate from the abstract type to the concrete executor.
+//
+// When presented with a Job, this package iterates through the tasks
+// belonging to the job to determine whether any of the tasks have an
+// Engine type that is not one of the core executors (docker or wasm).
+// If it does not, then it returns immediately.
+//
+// For the discovered tasks, the TranslatorProvider is asked to provide an
+// implementation of the Translator interface based on the task's engine type.
+// The newly obtained Translator processes the task and returns a new task
+// with a known engine type (docker or wasm). Depending on where the
+// translation occurs, extra work might result in the generation of a derived
+// job.
+
 package translation
 
 import (
@@ -29,9 +42,9 @@ type TranslatorProvider interface {
 	provider.Provider[Translator]
 }
 
-// NewStandardTranslators returns a TranslatorProvider which maps names
+// NewStandardTranslatorsProvider returns a TranslatorProvider which maps names
 // to implementations of the Translator interface
-func NewStandardTranslators() TranslatorProvider {
+func NewStandardTranslatorsProvider() TranslatorProvider {
 	return provider.NewMappedProvider(map[string]Translator{
 		"python": &translators.PythonTranslator{},
 		"duckdb": &translators.DuckDBTranslator{},

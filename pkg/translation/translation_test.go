@@ -23,7 +23,7 @@ func TestTranslationTestSuite(t *testing.T) {
 
 func (s *TranslationTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.provider = translation.NewStandardTranslators()
+	s.provider = translation.NewStandardTranslatorsProvider()
 }
 
 var testcases = []struct {

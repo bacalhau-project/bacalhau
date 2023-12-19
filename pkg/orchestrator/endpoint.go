@@ -64,28 +64,39 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	// Before we create an evaluation for the job, we want to check that none of the job's tasks
-	// need translating from a custom job type to a known job type (docker, wasm). If they do,
-	// then we will perform the translation and create the evaluation for the new job instead.
-	translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
-	if err != nil {
-		return nil, err
-	}
-
-	// If we have translated the job (i.e. at least one task was translated) then we will switch
-	// to using the translated job after we have saved it in the jobstore.
-	//
-	// TODO: We want to return to the user the JobID of the original job, not the translated job.
-	// But this means the evaluation will not match as we only have an evaluation for the translated
-	// job. We need to think about how we can handle this or whether we have to move the translation
-	// to the compute node (where it will end up being run anyway).
-	if translatedJob != nil {
-		translatedJob.Meta[models.MetaDerivedFrom] = job.ID
-
-		job = translatedJob
-		if err := e.store.CreateJob(ctx, *job); err != nil {
+	// We will only perform task translation in the orchestrator if we were provided with a provider
+	// that can give translators to perform the translation.
+	if e.taskTranslator != nil {
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		fmt.Println("TRANSLATOR ENABLED!!!!!")
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		// Before we create an evaluation for the job, we want to check that none of the job's tasks
+		// need translating from a custom job type to a known job type (docker, wasm). If they do,
+		// then we will perform the translation and create the evaluation for the new job instead.
+		translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
+		if err != nil {
 			return nil, err
 		}
+
+		// If we have translated the job (i.e. at least one task was translated) then we will switch
+		// to using the translated job after we have saved it in the jobstore. This results in us
+		// sending the translated job ID to the user for tracking their job, although it will contain
+		// a reference to the job they submitted.  This may cause confusion and we may in future want
+		// to move to versioning of jobs so that we can present both to the user should they request
+		// it.
+		if translatedJob != nil {
+			translatedJob.Meta[models.MetaDerivedFrom] = job.ID
+
+			job = translatedJob
+			if err := e.store.CreateJob(ctx, *job); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		fmt.Println("TRANSLATOR NOT ENABLED!!!!!")
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
 	}
 
 	eval := &models.Evaluation{

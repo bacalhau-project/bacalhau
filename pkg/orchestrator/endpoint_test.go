@@ -83,7 +83,7 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
-		TaskTranslator: translation.NewStandardTranslators(),
+		TaskTranslator: translation.NewStandardTranslatorsProvider(),
 	})
 
 	sb := strings.Builder{}
