@@ -150,7 +150,7 @@ func NewRequesterNode(
 		// retry strategy
 		retryStrategyChain := retry.NewChain()
 		retryStrategyChain.Add(
-			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+			retry.NewDeadlineStrategy(retry.DeadlineStrategyParams{}),
 		)
 		retryStrategy = retryStrategyChain
 	}

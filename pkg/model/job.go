@@ -218,6 +218,9 @@ type Spec struct {
 	// This includes the time required to run, verify and publish results
 	Timeout int64 `json:"Timeout,omitempty"`
 
+	// How long a job can wait to be scheduled in seconds before we give up on it
+	SchedulingTimeout int64 `json:"SchedulingTimeout,omitempty"`
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []StorageSpec `json:"Inputs,omitempty"`

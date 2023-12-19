@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/rs/zerolog/log"
 )
 
 type FixedStrategyParams struct {
@@ -18,6 +19,7 @@ func NewFixedStrategy(params FixedStrategyParams) *FixedStrategy {
 }
 
 func (s *FixedStrategy) ShouldRetry(ctx context.Context, request orchestrator.RetryRequest) bool {
+	log.Debug().Msgf("ABS DEBUG: Got into FixedStrategy somehow?!")
 	return s.shouldRetry
 }
 
