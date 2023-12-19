@@ -45,7 +45,7 @@ func (p *PythonTranslator) Translate(original *models.Task) (*models.Task, error
 		Engine(dkrSpec)
 
 	original.Network = &models.NetworkConfig{
-		Type:    models.NetworkFull,
+		Type:    models.NetworkHTTP,
 		Domains: PythonPackageDomains,
 	}
 
