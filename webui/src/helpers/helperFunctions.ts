@@ -11,5 +11,22 @@ export function fromTimestamp(timestamp: number): Date {
 }
 
 export function getShortenedJobID(jobID: string) {
-  return jobID.split("-")[0];
+  const parts = jobID.split("-");
+  if (parts[0].length > 1) {
+    return parts[0];
+  } else {
+    return parts[0] + "-" + parts[1];
+  }
+}
+
+export function createLabelArray(label: { [key: string]: string }): string[] {
+  const labelArray: string[] = [];
+  for (const [key, value] of Object.entries(label)) {
+    if (value === "") {
+      labelArray.push(key);
+    } else {
+      labelArray.push(`${key}: ${value}`);
+    }
+  }
+  return labelArray;
 }

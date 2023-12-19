@@ -8,6 +8,7 @@ import {
   capitalizeFirstLetter,
   fromTimestamp,
   getShortenedJobID,
+  createLabelArray,
 } from "../../../helpers/helperFunctions";
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
 import TableSettingsContext from "../../../context/TableSettingsContext";
@@ -32,12 +33,17 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`);
     }
-
     const firstTask = job.Tasks[0];
     const jobType = job.Type ?? "batch";
+    const jobShortID = getShortenedJobID(job.ID);
+    const jobName = job.Name;
 
+    if (jobType === "batch") {
+      job.Name = jobShortID;
+    } else {
+      job.Name = jobName;
+    }
     return {
-      id: getShortenedJobID(job.ID),
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
@@ -50,18 +56,6 @@ function parseData(jobs: Job[]): ParsedJobData[] {
   });
 }
 
-function createLabelArray(label: { [key: string]: string }): string[] {
-  const labelArray: string[] = [];
-  for (const [key, value] of Object.entries(label)) {
-    if (value === "") {
-      labelArray.push(key);
-    } else {
-      labelArray.push(`${key}: ${value}`);
-    }
-  }
-  return labelArray;
-}
-
 const JobsTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext);
   const parsedData = parseData(data);
@@ -71,8 +65,7 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
       <table>
         <thead>
           <tr>
-            {settings.showJobId && <th className={styles.jobID}>Job ID</th>}
-            {settings.showJobName && <th>Name</th>}
+            {settings.showJobName && <th className={styles.jobName}>Job</th>}
             {settings.showCreated && (
               <th className={styles.dateCreated}>Created</th>
             )}
@@ -85,9 +78,6 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
         <tbody>
           {parsedData.map((jobData, index) => (
             <tr key={index}>
-              {settings.showJobId && (
-                <td className={styles.id}>{jobData.id}</td>
-              )}
               {settings.showJobName && (
                 <td className={styles.name}>{jobData.name}</td>
               )}
@@ -107,7 +97,11 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
                 <td className={styles.jobType}>{jobData.jobType}</td>
               )}
               {settings.showLabel && (
-                <td className={styles.label}>{jobData.label}</td>
+                <td className={styles.label}>
+                  {jobData.label.map((label) => (
+                    <Label text={label} color={"grey"} />
+                  ))}
+                </td>
               )}
               {settings.showStatus && (
                 <td className={styles.status}>
