@@ -56,6 +56,7 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 		if field.Type.Kind() == reflect.Struct {
 			// Inserting the viper.SetDefault for the nested struct path.
 			constantNameForStruct := strings.ReplaceAll(newPrefix, ".", "")
+			//nolint:goconst
 			defaultValueForStruct := "cfg." + strings.Join(newPath, ".")
 			fmt.Fprintf(writer, "\tp.Viper.%s(%s, %s)\n", methodName, constantNameForStruct, defaultValueForStruct)
 

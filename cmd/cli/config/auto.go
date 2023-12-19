@@ -37,6 +37,7 @@ func autoFlags(settings *autoSettings) *pflag.FlagSet {
 	flags.IntVar(&settings.TotalPercentage,
 		"total-percentage",
 		defaultTotalPercentage,
+		//nolint:goconst
 		"Percentage expressed as a number from 1 to 100 representing "+
 			"total amount of resource the system can be using at one time in aggregate for all jobs "+
 			"(values over 100 will be rejected)")

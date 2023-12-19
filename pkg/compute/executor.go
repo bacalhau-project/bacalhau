@@ -215,31 +215,31 @@ func (r *StartResult) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (result *StartResult) {
-	result = new(StartResult)
+func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *StartResult {
+	result := new(StartResult)
 	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
 		result.Err = fmt.Errorf("getting executor %s: %w", execution.Job.Task().Engine, err)
-		return
+		return result
 	}
 
 	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
-		return
+		return result
 	}
 
 	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
 	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
 		result.Err = fmt.Errorf("preparing storage path: %w", err)
-		return
+		return result
 	}
 
 	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
-		return
+		return result
 	}
 
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
@@ -251,14 +251,14 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 		NewState: store.ExecutionStateRunning,
 	}); err != nil {
 		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
-		return
+		return result
 	}
 
 	log.Ctx(ctx).Debug().Msg("starting execution")
 
 	if e.failureInjection.IsBadActor {
 		result.Err = fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
-		return
+		return result
 	}
 
 	if err := jobExecutor.Start(ctx, args); err != nil {
