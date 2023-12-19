@@ -59,19 +59,23 @@ To verify installation and check the version of the client and server, use the `
 To run a Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
 
 <Tabs
-defaultValue="CLI"
+defaultValue="Linux/macOS/Windows"
 values={[
-{label: 'CLI', value: 'CLI'},
+{label: 'Linux/macOS/Windows', value: 'Linux/macOS/Windows'},
 {label: 'Docker', value: 'Docker'},
 ]}>
-<TabItem value="CLI">
+<TabItem value="Linux/macOS/Windows">
 
-    `bacalhau version`
+    ```shell
+    bacalhau version
+    ```
 
 </TabItem>
 <TabItem value="Docker">
 
-    `docker run -it ghcr.io/bacalhau-project/bacalhau:latest version`
+    ```shell
+    docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
+    ```
 
 </TabItem>
 </Tabs>
@@ -83,7 +87,9 @@ If you're wondering which server is being used, the Bacalhau Project has a [publ
 
 To submit a job in Bacalhau, we will use the `bacalhau docker run` command. The command runs a job using the Docker executor on the node. Let's take a quick look at its syntax:
 
-`bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]`
+```shell
+bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]
+```
 
 <Tabs
 defaultValue="CLI"
@@ -93,7 +99,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau docker run ubuntu echo Hello World`
+    ```shell
+    bacalhau docker run ubuntu echo Hello World
+    ```
 
     We will use the command to submit a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu).
 
@@ -116,14 +124,14 @@ While this command is designed to resemble Docker's run command which you may be
 
 </TabItem>
 <TabItem value="Docker">
-
-    docker run -t ghcr.io/bacalhau-project/bacalhau:latest \ 
+```shell
+docker run -t ghcr.io/bacalhau-project/bacalhau:latest \ 
 docker run \  
 --id-only \  
 --wait \  
 ubuntu:latest -- \ 
 sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
-
+```
 
 Let's take a look at the results of the command execution in the terminal:
 
