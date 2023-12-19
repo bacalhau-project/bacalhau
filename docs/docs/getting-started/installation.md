@@ -6,7 +6,7 @@ sidebar_position: 2
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Quick Start
+# Installation
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client using the Bacalhau CLI or Docker.
 
