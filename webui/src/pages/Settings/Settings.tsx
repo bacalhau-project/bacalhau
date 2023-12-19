@@ -30,7 +30,6 @@ const Settings = () => {
   };
 
   const jobsOptions: { label: string; key: keyof TableSettings }[] = [
-    { label: "Job ID", key: "showJobId" },
     { label: "Name", key: "showJobName" },
     { label: "Created", key: "showCreated" },
     { label: "Program", key: "showProgram" },
@@ -41,7 +40,6 @@ const Settings = () => {
 
   const nodesOptions: { label: string; key: keyof TableSettings }[] = [
     { label: "Node ID", key: "showNodeId" },
-    { label: "Name", key: "showNodeName" },
     { label: "Type", key: "showNodeType" },
     { label: "Environment", key: "showEnv" },
     { label: "Inputs In", key: "showInputs" },
