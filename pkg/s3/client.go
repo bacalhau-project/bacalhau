@@ -92,7 +92,6 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 		s3Config.Region = region
 	}
 	if endpoint != "" {
-		//nolint:staticcheck // Ignore SA1019: aws.EndpointResolverWithOptionsFunc is deprecated
 		s3Config.EndpointResolverWithOptions =
 			aws.EndpointResolverWithOptionsFunc(func(service, resolvedRegion string, options ...any) (aws.Endpoint, error) {
 				if region != "" {
