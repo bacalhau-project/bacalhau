@@ -38,6 +38,11 @@ const (
 	JobStateTypeStopped
 )
 
+const (
+	// Default scheduling timeout for jobs, in seconds
+	DefaultSchedulingTimeout int64 = 60
+)
+
 // IsUndefined returns true if the job state is undefined
 func (s JobStateType) IsUndefined() bool {
 	return s == JobStateTypeUndefined
@@ -114,6 +119,10 @@ type Job struct {
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`
+
+	// SchedulingTimeout is the time, in seconds, the job is allowed to wait
+	// to be scheduled before we give up trying.
+	SchedulingTimeout int64  `json:"SchedulingDeadline"`
 }
 
 func (j *Job) MetricAttributes() []attribute.KeyValue {
@@ -169,6 +178,10 @@ func (j *Job) Normalize() {
 
 	for _, task := range j.Tasks {
 		task.Normalize()
+	}
+
+	if j.SchedulingTimeout == 0 {
+		j.SchedulingTimeout = DefaultSchedulingTimeout
 	}
 }
 
