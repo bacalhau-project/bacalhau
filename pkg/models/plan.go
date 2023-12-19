@@ -1,8 +1,8 @@
 package models
 
 import (
-	"time"
 	"github.com/google/uuid"
+	"time"
 )
 
 type PlanExecutionDesiredUpdate struct {
@@ -77,14 +77,14 @@ func (p *Plan) MarkJobCompleted() {
 func (p *Plan) DeferEvaluation(delay time.Duration) {
 	now := time.Now()
 	p.NewEvaluation = &Evaluation{
-		ID:uuid.NewString(),
-		JobID: p.Job.ID,
+		ID:          uuid.NewString(),
+		JobID:       p.Job.ID,
 		TriggeredBy: EvalTriggerDefer,
-		Type: p.Job.Type,
-		Status: EvalStatusPending,
-		CreateTime: now.UTC().UnixNano(),
-		ModifyTime: now.UTC().UnixNano(),
-		WaitUntil: now.Add(delay),
+		Type:        p.Job.Type,
+		Status:      EvalStatusPending,
+		CreateTime:  now.UTC().UnixNano(),
+		ModifyTime:  now.UTC().UnixNano(),
+		WaitUntil:   now.Add(delay),
 	}
 	p.DesiredJobState = JobStateTypePending
 }

@@ -62,14 +62,8 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	existingExecs := execSetFromSliceOfValues(jobExecutions)
 	nonTerminalExecs := existingExecs.filterNonTerminal()
 
-	log.Debug().Msgf("ABS DEBUG: bsj begins")
-	log.Debug().Msgf("ABS DEBUG: executions: %#v", jobExecutions)
-	log.Debug().Msgf("ABS DEBUG: existingExecs: %#v", existingExecs)
-	log.Debug().Msgf("ABS DEBUG: nonTerminalExecs: %#v", nonTerminalExecs)
-
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		log.Debug().Msgf("ABS DEBUG: early exit as the job is stopped")
 		nonTerminalExecs.markStopped(execNotNeeded, plan)
 		return b.planner.Process(ctx, plan)
 	}
@@ -79,12 +73,10 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("ABS DEBUG: nodeInfos: %#v", nodeInfos)
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(execLost, plan)
-	log.Debug().Msgf("ABS DEBUG: lost: %#v", lost)
 
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
@@ -94,35 +86,25 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	if job.Type == models.JobTypeBatch {
 		desiredRemainingCount = math.Max(0, job.Count-existingExecs.countCompleted())
 	}
-	log.Debug().Msgf("ABS DEBUG: desiredRemainingCount: %#v", desiredRemainingCount)
 
 	// Approve/Reject nodes
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
-	log.Debug().Msgf("ABS DEBUG: execsByApprovalStatus: %#v", execsByApprovalStatus)
 
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
-	log.Debug().Msgf("ABS DEBUG: remainingExecutionCount: %#v", remainingExecutionCount)
 	if remainingExecutionCount > 0 {
 		allFailed := existingExecs.filterFailed().union(lost)
-		log.Debug().Msgf("ABS DEBUG: allFailed: %#v", allFailed)
 		var placementErr error
-		if len(allFailed) > 0 {
-			log.Debug().Msgf("ABS DEBUG: check retry strategy %#v", b.retryStrategy)
-		}
 		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job}) {
-			log.Debug().Msgf("ABS DEBUG: exceeded max retries")
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		} else {
-			log.Debug().Msgf("ABS DEBUG: creating missing execs")
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
 		if placementErr != nil {
-			log.Debug().Msgf("ABS DEBUG: placementErr %#v", placementErr)
 			b.handleRetry(plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		}
@@ -130,12 +112,10 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// stop executions if we over-subscribed and exceeded the desired number of executions
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
-	log.Debug().Msgf("ABS DEBUG: overSubscriptions: %#v", overSubscriptions)
 	overSubscriptions.markStopped(execNotNeeded, plan)
 
 	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
-		log.Debug().Msgf("ABS DEBUG: completed")
 		// If there are no remaining tasks to be done, mark the job as completed.
 		plan.MarkJobCompleted()
 	}
@@ -190,8 +170,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 
 func (b *BatchServiceJobScheduler) handleRetry(plan *models.Plan, err error) {
 	// Schedule a new evaluation
-	log.Debug().Msgf("ABS DEBUG: Deferring for 1 second")
-	plan.DeferEvaluation(1000000000) // FIXME: Configurable time, not 1s
+	plan.DeferEvaluation(1000000000) // ABS FIXME: Configurable time, not 1s; store it in the job and multiply it by a multiplier with a maximum to implement truncated exponential backoff
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
