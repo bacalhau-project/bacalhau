@@ -16,21 +16,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-// cancel godoc
-//
-//	@ID						pkg/requester/publicapi/cancel
-//	@Summary				Cancels the job with the job-id specified in the body payload.
-//	@Description.markdown	endpoints_cancel
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					CancelRequest	body		legacymodels.CancelRequest	true	" "
-//	@Success				200				{object}	legacymodels.CancelResponse
-//	@Failure				400				{object}	string
-//	@Failure				401				{object}	string
-//	@Failure				403				{object}	string
-//	@Failure				500				{object}	string
-//	@Router					/api/v1/requester/cancel [post]
+//	@ID				pkg/requester/publicapi/cancel
+//	@Summary		Cancels the job with the job-id specified in the body payload.
+//	@Description	Cancels a job specified by `id` as long as that job belongs to `client_id`.
+//	@Description	Returns the current jobstate after the cancel request has been processed.
+//	@Tags			Job
+//	@Accept			json
+//	@Produce		json
+//	@Param			CancelRequest	body		legacymodels.CancelRequest	true	" "
+//	@Success		200				{object}	legacymodels.CancelResponse
+//	@Failure		400				{object}	string
+//	@Failure		401				{object}	string
+//	@Failure		403				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/requester/cancel [post]
 func (s *Endpoint) cancel(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobCancelPayload, err := signatures.UnmarshalSigned[model.JobCancelPayload](ctx, c.Request().Body)

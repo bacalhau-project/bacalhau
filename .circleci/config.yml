@@ -145,13 +145,6 @@ jobs:
         executor: << parameters.executor >>
 
     - run:
-        name: Init tools
-        command: |
-          make init
-          go version
-          which go
-
-    - run:
         name: "Setup BACALHAU_ENVIRONMENT environment variable"
         command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
     - run:

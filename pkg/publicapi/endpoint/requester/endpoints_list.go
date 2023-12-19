@@ -13,19 +13,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// list godoc
-//
-//	@ID						pkg/requester/publicapi/list
-//	@Summary				Simply lists jobs.
-//	@Description.markdown	endpoints_list
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					ListRequest	body		legacymodels.ListRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
-//	@Success				200			{object}	legacymodels.ListResponse
-//	@Failure				400			{object}	string
-//	@Failure				500			{object}	string
-//	@Router					/api/v1/requester/list [post]
+//	@ID				pkg/requester/publicapi/list
+//	@Summary		Simply lists jobs.
+//	@Description	Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).
+//	@Description	If `return_all` is set to true, it returns all jobs on the Bacalhau network.
+//	@Description	If `id` is set, it returns only the job with that ID.
+//	@Tags			Job
+//	@Accept			json
+//	@Produce		json
+//	@Param			ListRequest	body		legacymodels.ListRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
+//	@Success		200			{object}	legacymodels.ListResponse
+//	@Failure		400			{object}	string
+//	@Failure		500			{object}	string
+//	@Router			/api/v1/requester/list [post]
 //
 //nolint:lll
 func (s *Endpoint) list(c echo.Context) error {

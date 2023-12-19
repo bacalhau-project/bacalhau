@@ -64,16 +64,15 @@ func (e *Endpoint) id(c echo.Context) error {
 	return c.String(http.StatusOK, e.nodeID)
 }
 
-// peers godoc
-//
-//	@ID						peers
-//	@Summary				Returns the peers connected to the host via the transport layer.
-//	@Description.markdown	endpoints_peers
-//	@Tags					Utils
-//	@Produce				json
-//	@Success				200	{object}	[]peer.AddrInfo
-//	@Failure				500	{object}	string
-//	@Router					/api/v1/peers [get]
+//	@ID				peers
+//	@Summary		Returns the peers connected to the host via the transport layer.
+//	@Description	As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture),
+//	@Description	each node is connected to a number of peer nodes.
+//	@Tags			Utils
+//	@Produce		json
+//	@Success		200	{object}	[]peer.AddrInfo
+//	@Failure		500	{object}	string
+//	@Router			/api/v1/peers [get]
 func (e *Endpoint) peers(c echo.Context) error {
 	var peerInfos []peer.AddrInfo
 	for _, p := range e.peerStore.Peers() {

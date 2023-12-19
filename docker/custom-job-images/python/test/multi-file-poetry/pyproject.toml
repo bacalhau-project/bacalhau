@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "multi-file-poetry"
+version = "0.1.0"
+description = ""
+authors = ["Bacalhau Team"]
+readme = "README.md"
+packages = [{ include = "multi_file_poetry" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+colorama = "^0.4.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+mfp = "multi_file_poetry:main"

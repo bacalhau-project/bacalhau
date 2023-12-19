@@ -82,23 +82,6 @@ $(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'mak
 endif
 
 ################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs:
-	@echo "Building swagger docs..."
-	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init \
-		--outputTypes "go,json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		--markdownFiles docs/swagger \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo
-	@echo "Swagger docs built."
-
-################################################################################
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
@@ -270,6 +253,25 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+################################################################################
+# Target: swagger-docs
+################################################################################
+.PHONY: swagger-docs
+swagger-docs: docs/swagger.json
+
+docs/swagger.json: ${PKG_FILES} .swaggo
+	@echo "Building swagger docs..."
+	swag fmt -g "pkg/publicapi/server.go" && \
+	swag init \
+		--outputTypes "json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo && \
+	echo >> $@
+#   ^ add newline to appease linter
+	@echo "Swagger docs built."
 
 ################################################################################
 # Target: images
@@ -421,7 +423,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json &: ${CMD_FILES} ${PKG_FILES} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
