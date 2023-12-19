@@ -15,6 +15,7 @@ var PythonPackageDomains = []string{
 	"pypi.python.org",
 	"pypi.org",
 	"pythonhosted.org",
+	"files.pythonhosted.org",
 	"repo.anaconda.com",
 	"repo.continuum.io",
 	"conda.anaconda.org",
