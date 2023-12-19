@@ -3,6 +3,9 @@ sidebar_label: 'Installation'
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Quick Start
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client using the Bacalhau CLI or Docker.
@@ -17,36 +20,46 @@ By default, you will submit to the Bacalhau public network, but the same CLI can
 
 ### Install the Bacalhau CLI
 
-- **Installation on Linux, macOS**
 
-You can install or update the Bacalhau CLI by running the commands in a terminal. You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
+<Tabs
+defaultValue="Linux/macOS"
+values={[
+{label: 'Linux/macOS', value: 'Linux/macOS'},
+{label: 'Windows', value: 'Windows'},
+{label: 'Docker', value: 'Docker'},
+]}>
+<TabItem value="Linux/macOS">
 
-curl -sL https://get.bacalhau.org/install.sh | bash
+    You can install or update the Bacalhau CLI by running the commands in a terminal. You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
+    ```shell
+    curl -sL https://get.bacalhau.org/install.sh | bash
+    ```
 
-This command downloads and installs Bacalhau CLI using the installation script. Execute this command in the terminal.
+</TabItem>
+<TabItem value="Windows">
 
-- **Installation on Windows**  
+    Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to any location available in the PATH environment variable.
 
-Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to any location available in the PATH environment variable.
+</TabItem>
+<TabItem value="Docker">
 
-- **Download Bacalhau image using Docker** 
+    ```shell
+    docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest # Remove old image if it exists
+    docker pull ghcr.io/bacalhau-project/bacalhau:latest
+    ```
+    Download Bacalhau image using Docker
+    ```shell
+    docker pull ghcr.io/bacalhau-project/bacalhau:latest
+    ```
 
-```shell
-docker pull ghcr.io/bacalhau-project/bacalhau:latest
-```
+    To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
+</TabItem>
+</Tabs>
 
 :::tip
-To remove old image if it exists run                                   
-docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest
+    To remove old image if it exists run                                   
+    docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest
 :::
-
-:::info
-To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
-:::
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 
 ### Verify the Installation
 
