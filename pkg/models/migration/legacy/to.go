@@ -94,6 +94,7 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		},
 		Network:       networkConfig,
 		Timeout:       job.Task().Timeouts.ExecutionTimeout,
+		SchedulingTimeout: job.SchedulingTimeout,
 		Inputs:        inputs,
 		Outputs:       outputs,
 		Annotations:   annotations,

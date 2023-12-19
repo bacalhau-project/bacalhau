@@ -40,20 +40,21 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 		return nil, err
 	}
 	job := &models.Job{
-		ID:          legacy.ID(),
-		Name:        legacy.ID(),
-		Namespace:   legacy.Metadata.ClientID,
-		Type:        typ,
-		Count:       legacy.Spec.Deal.Concurrency,
-		Constraints: constraints,
-		Meta:        metadata,
-		Labels:      labels,
-		Tasks:       []*models.Task{task},
-		State:       models.NewJobState(models.JobStateTypeUndefined),
-		Version:     1,
-		Revision:    1,
-		CreateTime:  legacy.Metadata.CreatedAt.UnixNano(),
-		ModifyTime:  legacy.Metadata.CreatedAt.UnixNano(),
+		ID:                legacy.ID(),
+		Name:              legacy.ID(),
+		Namespace:         legacy.Metadata.ClientID,
+		Type:              typ,
+		Count:             legacy.Spec.Deal.Concurrency,
+		Constraints:       constraints,
+		Meta:              metadata,
+		Labels:            labels,
+		Tasks:             []*models.Task{task},
+		State:             models.NewJobState(models.JobStateTypeUndefined),
+		Version:           1,
+		Revision:          1,
+		CreateTime:        legacy.Metadata.CreatedAt.UnixNano(),
+		ModifyTime:        legacy.Metadata.CreatedAt.UnixNano(),
+		SchedulingTimeout: legacy.Spec.SchedulingTimeout,
 	}
 
 	job.Normalize()
