@@ -47,19 +47,11 @@ values={[
     docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest # Remove old image if it exists
     docker pull ghcr.io/bacalhau-project/bacalhau:latest
     ```
-    Download Bacalhau image using Docker
-    ```shell
-    docker pull ghcr.io/bacalhau-project/bacalhau:latest
-    ```
-
+    
     To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
 </TabItem>
 </Tabs>
 
-:::tip
-    To remove old image if it exists run                                   
-    docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest
-:::
 
 ### Verify the Installation
 
@@ -74,12 +66,12 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    bacalhau version
+    `bacalhau version`
 
 </TabItem>
 <TabItem value="Docker">
 
-    docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
+    `docker run -it ghcr.io/bacalhau-project/bacalhau:latest version`
 
 </TabItem>
 </Tabs>
@@ -93,13 +85,19 @@ To submit a job in Bacalhau, we will use the `bacalhau docker run` command. The 
 
 `bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]`
 
-To submit a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu) we will use the following command:
+<Tabs
+defaultValue="CLI"
+values={[
+{label: 'CLI', value: 'CLI'},
+{label: 'Docker', value: 'Docker'},
+]}>
+<TabItem value="CLI">
 
-```shell
-bacalhau docker run ubuntu echo Hello World
-```
+    `bacalhau docker run ubuntu echo Hello World`
 
-Let's take a look at the results of the command execution in the terminal: 
+    We will use the command to submit a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu).
+
+    Let's take a look at the results of the command execution in the terminal: 
 
 ![image](../../static/img/Installation/bacalhau-docker-run1.png 'bacalhau-docker-run1')
 
@@ -116,25 +114,28 @@ The `job_id` above is shown in its full form. For convenience, you can use the s
 While this command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [flags (see CLI Reference)](https://docs.bacalhau.org/all-flags#docker-run) to support its computing model.
 :::
 
-Now let's use the standard Docker CLI syntax to run the Bacalhau Docker image:
+</TabItem>
+<TabItem value="Docker">
 
-```shell
-docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
-docker run \
---id-only \
---wait \
-ubuntu:latest -- \
+    docker run -t ghcr.io/bacalhau-project/bacalhau:latest \ 
+docker run \  
+--id-only \  
+--wait \  
+ubuntu:latest -- \ 
 sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
-```
+
 
 Let's take a look at the results of the command execution in the terminal:
 
 ![image](../../static/img/Installation/docker-run1.png 'docker-run')
 
+</TabItem>
+</Tabs>
+
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
+**Job status**: You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
 
 
 ```shell
@@ -150,7 +151,7 @@ When it says `Completed`, that means the job is done, and we can get the results
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 :::
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 ```shell
 bacalhau describe 9d20bbad
@@ -161,7 +162,7 @@ Let's take a look at the results of the command execution in the terminal:
 
 This outputs all information about the job, including stdout, stderr, where the job was scheduled, and so on.
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. 
+**Job download**: You can download your job results directly by using `bacalhau get`. 
 
 
 ```shell
@@ -199,9 +200,9 @@ With that, you have just successfully run a job on the Bacalhau network! :fish:
 
 Here are few resources that provide a deeper dive into running jobs with Bacalhau:
 
-* [How Bacalhau works]
-* [Setting up Bacalhau]
-* [Examples & Use Cases]
+ [How Bacalhau works]  
+ [Setting up Bacalhau]  
+ [Examples & Use Cases]  
 
 
 ## Need Support?
