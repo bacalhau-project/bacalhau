@@ -67,9 +67,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	// We will only perform task translation in the orchestrator if we were provided with a provider
 	// that can give translators to perform the translation.
 	if e.taskTranslator != nil {
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-		fmt.Println("TRANSLATOR ENABLED!!!!!")
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 		// Before we create an evaluation for the job, we want to check that none of the job's tasks
 		// need translating from a custom job type to a known job type (docker, wasm). If they do,
 		// then we will perform the translation and create the evaluation for the new job instead.
@@ -92,11 +89,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 				return nil, err
 			}
 		}
-	} else {
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-		fmt.Println("TRANSLATOR NOT ENABLED!!!!!")
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
 	}
 
 	eval := &models.Evaluation{
