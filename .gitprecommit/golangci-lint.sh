@@ -10,5 +10,5 @@ fi
 
 FILES=$(git diff --cached --name-only "${against}")
 if [[ -n "${FILES}" ]]; then
-    golangci-lint run --allow-parallel-runners --fix --new
+    golangci-lint run --allow-parallel-runners --fix
 fi
