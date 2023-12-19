@@ -92,14 +92,14 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 			Disk:   job.Task().ResourcesConfig.Disk,
 			GPU:    job.Task().ResourcesConfig.GPU,
 		},
-		Network:       networkConfig,
-		Timeout:       job.Task().Timeouts.ExecutionTimeout,
+		Network:           networkConfig,
+		Timeout:           job.Task().Timeouts.ExecutionTimeout,
 		SchedulingTimeout: job.SchedulingTimeout,
-		Inputs:        inputs,
-		Outputs:       outputs,
-		Annotations:   annotations,
-		NodeSelectors: ToLegacyNodeSelectors(job.Constraints),
-		Deal:          deal,
+		Inputs:            inputs,
+		Outputs:           outputs,
+		Annotations:       annotations,
+		NodeSelectors:     ToLegacyNodeSelectors(job.Constraints),
+		Deal:              deal,
 	}
 
 	return legacy, nil
