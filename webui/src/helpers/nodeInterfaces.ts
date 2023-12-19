@@ -55,7 +55,6 @@ export interface BacalhauVersion {
 
 export interface ParsedNodeData {
   id: string;
-  name: string;
   type: string;
   environment: string;
   inputs: string[];
