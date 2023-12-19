@@ -10,7 +10,7 @@ import TabItem from '@theme/TabItem';
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client using the Bacalhau CLI or Docker.
 
-## The Bacalhau Client
+## Step 1 - Install the Bacalhau Client
 
 The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau.  The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
 
@@ -18,7 +18,7 @@ The Bacalhau client is a command-line interface (CLI) that allows you to submit 
 By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../next-steps/private-cluster).
 :::
 
-### Install the Bacalhau CLI
+### Step 1.1 - Install the Bacalhau CLI
 
 
 <Tabs
@@ -53,7 +53,7 @@ values={[
 </Tabs>
 
 
-### Verify the Installation
+### Step 1.2 - Verify the Installation
 
 To verify installation and check the version of the client and server, use the `version` command.
 To run a Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
@@ -83,7 +83,7 @@ values={[
 If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](https://docs.bacalhau.org/#our-vision) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
 
 
-## Let's submit a Hello World job
+## Step 2 - Submit a Hello World job
 
 To submit a job in Bacalhau, we will use the `bacalhau docker run` command. The command runs a job using the Docker executor on the node. Let's take a quick look at its syntax:
 
@@ -141,7 +141,7 @@ Let's take a look at the results of the command execution in the terminal:
 </Tabs>
 
 
-## Checking the State of your Jobs
+## Step 3 - Checking the State of your Jobs
 
 **Job status**: You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
 
@@ -192,7 +192,7 @@ After the download has finished you should see the following contents in the res
 ![image](../../static/img/Installation/tree-jobid1.png 'tree-jobid')
 
 
-## Viewing your Job Output
+## Step 4 - Viewing your Job Output
 
 ```shell
 $ cat job-9d20bbad/stdout
@@ -204,7 +204,7 @@ That should print out the string `Hello World`.
 
 With that, you have just successfully run a job on the Bacalhau network! :fish:
 
-## Where to go next?
+## Step 5 - Where to go next?
 
 Here are few resources that provide a deeper dive into running jobs with Bacalhau:
 
