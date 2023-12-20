@@ -108,6 +108,7 @@ func NewCmd() *cobra.Command {
 		"requester-store":  configflags.RequesterJobStorageFlags,
 		"web-ui":           configflags.WebUIFlags,
 		"node-info-store":  configflags.NodeInfoStoreFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	serveCmd := &cobra.Command{

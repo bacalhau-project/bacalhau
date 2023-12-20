@@ -1,13 +1,13 @@
 MACHINE = $(shell uname -m)
 USERNAME ?= bacalhauproject
-VERSION ?= 0.1
+VERSION ?= 0.5
 
 ifeq ($(MACHINE),x86_64)
     MACHINE := amd64
 endif
 
 local:
-	@echo - Building local python $(VERSION)
+	@echo - Building local python $(VERSION) - $(MACHINE)
 	docker buildx build \
 		--platform linux/$(MACHINE) \
 		-t $(USERNAME)/exec-python-3.11:$(VERSION) \

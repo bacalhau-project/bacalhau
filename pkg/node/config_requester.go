@@ -41,6 +41,9 @@ type RequesterConfigParams struct {
 	WorkerEvalDequeueBaseBackoff time.Duration
 	WorkerEvalDequeueMaxBackoff  time.Duration
 
+	// Should the orchestrator attempt to translate jobs?
+	TranslationEnabled bool
+
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
 }

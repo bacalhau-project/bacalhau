@@ -91,6 +91,7 @@ const NodeRequesterNodeRankRandomnessRange = "Node.Requester.NodeRankRandomnessR
 const NodeRequesterOverAskForBidsFactor = "Node.Requester.OverAskForBidsFactor"
 const NodeRequesterFailureInjectionConfig = "Node.Requester.FailureInjectionConfig"
 const NodeRequesterFailureInjectionConfigIsBadActor = "Node.Requester.FailureInjectionConfig.IsBadActor"
+const NodeRequesterTranslationEnabled = "Node.Requester.TranslationEnabled"
 const NodeRequesterEvaluationBroker = "Node.Requester.EvaluationBroker"
 const NodeRequesterEvaluationBrokerEvalBrokerVisibilityTimeout = "Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout"
 const NodeRequesterEvaluationBrokerEvalBrokerInitialRetryDelay = "Node.Requester.EvaluationBroker.EvalBrokerInitialRetryDelay"
