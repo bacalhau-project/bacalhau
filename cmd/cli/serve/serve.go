@@ -293,11 +293,6 @@ func serve(cmd *cobra.Command) error {
 			return err
 		}
 
-		// If we get the default value for an int, use 80 instead.
-		if listenPort == 0 {
-			listenPort = 80
-		}
-
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
 		go func() {
 			// Specifically leave the host blank. The app will just use whatever
