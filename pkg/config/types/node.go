@@ -41,7 +41,8 @@ type NodeConfig struct {
 	// Labels to apply to the node that can be used for node selection and filtering
 	Labels map[string]string `yaml:"Labels"`
 
-	WebUI bool `yaml:"WebUI"`
+	// Configuration for the web UI
+	WebUI WebUIConfig `yaml:"WebUI"`
 }
 
 type APIConfig struct {
@@ -51,6 +52,11 @@ type APIConfig struct {
 	Port int `yaml:"Port"`
 	// TLS returns information about how TLS is configured for the public server
 	TLS TLSConfiguration `yaml:"TLS"`
+}
+
+type WebUIConfig struct {
+	Enabled bool `yaml:"Enabled"`
+	Port    int  `yaml:"Port"`
 }
 
 type TLSConfiguration struct {

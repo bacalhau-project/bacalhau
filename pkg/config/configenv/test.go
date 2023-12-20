@@ -64,6 +64,10 @@ var Testing = types.BacalhauConfig{
 		},
 		Compute:   TestingComputeConfig,
 		Requester: TestingRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 

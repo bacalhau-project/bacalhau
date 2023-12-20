@@ -75,6 +75,10 @@ var Staging = types.BacalhauConfig{
 		},
 		Compute:   StagingComputeConfig,
 		Requester: StagingRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 

@@ -55,8 +55,8 @@ var (
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
 
-		# Start a public bacalhau node with the WebUI
-		bacalhau serve --webui
+		# Start a public bacalhau node with the WebUI on port 3000 (default:80)
+		bacalhau serve --web-ui --web-ui-port=3000
 `))
 )
 
@@ -181,11 +181,6 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	startWebUI, err := config.Get[bool](types.NodeWebUI)
-	if err != nil {
-		return err
-	}
-
 	libp2pCfg, err := config.GetLibp2pConfig()
 	if err != nil {
 		return err
@@ -286,13 +281,26 @@ func serve(cmd *cobra.Command) error {
 		return fmt.Errorf("error starting node: %w", err)
 	}
 
+	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
+	if err != nil {
+		return err
+	}
+
 	// Start up Dashboard
 	if startWebUI {
+		listenPort, err := config.Get[int](types.NodeWebUIPort)
+		if err != nil {
+			return err
+		}
+
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
 		go func() {
 			// Specifically leave the host blank. The app will just use whatever
 			// host it is served on and replace the port and path.
-			err := webui.ListenAndServe(ctx, "", apiURL.Port(), apiURL.Path)
+			apiPort := apiURL.Port()
+			apiPath := apiURL.Path
+
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
 			if err != nil {
 				cmd.PrintErrln(err)
 			}
