@@ -170,7 +170,10 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 
 func (b *BatchServiceJobScheduler) handleRetry(plan *models.Plan, err error) {
 	// Schedule a new evaluation
-	plan.DeferEvaluation(1000000000) // ABS FIXME: Configurable time, not 1s; store it in the job and multiply it by a multiplier with a maximum to implement truncated exponential backoff
+	plan.DeferEvaluation(1000000000)
+	// ABS FIXME: Configurable time, not 1s; store it in the job and
+	// multiply it by a multiplier with a maximum to implement truncated
+	// exponential backoff
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
