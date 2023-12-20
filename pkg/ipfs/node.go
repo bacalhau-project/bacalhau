@@ -198,14 +198,14 @@ func createNode(ctx context.Context, cfg types.IpfsConfig) (icore.CoreAPI, *core
 			return nil, nil, "", fmt.Errorf("failed to make temporary IPFS repo: %w", err)
 		}
 		if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
-			return nil, nil, "", fmt.Errorf("failed to initalize IPFS repo at %s: %w", repoPath, err)
+			return nil, nil, "", fmt.Errorf("failed to initialize IPFS repo at %s: %w", repoPath, err)
 		}
 	} else {
 		// user wants deterministic repo path, check if one is already present
 		if _, err := os.Stat(repoPath); err != nil {
 			if os.IsNotExist(err) {
 				if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
-					return nil, nil, "", fmt.Errorf("failed to initalize IPFS repo at %s: %w", repoPath, err)
+					return nil, nil, "", fmt.Errorf("failed to initialize IPFS repo at %s: %w", repoPath, err)
 				}
 			} else {
 				return nil, nil, "", err

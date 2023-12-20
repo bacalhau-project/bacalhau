@@ -10,8 +10,10 @@ import (
 type StorageHandlerIsInstalled func(ctx context.Context) (bool, error)
 type StorageHandlerHasStorageLocally func(ctx context.Context, volume models.InputSource) (bool, error)
 type StorageHandlerGetVolumeSize func(ctx context.Context, volume models.InputSource) (uint64, error)
-type StorageHandlerPrepareStorage func(ctx context.Context, storageDir string, storageSpec models.InputSource) (storage.StorageVolume, error)
-type StorageHandlerCleanupStorage func(ctx context.Context, storageSpec models.InputSource, volume storage.StorageVolume) error
+type StorageHandlerPrepareStorage func(
+	ctx context.Context, storageDir string, storageSpec models.InputSource) (storage.StorageVolume, error)
+type StorageHandlerCleanupStorage func(
+	ctx context.Context, storageSpec models.InputSource, volume storage.StorageVolume) error
 type StorageHandlerUpload func(ctx context.Context, localPath string) (models.SpecConfig, error)
 
 type StorageConfigExternalHooks struct {
@@ -75,7 +77,10 @@ func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume models.InputSour
 	return 0, nil
 }
 
-func (s *NoopStorage) PrepareStorage(ctx context.Context, storageDir string, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (s *NoopStorage) PrepareStorage(
+	ctx context.Context,
+	storageDir string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	if s.Config.ExternalHooks.PrepareStorage != nil {
 		handler := s.Config.ExternalHooks.PrepareStorage
 		return handler(ctx, storageDir, storageSpec)

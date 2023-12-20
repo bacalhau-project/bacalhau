@@ -81,7 +81,10 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (u
 }
 
 // PrepareStorage will download the file from the URL
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err

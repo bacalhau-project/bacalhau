@@ -58,7 +58,10 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (u
 }
 
 //nolint:gocyclo
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageDirectory string, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 

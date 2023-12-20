@@ -43,7 +43,10 @@ func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.InputSou
 	return t.delegate.GetVolumeSize(ctx, spec)
 }
 
-func (t *tracingStorage) PrepareStorage(ctx context.Context, storageDirectory string, spec models.InputSource) (storage.StorageVolume, error) {
+func (t *tracingStorage) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	spec models.InputSource) (storage.StorageVolume, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
 	defer span.End()
 

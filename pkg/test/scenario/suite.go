@@ -117,7 +117,9 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 //
 // Spin up a devstack, execute the job, check the results, and tear down the
 // devstack.
-func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
+func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
+	var resultsDir string
+
 	spec := scenario.Spec
 	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
@@ -162,7 +164,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	// exit if the test expects submission to fail as no further assertions can be made
 	if submitError != nil {
-		return
+		return resultsDir
 	}
 
 	s.T().Log("Waiting for job")

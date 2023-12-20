@@ -144,7 +144,9 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 	defer span.End()
 
 	if t.traceCtx != nil {
-		t.traceCtx.SetTraceId(span.SpanContext().TraceID().String())
+		if err := t.traceCtx.SetTraceId(span.SpanContext().TraceID().String()); err != nil {
+			return nil, err
+		}
 	}
 	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.Function.Call(ctx, params...))
 }
@@ -161,7 +163,9 @@ func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error
 	)
 	defer span.End()
 	if t.traceCtx != nil {
-		t.traceCtx.SetTraceId(span.SpanContext().TraceID().String())
+		if err := t.traceCtx.SetTraceId(span.SpanContext().TraceID().String()); err != nil {
+			return err
+		}
 	}
 	return telemetry.RecordErrorOnSpan(span)(t.Function.CallWithStack(ctx, stack))
 }

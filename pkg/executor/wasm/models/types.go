@@ -70,6 +70,7 @@ type legacyEngineSpec struct {
 
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 	if !spec.IsType(models.EngineWasm) {
+		//nolint:goconst
 		return EngineSpec{}, errors.New("invalid wasm engine type. expected " + models.EngineWasm + ", but received: " + spec.Type)
 	}
 
