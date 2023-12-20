@@ -60,6 +60,10 @@ var Local = types.BacalhauConfig{
 		},
 		Compute:   LocalComputeConfig,
 		Requester: LocalRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 
