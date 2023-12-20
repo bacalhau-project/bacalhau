@@ -8,15 +8,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/docs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
 	echomiddelware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
@@ -50,6 +47,7 @@ type Server struct {
 	useTLS     bool
 }
 
+//nolint:funlen
 func NewAPIServer(params ServerParams) (*Server, error) {
 	server := &Server{
 		Router:  params.Router,
@@ -112,11 +110,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 		echomiddelware.Recover(),
 	)
-
-	if server.config.EnableSwaggerUI {
-		docs.SwaggerInfo.Version = version.Get().GitVersion
-		server.Router.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
-	}
 
 	var tlsConfig *tls.Config
 	if params.AutoCertDomain != "" {

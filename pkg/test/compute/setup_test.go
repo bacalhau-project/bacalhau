@@ -86,6 +86,8 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
+	storagePath := s.T().TempDir()
+
 	noopstorage := noop_storage.NewNoopStorage()
 	s.node, err = node.NewComputeNode(
 		context.Background(),
@@ -93,6 +95,7 @@ func (s *ComputeSuite) setupNode() {
 		host,
 		apiServer,
 		s.config,
+		storagePath,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),

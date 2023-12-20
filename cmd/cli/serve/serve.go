@@ -1,12 +1,14 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/webui"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -51,6 +54,9 @@ var (
 
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
+
+		# Start a public bacalhau node with the WebUI on port 3000 (default:80)
+		bacalhau serve --web-ui --web-ui-port=3000
 `))
 )
 
@@ -100,6 +106,9 @@ func NewCmd() *cobra.Command {
 		"list-local":       configflags.AllowListLocalPathsFlags,
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
+		"web-ui":           configflags.WebUIFlags,
+		"node-info-store":  configflags.NodeInfoStoreFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -218,6 +227,11 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
+	nodeInfoStoreTTL, err := config.Get[time.Duration](types.NodeNodeInfoStoreTTL)
+	if err != nil {
+		return err
+	}
+
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
 	// TODO (forrest): [ux] in the future we should make this configurable to users.
@@ -237,6 +251,7 @@ func serve(cmd *cobra.Command) error {
 		Labels:                getNodeLabels(autoLabel),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
+		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 	}
 
 	if isRequesterNode {
@@ -265,6 +280,32 @@ func serve(cmd *cobra.Command) error {
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
+	}
+
+	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
+	if err != nil {
+		return err
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		listenPort, err := config.Get[int](types.NodeWebUIPort)
+		if err != nil {
+			return err
+		}
+
+		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		go func() {
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			apiPort := apiURL.Port()
+			apiPath := apiURL.Path
+
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+			if err != nil {
+				cmd.PrintErrln(err)
+			}
+		}()
 	}
 
 	// only in station logging output
@@ -410,12 +451,13 @@ func AutoOutputLabels() map[string]string {
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
 
-	gpus, err := system_capacity.GetSystemGPUs()
+	provider := system_capacity.NewPhysicalCapacityProvider()
+	resources, err := provider.GetAvailableCapacity(context.Background())
 	if err == nil {
 		// Print the GPU names
-		for i, gpu := range gpus {
+		for i, gpu := range resources.GPUs {
 			// Model label e.g. GPU-0: Tesla-T1
-			key := fmt.Sprintf("GPU-%d", gpu.Index)
+			key := fmt.Sprintf("GPU-%d", i)
 			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
 			m[key] = name
 

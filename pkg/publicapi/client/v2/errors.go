@@ -1,4 +1,11 @@
-//nolint:unused
+// This file includes unmodified code from the HashiCorp Nomad project.
+// The original file can be found at:
+// https://github.com/hashicorp/nomad/blob/60e0404bb5b6eae2f1281f6702a1c6bddfbbaf0c/api/error_unexpected_response.go
+//
+// This entire file is licensed under the Mozilla Public License 2.0
+// Original Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package client
 
 import (
@@ -80,16 +87,22 @@ type unexpectedResponseErrorOption func(*UnexpectedResponseError)
 // withError allows the addition of a Go error that may have been encountered
 // while processing the response. For example, if there is an error constructing
 // the gzip reader to process a gzip-encoded response body.
+//
+//nolint:unused
 func withError(e error) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.err = e }
 }
 
 // withBody overwrites the Body value with the provided custom value
+//
+//nolint:unused
 func withBody(b string) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.body = b }
 }
 
 // withStatusText overwrites the StatusText value the provided custom value
+//
+//nolint:unused
 func withStatusText(st string) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.statusText = st }
 }
@@ -133,6 +146,8 @@ func fromHTTPResponse(resp *http.Response) unexpectedResponseErrorSource {
 // fromStatusCode attempts to resolve the status code to status text using
 // the resolving function provided inside of the NewUnexpectedResponseError
 // implementation.
+//
+//nolint:unused
 func fromStatusCode(sc int) unexpectedResponseErrorSource {
 	return func() *UnexpectedResponseError { return &UnexpectedResponseError{statusCode: sc} }
 }

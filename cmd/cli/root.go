@@ -11,10 +11,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
+	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/describe"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
@@ -150,12 +152,18 @@ func NewRootCmd() *cobra.Command {
 	// Register nodes subcommands
 	RootCmd.AddCommand(node.NewCmd())
 
+	// Register exec commands
+	RootCmd.AddCommand(exec.NewCmd())
+
 	// ====== Run a server
 
 	// Serve commands
 	RootCmd.AddCommand(serve.NewCmd())
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
+
+	// config command...obviously
+	RootCmd.AddCommand(configcli.NewCmd())
 
 	return RootCmd
 }

@@ -2,6 +2,9 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+orbs:
+  node: circleci/node@5.1.0
+
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
@@ -91,9 +94,14 @@ commands:
         - ~/.cache/go-build
         - ~/go/pkg/mod
 
+  install_python:
+    steps:
+    - run: sudo apt install python3.10 -y
+    - run: curl -sSL https://install.python-poetry.org | python3 -
+    - run: echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
 
 jobs:
-  build:
+  test:
     parallelism: 1
     environment:
       GOPROXY: https://proxy.golang.org
@@ -113,145 +121,135 @@ jobs:
       target_os:
         type: enum
         enum: ["linux", "darwin", "windows"]
-      run_tests:
-        type: boolean
       build_tags:
         type: string
         default: ""
     steps:
+    - checkout
+
+    - attach_workspace:
+        at: .
+
+    - when:
+        condition:
+          equal: ["windows", << parameters.target_os >>]
+        steps:
+        - run:
+            name: Install GNU Make
+            command: |
+              choco install -y make
+              choco install -y jq
+            shell: powershell.exe
+
+    - install_go:
+        executor: << parameters.executor >>
+
+    - run:
+        name: "Setup BACALHAU_ENVIRONMENT environment variable"
+        command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
+    - run:
+        name: Test Go
+        environment:
+          LOG_LEVEL: debug
+          TEST_BUILD_TAGS: << parameters.build_tags >>
+          TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+        command: |
+          export GOBIN=${HOME}/bin
+          export PATH=$GOBIN:$PATH
+          go install gotest.tools/gotestsum@v1.8.2
+          make test-and-report
+        no_output_timeout: 20m
+
+    - store_test_results:
+        path: .
+    - persist_to_workspace:
+        root: coverage/
+        paths:
+        - "*.coverage"
+
+  test-python-sdk:
+    parallelism: 1
+    executor: linux-amd64
+    steps:
+    - checkout
+    - install_python
+    - run:
+        working_directory: python
+        command: make setup test
+
+  test-python-airflow:
+    parallelism: 1
+    executor: linux-amd64
+    steps:
       - checkout
-
-      - when:
-          condition:
-            equal: ["windows", << parameters.target_os >>]
-          steps:
-            - run:
-                name: Install GNU Make
-                command: |
-                  choco install -y make
-                  choco install -y jq
-                shell: powershell.exe
-
-      - install_go:
-          executor: << parameters.executor >>
-
+      - install_python
       - run:
-          name: Init tools
-          command: |
-            make init
-            go version
-            which go
+          working_directory: integration/airflow
+          command: make setup test-all
 
+  test-python-flyte:
+    parallelism: 1
+    executor: linux-amd64
+    steps:
+      - checkout
+      - install_python
       - run:
-          name: Build
-          command: make build-ci
+          working_directory: integration/flyte
+          command: make setup test
 
-      - when:
-          condition:
-            equal: [true, << parameters.run_tests >>]
-          steps:
-            - run:
-                name: "Setup BACALHAU_ENVIRONMENT environment variable"
-                command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
-            - run:
-                name: Test Go
-                environment:
-                  LOG_LEVEL: debug
-                  TEST_BUILD_TAGS: << parameters.build_tags >>
-                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
-                command: |
-                  export GOBIN=${HOME}/bin
-                  export PATH=$GOBIN:$PATH
-                  go install gotest.tools/gotestsum@v1.8.2
-                  make test-and-report
+  build:
+    parallelism: 1
+    executor: linux-amd64
+    steps:
+    - checkout
 
-                no_output_timeout: 20m
-            - store_test_results:
-                path: .
-            - persist_to_workspace:
-                root: coverage/
-                paths:
-                  - "*.coverage"
+    - attach_workspace:
+        at: .
 
-      - when:
-          condition:
-            and:
-              - equal: ["linux", << parameters.target_os >>]
-              - equal: ["amd64", << parameters.target_arch >>]
-              - equal: [true, << parameters.run_tests >>]
-          steps:
-            - run:
-                name: Test Python SDK
-                command: |
-                  sudo apt install python3.10 -y
-                  curl -sSL https://install.python-poetry.org | python3 -
-                  cd python
-                  # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
-                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
-                  # Using '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
-                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
-                  # Run tests
-                  cd ..
-                  make test-python
-            - run:
-                name: Test Python Airflow Provider
-                command: |
-                  cd integration/airflow
-                  pip3 install -r dev-requirements.txt
-                  tox
-                  cd ../..
-            - run:
-                name: Test Python Flyte plugin
-                command: |
-                  cd integration/flyte
-                  make setup
-                  make test
-                  cd ../..
-            - run:
-                name: Upload results
-                command: |
-                  export DEBIAN_FRONTEND=noninteractive
-                  sudo apt install python3.10 -y
-                  python3 -m pip install --upgrade pip
-                  pip3 install gsutil
-                  export SHA="<< pipeline.git.revision >>"
-                  export DATETIME="$(date -u +"%FT%H%MZ")"
-                  if [ "<<pipeline.git.tag>>" != "" ]; then
-                    export TEST_RESULTS_FILENAME="<<pipeline.git.tag>>-$DATETIME-$SHA.xml"
-                  else
-                    export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
-                  fi
-                  # Credentials for project: bacalhau-cicd
-                  # Account:
-                  echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-                  if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
-                    mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
-                  fi
-                  mv unittests.xml "${TEST_RESULTS_FILENAME}"
-                  gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
+    - install_go:
+        executor: linux-amd64
 
+    - run:
+        name: Build tarball
+        command: |
+          echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+          echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+          export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+          # Prevent rebuilding web ui, we should have already attached it
+          find webui -exec touch -c '{}' +
+          GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
+          GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
+          GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
+          GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+          GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
+          GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
+          GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
+
+    - persist_to_workspace:
+        root: dist/
+        paths:
+        - "*.tar.gz"
+        - "*.sha256"
+
+    - store_artifacts:
+        path: dist/
+
+  build_webui:
+    executor: node/default
+    steps:
+      - checkout
+      - node/install-packages:
+          app-dir: webui
       - run:
-          name: Build tarball
-          command: |
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            make build-bacalhau-tgz
-
-      - when:
-          condition:
-            not:
-              equal: ["integration", << parameters.build_tags >>]
-          steps:
-            - persist_to_workspace:
-                root: dist/
-                paths:
-                  - "*.tar.gz"
-                  - "*.sha256"
-
-      - store_artifacts:
-          path: dist/
-
+          working_directory: webui
+          environment:
+            GENERATE_SOURCEMAP: "false"
+          command: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - "webui/build/*"
+            - "webui/node_modules/*"
 
   build_canary:
     parallelism: 1
@@ -361,49 +359,6 @@ jobs:
         command: |
           make precommit
 
-  performance_job:
-    resource_class: bacalhau-project/self-hosted-bacalhau
-    machine: true
-    parallelism: 1
-    environment:
-      GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
-    steps:
-    - checkout
-    - attach_workspace:
-        at: dist/
-    - run:
-        name: Unpack build
-        command: |
-          mkdir -p bin/linux_amd64
-          tar -C bin/linux_amd64 -xf dist/*.tar.gz
-    - run:
-        name: Run performance test
-        command: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
-          source $HOME/.cargo/env
-          cargo install hyperfine
-          (
-            cd benchmark
-            bash start_and_run.sh
-          )
-    - run:
-        name: Upload results
-        env:
-        command: |
-          export PATH="$HOME/.local/bin:${PATH}"
-          export DATETIME="$(date -u +"%FT%H%MZ")"
-          if test -z "${CIRCLE_TAG}"; then
-            export CIRCLE_TAG="v0.0.0-xxxxxxx"
-          fi
-          pip3 install gsutil
-          echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-          gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
-    - heroku/install
-    - run:
-        name: Update dashboard
-        command: |
-          heroku run build --app bacalhau-dashboards
-
   release:
     executor: linux-amd64
     steps:
@@ -428,60 +383,41 @@ jobs:
     executor: linux-amd64
     working_directory: ~/repo
     steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/py_dist
-      - run:
-          name: Copy dist files
-          command: |
-            mkdir -p clients/python/dist
-            cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
-            mkdir -p python/dist
-            cp /tmp/py_dist/bacalhau_sdk* python/dist
-            mkdir -p integration/airflow/dist
-            cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
-      - run :
-          name: Release python apiclient
-          command: |
-            make release-python-apiclient
-      - run:
-          name: Install Python SDK pre-requistes
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-      - run :
-          name: Release python sdk
-          command: |
-            make release-python-sdk
-      - run :
-          name: Release python Airflow integration
-          command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-airflow
-      - run :
-          name: Release python Flyte integration
-          command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-flyte
-
-
-  update_metadata:
-    executor: linux-amd64
-    parameters:
-      METADATA_BUCKET:
-        type: string
-      METADATA_FILENAME:
-        type: string
-    steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/py_dist
     - run:
-        name: Update Metadata
+        name: Copy dist files
         command: |
-          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
-          echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
-          cd ops
-          pip3 install -r requirements.txt
-          python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+          mkdir -p clients/python/dist
+          cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
+          mkdir -p python/dist
+          cp /tmp/py_dist/bacalhau_sdk* python/dist
+          mkdir -p integration/airflow/dist
+          cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
+    - run:
+        name: Release python apiclient
+        command: |
+          make release-python-apiclient
+    - run:
+        name: Install Python SDK pre-requistes
+        command: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+          echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+    - run:
+        name: Release python sdk
+        command: |
+          make release-python-sdk
+    - run:
+        name: Release python Airflow integration
+        command: |
+          pip3 install twine==4.0.2
+          make release-bacalhau-airflow
+    - run:
+        name: Release python Flyte integration
+        command: |
+          pip3 install twine==4.0.2
+          make release-bacalhau-flyte
 
   build_swagger:
     executor: linux-amd64
@@ -553,16 +489,27 @@ jobs:
     executor: linux-amd64
     steps:
     - checkout
+    - attach_workspace:
+        at: dist/
     - run:
-        name: Login to GHCR
         command: |
-          echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+          mkdir -p bin/linux/amd64 && tar -xvf dist/bacalhau_*_linux_amd64.tar.gz -C bin/linux/amd64
+          mkdir -p bin/linux/arm64 && tar -xvf dist/bacalhau_*_linux_arm64.tar.gz -C bin/linux/arm64
     - run:
-        name: Push application Docker image
         command: |
           docker context create buildx-build
           docker buildx create --use buildx-build
-          make push-bacalhau-image
+          make build-bacalhau-image
+    - when:
+        condition:
+          matches:
+            value: << pipeline.git.tag >>
+            pattern: "^v([0-9]+).([0-9]+).([0-9]+).*$"
+        steps:
+        - run:
+            name: Login to Github Container Registry
+            command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+        - run: make push-bacalhau-image
 
   build_python_packages:
     executor: linux-amd64
@@ -571,73 +518,70 @@ jobs:
       # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
     working_directory: ~/repo
     steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/swagger_spec
-      - run:
-          name: Copy swagger.json from workspace
-          command: |
-            cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
-      - run:
-          name: Install Python API client pre-requistes
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
-          name: Build Python API client
-          command: |
-            make build-python-apiclient
-      - persist_to_workspace:
-          root: clients/python/dist
-          paths:
-            - bacalhau_apiclient-*.tar.gz
-            - bacalhau_apiclient-*.whl
-      - run:
-          name: Install Python SDK pre-requistes
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-            cd python
-            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
-      - run:
-          name: Build Python SDK
-          command: |
-            make build-python-sdk
-      - persist_to_workspace:
-          root: python/dist
-          paths:
-            - bacalhau_sdk-*.tar.gz
-            - bacalhau_sdk-*.whl
-      - run:
-          name: Install bacalhau-airflow pre-requistes
-          command: |
-            cd integration/airflow
-            pip3 install -r dev-requirements.txt
-      - run:
-          name: Build Python Bacalhau Airflow
-          command: |
-            make build-bacalhau-airflow
-      - run:
-          name: Install Flyte plugin pre-requistes
-          command: |
-            cd integration/flyte
-            # installs flytekit, flyteidl and deps.
-            make setup
-      - run:
-          name: Build Python Bacalhau Flyte plugin
-          command: |
-            cd integration/flyte/plugins/
-            make build_all_plugins
-      - persist_to_workspace:
-          root: integration/airflow/dist
-          paths:
-            - bacalhau_airflow-*.tar.gz
-            - bacalhau_airflow-*.whl
-
-orbs:
-  heroku: circleci/heroku@1.2.6
+    - checkout
+    - attach_workspace:
+        at: /tmp/swagger_spec
+    - run:
+        name: Copy swagger.json from workspace
+        command: |
+          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+    - run:
+        name: Install Python API client pre-requistes
+        command: |
+          CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+          wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+          chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+          ${HOME}/bin/swagger-codegen-cli.jar version
+    - run:
+        name: Build Python API client
+        command: |
+          make build-python-apiclient
+    - persist_to_workspace:
+        root: clients/python/dist
+        paths:
+        - bacalhau_apiclient-*.tar.gz
+        - bacalhau_apiclient-*.whl
+    - run:
+        name: Install Python SDK pre-requistes
+        command: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+          echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+          cd python
+          /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
+    - run:
+        name: Build Python SDK
+        command: |
+          make build-python-sdk
+    - persist_to_workspace:
+        root: python/dist
+        paths:
+        - bacalhau_sdk-*.tar.gz
+        - bacalhau_sdk-*.whl
+    - run:
+        name: Install bacalhau-airflow pre-requistes
+        command: |
+          cd integration/airflow
+          pip3 install -r dev-requirements.txt
+    - run:
+        name: Build Python Bacalhau Airflow
+        command: |
+          make build-bacalhau-airflow
+    - run:
+        name: Install Flyte plugin pre-requistes
+        command: |
+          cd integration/flyte
+          # installs flytekit, flyteidl and deps.
+          make setup
+    - run:
+        name: Build Python Bacalhau Flyte plugin
+        command: |
+          cd integration/flyte/plugins/
+          make build_all_plugins
+    - persist_to_workspace:
+        root: integration/airflow/dist
+        paths:
+        - bacalhau_airflow-*.tar.gz
+        - bacalhau_airflow-*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -658,196 +602,33 @@ workflows:
           tags:
             ignore: /.*/
 
-  # These workflow will run on all branches except 'main' and will not run on tags
-  test_linux_amd64:
+  test:
     jobs:
-    - build:
+    - build_webui
+    - test:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          parameters:
-            target_os: ["linux"]
-            target_arch: ["amd64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-    - update_metadata:
-        name: Update metadata for dev branch test runs
-        METADATA_BUCKET: "bacalhau-global-storage"
-        METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
         requires:
-        - test-linux-amd64-unit
-    - coverage:
-        name: Build coverage report
-        requires:
-        - build
-
-  test_linux_arm64:
-    jobs:
-    - build:
-        name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
+          - build_webui
         matrix:
           parameters:
-            target_os: ["linux"]
-            target_arch: ["arm64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  test_linux_armv6:
-    jobs:
-    - build:
-        name: test-linux-armv6
-        executor: linux-arm64
-        target_os: linux
-        target_arch: armv6
-        run_tests: false
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  test_linux_armv7:
-    jobs:
-    - build:
-        name: test-linux-armv7
-        executor: linux-arm64
-        target_os: linux
-        target_arch: armv7
-        run_tests: false
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  test_darwin_amd64:
-    jobs:
-    - build:
-        name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          parameters:
-            target_os: ["darwin"]
-            target_arch: ["amd64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  test_darwin_arm64:
-    jobs:
-    - build:
-        name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          parameters:
-            target_os: ["darwin"]
-            target_arch: ["arm64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  test_windows_amd64:
-    jobs:
-    - build:
-        name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          parameters:
-            target_os: ["windows"]
-            target_arch: ["amd64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters:
-          branches:
-            ignore: main
-          tags:
-            ignore: /.*/
-
-  main_only: # This workflow will only run on 'main' and will not run on tags
-    jobs:
-    - build:
-        name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          alias: build-generic
-          parameters:
-            target_os: ["linux", "darwin"]
+            target_os: ["linux", "darwin", "windows"]
             target_arch: ["amd64", "arm64"]
-            run_tests: [true]
             build_tags: ["unit", "integration"]
-        filters: &filters_main_only
-          branches: # this yaml anchor is setting these values to "filters_main_only"
-            only: main
-          tags:
-            ignore: /.*/
-    - build:
-        name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          alias: build-windows
-          parameters:
-            target_os: ["windows"]
-            target_arch: ["amd64"]
-            run_tests: [true]
-            build_tags: ["unit", "integration"]
-        filters: *filters_main_only
-    - build:
-        name: build-linux-<< matrix.target_arch >>
-        executor: linux-arm64
-        target_os: linux
-        run_tests: false
-        matrix:
-          alias: build-arm
-          parameters:
-            target_arch: ["armv6", "armv7"]
-        filters: *filters_main_only
-    - update_metadata:
-        name: Update metadata for main test runs
-        requires:
-        - build-linux-amd64-unit
-        METADATA_BUCKET: "bacalhau-global-storage"
-        METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+          exclude:
+            - target_os: windows
+              target_arch: arm64
+              build_tags: unit
+            - target_os: windows
+              target_arch: arm64
+              build_tags: integration
+    - test-python-sdk
+    - test-python-airflow
+    - test-python-flyte
     - coverage:
         name: Build coverage report
         requires:
-        - build-generic
-        - build-windows
-        - build-arm
-
-  build_jsonschema: # Runs on new tags starting with 'v.'
-    jobs:
-    - build:
-        name: build-linux-amd64
-        executor: linux-amd64
-        target_os: linux
-        target_arch: amd64
-        run_tests: false
-        filters: &filters_tags_only
-          branches:
-            ignore: /.*/ # don't run on any branches - only tags
-          tags:
-            # only run on tags that look like release tags e.g. v0.1.2 or
-            # v0.1.3alpha19 (actually v0.1.3anything...)
-            only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+        - test
 
   python:
     jobs:
@@ -862,61 +643,23 @@ workflows:
         requires:
         - build-swagger-spec
         - build-python-packages
-        filters: *filters_tags_only
-
-  tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
-    jobs:
-    - build:
-        name: build-<< matrix.target_os >>-<< matrix.target_arch >>
-        executor: << matrix.target_os >>-<< matrix.target_arch >>
-        matrix:
-          alias: build-generic
-          parameters:
-            target_os: ["linux", "darwin", "windows"]
-            target_arch: ["amd64", "arm64"]
-            run_tests: [false]
-          exclude:
-          - target_os: windows
-            target_arch: arm64
-            run_tests: false
-        filters: *filters_tags_only
-    - build:
-        name: build-linux-<< matrix.target_arch >>
-        executor: linux-arm64
-        target_os: linux
-        run_tests: false
-        matrix:
-          alias: build-arm
-          parameters:
-            target_arch: ["armv6", "armv7"]
-        filters: *filters_tags_only
-    - release:
-        name: release-all-binaries
-        requires:
-        - build-generic
-        - build-arm
-        filters: *filters_tags_only
-    - docker:
-        filters:
+        # This job will only run on tags (specifically starting with 'v.') and
+        # will not run on branches
+        filters: &filters_release_only
           branches:
             ignore: /.*/ # don't run on any branches - only tags
           tags:
-            # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
-            # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
-            only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+            # only run on tags that look like release tags e.g. v0.1.2 or
+            # v0.1.3alpha19 (actually v0.1.3anything...)
+            only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
 
-
-  # TODO: Disabling performance until we get a runner up and running again
-  #
-  # performance: # This workflow will run on all branches except 'main' and will not run on tags
-  #   jobs:
-  #     - build:
-  #         name: Build
-  #         executor: linux-amd64
-  #         target_os: linux
-  #         target_arch: amd64
-  #         run_tests: false
-  #     - performance_job:
-  #         name: Running Performance
-  #         requires:
-  #           - Build
+  build:
+    jobs:
+    - build_webui
+    - build:
+        requires: [build_webui]
+    - docker:
+        requires: [build]
+    - release:
+        requires: [build]
+        filters: *filters_release_only

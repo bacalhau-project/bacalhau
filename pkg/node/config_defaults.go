@@ -54,6 +54,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
+
+	TranslationEnabled: false,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -77,6 +79,8 @@ var TestRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueTimeout:     200 * time.Millisecond,
 	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
 	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
+
+	TranslationEnabled: false,
 
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,

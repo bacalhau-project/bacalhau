@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,27 +22,12 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	localDir   string
 	ipfsClient ipfs.Client
 }
 
-func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
-	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
-	if err != nil {
-		return nil, err
-	}
-
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to clean up IPFS storage directory: %w", err)
-		}
-		return nil
-	})
-
+func NewStorage(cl ipfs.Client) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		ipfsClient: cl,
-		localDir:   dir,
 	}
 
 	log.Trace().Msgf("IPFS API Copy driver created with address: %s", cl.APIAddress())
@@ -63,7 +49,8 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.I
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
-	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout())
+	timeoutDuration := config.GetVolumeSizeRequestTimeout()
+	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()
 
 	source, err := DecodeSpec(volume.Source)
@@ -71,10 +58,23 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 		return 0, err
 	}
 
-	return s.ipfsClient.GetCidSize(ctx, source.CID)
+	size, err := s.ipfsClient.GetCidSize(ctx, source.CID)
+	if err != nil {
+		// we failed to find the content before the context timeout
+		if errors.Is(err, context.DeadlineExceeded) {
+			return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q before timeout %s: %w",
+				source.CID,
+				timeoutDuration, err)
+		}
+		return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q: %w", source.CID, err)
+	}
+	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -89,7 +89,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models
 	}
 
 	var volume storage.StorageVolume
-	volume, err = s.getFileFromIPFS(ctx, source.CID, storageSpec.Target)
+	volume, err = s.getFileFromIPFS(ctx, source.CID, storageDirectory, storageSpec.Target)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Target, err)
 	}
@@ -97,12 +97,17 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models
 	return volume, nil
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, _ storage.StorageVolume) error {
-	source, err := DecodeSpec(storageSpec.Source)
+func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.InputSource, vol storage.StorageVolume) error {
+	fileInfo, err := os.Stat(vol.Source)
 	if err != nil {
 		return err
 	}
-	return os.RemoveAll(filepath.Join(s.localDir, source.CID))
+
+	if fileInfo.IsDir() {
+		return os.RemoveAll(vol.Source)
+	}
+
+	return os.Remove(vol.Source)
 }
 
 func (s *StorageProvider) Upload(ctx context.Context, localPath string) (models.SpecConfig, error) {
@@ -119,8 +124,8 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (models.
 	}, nil
 }
 
-func (s *StorageProvider) getFileFromIPFS(ctx context.Context, cid, path string) (storage.StorageVolume, error) {
-	outputPath := filepath.Join(s.localDir, cid)
+func (s *StorageProvider) getFileFromIPFS(ctx context.Context, cid, storageDirectory, mountPath string) (storage.StorageVolume, error) {
+	outputPath := filepath.Join(storageDirectory, cid)
 
 	// If the output path already exists, we already have the data, as
 	// ipfsClient.Get(...) renames the result path atomically after it has
@@ -139,7 +144,7 @@ func (s *StorageProvider) getFileFromIPFS(ctx context.Context, cid, path string)
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
-		Target: path,
+		Target: mountPath,
 	}
 
 	return volume, nil

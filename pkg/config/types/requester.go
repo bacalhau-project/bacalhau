@@ -17,6 +17,8 @@ type RequesterConfig struct {
 	OverAskForBidsFactor               uint                                  `yaml:"OverAskForBidsFactor"`
 	FailureInjectionConfig             model.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
 
+	TranslationEnabled bool `yaml:"TranslationEnabled"`
+
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
 	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`

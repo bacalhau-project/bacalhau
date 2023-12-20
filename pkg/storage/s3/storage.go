@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -38,18 +39,15 @@ type s3ObjectSummary struct {
 }
 
 type StorageProviderParams struct {
-	LocalDir       string
 	ClientProvider *s3helper.ClientProvider
 }
 
 type StorageProvider struct {
-	localDir       string
 	clientProvider *s3helper.ClientProvider
 }
 
 func NewStorage(params StorageProviderParams) *StorageProvider {
 	return &StorageProvider{
-		localDir:       params.LocalDir,
 		clientProvider: params.ClientProvider,
 	}
 }
@@ -90,15 +88,21 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 	return size, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.InputSource) (storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := s3helper.DecodeSourceSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 	log.Debug().Msgf("Preparing storage for s3://%s/%s", source.Bucket, source.Key)
 
-	// create random directory to store the content and to avoid conflicts with other downloads
-	outputDir, err := os.MkdirTemp(s.localDir, "s3-input-*")
+	// create random directory within the provided directory to store the content
+	// and to avoid conflicts with other downloads. If we wanted all downloads from
+	// s3 to be allowed just in `storagePath` we'd have to be sure the names didn't
+	// clash.
+	outputDir, err := os.MkdirTemp(storageDirectory, "s3-input-*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -177,16 +181,26 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
-	return os.RemoveAll(volume.Source)
+	fileInfo, err := os.Stat(volume.Source)
+	if err != nil {
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		return os.RemoveAll(volume.Source)
+	}
+
+	return os.Remove(volume.Source)
 }
 
 func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig, error) {
 	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
+//nolint:gocyclo
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
-	if !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
+	if storageSpec.Key != "" && !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),
 			Key:    aws.String(storageSpec.Key),
@@ -220,6 +234,12 @@ func (s *StorageProvider) explodeKey(
 		}
 	}
 
+	// Compile the regex pattern
+	regex, err := regexp.Compile(storageSpec.Filter)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex pattern: %w", err)
+	}
+
 	// if the key is a directory, or ends with a wildcard, we need to list the objects starting with the key
 	sanitizedKey := s.sanitizeKey(storageSpec.Key)
 	res := make([]s3ObjectSummary, 0)
@@ -234,6 +254,12 @@ func (s *StorageProvider) explodeKey(
 			return nil, err
 		}
 		for _, object := range resp.Contents {
+			if storageSpec.Filter != "" {
+				trimmedKey := strings.TrimPrefix(aws.ToString(object.Key), sanitizedKey)
+				if !regex.MatchString(trimmedKey) {
+					continue
+				}
+			}
 			res = append(res, s3ObjectSummary{
 				key:   object.Key,
 				size:  object.Size,

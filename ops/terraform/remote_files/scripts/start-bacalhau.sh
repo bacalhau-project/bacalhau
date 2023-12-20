@@ -75,4 +75,5 @@ bacalhau serve \
   --api-port 1234 \
   --peer "${CONNECT_PEER}" \
   --private-internal-ipfs=false \
+  --web-ui "${BACALHAU_NODE_WEBUI}" \
   --labels owner=bacalhau

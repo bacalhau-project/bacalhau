@@ -12,17 +12,16 @@ import (
 
 // states godoc
 //
-//	@ID						pkg/requester/publicapi/states
-//	@Summary				Returns the state of the job-id specified in the body payload.
-//	@Description.markdown	endpoints_states
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					StateRequest	body		legacymodels.StateRequest	true	" "
-//	@Success				200				{object}	legacymodels.StateResponse
-//	@Failure				400				{object}	string
-//	@Failure				500				{object}	string
-//	@Router					/api/v1/requester/states [post]
+//	@ID			pkg/requester/publicapi/states
+//	@Summary	Returns the state of the job-id specified in the body payload.
+//	@Tags		Job
+//	@Accept		json
+//	@Produce	json
+//	@Param		StateRequest	body		legacymodels.StateRequest	true	" "
+//	@Success	200				{object}	legacymodels.StateResponse
+//	@Failure	400				{object}	string
+//	@Failure	500				{object}	string
+//	@Router		/api/v1/requester/states [post]
 func (s *Endpoint) states(c echo.Context) error {
 	var stateReq legacymodels.StateRequest
 	if err := c.Bind(&stateReq); err != nil {

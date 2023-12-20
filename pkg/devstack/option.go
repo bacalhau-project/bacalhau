@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
@@ -14,10 +15,15 @@ type ConfigOption = func(cfg *DevStackConfig)
 
 func defaultDevStackConfig() (*DevStackConfig, error) {
 	computeConfig, err := node.NewComputeConfigWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	if err != nil {
 		return nil, err
 	}
+
 	return &DevStackConfig{
 		ComputeConfig:          computeConfig,
 		RequesterConfig:        requesterConfig,
@@ -38,6 +44,7 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
 		ExecutorPlugins:            false,
+		NodeInfoStoreTTL:           10 * time.Minute,
 	}, nil
 }
 
@@ -61,6 +68,7 @@ type DevStackConfig struct {
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
+	NodeInfoStoreTTL           time.Duration
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {

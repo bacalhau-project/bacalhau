@@ -60,9 +60,9 @@ func (*Executor) ShouldBidBasedOnUsage(
 // WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
 // In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
 
-const WASM_ARCH = 32
-const WASM_PAGE_SIZE = 65536
-const WASM_MAX_PAGES_LIMIT = 1 << (WASM_ARCH / 2)
+const WasmArch = 32
+const WasmPageSize = 65536
+const WasmMaxPagesLimit = 1 << (WasmArch / 2)
 
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
@@ -82,10 +82,10 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	// limit is not specified as a multiple of that.
 	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
 	if request.Resources.Memory > 0 {
-		requestedPages := request.Resources.Memory/WASM_PAGE_SIZE + math.Min(request.Resources.Memory%WASM_PAGE_SIZE, 1)
-		if requestedPages > WASM_MAX_PAGES_LIMIT {
+		requestedPages := request.Resources.Memory/WasmPageSize + math.Min(request.Resources.Memory%WasmPageSize, 1)
+		if requestedPages > WasmMaxPagesLimit {
 			err := fmt.Errorf("requested memory exceeds the wasm limit - %d > 4GB", request.Resources.Memory)
-			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WASM_MAX_PAGES_LIMIT)
+			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WasmMaxPagesLimit)
 			return err
 		}
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))

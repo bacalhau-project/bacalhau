@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -17,7 +13,12 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -59,6 +60,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval   routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector          NodeDependencyInjector
 	AllowListedLocalPaths       []string
+	NodeInfoStoreTTL            time.Duration
 
 	FsRepo *repo.FsRepo
 }
@@ -179,7 +181,7 @@ func NewNode(
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: 10 * time.Minute,
+		TTL: config.NodeInfoStoreTTL,
 	})
 	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
 
@@ -252,6 +254,8 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
+		storagePath := pkgconfig.GetStoragePath()
+
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -259,6 +263,7 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
+			storagePath,
 			storageProviders,
 			executors,
 			publishers,
@@ -340,7 +345,7 @@ func (n *Node) IsComputeNode() bool {
 }
 
 func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}

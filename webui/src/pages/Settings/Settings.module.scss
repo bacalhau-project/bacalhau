@@ -1,0 +1,28 @@
+@import '../../styles/variables';
+
+.checkboxGroup {
+display: flex;
+align-items: center;
+margin-bottom: 10px;
+
+label {
+    margin-left: 10px;
+    font-size: 16px;
+    color: #333;
+}
+}
+
+.saveButton {
+    padding: 5px 15px;
+    background-color: rgba($light-blue, .5);
+    color: $text-color-dark;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:hover {
+        background-color: rgba($light-blue, .7);
+    }
+}
+  

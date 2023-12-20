@@ -69,5 +69,5 @@ func (s *ExternalCommandStrategy) ShouldBid(
 	}
 
 	exitCode := cmd.ProcessState.ExitCode()
-	return bidstrategy.NewBidResponse(exitCode == 0, exitCodeReason, exitCode), nil
+	return bidstrategy.NewBidResponse(exitCode == 0, exitCodeReason, s.command, exitCode), nil
 }

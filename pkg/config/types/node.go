@@ -23,6 +23,7 @@ type NodeConfig struct {
 	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
 	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
 	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
+	NodeInfoStoreTTL          Duration `yaml:"NodeInfoStoreTTL"`
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
@@ -39,6 +40,9 @@ type NodeConfig struct {
 	DisabledFeatures FeatureConfig `yaml:"DisabledFeatures"`
 	// Labels to apply to the node that can be used for node selection and filtering
 	Labels map[string]string `yaml:"Labels"`
+
+	// Configuration for the web UI
+	WebUI WebUIConfig `yaml:"WebUI"`
 }
 
 type APIConfig struct {
@@ -70,6 +74,12 @@ type ClientTLSConfig struct {
 	Insecure bool `yaml:"Insecure"`
 }
 
+type WebUIConfig struct {
+	Enabled bool `yaml:"Enabled"`
+	Port    int  `yaml:"Port"`
+}
+
+  
 type TLSConfiguration struct {
 	// AutoCert specifies a hostname for a certificate to be obtained via ACME.
 	// This is only used by the server, and only by the requester node when it
@@ -101,11 +111,17 @@ type IpfsConfig struct {
 	// Whether the in-process IPFS should automatically discover other IPFS nodes
 	PrivateInternal bool `yaml:"PrivateInternal"`
 	// IPFS multiaddresses that the in-process IPFS should connect to
+	// TODO call this Peers, its peers the node will try and stay connected to.
 	SwarmAddresses []string `yaml:"SwarmAddresses"`
 	// Optional IPFS swarm key required to connect to a private IPFS swarm
 	SwarmKeyPath string `yaml:"SwarmKeyPath"`
 	// Path of the IPFS repo
 	ServePath string `yaml:"ServePath"`
+
+	Profile                string   `yaml:"Profile"`
+	SwarmListenAddresses   []string `yaml:"SwarmListenAddresses"`
+	GatewayListenAddresses []string `yaml:"GatewayListenAddresses"`
+	APIListenAddresses     []string `yaml:"APIListenAddresses"`
 }
 
 // Due to a bug in Viper (https://github.com/spf13/viper/issues/380), string

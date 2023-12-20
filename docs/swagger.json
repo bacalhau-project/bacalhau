@@ -244,7 +244,7 @@
         },
         "/api/v1/peers": {
             "get": {
-                "description": "As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.\n\nExample response:\n```json\n{\n  \"bacalhau-job-event\": [\n    \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n    \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n    \"QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG\",\n    \"QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT\",\n    \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\"\n  ]\n}\n```",
+                "description": "As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture),\neach node is connected to a number of peer nodes.",
                 "produces": [
                     "application/json"
                 ],
@@ -274,7 +274,7 @@
         },
         "/api/v1/requester/cancel": {
             "post": {
-                "description": "Cancels a job specified by `id` as long as that job belongs to `client_id`.\n\nReturns the current jobstate after the cancel request has been processed.",
+                "description": "Cancels a job specified by `id` as long as that job belongs to `client_id`.\nReturns the current jobstate after the cancel request has been processed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -359,7 +359,7 @@
         },
         "/api/v1/requester/events": {
             "post": {
-                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n",
+                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.",
                 "consumes": [
                     "application/json"
                 ],
@@ -406,7 +406,7 @@
         },
         "/api/v1/requester/list": {
             "post": {
-                "description": "Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).\nIf `return_all` is set to true, it returns all jobs on the Bacalhau network.\n\nIf `id` is set, it returns only the job with that ID.",
+                "description": "Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).\nIf `return_all` is set to true, it returns all jobs on the Bacalhau network.\nIf `id` is set, it returns only the job with that ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -453,7 +453,7 @@
         },
         "/api/v1/requester/logs": {
             "post": {
-                "description": "Shows the output from the job specified by `id` as long as that job belongs to `client_id`.\n\nThe output will be continuous until either, the client disconnects or the execution completes.",
+                "description": "Shows the output from the job specified by `id` as long as that job belongs to `client_id`.\nThe output will be continuous until either, the client disconnects or the execution completes.",
                 "consumes": [
                     "application/json"
                 ],
@@ -541,7 +541,6 @@
         },
         "/api/v1/requester/results": {
             "post": {
-                "description": "Example response:\n\n```json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n```",
                 "consumes": [
                     "application/json"
                 ],
@@ -588,7 +587,6 @@
         },
         "/api/v1/requester/states": {
             "post": {
-                "description": "Example response:\n\n```json\n{\n  \"state\": {\n    \"Nodes\": {\n      \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n            \"State\": \"Completed\",\n            \"Status\": \"Got results proposal of length: 0\",\n            \"VerificationResult\": {\n              \"Complete\": true,\n              \"Result\": true\n            },\n            \"PublishedResults\": {\n              \"StorageSource\": \"IPFS\",\n              \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n              \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n            },\n            \"RunOutput\": {\n              \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n              \"stdouttruncated\": false,\n              \"stderr\": \"\",\n              \"stderrtruncated\": false,\n              \"exitCode\": 0,\n              \"runnerError\": \"\"\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```",
                 "consumes": [
                     "application/json"
                 ],
@@ -635,7 +633,6 @@
         },
         "/api/v1/requester/submit": {
             "post": {
-                "description": "Description:\n\n* `client_public_key`: The base64-encoded public key of the client.\n* `signature`: A base64-encoded signature of the `data` attribute, signed by the client.\n* `payload`:\n    * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe \u003cjob-id\u003e` and fetch the `ClientID` field.\n\t* `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -1961,6 +1958,48 @@
                 }
             }
         },
+        "models.GPU": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "description": "Self-reported index of the device in the system",
+                    "type": "integer"
+                },
+                "memory": {
+                    "description": "Total GPU memory in mebibytes (MiB)",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Model name of the GPU e.g. Tesla T4",
+                    "type": "string"
+                },
+                "pciaddress": {
+                    "description": "PCI address of the device, in the format AAAA:BB:CC.C\nUsed to discover the correct device rendering cards",
+                    "type": "string"
+                },
+                "vendor": {
+                    "description": "Maker of the GPU, e.g. NVidia, AMD, Intel",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.GPUVendor"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.GPUVendor": {
+            "type": "string",
+            "enum": [
+                "NVIDIA",
+                "AMD/ATI",
+                "Intel"
+            ],
+            "x-enum-varnames": [
+                "GPUVendorNvidia",
+                "GPUVendorAMDATI",
+                "GPUVendorIntel"
+            ]
+        },
         "models.NodeInfo": {
             "type": "object",
             "properties": {
@@ -2011,6 +2050,13 @@
                 "GPU": {
                     "description": "GPU units",
                     "type": "integer"
+                },
+                "GPUs": {
+                    "description": "GPU details",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GPU"
+                    }
                 },
                 "Memory": {
                     "description": "Memory in bytes",

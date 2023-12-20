@@ -19,6 +19,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/translation"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -244,6 +246,11 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
+	var translationProvider translation.TranslatorProvider
+	if requesterConfig.TranslationEnabled {
+		translationProvider = translation.NewStandardTranslatorsProvider()
+	}
+
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:               host.ID().String(),
 		EvaluationBroker: evalBroker,
@@ -255,7 +262,9 @@ func NewRequesterNode(
 			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
+			transformer.NewInlineStoragePinner(storageProviders),
 		},
+		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
 
@@ -325,22 +334,22 @@ func NewRequesterNode(
 
 		cleanupErr := jobInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown job info pubsub")
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown job info pubsub")
 		}
 
 		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
 		}
 		cleanupErr = eventTracer.Shutdown()
 		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown event tracer")
 		}
 
 		// Close the jobstore after the evaluation broker is disabled
 		cleanupErr = jobStore.Close(ctx)
 		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown jobstore")
 		}
 	}
 
