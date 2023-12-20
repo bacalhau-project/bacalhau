@@ -77,6 +77,10 @@ var Production = types.BacalhauConfig{
 		},
 		Compute:   ProductionComputeConfig,
 		Requester: ProductionRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 

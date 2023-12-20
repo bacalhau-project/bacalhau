@@ -69,6 +69,10 @@ var Development = types.BacalhauConfig{
 		},
 		Compute:   DevelopmentComputeConfig,
 		Requester: DevelopmentRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 

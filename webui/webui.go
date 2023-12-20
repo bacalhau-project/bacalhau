@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net"
@@ -36,8 +37,8 @@ func IndexPage(host, port, base string) ([]byte, error) {
 	return output.Bytes(), err
 }
 
-func ListenAndServe(ctx context.Context, host, port, base string) error {
-	indexPage, err := IndexPage(host, port, base)
+func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPort int) error {
+	indexPage, err := IndexPage(host, apiPort, apiPath)
 	if err != nil {
 		return err
 	}
@@ -67,6 +68,7 @@ func ListenAndServe(ctx context.Context, host, port, base string) error {
 	})
 
 	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", listenPort),
 		Handler:           &handler,
 		ReadTimeout:       time.Minute,
 		WriteTimeout:      time.Minute,
