@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -245,6 +246,11 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
+	var translationProvider translation.TranslatorProvider
+	if requesterConfig.TranslationEnabled {
+		translationProvider = translation.NewStandardTranslatorsProvider()
+	}
+
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:               host.ID().String(),
 		EvaluationBroker: evalBroker,
@@ -258,6 +264,7 @@ func NewRequesterNode(
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
+		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
 

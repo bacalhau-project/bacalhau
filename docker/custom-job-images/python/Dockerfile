@@ -27,10 +27,9 @@ RUN python -mpip install --upgrade pip
 RUN python -mpip install poetry 
 
 COPY base_requirements.txt /build
-COPY launcher.py /build
 RUN python -mpip install -r /build/base_requirements.txt
 
-
+COPY launcher.py /build
 CMD ["/build/launcher.py"]
 
 LABEL org.opencontainers.image.source https://github.com/bacalhau-project/bacalhau-images

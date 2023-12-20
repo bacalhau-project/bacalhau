@@ -71,6 +71,7 @@ func NewCmd() *cobra.Command {
 		"disable-features": configflags.DisabledFeatureFlags,
 		"capacity":         configflags.CapacityFlags,
 		"job-timeouts":     configflags.ComputeTimeoutFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	devstackCmd := &cobra.Command{

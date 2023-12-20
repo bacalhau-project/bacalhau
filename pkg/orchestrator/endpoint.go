@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
+	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -21,6 +22,7 @@ type BaseEndpointParams struct {
 	EventEmitter      EventEmitter
 	ComputeProxy      compute.Endpoint
 	JobTransformer    transformer.JobTransformer
+	TaskTranslator    translation.TranslatorProvider
 	ResultTransformer transformer.ResultTransformer
 }
 
@@ -31,6 +33,7 @@ type BaseEndpoint struct {
 	eventEmitter      EventEmitter
 	computeProxy      compute.Endpoint
 	jobTransformer    transformer.JobTransformer
+	taskTranslator    translation.TranslatorProvider
 	resultTransformer transformer.ResultTransformer
 }
 
@@ -42,6 +45,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		eventEmitter:      params.EventEmitter,
 		computeProxy:      params.ComputeProxy,
 		jobTransformer:    params.JobTransformer,
+		taskTranslator:    params.TaskTranslator,
 		resultTransformer: params.ResultTransformer,
 	}
 }
@@ -58,6 +62,33 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 
 	if err := e.store.CreateJob(ctx, *job); err != nil {
 		return nil, err
+	}
+
+	// We will only perform task translation in the orchestrator if we were provided with a provider
+	// that can give translators to perform the translation.
+	if e.taskTranslator != nil {
+		// Before we create an evaluation for the job, we want to check that none of the job's tasks
+		// need translating from a custom job type to a known job type (docker, wasm). If they do,
+		// then we will perform the translation and create the evaluation for the new job instead.
+		translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
+		if err != nil {
+			return nil, err
+		}
+
+		// If we have translated the job (i.e. at least one task was translated) then we will switch
+		// to using the translated job after we have saved it in the jobstore. This results in us
+		// sending the translated job ID to the user for tracking their job, although it will contain
+		// a reference to the job they submitted.  This may cause confusion and we may in future want
+		// to move to versioning of jobs so that we can present both to the user should they request
+		// it.
+		if translatedJob != nil {
+			translatedJob.Meta[models.MetaDerivedFrom] = job.ID
+
+			job = translatedJob
+			if err := e.store.CreateJob(ctx, *job); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	eval := &models.Evaluation{

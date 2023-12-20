@@ -43,11 +43,11 @@ var testcases []testCase = []testCase{
 	{
 		// bacalhau exec python --version=3.10 -- -c "import this"
 		name:                  "zen of python",
-		cmdLine:               []string{"python", "--version=3.10", "--", "-c", "\"import this\""},
-		expectedUnknownArgs:   []string{"--version=3.10", "-c=\"import this\""},
+		cmdLine:               []string{"python", "--version=3.10", "--", "-c", "import this"},
+		expectedUnknownArgs:   []string{"--version=3.10", "-c=import this"},
 		expectedErrMsg:        "",
 		jobCommand:            "python",
-		jobArguments:          []string{"-c", `"import this"`},
+		jobArguments:          []string{"-c", "'import this'"},
 		numInlinedAttachments: 0,
 		numTotalAttachments:   0,
 	},
@@ -91,7 +91,7 @@ var testcases []testCase = []testCase{
 		expectedUnknownArgs:   []string{},
 		expectedErrMsg:        "",
 		jobCommand:            "duckdb",
-		jobArguments:          []string{"select * from /inputs/test.csv"},
+		jobArguments:          []string{"'select * from /inputs/test.csv'"},
 		numInlinedAttachments: 0,
 		numTotalAttachments:   1,
 	},
