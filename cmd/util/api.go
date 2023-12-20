@@ -25,8 +25,9 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 	return clientv2.New(clientv2.Options{
 		Context: ctx,
 		Address: fmt.Sprintf("%s://%s:%d", scheme, config.ClientAPIHost(), config.ClientAPIPort()),
+	},
 		clientv2.WithCACertificate(tlsConfig.CACert),
 		clientv2.WithInsecureTLS(tlsConfig.Insecure),
 		clientv2.WithTLS(tlsConfig.UseTLS),
-	})
+	)
 }

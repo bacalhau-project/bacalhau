@@ -41,7 +41,9 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 func GetAllVersions(ctx context.Context) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
-	versions.ServerVersion, err = client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
+
+	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
+	versions.ServerVersion, err = client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
 	}
@@ -73,9 +75,11 @@ var printMessage *string = nil
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
 func StartUpdateCheck(cmd *cobra.Command, args []string) {
+	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
+
 	version.RunUpdateChecker(
 		cmd.Context(),
-		client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version,
+		client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version,
 		func(_ context.Context, ucr *version.UpdateCheckResponse) { printMessage = &ucr.Message },
 	)
 }
