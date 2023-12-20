@@ -10,8 +10,11 @@ module.exports = {
     transform: {
         "^.+\\.(ts|tsx)$": "ts-jest",
         '\\.(css|scss)$': 'jest-css-modules-transform',
-        '\\.svg$': '<rootDir>/tests/mocks/svgMock.ts',
         "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
+        "^.+\\.svg$": "<rootDir>/tests/mocks/svgMock.ts"
+    },
+    moduleNameMapper: {
+        '\\.svg$': '<rootDir>/tests/mocks/svgMock.ts',
     },
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
     setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
