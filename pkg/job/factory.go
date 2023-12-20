@@ -11,6 +11,7 @@ type SpecOpt func(s *model.Spec) error
 
 func WithPublisher(p model.PublisherSpec) SpecOpt {
 	return func(s *model.Spec) error {
+		//nolint:staticcheck // TODO: remove this when we have a proper publisher
 		s.Publisher = p.Type
 		s.PublisherSpec = p
 		return nil

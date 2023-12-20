@@ -37,11 +37,14 @@ func CopyOversize(
 	specs []*models.InputSource,
 	srcType, dstType string,
 	maxSingle, maxTotal datasize.ByteSize,
-) (modified bool, err error) {
+) (bool, error) {
+	var modified bool
+	var err error
+
 	srcStorage, err := provider.Get(ctx, srcType)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get %s storage provider", srcType)
-		return
+		return false, err
 	}
 
 	specsizes := make([]specSize, 0, len(specs))
@@ -53,7 +56,7 @@ func CopyOversize(
 		size, rerr := srcStorage.GetVolumeSize(ctx, *spec)
 		if rerr != nil {
 			err = errors.Wrapf(rerr, "failed to read spec %v", spec)
-			return
+			return modified, err
 		}
 		specsizes = append(specsizes, specSize{artifact: spec, size: datasize.ByteSize(size)})
 	}

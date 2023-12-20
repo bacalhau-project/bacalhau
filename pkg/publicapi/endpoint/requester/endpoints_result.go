@@ -13,16 +13,16 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-//	@ID			pkg/requester/publicapi/results
-//	@Summary	Returns the results of the job-id specified in the body payload.
-//	@Tags		Job
-//	@Accept		json
-//	@Produce	json
-//	@Param		StateRequest	body		legacymodels.StateRequest	true	" "
-//	@Success	200				{object}	legacymodels.ResultsResponse
-//	@Failure	400				{object}	string
-//	@Failure	500				{object}	string
-//	@Router		/api/v1/requester/results [post]
+// @ID			pkg/requester/publicapi/results
+// @Summary	Returns the results of the job-id specified in the body payload.
+// @Tags		Job
+// @Accept		json
+// @Produce	json
+// @Param		StateRequest	body		legacymodels.StateRequest	true	" "
+// @Success	200				{object}	legacymodels.ResultsResponse
+// @Failure	400				{object}	string
+// @Failure	500				{object}	string
+// @Router		/api/v1/requester/results [post]
 func (s *Endpoint) results(c echo.Context) error {
 	var stateReq legacymodels.StateRequest
 	if err := c.Bind(&stateReq); err != nil {

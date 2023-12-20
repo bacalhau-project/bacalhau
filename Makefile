@@ -261,7 +261,6 @@ swagger-docs: docs/swagger.json
 
 docs/swagger.json: ${PKG_FILES} .swaggo
 	@echo "Building swagger docs..."
-	swag fmt -g "pkg/publicapi/server.go" && \
 	swag init \
 		--outputTypes "json" \
 		--parseDependency \
