@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'How Bacalhau Works'
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # How Bacalhau Works

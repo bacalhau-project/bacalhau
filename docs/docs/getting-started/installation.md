@@ -126,11 +126,11 @@ While this command is designed to resemble Docker's run command which you may be
 <TabItem value="Docker">
 ```shell
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \ 
-docker run \  
---id-only \  
---wait \  
-ubuntu:latest -- \ 
-sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
+                docker run \  
+                --id-only \  
+                --wait \  
+                ubuntu:latest -- \ 
+                sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
 Let's take a look at the results of the command execution in the terminal:
@@ -143,7 +143,9 @@ Let's take a look at the results of the command execution in the terminal:
 
 ## Step 3 - Checking the State of your Jobs
 
-**Job status**: You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
+### Step 3.1 - Job status: 
+
+You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
 
 
 ```shell
@@ -159,29 +161,55 @@ When it says `Completed`, that means the job is done, and we can get the results
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 :::
 
-**Job information**: You can find out more information about your job by using `bacalhau describe`.
+### Step 3.2 - Job information: 
+
+You can find out more information about your job by using `bacalhau describe`.
 
 ```shell
 bacalhau describe 9d20bbad
 ```
 Let's take a look at the results of the command execution in the terminal: 
 
-![image](../../static/img/Installation/bacalhau-describe1.png 'bacalhau-describe')
+```shell
+
+    Job:
+        APIVersion: V1beta2
+        Metadata:
+            ClientID: 0ff57b2521334a92e9ddab4b2f8202c887b1eaa35d2aa945ab0e247d3bc0aa88
+            CreatedAt: "2023-12-21T15:24:31.750306239Z"
+            ID: 0ed7617d-d5ff-40f7-8411-89830b3f3058
+            Requester:
+            RequesterNodeID: QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws
+            RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDEHTUAD1JzO0130W9vsaDGhU0PVgpcNjG3fYlE0sJ1BiBWENFuP4jx3Q9alcjNGhdRFdju0Mb/fidTOtJcPhxTdb+H6JxFP6HsADGes9jU4ylBU2SL2vfdb0KXzKdXjNHGGf4BuCGTcH07Oqxp209diK/cT7takL2fLjcgs1tM+6PzlfGzFqCPxvh9Sa0ek34mdmHjcp1XH8yjF1OKOuHvD+pYphqvOBL/2LEN+EBC4fz/QUnhUajCmKYO83MJcNUXSGxb4AN6K3DpVV+cJph7fj9ADdP7i996o2S4Gkz8W4Wpt/jICaPpkUjmyU3Jgcw7MHkZaYEzWxnnO2J936+pAgMBAAE=
+        Spec:
+        ...
+
+```
 
 This outputs all information about the job, including stdout, stderr, where the job was scheduled, and so on.
 
-**Job download**: You can download your job results directly by using `bacalhau get`. 
+### Step 3.3 - Job download: 
+
+You can download your job results directly by using `bacalhau get`. 
 
 
 ```shell
 bacalhau get 9d20bbad
 ```
 
-![image](../../static/img/Installation/bacalhau-get-jobid.png 'bacalhau-get')
+```shell
+Fetching results of job '0ed7617d'...
+Results for job '0ed7617d' have been written to...
+/Users/test/job-0ed7617d
+```
 
 In the command below, we created a directory called `myfolder` and download our job output to be stored in that directory.
 
-![image](../../static/img/Installation/bacalhau-get-myfolder1.png 'bacalhau-get')
+```shell
+Fetching results of job '0ed7617d'...
+Results for job '0ed7617d' have been written to...
+myfolder
+```
 
 :::info
 While executing this command, you may encounter warnings regarding receive and send buffer sizes: `failed to sufficiently increase receive buffer size`. These warnings can arise due to limitations in the UDP buffer used by Bacalhau to process tasks. Additional information can be found in [https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes](https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes). 
@@ -189,8 +217,13 @@ While executing this command, you may encounter warnings regarding receive and s
 
 After the download has finished you should see the following contents in the results directory.
 
-![image](../../static/img/Installation/tree-jobid1.png 'tree-jobid')
-
+```shell
+job-0ed7617d
+├── exitCode
+├── outputs
+├── stderr
+└── stdout
+```
 
 ## Step 4 - Viewing your Job Output
 
