@@ -37,6 +37,9 @@ const (
 	labelExecutorName = "bacalhau-executor"
 	labelJobName      = "bacalhau-jobID"
 	labelExecutionID  = "bacalhau-executionID"
+
+	outputStreamCheckTickTime = 100 * time.Millisecond
+	outputStreamCheckTimeout  = 5 * time.Second
 )
 
 type Executor struct {
@@ -246,7 +249,7 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 		// Check the handlers every 100ms and send it down the
 		// channel if we find it. If we don't find it after 5 seconds
 		// then we'll be told on the exit channel
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(outputStreamCheckTickTime)
 		defer ticker.Stop()
 
 		for {
@@ -269,7 +272,7 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 	select {
 	case handler := <-chHandler:
 		return handler.outputStream(ctx, withHistory, follow)
-	case <-time.After(5 * time.Second):
+	case <-time.After(outputStreamCheckTimeout):
 		chExit <- struct{}{}
 	}
 
