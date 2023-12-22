@@ -1,4 +1,4 @@
 ---
 sidebar_label: "Quick Start"
-sidebar_position: 1
+sidebar_position: 2
 ---

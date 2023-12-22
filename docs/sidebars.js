@@ -16,17 +16,17 @@ module.exports = {
     'intro',
     {
       type: 'category',
-      label: 'Getting Started',
+      label: 'Quick Start',
       link: {
         type: 'generated-index',
         slug: '/getting-started',
-        title: 'Getting Started',
+        title: 'Quick Start',
         description: "Get Started with Bacalhau!",
       },
       collapsed: false,
       items: [
-        'getting-started/architecture',
         'getting-started/installation',
+        'getting-started/architecture',
         'getting-started/docker-workload-onboarding',
         'getting-started/wasm-workload-onboarding',
         'getting-started/resources'

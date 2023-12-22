@@ -1,6 +1,6 @@
 ---
-title: Home
-sidebar_label: 'Home'
+title: About Bacalhau
+sidebar_label: 'About Bacalhau'
 sidebar_position: 1
 slug: /
 hide_title: true
