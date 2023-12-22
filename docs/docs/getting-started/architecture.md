@@ -121,7 +121,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau create [flags]`
+    ```shell
+    bacalhau create [flags]
+    ```
 
 You can use the command with [appropriate flags] to create a job in Bacalhau using JSON and YAML formats.
 
@@ -130,10 +132,11 @@ You can use the command with [appropriate flags] to create a job in Bacalhau usi
 
     Endpoint: `PUT /api/v1/orchestrator/jobs`
 
-    You can use [Create Job API Documentation] to submit a new job for execution. 
+    You can use [Create Job API Documentation] to submit a new job for execution.
 
 </TabItem>
 </Tabs>
+
 
 
  
@@ -282,7 +285,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau describe [id] [flags]`
+    ```shell
+    bacalhau describe [id] [flags]
+    ```
 
     You can use the command with [appropriate flags] to get a full description of a job in yaml format.
 
@@ -307,7 +312,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau list [flags]`
+    ```shell
+    bacalhau list [flags]
+    ```
 
     You can use the command with [appropriate flags] to list jobs on the network in yaml format.
 
@@ -332,7 +339,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau job executions [id] [flags]`
+    ```shell
+    bacalhau job executions [id] [flags]
+    ```
 
     You can use the command with [appropriate flags] to list all executions associated with a job, identified by its ID, in yaml format.
 
@@ -365,7 +374,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau cancel [id] [flags]`
+    ```shell
+    bacalhau cancel [id] [flags]
+    ```
 
     You can use the command with [appropriate flags] to cancel a job that was previously submitted and stop it running if it has not yet completed.
 
@@ -391,7 +402,9 @@ values={[
 ]}>
 <TabItem value="CLI">
 
-    `bacalhau job history [id] [flags]`
+     ```shell
+    bacalhau job history [id] [flags]
+    ```
 
     You can use the command with [appropriate flags] to enumerate the historical events related to a job, identified by its ID.
 
@@ -409,7 +422,11 @@ values={[
 ### Job Logs
 
 
-You can use the `bacalhau logs [flags] [id]` [command] to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
+```shell
+bacalhau logs [flags] [id]
+```
+
+You can use this [command] to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
 
 :::info
  To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands] (refer to bacalhau cli version v1.0.3) and [CLI Commands (Experimental)] (refer to experimental bacalhau cli version v1.1.0.).

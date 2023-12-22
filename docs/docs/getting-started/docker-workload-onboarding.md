@@ -1,13 +1,15 @@
 ---
-sidebar_label: 'Onboard Docker Workload'
+sidebar_label: 'Docker Workloads'
 sidebar_position: 3
 description: How to use docker containers with Bacalhau
 ---
 import ReactPlayer from 'react-player'
 
-# Onboarding Your Docker Workloads
+# Docker Workloads
 
-Bacalhau executes jobs by running them within containers. This section describes how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client.
+Bacalhau executes jobs by running them within containers. Bacalhau employs a syntax closely resembling Docker, allowing you to utilize the same containers. The key distinction lies in how input and output data are transmitted to the container via IPFS, enabling scalability on a global level.
+
+This section describes how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client.
 
 :::tip
 
@@ -16,12 +18,15 @@ You can check out this example tutorial on [how to work with custom containers i
 :::
 
 ## Requirements
-Here are a few things to note before getting started:
-* You must publish the container to a public container registry that is accessible from the Bacalhau network
-* Bacalhau supports only images that match the architecture of the host node. Typically, most nodes run `linux/amd64` so containers in `arm64` format are not able to run.
-* The `--input ipfs://...` flag does not support CID subpaths only **directories**
-* The `--input https://...` flag does not support URL directories only **single files** only
-* The `--input s3://...` flag does support S3 keys and prefixes. e.g. `s3://bucket/logs-2023-04*` for all April 2023 logs
+Here are few things to note before getting started:
+
+1. **Container Registry**: Ensure that the container is published to a public container registry that is accessible from the Bacalhau network.
+2. **Architecture Compatibility**: Bacalhau supports only images that match the host node's architecture. Typically, most nodes run on `linux/amd64`, so containers in `arm64` format are not able to run.
+3. **Input Flags**:  
+The `--input ipfs://...` flag supports only **directories** and does not support CID subpaths.  
+The `--input https://...` flag supports only **single files** and does not support URL directories.  
+The `--input s3://...` flag supports S3 keys and prefixes. For example, `s3://bucket/logs-2023-04*` includes all logs for April 2023.
+
 
 :::tip
 
@@ -35,8 +40,14 @@ You can check to see a [list of example public containers](https://github.com/or
 
 To help provide a safe, secure network for all users, we add the following runtime restrictions:
 
-- All ingress/egress networking is limited, as described in the [networking](../next-steps/networking.md) documentation. You won't be able to pull `data/code/weights/` etc from an external source
-- Data passing is implemented with Docker volumes, using [Bacalhau's input/output volumes](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes)
+1. **Limited Ingress/Egress Networking**:
+
+All ingress/egress networking is limited as described in the [networking](../next-steps/networking.md) documentation.
+You won't be able to pull `data/code/weights/` etc. from an external source.
+
+2. **Data Passing with Docker Volumes**:
+
+Data passing is implemented with Docker volumes, using [Bacalhau's input/output volumes].
 
 
 ## Onboarding Your Workload
@@ -67,7 +78,7 @@ You can specify which directory the data is written to with the [`--output-volum
 
 ### Step 3 - Build and Push Your Image To a Registry
 
-If you haven't already, you'll need to [build your image](https://docs.docker.com/engine/reference/commandline/build/) and [push it](https://docs.docker.com/engine/reference/commandline/push/) to a publicly accessible container registry.
+At this step, you create (or update) a Docker image that Bacalhau will use to perform your task. You [build your image](https://docs.docker.com/engine/reference/commandline/build/) from your code and dependencies, then [push it](https://docs.docker.com/engine/reference/commandline/push/) to a public registry so that Bacalhau can access it. This is necessary for other Bacalhau nodes to run your container and execute the task.
 
 :::caution
 
@@ -83,6 +94,7 @@ $ docker build -t ${IMAGE} .
 $ docker image push ${IMAGE}
 ```
 
+
 ### Step 4 - Test Your Container
 
 To test your docker image locally, you'll need to execute the following command, changing the environment variables as necessary:
@@ -97,11 +109,25 @@ $ docker run --rm \
   ${IMAGE} \
   ${CMD}
 ```
+Let's see what each command will be used for:
+
+```shell
+$ export LOCAL_INPUT_DIR=$PWD
+Exports the current working directory of the host system to the LOCAL_INPUT_DIR variable. This variable will be used for binding a volume and transferring data into the container.
+
+$ export LOCAL_OUTPUT_DIR=$PWD
+Exports the current working directory of the host system to the LOCAL_OUTPUT_DIR variable. Similarly, this variable will be used for binding a volume and transferring data from the container.
+
+$ export CMD=(sh -c 'ls /inputs; echo do something useful > /outputs/stdout')
+Creates an array of commands CMD that will be executed inside the container. In this case, it is a simple command executing 'ls' in the /inputs directory and writing text to the /outputs/stdout file.
+
+$ docker run ... ${IMAGE} ${CMD}
+Launches a Docker container using the specified variables and commands. It binds volumes to facilitate data exchange between the host and the container.
+```
 
 :::tip
 
-Bacalhau will use the [default ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint)
-if your image contains one. To override it, pass `--entrypoint` to `bacalhau docker run`.
+Bacalhau will use the [default ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint) if your image contains one. If you need to specify another entrypoint, use the `--entrypoint` flag to `bacalhau docker run`.
 
 :::
 
@@ -128,9 +154,9 @@ do something useful
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-- [Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)
-- [Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)
-- [Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/data-ingestion/s3)
+[Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)  
+[Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)  
+[Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/data-ingestion/s3)  
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
