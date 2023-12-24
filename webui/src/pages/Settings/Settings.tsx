@@ -4,11 +4,11 @@ import {
   TableSettings,
 } from "../../context/TableSettingsContext";
 import styles from "./Settings.module.scss";
-import Layout from "../../layout/Layout";
+import { Layout } from "../../layout/Layout";
 import Checkbox from "../../components/Checkbox/Checkbox";
 import Container from "../../components/Container/Container";
 
-const Settings = () => {
+export const Settings = () => {
   const { settings, toggleSetting } = useTableSettings();
   const [tempSettings, setTempSettings] = useState(settings);
 
@@ -82,5 +82,3 @@ const Settings = () => {
     </Layout>
   );
 };
-
-export default Settings;

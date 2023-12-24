@@ -163,7 +163,7 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
+WEB_INSTALL_GUARD := webui/node_modules/.cache/tsconfig.tsbuildinfo
 
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
@@ -172,11 +172,11 @@ webui/build:
 	mkdir -p $@
 
 $(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && npm install
+	cd webui && bun install
 
 export GENERATE_SOURCEMAP := false
 ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
-	cd webui && npm run build
+	cd webui && bun run build
 
 ################################################################################
 # Target: build-bacalhau

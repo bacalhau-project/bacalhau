@@ -25,7 +25,7 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
   });
 }
 
-const NodesTable: React.FC<TableProps> = ({ data }) => {
+export const NodesTable: React.FC<TableProps> = ({ data }) => {
   const parsedData = parseData(data);
   const { settings } = useContext(TableSettingsContext);
 
@@ -86,5 +86,3 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
     </div>
   );
 };
-
-export default NodesTable;

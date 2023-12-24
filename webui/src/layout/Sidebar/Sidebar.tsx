@@ -1,33 +1,33 @@
-// components/Sidebar.tsx
+// layout/Sidebar/Sidebar.tsx
 import React from "react";
 import { Link } from "react-router-dom";
 import styles from "./Sidebar.module.scss";
 import Button from "./Button/Button";
-import { ReactComponent as BacalhauLogo } from "../../images/bacalhau.svg";
-import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg";
-import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg";
-import { ReactComponent as Cogwheel } from "../../images/cogwheel.svg";
+import { ReactSVG } from "react-svg";
 
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed,
+  toggleSidebar,
+}) => {
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <JobsIcon />,
+      icon: <ReactSVG src="../../images/jobs-icon.svg" />,
       title: "Jobs Dashboard",
     },
     {
       path: "/NodesDashboard",
-      icon: <NodesIcon />,
+      icon: <ReactSVG src="../../images/nodes-icon.svg" />,
       title: "Nodes Dashboard",
     },
     {
       path: "/Settings",
-      icon: <Cogwheel />,
+      icon: <ReactSVG src="../../images/cogwheel.svg" />,
       title: "Settings",
     },
   ];
@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <BacalhauLogo height="24" width="" />
+        <ReactSVG src="../../images/bacalhau.svg" height="24" width="" />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (
@@ -59,5 +59,3 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     </div>
   );
 };
-
-export default Sidebar;

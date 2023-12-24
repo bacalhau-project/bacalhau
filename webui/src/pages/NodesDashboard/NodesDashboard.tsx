@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import styles from "./NodesDashboard.module.scss";
-import NodesTable from "./NodesTable/NodesTable";
-import Layout from "../../layout/Layout";
+import { NodesTable } from "./NodesTable/NodesTable";
+import { Layout } from "../../layout/Layout";
 import { Node } from "../../helpers/nodeInterfaces";
 import { bacalhauAPI } from "../../services/bacalhau";
 import { useTableSettings } from "../../context/TableSettingsContext";
 
-const NodesDashboard: React.FC = () => {
+export const NodesDashboard: React.FC = () => {
   const [data, setData] = useState<Node[]>([]);
   const { settings } = useTableSettings();
 
@@ -33,5 +33,3 @@ const NodesDashboard: React.FC = () => {
     </Layout>
   );
 };
-
-export default NodesDashboard;

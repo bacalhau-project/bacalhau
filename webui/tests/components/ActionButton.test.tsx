@@ -1,17 +1,16 @@
 // @ts-nocheck
-import React from 'react';
+import React from "react";
 import { render, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { createMemoryHistory } from 'history';
-// import ActionButton from '@components/ActionButton/ActionButton';
-import ActionButton from '../../src/components/ActionButton/ActionButton';
+import { createMemoryHistory } from "history";
+import { ActionButton } from "@components/ActionButton/ActionButton";
 
 describe("ActionButton", () => {
   test("renders button with provided text", () => {
     const { getByText } = render(
       <MemoryRouter>
         <ActionButton text="Test Button" />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(getByText("Test Button")).toBeInTheDocument();
@@ -23,7 +22,7 @@ describe("ActionButton", () => {
     const { getByText } = render(
       <MemoryRouter>
         <ActionButton text="Test Button" onClick={handleClick} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     fireEvent.click(getByText("Test Button"));
@@ -33,16 +32,19 @@ describe("ActionButton", () => {
 
   test("navigates to 'to' path when provided and button is clicked", () => {
     const { getByText } = render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={["/"]}>
         <Routes>
-          <Route path="/" element={<ActionButton text="Test Button" to="/test-path" />} />
+          <Route
+            path="/"
+            element={<ActionButton text="Test Button" to="/test-path" />}
+          />
           <Route path="/test-path" element={<div>Test Page</div>} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
-  
+
     fireEvent.click(getByText("Test Button"));
-  
+
     // Check if the 'Test Page' content is rendered
     expect(getByText("Test Page")).toBeInTheDocument();
   });

@@ -2,7 +2,7 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { screen, render } from "@testing-library/react";
-import JobsDashboard from "@pages/JobsDashboard/JobsDashboard";
+import { JobsDashboard } from "../../src/pages/JobsDashboard/JobsDashboard";
 import axios from "axios"; // Import axios module
 
 jest.mock("axios");

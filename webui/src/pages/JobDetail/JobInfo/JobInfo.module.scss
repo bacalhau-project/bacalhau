@@ -1,28 +1,29 @@
 .jobInfo {
-    padding: 10px;
-    word-wrap: break-word;
+  padding: 10px;
+  word-wrap: break-word;
 }
 
 .item {
-    position: relative;
-    padding-bottom: 20px;
+  position: relative;
+  padding-bottom: 20px;
 }
 
 .item:after {
-    content: '';
-    display: block;
-    margin: 0 auto;
-    width: 100%; /* Adjust the width as needed */
-    height: 1px; /* Thickness of the line */
-    background-color: lightgrey; /* Color of the line */
-    position: absolute;
-    bottom: 0px; /* Adjust distance below the text */
-  }
-
-.key {
-    font-weight: 600;
+  content: "";
+  display: block;
+  margin: 0 auto;
+  width: 100%; /* Adjust the width as needed */
+  height: 1px; /* Thickness of the line */
+  background-color: lightgrey; /* Color of the line */
+  position: absolute;
+  bottom: 0px; /* Adjust distance below the text */
 }
 
-.key, .value {
-    font-size: 18px;
+.key {
+  font-weight: 600;
+}
+
+.key,
+.value {
+  font-size: 18px;
 }

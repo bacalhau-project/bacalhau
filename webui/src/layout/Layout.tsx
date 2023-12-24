@@ -1,15 +1,15 @@
 // components/Layout.tsx
 import React, { useState } from "react";
 import styles from "./Layout.module.scss";
-import Header from "./Header/Header";
-import Sidebar from "./Sidebar/Sidebar";
+import { Header } from "./Header/Header";
+import { Sidebar } from "./Sidebar/Sidebar";
 
 interface LayoutProps {
   pageTitle: string;
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
+export const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
@@ -27,5 +27,3 @@ const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
     </div>
   );
 };
-
-export default Layout;
