@@ -63,7 +63,7 @@ cd..
 
 make build
 
-./bin/.../bacalhau serve --node-type=requester,compute --peer=none --web-ui
+./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --node-type=requester,compute --peer=none --web-ui
 ```
 
 The above will spin up your own bacalhau cluster. This will use the default port `1234`. Visit `http://127.0.0.1/` to see WebUI.

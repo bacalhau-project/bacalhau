@@ -172,11 +172,11 @@ webui/build:
 	mkdir -p $@
 
 $(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && bun install
+	cd webui && npm install
 
 export GENERATE_SOURCEMAP := false
 ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
-	cd webui && bun run build
+	cd webui && npm run build
 
 ################################################################################
 # Target: build-bacalhau

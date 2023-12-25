@@ -257,9 +257,8 @@ jobs:
           environment:
             GENERATE_SOURCEMAP: "false"
           command: |
-            curl -fsSL https://bun.sh/install | bash -- $BUN_VERSION
-            bun install
-            bun run build
+            npm install
+            npm run build
       - persist_to_workspace:
           root: .
           paths:

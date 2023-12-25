@@ -26,7 +26,7 @@
     "build-bacalhau": "cd .. && make build && cd -",
     "start-bacalhau": "cd .. && ./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --web-ui --web-ui-port 3000 && cd -",
     "test-webui": "cross-env jest tests/",
-    "test": "start-server-and-test start-bacalhau 3000 test-webui",
+    "test": "concurrently \"npm run start-bacalhau\" \"npm run test-webui\"",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\""
@@ -37,12 +37,18 @@
       "react-app/jest",
       "plugin:prettier/recommended"
     ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaFeatures": {
+        "jsx": true
+      },
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
     "plugins": [
       "prettier"
     ],
-    "rules": {
-      "prettier/prettier": "error"
-    }
+    "rules": {}
   },
   "browserslist": {
     "production": [
