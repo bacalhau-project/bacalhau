@@ -1,4 +1,14 @@
+**Instructions**
+- Set environment variables:
+```
+export PYTHONVER='3.11.7'
+export GOLANGCILINTVER='v1.51.2'
+```
 
+- Install asdf: `brew install asdf`
+- Install asdf python plug-in: `asdf plugin add python`
+- Install python: `asdf local python $PYTHONVER`
+- Install golangci-lint: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINTVER`
 
 **Common Errors**
 - Using alternatives to `npm` - we have explored using `bun` but `prettier` did not work properly with it.
