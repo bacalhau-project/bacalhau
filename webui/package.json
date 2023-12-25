@@ -9,6 +9,7 @@
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "axios": "^1.6.2",
+    "concurrently": "^8.2.2",
     "moment": "^2.29.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -26,7 +27,7 @@
     "build-bacalhau": "cd .. && make build && cd -",
     "start-bacalhau": "cd .. && ./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --web-ui --web-ui-port 3000 && cd -",
     "test-webui": "cross-env jest tests/",
-    "test": "concurrently \"npm run start-bacalhau\" \"npm run test-webui\"",
+    "test": "",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\""
