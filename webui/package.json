@@ -23,6 +23,8 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build-bacalhau": "cd .. && make build && cd -",
+    "start-bacalhau": "cd .. && ./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --web-ui --web-ui-port 3000 && cd -",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
