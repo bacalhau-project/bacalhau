@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python3
 
 # Use python to test to see if server is running on 1234 port
 if __name__ == '__main__':
@@ -19,7 +19,13 @@ if __name__ == '__main__':
     server_address = ('localhost', port)
     
     print ("connecting to %s port %s" % server_address)
-    sock.connect(server_address)
+    
+    # If there is no server running, this will fail
+    try:
+        sock.connect(server_address)
+    except:
+        print ('No server running on port %s' % port, file=sys.stderr)
+        sys.exit(1)
 
     try:
         # Send data
