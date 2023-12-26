@@ -290,6 +290,16 @@ func (s *ServeSuite) TestGetPeers() {
 }
 
 // Begin WebUI Tests
+func (s *ServeSuite) Test200ForNotStartingWebUI() {
+	port, err := s.serve()
+	s.Require().NoError(err, "Error starting server")
+
+	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
+	_ = content
+	s.Require().NoError(err, "Error curling root endpoint")
+	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
+}
+
 func (s *ServeSuite) Test200ForRoot() {
 	webUIPort, err := freeport.GetFreePort()
 	if err != nil {
@@ -298,8 +308,7 @@ func (s *ServeSuite) Test200ForRoot() {
 	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
 	s.Require().NoError(err, "Error starting server")
 
-	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/index.html", webUIPort))
-	_ = content
+	_, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
