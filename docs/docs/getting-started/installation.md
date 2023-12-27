@@ -107,7 +107,20 @@ values={[
 
     Let's take a look at the results of the command execution in the terminal: 
 
-![image](../../static/img/Installation/bacalhau-docker-run1.png 'bacalhau-docker-run1')
+    ```shell
+    Job successfully submitted. Job ID: f8e7789d-8e76-4e6c-8e71-436e2d76c72e
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
+
+        Communicating with the network  ................  done ✅  0.2s
+           Creating job for submission  ................  done ✅  0.7s
+                       Job in progress  ................  done ✅  2.1s
+
+    To download the results, execute:
+        bacalhau get f8e7789d-8e76-4e6c-8e71-436e2d76c72e
+
+    To get more details about the run, execute:
+        bacalhau describe f8e7789d-8e76-4e6c-8e71-436e2d76c72e
+    ```
 
 After the above command is run, the job is submitted to the public network, which processes the job and Bacalhau prints out the related job id:
 
@@ -134,6 +147,8 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 ```
 
 Let's take a look at the results of the command execution in the terminal:
+
+
 
 ![image](../../static/img/Installation/docker-run1.png 'docker-run')
 
