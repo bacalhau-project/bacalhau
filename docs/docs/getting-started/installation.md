@@ -22,13 +22,13 @@ By default, you will submit to the Bacalhau public network, but the same CLI can
 
 
 <Tabs
-defaultValue="Linux/macOS"
+defaultValue="Linux/macOS(CLI)"
 values={[
-{label: 'Linux/macOS', value: 'Linux/macOS'},
-{label: 'Windows', value: 'Windows'},
+{label: 'Linux/macOS(CLI)', value: 'Linux/macOS(CLI)'},
+{label: 'Windows(CLI)', value: 'Windows(CLI)'},
 {label: 'Docker', value: 'Docker'},
 ]}>
-<TabItem value="Linux/macOS">
+<TabItem value="Linux/macOS(CLI)">
 
     You can install or update the Bacalhau CLI by running the commands in a terminal. You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
     ```shell
@@ -36,7 +36,7 @@ values={[
     ```
 
 </TabItem>
-<TabItem value="Windows">
+<TabItem value="Windows(CLI)">
 
     Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to any location available in the PATH environment variable.
 
@@ -59,12 +59,12 @@ To verify installation and check the version of the client and server, use the `
 To run a Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
 
 <Tabs
-defaultValue="Linux/macOS/Windows"
+defaultValue="Linux/macOS/Windows(CLI)"
 values={[
-{label: 'Linux/macOS/Windows', value: 'Linux/macOS/Windows'},
+{label: 'Linux/macOS/Windows(CLI)', value: 'Linux/macOS/Windows(CLI)'},
 {label: 'Docker', value: 'Docker'},
 ]}>
-<TabItem value="Linux/macOS/Windows">
+<TabItem value="Linux/macOS/Windows(CLI)">
 
     ```shell
     bacalhau version
