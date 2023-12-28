@@ -157,7 +157,7 @@ Let's take a look at the results of the command execution in the terminal:
 
 
 ## Step 3 - Checking the State of your Jobs
-
+After having deployed the job, we now can use the CLI for the interaction with the network. The jobs were sent to the public demo network, where it was processed and we can call the following functions. The `job_id` will differ for every submission.
 ### Step 3.1 - Job status: 
 
 You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
@@ -168,7 +168,14 @@ bacalhau list --id-filter 9d20bbad
 ```
 Let's take a look at the results of the command execution in the terminal: 
 
-![image](../../static/img/Installation/bacalhau-list1.png 'bacalhau-list')
+```shell
+CREATED   ID          JOB                                       STATE      PUBLISHED 
+15:24:31  0ed7617d    Type:"docker",Params:"map[Entrypoint:<ni  Completed            
+                       l> EnvironmentVariables:[] Image:ubuntu:                       
+                       latest Parameters:[sh -c uname -a && ech                       
+                       o "Hello from Docker Bacalhau!"] Working                       
+                       Directory:]"                                                   
+```
 
 When it says `Completed`, that means the job is done, and we can get the results.
 
@@ -211,6 +218,7 @@ You can download your job results directly by using `bacalhau get`.
 ```shell
 bacalhau get 9d20bbad
 ```
+This results in 
 
 ```shell
 Fetching results of job '0ed7617d'...
@@ -223,7 +231,7 @@ In the command below, we created a directory called `myfolder` and download our 
 ```shell
 Fetching results of job '0ed7617d'...
 Results for job '0ed7617d' have been written to...
-myfolder
+/myfolder
 ```
 
 :::info

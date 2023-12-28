@@ -34,6 +34,14 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 📚 Bacalhau operates at scale over parallel jobs. You can batch process petabytes (quadrillion bytes) of data.
 
+## How it works
+
+Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:  
+
+  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
+
+  **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
+
 ## Quick Start ⏱️
 
 > Understand Bacalhau in 1 minute

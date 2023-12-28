@@ -4,8 +4,80 @@ sidebar_position: 1
 ---
 
 # How Bacalhau Works
+In this tutorial we will go over the components and the architecture of Bacalhau. You will learn how it is built, what components are used, how you could interact and how you could use Bacalhau.
+## Chapter 1 - Architecture
 
-## Job preparation
+Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes, which can communicate with each other.
+
+![image](../../static/img/architecture/architecture-overview.webp 'Bacalhau Architecture')
+
+The requester and compute nodes together form a p2p network and use gossiping to discover each other, share information about node capabilities, available resources and health status. Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers.  
+:::tip
+  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
+
+  **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
+:::
+
+To interact with the Bacalhau network, users can use the Bacalhau CLI (command-line interface) to send requests to a requester node in the network. These requests are sent using the JSON format over HTTP, a widely-used protocol for transmitting data over the internet. Bacalhau's architecture involves two main sections which are the **core components** and **interfaces**.
+
+![image](../../static/img/architecture/System-Components.png 'System-Components')
+
+
+### Core Components
+
+The core components are responsible for handling requests and connecting different nodes. The section includes:
+
+  [Requester node](#requester-node)  
+  [Compute node](#compute-node)
+
+#### Requester node 
+
+In the Bacalhau network, the requester node is responsible for handling requests from clients using JSON over HTTP. This node serves as the main custodian of jobs that are submitted to it. When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and coordinates the job execution.
+
+#### Compute node
+
+In the Bacalhau network, it is the compute node that is responsible for determining whether it can execute a job or not. This model allows for a more decentralized approach to job orchestration as the network will function properly even if the requester nodes have stale view of the network, or if concurrent requesters are allocating jobs to the same compute nodes. Once the compute node has run the job and produced results, it will publish the results to a remote destination as specified in the job specification (e.g. S3), and notify the requester of the job completion. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications.
+
+### Interfaces
+
+The interface handles the distribution, execution, storage and publishing of jobs.
+
+  [Transport](#transport)  
+  [Executor](#executor)  
+  [Storage Provider](#storage-provider)    
+  [Publisher](#publisher)  
+
+#### Transport
+
+The transport interface is responsible for sending messages about jobs that are created, accepted, and executed  to other compute nodes. It also manages the identity of individual Bacalhau nodes to ensure that messages are only delivered to authorized nodes, which improves network security.
+
+To achieve this, the transport interface uses a protocol called **bprotocol**, which is a point-to-point scheduling protocol that runs over [libp2p](https://libp2p.io/) and is used to distribute job messages efficiently to other nodes on the network. This is our upgrade to the [GossipSub](https://docs.libp2p.io/concepts/publish-subscribe/) handler as it ensures that messages are delivered to the right nodes without causing network congestion, thereby making communication between nodes more scalable and efficient.
+
+#### Executor
+
+The executor is a critical component of the Bacalhau network that handles the execution of jobs and ensures that the storage used by the job is local. One of its main responsibilities is to present the input and output storage volumes into the job when it is run.
+
+The executor performs two primary functions: presenting the storage volumes in a format that is suitable for the executor and running the job.
+
+When the job is completed, the executor will merge the stdout, stderr and named output volumes into a results folder that is then published to a remote location.
+
+Overall, the executor plays a crucial role in the Bacalhau network by ensuring that jobs are executed properly, and their results are published accurately.
+
+#### Storage Provider
+
+In a peer-to-peer network like Bacalhau, storage providers play a crucial role in presenting an upstream storage source. There can be different storage providers available in the network, each with its own way of manifesting the CID (Content IDentifier) to the executor.
+
+For instance, there can be a POSIX storage provider that presents the CID as a POSIX filesystem, or a library storage provider that streams the contents of the CID via a library call.
+
+Therefore, the storage providers and Executor implementations are loosely coupled, allowing the POSIX and library storage providers to be used across multiple executors, wherever it is deemed appropriate.
+
+#### Publisher
+
+The publisher is responsible for uploading the final results of a job to a remote location where clients can access them, such as S3 or IPFS.
+
+## Chapter 2 - Job cycle
+
+### Job preparation
 
 Define and create jobs in the Bacalhau network, leveraging job types introduced in v1.1 for enhanced orchestration and scheduling. Explore provided [Job Types].
 
@@ -23,84 +95,7 @@ For node operation, refer to the [Running a Node] section for configuring and ru
 
 If you prefer an isolated environment, explore the [Private Cluster] for performing tasks without connecting to the main Bacalhau network.
 
-## Architecture
-
-Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:  
-
-  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
-
-  **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
-
-![image](../../static/img/architecture/architecture-purpose.jpg 'Bacalhau Architecture')
-
-The requester and compute nodes together form a p2p network and use gossiping to discover each other, share information about node capabilities, available resources and health status.
-
-To interact with the Bacalhau network, users can use the Bacalhau CLI (command-line interface) to send requests to a requester node in the network. These requests are sent using the JSON format over HTTP, a widely-used protocol for transmitting data over the internet.
-
-Bacalhau's architecture involves two main sections which are the **core components** and **interfaces**.
-
-![image](../../static/img/architecture/System-Components.png 'System-Components')
-
-
-### 1. Core Components
-
-The core components are responsible for handling requests and connecting different nodes. The section includes:
-
-  [Requester node](#requester-node)  
-  [Compute node](#compute-node)
-
-### Requester node 
-
-In the Bacalhau network, the requester node is responsible for handling requests from clients using JSON over HTTP. This node serves as the main custodian of jobs that are submitted to it.
-
-When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and communicate with them directly. It is important to note that there is only ever a single requester node for a given job, which is the node that the job was originally submitted to.
-
-Overall, the requester node plays a crucial role in the Bacalhau network, serving as the main point of contact for clients and the primary handler of jobs that are submitted to the network.
-
-### Compute node
-
-In the Bacalhau network, the compute node plays a critical role in the process of executing jobs and producing results. While the requester does its best to be up-to-date with the network status, it is the compute node that is responsible for determining whether it can execute a job or not. This model allows for a more decentralized approach to job orchestration as the network will function properly even if the requester nodes have stale view of the network, or if concurrent requesters are allocating jobs to the same compute nodes. 
-
-Once the compute node has run the job and produced results, it will publish the results to a remote destination as specified in the job specification (e.g. S3), and notify the requester of the job completion. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications.
-
-### 2. Interface 
-
-The interface handles the distribution, execution, storage and publishing of jobs.
-
-  [Transport](#transport)  
-  [Executor](#executor)  
-  [Storage Provider](#storage-provider)    
-  [Publisher](#publisher)  
-
-### Transport
-
-The transport interface is responsible for sending messages about jobs that are created, accepted, and executed  to other compute nodes. It also manages the identity of individual Bacalhau nodes to ensure that messages are only delivered to authorized nodes, which improves network security.
-
-To achieve this, the transport interface uses a protocol called **bprotocol**, which is a point-to-point scheduling protocol that runs over [libp2p](https://libp2p.io/) and is used to distribute job messages efficiently to other nodes on the network. This is our upgrade to the [GossipSub](https://docs.libp2p.io/concepts/publish-subscribe/) handler as it ensures that messages are delivered to the right nodes without causing network congestion, thereby making communication between nodes more scalable and efficient.
-
-### Executor
-
-The executor is a critical component of the Bacalhau network that handles the execution of jobs and ensures that the storage used by the job is local. One of its main responsibilities is to present the input and output storage volumes into the job when it is run.
-
-The executor performs two primary functions: presenting the storage volumes in a format that is suitable for the executor and running the job.
-
-When the job is completed, the executor will merge the stdout, stderr and named output volumes into a results folder that is then published to a remote location.
-
-Overall, the executor plays a crucial role in the Bacalhau network by ensuring that jobs are executed properly, and their results are published accurately.
-
-### Storage Provider
-
-In a peer-to-peer network like Bacalhau, storage providers play a crucial role in presenting an upstream storage source. There can be different storage providers available in the network, each with its own way of manifesting the CID (Content IDentifier) to the executor.
-
-For instance, there can be a POSIX storage provider that presents the CID as a POSIX filesystem, or a library storage provider that streams the contents of the CID via a library call.
-
-Therefore, the storage providers and Executor implementations are loosely coupled, allowing the POSIX and library storage providers to be used across multiple executors, wherever it is deemed appropriate.
-
-### Publisher
-
-The publisher is responsible for uploading the final results of a job to a remote location where clients can access them, such as S3 or IPFS.
-
-## Job Submission
+### Job Submission
 
 You should use the Bacalhau client to send a task to the network.
 The client transmits the job information to the Bacalhau network via established protocols and interfaces. 
@@ -108,7 +103,7 @@ Jobs submitted via the Bacalhau CLI are forwarded to a Bacalhau network node at 
 
 Bacalhau provides an interface to interact with the server via a REST API. Bacalhau uses 127.0.0.1 as the localhost and 1234 as the port by default.
 
-### Create a Job
+#### Create a Job
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -240,15 +235,15 @@ Usage:
 
 You can use the `bacalhau wasm run` [command] to run a job compiled into the (WASM) format. 
 
-## Job Acceptance
+### Job Acceptance
 
 When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and communicate with them directly. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications. 
 
-## Job execution
+### Job execution
 
 The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification] to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification].
 
-## Results publishing
+### Results publishing
 
 When the Compute node completes the job, it publishes the results to **S3's remote storage**, **IPFS**.
 
@@ -256,7 +251,7 @@ Bacalhau's seamless integration with IPFS ensures that users have a decentralize
 
 Bacalhau's S3 Publisher provides users with a secure and efficient method to publish task results to any S3-compatible storage service. This publisher supports not just AWS S3, but other S3-compatible services offered by cloud providers like Google Cloud Storage and Azure Blob Storage, as well as open-source options like MinIO. View [S3Publisher Specification] to get the detailed information.
 
-## Returning Information to the Bacalhau Client
+## Chapter 3 - Returning Information
 
 The Bacalhau client receives updates on the task execution status and results. A user can access the results and manage tasks through the command line interface.
 
@@ -356,7 +351,7 @@ values={[
 </Tabs>
 
  
-## Monitoring and Management
+## Chapter 4 - Monitoring and Management
 
 The Bacalhau client provides the user with tools to monitor and manage the execution of jobs. You can get information about status, progress and decide on next steps.
 View the  [Bacalhau Agent APIs] if you want to know the node's health, capabilities, and deployed Bacalhau version. 
