@@ -10,13 +10,6 @@ import TabItem from '@theme/TabItem';
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client using the Bacalhau CLI or Docker.
 
-<details>
-  <summary>Toggle me!</summary>
-  <div>
-    <div>This is the detailed content</div>
-  </div>
-</details>
-
 ## Step 1 - Install the Bacalhau Client
 
 The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau.  The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
