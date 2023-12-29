@@ -52,7 +52,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	// TODO: Could we use this to redirect to latest API?
 	h := e.router.Group("/")
 	h.Use(middleware.SetContentType(echo.MIMETextPlain))
-	h.GET("/", e.home)
+	h.GET("", e.home)
 
 	return e
 }
@@ -160,5 +160,5 @@ func (e *Endpoint) livez(c echo.Context) error {
 //	@Success	200	{object}	string	""
 //	@Router		/ [get]
 func (e *Endpoint) home(c echo.Context) error {
-	return c.String(http.StatusOK, "")
+	return c.JSON(http.StatusOK, version.Get())
 }
