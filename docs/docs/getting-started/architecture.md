@@ -35,14 +35,14 @@ The core components are responsible for handling requests and connecting differe
 <details>
   <summary>Requester node</summary>
   <div>
-    <div>In the Bacalhau network, the requester node is responsible for handling requests from clients using JSON over HTTP. This node serves as the main custodian of jobs that are submitted to it. When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and coordinates the job execution.</div>
+    <div>In the Bacalhau network, the requester node is responsible for handling requests from clients using `JSON` over `HTTP`. This node serves as the main custodian of jobs that are submitted to it. When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and coordinates the job execution.</div>
   </div>
 </details>
 
 <details>
   <summary>Compute node</summary>
   <div>
-    <div>In the Bacalhau network, it is the compute node that is responsible for determining whether it can execute a job or not. This model allows for a more decentralized approach to job orchestration as the network will function properly even if the requester nodes have stale view of the network, or if concurrent requesters are allocating jobs to the same compute nodes. Once the compute node has run the job and produced results, it will publish the results to a remote destination as specified in the job specification (e.g. S3), and notify the requester of the job completion. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications.</div>
+    <div>In the Bacalhau network, it is the compute node that is responsible for determining whether it can execute a job or not. This model allows for a more decentralized approach to job orchestration as the network will function properly even if the requester nodes have stale view of the network, or if concurrent requesters are allocating jobs to the same compute nodes. Once the compute node has run the job and produced results, it will publish the results to a remote destination as specified in the job specification (e.g. `S3`), and notify the requester of the job completion. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications.</div>
   </div>
 </details>
 
@@ -83,21 +83,22 @@ The interfaces handle the distribution, execution, storage and publishing of job
 
 ### Job preparation
 
-Define and create jobs in the Bacalhau network, leveraging job types introduced in v1.1 for enhanced orchestration and scheduling. Explore provided [Job Types].
+One can define and create jobs in the Bacalhau network, leveraging job types introduced in v1.2 for enhanced orchestration and scheduling. There are a bunch of different provided [Job Types]. Every job may need different variables, resource requirements and data details. Check the [Job Specification] for information on job and server-generated parameters and [task execution specifics].
 
-Jobs may include parameters, resource requirements, and data details. Check the [Job Specification] for information on job and server-generated parameters and [task execution specifics].
+<details>
+  <summary>Advanced job preparation</summary>
+  <div>
+    <div>
+        Prepare data with Bacalhau by [copying from URLs], [pinning to public storage], or [copying from an S3 bucket]. Mount data anywhere for Bacalhau to run against. Refer to [IPFS], [Local], [S3], and [URL] Source Specifications for data source usage.
 
-Prepare data with Bacalhau by [copying from URLs], [pinning to public storage], or [copying from an S3 bucket]. Mount data anywhere for Bacalhau to run against. Refer to [IPFS], [Local], [S3], and [URL] Source Specifications for data source usage.
+        Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker] and [WebAssembly] workloads.
 
-Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker] and [WebAssembly] workloads.
+        Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads] section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK].
 
-Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads] section.
-
-Integrate Python applications with Bacalhau using the [Bacalhau Python SDK].
-
-For node operation, refer to the [Running a Node] section for configuring and running a Bacalhau node.
-
-If you prefer an isolated environment, explore the [Private Cluster] for performing tasks without connecting to the main Bacalhau network.
+        For node operation, refer to the [Running a Node] section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster] for performing tasks without connecting to the main Bacalhau network.
+    </div>
+  </div>
+</details>
 
 ### Job Submission
 
@@ -126,8 +127,9 @@ You can use the command with [appropriate flags] to create a job in Bacalhau usi
 
 </TabItem>
 <TabItem value="API">
-
+    ```
     Endpoint: `PUT /api/v1/orchestrator/jobs`
+    ```
 
     You can use [Create Job API Documentation] to submit a new job for execution.
 
@@ -247,7 +249,7 @@ You can also use the `bacalhau run python` [command] to run a job in Python. In 
   </div>
 </details>
 
-You can use the `bacalhau wasm run` [command] to run a job compiled into the (WASM) format. 
+You can also use the `bacalhau wasm run` [command] to run a job compiled into the (WASM) format. 
 
 ### Job Acceptance
 
