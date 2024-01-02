@@ -7,7 +7,9 @@ sidebar_position: 20
 
 Not all jobs are created equal. Some jobs require more resources than others or have specific hardware requirements like GPUs. This page describes how to specify hardware requirements for your job.
 
+:::info
 Please bear in mind that each executor is implemented independently and these docs might be slightly out of date. Double check the man page for the executor you are using with `bacalhau [executor] --help`.
+:::
 
 ## Docker Executor
 

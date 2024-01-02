@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Docker Workloads'
+sidebar_label: 'Workloads (Docker)'
 sidebar_position: 3
 description: How to use docker containers with Bacalhau
 ---
@@ -11,7 +11,7 @@ Bacalhau executes jobs by running them within containers. Bacalhau employs a syn
 
 This section describes how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client.
 
-:::tip
+:::info
 
 You can check out this example tutorial on [how to work with custom containers in Bacalhau](https://docs.bacalhau.org/examples/workload-onboarding/custom-containers/) to see how we used all these steps together.
 
@@ -28,7 +28,7 @@ The `--input https://...` flag supports only **single files** and does not suppo
 The `--input s3://...` flag supports S3 keys and prefixes. For example, `s3://bucket/logs-2023-04*` includes all logs for April 2023.
 
 
-:::tip
+:::info
 
 You can check to see a [list of example public containers](https://github.com/orgs/bacalhau-project/packages?repo_name=examples) used by the Bacalhau team
 
@@ -58,7 +58,7 @@ If you need to pass data into your container you will do this through a Docker v
 
 We make the assumption that you are reading from a directory called `/inputs`, which is set as the default.
 
-:::tip
+:::info
 
 You can specify which directory the data is written to with the [`--input`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
 
@@ -70,7 +70,7 @@ If you need to return data from your container you will do this through a Docker
 
 We make the assumption that you are writing to a directory called `/outputs`, which is set as the default.
 
-:::tip
+:::info
 
 You can specify which directory the data is written to with the [`--output-volumes`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
 
@@ -125,7 +125,7 @@ $ docker run ... ${IMAGE} ${CMD}
 Launches a Docker container using the specified variables and commands. It binds volumes to facilitate data exchange between the host and the container.
 ```
 
-:::tip
+:::info
 
 Bacalhau will use the [default ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint) if your image contains one. If you need to specify another entrypoint, use the `--entrypoint` flag to `bacalhau docker run`.
 
