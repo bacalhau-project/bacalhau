@@ -3,7 +3,7 @@ package jobstore
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // ErrJobNotFound is returned when the job is not found
@@ -35,29 +35,29 @@ func (e ErrJobAlreadyExists) Error() string {
 // ErrInvalidJobState is returned when an job is in an invalid state.
 type ErrInvalidJobState struct {
 	JobID    string
-	Actual   model.JobStateType
-	Expected model.JobStateType
+	Actual   models.JobStateType
+	Expected models.JobStateType
 }
 
-func NewErrInvalidJobState(id string, actual model.JobStateType, expected model.JobStateType) ErrInvalidJobState {
+func NewErrInvalidJobState(id string, actual models.JobStateType, expected models.JobStateType) ErrInvalidJobState {
 	return ErrInvalidJobState{JobID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidJobState) Error() string {
-	if e.Expected == model.JobStateNew {
-		return "job " + e.JobID + " is in unexpted state " + e.Actual.String() + "."
+	if e.Expected.IsUndefined() {
+		return fmt.Sprintf("job %s is in unexpected state %s", e.JobID, e.Actual)
 	}
-	return "job " + e.JobID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	return fmt.Sprintf("job %s is in state %s but expected %s", e.JobID, e.Actual, e.Expected)
 }
 
 // ErrInvalidJobVersion is returned when an job has an invalid version.
 type ErrInvalidJobVersion struct {
 	JobID    string
-	Actual   int
-	Expected int
+	Actual   uint64
+	Expected uint64
 }
 
-func NewErrInvalidJobVersion(id string, actual int, expected int) ErrInvalidJobVersion {
+func NewErrInvalidJobVersion(id string, actual, expected uint64) ErrInvalidJobVersion {
 	return ErrInvalidJobVersion{JobID: id, Actual: actual, Expected: expected}
 }
 
@@ -68,89 +68,92 @@ func (e ErrInvalidJobVersion) Error() string {
 // ErrJobAlreadyTerminal is returned when an job is already in terminal state and cannot be updated.
 type ErrJobAlreadyTerminal struct {
 	JobID    string
-	Actual   model.JobStateType
-	NewState model.JobStateType
+	Actual   models.JobStateType
+	NewState models.JobStateType
 }
 
-func NewErrJobAlreadyTerminal(id string, actual model.JobStateType, newState model.JobStateType) ErrJobAlreadyTerminal {
+func NewErrJobAlreadyTerminal(id string, actual models.JobStateType, newState models.JobStateType) ErrJobAlreadyTerminal {
 	return ErrJobAlreadyTerminal{JobID: id, Actual: actual, NewState: newState}
 }
 
 func (e ErrJobAlreadyTerminal) Error() string {
 	return fmt.Sprintf("job %s is in terminal state %s and cannot transition to %s",
-		e.JobID, e.Actual.String(), e.NewState.String())
+		e.JobID, e.Actual, e.NewState)
 }
 
 // ErrExecutionNotFound is returned when an job already exists
 type ErrExecutionNotFound struct {
-	ExecutionID model.ExecutionID
+	ExecutionID string
 }
 
-func NewErrExecutionNotFound(id model.ExecutionID) ErrExecutionNotFound {
+func NewErrExecutionNotFound(id string) ErrExecutionNotFound {
 	return ErrExecutionNotFound{ExecutionID: id}
 }
 
 func (e ErrExecutionNotFound) Error() string {
-	return "execution not found: " + e.ExecutionID.String()
+	return "execution not found: " + e.ExecutionID
 }
 
 // ErrExecutionAlreadyExists is returned when an job already exists
 type ErrExecutionAlreadyExists struct {
-	ExecutionID model.ExecutionID
+	ExecutionID string
 }
 
-func NewErrExecutionAlreadyExists(id model.ExecutionID) ErrExecutionAlreadyExists {
+func NewErrExecutionAlreadyExists(id string) ErrExecutionAlreadyExists {
 	return ErrExecutionAlreadyExists{ExecutionID: id}
 }
 
 func (e ErrExecutionAlreadyExists) Error() string {
-	return "execution already exists: " + e.ExecutionID.String()
+	return "execution already exists: " + e.ExecutionID
 }
 
 // ErrInvalidExecutionState is returned when an execution is in an invalid state.
 type ErrInvalidExecutionState struct {
-	ExecutionID model.ExecutionID
-	Actual      model.ExecutionStateType
-	Expected    model.ExecutionStateType
+	ExecutionID string
+	Actual      models.ExecutionStateType
+	Expected    []models.ExecutionStateType
 }
 
 func NewErrInvalidExecutionState(
-	id model.ExecutionID, actual model.ExecutionStateType, expected model.ExecutionStateType) ErrInvalidExecutionState {
+	id string, actual models.ExecutionStateType, expected ...models.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID.String() + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	if len(e.Expected) > 0 {
+		return fmt.Sprintf("execution %s is in unexpted state %s", e.ExecutionID, e.Actual)
+	}
+	return fmt.Sprintf("execution %s is in state %s, but expeted %s", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.
 type ErrInvalidExecutionVersion struct {
-	ExecutionID model.ExecutionID
-	Actual      int
-	Expected    int
+	ExecutionID string
+	Actual      uint64
+	Expected    uint64
 }
 
-func NewErrInvalidExecutionVersion(id model.ExecutionID, actual int, expected int) ErrInvalidExecutionVersion {
+func NewErrInvalidExecutionVersion(id string, actual, expected uint64) ErrInvalidExecutionVersion {
 	return ErrInvalidExecutionVersion{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionVersion) Error() string {
-	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID.String(), e.Actual, e.Expected)
+	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
 type ErrExecutionAlreadyTerminal struct {
-	ExecutionID model.ExecutionID
-	Actual      model.ExecutionStateType
-	NewState    model.ExecutionStateType
+	ExecutionID string
+	Actual      models.ExecutionStateType
+	NewState    models.ExecutionStateType
 }
 
 func NewErrExecutionAlreadyTerminal(
-	id model.ExecutionID, actual model.ExecutionStateType, newState model.ExecutionStateType) ErrExecutionAlreadyTerminal {
+	id string, actual models.ExecutionStateType, newState models.ExecutionStateType) ErrExecutionAlreadyTerminal {
 	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
 }
 
 func (e ErrExecutionAlreadyTerminal) Error() string {
 	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
-		e.ExecutionID, e.Actual.String(), e.NewState.String())
+		e.ExecutionID, e.Actual, e.NewState)
 }

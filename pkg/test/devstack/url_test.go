@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -11,10 +11,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -45,38 +50,44 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	suite.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
-				},
-			}),
+			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
 		),
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(model.DownloadFilenameStderr, ""),
-			scenario.FileEquals(model.DownloadFilenameStdout, allContent),
+			scenario.FileEquals(downloader.DownloadFilenameStderr, ""),
+			scenario.FileEquals(downloader.DownloadFilenameStdout, allContent),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),
 		},
-		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					testCase.mount1,
-					testCase.mount2,
+
+		Spec: testutils.MakeSpecWithOpts(suite.T(),
+			job.WithPublisher(
+				model.PublisherSpec{
+					Type: model.PublisherIpfs,
 				},
-			},
-		},
+			),
+			job.WithEngineSpec(
+				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					WithEntrypoint("_start").
+					WithParameters(
+						testCase.mount1,
+						testCase.mount2,
+					).
+					Build(),
+			),
+		),
 	}
 
 	suite.RunScenario(testScenario)
@@ -210,32 +221,38 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	s.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
-				},
-			}),
+			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
-		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					urlmount,
-					path.Join(ipfsmount, ipfsfile),
+
+		Spec: testutils.MakeSpecWithOpts(s.T(),
+			job.WithPublisher(
+				model.PublisherSpec{
+					Type: model.PublisherIpfs,
 				},
-			},
-		},
-		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, URLContent+IPFSContent),
+			),
+			job.WithEngineSpec(
+				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					WithEntrypoint("_start").
+					WithParameters(
+						urlmount,
+						path.Join(ipfsmount, ipfsfile),
+					).
+					Build(),
+			),
+		),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+IPFSContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 

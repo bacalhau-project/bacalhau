@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package compute
 
@@ -7,40 +7,31 @@ import (
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 )
 
-func generateJob() model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: uuid.New().String(),
+func addInput(execution *models.Execution, cid string) *models.Execution {
+	execution.Job.Task().InputSources = append(execution.Job.Task().InputSources, &models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceIPFS,
+			Params: ipfs.Source{
+				CID: cid,
+			}.ToMap(),
 		},
-		APIVersion: model.APIVersionLatest().String(),
-		Spec: model.Spec{
-			Engine:    model.EngineNoop,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
-		},
-	}
-}
-
-func addInput(job model.Job, cid string) model.Job {
-	job.Spec.Inputs = append(job.Spec.Inputs, model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-		Path:          "/test_file.txt",
+		Target: "/test_file.txt",
 	})
-	return job
+	return execution
 }
 
-func addResourceUsage(job model.Job, usage model.ResourceUsageData) model.Job {
-	job.Spec.Resources = model.ResourceUsageConfig{
+func addResourceUsage(execution *models.Execution, usage models.Resources) *models.Execution {
+	execution.Job.Task().ResourcesConfig = &models.ResourcesConfig{
 		CPU:    fmt.Sprintf("%f", usage.CPU),
 		Memory: fmt.Sprintf("%d", usage.Memory),
 		Disk:   fmt.Sprintf("%d", usage.Disk),
 		GPU:    fmt.Sprintf("%d", usage.GPU),
 	}
-	return job
+	return execution
 }
 
 func getResources(c, m, d string) model.ResourceUsageConfig {

@@ -1,9 +1,13 @@
 package model
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -11,6 +15,7 @@ import (
 type Job struct {
 	APIVersion string `json:"APIVersion" example:"V1beta1"`
 
+	// TODO this doesn't seem like it should be a part of the job as it cannot be known by a client ahead of time.
 	Metadata Metadata `json:"Metadata,omitempty"`
 
 	// The specification of this job.
@@ -25,6 +30,15 @@ func (j Job) ID() string {
 // String returns the id of the job.
 func (j Job) String() string {
 	return j.Metadata.ID
+}
+
+// Type returns the type of the job.
+func (j Job) Type() string {
+	jobType := JobTypeBatch
+	if j.Spec.Deal.TargetingMode == TargetAll {
+		jobType = JobTypeOps
+	}
+	return jobType
 }
 
 type Metadata struct {
@@ -60,13 +74,14 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:    EngineDocker,
-			Verifier:  VerifierNoop,
-			Publisher: PublisherEstuary,
+			EngineSpec: EngineSpec{
+				Type: EngineNoop.String(),
+			},
+			PublisherSpec: PublisherSpec{
+				Type: PublisherIpfs,
+			},
 			Deal: Deal{
 				Concurrency: 1,
-				Confidence:  0,
-				MinBids:     0, // 0 means no minimum before bidding
 			},
 		},
 	})
@@ -86,23 +101,67 @@ type JobWithInfo struct {
 	History []JobHistory `json:"History,omitempty"`
 }
 
+type TargetingMode bool
+
+const (
+	TargetAny TargetingMode = false
+	TargetAll TargetingMode = true
+)
+
+func (t TargetingMode) String() string {
+	if bool(t) {
+		return "all"
+	} else {
+		return "any"
+	}
+}
+
+func ParseTargetingMode(s string) (TargetingMode, error) {
+	switch s {
+	case "any":
+		return TargetAny, nil
+	case "all":
+		return TargetAll, nil
+	default:
+		return TargetAny, fmt.Errorf(`expecting "any" or "all", not %q`, s)
+	}
+}
+
 // The deal the client has made with the bacalhau network.
 // This is updateable by the client who submitted the job
 type Deal struct {
+	// Whether the job should be run on any matching node (false) or all
+	// matching nodes (true). If true, other fields in this struct are ignored.
+	TargetingMode TargetingMode `json:"TargetingMode,omitempty"`
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
-	// The number of nodes that must agree on a verification result
-	// this is used by the different verifiers - for example the
-	// deterministic verifier requires the winning group size
-	// to be at least this size
-	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the Requester
-	// node will randomly accept concurrency-many of them. This allows the
-	// Requester node to get some level of guarantee that the execution of the
-	// jobs will be spread evenly across the network (assuming that this value
-	// is some large proportion of the size of the network).
-	MinBids int `json:"MinBids,omitempty"`
+}
+
+// GetConcurrency returns the concurrency value from the deal
+func (d Deal) GetConcurrency() int {
+	if d.Concurrency == 0 {
+		return 1
+	}
+	return d.Concurrency
+}
+
+func (d Deal) IsValid() error {
+	var err error
+	switch d.TargetingMode {
+	case TargetAll:
+		if d.Concurrency > 1 {
+			// Although the requirement is stated as == 0, the default value is
+			// 1, so we just ignore both 1 or 0 for convenience.
+			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
+		}
+	case TargetAny:
+		if d.Concurrency <= 0 {
+			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
+		}
+	}
+
+	return err
 }
 
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
@@ -121,21 +180,33 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
+func (r LabelSelectorRequirement) String() string {
+	return fmt.Sprintf("%s %s %s", r.Key, r.Operator, strings.Join(r.Values, "|"))
+}
+
+type PublisherSpec struct {
+	Type   Publisher              `json:"Type,omitempty"`
+	Params map[string]interface{} `json:"Params,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// e.g. docker or language
+	// Deprecated: use EngineSpec.
 	Engine Engine `json:"Engine,omitempty"`
 
-	Verifier Verifier `json:"Verifier,omitempty"`
+	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher Publisher `json:"Publisher,omitempty"`
 
-	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty"`
-	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
+	// Deprecated: use PublisherSpec instead
+	Publisher     Publisher     `json:"Publisher,omitempty"`
+	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
+
+	// Deprecated: use EngineSpec.
+	Docker JobSpecDocker `json:"Docker,omitempty"`
+	// Deprecated: use EngineSpec.
+	Wasm JobSpecWasm `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -145,16 +216,15 @@ type Spec struct {
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
-	Timeout float64 `json:"Timeout,omitempty"`
+	Timeout int64 `json:"Timeout,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty"`
+	Inputs []StorageSpec `json:"Inputs,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty"`
+	Outputs []StorageSpec `json:"Outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
@@ -171,14 +241,39 @@ type Spec struct {
 
 // Return timeout duration
 func (s *Spec) GetTimeout() time.Duration {
-	return time.Duration(s.Timeout * float64(time.Second))
+	return time.Duration(s.Timeout) * time.Second
 }
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Language.Context,
-		&s.Wasm.EntryModule,
+	var storages []*StorageSpec
+	// TODO TODO: to refactor the way that wasm finds/loads remote modules
+	/*
+		wasm engine contains embedded StorageSpec's, we need to decode the engine
+		to access these specs so the requester can route the job based on storage requirements.
+
+		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
+		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
+		spec.Inputs with its EntryModule and ImportModules fields.
+		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
+		inputs via their arguments - docker image comes to mind as a potential candidate).
+
+		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
+		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
+		plugins to handle the download of different storage specs seems impractical
+		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
+		provides more context on the need for the change).
+	*/
+
+	if s.EngineSpec.Engine() == EngineWasm {
+		wasmEngine, err := DecodeEngineSpec[WasmEngineSpec](s.EngineSpec)
+		if err != nil {
+			// TODO(forrest): [correctness] propagate error up stack
+			log.Error().Err(err).Msg("failed to decode wasm engine spec for AllStorageSpecs")
+		} else {
+			storages = append(storages, &wasmEngine.EntryModule)
+		}
 	}
 
 	for _, collection := range [][]StorageSpec{
@@ -199,26 +294,12 @@ type JobSpecDocker struct {
 	Image string `json:"Image,omitempty"`
 	// optionally override the default entrypoint
 	Entrypoint []string `json:"Entrypoint,omitempty"`
+	// Parameters holds additional commandline arguments
+	Parameters []string `json:"Parameters,omitempty"`
 	// a map of env to run the container with
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// working directory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
-// for language style executors (can target docker or wasm)
-type JobSpecLanguage struct {
-	Language        string `json:"Language,omitempty"`        // e.g. python
-	LanguageVersion string `json:"LanguageVersion,omitempty"` // e.g. 3.8
-	// must this job be run in a deterministic context?
-	Deterministic bool `json:"DeterministicExecution,omitempty"`
-	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context StorageSpec `json:"JobContext,omitempty"`
-	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"Command,omitempty"`
-	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"ProgramPath,omitempty"`
-	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"RequirementsPath,omitempty"`
 }
 
 // Describes a raw WASM job
@@ -241,39 +322,6 @@ type JobSpecWasm struct {
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
-}
-
-// we emit these to other nodes so they update their
-// state locally and can emit events locally
-type JobEvent struct {
-	// APIVersion of the Job
-	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
-
-	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// compute execution identifier
-	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
-	// the node that this event is for
-	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
-	EventName    JobEventType `json:"EventName,omitempty"`
-	// this is only defined in "create" events
-	Spec Spec `json:"Spec,omitempty"`
-	// this is only defined in "update_deal" events
-	Deal                 Deal               `json:"Deal,omitempty"`
-	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
-
-	EventTime       time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
-	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`
-
-	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
 }
 
 // we need to use a struct for the result because:
@@ -311,5 +359,26 @@ type JobCancelPayload struct {
 }
 
 func (j JobCancelPayload) GetClientID() string {
+	return j.ClientID
+}
+
+type LogsPayload struct {
+	// the id of the client that is requesting the logs
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
+
+	// the job id of the job to be shown
+	JobID string `json:"JobID,omitempty" validate:"required"`
+
+	// the execution to be shown
+	ExecutionID string `json:"ExecutionID,omitempty" validate:"required"`
+
+	// whether the logs history is required
+	WithHistory bool `json:"WithHistory,omitempty"`
+
+	// whether the logs should be followed after the current logs are shown
+	Follow bool `json:"Follow,omitempty"`
+}
+
+func (j LogsPayload) GetClientID() string {
 	return j.ClientID
 }

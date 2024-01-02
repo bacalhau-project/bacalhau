@@ -3,30 +3,30 @@ package ipfs
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
-	icore "github.com/ipfs/interface-go-ipfs-core"
+	icore "github.com/ipfs/boxo/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/ipfs/kubo/commands"
-	"github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"
 	"github.com/ipfs/kubo/core/corehttp"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
-	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
 )
 
@@ -41,6 +41,8 @@ var (
 const (
 	// The default size of a node's repo keypair.
 	defaultKeypairSize = 2048
+	// PvtIpfsFolderPerm is what permissions we give to a private ipfs repo
+	PvtIpfsFolderPerm = 0755
 )
 
 // Node is a wrapper around an in-process IPFS node that can be used to
@@ -48,9 +50,7 @@ const (
 type Node struct {
 	api      icore.CoreAPI
 	ipfsNode *core.IpfsNode
-
-	// Mode is the mode the ipfs node was created in.
-	Mode NodeMode
+	cfg      types.IpfsConfig
 
 	// RepoPath is the path to the ipfs node's data repository.
 	RepoPath string
@@ -61,77 +61,8 @@ type Node struct {
 	apiAddresses []string
 }
 
-// NodeMode configures how the node treats the public IPFS network.
-type NodeMode int
-
-const (
-	// ModeDefault is the default node mode, which uses an IPFS repo backed
-	// by the `flatfs` datastore, and connects to the public IPFS network.
-	ModeDefault NodeMode = iota
-
-	// ModeLocal is a node mode that uses an IPFS repo backed by the `flatfs`
-	// datastore and ignores the public IPFS network completely, for setting
-	// up test environments without polluting the public IPFS nodes.
-	ModeLocal
-)
-
-// Config contains configuration for the IPFS node.
-type Config struct {
-	// PeerAddrs is a list of additional IPFS node multiaddrs to use as
-	// peers. By default, the IPFS node will connect to whatever nodes are
-	// specified by its mode.
-	PeerAddrs []string
-
-	// Mode configures the node's default settings.
-	Mode NodeMode
-
-	// KeypairSize is the number of bits to use for the node's repo keypair. If
-	// nil, then a default value of 2048 is used.
-	KeypairSize int
-}
-
-func (cfg *Config) getKeypairSize() int {
-	if cfg.KeypairSize == 0 {
-		return defaultKeypairSize
-	}
-
-	return cfg.KeypairSize
-}
-
-func (cfg *Config) getMode() NodeMode {
-	return cfg.Mode
-}
-
-// NewNode creates a new IPFS node in default mode, which creates an IPFS
-// repo in a temporary directory, uses the public libp2p nodes as peers and
-// generates a repo keypair with 2048 bits.
-func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeDefault)
-}
-
-// NewLocalNode creates a new local IPFS node in local mode, which can be used
-// to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return newNode(ctx, cm, peerAddrs, ModeLocal)
-}
-
-func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
-	// filter out any empty peer addresses
-	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
-	for _, addr := range peerAddrs {
-		if addr != "" {
-			filteredPeerAddrs = append(filteredPeerAddrs, addr)
-		}
-	}
-	return newNodeWithConfig(ctx, cm, Config{
-		Mode:      mode,
-		PeerAddrs: filteredPeerAddrs,
-	})
-}
-
-// newNodeWithConfig creates a new IPFS node with the given configuration.
-// NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+// NewNodeWithConfig creates a new in-process IPFS node with the given configuration.
+func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types.IpfsConfig) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins(cm)
@@ -140,7 +71,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		return nil, err
 	}
 
-	api, ipfsNode, repoPath, err := createNode(ctx, cm, cfg)
+	api, ipfsNode, repoPath, err := createNode(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
@@ -150,7 +81,8 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		}
 	}()
 
-	if err = connectToPeers(ctx, api, ipfsNode, cfg.PeerAddrs); err != nil {
+	// TODO if cfg.PrivateInternal is true do we actually want to connect to peers?
+	if err = connectToPeers(ctx, api, ipfsNode, cfg.GetSwarmAddresses()); err != nil {
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
@@ -170,7 +102,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	n := Node{
 		api:      api,
 		ipfsNode: ipfsNode,
-		Mode:     cfg.getMode(),
+		cfg:      cfg,
 		RepoPath: repoPath,
 		APIPort:  apiPort,
 	}
@@ -239,7 +171,8 @@ func (n *Node) Close(ctx context.Context) error {
 		}
 	}
 
-	if n.RepoPath != "" {
+	// delete repo if user didn't specify a repo path.
+	if n.cfg.ServePath == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -248,20 +181,69 @@ func (n *Node) Close(ctx context.Context) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
-	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
+func createNode(ctx context.Context, cfg types.IpfsConfig) (icore.CoreAPI, *core.IpfsNode,
+	string, error) {
+	// generate an IPFS configuration
+	ipfsCfg, err := buildIPFSConfig(cfg)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to build IPFS config")
 	}
 
-	var repo kuboRepo.Repo
-	if err = createRepo(repoPath, cfg); err != nil {
-		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
+	// we need to check if the user wants a custom repo path and if there is already a repo present there.
+	repoPath := cfg.ServePath
+	if repoPath == "" {
+		// user doesn't want a custom repo path, we will make temporary repo that's removed when the node calls Close()
+		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to make temporary IPFS repo: %w", err)
+		}
+		if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
+			return nil, nil, "", fmt.Errorf("failed to initialize IPFS repo at %s: %w", repoPath, err)
+		}
+	} else {
+		// user wants deterministic repo path, check if one is already present
+		if _, err := os.Stat(repoPath); err != nil {
+			if os.IsNotExist(err) {
+				if err := fsrepo.Init(repoPath, ipfsCfg); err != nil {
+					return nil, nil, "", fmt.Errorf("failed to initialize IPFS repo at %s: %w", repoPath, err)
+				}
+			} else {
+				return nil, nil, "", err
+			}
+		}
 	}
 
-	repo, err = fsrepo.Open(repoPath)
+	// If we have a swarm key, copy it into the repo
+	if cfg.SwarmKeyPath != "" {
+		destinationPath := filepath.Join(repoPath, "swarm.key")
+		err = copyFile(cfg.SwarmKeyPath, destinationPath)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to copy swarm key: %w", err)
+		} else {
+			log.Ctx(ctx).Debug().Str("Path", destinationPath).Msg("Copied IPFS private swarm key")
+		}
+	}
+
+	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to open temp repo: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to open repo: %w", err)
+	}
+
+	// if the user provided an IPFS repo then we need to copy the peerID and private key
+	// from the existing repo to the configuration we built. This will allow the embedded IPFS node to keep
+	// its identity across restarts.
+	if cfg.ServePath != "" {
+		repoCfg, err := repo.Config()
+		if err != nil {
+			return nil, nil, "", err
+		}
+		ipfsCfg.Identity.PeerID = repoCfg.Identity.PeerID
+		ipfsCfg.Identity.PrivKey = repoCfg.Identity.PrivKey
+	}
+
+	// write the configuration we built to the IPFS repo.
+	if err := repo.SetConfig(ipfsCfg); err != nil {
+		return nil, nil, "", err
 	}
 
 	nodeOptions := &core.BuildCfg{
@@ -321,7 +303,6 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 	// Options determine which functionality the API should include:
 	var opts = []corehttp.ServeOption{
 		corehttp.VersionOption(),
-		corehttp.GatewayOption(false),
 		corehttp.WebUIOption,
 		corehttp.CommandsOption(cmdContext),
 	}
@@ -329,10 +310,12 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 	var addresses []string
 	for _, listener := range listeners {
 		addresses = append(addresses, listener.Multiaddr().String())
+		log.Debug().Stringer("Address", listener.Multiaddr()).Msg("IPFS listening")
 		// NOTE: this is not critical, but we should log for debugging
 		go func(listener manet.Listener) {
-			if err := corehttp.Serve(node, manet.NetListener(listener), opts...); err != nil {
-				log.Debug().Err(err).Msgf("node '%s' failed to serve ipfs api", node.Identity)
+			err := corehttp.Serve(node, manet.NetListener(listener), opts...)
+			if err != nil && !errors.Is(err, net.ErrClosed) {
+				log.Warn().Stringer("IPFSNode", node.Identity).Err(err).Msg("failed to serve IPFS API")
 			}
 		}(listener)
 	}
@@ -370,65 +353,17 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 	return anyErr
 }
 
-// createRepo creates an IPFS repository in a given directory.
-func createRepo(path string, nodeConfig Config) error {
-	cfg, err := config.Init(io.Discard, nodeConfig.getKeypairSize())
+// loadPlugins initializes and injects the standard set of ipfs plugins.
+func loadPlugins(cm *system.CleanupManager) error {
+	// We use a temporary folder for the plugin loader so that when it
+	// does the dynamic plugin loading (which cannot be turned off) it
+	// does not break when it finds a binary in a local ./plugins folder
+	repoDir, err := os.MkdirTemp("", "")
 	if err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	profile := "flatfs"
-	if nodeConfig.getMode() == ModeLocal {
-		profile = "test"
-	}
-
-	transformer, ok := config.Profiles[profile]
-	if !ok {
-		return fmt.Errorf("invalid configuration profile: %s", profile)
-	}
-	if err := transformer.Transform(cfg); err != nil { //nolint: govet
 		return err
 	}
 
-	// If we're in local mode, then we need to manually change the config to
-	// serve an IPFS swarm client on some local port:
-	if nodeConfig.getMode() == ModeLocal {
-		cfg.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
-		cfg.Swarm.EnableHolePunching = config.False
-		cfg.Swarm.DisableNatPortMap = true
-		cfg.Swarm.RelayClient.Enabled = config.False
-		cfg.Swarm.RelayService.Enabled = config.False
-		cfg.Swarm.Transports.Network.Relay = config.False
-		cfg.Discovery.MDNS.Enabled = false
-		cfg.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0"}
-		cfg.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0"}
-		cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
-	} else {
-		cfg.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
-	}
-
-	// establish peering with the passed nodes. This is different than bootstrapping or manually connecting to peers,
-	//and kubo will create sticky connections with these nodes and reconnect if the connection is lost
-	// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
-	swarmPeers, err := ParsePeersString(nodeConfig.PeerAddrs)
-	if err != nil {
-		return fmt.Errorf("failed to parse peer addresses: %w", err)
-	}
-	cfg.Peering = config.Peering{
-		Peers: swarmPeers,
-	}
-
-	err = fsrepo.Init(path, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to init ipfs repo: %w", err)
-	}
-
-	return nil
-}
-
-// loadPlugins initializes and injects the standard set of ipfs plugins.
-func loadPlugins(cm *system.CleanupManager) error {
-	plugins, err := loader.NewPluginLoader("")
+	plugins, err := loader.NewPluginLoader(repoDir)
 	if err != nil {
 		return fmt.Errorf("error loading plugins: %s", err)
 	}
@@ -443,7 +378,10 @@ func loadPlugins(cm *system.CleanupManager) error {
 
 	// Set the global cache so we can use it in the ipfs daemon:
 	pluginLoader = plugins
-	cm.RegisterCallback(plugins.Close)
+	cm.RegisterCallback(func() error {
+		plugins.Close()
+		return os.RemoveAll(repoDir)
+	})
 	return nil
 }
 

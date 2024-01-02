@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -22,125 +23,119 @@ type ExecutorsFactory interface {
 	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 }
 
-type VerifiersFactory interface {
-	Get(ctx context.Context,
-		nodeConfig NodeConfig) (verifier.VerifierProvider, error)
-}
-
 type PublishersFactory interface {
-	Get(ctx context.Context,
-		nodeConfig NodeConfig) (publisher.PublisherProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 }
 
 // Functions that implement the factories for easier creation of new implementations
-type StorageProvidersFactoryFunc func(
-	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
+type StorageProvidersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
 
-func (f StorageProvidersFactoryFunc) Get(
-	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
+func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
-type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
+type ExecutorsFactoryFunc func(
+	ctx context.Context,
+	nodeConfig NodeConfig,
+) (executor.ExecutorProvider, error)
 
-func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+func (f ExecutorsFactoryFunc) Get(
+	ctx context.Context,
+	nodeConfig NodeConfig,
+) (executor.ExecutorProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
-type VerifiersFactoryFunc func(
-	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error)
+type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 
-func (f VerifiersFactoryFunc) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
-	return f(ctx, nodeConfig)
-}
-
-type PublishersFactoryFunc func(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error)
-
-func (f PublishersFactoryFunc) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
+func (f PublishersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
 // Standard implementations used in prod and when testing prod behavior
-type StandardStorageProvidersFactory struct{}
-
-func (f *StandardStorageProvidersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (storage.StorageProvider, error) {
-	return executor_util.NewStandardStorageProvider(
-		ctx,
-		nodeConfig.CleanupManager,
-		executor_util.StandardStorageProviderOptions{
-			API:                  nodeConfig.IPFSClient,
-			FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
-		},
-	)
-}
-
-func NewStandardStorageProvidersFactory() *StandardStorageProvidersFactory {
-	return &StandardStorageProvidersFactory{}
-}
-
-type StandardExecutorsFactory struct{}
-
-func (f *StandardExecutorsFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-	return executor_util.NewStandardExecutorProvider(
-		ctx,
-		nodeConfig.CleanupManager,
-		executor_util.StandardExecutorOptions{
-			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
-			Storage: executor_util.StandardStorageProviderOptions{
-				API:                  nodeConfig.IPFSClient,
-				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
+func NewStandardStorageProvidersFactory() StorageProvidersFactory {
+	return StorageProvidersFactoryFunc(func(
+		ctx context.Context,
+		nodeConfig NodeConfig,
+	) (storage.StorageProvider, error) {
+		pr, err := executor_util.NewStandardStorageProvider(
+			ctx,
+			nodeConfig.CleanupManager,
+			executor_util.StandardStorageProviderOptions{
+				API:                   nodeConfig.IPFSClient,
+				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
-		},
-	)
+		)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err
+	})
 }
 
-func NewStandardExecutorsFactory() *StandardExecutorsFactory {
-	return &StandardExecutorsFactory{}
+func NewStandardExecutorsFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			pr, err := executor_util.NewStandardExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				executor_util.StandardExecutorOptions{
+					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+		})
 }
 
-type StandardVerifiersFactory struct{}
-
-func (f *StandardVerifiersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
-	encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
-	return verifier_util.NewStandardVerifiers(
-		ctx,
-		nodeConfig.CleanupManager,
-		encrypter.Encrypt,
-		encrypter.Decrypt,
-	)
+func NewPluginExecutorFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			pr, err := executor_util.NewPluginExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				executor_util.PluginExecutorOptions{
+					Plugins: []executor_util.PluginExecutorManagerConfig{
+						{
+							Name:             models.EngineDocker,
+							Path:             config.GetExecutorPluginsPath(),
+							Command:          "bacalhau-docker-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+						{
+							Name:             models.EngineWasm,
+							Path:             config.GetExecutorPluginsPath(),
+							Command:          "bacalhau-wasm-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+					},
+				})
+			if err != nil {
+				return nil, err
+			}
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+		})
 }
 
-func NewStandardVerifiersFactory() *StandardVerifiersFactory {
-	return &StandardVerifiersFactory{}
-}
-
-type StandardPublishersFactory struct{}
-
-func (f *StandardPublishersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-	return publisher_util.NewIPFSPublishers(
-		ctx,
-		nodeConfig.CleanupManager,
-		nodeConfig.IPFSClient,
-		nodeConfig.EstuaryAPIKey,
-		nodeConfig.LotusConfig,
-	)
-}
-
-func NewStandardPublishersFactory() *StandardPublishersFactory {
-	return &StandardPublishersFactory{}
+func NewStandardPublishersFactory() PublishersFactory {
+	return PublishersFactoryFunc(
+		func(
+			ctx context.Context,
+			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
+			pr, err := publisher_util.NewIPFSPublishers(
+				ctx,
+				nodeConfig.CleanupManager,
+				nodeConfig.IPFSClient,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
+		})
 }

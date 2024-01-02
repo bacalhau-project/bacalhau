@@ -6,7 +6,6 @@ First, thanks to this package you can now write complex pipelines for Bacalhau.
 For instance, jobs can communicate their output's CIDs to downstream jobs, that can use those as inputs.
 Second, Apache Airflow provides a solid solution to reliably orchestrate your DAGs.
 
-> :warning: You may try this out using a local devstack until https://github.com/bacalhau-project/bacalhau/issues/2038 has been fixed. Please set the following environment variables `AIRFLOW_VAR_BACALHAU_API_HOST`, `AIRFLOW_VAR_BACALHAU_API_PORT`.
 
 ## Features
 
@@ -117,13 +116,12 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
         api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
-            verifier="Noop",
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "Hello World"],
             ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
+            deal=dict(concurrency=1),
         ),
     )
 
@@ -135,13 +133,12 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
         ],
         job_spec=dict(
             engine="Docker",
-            verifier="Noop",
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["cat", "/task_1_output/stdout"],
             ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
+            deal=dict(concurrency=1),
         ),
     )
 

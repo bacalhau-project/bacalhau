@@ -5,49 +5,52 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type NodeInfoProviderParams struct {
 	Executors          executor.ExecutorProvider
+	Publisher          publisher.PublisherProvider
+	Storages           storage.StorageProvider
 	CapacityTracker    capacity.Tracker
 	ExecutorBuffer     *ExecutorBuffer
-	MaxJobRequirements model.ResourceUsageData
+	MaxJobRequirements models.Resources
 }
 
 type NodeInfoProvider struct {
 	executors          executor.ExecutorProvider
+	publishers         publisher.PublisherProvider
+	storages           storage.StorageProvider
 	capacityTracker    capacity.Tracker
 	executorBuffer     *ExecutorBuffer
-	maxJobRequirements model.ResourceUsageData
+	maxJobRequirements models.Resources
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	return &NodeInfoProvider{
 		executors:          params.Executors,
+		publishers:         params.Publisher,
+		storages:           params.Storages,
 		capacityTracker:    params.CapacityTracker,
 		executorBuffer:     params.ExecutorBuffer,
 		maxJobRequirements: params.MaxJobRequirements,
 	}
 }
 
-func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
-	var executionEngines []model.Engine
-	for _, e := range model.EngineTypes() {
-		if n.executors.Has(ctx, e) {
-			executionEngines = append(executionEngines, e)
-		}
-	}
-
-	return model.ComputeNodeInfo{
-		ExecutionEngines:   executionEngines,
+func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNodeInfo {
+	return models.ComputeNodeInfo{
+		ExecutionEngines:   n.executors.Keys(ctx),
+		Publishers:         n.publishers.Keys(ctx),
+		StorageSources:     n.storages.Keys(ctx),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
-		EnqueuedExecutions: len(n.executorBuffer.EnqueuedExecutions()),
+		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
 	}
 }
 
 // compile-time interface check
-var _ model.ComputeNodeInfoProvider = &NodeInfoProvider{}
+var _ models.ComputeNodeInfoProvider = &NodeInfoProvider{}

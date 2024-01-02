@@ -1,9 +1,13 @@
+variable "bacalhau_environment" {
+  type = string
+  default = ""
+}
 variable "bacalhau_version" {
   type = string
 }
 # allows deploying bacalhau from a specific branch instead of a release
 variable "bacalhau_branch" {
-  type = string
+  type    = string
   default = ""
 }
 variable "bacalhau_port" {
@@ -27,6 +31,14 @@ variable "bacalhau_node_id_1" {
   default = ""
 }
 variable "bacalhau_node_id_2" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_type" {
+  type    = string
+  default = "requester,compute"
+}
+variable "bacalhau_connect_peer" {
   type    = string
   default = ""
 }
@@ -71,6 +83,10 @@ variable "zone" {
   type = string
 }
 variable "ingress_cidrs" {
+  type    = set(string)
+  default = []
+}
+variable "egress_cidrs" {
   type    = set(string)
   default = []
 }
@@ -163,12 +179,6 @@ variable "grafana_cloud_tempo_endpoint" {
   default = ""
 }
 
-variable "estuary_api_key" {
-  type      = string
-  default   = ""
-  sensitive = true
-}
-
 variable "internal_ip_addresses" {
   type    = list(string)
   default = []
@@ -193,4 +203,30 @@ variable "otel_collector_version" {
 variable "otel_collector_endpoint" {
   type    = string
   default = ""
+}
+
+// Credentials for S3 storage source and publisher
+variable "aws_access_key_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "aws_secret_access_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+// Credentials for docker hub
+variable "docker_username" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "docker_password" {
+  type      = string
+  default   = ""
+  sensitive = true
 }

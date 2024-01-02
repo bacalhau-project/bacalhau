@@ -1,14 +1,11 @@
 # Missing API Version
 # APIVersion: v1beta1
 Spec:
-  Engine: Noop
-  Verifier: Noop
-  Publisher: Noop
-  outputs:
-    - StorageSource: IPFS
+  Engine: noop
+  Publisher: noop
+  Outputs:
+    - StorageSource: ipfs
       Name: output_custom
-      path: /output_custom
+      Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0
-    MinBids: 0

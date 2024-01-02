@@ -2,41 +2,46 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
+	"github.com/libp2p/go-libp2p/core/host"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	compute_bidstrategies "github.com/bacalhau-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
-	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	storage_bidstrategy "github.com/bacalhau-project/bacalhau/pkg/storage/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
 	// Visible for testing
+	ID                  string
 	LocalEndpoint       compute.Endpoint
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
+	Storages            storage.StorageProvider
+	LogServer           *logstream.LogStreamServer
+	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
-	computeInfoProvider model.ComputeNodeInfoProvider
+	computeInfoProvider models.ComputeNodeInfoProvider
 }
 
 //nolint:funlen
@@ -44,15 +49,25 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
-	apiServer *publicapi.APIServer,
+	apiServer *publicapi.Server,
 	config ComputeConfig,
-	simulatorNodeID string,
-	simulatorRequestHandler *simulator.RequestHandler,
+	storagePath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	verifiers verifier.VerifierProvider,
-	publishers publisher.PublisherProvider) (*Compute, error) {
-	executionStore := inlocalstore.NewPersistentJobStore(inmemory.NewStore())
+	publishers publisher.PublisherProvider,
+	fsRepo *repo.FsRepo,
+) (*Compute, error) {
+	var executionStore store.ExecutionStore
+	// create the execution store
+	if config.ExecutionStore == nil {
+		var err error
+		executionStore, err = fsRepo.InitExecutionStore(ctx, host.ID().String())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		executionStore = config.ExecutionStore
+	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -63,35 +78,24 @@ func NewComputeNode(
 	})
 
 	// Callback to send compute events (i.e. requester endpoint)
-	var computeCallback compute.Callback
-	standardComputeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
+	computeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
 		Host: host,
 	})
-	if simulatorNodeID != "" {
-		simulatorProxy := simulator_protocol.NewCallbackProxy(simulator_protocol.CallbackProxyParams{
-			SimulatorNodeID: simulatorNodeID,
-			Host:            host,
-		})
-		if simulatorRequestHandler != nil {
-			// if this node is the simulator node, we need to register a local callback to allow self dialing
-			simulatorProxy.RegisterLocalComputeCallback(simulatorRequestHandler)
-			// set standard callback implementation so that the simulator can forward requests to the correct endpoints
-			// after it finishes its validation and processing of the request
-			simulatorRequestHandler.SetRequesterProxy(standardComputeCallback)
-		}
-		computeCallback = simulatorProxy
-	} else {
-		computeCallback = standardComputeCallback
-	}
 
+	resultsPath, err := compute.NewResultsPath()
+	if err != nil {
+		return nil, err
+	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
-		ID:              host.ID().String(),
-		Callback:        computeCallback,
-		Store:           executionStore,
-		Executors:       executors,
-		Verifiers:       verifiers,
-		Publishers:      publishers,
-		SimulatorConfig: config.SimulatorConfig,
+		ID:                     host.ID().String(),
+		Callback:               computeCallback,
+		Store:                  executionStore,
+		StorageDirectory:       storagePath,
+		Storages:               storages,
+		Executors:              executors,
+		Publishers:             publishers,
+		FailureInjectionConfig: config.FailureInjectionConfig,
+		ResultsPath:            *resultsPath,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -101,7 +105,6 @@ func NewComputeNode(
 		RunningCapacityTracker:     runningCapacityTracker,
 		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
-		BackoffDuration:            config.ExecutorBufferBackoffDuration,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
@@ -127,74 +130,106 @@ func NewComputeNode(
 				Defaults: config.DefaultJobResourceLimits,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
-				Executors: executors,
+				Storages: storages,
 			}),
 		},
 	})
 
-	biddingStrategy := bidstrategy.NewChainedBidStrategy(
-		bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy),
-		compute_bidstrategies.NewMaxCapacityStrategy(compute_bidstrategies.MaxCapacityStrategyParams{
-			MaxJobRequirements: config.JobResourceLimits,
-		}),
-		compute_bidstrategies.NewAvailableCapacityStrategy(ctx, compute_bidstrategies.AvailableCapacityStrategyParams{
-			RunningCapacityTracker:  runningCapacityTracker,
-			EnqueuedCapacityTracker: enqueuedCapacityTracker,
-		}),
-		// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-		//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
-		bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
-			NetworkSize: 1,
-		}),
-		executor_util.NewExecutorSpecificBidStrategy(executors),
-		executor_util.NewInputLocalityStrategy(executor_util.InputLocalityStrategyParams{
-			Locality:  config.JobSelectionPolicy.Locality,
-			Executors: executors,
-		}),
-		bidstrategy.NewProviderInstalledStrategy[model.Verifier, verifier.Verifier](
-			verifiers,
-			func(j *model.Job) model.Verifier { return j.Spec.Verifier },
-		),
-		bidstrategy.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
-			publishers,
-			func(j *model.Job) model.Publisher { return j.Spec.Publisher },
-		),
-		storage_bidstrategy.NewStorageInstalledBidStrategy(storages),
-		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
-			MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-			MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-			JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
-		}),
-	)
+	semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
+	if config.BidSemanticStrategy == nil {
+		semanticBidStrat = bidstrategy.WithSemantics(
+			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
+			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
+				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
+				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+			}),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+			}),
+			semantic.NewProviderInstalledStrategy(
+				publishers,
+				func(j *models.Job) string { return j.Task().Publisher.Type },
+			),
+			semantic.NewStorageInstalledBidStrategy(storages),
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
+			}),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		)
+	}
+
+	resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
+	if config.BidResourceStrategy == nil {
+		resourceBidStrat = bidstrategy.WithResources(
+			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
+				MaxJobRequirements: config.JobResourceLimits,
+			}),
+			resource.NewAvailableCapacityStrategy(ctx, resource.AvailableCapacityStrategyParams{
+				RunningCapacityTracker:  runningCapacityTracker,
+				EnqueuedCapacityTracker: enqueuedCapacityTracker,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		)
+	}
+
+	// logging server
+	logserver := logstream.NewLogStreamServer(logstream.LogStreamServerOptions{
+		Ctx:            ctx,
+		Host:           host,
+		ExecutionStore: executionStore,
+		//
+		Executors: executors,
+	})
+	_, loggingCancel := context.WithCancel(ctx)
+	cleanupManager.RegisterCallback(func() error {
+		loggingCancel()
+		return nil
+	})
 
 	// node info
 	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Executors:          executors,
+		Publisher:          publishers,
+		Storages:           storages,
 		CapacityTracker:    runningCapacityTracker,
 		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,
+	})
+
+	bidStrat := bidstrategy.NewChainedBidStrategy(semanticBidStrat, resourceBidStrat)
+	bidder := compute.NewBidder(compute.BidderParams{
+		NodeID:           host.ID().String(),
+		SemanticStrategy: bidStrat,
+		ResourceStrategy: bidStrat,
+		Store:            executionStore,
+		Callback:         computeCallback,
+		Executor:         bufferRunner,
+		GetApproveURL: func() *url.URL {
+			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
+		},
 	})
 
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              host.ID().String(),
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
-		BidStrategy:     biddingStrategy,
+		Bidder:          bidder,
 		Executor:        bufferRunner,
+		LogServer:       *logserver,
 	})
 
-	// if this node is the simulator, then we set the simulator request handler as the stream handler
-	if simulatorRequestHandler != nil {
-		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
-			Host:            host,
-			ComputeEndpoint: simulatorRequestHandler,
-		})
-	} else {
-		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
-			Host:            host,
-			ComputeEndpoint: baseEndpoint,
-		})
-	}
+	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+		Host:            host,
+		ComputeEndpoint: baseEndpoint,
+	})
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
@@ -202,27 +237,36 @@ func NewComputeNode(
 		sensors.NewCompletedJobs(executionStore),
 	}
 
+	startup := compute.NewStartup(executionStore, bufferRunner)
+	startupErr := startup.Execute(ctx)
+	if startupErr != nil {
+		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
+	}
+
 	// register compute public http apis
-	computeAPIServer := compute_publicapi.NewComputeAPIServer(compute_publicapi.ComputeAPIServerParams{
-		APIServer:          apiServer,
+	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
+		Router:             apiServer.Router,
+		Bidder:             bidder,
+		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
-	err := computeAPIServer.RegisterAllHandlers()
-	if err != nil {
-		return nil, err
-	}
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		// pass
+		executionStore.Close(ctx)
+		resultsPath.Close()
 	}
 
 	return &Compute{
+		ID:                  host.ID().String(),
 		LocalEndpoint:       baseEndpoint,
 		Capacity:            runningCapacityTracker,
 		ExecutionStore:      executionStore,
 		Executors:           executors,
-		computeCallback:     standardComputeCallback,
+		Storages:            storages,
+		Bidder:              bidder,
+		LogServer:           logserver,
+		computeCallback:     computeCallback,
 		cleanupFunc:         cleanupFunc,
 		computeInfoProvider: nodeInfoProvider,
 	}, nil

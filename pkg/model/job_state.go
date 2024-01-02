@@ -1,18 +1,21 @@
+//go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 package model
 
 import (
 	"time"
+
+	"github.com/samber/lo"
 )
 
 // JobStateType The state of a job across the whole network that represents an aggregate view across
 // the executions and nodes.
-//
-//go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 type JobStateType int
 
 // these are the states a job can be in against a single node
 const (
-	JobStateNew JobStateType = iota // must be first
+	JobStateUndefined JobStateType = iota
+
+	JobStateNew
 
 	JobStateInProgress
 
@@ -29,6 +32,11 @@ const (
 	JobStateQueued
 )
 
+// IsUndefined returns true if the job state is undefined
+func (s JobStateType) IsUndefined() bool {
+	return s == JobStateUndefined
+}
+
 // IsTerminal returns true if the given job type signals the end of the lifecycle of
 // that job and that no change in the state can be expected.
 func (s JobStateType) IsTerminal() bool {
@@ -41,13 +49,21 @@ func (s JobStateType) MarshalText() ([]byte, error) {
 
 func (s *JobStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := JobStateNew; typ <= JobStateCompleted; typ++ {
+	for typ := JobStateNew; typ <= JobStateQueued; typ++ {
 		if equal(typ.String(), name) {
 			*s = typ
 			return
 		}
 	}
 	return
+}
+
+func JobStateTypes() []JobStateType {
+	var res []JobStateType
+	for typ := JobStateNew; typ <= JobStateQueued; typ++ {
+		res = append(res, typ)
+	}
+	return res
 }
 
 // JobState The state of a job across the whole network that represents an aggregate view across
@@ -71,12 +87,34 @@ type JobState struct {
 	TimeoutAt time.Time `json:"TimeoutAt,omitempty"`
 }
 
-func (j JobState) ExecutionsInTerminalState() bool {
-	for _, execution := range j.Executions {
-		if !execution.State.IsTerminal() {
-			return false
+// GroupExecutionsByState groups the executions by state
+func (s *JobState) GroupExecutionsByState() map[ExecutionStateType][]ExecutionState {
+	result := make(map[ExecutionStateType][]ExecutionState)
+	for _, execution := range s.Executions {
+		result[execution.State] = append(result[execution.State], execution)
+	}
+	return result
+}
+
+func (s *JobState) NonDiscardedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return !item.State.IsDiscarded() })
+}
+
+func (s *JobState) CompletedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State == ExecutionStateCompleted })
+}
+
+func (s *JobState) ActiveCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State.IsActive() })
+}
+
+// NonTerminalExecutions returns the executions that are not in a terminal state.
+func (s *JobState) NonTerminalExecutions() []*ExecutionState {
+	executionStates := make([]*ExecutionState, 0, len(s.Executions))
+	for i := range s.Executions {
+		if !s.Executions[i].State.IsTerminal() {
+			executionStates = append(executionStates, &s.Executions[i])
 		}
 	}
-
-	return true
+	return executionStates
 }

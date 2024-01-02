@@ -3,28 +3,36 @@ package router
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/scenarios"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 var TestcasesMap = map[string]Handler{
-	"list":                            scenarios.List,
-	"submit":                          scenarios.Submit,
-	"submitAndGet":                    scenarios.SubmitAndGet,
-	"submitDockerIPFSJobAndGet":       scenarios.SubmitDockerIPFSJobAndGet,
-	"submitAndDescribe":               scenarios.SubmitAnDescribe,
-	"submitWithConcurrency":           scenarios.SubmitWithConcurrency,
-	"submitWithConcurrencyOwnedNodes": scenarios.SubmitWithConcurrencyOwnedNodes,
+	"list":                      scenarios.List,
+	"submit":                    scenarios.Submit,
+	"submitAndGet":              scenarios.SubmitAndGet,
+	"submitDockerIPFSJobAndGet": scenarios.SubmitDockerIPFSJobAndGet,
+	"submitAndDescribe":         scenarios.SubmitAnDescribe,
+	"submitWithConcurrency":     scenarios.SubmitWithConcurrency,
 }
 
 func init() {
-	// init system configs
-	err := system.InitConfig()
+	repoPath, err := os.MkdirTemp("", "bacalhau_canary_repo_*")
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Failed to create repo dir: %s", err)
+		os.Exit(1)
+	}
+
+	// init system configs and repo.
+	_, err = setup.SetupBacalhauRepo(repoPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize bacalhau repo: %s", err)
+		os.Exit(1)
 	}
 }
 

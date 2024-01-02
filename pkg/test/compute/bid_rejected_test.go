@@ -1,19 +1,31 @@
-//go:build integration
+//go:build integration || !unit
 
 package compute
 
 import (
 	"context"
+	"testing"
+
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/google/uuid"
 )
 
-func (s *ComputeSuite) TestBidRejected() {
+type BidRejectedSuite struct {
+	ComputeSuite
+}
+
+func TestBidRejectedSuite(t *testing.T) {
+	suite.Run(t, new(BidRejectedSuite))
+}
+
+func (s *BidRejectedSuite) TestBidRejected() {
 	ctx := context.Background()
-	executionID := s.prepareAndAskForBid(ctx, generateJob())
+	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 
 	_, err := s.node.LocalEndpoint.BidRejected(ctx, compute.BidRejectedRequest{ExecutionID: executionID})
 	s.NoError(err)
@@ -21,23 +33,22 @@ func (s *ComputeSuite) TestBidRejected() {
 	s.NoError(err)
 }
 
-func (s *ComputeSuite) TestBidRejected_DoesntExist() {
+func (s *BidRejectedSuite) TestDoesntExist() {
 	ctx := context.Background()
 	_, err := s.node.LocalEndpoint.BidRejected(ctx, compute.BidRejectedRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
-func (s *ComputeSuite) TestBidRejected_WrongState() {
+func (s *BidRejectedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
-	for _, state := range []store.ExecutionState{
-		store.ExecutionStateWaitingVerification,
+	for _, state := range []store.LocalExecutionStateType{
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,
 	} {
-		executionID := s.prepareAndAskForBid(ctx, generateJob())
+		executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID: executionID,
 			NewState:    state,

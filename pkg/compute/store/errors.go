@@ -39,6 +39,19 @@ func (e ErrExecutionsNotFoundForJob) Error() string {
 	return "no executions found for job: " + e.JobID
 }
 
+// ErrJobNotFound is returned when the a job isn't found when trying to get its executions
+type ErrJobNotFound struct {
+	JobID string
+}
+
+func NewErrJobNotFound(id string) ErrJobNotFound {
+	return ErrJobNotFound{JobID: id}
+}
+
+func (e ErrJobNotFound) Error() string {
+	return "job not found: " + e.JobID
+}
+
 // ErrExecutionHistoryNotFound is returned when the execution is not found
 type ErrExecutionHistoryNotFound struct {
 	ExecutionID string
@@ -68,16 +81,16 @@ func (e ErrExecutionAlreadyExists) Error() string {
 // ErrInvalidExecutionState is returned when an execution is in an invalid state.
 type ErrInvalidExecutionState struct {
 	ExecutionID string
-	Actual      ExecutionState
-	Expected    ExecutionState
+	Actual      LocalExecutionStateType
+	Expected    []LocalExecutionStateType
 }
 
-func NewErrInvalidExecutionState(id string, actual ExecutionState, expected ExecutionState) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(id string, actual LocalExecutionStateType, expected ...LocalExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	return fmt.Sprintf("execution %s is in state %s but expected one of %v", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.
@@ -98,11 +111,12 @@ func (e ErrInvalidExecutionVersion) Error() string {
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
 type ErrExecutionAlreadyTerminal struct {
 	ExecutionID string
-	Actual      ExecutionState
-	NewState    ExecutionState
+	Actual      LocalExecutionStateType
+	NewState    LocalExecutionStateType
 }
 
-func NewErrExecutionAlreadyTerminal(id string, actual ExecutionState, newState ExecutionState) ErrExecutionAlreadyTerminal {
+func NewErrExecutionAlreadyTerminal(
+	id string, actual LocalExecutionStateType, newState LocalExecutionStateType) ErrExecutionAlreadyTerminal {
 	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
 }
 

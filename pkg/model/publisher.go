@@ -4,17 +4,23 @@ import (
 	"fmt"
 )
 
-//go:generate stringer -type=Publisher --trimprefix=Publisher
 type Publisher int
 
 const (
 	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
 	PublisherIpfs
-	PublisherFilecoin
 	PublisherEstuary
+	PublisherS3
 	publisherDone // must be last
 )
+
+var publisherNames = map[Publisher]string{
+	PublisherNoop:    "noop",
+	PublisherIpfs:    "ipfs",
+	PublisherEstuary: "estuary",
+	PublisherS3:      "s3",
+}
 
 func ParsePublisher(str string) (Publisher, error) {
 	for typ := publisherUnknown + 1; typ < publisherDone; typ++ {
@@ -23,7 +29,7 @@ func ParsePublisher(str string) (Publisher, error) {
 		}
 	}
 
-	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
+	return publisherUnknown, fmt.Errorf("publisher: unknown type '%s'", str)
 }
 
 func IsValidPublisher(publisherType Publisher) bool {
@@ -45,6 +51,14 @@ func PublisherNames() []string {
 		names = append(names, typ.String())
 	}
 	return names
+}
+
+func (p Publisher) String() string {
+	value, ok := publisherNames[p]
+	if !ok {
+		return Unknown
+	}
+	return value
 }
 
 func (p Publisher) MarshalText() ([]byte, error) {

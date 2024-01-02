@@ -73,7 +73,7 @@ def test_load_user_id_key():
         with open(tmpdir.joinpath("mykey.pem"), "wb") as f:
             f.write(key.export_key("PEM"))
         loaded_key = __load_user_id_key(tmpdir.joinpath("mykey.pem"))
-        assert type(loaded_key) == RSA.RsaKey
+        assert isinstance(loaded_key, RSA.RsaKey)
         assert loaded_key.export_key("PEM") == key.export_key("PEM")
 
 
@@ -98,17 +98,33 @@ def test_init_config():
 
     from bacalhau_sdk.config import init_config
 
+    conf = init_config()
+    assert isinstance(conf, Configuration)
+    assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
+
+    os.environ["BACALHAU_HTTPS"] = "1"
+    conf = init_config()
+    assert isinstance(conf, Configuration)
+    assert conf.host == "https://bootstrap.production.bacalhau.org:1234"
+    del os.environ["BACALHAU_HTTPS"]
+
     os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
     os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
-    assert type(conf) == Configuration
+    assert isinstance(conf, Configuration)
     assert conf.host == "http://1.1.1.1:9999"
 
-    os.environ["BACALHAU_API_HOST"] = ""
-    os.environ["BACALHAU_API_PORT"] = ""
+    del os.environ["BACALHAU_API_HOST"]
+    os.environ["BACALHAU_API_PORT"] = "4321"
     conf = init_config()
-    assert type(conf) == Configuration
-    assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
+    assert isinstance(conf, Configuration)
+    assert conf.host == "http://bootstrap.production.bacalhau.org:4321"
+
+    os.environ["BACALHAU_API_HOST"] = "mycluster.com"
+    del os.environ["BACALHAU_API_PORT"]
+    conf = init_config()
+    assert isinstance(conf, Configuration)
+    assert conf.host == "http://mycluster.com:1234"
 
 
 def test_sign_for_client():
@@ -118,10 +134,9 @@ def test_sign_for_client():
 
     from bacalhau_apiclient.api import job_api
     from bacalhau_apiclient.models.deal import Deal
-    from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
-    from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
     from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
     from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
+    from bacalhau_apiclient.models.publisher_spec import PublisherSpec
     from bacalhau_apiclient.models.spec import Spec
     from bacalhau_apiclient.models.storage_spec import StorageSpec
     from Crypto.Hash import SHA256
@@ -136,8 +151,7 @@ def test_sign_for_client():
         client_id=get_client_id(),
         spec=Spec(
             engine="Docker",
-            verifier="Noop",
-            publisher="Estuary",
+            publisher=PublisherSpec(type="IPFS"),
             docker=JobSpecDocker(
                 image="ubuntu",
                 entrypoint=["date"],
@@ -153,12 +167,7 @@ def test_sign_for_client():
                     path="/outputs",
                 )
             ],
-            sharding=JobShardingConfig(
-                batch_size=1,
-                glob_pattern_base_path="/inputs",
-            ),
-            execution_plan=JobExecutionPlan(shards_total=0),
-            deal=Deal(concurrency=1, confidence=0, min_bids=0),
+            deal=Deal(concurrency=1),
             do_not_track=False,
         ),
     )
@@ -193,7 +202,7 @@ def test_get_client_public_key():
 
     pub_key = get_client_public_key()
     assert pub_key is not None
-    assert type(pub_key) == str
+    assert isinstance(pub_key, str)
     assert len(pub_key) == 360
     assert "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A" not in pub_key
     assert "BEGIN PUBLIC KEY" not in pub_key

@@ -19,8 +19,9 @@ export class PipelineStack extends cdk.Stack {
 
         // Configs
         const prodConfig = getCanaryConfig(app, 'prod');
+        const prodOwnedConfig = getCanaryConfig(app, 'prodOwned');
         const stagingConfig = getCanaryConfig(app, 'staging');
-        const allConfigs = [prodConfig, stagingConfig]
+        const allConfigs = [prodConfig, prodOwnedConfig, stagingConfig]
 
         // Build artifacts
         const cloudformationBuild = this.getCloudformationBuild(allConfigs);
@@ -105,7 +106,7 @@ export class PipelineStack extends cdk.Stack {
                     stageName: 'DeployProd',
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'DeployCanary',
+                            actionName: 'DeployProdCanary',
                             templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
                             stackName: 'BacalhauCanaryProd',
                             adminPermissions: true,
@@ -114,8 +115,18 @@ export class PipelineStack extends cdk.Stack {
                             },
                             extraInputs: [canaryBuildOutput],
                         }),
+                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                            actionName: 'DeployProdOwnedCanary',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryProdOwned.template.json'),
+                            stackName: 'BacalhauCanaryProdOwned',
+                            adminPermissions: true,
+                            parameterOverrides: {
+                                ...props.lambdaCode.assign(canaryBuildOutput.s3Location),
+                            },
+                            extraInputs: [canaryBuildOutput],
+                        }),
                     ],
-                }
+                },
             ],
         });
     }
@@ -188,7 +199,7 @@ export class PipelineStack extends cdk.Stack {
                 },
             }),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
+                buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
             },
         });
     }

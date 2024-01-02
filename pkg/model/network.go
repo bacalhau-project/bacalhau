@@ -29,7 +29,7 @@ const (
 	//
 	// As a command, something like:
 	//
-	//  bacalhau docker run —network=http —domain=crates.io —domain=github.com -v Qmy1234myd4t4:/code rust/compile
+	//  bacalhau docker run —network=http —domain=crates.io —domain=github.com -i ipfs://Qmy1234myd4t4,dst=/code rust/compile
 	//
 	// The “risk” for the compute provider is that the job does something that
 	// violates its terms, the terms of its hosting provider or ISP, or even the
@@ -113,6 +113,9 @@ func (n NetworkConfig) IsValid() (err error) {
 // expected by our Docker HTTP gateway, which complains and/or fails to start if
 // these requirements are not met.
 func (n NetworkConfig) DomainSet() []string {
+	if n.Domains == nil {
+		return []string{}
+	}
 	domains := slices.Clone(n.Domains)
 	slices.SortFunc(domains, func(a, b string) bool {
 		// If the domains "match", the match may be the result of a wildcard. We

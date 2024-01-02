@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	realsync "sync"
+	"sync"
 	"time"
 
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -38,8 +37,8 @@ type BufferingPubSub[T any] struct {
 	maxBufferAge   time.Duration
 
 	subscriber     Subscriber[T]
-	subscriberOnce realsync.Once
-	closeOnce      realsync.Once
+	subscriberOnce sync.Once
+	closeOnce      sync.Once
 
 	currentBuffer     BufferingEnvelope
 	oldestMessageTime time.Time
@@ -50,26 +49,19 @@ type BufferingPubSub[T any] struct {
 }
 
 func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T] {
-	newPubSub := &BufferingPubSub[T]{
+	return &BufferingPubSub[T]{
 		delegatePubSub:     params.DelegatePubSub,
 		maxBufferSize:      params.MaxBufferSize,
 		maxBufferAge:       params.MaxBufferAge,
 		antiStarvationStop: make(chan struct{}),
 	}
-
-	newPubSub.flushMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "BufferingPubSub.flushMutex",
-	})
-
-	return newPubSub
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
 	defer span.End()
 
-	payload, err := model.JSONMarshalWithMax(message)
+	payload, err := marshaller.JSONMarshalWithMax(message)
 	if err != nil {
 		return err
 	}
@@ -122,7 +114,7 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 		}
 
 		var message T
-		err := model.JSONUnmarshalWithMax(payload, &message)
+		err := marshaller.JSONUnmarshalWithMax(payload, &message)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal message: %w", err)
 		}
@@ -157,7 +149,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Info().Msg("done closing BufferingPubSub")
+	log.Ctx(ctx).Debug().Msg("done closing BufferingPubSub")
 	return nil
 }
 

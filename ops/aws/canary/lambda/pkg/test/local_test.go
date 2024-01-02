@@ -4,18 +4,22 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 func TestScenariosAgainstDevstack(t *testing.T) {
@@ -23,20 +27,18 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		Labels: map[string]string{
 			"owner": "bacalhau",
 		},
-		NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 	}
 	nodeCount := 3
 	nodeOverrides := make([]node.NodeConfig, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		nodeOverrides[i] = nodeOverride
 	}
-	stack, _ := testutils.SetupTest(context.Background(), t,
-		3, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-		nodeOverrides...)
+	stack := teststack.Setup(context.TODO(), t,
+		devstack.WithNumberOfHybridNodes(nodeCount),
+		devstack.WithNodeOverrides(nodeOverrides...),
+	)
 	// for the requester node to pick up the nodeInfo messages
-	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], 2)
+	nodeutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
 
 	var swarmAddresses []string
 	for _, n := range stack.Nodes {
@@ -45,8 +47,9 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		swarmAddresses = append(swarmAddresses, nodeSwarmAddresses...)
 	}
 	// Need to set the swarm addresses for getIPFSDownloadSettings() to work in test
-	os.Setenv("BACALHAU_IPFS_SWARM_ADDRESSES", strings.Join(swarmAddresses, ","))
-	t.Logf("BACALHAU_IPFS_SWARM_ADDRESSES: %s", os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"))
+	swarmenv := config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses)
+	os.Setenv(swarmenv, strings.Join(swarmAddresses, ","))
+	t.Logf("%s: %s", swarmenv, os.Getenv(swarmenv))
 
 	// Add data to devstack IPFS
 	testString := "This is a test string"
@@ -60,8 +63,9 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	t.Log("Host set to", host)
 	t.Log("Port set to", port)
 
-	os.Setenv("BACALHAU_HOST", host)
-	os.Setenv("BACALHAU_PORT", fmt.Sprint(port))
+	viper.Set(types.NodeClientAPIHost, host)
+	viper.Set(types.NodeClientAPIPort, port)
+	os.Setenv("BACALHAU_NODE_SELECTORS", "owner=bacalhau")
 
 	for name := range router.TestcasesMap {
 		t.Run(name, func(t *testing.T) {

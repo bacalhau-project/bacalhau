@@ -29,6 +29,26 @@ function install-docker() {
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 }
 
+function install-git() {
+  echo "Installing Git..."
+  sudo apt-get update -y
+  sudo apt-get install -y git
+  echo "...Git installation is complete!"
+}
+
+function install-git-lfs() {
+  echo "Installing Git Large File Storage (LFS)..."
+  # Update package lists
+  sudo apt-get update -y
+  # Add git-lfs package repository
+  curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+  # Install git-lfs
+  sudo apt-get install -y git-lfs
+  # Initialize git-lfs
+  git lfs install
+  echo "...Git-LFS installation is complete!"
+}
+
 function install-gpu() {
   echo "Installing GPU drivers"
   if [[ "${GPU_NODE}" = "true" ]]; then
@@ -70,9 +90,10 @@ function install-ipfs() {
   wget "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   # TODO should reset PWD to home dir after each function call
-  cd go-ipfs
+  pushd go-ipfs
   sudo bash install.sh
   ipfs --version
+  popd
 }
 
 function install-bacalhau() {
@@ -96,11 +117,13 @@ function install-bacalhau-from-release() {
 
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
-  sudo apt-get -y install --no-install-recommends jq
-  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
-  cd bacalhau
-  GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
-  sudo mv ./bacalhau /usr/local/bin/bacalhau
+  sudo apt-get -y install --no-install-recommends jq nodejs npm make
+  git clone --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
+  pushd bacalhau
+  pushd webui && npm install && popd
+  make build-bacalhau
+  sudo mv ./bin/*/bacalhau /usr/local/bin/bacalhau
+  popd
 }
 
 function install-otel-collector() {
@@ -317,7 +340,11 @@ function install-secrets() {
   export GRAFANA_CLOUD_PROMETHEUS_API_KEY=""
   export GRAFANA_CLOUD_TEMPO_API_KEY=""
   export GRAFANA_CLOUD_LOKI_API_KEY=""
-  export ESTUARY_API_KEY=""
+  export AWS_ACCESS_KEY_ID=""
+  export AWS_SECRET_ACCESS_KEY=""
+  export DOCKER_USERNAME=""
+  export DOCKER_PASSWORD=""
+
   if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
@@ -332,8 +359,17 @@ function install-secrets() {
   if [[ -n "${SECRETS_GRAFANA_CLOUD_LOKI_API_KEY}" ]]; then
       export GRAFANA_CLOUD_LOKI_API_KEY="${SECRETS_GRAFANA_CLOUD_LOKI_API_KEY}"
   fi
-  if [[ -n "${SECRETS_ESTUARY_API_KEY}" ]]; then
-    export ESTUARY_API_KEY="${SECRETS_ESTUARY_API_KEY}"
+  if [[ -n "${SECRETS_AWS_ACCESS_KEY_ID}" ]]; then
+    export AWS_ACCESS_KEY_ID="${SECRETS_AWS_ACCESS_KEY_ID}"
+  fi
+  if [[ -n "${SECRETS_AWS_SECRET_ACCESS_KEY}" ]]; then
+    export AWS_SECRET_ACCESS_KEY="${SECRETS_AWS_SECRET_ACCESS_KEY}"
+  fi
+  if [[ -n "${SECRETS_DOCKER_USERNAME}" ]]; then
+    export DOCKER_USERNAME="${SECRETS_DOCKER_USERNAME}"
+  fi
+  if [[ -n "${SECRETS_DOCKER_PASSWORD}" ]]; then
+    export DOCKER_PASSWORD="${SECRETS_DOCKER_PASSWORD}"
   fi
 
   # write the secrets to persistent disk
@@ -341,7 +377,10 @@ function install-secrets() {
 export GRAFANA_CLOUD_PROMETHEUS_API_KEY="${GRAFANA_CLOUD_PROMETHEUS_API_KEY}"
 export GRAFANA_CLOUD_TEMPO_API_KEY="${GRAFANA_CLOUD_TEMPO_API_KEY}"
 export GRAFANA_CLOUD_LOKI_API_KEY="${GRAFANA_CLOUD_LOKI_API_KEY}"
-export ESTUARY_API_KEY="${ESTUARY_API_KEY}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+export DOCKER_USERNAME="${DOCKER_USERNAME}"
+export DOCKER_PASSWORD="${DOCKER_PASSWORD}"
 EOG
 
   # clean up variables file from any secret
@@ -368,16 +407,18 @@ function start-services() {
   sudo systemctl enable bacalhau
   sudo systemctl enable otel
   sudo systemctl enable promtail
+  sudo service openresty reload
   sudo systemctl start ipfs
   sudo systemctl start bacalhau
   sudo systemctl start otel
   sudo systemctl start promtail
-  sudo service openresty reload
 }
 
 function install() {
   install-go
   install-docker
+  install-git
+  install-git-lfs
   install-gpu
   install-healthcheck
   install-ipfs

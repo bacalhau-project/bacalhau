@@ -35,7 +35,6 @@ type HTTPResource string
 
 type BacalhauConfig struct {
 	Publisher   Publisher
-	Verifier    Verifier
 	Timeout     time.Duration
 	Resources   ResourceSpec
 	Annotations []string
@@ -56,7 +55,7 @@ type JobType interface {
 type NoopTask struct{}
 
 func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
+	spec.EngineSpec.Type = EngineNoop.String()
 	return nil
 }
 
@@ -93,10 +92,9 @@ func (task *Task) ToSpec() (*Spec, error) {
 				return nil, err
 			}
 
-			spec.Verifier = config.Verifier
 			spec.Publisher = config.Publisher
 			spec.Annotations = config.Annotations
-			spec.Timeout = config.Timeout.Seconds()
+			spec.Timeout = int64(config.Timeout.Seconds())
 			spec.Resources = ResourceUsageConfig{
 				CPU:    config.Resources.Cpu.String(),
 				Memory: config.Resources.Memory.String(),
@@ -117,6 +115,9 @@ func parseStorageSource(path string, resource *Resource) StorageSpec {
 	if resource.IPFS != nil {
 		storageSpec.StorageSource = StorageSourceIPFS
 		storageSpec.CID = strings.TrimLeft(string(*resource.IPFS), ":/")
+	} else if resource.HTTP != nil && strings.HasSuffix(path, ".git") {
+		storageSpec.StorageSource = StorageSourceRepoClone
+		storageSpec.Repo = "http" + string(*resource.HTTP)
 	} else if resource.HTTP != nil {
 		storageSpec.StorageSource = StorageSourceURLDownload
 		storageSpec.URL = "http" + string(*resource.HTTP)

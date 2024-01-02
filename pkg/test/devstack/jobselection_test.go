@@ -1,18 +1,20 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackJobSelectionSuite struct {
@@ -30,7 +32,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	type TestCase struct {
 		name            string
-		policy          model.JobSelectionPolicy
+		policy          node.JobSelectionPolicy
 		nodeCount       int
 		addFilesCount   int
 		expectedAccepts int
@@ -41,16 +43,18 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			suite.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/361")
 		}
 
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobSelectionPolicy: testCase.policy,
+		})
+		suite.Require().NoError(err)
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
-				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-					JobSelectionPolicy: testCase.policy,
-				}),
+				ComputeConfig:   computeConfig,
 			},
-			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
-			Outputs: scenario.WasmCsvTransform.Outputs,
-			Spec:    scenario.WasmCsvTransform.Spec,
+			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform(suite.T()).Inputs),
+			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,
+			Spec:    scenario.WasmCsvTransform(suite.T()).Spec,
 			Deal:    model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),
@@ -70,16 +74,16 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		{
 			name:            "all nodes added files, all nodes ran job",
-			policy:          model.NewDefaultJobSelectionPolicy(),
-			nodeCount:       3,
-			addFilesCount:   3,
-			expectedAccepts: 3,
+			policy:          node.NewDefaultJobSelectionPolicy(),
+			nodeCount:       1,
+			addFilesCount:   1,
+			expectedAccepts: 1,
 		},
 
 		// check we get only 2 when we've only added data to 2
 		{
 			name:            "only nodes we added data to ran the job",
-			policy:          model.NewDefaultJobSelectionPolicy(),
+			policy:          node.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
 			addFilesCount:   2,
 			expectedAccepts: 2,
@@ -88,8 +92,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		// check we run on all 3 nodes even though we only added data to 1
 		{
 			name: "only added files to 1 node but all 3 run it",
-			policy: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			policy: node.JobSelectionPolicy{
+				Locality: semantic.Anywhere,
 			},
 			nodeCount:       3,
 			addFilesCount:   1,

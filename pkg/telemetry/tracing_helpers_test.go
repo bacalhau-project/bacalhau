@@ -4,14 +4,16 @@ package telemetry
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"io"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 func TestRecordErrorOnSpan(t *testing.T) {
@@ -231,6 +233,7 @@ func TestRecordErrorOnSpanTwoChannels_withoutError(t *testing.T) {
 var _ trace.Span = &testSpan{}
 
 type testSpan struct {
+	embedded.Span
 	err               error
 	ended             bool
 	statusCode        codes.Code

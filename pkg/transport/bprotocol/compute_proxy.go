@@ -15,7 +15,6 @@ import (
 type ComputeProxyParams struct {
 	Host          host.Host
 	LocalEndpoint compute.Endpoint // optional in case this host is also a compute node and to allow local calls
-
 }
 
 // ComputeProxy is a proxy to a compute node endpoint that will forward requests to remote compute nodes, or
@@ -71,28 +70,6 @@ func (p *ComputeProxy) BidRejected(ctx context.Context, request compute.BidRejec
 		ctx, p.host, request.TargetPeerID, BidRejectedProtocolID, request)
 }
 
-func (p *ComputeProxy) ResultAccepted(ctx context.Context, request compute.ResultAcceptedRequest) (compute.ResultAcceptedResponse, error) {
-	if request.TargetPeerID == p.host.ID().String() {
-		if p.localEndpoint == nil {
-			return compute.ResultAcceptedResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
-		}
-		return p.localEndpoint.ResultAccepted(ctx, request)
-	}
-	return proxyRequest[compute.ResultAcceptedRequest, compute.ResultAcceptedResponse](
-		ctx, p.host, request.TargetPeerID, ResultAcceptedProtocolID, request)
-}
-
-func (p *ComputeProxy) ResultRejected(ctx context.Context, request compute.ResultRejectedRequest) (compute.ResultRejectedResponse, error) {
-	if request.TargetPeerID == p.host.ID().String() {
-		if p.localEndpoint == nil {
-			return compute.ResultRejectedResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
-		}
-		return p.localEndpoint.ResultRejected(ctx, request)
-	}
-	return proxyRequest[compute.ResultRejectedRequest, compute.ResultRejectedResponse](
-		ctx, p.host, request.TargetPeerID, ResultRejectedProtocolID, request)
-}
-
 func (p *ComputeProxy) CancelExecution(
 	ctx context.Context, request compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
 	if request.TargetPeerID == p.host.ID().String() {
@@ -103,6 +80,18 @@ func (p *ComputeProxy) CancelExecution(
 	}
 	return proxyRequest[compute.CancelExecutionRequest, compute.CancelExecutionResponse](
 		ctx, p.host, request.TargetPeerID, CancelProtocolID, request)
+}
+
+func (p *ComputeProxy) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	if request.TargetPeerID == p.host.ID().String() {
+		if p.localEndpoint == nil {
+			return compute.ExecutionLogsResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
+		}
+		return p.localEndpoint.ExecutionLogs(ctx, request)
+	}
+	return proxyRequest[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](
+		ctx, p.host, request.TargetPeerID, ExecutionLogsID, request)
 }
 
 func proxyRequest[Request any, Response any](
@@ -133,25 +122,28 @@ func proxyRequest[Request any, Response any](
 	}
 	defer stream.Close() //nolint:errcheck
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
 	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	// Now we read the response that was sent from the dest peer
-	err = json.NewDecoder(stream).Decode(response)
+	// The handler will have wrapped the response in a Result[T] along with
+	// any error that occurred, so we will decode it and pass the
+	// inner response/error on to the caller.
+	result := &Result[Response]{}
+	err = json.NewDecoder(stream).Decode(result)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	return *response, nil
+	return result.Rehydrate()
 }
 
 // Compile-time interface check:

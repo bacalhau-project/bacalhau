@@ -7,13 +7,15 @@ import (
 	"net"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 const (
@@ -58,23 +60,26 @@ var (
 	gatewayCapabilities = []string{"NET_ADMIN"}
 )
 
+//nolint:nakedret
 func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
-	job model.Job,
+	job string,
+	executionID string,
+	network *models.NetworkConfig,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
-	containerConfig.NetworkDisabled = job.Spec.Network.Disabled()
-	switch job.Spec.Network.Type {
-	case model.NetworkNone:
+	containerConfig.NetworkDisabled = network.Disabled()
+	switch network.Type {
+	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
-	case model.NetworkFull:
+	case models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
-	case model.NetworkHTTP:
+	case models.NetworkHTTP:
 		var internalNetwork *types.NetworkResource
 		var proxyAddr *net.TCPAddr
-		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job)
+		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, network)
 		if err != nil {
 			return
 		}
@@ -84,28 +89,31 @@ func (e *Executor) setupNetworkForJob(
 			fmt.Sprintf("https_proxy=%s", proxyAddr.String()),
 		)
 	default:
-		err = fmt.Errorf("unsupported network type %q", job.Spec.Network.Type.String())
+		err = fmt.Errorf("unsupported network type %q", network.Type.String())
 	}
 	return
 }
 
+//nolint:funlen,gocyclo
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
-	job model.Job,
+	job string,
+	executionID string,
+	network *models.NetworkConfig,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage)
+	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error pulling gateway image")
 	}
 
 	// Create an internal only bridge network to join our gateway and job container
-	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(job, "network"), types.NetworkCreate{
+	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(executionID, job, "network"), types.NetworkCreate{
 		Driver:     "bridge",
 		Scope:      "local",
 		Internal:   true,
 		Attachable: true,
-		Labels:     e.jobContainerLabels(job),
+		Labels:     e.containerLabels(executionID, job),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating network")
@@ -118,8 +126,14 @@ func (e *Executor) createHTTPGateway(
 	}
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
+	if len(network.DomainSet()) == 0 {
+		return nil,
+			nil,
+			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", models.NetworkHTTP)
+	}
+
 	// Create the gateway container initially attached to the *host* network
-	domainList, derr := json.Marshal(job.Spec.Network.DomainSet())
+	domainList, derr := json.Marshal(network.DomainSet())
 	clientList, cerr := json.Marshal([]string{subnet})
 	if derr != nil || cerr != nil {
 		return nil, nil, errors.Wrap(multierr.Combine(derr, cerr), "error preparing gateway config")
@@ -130,16 +144,17 @@ func (e *Executor) createHTTPGateway(
 		Env: []string{
 			fmt.Sprintf("BACALHAU_HTTP_CLIENTS=%s", clientList),
 			fmt.Sprintf("BACALHAU_HTTP_DOMAINS=%s", domainList),
-			fmt.Sprintf("BACALHAU_JOB_ID=%s", job.ID()),
+			fmt.Sprintf("BACALHAU_JOB_ID=%s", job),
+			fmt.Sprintf("BACALHAU_EXECUTION_ID=%s", executionID),
 		},
 		Healthcheck:     &container.HealthConfig{}, //TODO
 		NetworkDisabled: false,
-		Labels:          e.jobContainerLabels(job),
+		Labels:          e.containerLabels(executionID, job),
 	}, &container.HostConfig{
 		NetworkMode: dockerNetworkBridge,
 		CapAdd:      gatewayCapabilities,
 		ExtraHosts:  []string{dockerHostAddCommand},
-	}, nil, nil, e.dockerObjectName(job, "gateway"))
+	}, nil, nil, e.dockerObjectName(executionID, job, "gateway"))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating gateway container")
 	}

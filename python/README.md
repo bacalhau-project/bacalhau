@@ -17,6 +17,12 @@ The latter is listed as a dependency of this SDK and will be installed automatic
 * Generate a key pair used to sign requests stored in the path specified by the `BACALHAU_DIR` env var (default: `~/.bacalhau`)
 ## Install
 
+### From PyPi:
+
+```console
+$ pip install bacalhau-sdk
+```
+
 ### From source:
 
 Clone the public repository:
@@ -54,8 +60,7 @@ from bacalhau_apiclient.models.storage_spec import StorageSpec
 from bacalhau_apiclient.models.spec import Spec
 from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
 from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
-from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
-from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
+from bacalhau_apiclient.models.publisher_spec import PublisherSpec
 from bacalhau_apiclient.models.deal import Deal
 
 
@@ -64,8 +69,7 @@ data = dict(
     ClientID=get_client_id(),
     Spec=Spec(
         engine="Docker",
-        verifier="Noop",
-        publisher="Estuary",
+        publisher_spec=PublisherSpec(type="IPFS"),
         docker=JobSpecDocker(
             image="ubuntu",
             entrypoint=["echo", "Hello World!"],
@@ -81,12 +85,7 @@ data = dict(
                 path="/outputs",
             )
         ],
-        sharding=JobShardingConfig(
-            batch_size=1,
-            glob_pattern_base_path="/inputs",
-        ),
-        execution_plan=JobExecutionPlan(shards_total=0),
-        deal=Deal(concurrency=1, confidence=0, min_bids=0),
+        deal=Deal(concurrency=1),
         do_not_track=False,
     ),
 )
@@ -108,12 +107,11 @@ The script above prints the following object, the `job.metadata.id` value is our
                   'ExecutionPlan': {'ShardsTotal': 1},
                   'Language': {'JobContext': {}},
                   'Network': {'Type': 'None'},
-                  'Publisher': 'Estuary',
+                  'Publisher': 'IPFS',
                   'Resources': {'GPU': ''},
                   'Sharding': {'BatchSize': 1,
                                'GlobPatternBasePath': '/inputs'},
                   'Timeout': 1800,
-                  'Verifier': 'Noop',
                   'Wasm': {'EntryModule': {}},
                   'outputs': [{'Name': 'outputs',
                                'StorageSource': 'IPFS',

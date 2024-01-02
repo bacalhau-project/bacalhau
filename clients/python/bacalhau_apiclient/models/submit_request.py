@@ -31,26 +31,26 @@ class SubmitRequest(object):
     """
     swagger_types = {
         "client_public_key": "str",
-        "job_create_payload": "list[int]",
+        "payload": "list[int]",
         "signature": "str",
     }
 
     attribute_map = {
         "client_public_key": "client_public_key",
-        "job_create_payload": "job_create_payload",
+        "payload": "payload",
         "signature": "signature",
     }
 
     def __init__(
-        self, client_public_key=None, job_create_payload=None, signature=None
+        self, client_public_key=None, payload=None, signature=None
     ):  # noqa: E501
         """SubmitRequest - a model defined in Swagger"""  # noqa: E501
         self._client_public_key = None
-        self._job_create_payload = None
+        self._payload = None
         self._signature = None
         self.discriminator = None
         self.client_public_key = client_public_key
-        self.job_create_payload = job_create_payload
+        self.payload = payload
         self.signature = signature
 
     @property
@@ -81,31 +81,31 @@ class SubmitRequest(object):
         self._client_public_key = client_public_key
 
     @property
-    def job_create_payload(self):
-        """Gets the job_create_payload of this SubmitRequest.  # noqa: E501
+    def payload(self):
+        """Gets the payload of this SubmitRequest.  # noqa: E501
 
         The data needed to submit and run a job on the network:  # noqa: E501
 
-        :return: The job_create_payload of this SubmitRequest.  # noqa: E501
+        :return: The payload of this SubmitRequest.  # noqa: E501
         :rtype: list[int]
         """
-        return self._job_create_payload
+        return self._payload
 
-    @job_create_payload.setter
-    def job_create_payload(self, job_create_payload):
-        """Sets the job_create_payload of this SubmitRequest.
+    @payload.setter
+    def payload(self, payload):
+        """Sets the payload of this SubmitRequest.
 
         The data needed to submit and run a job on the network:  # noqa: E501
 
-        :param job_create_payload: The job_create_payload of this SubmitRequest.  # noqa: E501
+        :param payload: The payload of this SubmitRequest.  # noqa: E501
         :type: list[int]
         """
-        if job_create_payload is None:
+        if payload is None:
             raise ValueError(
-                "Invalid value for `job_create_payload`, must not be `None`"
+                "Invalid value for `payload`, must not be `None`"
             )  # noqa: E501
 
-        self._job_create_payload = job_create_payload
+        self._payload = payload
 
     @property
     def signature(self):

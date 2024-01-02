@@ -1,42 +1,41 @@
 package wasm
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+
+	"github.com/rs/zerolog/log"
+	"github.com/tetratelabs/wazero"
+	"go.uber.org/atomic"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
-	"github.com/c2h5oh/datasize"
-	"github.com/rs/zerolog/log"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/tetratelabs/wazero/sys"
-	"golang.org/x/exp/maps"
 )
 
 type Executor struct {
-	StorageProvider storage.StorageProvider
+	// handlers is a map of executionID to its handler.
+	handlers generic.SyncMap[string, *executionHandler]
 }
 
-func NewExecutor(_ context.Context, storageProvider storage.StorageProvider) (*Executor, error) {
-	return &Executor{
-		StorageProvider: storageProvider,
-	}, nil
+func NewExecutor() (*Executor, error) {
+	return &Executor{}, nil
 }
 
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
@@ -44,32 +43,187 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
-	defer span.End()
-
-	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
-	if err != nil {
-		return false, err
-	}
-
-	return s.HasStorageLocally(ctx, volume)
+func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
-	defer span.End()
-
-	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
-	if err != nil {
-		return 0, err
-	}
-	return storageProvider.GetVolumeSize(ctx, volume)
+func (*Executor) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	usage models.Resources,
+) (bidstrategy.BidStrategyResponse, error) {
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
-// GetBidStrategy implements executor.Executor
-func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
-	return bidstrategy.NewChainedBidStrategy(), nil
+// Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
+//
+// WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
+// In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
+
+const WasmArch = 32
+const WasmPageSize = 65536
+const WasmMaxPagesLimit = 1 << (WasmArch / 2)
+
+// Start initiates an execution based on the provided RunCommandRequest.
+func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
+	defer span.End()
+
+	if handler, found := e.handlers.Get(request.ExecutionID); found {
+		if handler.active() {
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
+		} else {
+			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
+		}
+	}
+
+	// Apply memory limits to the runtime. We have to do this in multiples of
+	// the WASM page size of 64kb, so round up to the nearest page size if the
+	// limit is not specified as a multiple of that.
+	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
+	if request.Resources.Memory > 0 {
+		requestedPages := request.Resources.Memory/WasmPageSize + math.Min(request.Resources.Memory%WasmPageSize, 1)
+		if requestedPages > WasmMaxPagesLimit {
+			err := fmt.Errorf("requested memory exceeds the wasm limit - %d > 4GB", request.Resources.Memory)
+			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WasmMaxPagesLimit)
+			return err
+		}
+		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
+	}
+
+	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
+	if err != nil {
+		return fmt.Errorf("decoding wasm arguments: %w", err)
+	}
+
+	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)
+	if err != nil {
+		return err
+	}
+
+	// Create a new log manager and obtain some writers that we can pass to the wasm
+	// configuration
+	wasmLogs, err := wasmlogs.NewLogManager(ctx, request.ExecutionID)
+	if err != nil {
+		return err
+	}
+
+	handler := &executionHandler{
+		runtime:     wazero.NewRuntimeWithConfig(ctx, engineConfig),
+		arguments:   engineParams,
+		fs:          rootFs,
+		inputs:      request.Inputs,
+		executionID: request.ExecutionID,
+		resultsDir:  request.ResultsDir,
+		limits:      request.OutputLimits,
+		logger: log.With().
+			Str("execution", request.ExecutionID).
+			Str("job", request.JobID).
+			Str("entrypoint", engineParams.EntryPoint).
+			Logger(),
+		logManager: wasmLogs,
+		activeCh:   make(chan bool),
+		waitCh:     make(chan bool),
+		running:    atomic.NewBool(false),
+	}
+
+	// register the handler for this executionID
+	e.handlers.Put(request.ExecutionID, handler)
+	go handler.run(ctx)
+	return nil
+}
+
+// Wait initiates a wait for the completion of a specific execution using its
+// executionID. The function returns two channels: one for the result and another
+// for any potential error. If the executionID is not found, an error is immediately
+// sent to the error channel. Otherwise, an internal goroutine (doWait) is spawned
+// to handle the asynchronous waiting. Callers should use the two returned channels
+// to wait for the result of the execution or an error. This can be due to issues
+// either beginning the wait or in getting the response. This approach allows the
+// caller to synchronize Wait with calls to Start, waiting for the execution to complete.
+func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models.RunCommandResult, <-chan error) {
+	handler, found := e.handlers.Get(executionID)
+	outCh := make(chan *models.RunCommandResult, 1)
+	errCh := make(chan error, 1)
+
+	if !found {
+		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.ErrNotFound)
+		return outCh, errCh
+	}
+
+	go e.doWait(ctx, outCh, errCh, handler)
+	return outCh, errCh
+}
+
+// doWait is a helper function that actively waits for an execution to finish. It
+// listens on the executionHandler's wait channel for completion signals. Once the
+// signal is received, the result is sent to the provided output channel. If there's
+// a cancellation request (context is done) before completion, an error is relayed to
+// the error channel. If the execution result is nil, an error suggests a potential
+// flaw in the executor logic.
+func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, errCh chan error, handle *executionHandler) {
+	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
+
+	defer close(out)
+	defer close(errCh)
+
+	select {
+	case <-ctx.Done():
+		errCh <- ctx.Err() // Send the cancellation error to the error channel
+		return
+	case <-handle.waitCh:
+		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
+		if handle.result != nil {
+			out <- handle.result
+		} else {
+			errCh <- fmt.Errorf("execution result is nil")
+		}
+	}
+}
+
+// Cancel tries to cancel a specific execution by its executionID.
+// It returns an error if the execution is not found.
+func (e *Executor) Cancel(ctx context.Context, executionID string) error {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.ErrNotFound)
+	}
+	return handler.kill(ctx)
+}
+
+// GetOutputStream provides a stream of output logs for a specific execution.
+// Parameters 'withHistory' and 'follow' control whether to include past logs
+// and whether to keep the stream open for new logs, respectively.
+// It returns an error if the execution is not found.
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	handler, found := e.handlers.Get(executionID)
+	if !found {
+		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
+	}
+	return handler.outputStream(ctx, withHistory, follow)
+}
+
+// Run initiates and waits for the completion of an execution in one call.
+// This method serves as a higher-level convenience function that
+// internally calls Start and Wait methods.
+// It returns the result of the execution or an error if either starting
+// or waiting fails, or if the context is canceled.
+func (e *Executor) Run(
+	ctx context.Context,
+	request *executor.RunCommandRequest,
+) (*models.RunCommandResult, error) {
+	if err := e.Start(ctx, request); err != nil {
+		return nil, err
+	}
+	resCh, errCh := e.Wait(ctx, request.ExecutionID)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case out := <-resCh:
+		return out, nil
+	case err := <-errCh:
+		return nil, err
+	}
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
@@ -78,35 +232,34 @@ func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error
 //   - mount each input at the name specified by Path
 //   - make a directory in the job results directory for each output and mount that
 //     at the name specified by Name
-func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
+func (e *Executor) makeFsFromStorage(
+	ctx context.Context,
+	jobResultsDir string,
+	volumes []storage.PreparedStorage,
+	outputs []*models.ResultPath) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
-	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
-	if err != nil {
-		return nil, err
-	}
-
-	for input, volume := range volumes {
+	for _, v := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", input.Path).
-			Str("source", volume.Source).
+			Str("input", v.InputSource.Target).
+			Str("source", v.Volume.Source).
 			Msg("Using input")
 
 		var stat os.FileInfo
-		stat, err = os.Stat(volume.Source)
+		stat, err = os.Stat(v.Volume.Source)
 		if err != nil {
 			return nil, err
 		}
 
 		var inputFs fs.FS
 		if stat.IsDir() {
-			inputFs = os.DirFS(volume.Source)
+			inputFs = os.DirFS(v.Volume.Source)
 		} else {
-			inputFs = filefs.New(volume.Source)
+			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(input.Path, inputFs)
+		err = rootFs.Mount(v.InputSource.Target, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -139,122 +292,6 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	}
 
 	return rootFs, nil
-}
-
-//nolint:funlen  // Will be made shorter when we do more module linking
-func (e *Executor) Run(ctx context.Context, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
-	defer span.End()
-
-	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
-
-	// Apply memory limits to the runtime. We have to do this in multiples of
-	// the WASM page size of 64kb, so round up to the nearest page size if the
-	// limit is not specified as a multiple of that.
-	if job.Spec.Resources.Memory != "" {
-		memoryLimit, err := datasize.ParseString(job.Spec.Resources.Memory)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-
-		const pageSize = 65536
-		pageLimit := memoryLimit.Bytes()/pageSize + system.Min(memoryLimit.Bytes()%pageSize, 1)
-		engineConfig = engineConfig.WithMemoryLimitPages(uint32(pageLimit))
-	}
-
-	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
-	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
-
-	module, err := LoadRemoteModule(ctx, engine, e.StorageProvider, job.Spec.Wasm.EntryModule)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	// Configure the modules. We will write STDOUT and STDERR to a buffer so
-	// that we can later include them in the job results. We don't want to
-	// execute any start functions automatically as we will do it manually
-	// later. Finally, add the filesystem which contains our input and output.
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-
-	args := append([]string{module.Name()}, job.Spec.Wasm.Parameters...)
-
-	config := wazero.NewModuleConfig().
-		WithStartFunctions().
-		WithStdout(stdout).
-		WithStderr(stderr).
-		WithArgs(args...).
-		WithFS(rootFs)
-
-	keys := maps.Keys(job.Spec.Wasm.EnvironmentVariables)
-	sort.Strings(keys)
-	for _, key := range keys {
-		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, job.Spec.Wasm.EnvironmentVariables[key])
-	}
-
-	// Load and instantiate imported modules
-	var importedModules []wazero.CompiledModule
-	for _, wasmSpec := range job.Spec.Wasm.ImportModules {
-		importedWasi, err := LoadRemoteModule(ctx, engine, e.StorageProvider, wasmSpec)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-		importedModules = append(importedModules, importedWasi)
-
-		if _, err := engine.InstantiateModule(ctx, importedWasi, config); err != nil {
-			return executor.FailResult(err)
-		}
-	}
-
-	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	if _, err := engine.InstantiateModule(ctx, wasi, config); err != nil {
-		return executor.FailResult(err)
-	}
-
-	// Now instantiate the module and run the entry point.
-	instance, err := engine.InstantiateModule(ctx, module, config)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	// Check that all WASI modules conform to our requirements.
-	importedModules = append(importedModules, wasi)
-
-	if err := ValidateModuleAgainstJob(module, job.Spec, importedModules...); err != nil {
-		return executor.FailResult(err)
-	}
-
-	// The function should exit which results in a sys.ExitError. So we capture
-	// the exit code for inclusion in the job output, and ignore the return code
-	// from the function (most WASI compilers will not give one). Some compilers
-	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Debug().
-		Str("entryPoint", job.Spec.Wasm.EntryPoint).
-		Msg("Running WASM job")
-	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
-	exitCode := -1
-	_, wasmErr := entryFunc.Call(ctx)
-	var errExit *sys.ExitError
-	if errors.As(wasmErr, &errExit) {
-		exitCode = int(errExit.ExitCode())
-		wasmErr = nil
-	}
-
-	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
-}
-
-func (e *Executor) GetOutputStream(context.Context, model.Job) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("not implemented for wasm executor")
 }
 
 // Compile-time check that Executor implements the Executor interface.

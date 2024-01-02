@@ -8,11 +8,10 @@ import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Noop implementations of node factories used to mock certain components, which is useful for testing.
@@ -20,67 +19,39 @@ func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 	return node.NodeDependencyInjector{
 		StorageProvidersFactory: NewNoopStorageProvidersFactory(),
 		ExecutorsFactory:        NewNoopExecutorsFactory(),
-		VerifiersFactory:        NewNoopVerifiersFactory(),
 		PublishersFactory:       NewNoopPublishersFactory(),
 	}
 }
 
-type NoopStorageProvidersFactory struct {
-	config noop_storage.StorageConfig
-}
-
-func (f *NoopStorageProvidersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
-	return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, f.config)
-}
-
-func NewNoopStorageProvidersFactory() *NoopStorageProvidersFactory {
+func NewNoopStorageProvidersFactory() node.StorageProvidersFactory {
 	return NewNoopStorageProvidersFactoryWithConfig(noop_storage.StorageConfig{})
 }
 
-func NewNoopStorageProvidersFactoryWithConfig(config noop_storage.StorageConfig) *NoopStorageProvidersFactory {
-	return &NoopStorageProvidersFactory{config: config}
+func NewNoopStorageProvidersFactoryWithConfig(config noop_storage.StorageConfig) node.StorageProvidersFactory {
+	return node.StorageProvidersFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
+			return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, config)
+		})
 }
 
-type NoopExecutorsFactory struct {
-	config noop_executor.ExecutorConfig
-}
-
-func (f *NoopExecutorsFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-	return executor_util.NewNoopExecutors(f.config), nil
-}
-
-func NewNoopExecutorsFactory() *NoopExecutorsFactory {
+func NewNoopExecutorsFactory() node.ExecutorsFactory {
 	return NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{})
 }
 
-func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) *NoopExecutorsFactory {
-	return &NoopExecutorsFactory{config: config}
+func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) node.ExecutorsFactory {
+	return node.ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
+			return executor_util.NewNoopExecutors(config), nil
+		})
 }
 
-type NoopVerifiersFactory struct{}
-
-func (f *NoopVerifiersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (verifier.VerifierProvider, error) {
-	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager)
+func NewNoopPublishersFactory() node.PublishersFactory {
+	return NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{})
 }
 
-func NewNoopVerifiersFactory() *NoopVerifiersFactory {
-	return &NoopVerifiersFactory{}
-}
-
-type NoopPublishersFactory struct{}
-
-func (f *NoopPublishersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
-	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager)
-}
-
-func NewNoopPublishersFactory() *NoopPublishersFactory {
-	return &NoopPublishersFactory{}
+func NewNoopPublishersFactoryWithConfig(config noop_publisher.PublisherConfig) node.PublishersFactory {
+	return node.PublishersFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
+			return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, config)
+		})
 }

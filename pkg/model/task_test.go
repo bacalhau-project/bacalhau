@@ -42,13 +42,12 @@ func TestConfig(t *testing.T) {
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
 
-	require.Equal(t, VerifierNoop, spec.Verifier)
 	require.Equal(t, PublisherIpfs, spec.Publisher)
 	require.Equal(t, []string{"hello"}, spec.Annotations)
 	require.Equal(t, "1m", spec.Resources.CPU)
 	require.Equal(t, "1GB", spec.Resources.Disk)
 	require.Equal(t, "1GB", spec.Resources.Memory)
 	require.Equal(t, "0", spec.Resources.GPU)
-	require.Equal(t, 300.0, spec.Timeout)
+	require.Equal(t, int64(300), spec.Timeout)
 	require.Equal(t, false, spec.DoNotTrack)
 }

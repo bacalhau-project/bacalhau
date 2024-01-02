@@ -3,24 +3,26 @@ package compute
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 )
 
 type bufferTask struct {
-	execution  store.Execution
-	enqueuedAt time.Time
+	localExecutionState store.LocalExecutionState
+	enqueuedAt          time.Time
 }
 
-func newBufferTask(execution store.Execution) *bufferTask {
+func newBufferTask(execution store.LocalExecutionState) *bufferTask {
 	return &bufferTask{
-		execution:  execution,
-		enqueuedAt: time.Now(),
+		localExecutionState: execution,
+		enqueuedAt:          time.Now(),
 	}
 }
 
@@ -31,7 +33,6 @@ type ExecutorBufferParams struct {
 	RunningCapacityTracker     capacity.Tracker
 	EnqueuedCapacityTracker    capacity.Tracker
 	DefaultJobExecutionTimeout time.Duration
-	BackoffDuration            time.Duration
 }
 
 // ExecutorBuffer is a backend.Executor implementation that buffers executions locally until enough capacity is
@@ -47,15 +48,16 @@ type ExecutorBuffer struct {
 	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
-	enqueued                   map[string]*bufferTask
-	enqueuedList               []string
+	queuedTasks                *collections.HashedPriorityQueue[string, *bufferTask]
 	defaultJobExecutionTimeout time.Duration
-	backoffDuration            time.Duration
-	backoffUntil               time.Time
 	mu                         sync.Mutex
 }
 
 func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
+	indexer := func(b *bufferTask) string {
+		return b.localExecutionState.Execution.ID
+	}
+
 	r := &ExecutorBuffer{
 		ID:                         params.ID,
 		runningCapacity:            params.RunningCapacityTracker,
@@ -63,24 +65,20 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
-		enqueued:                   make(map[string]*bufferTask),
-		enqueuedList:               make([]string, 0),
 		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-		backoffDuration:            params.BackoffDuration,
+		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
-
-	r.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "ExecutorBuffer.mu",
-	})
 
 	return r
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (err error) {
+func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalExecutionState) error {
+	var err error
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	execution := localExecutionState.Execution
 
 	defer func() {
 		if err != nil {
@@ -88,7 +86,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 				ExecutionMetadata: NewExecutionMetadata(execution),
 				RoutingMetadata: RoutingMetadata{
 					SourcePeerID: s.ID,
-					TargetPeerID: execution.RequesterNodeID,
+					TargetPeerID: localExecutionState.RequesterNodeID,
 				},
 				Err: err.Error(),
 			})
@@ -97,57 +95,69 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 
 	// There is no point in enqueuing a job that requires more than the total capacity of the node. Such jobs should
 	// have not reached this backend in the first place, and should have been rejected by the frontend when asked to bid
-	if !s.runningCapacity.IsWithinLimits(ctx, execution.ResourceUsage) {
+	if !s.runningCapacity.IsWithinLimits(ctx, *execution.TotalAllocatedResources()) {
 		err = fmt.Errorf("not enough capacity to run job")
-		return
+		return err
 	}
-	if _, ok := s.enqueued[execution.ID]; ok {
+
+	if s.queuedTasks.Contains(execution.ID) {
 		err = fmt.Errorf("execution %s already enqueued", execution.ID)
-		return
+		return err
 	}
 	if _, ok := s.running[execution.ID]; ok {
 		err = fmt.Errorf("execution %s already running", execution.ID)
-		return
+		return err
 	}
-	if !s.enqueuedCapacity.AddIfHasCapacity(ctx, execution.ResourceUsage) {
+	if added := s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()); added == nil {
 		err = fmt.Errorf("not enough capacity to enqueue job")
-		return
+		return err
+	} else {
+		// Update the execution to include all the resources that have
+		// actually been allocated. Effectively this is picking the GPU(s)
+		// that the job will use. Note that this is not persisted here, as
+		// it was based on current usage information which would change
+		// under a restart, so it will only persist if the job starts
+		execution.AllocateResources(execution.Job.Task().Name, *added)
 	}
 
-	s.enqueued[execution.ID] = newBufferTask(execution)
-	s.enqueuedList = append(s.enqueuedList, execution.ID)
+	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), execution.Job.Priority)
 	s.deque()
 	return err
 }
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	ctx = system.AddJobIDToBaggage(ctx, task.execution.Job.Metadata.ID)
+	job := task.localExecutionState.Execution.Job
+	ctx = system.AddJobIDToBaggage(ctx, job.ID)
 	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
-	timeout := task.execution.Job.Spec.GetTimeout()
-	if timeout == 0 {
-		timeout = s.defaultJobExecutionTimeout
+	var timeout time.Duration
+	if !job.IsLongRunning() {
+		timeout = job.Task().Timeouts.GetExecutionTimeout()
+		if timeout == 0 {
+			timeout = s.defaultJobExecutionTimeout
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 
 	ch := make(chan error)
 	go func() {
-		ch <- s.delegateService.Run(ctx, task.execution)
+		ch <- s.delegateService.Run(ctx, task.localExecutionState)
 	}()
 
 	select {
 	case <-ctx.Done():
-		s.callback.OnComputeFailure(ctx, ComputeError{
-			ExecutionMetadata: NewExecutionMetadata(task.execution),
+		log.Ctx(ctx).Info().Str("ID", task.localExecutionState.Execution.ID).Dur("Timeout", timeout).Msg("Execution timed out")
+		s.callback.OnCancelComplete(ctx, CancelResult{
+			ExecutionMetadata: NewExecutionMetadata(task.localExecutionState.Execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: s.ID,
-				TargetPeerID: task.execution.RequesterNodeID,
+				TargetPeerID: task.localExecutionState.RequesterNodeID,
 			},
-			Err: fmt.Sprintf("execution timed out after %s", timeout),
 		})
 	case <-ch:
 		// no need to check for run errors as they are already handled by the delegate backend.Executor and
@@ -156,65 +166,68 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.runningCapacity.Remove(ctx, task.execution.ResourceUsage)
-	delete(s.running, task.execution.ID)
+	s.runningCapacity.Remove(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
+	delete(s.running, task.localExecutionState.Execution.ID)
 	s.deque()
 }
 
 // deque tries to run the next execution in the queue if there is enough capacity.
 // It is called every time a job is finished or enqueued, where a lock is already held.
+// TODO: We loop through the queue every time a job runs or finishes, which is not very efficient.
 func (s *ExecutorBuffer) deque() {
-	// If last attempt was very recent, and we still have jobs running,
-	// then we need to wait until backoffDuration has passed
-	if len(s.running) != 0 && time.Now().Before(s.backoffUntil) {
-		return
-	}
 	ctx := context.Background()
 
-	// We are maintain the order of enqueued executions treat it as a FIFO queue, while allowing to skip over jobs
-	// that require more resources than the current capacity. This is done to improve utilization of compute nodes,
-	// though it might result in starvation and should be re-evaluated in the future.
-	remainingEnqueuedList := make([]string, 0, len(s.enqueuedList))
+	// There are at most max matches, so try at most that many times
+	max := s.queuedTasks.Len()
+	for i := 0; i < max; i++ {
+		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
+			// If we don't have enough resources to run this task, then we will skip it
+			queued := task.localExecutionState.Execution.TotalAllocatedResources()
+			added := s.runningCapacity.AddIfHasCapacity(ctx, *queued)
+			if added == nil {
+				return false
+			}
 
-	for _, executionID := range s.enqueuedList {
-		task := s.enqueued[executionID]
+			// Update the execution to include all the resources that have
+			// actually been allocated
+			task.localExecutionState.Execution.AllocateResources(
+				task.localExecutionState.Execution.Job.Task().Name,
+				*added,
+			)
 
-		if s.runningCapacity.AddIfHasCapacity(ctx, task.execution.ResourceUsage) {
-			s.enqueuedCapacity.Remove(ctx, task.execution.ResourceUsage)
-			delete(s.enqueued, executionID)
-			s.running[executionID] = task
-			go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
-		} else {
-			remainingEnqueuedList = append(remainingEnqueuedList, executionID)
+			// Claim the resources now so that we don't count allocated resources
+			s.enqueuedCapacity.Remove(ctx, *queued)
+			return true
+		})
+
+		if qitem == nil {
+			// We didn't find anything in the queue that matches our resource availability so we will
+			// break out of this look as there is nothing else to find
+			break
 		}
+
+		task := qitem.Value
+
+		// Move the execution to the running list and remove from the list of enqueued IDs
+		// before we actually run the task
+		execID := task.localExecutionState.Execution.ID
+		s.running[execID] = task
+
+		go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 	}
-	s.enqueuedList = remainingEnqueuedList
-	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Publish(_ context.Context, execution store.Execution) error {
-	// TODO: Enqueue publish tasks
-	go func() {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
-		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
-		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Publish")
-		defer span.End()
-		_ = s.delegateService.Publish(ctx, execution)
-	}()
-	return nil
-}
-
-func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) error {
+func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalExecutionState) error {
 	// TODO: Enqueue cancel tasks
+	execution := localExecutionState.Execution
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.ID)
 		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
 
-		err := s.delegateService.Cancel(ctx, execution)
+		err := s.delegateService.Cancel(ctx, localExecutionState)
 		if err == nil {
 			s.mu.Lock()
 			defer s.mu.Unlock()
@@ -226,21 +239,21 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 }
 
 // RunningExecutions return list of running executions
-func (s *ExecutorBuffer) RunningExecutions() []store.Execution {
+func (s *ExecutorBuffer) RunningExecutions() []store.LocalExecutionState {
 	return s.mapValues(s.running)
 }
 
-// EnqueuedExecutions return list of enqueued executions
-func (s *ExecutorBuffer) EnqueuedExecutions() []store.Execution {
-	return s.mapValues(s.enqueued)
+// EnqueuedExecutionsCount return number of items enqueued
+func (s *ExecutorBuffer) EnqueuedExecutionsCount() int {
+	return s.queuedTasks.Len()
 }
 
-func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.Execution {
+func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalExecutionState {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	executions := make([]store.Execution, 0, len(m))
+	executions := make([]store.LocalExecutionState, 0, len(m))
 	for _, v := range m {
-		executions = append(executions, v.execution)
+		executions = append(executions, v.localExecutionState)
 	}
 	return executions
 }

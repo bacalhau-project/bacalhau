@@ -1,19 +1,16 @@
 APIVersion: v1beta1
 Spec:
-  Engine: Docker
-  Verifier: Noop
-  Publisher: Estuary
+  Engine: docker
+  Publisher: ipfs
   Docker:
     Image: ubuntu:latest
     Entrypoint:
-      - /bin/bash
-      - -c
-      - echo 15
-  outputs:
-    - StorageSource: IPFS
-      Name: output_custom
-      path: /output_custom
+    - /bin/bash
+    - -c
+    - echo 15
+  Outputs:
+  - StorageSource: ipfs
+    Name: output_custom
+    Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0
-    MinBids: 0

@@ -3,114 +3,111 @@ package scenarios
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"k8s.io/apimachinery/pkg/selection"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
 const canaryAnnotation = "canary"
 
-func getSampleDockerJob() *model.Job {
+func getSampleDockerJob() (*model.Job, error) {
+	nodeSelectors, err := getNodeSelectors()
+	if err != nil {
+		return nil, err
+	}
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("echo", defaultEchoMessage).
+				Build(),
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
+		Spec:       spec,
 	}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"echo",
-				defaultEchoMessage,
-			},
-		},
-		Annotations: []string{canaryAnnotation},
-	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
-	return j
+	return j, nil
 }
 
-func getSampleDockerIPFSJob() *model.Job {
+func getSampleDockerIPFSJob() (*model.Job, error) {
+	nodeSelectors, err := getNodeSelectors()
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash",
-				"-c",
-				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
-			},
-		},
-		Inputs: []model.StorageSpec{
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint(
+					"bash",
+					"-c",
+					"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
+				).Build(),
+		),
+		job.WithInputs(
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
 			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
-			{
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "inputs",
 				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
 				Path:          "/inputs/data.tar.gz",
 			},
-		},
-		Outputs: []model.StorageSpec{
-			{
+		),
+		job.WithOutputs(
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
 				Path:          "/outputs",
 			},
-		},
-		Annotations: []string{canaryAnnotation},
-		NodeSelectors: []model.LabelSelectorRequirement{
-			{
-				Key:      "owner",
-				Operator: selection.Equals,
-				Values:   []string{"bacalhau"},
-			},
-		},
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
-	return j
+	j.Spec = spec
+	return j, nil
 }
 
-func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
-	dir, err := ioutil.TempDir("", "")
+func getIPFSDownloadSettings() (*downloader.DownloaderSettings, error) {
+	dir, err := os.MkdirTemp(os.TempDir(), "")
 	if err != nil {
 		return nil, err
 	}
 
-	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
-	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
-	}
-
-	return &model.DownloaderSettings{
-		Timeout:        50 * time.Second,
-		OutputDir:      dir,
-		IPFSSwarmAddrs: IPFSSwarmAddrs,
+	return &downloader.DownloaderSettings{
+		Timeout:   50 * time.Second,
+		OutputDir: dir,
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *client.APIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	return resolver.Wait(
 		ctx,
@@ -129,15 +126,35 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.GetAPIHost()
-	apiPort := config.GetAPIPort()
-	if apiHost == "" {
-		apiHost = system.Envs[system.GetEnvironment()].APIHost
+func getClientHostAndPort() (string, uint16) {
+	host, err := config.Get[string](types.NodeClientAPIHost)
+	if err != nil {
+		panic(err)
 	}
-	if apiPort == "" {
-		apiPort = fmt.Sprint(system.Envs[system.GetEnvironment()].APIPort)
+	port, err := config.Get[uint16](types.NodeClientAPIPort)
+	if err != nil {
+		panic(err)
 	}
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
-	return client
+	log.Debug().Msgf("Connecting to %s:%d", host, port)
+	return host, port
+}
+
+func getClient() *client.APIClient {
+	host, port := getClientHostAndPort()
+	return client.NewAPIClient(host, port)
+}
+
+func getClientV2() *clientv2.Client {
+	host, port := getClientHostAndPort()
+	return clientv2.New(clientv2.Options{
+		Address: fmt.Sprintf("http://%s:%d", host, port),
+	})
+}
+
+func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
+	nodeSelectors := os.Getenv("BACALHAU_NODE_SELECTORS")
+	if nodeSelectors != "" {
+		return parse.NodeSelector(nodeSelectors)
+	}
+	return nil, nil
 }

@@ -1,194 +1,211 @@
 package config
 
 import (
-	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
-)
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
-func DevstackShouldWriteEnvFile() bool {
-	return DevstackEnvFile() != ""
-}
-
-func DevstackEnvFile() string {
-	return os.Getenv("DEVSTACK_ENV_FILE")
-}
-
-func DevstackGetShouldPrintInfo() bool {
-	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
-}
-
-func DevstackSetShouldPrintInfo() {
-	os.Setenv("DEVSTACK_PRINT_INFO", "1")
-}
-
-func ShouldKeepStack() bool {
-	return os.Getenv("KEEP_STACK") != ""
-}
-
-func GetStoragePath() string {
-	storagePath := os.Getenv("BACALHAU_STORAGE_PATH")
-	if storagePath == "" {
-		storagePath = os.TempDir()
-	}
-	return storagePath
-}
-
-func GetAPIHost() string {
-	return os.Getenv("BACALHAU_HOST")
-}
-
-func GetAPIPort() string {
-	return os.Getenv("BACALHAU_PORT")
-}
-
-type contextKey int
-
-const (
-	getVolumeSizeRequestTimeoutKey contextKey = iota
+	"github.com/bacalhau-project/bacalhau/pkg/config/migrations"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 const (
-	// by default we wait 2 minutes for the IPFS network to resolve a CID
-	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	getVolumeSizeRequestTimeout = 2 * time.Minute
+	environmentVariablePrefix = "BACALHAU"
+	inferConfigTypes          = true
+	automaticEnvVar           = true
+
+	// user key files
+	Libp2pPrivateKeyFileName = "libp2p_private_key"
+	UserPrivateKeyFileName   = "user_id.pem"
+
+	// compute paths
+	ComputeStoragesPath = "executor_storages"
+	PluginsPath         = "plugins"
+
+	// requester paths
+	AutoCertCachePath = "autocert-cache"
+
+	// update check paths
+	UpdateCheckStatePath = "update.json"
 )
 
-// how long do we wait for a volume size request to timeout
-// if a non-existing cid is asked for - the dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
-// function will hang for a long time - so we wrap that call in a timeout
-// for tests - we only want to wait for 2 seconds because everything is on a local network
-// in prod - we want to wait longer because we might be running a job that is
-// using non-local CIDs
-// the tests are expected to call SetVolumeSizeRequestTimeout to reduce this timeout
-func GetVolumeSizeRequestTimeout(ctx context.Context) time.Duration {
-	value := ctx.Value(getVolumeSizeRequestTimeoutKey)
-	if value == nil {
-		value = getVolumeSizeRequestTimeout
-	}
-	return value.(time.Duration)
+var (
+	environmentVariableReplace = strings.NewReplacer(".", "_")
+	configDecoderHook          = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
+)
+
+const (
+	configType     = "yaml"
+	configName     = "config"
+	configFileMode = 0666
+)
+
+func Init(path string) (types.BacalhauConfig, error) {
+	// derive the default config for the specified environment.
+	defaultConfig := ForEnvironment()
+
+	// set default values for path dependent config.
+	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
+	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
+	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
+	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
+	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+
+	// initialize the configuration with default values.
+	return initConfig(path, WithDefaultConfig(defaultConfig))
 }
 
-func SetVolumeSizeRequestTimeout(ctx context.Context, value time.Duration) context.Context {
-	return context.WithValue(ctx, getVolumeSizeRequestTimeoutKey, value)
+func Load(path string) (types.BacalhauConfig, error) {
+	// derive the default config for the specified environment.
+	defaultConfig := ForEnvironment()
+
+	// set default values for path dependent config.
+	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
+	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
+	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
+	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
+	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+
+	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
 }
 
-// by default we wait 5 minutes for a URL to download
-// tests will override this using config.SetDownloadURLRequestTimeoutSeconds(2)
-var downloadURLRequestTimeoutSeconds int64 = 300
-
-// how long do we wait for a URL to download
-func GetDownloadURLRequestTimeout() time.Duration {
-	return time.Duration(downloadURLRequestTimeoutSeconds) * time.Second
-}
-
-// how many times do we try to download a URL
-var downloadURLRequestRetries = 3
-
-// how long do we wait for a URL to download
-func GetDownloadURLRequestRetries() int {
-	return downloadURLRequestRetries
-}
-
-func GetLibp2pTracerPath() string {
-	configPath := GetConfigPath()
-	return filepath.Join(configPath, "bacalhau-libp2p-tracer.json")
-}
-
-func GetEventTracerPath() string {
-	configPath := GetConfigPath()
-	return filepath.Join(configPath, "bacalhau-event-tracer.json")
-}
-
-func GetConfigPath() string {
-	suffix := ".bacalhau"
-	env := os.Getenv("BACALHAU_PATH")
-	var d string
-	if env == "" {
-		// e.g. /home/francesca/.bacalhau
-		dirname, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-		d = filepath.Join(dirname, suffix)
-	} else {
-		// e.g. /data/.bacalhau
-		d = filepath.Join(env, suffix)
-	}
-	// create dir if not exists
-	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	return d
-}
-
-const BitsForKeyPair = 2048
-
-func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
-	configPath := GetConfigPath()
-
-	// We include the port in the filename so that in devstack multiple nodes
-	// running on the same host get different identities
-	privKeyPath := filepath.Join(configPath, keyName)
-
-	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
-		// Private key does not exist - create and write it
-
-		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
-		if err != nil {
-			log.Error().Err(err)
-			return nil, err
-		}
-
-		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, util.OS_USER_RW)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
-		}
-		privBytes, err := crypto.MarshalPrivateKey(prvKey)
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal private key: %v", err)
-		}
-		// base64 encode privBytes
-		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		_, err = keyOut.WriteString(b64 + "\n")
-		if err != nil {
-			return nil, fmt.Errorf("failed to write to key file: %v", err)
-		}
-		if err := keyOut.Close(); err != nil {
-			return nil, fmt.Errorf("error closing key file: %v", err)
-		}
-		log.Debug().Msgf("wrote %s", privKeyPath)
+func Migrate(path string) error {
+	// check if the config file exists, if one is not found we don't need to migrate it
+	configPath := filepath.Join(path, "config.yaml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to stat config file for migration: %w", err)
 	}
 
-	// Now that we've ensured the private key is written to disk, read it! This
-	// ensures that loading it works even in the case where we've just created
-	// it.
-
-	// read the private key
-	keyBytes, err := os.ReadFile(privKeyPath)
+	// open the config file
+	f, err := os.Open(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %v", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %v", err)
-	}
-	// parse the private key
-	prvKey, err := crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
+		return fmt.Errorf("failed to open config file at %q: %w", configPath, err)
 	}
 
-	return prvKey, nil
+	// read it all and unmarshal into yaml
+	b, err := io.ReadAll(f)
+	if err != nil {
+		if err := f.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close config file after failing to read it.")
+		}
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+	// we can close the file now that we read everything.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close config file: %w", err)
+	}
+
+	var cfg types.BacalhauConfig
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return fmt.Errorf("failed to unmarshal config file: %w", err)
+	}
+
+	// get all the migrations we need to apply to it.
+	migs, err := migrations.GetMigrations()
+	if err != nil {
+		return fmt.Errorf("failed to load migration list: %w", err)
+	}
+
+	// apply the migrations
+	currentCfg := cfg
+	for _, m := range migs {
+		log.Info().Msgf("applying migration sequence %d", m.Sequence())
+		currentCfg, err = m.Migrate(currentCfg)
+		if err != nil {
+			return err
+		}
+	}
+	log.Info().Msgf("config migration complete")
+
+	// marshal the migrated config back to yaml
+	marshaledCfg, err := yaml.Marshal(currentCfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal migrated config: %w", err)
+	}
+
+	// open the file for writing and truncate it.
+	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, configFileMode)
+	if err != nil {
+		return fmt.Errorf("failed to open config file for writing at %q: %w", configPath, err)
+	}
+	defer fw.Close()
+
+	// write the marshaled data back to the file
+	if _, err := fw.Write(marshaledCfg); err != nil {
+		return fmt.Errorf("failed to write migrated config to file: %w", err)
+	}
+
+	return nil
+}
+
+type Params struct {
+	FileName      string
+	FileType      string
+	FileHandler   func(fileName string) error
+	DefaultConfig types.BacalhauConfig
+}
+
+func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
+	params := &Params{
+		FileName:      configName,
+		FileType:      configType,
+		FileHandler:   NoopConfigHandler,
+		DefaultConfig: ForEnvironment(),
+	}
+
+	for _, opt := range opts {
+		opt(params)
+	}
+
+	viper.AddConfigPath(path)
+	viper.SetConfigName(params.FileName)
+	viper.SetConfigType(params.FileType)
+	viper.SetEnvPrefix(environmentVariablePrefix)
+	viper.SetTypeByDefaultValue(inferConfigTypes)
+	viper.SetEnvKeyReplacer(environmentVariableReplace)
+	if err := SetDefault(params.DefaultConfig); err != nil {
+		return types.BacalhauConfig{}, nil
+	}
+
+	if err := params.FileHandler(filepath.Join(path, fmt.Sprintf("%s.%s", params.FileName, params.FileType))); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	if automaticEnvVar {
+		viper.AutomaticEnv()
+	}
+
+	var out types.BacalhauConfig
+	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	return out, nil
+}
+
+// Reset clears all configuration, useful for testing.
+func Reset() {
+	viper.Reset()
+}
+
+// Getenv wraps os.Getenv and retrieves the value of the environment variable named by the config key.
+// It returns the value, which will be empty if the variable is not present.
+func Getenv(key string) string {
+	return os.Getenv(KeyAsEnvVar(key))
+}
+
+// KeyAsEnvVar returns the environment variable corresponding to a config key
+func KeyAsEnvVar(key string) string {
+	return strings.ToUpper(
+		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
+	)
 }

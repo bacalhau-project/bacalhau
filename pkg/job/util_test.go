@@ -77,16 +77,15 @@ func (s *JobUtilSuite) TestRun_URLs() {
 		for _, testURL := range testURLs {
 			func() {
 				// Test all URLs against the validator
-				spec, err := buildJobInputs(nil, []string{testURL.submittedURL})
+				spec, err := ParseStorageString(testURL.submittedURL, "/inputs", map[string]string{})
 				originalURLTrimmed := strings.Trim(testURL.submittedURL, `"' `)
 				convertedTrimmed := strings.Trim(testURL.convertedURL, `"' `)
 				if testURL.valid {
 					require.NoError(s.T(), err, fmt.Sprintf("%s: Should not have errored - %s", testURL.errorMsg, testURL.submittedURL))
-					require.Equal(s.T(), 1, len(spec), testURL.errorMsg)
 					if testURL.convertedURL != "" {
-						require.Equal(s.T(), convertedTrimmed, spec[0].URL, testURL.errorMsg)
+						require.Equal(s.T(), convertedTrimmed, spec.URL, testURL.errorMsg)
 					} else {
-						require.Equal(s.T(), originalURLTrimmed, spec[0].URL, testURL.errorMsg)
+						require.Equal(s.T(), originalURLTrimmed, spec.URL, testURL.errorMsg)
 					}
 				} else {
 					require.Error(s.T(), err, fmt.Sprintf("%s: Should have errored - %s", testURL.errorMsg, testURL.submittedURL))
@@ -133,7 +132,7 @@ func (s *JobUtilSuite) TestStateSummary() {
 		{
 			name: "Canceled wins out against Bid Accepted and Rejected",
 			states: []model.ExecutionStateType{
-				model.ExecutionStateCanceled,
+				model.ExecutionStateCancelled,
 				model.ExecutionStateAskForBidAccepted,
 				model.ExecutionStateAskForBidRejected,
 			},

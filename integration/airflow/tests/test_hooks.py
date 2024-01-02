@@ -22,13 +22,12 @@ class TestBacalhauHook(unittest.TestCase):
         api_version = "V1beta1"
         spec = dict(
             engine="Docker",
-            verifier="Noop",
             publisher="Estuary",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "TestBacalhauAirflowOperator"],
             ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
+            deal=dict(concurrency=1),
         )
         hook = BacalhauHook()
         job_id = hook.submit_job(api_version=api_version, job_spec=spec)

@@ -11,11 +11,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -27,39 +30,27 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
+	err := config.Set(configenv.Local)
+	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }
 
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
-}
-
-func (s *StorageSuite) TestNewStorageProvider() {
-	cm := system.NewCleanupManager()
-
-	sp, err := NewStorage(cm)
-	s.Require().NoError(err, "failed to create storage provider")
-
-	// is dir writable?
-	f, err := os.Create(filepath.Join(sp.localDir, "data.txt"))
-	s.Require().NoError(err, "failed to create file")
-
-	_, err = f.WriteString("test\n")
-	s.Require().NoError(err, "failed to write to file")
-
-	s.NoError(f.Close())
-	s.Require().NotNil(sp.client, "HTTPClient is nil")
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	sp := newStorage(s.T().TempDir())
+	sp := NewStorage()
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           "foo",
-		Path:          "foo",
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: "foo",
+			}.ToMap(),
+		},
+		Target: "bar",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(context.Background(), spec)
@@ -73,6 +64,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 		path    string
 		code    int
 		content string
+		headers *map[string]string
 	}
 	tests := []struct {
 		name             string
@@ -187,6 +179,98 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			expectedContent:  "i'm not putting an image here",
 			expectedFilename: "300.jpg",
 		},
+		{
+			name: "redirects.r.us - without content disposition",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300",
+		},
+		{
+			name: "redirects.r.us - with content disposition",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"300.jpg\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
+		{
+			name: "redirects.r.us - malicious",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"../../300.jpg\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
+		{
+			name: "redirects.r.us - malicious part II",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"/etc/300.jpg\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
+		{
+			name: "redirects.r.us - without redirect",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"dodgy.bin\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
 	}
 
 	for _, test := range tests {
@@ -206,18 +290,34 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 					return
 				}
 
+				if response.headers != nil {
+					// Set the headers, if any, before WriteHeader is called
+					for k, v := range *response.headers {
+						w.Header().Add(k, v)
+					}
+				}
+
 				w.WriteHeader(response.code)
+
 				_, err := w.Write([]byte(response.content))
 				s.NoError(err)
 			}))
 			s.T().Cleanup(ts.Close)
 
-			subject := newStorage(s.T().TempDir())
+			subject := NewStorage()
 
-			vol, err := subject.PrepareStorage(context.Background(), model.StorageSpec{
-				URL:  fmt.Sprintf("%s%s", ts.URL, test.requests[0].path),
-				Path: "/inputs",
-			})
+			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
+			spec := models.InputSource{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceURL,
+					Params: Source{
+						URL: url,
+					}.ToMap(),
+				},
+				Target: "/inputs",
+			}
+
+			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)
@@ -227,7 +327,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				s.Regexp(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`, filepath.Base(vol.Target))
 				s.Equal(fmt.Sprintf("%s%s", string(os.PathSeparator), "inputs"), filepath.Dir(vol.Target))
 			} else {
-				s.Equal(test.expectedFilename, actualFilename)
+				s.Equal(test.expectedFilename, actualFilename, fmt.Sprintf("filename doesn't match calling %s", url))
 				s.Equal(filepath.Join("/inputs", test.expectedFilename), vol.Target)
 			}
 
@@ -235,7 +335,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			actualContent, err := os.ReadFile(vol.Source)
 			s.Require().NoError(err)
 
-			s.Equal(test.expectedContent, string(actualContent))
+			s.Equal(test.expectedContent, string(actualContent), "content does not match")
 		})
 	}
 }

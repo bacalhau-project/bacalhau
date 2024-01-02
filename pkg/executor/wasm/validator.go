@@ -3,26 +3,11 @@ package wasm
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+	"golang.org/x/exp/maps"
 )
-
-// ValidateModuleAgainstJob will return an error if the passed job does not
-// represent a valid WASM executor job or the passed module is not able to be
-// run to fulfill the job.
-func ValidateModuleAgainstJob(
-	module wazero.CompiledModule,
-	job model.Spec,
-	importModules ...wazero.CompiledModule,
-) error {
-	err := ValidateModuleImports(module, importModules...)
-	if err != nil {
-		return err
-	}
-
-	return ValidateModuleAsEntryPoint(module, job.Wasm.EntryPoint)
-}
 
 // ValidateModuleImports will return an error if the passed module requires
 // imports that are not found in any of the passed importModules. Imports have
@@ -31,24 +16,31 @@ func ValidateModuleImports(
 	module wazero.CompiledModule,
 	importModules ...wazero.CompiledModule,
 ) error {
+reqImport:
 	for _, requiredImport := range module.ImportedFunctions() {
 		importNamespace, funcName, _ := requiredImport.Import()
 		exists := false
 		for _, importModule := range importModules {
-			_, exists = importModule.ExportedFunctions()[funcName]
-			if exists {
-				err := ValidateModuleHasFunction(
-					importModule,
-					funcName,
-					requiredImport.ParamTypes(),
-					requiredImport.ResultTypes(),
-				)
+			log.Debug().Str("Func", funcName).Str("Module", importModule.Name()).Msg("Looking for import")
+			for _, funct := range maps.Keys(importModule.ExportedFunctions()) {
+				log.Debug().Str("Func", funct).Str("Module", importModule.Name()).Bool("Eq", funct == funcName).Msg("Has function")
+				if funct == funcName {
+					err := ValidateModuleHasFunction(
+						importModule,
+						funcName,
+						requiredImport.ParamTypes(),
+						requiredImport.ResultTypes(),
+					)
 
-				// If the module has the import but the signature doesn't match,
-				// as we enforce that imports are unique, this will break even
-				// if there is another import with correct name and signature.
-				if err != nil {
-					return err
+					// If the module has the import but the signature doesn't match,
+					// as we enforce that imports are unique, this will break even
+					// if there is another import with correct name and signature.
+					if err != nil {
+						return err
+					} else {
+						log.Debug().Msg("kthnx")
+						continue reqImport
+					}
 				}
 			}
 		}

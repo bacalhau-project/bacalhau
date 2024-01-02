@@ -7,9 +7,11 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/baggage"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 type loggingTracerProvider struct {
+	embedded.TracerProvider
 	delegate shutdownTracerProvider
 }
 
@@ -25,6 +27,7 @@ func (l loggingTracerProvider) Tracer(name string, options ...oteltrace.TracerOp
 }
 
 type loggingTracer struct {
+	embedded.Tracer
 	delegate oteltrace.Tracer
 }
 

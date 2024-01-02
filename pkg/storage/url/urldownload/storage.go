@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,9 +14,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
@@ -26,36 +26,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// a storage driver runs the downloads content
-// from a public URL source and copies it to
-// a local directory in preparation for
-// a job to run - it will remove the folder/file once complete
+// StorageProvider downloads data on request from a URL to a local
+// directory.
 
 type StorageProvider struct {
-	localDir string
-	client   *retryablehttp.Client
+	client *retryablehttp.Client
 }
 
-func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
-	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-url")
-	if err != nil {
-		return nil, err
-	}
+func NewStorage() *StorageProvider {
+	log.Debug().Msg("URL download driver created")
 
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to remove storage folder: %w", err)
-		}
-		return nil
-	})
-
-	log.Debug().Str("dir", dir).Msg("URL download driver created with output dir")
-
-	return newStorage(dir), nil
-}
-
-func newStorage(dir string) *StorageProvider {
 	client := retryablehttp.NewClient()
 	client.HTTPClient = &http.Client{
 		Timeout: config.GetDownloadURLRequestTimeout(),
@@ -83,8 +63,7 @@ func newStorage(dir string) *StorageProvider {
 	}
 
 	return &StorageProvider{
-		localDir: dir,
-		client:   client,
+		client: client,
 	}
 }
 
@@ -92,23 +71,31 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource) (bool, error) {
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
 	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 	return 0, nil
 }
 
 // PrepareStorage will download the file from the URL
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	u, err := IsURLSupported(storageSpec.URL)
+func (sp *StorageProvider) PrepareStorage(
+	ctx context.Context,
+	storageDirectory string,
+	storageSpec models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	u, err := IsURLSupported(source.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	outputPath, err := os.MkdirTemp(sp.localDir, "*")
+	// Create a temporary folder inside the provided directory
+	outputPath, err := os.MkdirTemp(storageDirectory, "*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -117,6 +104,16 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
+
+	requestDidRedirect := false
+
+	// Install handler which can recognize whether we have performed a redirect or not.
+	previousRedirect := sp.client.HTTPClient.CheckRedirect
+	sp.client.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		requestDidRedirect = true
+		return nil
+	}
+
 	res, err := sp.client.Do(req) //nolint:bodyclose // this is being closed - golangci-lint is wrong again
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to begin download from url %s: %w", u, err)
@@ -124,15 +121,26 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	defer closer.DrainAndCloseWithLogOnError(ctx, "response", res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, res.Status)
+		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", source.URL, res.Status)
 	}
 
-	baseName := path.Base(res.Request.URL.Path)
+	// Reset previous redirect handler
+	sp.client.HTTPClient.CheckRedirect = previousRedirect
+
 	var fileName string
+	baseName := path.Base(res.Request.URL.Path)
+
+	// Check whether content-disposition is set, but only after a redirect
+	if requestDidRedirect {
+		fileName = filenameFromDisposition(res.Header.Get("content-disposition"))
+	}
+
 	if baseName == "." || baseName == "/" {
-		// There is no filename in the URL, so we need to a temp one
-		fileName = uuid.UUID.String(uuid.New())
-	} else {
+		// Still no value, so we'll fallback to a uuid
+		if fileName == "" {
+			fileName = uuid.UUID.String(uuid.New())
+		}
+	} else if fileName == "" {
 		fileName = baseName
 	}
 
@@ -153,7 +161,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %w", filePath, err)
 	}
 
-	targetPath := filepath.Join(storageSpec.Path, fileName)
+	targetPath := filepath.Join(storageSpec.Target, fileName)
 
 	log.Ctx(ctx).Debug().
 		Stringer("url", u).
@@ -171,32 +179,44 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	return volume, nil
 }
 
+func filenameFromDisposition(contentDispositionHdr string) string {
+	// After a redirect, when we need a filename, sometimes the server is giving
+	// us a filename. We should use it.
+	// We don't really care about disposition (attachment, inline) here and if
+	// it is anything else then something has really gone wrong.
+	fileName := ""
+	if contentDispositionHdr != "" {
+		_, params, err := mime.ParseMediaType(contentDispositionHdr)
+		if err == nil {
+			// In cases where we fail (err != nil) then we will just degrade to the
+			// previous logic, but if we can find the filename, we'll set basename
+			// to that.
+			fileName = params["filename*"]
+			if fileName == "" {
+				fileName = params["filename"]
+			}
+
+			if fileName != "" {
+				fileName = filepath.Base(fileName)
+			}
+		}
+	}
+	return fileName
+}
+
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ model.StorageSpec,
+	_ models.InputSource,
 	volume storage.StorageVolume,
 ) error {
 	pathToCleanup := filepath.Dir(volume.Source)
-	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
+	log.Ctx(ctx).Debug().Str("ResultPath", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
 }
 
-func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(context.Context, string) (models.SpecConfig, error) {
 	// we don't "upload" anything to a URL
-	return model.StorageSpec{}, fmt.Errorf("not implemented")
-}
-
-func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	// for the url download - explode will always result in a single item
-	// mounted at the path specified in the spec
-	return []model.StorageSpec{
-		{
-			Name:          spec.Name,
-			StorageSource: model.StorageSourceURLDownload,
-			Path:          spec.Path,
-			URL:           spec.URL,
-		},
-	}, nil
+	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
 func IsURLSupported(rawURL string) (*url.URL, error) {

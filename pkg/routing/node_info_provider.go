@@ -3,7 +3,7 @@ package routing
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
@@ -13,16 +13,16 @@ type NodeInfoProviderParams struct {
 	Host                host.Host
 	IdentityService     identify.IDService
 	Labels              map[string]string
-	ComputeInfoProvider model.ComputeNodeInfoProvider
-	BacalhauVersion     model.BuildVersionInfo
+	ComputeInfoProvider models.ComputeNodeInfoProvider
+	BacalhauVersion     models.BuildVersionInfo
 }
 
 type NodeInfoProvider struct {
 	h                   host.Host
 	identityService     identify.IDService
 	labels              map[string]string
-	computeInfoProvider model.ComputeNodeInfoProvider
-	bacalhauVersion     model.BuildVersionInfo
+	computeInfoProvider models.ComputeNodeInfoProvider
+	bacalhauVersion     models.BuildVersionInfo
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
@@ -36,25 +36,27 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 }
 
 // RegisterComputeInfoProvider registers a compute info provider with the node info provider.
-func (n *NodeInfoProvider) RegisterComputeInfoProvider(provider model.ComputeNodeInfoProvider) {
+func (n *NodeInfoProvider) RegisterComputeInfoProvider(provider models.ComputeNodeInfoProvider) {
 	n.computeInfoProvider = provider
 }
 
-func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) model.NodeInfo {
-	res := model.NodeInfo{
+func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
+	res := models.NodeInfo{
 		BacalhauVersion: n.bacalhauVersion,
 		PeerInfo: peer.AddrInfo{
 			ID:    n.h.ID(),
 			Addrs: n.identityService.OwnObservedAddrs(),
 		},
-		Labels: n.labels,
+		Labels:   n.labels,
+		NodeType: models.NodeTypeRequester,
 	}
 	if n.computeInfoProvider != nil {
-		res.NodeType = model.NodeTypeCompute
-		res.ComputeNodeInfo = n.computeInfoProvider.GetComputeInfo(ctx)
+		info := n.computeInfoProvider.GetComputeInfo(ctx)
+		res.NodeType = models.NodeTypeCompute
+		res.ComputeNodeInfo = &info
 	}
 	return res
 }
 
 // compile-time interface check
-var _ model.NodeInfoProvider = &NodeInfoProvider{}
+var _ models.NodeInfoProvider = &NodeInfoProvider{}

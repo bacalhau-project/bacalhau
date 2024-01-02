@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/stretchr/testify/require"
 )
@@ -22,13 +22,15 @@ func TestPlaintextInlineStorage(t *testing.T) {
 
 	spec, err := storage.Upload(context.Background(), tempfile)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceInline)
+	require.Equal(t, spec.Type, models.StorageSourceInline)
 
-	size, err := storage.GetVolumeSize(context.Background(), spec)
+	inputSource := models.InputSource{Source: &spec, Target: "target"}
+
+	size, err := storage.GetVolumeSize(context.Background(), inputSource)
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")), size)
 
-	root, err := storage.PrepareStorage(context.Background(), spec)
+	root, err := storage.PrepareStorage(context.Background(), t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(root.Source)
@@ -47,13 +49,15 @@ func TestDirectoryInlineStorage(t *testing.T) {
 
 	spec, err := storage.Upload(context.Background(), tempdir)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceInline)
+	require.Equal(t, spec.Type, models.StorageSourceInline)
 
-	size, err := storage.GetVolumeSize(context.Background(), spec)
+	inputSource := models.InputSource{Source: &spec, Target: "target"}
+
+	size, err := storage.GetVolumeSize(context.Background(), inputSource)
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")+len("more")), size)
 
-	root, err := storage.PrepareStorage(context.Background(), spec)
+	root, err := storage.PrepareStorage(context.Background(), t.TempDir(), inputSource)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Join(root.Source, filepath.Base(tempdir), "file1"))

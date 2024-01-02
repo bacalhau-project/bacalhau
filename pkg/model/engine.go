@@ -1,11 +1,11 @@
 package model
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
-//go:generate stringer -type=Engine --trimprefix=Engine
 type Engine int
 
 const (
@@ -13,24 +13,30 @@ const (
 	EngineNoop
 	EngineDocker
 	EngineWasm
-	EngineLanguage   // wraps python_wasm
-	EnginePythonWasm // wraps docker
-	engineDone       // must be last
+	engineDone // must be last
 )
+
+var engineNames = map[Engine]string{
+	EngineNoop:   "noop",
+	EngineDocker: "docker",
+	EngineWasm:   "wasm",
+}
 
 func IsValidEngine(e Engine) bool {
 	return e > engineUnknown && e < engineDone
 }
 
-func ParseEngine(str string) (Engine, error) {
+// ParseEngine will either return a valid engine type or `engineUnknown`
+func ParseEngine(str string) Engine {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		if strings.EqualFold(typ.String(), str) {
-			return typ, nil
+			return typ
 		}
 	}
 
-	return engineUnknown, fmt.Errorf(
-		"executor: unknown engine type '%s'", str)
+	// NB: change introduced in #2552 due to remove of language and pythonwasm engine types.
+	log.Warn().Msgf("executor: unknown engine type: '%s'", str)
+	return engineUnknown
 }
 
 func EngineTypes() []Engine {
@@ -50,12 +56,22 @@ func EngineNames() []string {
 	return names
 }
 
+// String returns string representation of the engine type.
+// Don't use stringer tool as it doesn't generate camel-case strings
+func (e Engine) String() string {
+	value, ok := engineNames[e]
+	if !ok {
+		return Unknown
+	}
+	return value
+}
+
 func (e Engine) MarshalText() ([]byte, error) {
 	return []byte(e.String()), nil
 }
 
 func (e *Engine) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	*e, err = ParseEngine(name)
+	*e = ParseEngine(name)
 	return
 }

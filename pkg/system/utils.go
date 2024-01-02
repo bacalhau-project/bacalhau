@@ -2,14 +2,14 @@ package system
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
-	"golang.org/x/exp/constraints"
 )
 
 // Making these variable to allow for testing
@@ -46,20 +46,6 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func Min[T constraints.Ordered](a, b T) T {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func Max[T constraints.Ordered](a, b T) T {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func ReverseList(s []string) []string {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -78,6 +64,17 @@ func SplitLines(s string) []string {
 
 func FindJobIDInTestOutput(testOutput string) string {
 	// Build a regex starting with Job ID and ending with a UUID
+	r := regexp.MustCompile(`Job ID: (j-[a-f0-9-]{36})`)
+
+	b := r.FindStringSubmatch(testOutput)
+	if len(b) > 1 {
+		return b[1]
+	}
+	return ""
+}
+
+func FindJobIDInTestOutputLegacy(testOutput string) string {
+	// Build a regex starting with Job ID and ending with a UUID
 	r := regexp.MustCompile(`Job ID: ([a-f0-9-]{36})`)
 
 	b := r.FindStringSubmatch(testOutput)
@@ -87,9 +84,10 @@ func FindJobIDInTestOutput(testOutput string) string {
 	return ""
 }
 
-func GetShortID(ID string) string {
-	if len(ID) < model.ShortIDLength {
-		return ID
+func MustParseURL(uri string) *url.URL {
+	url, err := url.Parse(uri)
+	if err != nil {
+		panic(fmt.Sprintf("url does not parse: %s", uri))
 	}
-	return ID[:model.ShortIDLength]
+	return url
 }

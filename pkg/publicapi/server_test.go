@@ -10,106 +10,96 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/types"
-	"github.com/stretchr/testify/require"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
-// Define the suite, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
-type ServerSuite struct {
+const testTimeout = 100 * time.Millisecond
+const testMaxBytesToReadInBody = "500B"
+
+type APIServerTestSuite struct {
 	suite.Suite
-	cleanupManager *system.CleanupManager
-	client         *APIClient
+	server *Server
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestServerSuite(t *testing.T) {
-	suite.Run(t, new(ServerSuite))
-}
-
-// Before each test
-func (s *ServerSuite) SetupTest() {
-	logger.ConfigureTestLogging(s.T())
-	s.cleanupManager = system.NewCleanupManager()
-	s.client = setupNodeForTest(s.T(), s.cleanupManager)
-}
-
-// After each test
-func (s *ServerSuite) TearDownTest() {
-	s.cleanupManager.Cleanup(context.Background())
-}
-
-func (s *ServerSuite) TestHealthz() {
-	rawHealthData := s.testEndpoint(s.T(), "/healthz", "FreeSpace")
-
-	var healthData types.HealthInfo
-	err := model.JSONUnmarshalWithMax(rawHealthData, &healthData)
-	require.NoError(s.T(), err, "Error unmarshalling /healthz data.")
-
-	// Checks that it's a number, and bigger than zero
-	require.Greater(s.T(), int(healthData.DiskFreeSpace.ROOT.All), 0)
-
-	// "all" should be bigger than "free" always
-	require.Greater(s.T(), healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
-}
-
-func (s *ServerSuite) TestLivez() {
-	_ = s.testEndpoint(s.T(), "/livez", "OK")
-}
-
-// TODO: #240 Should we test for /tmp/ipfs.log in tests?
-// func (s *ServerSuite) TestLogz() {
-// 	_ = s.testEndpoint(s.T(), "/logz", "OK")
-// }
-
-func (s *ServerSuite) TestReadyz() {
-	_ = s.testEndpoint(s.T(), "/readyz", "READY")
-}
-
-func (s *ServerSuite) TestVarz() {
-	rawVarZBody := s.testEndpoint(s.T(), "/varz", "{")
-
-	var varZ types.VarZ
-	err := model.JSONUnmarshalWithMax(rawVarZBody, &varZ)
-	require.NoError(s.T(), err, "Error unmarshalling /varz data.")
-
-}
-
-func (s *ServerSuite) TestTimeout() {
-	config := APIServerConfig{
-		RequestHandlerTimeoutByURI: map[string]time.Duration{
-			"/logz": 10 * time.Nanosecond,
-		},
+func (s *APIServerTestSuite) SetupTest() {
+	params := ServerParams{
+		Router:  echo.New(),
+		Address: "localhost",
+		Port:    8080,
+		HostID:  "testHostID",
+		Config: *NewConfig(
+			WithRequestHandlerTimeout(testTimeout),
+			WithMaxBytesToReadInBody(testMaxBytesToReadInBody),
+		),
 	}
-	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
+	var err error
+	s.server, err = NewAPIServer(params)
+	assert.NotNil(s.T(), s.server)
+	assert.NoError(s.T(), err)
+}
 
-	endpoint := "/logz"
-	res, err := http.Get(s.client.BaseURI + endpoint)
-	require.NoError(s.T(), err, "Could not get %s endpoint.", endpoint)
-	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
+func (s *APIServerTestSuite) TearDownTest() {
+	if s.server != nil {
+		s.Require().NoError(s.server.Shutdown(context.Background()))
+	}
+}
 
-	// validate response body
-	body, err := io.ReadAll(res.Body)
-	require.NoError(s.T(), err, "Could not read %s response body", endpoint)
-	require.Equal(s.T(), body, []byte("Server Timeout!"))
+func (s *APIServerTestSuite) TestGetURI() {
+	uri := s.server.GetURI()
+	assert.NotNil(s.T(), uri)
+	assert.Equal(s.T(), "http", uri.Scheme)
+	assert.Equal(s.T(), "localhost", uri.Hostname())
+	assert.Equal(s.T(), "8080", uri.Port())
+}
 
+func (s *APIServerTestSuite) TestListenAndServe() {
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
+
+	// Make a request to ensure the server is running
+	resp, err := http.Get(s.server.GetURI().String())
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	resp.Body.Close()
+
+	// shutdown the server
+	err = s.server.Shutdown(context.Background())
+	assert.NoError(s.T(), err)
+
+	// Make a request to ensure the server is shutdown
+	resp, err = http.Get(s.server.GetURI().String())
+	assert.Error(s.T(), err)
+}
+
+func (s *APIServerTestSuite) TestTimeout() {
+	// register slow handler
+	endpoint := "/timeout"
+	s.server.Router.GET(endpoint, func(c echo.Context) error {
+		time.Sleep(testTimeout + 10*time.Millisecond)
+		return c.String(http.StatusOK, "Ok!")
+	})
+
+	// start the server
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
+
+	res, err := http.Get(s.server.GetURI().JoinPath(endpoint).String())
+	s.Require().NoError(err)
 	defer res.Body.Close()
+	s.validateResponse(res, http.StatusServiceUnavailable, "Server Timeout!")
 }
-func (s *ServerSuite) TestMaxBodyReader() {
-	config := APIServerConfig{
-		MaxBytesToReadInBody: 500,
-	}
-	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
-	// Due to the rest of the Version payload we need MaxBytes minus
-	// an amount that accounts for the other data we send
-	payloadSize := int(500) - 16
+func (s *APIServerTestSuite) TestMaxBodyReader() {
+	// register handler
+	endpoint := "/large"
+	s.server.Router.POST(endpoint, func(c echo.Context) error {
+		return c.String(http.StatusOK, "Ok!")
+	})
+
+	// start the server
+	s.Require().NoError(s.server.ListenAndServe(context.Background()))
+
+	payloadSize := 500
 	testCases := []struct {
 		name        string
 		size        int
@@ -124,38 +114,34 @@ func (s *ServerSuite) TestMaxBodyReader() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			request := VersionRequest{
-				ClientID: strings.Repeat("a", tc.size),
-			}
-
-			var res VersionResponse
-			err := s.client.Post(context.Background(), "version", request, &res)
+			request := strings.Repeat("a", tc.size)
+			res, err := http.Post(s.server.GetURI().JoinPath(endpoint).String(), "text/plain", strings.NewReader(request))
+			s.Require().NoError(err)
+			defer res.Body.Close()
 			if tc.expectError {
-				require.Error(s.T(), err)
-				if !strings.Contains(err.Error(), "Job not found") {
-					if tc.expectError {
-						require.Error(s.T(), err, "expected error")
-						require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
-					} else {
-						require.NoError(s.T(), err, "expected no error")
-					}
-				}
+				s.validateResponse(res, http.StatusRequestEntityTooLarge, "Request Entity Too Large")
 			} else {
-				s.NoError(err)
+				s.validateResponse(res, http.StatusOK, "Ok!")
 			}
 		})
 	}
 }
 
-func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
+func (s *APIServerTestSuite) TestShutdownNotRunning() {
+	// shutdown the server when it's not running should not error
+	s.Require().NoError(s.server.Shutdown(context.Background()))
+}
 
-	res, err := http.Get(s.client.BaseURI + endpoint)
-	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
-	defer res.Body.Close()
+// validateResponse validates the response from the server
+func (s *APIServerTestSuite) validateResponse(resp *http.Response, expectedStatusCode int, expectedBody string) {
+	s.Require().NotNil(resp)
+	s.Require().Equal(expectedStatusCode, resp.StatusCode)
 
-	require.Equal(t, res.StatusCode, http.StatusOK)
-	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err, "Could not read %s response body", endpoint)
-	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
-	return body
+	body, err := io.ReadAll(resp.Body)
+	s.Require().NoError(err)
+	s.Require().Contains(string(body), expectedBody)
+}
+
+func TestAPIServerTestSuite(t *testing.T) {
+	suite.Run(t, new(APIServerTestSuite))
 }

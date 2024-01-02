@@ -27,7 +27,7 @@ export interface ScenarioProps {
 const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
     action: '_',
     timeoutMinutes: 1,
-    rateMinutes: 2,
+    rateMinutes: 5,
     memorySize: 256,
     storageSize: 512,
     evaluationPeriods: 5,
@@ -59,9 +59,8 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndDescribe"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrencyOwnedNodes"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
-                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, rateMinutes: 5, memorySize: 5120, storageSize: 5012,
+                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 5120, storageSize: 5012,
                 datapointsToAlarm: 4, evaluationPeriods: 6, doAlarm: false}});
 
         if (config.createOperators) {
@@ -105,9 +104,9 @@ export class CanaryStack extends cdk.Stack {
             ephemeralStorageSize: Size.mebibytes(props.storageSize),
             retryAttempts: 0,
             environment: {
-                'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': props.logLevel,
                 'BACALHAU_ENVIRONMENT': this.config.bacalhauEnvironment,
+                "BACALHAU_NODE_SELECTORS": this.config.nodeSelectors,
             }
         });
 

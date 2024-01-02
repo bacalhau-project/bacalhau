@@ -4,24 +4,42 @@ package test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
 type Suite struct {
 	suite.Suite
-	executionStore store.ExecutionStore
-	execution      store.Execution
+
+	ctx                 context.Context
+	dbFile              string
+	executionStore      store.ExecutionStore
+	localExecutionState store.LocalExecutionState
+	execution           *models.Execution
 }
 
 func (s *Suite) SetupTest() {
-	s.executionStore = inmemory.NewStore()
-	s.execution = newExecution()
+	s.ctx = context.Background()
+
+	dir, _ := os.MkdirTemp("", "bacalhau-test")
+	s.dbFile = filepath.Join(dir, "test.boltdb")
+
+	s.executionStore, _ = boltdb.NewStore(s.ctx, s.dbFile)
+	s.execution = mock.ExecutionForJob(mock.Job())
+	s.localExecutionState = *store.NewLocalExecutionState(s.execution, "nodeID-1")
+}
+
+func (s *Suite) TearDownTest() {
+	os.Remove(s.dbFile)
 }
 
 func TestSuite(t *testing.T) {
@@ -30,50 +48,34 @@ func TestSuite(t *testing.T) {
 
 func (s *Suite) TestGetActiveExecution_Single() {
 	ctx := context.Background()
-	err := s.executionStore.CreateExecution(ctx, s.execution)
+	err := s.executionStore.CreateExecution(ctx, s.localExecutionState)
 	s.NoError(err)
 
-	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Job.ID())
+	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.JobID)
 	s.NoError(err)
-	s.Equal(s.execution, active)
+	s.Equal(s.localExecutionState, active)
 }
 
 func (s *Suite) TestGetActiveExecution_Multiple() {
-	ctx := context.Background()
-
 	// create a newer execution with same job as the previous one
-	newerExecution := s.execution
+	newerExecution := s.execution.Copy()
 	newerExecution.ID = uuid.NewString()
-	newerExecution.Job = s.execution.Job
-	newerExecution.UpdateTime = s.execution.UpdateTime.Add(1)
 
-	err := s.executionStore.CreateExecution(ctx, s.execution)
+	newerExecutionState := *store.NewLocalExecutionState(newerExecution, "nodeID-1")
+	newerExecutionState.UpdateTime = s.localExecutionState.UpdateTime.Add(time.Second)
+
+	err := s.executionStore.CreateExecution(s.ctx, s.localExecutionState)
 	s.NoError(err)
 
-	err = s.executionStore.CreateExecution(ctx, newerExecution)
+	err = s.executionStore.CreateExecution(s.ctx, newerExecutionState)
 	s.NoError(err)
 
-	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Job.ID())
+	active, err := store.GetActiveExecution(s.ctx, s.executionStore, s.execution.JobID)
 	s.NoError(err)
-	s.Equal(newerExecution, active)
+	s.Equal(newerExecutionState, active)
 }
 
 func (s *Suite) TestGetActiveExecution_DoestExist() {
-	_, err := store.GetActiveExecution(context.Background(), s.executionStore, s.execution.Job.ID())
+	_, err := store.GetActiveExecution(context.Background(), s.executionStore, s.execution.JobID)
 	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
-}
-
-func newExecution() store.Execution {
-	return *store.NewExecution(
-		uuid.NewString(),
-		model.Job{
-			Metadata: model.Metadata{
-				ID: uuid.NewString(),
-			},
-		},
-		"nodeID-1",
-		model.ResourceUsageData{
-			CPU:    1,
-			Memory: 2,
-		})
 }

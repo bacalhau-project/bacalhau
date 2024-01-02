@@ -6,26 +6,30 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
 // specialFiles - i.e. anything that is not a volume
 // the boolean value is whether we should append to the global log
 var specialFiles = map[string]bool{
-	model.DownloadFilenameStdout:   true,
-	model.DownloadFilenameStderr:   true,
-	model.DownloadFilenameExitCode: true,
+	DownloadFilenameStdout:   true,
+	DownloadFilenameStderr:   true,
+	DownloadFilenameExitCode: true,
 }
 
-// DownloadResult downloads published results from a storage source and saves them to the specific download path.
-// It supports downloading multiple results from different jobs and will append the logs to the global log file. This behavior is left
-// from when we supported sharded jobs, and multiple results per job. It is not currently being user, and we can evaluate removing it in
+// DownloadResults downloads published results from a storage source and saves
+// them to the specific download path. It supports downloading multiple results
+// from different jobs and will append the logs to the global log file. This
+// behavior is left from when we supported sharded jobs, and multiple results
+// per job. It is not currently being user, and we can evaluate removing it in
 // the future if we don't expose merging results from multiple jobs.
+//
 // * make a temp dir
-// * download all cids into temp dir
+// * download all results into temp dir
 // * ensure top level output dir exists
 // * iterate over each published result
 // * copy stdout, stderr, exitCode
@@ -35,12 +39,12 @@ var specialFiles = map[string]bool{
 // * iterate over each result and merge files in output folder to results dir
 func DownloadResults( //nolint:funlen,gocyclo
 	ctx context.Context,
-	publishedResults []model.PublishedResult,
+	publishedResults []*models.SpecConfig,
 	downloadProvider DownloaderProvider,
-	settings *model.DownloaderSettings,
+	settings *DownloaderSettings,
 ) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadResults")
-	defer span.End()
+	ctx, cancelFunc := context.WithTimeout(ctx, settings.Timeout)
+	defer cancelFunc()
 
 	if len(publishedResults) == 0 {
 		log.Ctx(ctx).Debug().Msg("No results to download")
@@ -48,7 +52,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 	}
 
 	// this is the full path to the top level folder we are writing our results
-	// we have already processed this in the case of a default
+	// to. We have already processed this in the case of a default
 	// (i.e. the folder named after the job has been created and assigned)
 	resultsOutputDir, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
@@ -60,44 +64,65 @@ func DownloadResults( //nolint:funlen,gocyclo
 		return fmt.Errorf("output dir does not exist: %s", resultsOutputDir)
 	}
 
-	cidParentDir := filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName)
-	err = os.MkdirAll(cidParentDir, model.DownloadFolderPerm)
+	// rawParentDir is the target folder for downloads before they are moved into
+	// the end folder at resultsOutputDir. This is typically a directory inside the
+	// target directory.
+	rawParentDir := filepath.Join(resultsOutputDir, DownloadRawFolderName)
+	err = os.MkdirAll(rawParentDir, DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
 
 	log.Ctx(ctx).Info().Msgf("Downloading %d results to: %s.", len(publishedResults), resultsOutputDir)
-
-	// keep track of which cids we have downloaded to avoid
-	// downloading the same cid multiple times
-	downloadedCids := map[string]string{}
-
+	downloadedResults := make(map[string]struct{})
 	for _, publishedResult := range publishedResults {
-		cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
-		_, ok := downloadedCids[publishedResult.Data.CID]
-		if !ok {
-			downloader, err := downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
-			err = downloader.FetchResult(ctx, publishedResult, cidDownloadDir)
-			if err != nil {
-				return err
-			}
-			downloadedCids[publishedResult.Data.CID] = cidDownloadDir
-		}
-	}
-
-	for _, cidDownloadDir := range downloadedCids {
-		err = moveData(ctx, resultsOutputDir, cidDownloadDir, len(downloadedCids) > 1)
+		downloader, err := downloadProvider.Get(ctx, publishedResult.Type)
 		if err != nil {
 			return err
 		}
+		resultPath, err := downloader.FetchResult(ctx, DownloadItem{
+			Result:     publishedResult,
+			SingleFile: settings.SingleFile,
+			ParentPath: rawParentDir,
+		})
+		if err != nil {
+			return err
+		}
+		downloadedResults[resultPath] = struct{}{}
 	}
-	return os.RemoveAll(cidParentDir)
+
+	if settings.Raw {
+		return nil
+	} else {
+		for resultPath := range downloadedResults {
+			log.Ctx(ctx).Debug().
+				Str("Source", resultPath).
+				Str("Target", resultsOutputDir).
+				Msg("Copying downloaded data to target")
+
+			// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)
+			if strings.HasSuffix(resultPath, ".tar.gz") {
+				newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
+				if err = gzip.Decompress(resultPath, newResultPath); err != nil {
+					return err
+				}
+				resultPath = newResultPath
+			}
+
+			err = moveData(ctx, resultPath, resultsOutputDir, len(downloadedResults) > 1)
+			if err != nil {
+				return err
+			}
+		}
+
+		return os.RemoveAll(rawParentDir)
+	}
 }
 
 func moveData(
 	ctx context.Context,
-	volumeDir string,
-	cidDownloadDir string,
+	fromFolder string,
+	toFolder string,
 	appendMode bool,
 ) error {
 	// the recursive function that will scan our source volume folder
@@ -109,7 +134,7 @@ func moveData(
 		}
 
 		// the relative path of the file/folder
-		basePath, err := filepath.Rel(cidDownloadDir, path)
+		basePath, err := filepath.Rel(fromFolder, path)
 		if err != nil {
 			return err
 		}
@@ -122,15 +147,15 @@ func moveData(
 		}
 
 		// the path to where we are saving this item in the global folders
-		globalTargetPath := filepath.Join(volumeDir, basePath)
+		globalTargetPath := filepath.Join(toFolder, basePath)
 
 		// are we dealing with a special case file?
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
 
 		if d.IsDir() {
-			err = os.MkdirAll(globalTargetPath, model.DownloadFolderPerm)
+			err = os.MkdirAll(globalTargetPath, DownloadFolderPerm)
 			if err != nil {
-				return nil
+				return err
 			}
 		} else {
 			// if it's not a special file then we move it into the global dir
@@ -140,7 +165,7 @@ func moveData(
 					globalTargetPath,
 				)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 
@@ -152,7 +177,7 @@ func moveData(
 					globalTargetPath,
 				)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 		}
@@ -160,7 +185,7 @@ func moveData(
 		return nil
 	}
 
-	return filepath.WalkDir(cidDownloadDir, moveFunc)
+	return filepath.WalkDir(fromFolder, moveFunc)
 }
 
 // read data from sourcePath and append it to targetPath
@@ -172,7 +197,7 @@ func appendFile(sourcePath, targetPath string) error {
 	}
 	defer source.Close()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, model.DownloadFilePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
 	if err != nil {
 		return err
 	}
@@ -195,8 +220,8 @@ func moveFile(sourcePath, targetPath string) error {
 		}
 		// file doesn't exist
 	} else {
-		// this means there was no error and so the file exists
-		return nil
+		return fmt.Errorf(
+			"cannot merge results as output already exists: %s. Try --raw to download raw results instead of merging them", targetPath)
 	}
 
 	return os.Rename(sourcePath, targetPath)

@@ -1,17 +1,19 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
-	"github.com/bacalhau-project/bacalhau/cmd/bacalhau"
-
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 func main() {
@@ -28,10 +30,9 @@ func main() {
 		_ = godotenv.Overload(devstackEnvFile)
 	}
 
-	if err := system.InitConfig(); err != nil {
-		log.Error().Msgf("Failed to initialize config: %s", err)
-		os.Exit(1)
-	}
+	// Ensure commands are able to stop cleanly if someone presses ctrl+c
+	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
+	defer cancel()
 
-	bacalhau.Execute()
+	cli.Execute(ctx)
 }

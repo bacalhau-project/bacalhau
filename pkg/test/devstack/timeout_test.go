@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -8,6 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -15,9 +22,10 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackTimeoutSuite struct {
@@ -32,13 +40,11 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	type TestCase struct {
 		name                                string
 		nodeCount                           int
-		minBids                             int
 		concurrency                         int
 		computeJobNegotiationTimeout        time.Duration
 		computeJobExecutionBypassList       []string
 		computeMinJobExecutionTimeout       time.Duration
 		computeMaxJobExecutionTimeout       time.Duration
-		requesterMinJobExecutionTimeout     time.Duration
 		requesterDefaultJobExecutionTimeout time.Duration
 		jobTimeout                          time.Duration
 		sleepTime                           time.Duration
@@ -48,43 +54,53 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
+			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
+			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
+			JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
+		})
+		suite.Require().NoError(err)
+
+		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+			JobDefaults: transformer.JobDefaults{
+				ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
+			},
+			HousekeepingBackgroundTaskInterval: 1 * time.Second,
+			RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
+		})
+		suite.Require().NoError(err)
+
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
-				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-					JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
-					MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
-					MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
-					JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
-				}),
-				RequesterConfig: node.NewRequesterConfigWith(node.RequesterConfigParams{
-					MinJobExecutionTimeout:             testCase.requesterMinJobExecutionTimeout,
-					DefaultJobExecutionTimeout:         testCase.requesterDefaultJobExecutionTimeout,
-					HousekeepingBackgroundTaskInterval: 1 * time.Second,
-				}),
+				ComputeConfig:   computeConfig,
+				RequesterConfig: requesterConfig,
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
 							time.Sleep(testCase.sleepTime)
-							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil)
+							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil, executor.OutputLimits{
+								MaxStdoutFileLength:   system.MaxStdoutFileLength,
+								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+								MaxStderrFileLength:   system.MaxStderrFileLength,
+								MaxStderrReturnLength: system.MaxStderrReturnLength,
+							}), nil
 						},
 					},
 				},
 			},
-			Spec: model.Spec{
-				Engine:    model.EngineNoop,
-				Verifier:  model.VerifierNoop,
-				Publisher: model.PublisherNoop,
-				Timeout:   testCase.jobTimeout.Seconds(),
-			},
+			Spec: testutils.MakeSpecWithOpts(suite.T(),
+				job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
+				job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
+			),
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
-				MinBids:     testCase.minBids,
 			},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted:         testCase.completedCount,
-					model.ExecutionStateFailed:            testCase.errorCount,
+					model.ExecutionStateCancelled:         testCase.errorCount,
 					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
@@ -93,6 +109,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
+	clientID, err := config.GetClientID()
+	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
 			name:                                "sleep_within_default_timeout",
@@ -100,9 +118,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       0 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 10 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           100 * time.Millisecond,
 			completedCount:                      1,
@@ -113,9 +129,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 20 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			jobTimeout:                          10 * time.Second,
 			sleepTime:                           100 * time.Millisecond,
@@ -127,9 +141,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 1 * time.Millisecond,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
 			errorCount:                          1,
@@ -140,12 +152,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
-			jobTimeout:                          1 * time.Millisecond,
+			jobTimeout:                          1 * time.Second,
 			errorCount:                          1,
 		},
 		{
@@ -155,9 +165,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
 			jobTimeout:                          2 * time.Minute,
@@ -170,9 +178,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       5 * time.Minute,
 			computeMaxJobExecutionTimeout:       10 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
 			jobTimeout:                          2 * time.Minute,
@@ -184,9 +190,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           1 * time.Second,
 			jobTimeout:                          2 * time.Minute,
@@ -194,14 +198,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		},
 		{
 			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
-			computeJobExecutionBypassList:       []string{system.GetClientID()},
+			computeJobExecutionBypassList:       []string{clientID},
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
-			minBids:                             1,
 			concurrency:                         1,
 			sleepTime:                           1 * time.Second,
 			jobTimeout:                          2 * time.Minute,

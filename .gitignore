@@ -4,9 +4,8 @@ data
 .cache
 node_modules
 yarn-error.log
-build
-public
 lib
+!pkg/lib
 .DS_Store
 dist/*.sha256
 dist/*.tar.gz
@@ -34,6 +33,7 @@ production.tfvars
 ops/terraform/*.out
 dashboard/terraform/.terraform
 dashboard/frontend/dist
+dashboard/pgdata
 *_unit.json
 .trunk/logs
 benchmark/results
@@ -47,6 +47,7 @@ output_dir
 experimental/*
 .idea/
 job-*
+!job-info-consumer*
 !testdata/job-*
 coverage/
 coverage.out

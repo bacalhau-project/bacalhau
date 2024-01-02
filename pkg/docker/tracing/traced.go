@@ -89,7 +89,7 @@ func (c TracedClient) ContainerStart(ctx context.Context, id string, options typ
 	return telemetry.RecordErrorOnSpan(span)(c.client.ContainerStart(ctx, id, options))
 }
 
-func (c TracedClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
+func (c TracedClient) ContainerStop(ctx context.Context, containerID string, timeout time.Duration) error {
 	ctx, span := c.span(ctx, "container.stop")
 	defer span.End()
 
@@ -126,11 +126,11 @@ func (c TracedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (
 	return telemetry.RecordErrorOnSpanThree[types.ImageInspect, []byte](span)(c.client.ImageInspectWithRaw(ctx, imageID))
 }
 
-func (c TracedClient) DistributionInspect(ctx context.Context, imageID string) (registry.DistributionInspect, error) {
+func (c TracedClient) DistributionInspect(ctx context.Context, imageID string, authToken string) (registry.DistributionInspect, error) {
 	ctx, span := c.span(ctx, "distribution.inspect")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[registry.DistributionInspect](span)(c.client.DistributionInspect(ctx, imageID, ""))
+	return telemetry.RecordErrorOnSpanTwo[registry.DistributionInspect](span)(c.client.DistributionInspect(ctx, imageID, authToken))
 }
 
 func (c TracedClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {

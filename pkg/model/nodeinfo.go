@@ -6,10 +6,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
+//go:generate stringer -type=NodeType -trimprefix=NodeType -output=nodeinfo_string.go
 type NodeType int
 
 const (
-	nodeTypeUnknown NodeType = iota
+	NodeTypeRequester NodeType = iota
 	NodeTypeCompute
 )
 
@@ -26,7 +27,7 @@ type NodeInfo struct {
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
-	ComputeNodeInfo ComputeNodeInfo   `json:"ComputeNodeInfo"`
+	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo"`
 }
 
 // IsComputeNode returns true if the node is a compute node
@@ -35,7 +36,9 @@ func (n NodeInfo) IsComputeNode() bool {
 }
 
 type ComputeNodeInfo struct {
-	ExecutionEngines   []Engine          `json:"ExecutionEngines"`
+	ExecutionEngines   []string          `json:"ExecutionEngines"`
+	Publishers         []string          `json:"Publishers"`
+	StorageSources     []string          `json:"StorageSources"`
 	MaxCapacity        ResourceUsageData `json:"MaxCapacity"`
 	AvailableCapacity  ResourceUsageData `json:"AvailableCapacity"`
 	MaxJobRequirements ResourceUsageData `json:"MaxJobRequirements"`

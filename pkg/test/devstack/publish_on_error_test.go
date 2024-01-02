@@ -1,14 +1,18 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+
 	"github.com/stretchr/testify/suite"
 )
 
@@ -27,20 +31,23 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
-		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					"data/hello.txt",
-					"does/not/exist.txt",
+		Spec: testutils.MakeSpecWithOpts(s.T(),
+			job.WithPublisher(
+				model.PublisherSpec{
+					Type: model.PublisherIpfs,
 				},
-			},
-		},
-		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, stdoutText),
+			),
+			job.WithEngineSpec(
+				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					WithEntrypoint("_start").
+					WithParameters(
+						"data/hello.txt",
+						"does/not/exist.txt",
+					).
+					Build(),
+			),
+		),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),
 		},

@@ -5,29 +5,27 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 const continuouslyConnectPeersLoopDelay = 10 * time.Second
 
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
-func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
-	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
-	if err != nil {
-		return nil, err
-	}
-
+func NewHost(port int, privKey crypto.PrivKey, opts ...libp2p.Option) (host.Host, error) {
 	addrs := []string{
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
 		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
@@ -37,8 +35,13 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port),
 	}
 
-	opts = append(opts, libp2p.ListenAddrStrings(addrs...))
-	opts = append(opts, libp2p.Identity(prvKey))
+	preferredAddress := config.PreferredAddress()
+	if preferredAddress != "" {
+		newAddress := fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)
+		addrs = append(addrs, newAddress)
+	}
+
+	opts = append(opts, libp2p.ListenAddrStrings(addrs...), libp2p.Identity(privKey))
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
@@ -55,7 +58,7 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		return m.Encapsulate(p2pAddr)
 	})
 
-	log.Info().
+	log.Debug().
 		Stringers("listening-addresses", addresses).
 		Stringers("p2p-addresses", p2pAddresses).
 		Stringer("host-id", h.ID()).
@@ -109,13 +112,27 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 	// The call to `Connect` will "block until a connection is open, or an error is returned". This could mean the
 	// request to open a connection is never seen if the peer has only just started up. The default dial timeout
 	// is 60 seconds.
-	ctx = network.WithDialPeerTimeout(ctx, 1*time.Second)
+	ctx = network.WithDialPeerTimeout(ctx, 5*time.Second) //nolint:gomnd
 
 	var errors []error
 	grouped := map[peer.ID][]multiaddr.Multiaddr{}
 
 	// Group up the peers by ID, so we only connect to a peer once rather than multiple times
 	for _, peerAddress := range peers {
+		// Lookup whether the address we've been given might be a http(s) multiaddress and if so then
+		// we will attempt to fetch the peer id from the remote address, and encapsulate a new address
+		// from that data.
+		isHTTP := func(p multiaddr.Protocol) bool { return p.Name == "http" || p.Name == "https" }
+		if slices.ContainsFunc(peerAddress.Protocols(), isHTTP) {
+			var err error
+			peerAddress, err = upgradeAddress(ctx, peerAddress)
+			if err != nil {
+				log.Ctx(ctx).Warn().Err(err).Msg("Error attempting to upgrade peer address")
+			} else {
+				log.Ctx(ctx).Debug().Stringer("Address", peerAddress).Msg("Upgraded multiaddress to P2P")
+			}
+		}
+
 		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
 		if err != nil {
 			errors = append(errors, err)
@@ -136,10 +153,11 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 			errors = append(errors, err)
 			log.Ctx(ctx).Warn().
 				Err(err).
+				Stringers("addresses", logger.ToSliceStringer(addresses, multiAddressToString)).
 				Stringer("peer", id).
 				Msg("Error connecting to peer, continuing...")
 		} else {
-			log.Ctx(ctx).Debug().
+			log.Ctx(ctx).Trace().
 				Stringers("addresses", logger.ToSliceStringer(addresses, multiAddressToString)).
 				Stringer("peer", id).
 				Msg("Libp2p transport connected to peer")

@@ -4,39 +4,37 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type DiskUsageCalculatorParams struct {
-	Executors executor.ExecutorProvider
+	Storages storage.StorageProvider
 }
 
 type DiskUsageCalculator struct {
-	executors executor.ExecutorProvider
+	storages storage.StorageProvider
 }
 
 func NewDiskUsageCalculator(params DiskUsageCalculatorParams) *DiskUsageCalculator {
 	return &DiskUsageCalculator{
-		executors: params.Executors,
+		storages: params.Storages,
 	}
 }
 
-func (c *DiskUsageCalculator) Calculate(
-	ctx context.Context, job model.Job, parsedUsage model.ResourceUsageData) (model.ResourceUsageData, error) {
-	requirements := model.ResourceUsageData{}
-
-	e, err := c.executors.Get(ctx, job.Spec.Engine)
-	if err != nil {
-		return model.ResourceUsageData{}, fmt.Errorf("error getting job disk space requirements: %w", err)
-	}
+func (c *DiskUsageCalculator) Calculate(ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+	requirements := &models.Resources{}
 
 	var totalDiskRequirements uint64 = 0
-
-	for _, input := range job.Spec.Inputs {
-		volumeSize, err := e.GetVolumeSize(ctx, input)
+	for _, input := range job.Task().InputSources {
+		strg, err := c.storages.Get(ctx, input.Source.Type)
 		if err != nil {
-			return model.ResourceUsageData{}, fmt.Errorf("error getting job disk space requirements: %w", err)
+			return nil, err
+		}
+		volumeSize, err := strg.GetVolumeSize(ctx, *input)
+		if err != nil {
+			return nil, fmt.Errorf("error getting job disk space requirements: %w", err)
 		}
 		totalDiskRequirements += volumeSize
 	}
@@ -46,3 +44,5 @@ func (c *DiskUsageCalculator) Calculate(
 
 	return requirements, nil
 }
+
+var _ capacity.UsageCalculator = (*DiskUsageCalculator)(nil)

@@ -1,33 +1,33 @@
 package publicapi
 
 import (
-	"os/exec"
-	"strconv"
+	"encoding/json"
+	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/types"
-	"github.com/ricochet2200/go-disk-usage/du"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
 
-// Function to get disk usage of path/disk
-func MountUsage(path string) (disk types.MountStatus) {
-	usage := du.NewDiskUsage(path)
-	if usage == nil {
-		return
-	}
-	disk.All = usage.Size()
-	disk.Free = usage.Free()
-	disk.Used = usage.Used()
-	return
+const defaultIndent = "  "
+
+func HTTPError(c echo.Context, err error, statusCode int) {
+	log.Ctx(c.Request().Context()).Error().Err(err).Send()
+	http.Error(c.Response(), bacerrors.ErrorToErrorResponse(err), statusCode)
 }
 
-// use "-1" as count for just last line
-func TailFile(count int, path string) ([]byte, error) {
-	c := exec.Command("tail", strconv.Itoa(count), path) //nolint:gosec // subprocess not at risk
-	output, err := c.Output()
-	if err != nil {
-		log.Warn().Msgf("Could not find file at %s", path)
-		return nil, err
+// UnescapedJSON writes a JSON response with unescaped HTML characters.
+// This is useful for returning JSON responses that contain HTML, such as URLs with ampersands.
+func UnescapedJSON(c echo.Context, code int, i interface{}) error {
+	c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	c.Response().WriteHeader(code)
+
+	indent := ""
+	if _, pretty := c.QueryParams()["pretty"]; pretty {
+		indent = defaultIndent
 	}
-	return output, nil
+	encoder := json.NewEncoder(c.Response())
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", indent)
+	return encoder.Encode(i)
 }

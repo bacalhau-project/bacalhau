@@ -1,8 +1,11 @@
+//go:generate stringer -type=ExecutionStateType --trimprefix=ExecutionState --output execution_state_string.go
 package model
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 // ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
@@ -11,6 +14,8 @@ import (
 type ExecutionStateType int
 
 const (
+	ExecutionStateUndefined ExecutionStateType = iota
+	// ExecutionStateNew The execution has been created, but not pushed to a compute node yet.
 	ExecutionStateNew ExecutionStateType = iota
 	// ExecutionStateAskForBid A node has been selected to execute a job, and is being asked to bid on the job.
 	ExecutionStateAskForBid
@@ -22,38 +27,50 @@ const (
 	ExecutionStateBidAccepted // aka running
 	// ExecutionStateBidRejected requester has rejected the bid.
 	ExecutionStateBidRejected
-	// ExecutionStateResultProposed The execution is done, and is waiting for verification.
-	ExecutionStateResultProposed
-	// ExecutionStateResultAccepted The execution result has been accepted by the requester, and publishing of the result is in progress.
-	ExecutionStateResultAccepted // aka publishing
-	// ExecutionStateResultRejected The execution result has been rejected by the requester.
-	ExecutionStateResultRejected
 	// ExecutionStateCompleted The execution has been completed, and the result has been published.
 	ExecutionStateCompleted
 	// ExecutionStateFailed The execution has failed.
 	ExecutionStateFailed
-	// ExecutionStateCanceled The execution has been canceled by the user
-	ExecutionStateCanceled
+	// ExecutionStateCancelled The execution has been canceled by the user
+	ExecutionStateCancelled
+)
+
+type ExecutionDesiredState int
+
+const (
+	ExecutionDesiredStatePending ExecutionDesiredState = iota
+	ExecutionDesiredStateRunning
+	ExecutionDesiredStateStopped
 )
 
 func ExecutionStateTypes() []ExecutionStateType {
 	var res []ExecutionStateType
-	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
 		res = append(res, typ)
 	}
 	return res
 }
 
+// IsUndefined returns true if the execution state is undefined
+func (s ExecutionStateType) IsUndefined() bool {
+	return s == ExecutionStateUndefined
+}
+
 // IsDiscarded returns true if the execution has been discarded due to a failure, rejection or cancellation
 func (s ExecutionStateType) IsDiscarded() bool {
-	return s == ExecutionStateAskForBidRejected || s == ExecutionStateBidRejected || s == ExecutionStateResultRejected ||
-		s == ExecutionStateCanceled || s == ExecutionStateFailed
+	return s == ExecutionStateAskForBidRejected || s == ExecutionStateBidRejected ||
+		s == ExecutionStateCancelled || s == ExecutionStateFailed
 }
 
 // IsActive returns true if the execution is running or has completed
 func (s ExecutionStateType) IsActive() bool {
-	return s == ExecutionStateBidAccepted || s == ExecutionStateResultProposed ||
-		s == ExecutionStateResultAccepted || s == ExecutionStateCompleted
+	return s == ExecutionStateBidAccepted || s == ExecutionStateCompleted
+}
+
+// IsPending returns true if the execution is still pending approval and did not yet start running
+// or has been discarded
+func (s ExecutionStateType) IsPending() bool {
+	return s == ExecutionStateNew || s == ExecutionStateAskForBid || s == ExecutionStateAskForBidAccepted
 }
 
 // IsTerminal returns true if the execution is in a terminal state where no further state changes are possible
@@ -67,7 +84,7 @@ func (s ExecutionStateType) MarshalText() ([]byte, error) {
 
 func (s *ExecutionStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
 		if equal(typ.String(), name) {
 			*s = typ
 			return
@@ -85,7 +102,7 @@ type ExecutionID struct {
 
 // String returns a string representation of the execution id
 func (e ExecutionID) String() string {
-	return fmt.Sprintf("%s:%s:%s", e.JobID, ShortID(e.NodeID), e.ExecutionID)
+	return fmt.Sprintf("%s:%s:%s", e.JobID, idgen.ShortID(e.NodeID), e.ExecutionID)
 }
 
 type ExecutionState struct {
@@ -99,11 +116,10 @@ type ExecutionState struct {
 	State ExecutionStateType `json:"State"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
-	// the proposed results for this execution
-	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
+	// DesiredState is the desired state of the execution
+	DesiredState ExecutionDesiredState `json:"DesiredState,omitempty"`
+	// the published results for this execution
+	PublishedResult StorageSpec `json:"PublishedResults,omitempty"`
 
 	// RunOutput of the job
 	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
@@ -123,10 +139,4 @@ func (e ExecutionState) ID() ExecutionID {
 // String returns a string representation of the execution
 func (e ExecutionState) String() string {
 	return e.ID().String()
-}
-
-// HasAcceptedAskForBid returns true if the execution has been accepted by the node
-// we rely on the value of the ExecutionID to determine if the askForBid has been accepted
-func (e ExecutionState) HasAcceptedAskForBid() bool {
-	return e.ComputeReference != ""
 }

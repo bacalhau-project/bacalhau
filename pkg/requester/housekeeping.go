@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -51,14 +52,25 @@ func (h *Housekeeping) housekeepingBackgroundTask() {
 				continue
 			}
 			now := time.Now()
-			for _, jobDescription := range jobs {
+			for _, job := range jobs {
 				// in case the job store is shared between multiple nodes, we only want to clean up jobs that are owned by this node
-				if jobDescription.Job.Metadata.Requester.RequesterNodeID != h.nodeID {
+				requesterID, ok := job.Meta[models.MetaRequesterID]
+				if !ok {
+					log.Ctx(ctx).Warn().Msgf("job %s has no requester ID. Skipping", job.ID)
 					continue
 				}
+				if requesterID != h.nodeID {
+					continue
+				}
+
+				// timeout is only applicable to batch and ops jobs
+				if job.Type != models.JobTypeBatch && job.Type != models.JobTypeOps {
+					continue
+				}
+
 				// cancel jobs that have been in progress beyond the timeout period
-				if now.Sub(jobDescription.State.CreateTime).Seconds() > jobDescription.Job.Spec.Timeout {
-					log.Ctx(ctx).Info().Msgf("job %s timed out. Canceling", jobDescription.Job.Metadata.ID)
+				if now.Sub(job.GetCreateTime()) > job.Task().Timeouts.GetExecutionTimeout() {
+					log.Ctx(ctx).Info().Msgf("job %s timed out. Canceling", job.ID)
 					go func(jobID string) {
 						_, innerErr := h.endpoint.CancelJob(ctx, CancelJobRequest{
 							JobID:  jobID,
@@ -67,7 +79,7 @@ func (h *Housekeeping) housekeepingBackgroundTask() {
 						if innerErr != nil {
 							log.Ctx(ctx).Err(innerErr).Msgf("failed to cancel job %s", jobID)
 						}
-					}(jobDescription.Job.Metadata.ID)
+					}(job.ID)
 				}
 			}
 		case <-h.stopChannel:

@@ -25,7 +25,7 @@ BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
 endif
 
-BINARY_PATH = bin/${GOOS}_${GOARCH}${GOARM}/${BINARY_NAME}
+BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
@@ -33,7 +33,6 @@ REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
-PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
 
@@ -66,58 +65,21 @@ install-pre-commit:
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
+#
+# Temporarily creates a build directory so that go vet does not complain that
+# it is missing.
 ################################################################################
 .PHONY: precommit
-precommit: buildenvcorrect
+precommit:
+	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
+	@rm webui/build/stub
 	cd python && make pre-commit
 
-.PHONY: buildenvcorrect
-buildenvcorrect:
-	@echo "Checking build environment..."
-# Checking GO
-# @echo "Checking for go..."
-# @which go
-# @echo "Checking for go version..."
-# @go version
-# @echo "Checking for go env..."
-# @go env
-# @echo "Checking for go env GOOS..."
-# @go env GOOS
-# @echo "Checking for go env GOARCH..."
-# @go env GOARCH
-# @echo "Checking for go env GO111MODULE..."
-# @go env GO111MODULE
-# @echo "Checking for go env GOPATH..."
-# @go env GOPATH
-# @echo "Checking for go env GOCACHE..."
-# @go env GOCACHE
-# ===============
-# Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
-# before each commit.
-# Error if it's empty or not found.
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
-	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
-	@exit 1
+$(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it.")
 endif
-	@echo "Build environment correct."
-
-################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs:
-	@echo "Building swagger docs..."
-	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init \
-		--outputTypes "go,json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		--markdownFiles docs/swagger \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo
-	@echo "Swagger docs built."
 
 ################################################################################
 # Target: build-python-apiclient
@@ -163,7 +125,7 @@ release-python-apiclient:
 ################################################################################
 .PHONY: release-python-sdk
 release-python-sdk:
-	cd python && ${MAKE} publish
+	cd python && ${MAKE} build && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
@@ -175,17 +137,46 @@ release-bacalhau-airflow:
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
+# Target: release-bacalhau-flyte
+################################################################################
+.PHONY: release-bacalhau-flyte
+release-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} release
+	@echo "Python flyteplugins-bacalhau pushed to PyPi."
+
+################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
-build: buildenvcorrect build-bacalhau
+build: build-bacalhau build-plugins
 
 .PHONY: build-ci
-build-ci: build-bacalhau
+build-ci: build-bacalhau install-plugins
 
 .PHONY: build-dev
 build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
+
+################################################################################
+# Target: build-webui
+################################################################################
+WEB_GO_FILES := $(shell find webui -name '*.go')
+WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
+WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
+WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
+
+.PHONY: build-webui
+build-webui: ${WEB_BUILD_FILES}
+
+webui/build:
+	mkdir -p $@
+
+$(WEB_INSTALL_GUARD): webui/package.json
+	cd webui && npm install
+
+export GENERATE_SOURCEMAP := false
+${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
+	cd webui && npm run build
 
 ################################################################################
 # Target: build-bacalhau
@@ -196,7 +187,7 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
@@ -213,24 +204,32 @@ build-http-gateway-image:
 
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
+
+# Only tag images with :latest if the release tag is a semver tag (e.g. v0.3.12)
+# and not a commit hash or a release candidate (e.g. v0.3.12-rc1)
+LATEST_TAG :=
+ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BACALHAU_TAG})
+	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
+endif
+
+BACALHAU_IMAGE_FLAGS := \
+	--progress=plain \
+	--platform linux/amd64,linux/arm64 \
+	--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+	${LATEST_TAG} \
+	--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+	--label org.opencontainers.image.version=${BACALHAU_TAG} \
+	--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+	--file docker/bacalhau-image/Dockerfile \
+	.
+
 .PHONY: build-bacalhau-image
 build-bacalhau-image:
-	docker build --progress=plain \
-		--tag ${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: push-bacalhau-image
 push-bacalhau-image:
-	docker buildx build --push --progress=plain \
-		--platform linux/amd64,linux/arm64 \
-		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:latest \
-		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		--label org.opencontainers.image.version=${BACALHAU_TAG} \
-		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build --push ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
@@ -254,6 +253,24 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+################################################################################
+# Target: swagger-docs
+################################################################################
+.PHONY: swagger-docs
+swagger-docs: docs/swagger.json
+
+docs/swagger.json: ${PKG_FILES} .swaggo
+	@echo "Building swagger docs..."
+	swag init \
+		--outputTypes "json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo && \
+	echo >> $@
+#   ^ add newline to appease linter
+	@echo "Swagger docs built."
 
 ################################################################################
 # Target: images
@@ -275,34 +292,14 @@ images: docker/.pulled
 # Target: clean
 ################################################################################
 .PHONY: clean
-clean:
+clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
+	${RM} -r webui/build/*
+	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled
-
-
-################################################################################
-# Target: schema
-################################################################################
-SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-
-.PHONY: schema
-schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
-
-${SCHEMA_DIR}/%.json:
-	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-
-################################################################################
-# Target: all_schemas
-################################################################################
-EARLIEST_TAG := v0.3.12
-ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
-ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
-
-.PHONY: all_schemas
-all_schemas: ${ALL_SCHEMAS}
 
 
 ################################################################################
@@ -349,12 +346,6 @@ test-devstack:
 .PHONY: test-commands
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
-
-# .PHONY: test-pythonwasm
-# test-pythonwasm:
-# # TestSimplestPythonWasmDashC
-# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
-# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
 
 ################################################################################
 # Target: devstack
@@ -431,7 +422,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json &: ${CMD_FILES} ${PKG_FILES} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
@@ -458,9 +449,15 @@ coverage/:
 	mkdir -p $@
 
 .PHONY: generate
-generate:
+generate: generate-tools
 	${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
-	echo "[OK] Files added to pipeline template directory!"
+	@echo "[OK] Files added to pipeline template directory!"
+
+.PHONY: generate-tools
+generate-tools:
+	@which mockgen > /dev/null || echo "Installing 'mockgen'" && ${GO} install go.uber.org/mock/mockgen@latest
+	@which stringer > /dev/null  || echo "Installing 'stringer'" && ${GO} install golang.org/x/tools/cmd/stringer
+
 
 .PHONY: security
 security:
@@ -469,3 +466,47 @@ security:
 
 release: build-bacalhau
 	cp bin/bacalhau .
+
+ifeq ($(OS),Windows_NT)
+    detected_OS := Windows
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
+
+# TODO make the plugin path configurable instead of using the bacalhau config path.
+BACALHAU_CONFIG_PATH := $(shell echo $$BACALHAU_PATH)
+INSTALL_PLUGINS_DEST := $(if $(BACALHAU_CONFIG_PATH),$(BACALHAU_CONFIG_PATH)plugins/,~/.bacalhau/plugins/)
+
+EXECUTOR_PLUGINS := $(wildcard ./pkg/executor/plugins/executors/*/.)
+
+# TODO fix install on windows
+ifeq ($(detected_OS),Windows)
+    build-plugins clean-plugins install-plugins:
+	@echo "Skipping executor plugins on Windows"
+else
+    build-plugins: plugins-build
+    clean-plugins: plugins-clean
+    install-plugins: plugins-install
+
+    .PHONY: plugins-build $(EXECUTOR_PLUGINS)
+
+    plugins-build: $(EXECUTOR_PLUGINS)
+
+    $(EXECUTOR_PLUGINS):
+	    $(MAKE) -C $@
+
+    .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+    plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+    $(addsuffix .clean,$(EXECUTOR_PLUGINS)):
+	    $(MAKE) -C $(basename $@) clean
+
+    .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+    plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+    $(addsuffix .install,$(EXECUTOR_PLUGINS)):
+	    mkdir -p $(INSTALL_PLUGINS_DEST)
+	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+endif

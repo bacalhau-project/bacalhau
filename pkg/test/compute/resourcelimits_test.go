@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package compute
 
@@ -6,23 +6,30 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/c2h5oh/datasize"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 type ComputeNodeResourceLimitsSuite struct {
@@ -35,7 +42,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	system.InitConfigForTesting(suite.T())
+	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 type SeenJobRecord struct {
@@ -82,10 +89,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		var seenJobs []SeenJobRecord
 		var seenJobsMutex sync.Mutex
-		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
-			Threshold: 10 * time.Millisecond,
-			Id:        "TestTotalResourceLimits.seenJobsMutex",
-		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()
@@ -99,13 +102,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(_ context.Context, job model.Job, _ string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, jobID string, _ string) (*models.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          job.ID(),
+				Id:          jobID,
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -114,43 +117,39 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return &model.RunCommandResult{}, nil
+			return &models.RunCommandResult{}, nil
 		}
 
-		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-			return capacity.ConvertBytesString(volume.CID), nil
+		getVolumeSizeHandler := func(ctx context.Context, volume models.InputSource) (uint64, error) {
+			size, err := datasize.ParseString(volume.Target)
+			return size.Bytes(), err
 		}
 
-		stack := testutils.SetupTestWithNoopExecutor(
-			ctx,
+		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)
+		parsedResources, err := resourcesConfig.ToResources()
+		require.NoError(suite.T(), err)
+
+		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+			TotalResourceLimits:          *parsedResources,
+			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
+		})
+		suite.Require().NoError(err)
+		stack := teststack.Setup(ctx,
 			suite.T(),
-			devstack.DevStackOptions{NumberOfHybridNodes: 1},
-			node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits:           capacity.ParseResourceUsageConfig(testCase.totalLimits),
-				IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
-				ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
-			}),
-			node.NewRequesterConfigWithDefaults(),
-			noop_executor.ExecutorConfig{
+			devstack.WithNumberOfHybridNodes(1),
+			devstack.WithComputeConfig(computeConfig),
+			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
-			},
+			}),
 		)
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := testutils.MakeNoopJob()
+			j := testutils.MakeNoopJob(suite.T())
 			j.Spec.Resources = jobResources
-			j.Spec.Inputs = []model.StorageSpec{
-				{
-					StorageSource: model.StorageSourceIPFS,
-					CID:           jobResources.Disk,
-					Name:          "testvolumesize",
-				},
-			}
-
 			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID:   "123",
 				APIVersion: j.APIVersion,
@@ -173,7 +172,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			},
 		}
 
-		err := waiter.Wait(ctx)
+		err = waiter.Wait(ctx)
 		require.NoError(suite.T(), err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
 		if err != nil {
@@ -286,64 +285,43 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(_ context.Context, _ model.Job, _ string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ string, _ string) (*models.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
-		return &model.RunCommandResult{}, nil
+		return &models.RunCommandResult{}, nil
 	}
-	nodeOverrides := make([]node.NodeConfig, nodeCount)
-	for i := 0; i < nodeCount; i++ {
-		nodeOverrides[i] = node.NodeConfig{
-			NodeInfoPublisherInterval: 100 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
-		}
-	}
-	stack := testutils.SetupTestWithNoopExecutor(
-		ctx,
+
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		TotalResourceLimits: models.Resources{
+			CPU:    1,
+			Memory: 1 * 1024 * 1024 * 1024,
+			Disk:   1 * 1024 * 1024 * 1024,
+			GPU:    1,
+			GPUs:   make([]models.GPU, 1),
+		},
+		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+	})
+	suite.Require().NoError(err)
+	stack := teststack.Setup(ctx,
 		suite.T(),
-		devstack.DevStackOptions{NumberOfHybridNodes: nodeCount},
-		node.NewComputeConfigWith(node.ComputeConfigParams{
-			TotalResourceLimits: model.ResourceUsageData{
-				CPU:    1,
-				Memory: 1 * 1024 * 1024 * 1024,
-				Disk:   1 * 1024 * 1024 * 1024,
-				GPU:    1,
-			},
-			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
-
-		}),
-		node.NewRequesterConfigWithDefaults(),
-		noop_executor.ExecutorConfig{
-			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-				JobHandler: jobHandler,
-			},
-		},
-		nodeOverrides...,
+		devstack.WithNumberOfHybridNodes(nodeCount),
+		devstack.WithComputeConfig(computeConfig),
+		teststack.WithNoopExecutor(
+			noop_executor.ExecutorConfig{
+				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+					JobHandler: jobHandler,
+				},
+			}),
 	)
+
 	// for the requester node to pick up the nodeInfo messages
-	testutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
 
-	jobConfig := &model.Job{
-		Spec: model.Spec{
-			Engine:    model.EngineNoop,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
-			Resources: model.ResourceUsageConfig{
-				GPU: "1",
-			},
-			Deal: model.Deal{
-				Concurrency: 1,
-			},
-		},
-	}
-
-	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (model.Job, error) {
-			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
-		},
-		func(ctx context.Context, id string) (model.JobState, error) {
-			return stack.Nodes[0].RequesterNode.JobStore.GetJobState(ctx, id)
-		},
+	jobConfig := testutils.MakeJobWithOpts(suite.T(),
+		job.WithResources("", "", "", "1"),
 	)
+
+	resolver := legacy.NewStateResolver(stack.Nodes[0].RequesterNode.JobStore)
 
 	for i := 0; i < nodeCount; i++ {
 		for j := 0; j < jobsPerNode; j++ {

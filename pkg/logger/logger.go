@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/rs/zerolog/pkgerrors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
@@ -62,6 +62,14 @@ func init() { //nolint:gochecknoinits
 	}
 
 	configureLogging(bufferLogs())
+}
+
+func ErrOrDebug(err error) zerolog.Level {
+	if err == nil {
+		return zerolog.DebugLevel
+	} else {
+		return zerolog.ErrorLevel
+	}
 }
 
 type tTesting interface {
@@ -208,10 +216,7 @@ func defaultStationLogging() io.Writer {
 }
 
 func loggerWithNodeID(nodeID string) zerolog.Logger {
-	if len(nodeID) > 8 { //nolint:gomnd // 8 is a magic number
-		nodeID = nodeID[:model.ShortIDLength]
-	}
-	return log.With().Str(nodeIDFieldName, nodeID).Logger()
+	return log.With().Str(nodeIDFieldName, idgen.ShortID(nodeID)).Logger()
 }
 
 // ContextWithNodeIDLogger will return a context with nodeID is added to the logging context.

@@ -2,7 +2,6 @@
     "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "noop",
-        "Verifier": "noop",
         "Publisher": "noop",
         "Resources": {
             "CPU": "",
@@ -10,22 +9,8 @@
             "Memory": "",
             "Disk": ""
         },
-        "Inputs": [
-            {
-                "StorageSource": "ipfs",
-                "Name": "",
-                "CID": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
-                "Path": "/input"
-            }
-        ],
-        "Outputs": [
-            {
-                "StorageSource": "ipfs",
-                "Name": "output_custom",
-                "CID": "",
-                "Path": "/output_custom"
-            }
-        ],
+        "Inputs": [],
+        "Outputs": [],
         "Annotations": []
     }
 }

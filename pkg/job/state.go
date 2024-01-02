@@ -76,44 +76,6 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 	return currentJobState.String(), nil
 }
 
-func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.VerifiedSummary")
-	defer span.End()
-
-	j, err := resolver.jobLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-
-	if j.Spec.Verifier == model.VerifierNoop {
-		return "", nil
-	}
-
-	jobState, err := resolver.stateLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-	desiredExecutionCount := GetJobConcurrency(j)
-	verifiedExecutionCount := CountVerifiedExecutionStates(jobState)
-
-	return fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount), nil
-}
-
-func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.ResultSummary")
-	defer span.End()
-
-	jobState, err := resolver.stateLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-	completedExecutions := GetCompletedExecutionStates(jobState)
-	if len(completedExecutions) == 0 {
-		return "", nil
-	}
-	return fmt.Sprintf("/ipfs/%s", completedExecutions[0].PublishedResult.CID), nil
-}
-
 func (resolver *StateResolver) Wait(
 	ctx context.Context,
 	jobID string,
@@ -206,7 +168,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		return results, err
 	}
 
-	for _, executionState := range GetCompletedVerifiedExecutionStates(jobState) {
+	for _, executionState := range GetCompletedExecutionStates(jobState) {
 		results = append(results, model.PublishedResult{
 			NodeID: executionState.NodeID,
 			Data:   executionState.PublishedResult,
@@ -214,38 +176,6 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 	}
 
 	return results, nil
-}
-
-type ExecutionStateChecker func(
-	executionStates []model.ExecutionState,
-	concurrency int,
-) (bool, error)
-
-// iterate each execution and pass off []model.ExecutionState to the given function
-// every execution must return true for this function to return true
-// this is useful for example to say "do we have enough to begin verification"
-func (resolver *StateResolver) CheckExecutionStates(
-	ctx context.Context,
-	job model.Job,
-	executionStateChecker ExecutionStateChecker,
-) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.CheckExecutionStates")
-	defer span.End()
-
-	jobState, err := resolver.stateLoader(ctx, job.ID())
-	if err != nil {
-		return false, err
-	}
-
-	concurrency := GetJobConcurrency(job)
-	checkResult, err := executionStateChecker(jobState.Executions, concurrency)
-	if err != nil {
-		return false, err
-	}
-	if !checkResult {
-		return false, nil
-	}
-	return true, nil
 }
 
 func FlattenExecutionStates(jobState model.JobState) []model.ExecutionState {
@@ -262,29 +192,8 @@ func GetFilteredExecutionStates(jobState model.JobState, filterState model.Execu
 	return ret
 }
 
-func CountVerifiedExecutionStates(jobState model.JobState) int {
-	count := 0
-	for _, executionState := range jobState.Executions {
-		if executionState.VerificationResult.Result {
-			count++
-		}
-	}
-	return count
-}
-
 func GetCompletedExecutionStates(jobState model.JobState) []model.ExecutionState {
 	return GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted)
-}
-
-// return only execution states that are both complete and verified
-func GetCompletedVerifiedExecutionStates(jobState model.JobState) []model.ExecutionState {
-	var ret []model.ExecutionState
-	for _, executionState := range GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted) { //nolint:gocritic
-		if executionState.VerificationResult.Complete && executionState.VerificationResult.Result && executionState.PublishedResult.CID != "" {
-			ret = append(ret, executionState)
-		}
-	}
-	return ret
 }
 
 func GetExecutionStateTotals(executionStates []model.ExecutionState) map[model.ExecutionStateType]int {
@@ -335,7 +244,7 @@ func WaitForExecutionStates(requiredStateCounts map[model.ExecutionStateType]int
 }
 
 // WaitForTerminalStates it is possible that a job is in a terminal state, but some executions are still running,
-// such as when one node publishes the result before others, or when confidence factor is lower than concurrency.
+// such as when one node publishes the result before others.
 // for that reason, we consider a job to be in a terminal state when:
 // - all executions are in a terminal state
 // - the job is in a terminal state to account for possible retries
@@ -355,6 +264,18 @@ func WaitForSuccessfulCompletion() CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
 		if jobState.State.IsTerminal() {
 			if jobState.State != model.JobStateCompleted {
+				return false, fmt.Errorf("job did not complete successfully")
+			}
+			return true, nil
+		}
+		return false, nil
+	}
+}
+
+func WaitForUnsuccessfulCompletion() CheckStatesFunction {
+	return func(jobState model.JobState) (bool, error) {
+		if jobState.State.IsTerminal() {
+			if jobState.State != model.JobStateError {
 				return false, fmt.Errorf("job did not complete successfully")
 			}
 			return true, nil

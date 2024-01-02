@@ -1,15 +1,13 @@
 # syntax=docker/dockerfile:1.4
-FROM cgr.dev/chainguard/go:1.20 as build
-WORKDIR /work
-COPY Makefile .
-COPY go.mod .
-COPY . .
-RUN make build-bacalhau
-RUN find ./bin -name 'bacalhau' -exec mv -t ./bin {} +
+FROM cgr.dev/chainguard/nvidia-device-plugin
 
-FROM cgr.dev/chainguard/static:latest
-COPY --from=build /work/bin/bacalhau /usr/local/bin/bacalhau
-ENV PATH="/usr/local/bin"
+# Automatically set by Docker to be the --platform flag
+ARG TARGETPLATFORM
+
+# Take advantage of the format for $TARGETPLATFORM being "OS/ARCH"
+# which matches our output directory structure in ./bin
+ADD bin/$TARGETPLATFORM/bacalhau /usr/local/bin/bacalhau
+ENV PATH="/usr/local/bin:/usr/bin"
 ENTRYPOINT ["bacalhau"]
 LABEL org.opencontainers.image.source https://github.com/bacalhau-project/bacalhau
 LABEL org.opencontainers.image.title "Bacalhau"

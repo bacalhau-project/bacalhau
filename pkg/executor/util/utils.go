@@ -5,32 +5,32 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	pythonwasm "github.com/bacalhau-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
-	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type StandardStorageProviderOptions struct {
-	API                  ipfs.Client
-	FilecoinUnsealedPath string
-	DownloadPath         string
+	API                   ipfs.Client
+	DownloadPath          string
+	AllowListedLocalPaths []string
 }
 
 type StandardExecutorOptions struct {
 	DockerID string
-	Storage  StandardStorageProviderOptions
 }
 
 func NewStandardStorageProvider(
@@ -38,66 +38,60 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(cm, options.API)
+	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
 	if err != nil {
 		return nil, err
 	}
 
-	urlDownloadStorage, err := urldownload.NewStorage(cm)
+	urlDownloadStorage := urldownload.NewStorage()
 	if err != nil {
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
+	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
 	if err != nil {
 		return nil, err
 	}
 
 	inlineStorage := inline.NewStorage()
 
-	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
-
-	// if we are using a FilecoinUnsealedPath then construct a combo
-	// driver that will give preference to the filecoin unsealed driver
-	// if the cid is deemed to be local
-	if options.FilecoinUnsealedPath != "" {
-		comboDriver, err := combo.NewStorage(
-			cm,
-			func(ctx context.Context) ([]storage.Storage, error) {
-				return []storage.Storage{
-					filecoinUnsealedStorage,
-					ipfsAPICopyStorage,
-				}, nil
-			},
-			func(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {
-				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, spec)
-				if err != nil {
-					return ipfsAPICopyStorage, err
-				}
-				if filecoinUnsealedHasCid {
-					return filecoinUnsealedStorage, nil
-				} else {
-					return ipfsAPICopyStorage, nil
-				}
-			},
-			func(ctx context.Context) (storage.Storage, error) {
-				return ipfsAPICopyStorage, nil
-			},
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		useIPFSDriver = comboDriver
+	s3Storage, err := configureS3StorageProvider(cm)
+	if err != nil {
+		return nil, err
 	}
 
-	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
-		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
-		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
-		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
+	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
+		AllowedPaths: localdirectory.ParseAllowPaths(options.AllowListedLocalPaths),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
+
+	return provider.NewMappedProvider(map[string]storage.Storage{
+		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
+		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
+		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
+		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
+		models.StorageSourceS3:             tracing.Wrap(s3Storage),
+		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
 	}), nil
+}
+
+func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
+	cfg, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+		AWSConfig: cfg,
+	})
+	s3Storage := s3.NewStorage(s3.StorageProviderParams{
+		ClientProvider: clientProvider,
+	})
+	return s3Storage, nil
 }
 
 func NewNoopStorageProvider(
@@ -105,8 +99,8 @@ func NewNoopStorageProvider(
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
-	noopStorage := noop_storage.NewNoopStorage(config)
-	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
+	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
+	return provider.NewNoopProvider[storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
@@ -114,45 +108,48 @@ func NewStandardExecutorProvider(
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	storageProvider, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
+	dockerExecutor, err := docker.NewExecutor(ctx, executorOptions.DockerID)
 	if err != nil {
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
+	wasmExecutor, err := wasm.NewExecutor()
 	if err != nil {
 		return nil, err
 	}
 
-	wasmExecutor, err := wasm.NewExecutor(ctx, storageProvider)
-	if err != nil {
-		return nil, err
-	}
-
-	executors := model.NewMappedProvider(map[model.Engine]executor.Executor{
-		model.EngineDocker: dockerExecutor,
-		model.EngineWasm:   wasmExecutor,
-	})
-
-	// language executors wrap other executors, so pass them a reference to all
-	// the executors so they can look up the ones they need
-	exLang, err := language.NewExecutor(ctx, cm, executors)
-	if err != nil {
-		return nil, err
-	}
-	executors.Add(model.EngineLanguage, exLang)
-
-	exPythonWasm, err := pythonwasm.NewExecutor(executors)
-	if err != nil {
-		return nil, err
-	}
-	executors.Add(model.EnginePythonWasm, exPythonWasm)
-
-	return executors, nil
+	return provider.NewMappedProvider(map[string]executor.Executor{
+		models.EngineDocker: dockerExecutor,
+		models.EngineWasm:   wasmExecutor,
+	}), nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
+	return provider.NewNoopProvider[executor.Executor](noopExecutor)
+}
+
+type PluginExecutorOptions struct {
+	Plugins []PluginExecutorManagerConfig
+}
+
+func NewPluginExecutorProvider(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	pluginOptions PluginExecutorOptions,
+) (executor.ExecutorProvider, error) {
+	pe := NewPluginExecutorManager()
+	for _, cfg := range pluginOptions.Plugins {
+		if err := pe.RegisterPlugin(cfg); err != nil {
+			return nil, err
+		}
+	}
+	if err := pe.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallbackWithContext(pe.Stop)
+
+	return pe, nil
 }

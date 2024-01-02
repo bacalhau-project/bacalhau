@@ -1,23 +1,28 @@
-//go:build integration
+//go:build integration || !unit
 
 package requester
 
 import (
 	"context"
 	"testing"
-	"time"
+
+	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/labels"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 type NodeSelectionSuite struct {
@@ -27,19 +32,15 @@ type NodeSelectionSuite struct {
 	compute2      *node.Node
 	compute3      *node.Node
 	computeNodes  []*node.Node
-	client        *publicapi.RequesterAPIClient
+	client        *client.APIClient
 	stateResolver *job.StateResolver
 }
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 
 	ctx := context.Background()
-	devstackOptions := devstack.DevStackOptions{
-		NumberOfRequesterOnlyNodes: 1,
-		NumberOfComputeOnlyNodes:   3,
-	}
 
 	nodeOverrides := []node.NodeConfig{
 		{}, // pass overriding requester node
@@ -62,32 +63,31 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
-	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 100 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
-	}
-	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-		noop_executor.ExecutorConfig{},
-		nodeOverrides...,
+	requesterConfig, err := node.NewRequesterConfigWith(
+		node.RequesterConfigParams{
+			NodeRankRandomnessRange: 0,
+			OverAskForBidsFactor:    1,
+		},
+	)
+	s.Require().NoError(err)
+	stack := teststack.Setup(ctx,
+		s.T(),
+		devstack.WithNumberOfRequesterOnlyNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(3),
+		devstack.WithNodeOverrides(nodeOverrides...),
+		devstack.WithRequesterConfig(requesterConfig),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
 	s.requester = stack.Nodes[0]
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.GetURI())
-	s.stateResolver = job.NewStateResolver(
-		func(ctx context.Context, id string) (model.Job, error) {
-			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
-		},
-		func(ctx context.Context, id string) (model.JobState, error) {
-			return s.requester.RequesterNode.JobStore.GetJobState(ctx, id)
-		},
-	)
+	s.client = client.NewAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
-	testutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
+	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
 }
 
 func (s *NodeSelectionSuite) TearDownSuite() {
@@ -140,30 +140,47 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 			selector:      "env notin (prod,test)",
 			expectedNodes: []*node.Node{},
 		},
+		{
+			name:          "favour by name",
+			selector:      "favour_name=compute-1,name in (compute-1,compute-2)",
+			expectedNodes: []*node.Node{s.compute1}, // concurrency=1
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
+		},
 	}
 
 	for _, tc := range testCase {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := testutils.MakeNoopJob()
+			j := testutils.MakeNoopJob(s.T())
 			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
-			j.Spec.Deal.Concurrency = system.Max(1, len(tc.expectedNodes))
+			j.Spec.Deal.Concurrency = math.Max(1, len(tc.expectedNodes))
 
 			submittedJob, err := s.client.Submit(ctx, j)
+			s.NoError(err)
+
+			err = s.stateResolver.WaitUntilComplete(ctx, submittedJob.Metadata.ID)
 			if len(tc.expectedNodes) == 0 {
 				s.Error(err)
 			} else {
 				s.NoError(err)
-				selectedNodes := s.getSelectedNodes(submittedJob.Metadata.ID)
-				s.assertNodesMatch(tc.expectedNodes, selectedNodes)
 			}
+			selectedNodes := s.getSelectedNodes(submittedJob.Metadata.ID)
+			s.assertNodesMatch(tc.expectedNodes, selectedNodes)
 		})
 	}
 }
 
 func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	ctx := context.Background()
-	s.NoError(s.stateResolver.WaitUntilComplete(ctx, jobID))
 	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
 	s.NoError(err)
 	completedExecutionStates := job.GetCompletedExecutionStates(jobState)
