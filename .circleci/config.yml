@@ -377,7 +377,7 @@ jobs:
           TAG="<< pipeline.git.tag >>"
           echo "TAG = ${TAG}"
           find dist/
-          gh release upload $TAG dist/*
+          gh release upload $TAG dist/bacalhau_$TAG_*
 
   release_python:
     executor: linux-amd64
