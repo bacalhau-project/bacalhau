@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/exp/maps"
 )
 
 type NodeType int
@@ -43,6 +44,27 @@ type NodeInfoProvider interface {
 
 type ComputeNodeInfoProvider interface {
 	GetComputeInfo(ctx context.Context) ComputeNodeInfo
+}
+
+type LabelsProvider interface {
+	GetLabels(ctx context.Context) map[string]string
+}
+
+type mergeProvider struct {
+	providers []LabelsProvider
+}
+
+// GetLabels implements LabelsProvider.
+func (p mergeProvider) GetLabels(ctx context.Context) map[string]string {
+	labels := make(map[string]string)
+	for _, provider := range p.providers {
+		maps.Copy(labels, provider.GetLabels(ctx))
+	}
+	return labels
+}
+
+func MergeLabelsInOrder(providers ...LabelsProvider) LabelsProvider {
+	return mergeProvider{providers: providers}
 }
 
 type NodeInfo struct {
