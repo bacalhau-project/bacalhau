@@ -34,21 +34,21 @@ func TestChainedSuite(t *testing.T) {
 	suite.Run(t, new(ChainedSuite))
 }
 
-func (s *ChainedSuite) TestFindNodes() {
+func (s *ChainedSuite) TestListNodes() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID1))
 	s.chain.Add(NewFixedDiscoverer(s.peerID2))
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
+	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
-func (s *ChainedSuite) TestFindNodes_Overlap() {
+func (s *ChainedSuite) TestListNodes_Overlap() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(NewFixedDiscoverer(s.peerID2, s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
+	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
@@ -57,7 +57,7 @@ func (s *ChainedSuite) TestHandle_Error() {
 	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(newBadDiscoverer())
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
-	_, err := s.chain.FindNodes(context.Background(), models.Job{})
+	_, err := s.chain.ListNodes(context.Background())
 	s.Error(err)
 }
 
@@ -67,7 +67,7 @@ func (s *ChainedSuite) TestHandle_IgnoreError() {
 	s.chain.Add(newBadDiscoverer())
 	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
-	peerIDs, err := s.chain.FindNodes(context.Background(), models.Job{})
+	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
@@ -77,10 +77,6 @@ type badDiscoverer struct{}
 
 func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
-}
-
-func (b *badDiscoverer) FindNodes(context.Context, models.Job) ([]models.NodeInfo, error) {
-	return nil, errors.New("bad discoverer")
 }
 
 func (b *badDiscoverer) ListNodes(context.Context) ([]models.NodeInfo, error) {
