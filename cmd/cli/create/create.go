@@ -201,6 +201,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
+			//nolint:staticcheck // TODO: remove this when we have a proper publisher
 			Type: j.Spec.Publisher,
 		}
 	}

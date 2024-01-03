@@ -96,7 +96,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		adapter = opentelemetry.NewOTelAdapter(&conf)
 		adapter.UseCustomClient(traceClient)
 		adapter.Start(ctx)
-		defer adapter.StopWithContext(ctx, true)
+		defer func() { _ = adapter.StopWithContext(ctx, true) }()
 	}
 
 	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: adapter}

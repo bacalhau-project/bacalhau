@@ -15,16 +15,16 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-//	@ID			pkg/requester/publicapi/submit
-//	@Summary	Submits a new job to the network.
-//	@Tags		Job
-//	@Accept		json
-//	@Produce	json
-//	@Param		SubmitRequest	body		legacymodels.SubmitRequest	true	" "
-//	@Success	200				{object}	legacymodels.SubmitResponse
-//	@Failure	400				{object}	string
-//	@Failure	500				{object}	string
-//	@Router		/api/v1/requester/submit [post]
+// @ID			pkg/requester/publicapi/submit
+// @Summary	Submits a new job to the network.
+// @Tags		Job
+// @Accept		json
+// @Produce	json
+// @Param		SubmitRequest	body		legacymodels.SubmitRequest	true	" "
+// @Success	200				{object}	legacymodels.SubmitResponse
+// @Failure	400				{object}	string
+// @Failure	500				{object}	string
+// @Router		/api/v1/requester/submit [post]
 func (s *Endpoint) submit(c echo.Context) error {
 	ctx := c.Request().Context()
 

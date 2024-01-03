@@ -33,37 +33,35 @@ func newSetCmd() *cobra.Command {
 	return showCmd
 }
 
-func setConfig(key string, values ...string) error {
-	// remove all spaces and make lowercase
-	key = sanitizeKey(key)
+func currentValue(key string) (interface{}, error) {
 	// get the default viper schema
 	viperSchema := NewViperWithDefaultConfig(config.ForEnvironment())
 	// get a list of all valid configuration keys, same list as returned by `config list`
 	liveKeys := viperSchema.AllKeys()
 	if !slices.Contains(liveKeys, key) {
-		return fmt.Errorf("invalid configuration key %q: not found", key)
+		return nil, fmt.Errorf("invalid configuration key %q: not found", key)
 	}
 
-	// there may me a config file present, we'll write to that if it exists.
-	configFile := viper.ConfigFileUsed()
+	//calling `Get` on this instance will return a default value from the config structure that we can type assert on.
+	return viperSchema.Get(key), nil
+}
 
-	// we create a new viper instance that we'll use to set values on and update the config.
+func getWriter(configFile string) (*viper.Viper, error) {
 	viperWriter := viper.New()
 	viperWriter.SetTypeByDefaultValue(true)
-	if configFile == "" {
-		// if there isn't a config file, we'll assume we add it to the current repo.
-		configFile = filepath.Join(viper.GetString("repo"), "config.yaml")
-	}
 	viperWriter.SetConfigFile(configFile)
 	// the instance has read in a copy of the config file
 	if err := viperWriter.ReadInConfig(); err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return nil, err
 		}
 	}
+	return viperWriter, nil
+}
 
-	//calling `Get` on this instance will return a default value from the config structure that we can type assert on.
-	curValue := viperSchema.Get(key)
+func setConfig(key string, values ...string) error {
+	// remove all spaces and make lowercase
+	key = sanitizeKey(key)
 
 	// we need special handling for the nodetype since its just a string, but carries implicit requirements in the config.
 	if strings.EqualFold(types.NodeType, key) {
@@ -72,8 +70,22 @@ func setConfig(key string, values ...string) error {
 		}
 	}
 
-	type parserFunc func(string) (any, error)
-	var parser parserFunc
+	curValue, err := currentValue(key)
+	if err != nil {
+		return err
+	}
+
+	// there may me a config file present, we'll write to that if it exists.
+	configFile := viper.ConfigFileUsed()
+	if configFile == "" {
+		// if there isn't a config file, we'll assume we add it to the current repo.
+		configFile = filepath.Join(viper.GetString("repo"), "config.yaml")
+	}
+
+	viperWriter, err := getWriter(configFile)
+	if err != nil {
+		return err
+	}
 
 	switch curValue.(type) {
 	case []string:
@@ -84,6 +96,32 @@ func setConfig(key string, values ...string) error {
 			return err
 		}
 		viperWriter.Set(key, sts)
+	}
+
+	parser, err := getParser(curValue, key)
+	if parser == nil || err != nil {
+		return viperWriter.WriteConfig()
+	}
+
+	value, err := singleValueOrError(values...)
+	if err != nil {
+		return fmt.Errorf("setting %q: %w", key, err)
+	}
+
+	configValue, err := parser(value)
+	if err != nil {
+		return fmt.Errorf("setting %q: %w", key, err)
+	}
+	viperWriter.Set(key, configValue)
+	return viperWriter.WriteConfig()
+}
+
+type parserFunc func(string) (any, error)
+
+func getParser(curValue interface{}, key string) (parserFunc, error) {
+	var parser parserFunc
+
+	switch curValue.(type) {
 	case string:
 		parser = func(s string) (any, error) { return s, nil } // identity by default
 	case bool:
@@ -93,7 +131,7 @@ func setConfig(key string, values ...string) error {
 	case uint, uint8, uint16, uint32, uint64:
 		parser = func(s string) (any, error) { return strconv.ParseUint(s, 10, 64) }
 	case float32, float64:
-		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 10) }
+		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 64) }
 	case types.Duration, time.Duration:
 		parser = func(s string) (any, error) { return time.ParseDuration(s) }
 	case model.JobSelectionDataLocality:
@@ -103,21 +141,8 @@ func setConfig(key string, values ...string) error {
 	case types.StorageType:
 		parser = func(s string) (any, error) { return types.ParseStorageType(s) }
 	default:
-		return fmt.Errorf("unsupported type %T for key: %q", curValue, key)
+		return nil, fmt.Errorf("unsupported type %T for key: %q", curValue, key)
 	}
 
-	if parser != nil {
-		value, err := singleValueOrError(values...)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-
-		configValue, err := parser(value)
-		if err != nil {
-			return fmt.Errorf("setting %q: %w", key, err)
-		}
-		viperWriter.Set(key, configValue)
-	}
-
-	return viperWriter.WriteConfig()
+	return parser, nil
 }

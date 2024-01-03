@@ -33,6 +33,7 @@ var Local = types.BacalhauConfig{
 		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
+		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -49,12 +50,20 @@ var Local = types.BacalhauConfig{
 			PeerConnect: "none",
 		},
 		IPFS: types.IpfsConfig{
-			Connect:         "",
-			PrivateInternal: true,
-			SwarmAddresses:  []string{},
+			Connect:                "",
+			PrivateInternal:        true,
+			SwarmAddresses:         []string{},
+			Profile:                "flatfs",
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
 		},
 		Compute:   LocalComputeConfig,
 		Requester: LocalRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 

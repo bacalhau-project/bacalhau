@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net"
@@ -36,8 +37,8 @@ func IndexPage(host, port, base string) ([]byte, error) {
 	return output.Bytes(), err
 }
 
-func ListenAndServe(ctx context.Context, host, port, base string) error {
-	indexPage, err := IndexPage(host, port, base)
+func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPort int) error {
+	indexPage, err := IndexPage(host, apiPort, apiPath)
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func ListenAndServe(ctx context.Context, host, port, base string) error {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		match, err := fs.Glob(files, strings.TrimLeft(r.URL.Path, "/"))
 		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-			w.Write(indexPage)
+			_, _ = w.Write(indexPage)
 		} else if len(match) > 0 && err == nil {
 			// Serve a static file that matches the request path, if it exists
 			// We need to check this manually to enable the below behavior
@@ -62,11 +63,12 @@ func ListenAndServe(ctx context.Context, host, port, base string) error {
 			// (e.g. `/jobs`) which the user can then successfully refresh,
 			// share or bookmark. If this wasn't here, the user would have to
 			// enter the app manually at `/` every time.
-			w.Write(indexPage)
+			_, _ = w.Write(indexPage)
 		}
 	})
 
 	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", listenPort),
 		Handler:           &handler,
 		ReadTimeout:       time.Minute,
 		WriteTimeout:      time.Minute,

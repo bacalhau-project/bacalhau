@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -49,7 +48,7 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	//NB: if a test suite has defined a repo use it, otherwise make one.
+	// NB: if a test suite has defined a repo use it, otherwise make one.
 	repoPath := os.Getenv("BACALHAU_DIR")
 	var fsRepo *repo.FsRepo
 	if repoPath != "" {
@@ -75,9 +74,10 @@ func Setup(
 
 	// Wait for nodes to have announced their presence.
 	//nolint:gomnd
-	assert.Eventually(t, func() bool {
-		return allNodesDiscovered(t, stack)
-	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
+	require.Eventually(t,
+		func() bool {
+			return allNodesDiscovered(t, stack)
+		}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
 
 	return stack
 }

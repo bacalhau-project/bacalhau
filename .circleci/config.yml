@@ -145,13 +145,6 @@ jobs:
         executor: << parameters.executor >>
 
     - run:
-        name: Init tools
-        command: |
-          make init
-          go version
-          which go
-
-    - run:
         name: "Setup BACALHAU_ENVIRONMENT environment variable"
         command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
     - run:
@@ -384,7 +377,7 @@ jobs:
           TAG="<< pipeline.git.tag >>"
           echo "TAG = ${TAG}"
           find dist/
-          gh release upload $TAG dist/*
+          gh release upload $TAG dist/bacalhau_$TAG_*
 
   release_python:
     executor: linux-amd64
@@ -641,10 +634,15 @@ workflows:
     jobs:
     - build_swagger:
         name: build-swagger-spec
+        filters: &build_on_branch_and_tag_push
+          tags:
+            # only run on tags that look like release tags e.g. v0.1.2 or
+            # v0.1.3alpha19 (actually v0.1.3anything...)
+            only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
     - build_python_packages:
         name: build-python-packages
-        requires:
-        - build-swagger-spec
+        requires: [build-swagger-spec]
+        filters: *build_on_branch_and_tag_push
     - release_python:
         name: release-python-packages
         requires:
@@ -652,21 +650,21 @@ workflows:
         - build-python-packages
         # This job will only run on tags (specifically starting with 'v.') and
         # will not run on branches
-        filters: &filters_release_only
+        filters: &build_on_release_only
           branches:
             ignore: /.*/ # don't run on any branches - only tags
-          tags:
-            # only run on tags that look like release tags e.g. v0.1.2 or
-            # v0.1.3alpha19 (actually v0.1.3anything...)
-            only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+          <<: *build_on_branch_and_tag_push
 
   build:
     jobs:
-    - build_webui
+    - build_webui:
+        filters: *build_on_branch_and_tag_push
     - build:
         requires: [build_webui]
+        filters: *build_on_branch_and_tag_push
     - docker:
         requires: [build]
+        filters: *build_on_branch_and_tag_push
     - release:
         requires: [build]
-        filters: *filters_release_only
+        filters: *build_on_release_only

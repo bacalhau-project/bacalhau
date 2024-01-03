@@ -3,7 +3,6 @@ import React, { useState, useContext, useEffect, ReactNode } from "react";
 // Combined table settings interface
 export interface TableSettings {
   // Jobs Table
-  showJobId?: boolean;
   showJobName?: boolean;
   showCreated?: boolean;
   showProgram?: boolean;
@@ -12,7 +11,6 @@ export interface TableSettings {
   showStatus?: boolean;
   // Nodes Table
   showNodeId?: boolean;
-  showNodeName?: boolean;
   showNodeType?: boolean;
   showEnv?: boolean;
   showInputs?: boolean;
@@ -28,7 +26,6 @@ interface TableSettingsContextType {
 
 const defaultState: TableSettings = {
   // Jobs Table
-  showJobId: true,
   showJobName: true,
   showCreated: true,
   showProgram: true,
@@ -37,7 +34,6 @@ const defaultState: TableSettings = {
   showStatus: true,
   // Nodes Table
   showNodeId: true,
-  showNodeName: true,
   showNodeType: true,
   showEnv: true,
   showInputs: true,

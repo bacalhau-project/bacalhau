@@ -73,7 +73,9 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalExecutionState) (err error) {
+func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalExecutionState) error {
+	var err error
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	execution := localExecutionState.Execution
@@ -95,20 +97,20 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 	// have not reached this backend in the first place, and should have been rejected by the frontend when asked to bid
 	if !s.runningCapacity.IsWithinLimits(ctx, *execution.TotalAllocatedResources()) {
 		err = fmt.Errorf("not enough capacity to run job")
-		return
+		return err
 	}
 
 	if s.queuedTasks.Contains(execution.ID) {
 		err = fmt.Errorf("execution %s already enqueued", execution.ID)
-		return
+		return err
 	}
 	if _, ok := s.running[execution.ID]; ok {
 		err = fmt.Errorf("execution %s already running", execution.ID)
-		return
+		return err
 	}
 	if added := s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()); added == nil {
 		err = fmt.Errorf("not enough capacity to enqueue job")
-		return
+		return err
 	} else {
 		// Update the execution to include all the resources that have
 		// actually been allocated. Effectively this is picking the GPU(s)

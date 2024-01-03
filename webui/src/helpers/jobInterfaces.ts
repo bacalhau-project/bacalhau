@@ -77,7 +77,6 @@ export interface Resources {
 }
 
 export interface ParsedJobData {
-  id: string;
   longId: string;
   name: string;
   createdAt: Date;

@@ -21,6 +21,8 @@ const (
 	defaultJobPercentage        = 75
 	defaultDefaultJobPercentage = 75
 	defaultQueuePercentage      = defaultJobPercentage * 2
+
+	oneHundredPercent = 100
 )
 
 type autoSettings struct {
@@ -35,6 +37,7 @@ func autoFlags(settings *autoSettings) *pflag.FlagSet {
 	flags.IntVar(&settings.TotalPercentage,
 		"total-percentage",
 		defaultTotalPercentage,
+		//nolint:goconst
 		"Percentage expressed as a number from 1 to 100 representing "+
 			"total amount of resource the system can be using at one time in aggregate for all jobs "+
 			"(values over 100 will be rejected)")
@@ -62,13 +65,13 @@ func (a *autoSettings) validate() error {
 	if a.TotalPercentage == 0 {
 		return fmt.Errorf("total-percentage must be greater than 0")
 	}
-	if a.TotalPercentage > 100 {
+	if a.TotalPercentage > oneHundredPercent {
 		return fmt.Errorf("total-percentage cannot exceed 100")
 	}
 	if a.JobPercentage == 0 {
 		return fmt.Errorf("job-percentage must be greater than 0")
 	}
-	if a.JobPercentage > 100 {
+	if a.JobPercentage > oneHundredPercent {
 		return fmt.Errorf("job-percentage cannot exceed 100")
 	}
 	if a.JobPercentage > a.TotalPercentage {
@@ -77,7 +80,7 @@ func (a *autoSettings) validate() error {
 	if a.DefaultPercentage == 0 {
 		return fmt.Errorf("default-job-percentage must be greater than 0")
 	}
-	if a.DefaultPercentage > 100 {
+	if a.DefaultPercentage > oneHundredPercent {
 		return fmt.Errorf("default-job-percentage cannot exceed 100")
 	}
 	if a.DefaultPercentage > a.TotalPercentage {
