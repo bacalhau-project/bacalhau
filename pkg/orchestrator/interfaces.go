@@ -91,7 +91,6 @@ type Planner interface {
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
 type NodeDiscoverer interface {
 	ListNodes(ctx context.Context) ([]models.NodeInfo, error)
-	FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error)
 }
 
 // NodeRanker ranks nodes based on their suitability to execute a job.

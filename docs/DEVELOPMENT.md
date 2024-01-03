@@ -10,6 +10,50 @@ export GOLANGCILINTVER='v1.51.2'
 - Install python: `asdf local python $PYTHONVER`
 - Install golangci-lint: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINTVER`
 
+**Useful VSCode launch.json**
+```
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest All",
+      "program": "${workspaceFolder}/webui/node_modules/.bin/jest",
+      "args": ["--runInBand", "--config", "webui/jest.config.js"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "windows": {
+        "program": "${workspaceFolder}/webui/node_modules/jest/bin/jest"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Current File",
+      "program": "${workspaceFolder}/webui/node_modules/.bin/jest",
+      "args": ["${fileBasenameNoExtension}", "--config", "webui/jest.config.js"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "windows": {
+        "program": "${workspaceFolder}/webui/node_modules/jest/bin/jest"
+      }
+    },
+    {
+      "name": "Launch WebUI",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+      "args": ["serve", "--web-ui", "--web-ui-port", "3000"]
+    }
+  ]
+}
+```
+
 **Common Errors**
 - Using alternatives to `npm` - we have explored using `bun` but `prettier` did not work properly with it.
 
