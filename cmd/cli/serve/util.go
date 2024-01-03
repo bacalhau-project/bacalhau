@@ -177,23 +177,6 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
-func getNodeLabels(autoLabel bool) map[string]string {
-	labelConfig := config.GetStringMapString(types.NodeLabels)
-	labelMap := make(map[string]string)
-	if autoLabel {
-		AutoLabels := AutoOutputLabels()
-		for key, value := range AutoLabels {
-			labelMap[key] = value
-		}
-	}
-
-	for key, value := range labelConfig {
-		labelMap[key] = value
-	}
-
-	return labelMap
-}
-
 func getDisabledFeatures() (node.FeatureConfig, error) {
 	var featureConfig node.FeatureConfig
 	if err := config.ForKey(types.NodeDisabledFeatures, &featureConfig); err != nil {
