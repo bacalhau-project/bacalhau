@@ -50,9 +50,7 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes:        0,
-			NumberOfRequesterOnlyNodes: 1,
-			NumberOfComputeOnlyNodes:   1,
+			NumberOfHybridNodes: 1,
 		}},
 		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
@@ -71,9 +69,8 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes:        0,
-			NumberOfRequesterOnlyNodes: 1,
-			NumberOfComputeOnlyNodes:   5,
+			NumberOfHybridNodes:      1,
+			NumberOfComputeOnlyNodes: 4,
 		}},
 		Spec:          testutils.MakeSpecWithOpts(suite.T()),
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
@@ -95,9 +92,8 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				NumberOfHybridNodes:        0,
-				NumberOfRequesterOnlyNodes: 1,
-				NumberOfComputeOnlyNodes:   2,
+				NumberOfHybridNodes:      1,
+				NumberOfComputeOnlyNodes: 1,
 			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
