@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Workload Onboarding"
-sidebar_position: 1
+sidebar_position: 0
 ---
 # How To Work With Bacalhau
 

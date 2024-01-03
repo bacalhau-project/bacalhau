@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'FAQs'
-sidebar_position: 90
+sidebar_position: 6
 hide_title: true
 ---
 

@@ -1,10 +1,10 @@
 ---
-sidebar_label: 'Debugging Jobs'
+sidebar_label: 'Debugging Fundamentals'
 sidebar_position: 1
 description: 'How to troubleshoot and debug failed Bacalhau jobs'
 ---
 
-# Debugging Failed Jobs
+# Fundamentals - Debugging Failed Jobs
 
 > "An expert is a person who has made all the mistakes that can be made in a very narrow field." ― Niels Bohr
 
