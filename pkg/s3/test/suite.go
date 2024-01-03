@@ -103,6 +103,20 @@ func (s *HelperSuite) SetupSuite() {
 		s.T().Skip("No valid AWS credentials found")
 	}
 
+	// Create a fake file with a unique name to test if we have access to the default bucket
+	// This is needed because the bucket may exist but as a client we don't have access to read/write
+	fakeFile := fmt.Sprintf("%s/%s", s.Bucket, uuid.NewString())
+	_, err := s.GetClient().S3.PutObject(context.Background(), &s3.PutObjectInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(fakeFile),
+		Body:   strings.NewReader(""),
+	})
+	defer s.DeleteObjects(fakeFile)
+
+	if err != nil {
+		s.T().Skip("No access to S3 bucket " + s.Bucket)
+	}
+
 	// unique runID added to prefix to avoid collisions
 	timestamp := time.Now().UTC().Format("20060102T150405") // yyyyMMddThhmmss
 	s.JobID = uuid.NewString()
