@@ -9,8 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -171,7 +169,7 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 
 	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineWasm)
-	nodeInfo1.PeerInfo.ID = nodeInfo0.PeerInfo.ID
+	nodeInfo1.NodeID = nodeInfo0.NodeID
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	res, err := s.store.Get(ctx, nodeInfo0.ID())
@@ -215,12 +213,8 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
 }
 
 func generateNodeInfo(t *testing.T, peerID string, engines ...string) models.NodeInfo {
-	id, err := peer.Decode(peerID)
-	require.NoError(t, err)
 	return models.NodeInfo{
-		PeerInfo: peer.AddrInfo{
-			ID: id,
-		},
+		NodeID:   peerID,
 		NodeType: models.NodeTypeCompute,
 		ComputeNodeInfo: &models.ComputeNodeInfo{
 			ExecutionEngines: engines,

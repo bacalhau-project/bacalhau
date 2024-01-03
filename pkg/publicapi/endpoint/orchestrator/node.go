@@ -51,7 +51,7 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	var sortFnc func(a, b *models.NodeInfo) bool
 	switch args.OrderBy {
 	case "id", "":
-		sortFnc = func(a, b *models.NodeInfo) bool { return a.PeerInfo.ID < b.PeerInfo.ID }
+		sortFnc = func(a, b *models.NodeInfo) bool { return a.ID() < b.ID() }
 	case "type":
 		sortFnc = func(a, b *models.NodeInfo) bool { return a.NodeType < b.NodeType }
 	case "available_cpu":

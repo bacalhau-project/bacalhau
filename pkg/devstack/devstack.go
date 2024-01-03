@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -17,12 +17,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
-
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 const (
@@ -44,6 +42,7 @@ type DevStackOptions struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool   // when true pluggable executors will be used.
 	ConfigurationRepo          string // A custom config repo
+	UseNATS                    bool   // Use NATS transport
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
@@ -61,6 +60,7 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
 		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
+		WithNATS(o.UseNATS),
 	}
 }
 
@@ -93,6 +93,7 @@ func Setup(
 	defer span.End()
 
 	var nodes []*node.Node
+	orchestratorAddrs := make([]string, 0)
 
 	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
 	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
@@ -101,7 +102,11 @@ func Setup(
 	if requesterNodeCount == 0 {
 		return nil, fmt.Errorf("at least one requester node is required")
 	}
+
 	for i := 0; i < totalNodeCount; i++ {
+		nodeID := fmt.Sprintf("node-%d", i)
+		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
+
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
@@ -128,57 +133,52 @@ func Setup(
 		}
 
 		// ////////////////////////////////////
-		// libp2p
+		// Transport layer (NATS or Libp2p)
 		// ////////////////////////////////////
-		var libp2pPeer []multiaddr.Multiaddr
-		libp2pPort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-
-		if i == 0 {
-			if stackConfig.Peer != "" {
-				// connect 0'th node to external peer if specified
-				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", stackConfig.Peer)
-				peerAddr, addrErr := multiaddr.NewMultiaddr(stackConfig.Peer)
-				if addrErr != nil {
-					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
-				}
-				libp2pPeer = append(libp2pPeer, peerAddr)
-			}
+		var swarmPort int
+		if os.Getenv("PREDICTABLE_API_PORT") != "" {
+			const startSwarmPort = 4222 // 4222 is the default NATS port
+			swarmPort = startSwarmPort + i
 		} else {
-			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
+			swarmPort, err = freeport.GetFreePort()
 			if err != nil {
 				return nil, err
 			}
-			addresses := multiaddresses.SortLocalhostFirst(nodes[0].Host.Addrs())
-			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-			// connecting/joining topics, when using multiple addresses for a single host.
-			libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
-			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
+		}
+		clusterConfig := node.ClusterConfig{
+			UseNATS:       stackConfig.UseNATS,
+			Orchestrators: orchestratorAddrs,
+			Port:          swarmPort,
 		}
 
-		// TODO(forrest): [devstack] Refactor the devstack s.t. each node has its own repo and config.
-		// previously the config would generate a key using the host port as the postfix
-		// this is not longer the case as a node should have a single libp2p key, but since
-		// all devstack nodes share a repo we will get a self dial error if we use the same
-		// key from the config for each devstack node. The solution here is to refactor the
-		// the devstack such that all nodes in the stack have their own repos and configuration
-		// rather than rely on global values and one off key gen via the config.
+		if stackConfig.UseNATS {
+			if isRequesterNode {
+				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("0.0.0.0:%d", swarmPort))
+			}
+		} else {
+			if i == 0 {
+				if stackConfig.Peer != "" {
+					clusterConfig.Orchestrators = append(clusterConfig.Orchestrators, stackConfig.Peer)
+				}
+			} else {
+				p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Libp2pHost.ID().String())
+				if err != nil {
+					return nil, err
+				}
 
-		// Creates a new RSA key pair for this host.
-		privKey, err := bac_libp2p.GeneratePrivateKey(DefaultLibp2pKeySize)
-		if err != nil {
-			return nil, err
-		}
-		libp2pHost, err := bac_libp2p.NewHost(libp2pPort, privKey)
-		if err != nil {
-			return nil, err
-		}
-		cm.RegisterCallback(libp2pHost.Close)
+				addrs := nodes[0].Libp2pHost.Addrs()[0]
+				addrs = addrs.Encapsulate(p2pAddr)
+				clusterConfig.Orchestrators = append(clusterConfig.Orchestrators, addrs.String())
+			}
 
-		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
+			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, clusterConfig.Orchestrators, swarmPort)
+			if err != nil {
+				return nil, err
+			}
+
+			// nodeID must match the libp2p host ID
+			nodeID = clusterConfig.Libp2pHost.ID().String()
+		}
 
 		// ////////////////////////////////////
 		// port for API
@@ -212,9 +212,9 @@ func Setup(
 		}
 
 		nodeConfig := node.NodeConfig{
+			NodeID:              nodeID,
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			Host:                libp2pHost,
 			HostAddress:         "0.0.0.0",
 			APIPort:             apiPort,
 			ComputeConfig:       stackConfig.ComputeConfig,
@@ -222,8 +222,7 @@ func Setup(
 			IsComputeNode:       isComputeNode,
 			IsRequesterNode:     isRequesterNode,
 			Labels: map[string]string{
-				"name": fmt.Sprintf("node-%d", i),
-				"id":   libp2pHost.ID().String(),
+				"name": nodeID,
 				"env":  "devstack",
 			},
 			DependencyInjector:        stackConfig.NodeDependencyInjector,
@@ -232,6 +231,7 @@ func Setup(
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 			FsRepo:                    fsRepo,
 			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
+			ClusterConfig:             clusterConfig,
 		}
 
 		if isRequesterNode {
@@ -261,12 +261,6 @@ func Setup(
 			return nil, err
 		}
 
-		// Start transport layer
-		err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
-		if err != nil {
-			return nil, err
-		}
-
 		// start the node
 		err = n.Start(ctx)
 		if err != nil {
@@ -286,6 +280,36 @@ func Setup(
 		Nodes:          nodes,
 		PublicIPFSMode: stackConfig.PublicIPFSMode,
 	}, nil
+}
+
+func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []string, port int) (host.Host, error) {
+	var err error
+
+	privKey, err := bac_libp2p.GeneratePrivateKey(DefaultLibp2pKeySize)
+	if err != nil {
+		return nil, err
+	}
+
+	libp2pHost, err := bac_libp2p.NewHost(port, privKey)
+	if err != nil {
+		return nil, fmt.Errorf("error creating libp2p host: %w", err)
+	}
+
+	var libp2pPeer []multiaddr.Multiaddr
+	for _, addr := range peers {
+		maddr, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return nil, err
+		}
+		libp2pPeer = append(libp2pPeer, maddr)
+	}
+
+	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, libp2pPeer)
+	if err != nil {
+		return nil, err
+	}
+
+	return libp2pHost, nil
 }
 
 func createIPFSNode(ctx context.Context,
@@ -330,34 +354,8 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, c
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}
 
-		var libp2pPeer []string
-		for _, addrs := range node.Host.Addrs() {
-			p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + node.Host.ID().String())
-			if p2pAddrErr != nil {
-				return "", p2pAddrErr
-			}
-			libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr).String())
-		}
-		devstackPeerAddr := strings.Join(libp2pPeer, ",")
-		if len(libp2pPeer) > 0 {
-			chosen := false
-			preferredAddress := config.PreferredAddress()
-			if preferredAddress != "" {
-				for _, addr := range libp2pPeer {
-					if strings.Contains(addr, preferredAddress) {
-						devstackPeerAddrs = append(devstackPeerAddrs, addr)
-						chosen = true
-						break
-					}
-				}
-			}
-
-			if !chosen {
-				// only add one of the addrs for this peer and we will choose the first
-				// in the absence of a preference
-				devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
-			}
-		}
+		peerConnect := fmt.Sprintf("/ip4/%s/tcp/%d/http", node.APIServer.Address, node.APIServer.Port)
+		devstackPeerAddrs = append(devstackPeerAddrs, peerConnect)
 
 		logString += fmt.Sprintf(`
 export BACALHAU_IPFS_%d=%s
@@ -370,7 +368,7 @@ export BACALHAU_API_PORT_%d=%d`,
 			nodeIndex,
 			swarmAddrrs,
 			nodeIndex,
-			devstackPeerAddr,
+			peerConnect,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
@@ -453,7 +451,7 @@ The above variables were also written to this file (will be deleted when devstac
 func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
-		if node.Host.ID().String() == nodeID {
+		if node.ID == nodeID {
 			return node, nil
 		}
 	}
@@ -471,7 +469,7 @@ func (stack *DevStack) IPFSClients() []ipfs.Client {
 func (stack *DevStack) GetNodeIds() []string {
 	var ids []string
 	for _, node := range stack.Nodes {
-		ids = append(ids, node.Host.ID().String())
+		ids = append(ids, node.ID)
 	}
 	return ids
 }

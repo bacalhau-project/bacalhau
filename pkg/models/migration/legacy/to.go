@@ -10,12 +10,6 @@ import (
 )
 
 func ToLegacyJob(job *models.Job) (*model.Job, error) {
-	pk := new(model.PublicKey)
-	err := pk.UnmarshalText([]byte(job.Meta[models.MetaRequesterPublicKey]))
-	if err != nil {
-		return nil, err
-	}
-
 	spec, err := ToLegacyJobSpec(job)
 	if err != nil {
 		return nil, err
@@ -28,8 +22,7 @@ func ToLegacyJob(job *models.Job) (*model.Job, error) {
 			CreatedAt: time.Unix(0, job.CreateTime),
 			ClientID:  job.Meta[models.MetaClientID],
 			Requester: model.JobRequester{
-				RequesterNodeID:    job.Meta[models.MetaRequesterID],
-				RequesterPublicKey: *pk,
+				RequesterNodeID: job.Meta[models.MetaRequesterID],
 			},
 		},
 		Spec: *spec,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -112,11 +113,7 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func setupLibp2pHost(cfg types.Libp2pConfig) (host.Host, error) {
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return nil, err
-	}
+func setupLibp2pHost(cfg types.Libp2pConfig, privKey libp2p_crypto.PrivKey) (host.Host, error) {
 	libp2pHost, err := bac_libp2p.NewHost(cfg.SwarmPort, privKey, rcmgr.DefaultResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("error creating libp2p host: %w", err)
@@ -187,4 +184,17 @@ func getDisabledFeatures() (node.FeatureConfig, error) {
 
 func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
+}
+
+func getClusterConfig() (node.ClusterConfig, error) {
+	var clusterCfg types.ClusterConfig
+	if err := config.ForKey(types.NodeCluster, &clusterCfg); err != nil {
+		return node.ClusterConfig{}, err
+	}
+	return node.ClusterConfig{
+		UseNATS:           clusterCfg.UseNATS,
+		Port:              clusterCfg.Port,
+		AdvertisedAddress: clusterCfg.AdvertisedAddress,
+		Orchestrators:     clusterCfg.Orchestrators,
+	}, nil
 }

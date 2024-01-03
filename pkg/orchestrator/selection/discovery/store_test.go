@@ -10,8 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -64,12 +62,7 @@ func (s *StoreNodeDiscovererSuite) TestFindNodes_Empty() {
 
 func generateNodeInfo(id string, engines ...string) models.NodeInfo {
 	return models.NodeInfo{
-		PeerInfo: peer.AddrInfo{
-			ID: peer.ID(id),
-			Addrs: []multiaddr.Multiaddr{
-				multiaddr.StringCast("/ip4/0.0.0.0/tcp/1234"),
-			},
-		},
+		NodeID:   id,
 		NodeType: models.NodeTypeCompute,
 		ComputeNodeInfo: &models.ComputeNodeInfo{
 			ExecutionEngines: engines,

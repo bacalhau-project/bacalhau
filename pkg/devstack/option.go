@@ -69,6 +69,7 @@ type DevStackConfig struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 	NodeInfoStoreTTL           time.Duration
+	UseNATS                    bool
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -211,5 +212,11 @@ func WithNodeInfoPublisherInterval(interval routing.NodeInfoPublisherIntervalCon
 func WithExecutorPlugins(enabled bool) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.ExecutorPlugins = enabled
+	}
+}
+
+func WithNATS(enabled bool) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.UseNATS = enabled
 	}
 }

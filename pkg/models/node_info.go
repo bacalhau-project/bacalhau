@@ -42,10 +42,6 @@ type NodeInfoProvider interface {
 	GetNodeInfo(ctx context.Context) NodeInfo
 }
 
-type ComputeNodeInfoProvider interface {
-	GetComputeInfo(ctx context.Context) ComputeNodeInfo
-}
-
 type LabelsProvider interface {
 	GetLabels(ctx context.Context) map[string]string
 }
@@ -67,8 +63,20 @@ func MergeLabelsInOrder(providers ...LabelsProvider) LabelsProvider {
 	return mergeProvider{providers: providers}
 }
 
+type NodeInfoDecorator interface {
+	DecorateNodeInfo(ctx context.Context, nodeInfo NodeInfo) NodeInfo
+}
+
+// NoopNodeInfoDecorator is a decorator that does nothing
+type NoopNodeInfoDecorator struct{}
+
+func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo NodeInfo) NodeInfo {
+	return nodeInfo
+}
+
 type NodeInfo struct {
-	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
+	NodeID          string            `json:"NodeID"`
+	PeerInfo        *peer.AddrInfo    `json:"PeerInfo,omitempty" yaml:",omitempty"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
@@ -77,7 +85,12 @@ type NodeInfo struct {
 
 // ID returns the node ID
 func (n NodeInfo) ID() string {
-	return n.PeerInfo.ID.String()
+	if n.NodeID != "" {
+		return n.NodeID
+	} else if n.PeerInfo != nil {
+		return string(n.PeerInfo.ID)
+	}
+	return ""
 }
 
 // IsComputeNode returns true if the node is a compute node

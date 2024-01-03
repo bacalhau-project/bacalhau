@@ -359,11 +359,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	// test that each node has 2 job allocated to it
-	node1Count, ok := allocationMap[stack.Nodes[0].Host.ID().String()]
+	node1Count, ok := allocationMap[stack.Nodes[0].ID]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), jobsPerNode, node1Count)
 
-	node2Count, ok := allocationMap[stack.Nodes[1].Host.ID().String()]
+	node2Count, ok := allocationMap[stack.Nodes[1].ID]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), jobsPerNode, node2Count)
 }

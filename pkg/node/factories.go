@@ -80,7 +80,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
+					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},
 			)
 			if err != nil {

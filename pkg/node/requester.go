@@ -15,15 +15,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -34,10 +29,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
 type Requester struct {
@@ -45,7 +38,6 @@ type Requester struct {
 	Endpoint       requester.Endpoint
 	JobStore       jobstore.Store
 	NodeDiscoverer orchestrator.NodeDiscoverer
-	computeProxy   *bprotocol.ComputeProxy
 	localCallback  compute.Callback
 	cleanupFunc    func(ctx context.Context)
 }
@@ -53,47 +45,23 @@ type Requester struct {
 //nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
-	host host.Host,
+	nodeID string,
 	apiServer *publicapi.Server,
 	requesterConfig RequesterConfig,
 	storageProviders storage.StorageProvider,
 	nodeInfoStore routing.NodeInfoStore,
-	gossipSub *libp2p_pubsub.PubSub,
 	fsRepo *repo.FsRepo,
+	computeProxy compute.Endpoint,
 ) (*Requester, error) {
 	// prepare event handlers
-	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
+	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
-
-	// compute proxy
-	computeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
-		Host: host,
-	})
 
 	eventEmitter := orchestrator.NewEventEmitter(orchestrator.EventEmitterParams{
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(ctx, host.ID().String())
-	if err != nil {
-		return nil, err
-	}
-
-	// PubSub to publish job events to the network
-	jobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
-		Host:        host,
-		TopicName:   JobInfoTopic,
-		PubSub:      gossipSub,
-		IgnoreLocal: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
-		JobStore: jobStore,
-		PubSub:   jobInfoPubSub,
-	})
-	err = jobInfoPubSub.Subscribe(ctx, pubsub.NewNoopSubscriber[jobinfo.Envelope]())
+	jobStore, err := fsRepo.InitJobStore(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,14 +118,14 @@ func NewRequesterNode(
 		// planner that forwards the desired state to the compute nodes,
 		// and updates the observed state if the compute node accepts the desired state
 		planner.NewComputeForwarder(planner.ComputeForwarderParams{
-			ID:             host.ID().String(),
+			ID:             nodeID,
 			ComputeService: computeProxy,
 			JobStore:       jobStore,
 		}),
 
 		// planner that publishes events on job completion or failure
 		planner.NewEventEmitter(planner.EventEmitterParams{
-			ID:           host.ID().String(),
+			ID:           nodeID,
 			EventEmitter: eventEmitter,
 		}),
 
@@ -211,12 +179,6 @@ func NewRequesterNode(
 		worker.Start(ctx)
 	}
 
-	publicKey := host.Peerstore().PubKey(host.ID())
-	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
-	if err != nil {
-		return nil, err
-	}
-
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
@@ -236,8 +198,7 @@ func NewRequesterNode(
 	}
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         host.ID().String(),
-		PublicKey:                  marshaledPublicKey,
+		ID:                         nodeID,
 		EvaluationBroker:           evalBroker,
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
@@ -252,7 +213,7 @@ func NewRequesterNode(
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
-		ID:               host.ID().String(),
+		ID:               nodeID,
 		EvaluationBroker: evalBroker,
 		Store:            jobStore,
 		EventEmitter:     eventEmitter,
@@ -261,7 +222,7 @@ func NewRequesterNode(
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
-			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
+			transformer.RequesterInfo(nodeID),
 			transformer.NewInlineStoragePinner(storageProviders),
 		},
 		TaskTranslator:    translationProvider,
@@ -271,14 +232,8 @@ func NewRequesterNode(
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
 		Endpoint: endpoint,
 		JobStore: jobStore,
-		NodeID:   host.ID().String(),
+		NodeID:   nodeID,
 		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
-	})
-
-	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
-	bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
-		Host:     host,
-		Callback: endpoint,
 	})
 
 	// register debug info providers for the /debug endpoint
@@ -303,7 +258,7 @@ func NewRequesterNode(
 	})
 
 	// Register event handlers
-	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
+	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
 	eventTracer, err := eventhandler.NewTracer()
 	if err != nil {
 		return nil, err
@@ -319,8 +274,6 @@ func NewRequesterNode(
 		eventTracer,
 		// dispatches events to listening websockets
 		requesterAPIServer,
-		// publish job events to the network
-		jobInfoPublisher,
 	)
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
@@ -332,12 +285,7 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		cleanupErr := jobInfoPubSub.Close(ctx)
-		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown job info pubsub")
-		}
-
-		cleanupErr = tracerContextProvider.Shutdown()
+		cleanupErr := tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
 		}
@@ -358,13 +306,8 @@ func NewRequesterNode(
 		localCallback:  endpoint,
 		NodeDiscoverer: nodeDiscoveryChain,
 		JobStore:       jobStore,
-		computeProxy:   computeProxy,
 		cleanupFunc:    cleanupFunc,
 	}, nil
-}
-
-func (r *Requester) RegisterLocalComputeEndpoint(endpoint compute.Endpoint) {
-	r.computeProxy.RegisterLocalComputeEndpoint(endpoint)
 }
 
 func (r *Requester) cleanup(ctx context.Context) {

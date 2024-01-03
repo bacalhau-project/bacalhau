@@ -147,7 +147,9 @@ func NewCmd() *cobra.Command {
 		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
 		"Folder to act as the devstack configuration repo",
 	)
-
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.UseNATS, "use-nats", ODs.UseNATS,
+		"Use NATS for messaging")
 	return devstackCmd
 }
 

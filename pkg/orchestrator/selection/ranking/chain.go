@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // Chain assigns a random rank to each node to allow the orchestrator to select random top nodes
@@ -25,9 +24,9 @@ func (c *Chain) Add(ranker ...orchestrator.NodeRanker) {
 
 func (c *Chain) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	// initialize map of node ranks
-	ranksMap := make(map[peer.ID]*orchestrator.NodeRank, len(nodes))
+	ranksMap := make(map[string]*orchestrator.NodeRank, len(nodes))
 	for _, node := range nodes {
-		ranksMap[node.PeerInfo.ID] = &orchestrator.NodeRank{NodeInfo: node, Rank: orchestrator.RankPossible}
+		ranksMap[node.ID()] = &orchestrator.NodeRank{NodeInfo: node, Rank: orchestrator.RankPossible}
 	}
 
 	// iterate over the rankers and add their ranks to the map
@@ -40,10 +39,10 @@ func (c *Chain) RankNodes(ctx context.Context, job models.Job, nodes []models.No
 		}
 		for _, nodeRank := range nodeRanks {
 			if !nodeRank.MeetsRequirement() {
-				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank = orchestrator.RankUnsuitable
-				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Reason = nodeRank.Reason
-			} else if ranksMap[nodeRank.NodeInfo.PeerInfo.ID].MeetsRequirement() {
-				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank += nodeRank.Rank
+				ranksMap[nodeRank.NodeInfo.ID()].Rank = orchestrator.RankUnsuitable
+				ranksMap[nodeRank.NodeInfo.ID()].Reason = nodeRank.Reason
+			} else if ranksMap[nodeRank.NodeInfo.ID()].MeetsRequirement() {
+				ranksMap[nodeRank.NodeInfo.ID()].Rank += nodeRank.Rank
 			}
 		}
 	}

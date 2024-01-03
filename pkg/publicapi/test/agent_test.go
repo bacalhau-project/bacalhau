@@ -34,7 +34,7 @@ func (s *ServerSuite) TestAgentNode() {
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.Host.ID().String())
+	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
 
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
@@ -46,7 +46,7 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.Host.ID().String())
+	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.ID)
 	s.Require().NoError(err)
 
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
@@ -54,7 +54,7 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 
 func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
 	require.Equal(t, a.BacalhauVersion, b.BacalhauVersion)
-	require.Equal(t, a.PeerInfo, b.PeerInfo)
+	require.Equal(t, a.ID(), b.ID())
 	require.Equal(t, a.NodeType, b.NodeType)
 	require.Equal(t, a.Labels, b.Labels)
 

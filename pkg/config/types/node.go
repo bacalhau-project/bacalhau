@@ -43,6 +43,8 @@ type NodeConfig struct {
 
 	// Configuration for the web UI
 	WebUI WebUIConfig `yaml:"WebUI"`
+
+	Cluster ClusterConfig `yaml:"Cluster"`
 }
 
 type APIConfig struct {
@@ -117,4 +119,11 @@ type FeatureConfig struct {
 	Engines    []string `yaml:"Engines"`
 	Publishers []string `yaml:"Publishers"`
 	Storages   []string `yaml:"Storages"`
+}
+
+type ClusterConfig struct {
+	UseNATS           bool     `yaml:"UseNATS"`
+	Port              int      `yaml:"Port"`
+	AdvertisedAddress string   `yaml:"AdvertisedAddress"`
+	Orchestrators     []string `yaml:"Orchestrators"`
 }

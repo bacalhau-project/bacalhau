@@ -101,6 +101,9 @@ type ComputeConfig struct {
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
 
 	ExecutionStore store.ExecutionStore
+
+	// NATS config
+	Servers []string
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {

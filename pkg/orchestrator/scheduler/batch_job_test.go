@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
@@ -26,11 +25,11 @@ const (
 )
 
 var nodeIDs = []string{
-	"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-	"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-	"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-	"QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
-	"QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk",
+	"Node0",
+	"Node1",
+	"Node2",
+	"Node3",
+	"Node4",
 }
 
 type BatchJobSchedulerTestSuite struct {
@@ -80,10 +79,10 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() 
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
-		NewExecutionsNodes: []peer.ID{
-			nodeInfos[0].PeerInfo.ID,
-			nodeInfos[1].PeerInfo.ID,
-			nodeInfos[2].PeerInfo.ID,
+		NewExecutionsNodes: []string{
+			nodeInfos[0].ID(),
+			nodeInfos[1].ID(),
+			nodeInfos[2].ID(),
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -230,7 +229,7 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
-		NewExecutionsNodes: []peer.ID{nodeInfos[0].PeerInfo.ID},
+		NewExecutionsNodes: []string{nodeInfos[0].ID()},
 		StoppedExecutions: []string{
 			executions[execBidAccepted].ID,
 		},

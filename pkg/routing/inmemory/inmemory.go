@@ -141,8 +141,8 @@ func (r *NodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.Addr
 	if !ok {
 		return peer.AddrInfo{}, nil
 	}
-	if len(infoWrapper.PeerInfo.Addrs) > 0 {
-		return infoWrapper.PeerInfo, nil
+	if infoWrapper.PeerInfo != nil && len(infoWrapper.PeerInfo.Addrs) > 0 {
+		return *infoWrapper.PeerInfo, nil
 	}
 	return peer.AddrInfo{}, nil
 }

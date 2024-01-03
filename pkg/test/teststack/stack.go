@@ -93,7 +93,7 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.ID)
 
 		if !node.IsRequesterNode() || node.RequesterNode == nil {
 			continue

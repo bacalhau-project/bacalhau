@@ -44,6 +44,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
+		NodeID:                    libp2pHost.ID().String(),
 		CleanupManager:            cm,
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",

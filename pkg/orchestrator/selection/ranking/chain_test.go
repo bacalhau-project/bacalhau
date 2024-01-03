@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,9 +19,9 @@ type ChainSuite struct {
 }
 
 func (s *ChainSuite) SetupSuite() {
-	s.peerID1 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID1")}}
-	s.peerID2 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID2")}}
-	s.peerID3 = models.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID3")}}
+	s.peerID1 = models.NodeInfo{NodeID: "peerID1"}
+	s.peerID2 = models.NodeInfo{NodeID: "peerID2"}
+	s.peerID3 = models.NodeInfo{NodeID: "peerID3"}
 }
 
 func (s *ChainSuite) SetupTest() {

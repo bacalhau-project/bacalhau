@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -89,7 +88,7 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes() {
 	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
 		nodes = append(nodes, models.NodeInfo{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
+			NodeID:          t.name,
 			BacalhauVersion: t.version,
 		})
 	}
@@ -110,7 +109,7 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes_NilMinVersion() {
 	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
 		nodes = append(nodes, models.NodeInfo{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
+			NodeID:          t.name,
 			BacalhauVersion: t.version,
 		})
 	}

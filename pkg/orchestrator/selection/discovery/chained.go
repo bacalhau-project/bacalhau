@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
@@ -45,14 +44,14 @@ func (c *Chain) chainDiscovery(
 	getNodes func(orchestrator.NodeDiscoverer) ([]models.NodeInfo, error),
 ) ([]models.NodeInfo, error) {
 	var err error
-	uniqueNodes := make(map[peer.ID]models.NodeInfo, 0)
+	uniqueNodes := make(map[string]models.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
 		nodeInfos, discoverErr := getNodes(discoverer)
 		err = multierr.Append(err, errors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
 		currentNodesCount := len(uniqueNodes)
 		for _, nodeInfo := range nodeInfos {
-			if _, ok := uniqueNodes[nodeInfo.PeerInfo.ID]; !ok {
-				uniqueNodes[nodeInfo.PeerInfo.ID] = nodeInfo
+			if _, ok := uniqueNodes[nodeInfo.ID()]; !ok {
+				uniqueNodes[nodeInfo.ID()] = nodeInfo
 			}
 		}
 		log.Ctx(ctx).Debug().Msgf("[%s] found %d more nodes by %T", caller, len(uniqueNodes)-currentNodesCount, discoverer)

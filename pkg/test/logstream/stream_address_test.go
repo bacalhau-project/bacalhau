@@ -30,7 +30,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.NodeID = node.Host.ID().Pretty()
+	execution.NodeID = node.ID
 	execution.AllocateResources(task.Name, models.Resources{})
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)

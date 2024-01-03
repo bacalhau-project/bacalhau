@@ -189,7 +189,7 @@ func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	for _, executionState := range completedExecutionStates {
 		nodeFound := false
 		for _, n := range s.computeNodes {
-			if n.Host.ID().String() == executionState.NodeID {
+			if n.ID == executionState.NodeID {
 				nodes = append(nodes, n)
 				nodeFound = true
 				break
@@ -206,10 +206,10 @@ func (s *NodeSelectionSuite) assertNodesMatch(expected, selected []*node.Node) {
 	expectedNodeNames := make([]string, 0, len(expected))
 	selectedNodeNames := make([]string, 0, len(selected))
 	for _, n := range expected {
-		expectedNodeNames = append(expectedNodeNames, n.Host.ID().String())
+		expectedNodeNames = append(expectedNodeNames, n.ID)
 	}
 	for _, n := range selected {
-		selectedNodeNames = append(selectedNodeNames, n.Host.ID().String())
+		selectedNodeNames = append(selectedNodeNames, n.ID)
 	}
 	s.ElementsMatch(expectedNodeNames, selectedNodeNames)
 }

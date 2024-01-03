@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,7 +27,7 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 	var nodes []models.NodeInfo
 	for i := 0; i < nodeCount; i++ {
 		nodes = append(nodes, models.NodeInfo{
-			PeerInfo: peer.AddrInfo{ID: peer.ID(rune(i))},
+			NodeID: "node" + string(rune(i)),
 		})
 	}
 	s.RandomNodeRanker = NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: randomnessRange})
