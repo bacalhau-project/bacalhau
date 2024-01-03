@@ -66,9 +66,10 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models
 			// smi can't communicate with the drivers, etc. instead we provide a
 			// warning, show the args to the command we tried and its response.
 			// motivation: https://expanso.atlassian.net/browse/GDAY-90
-			log.Ctx(ctx).Warn().Err(err).Msgf(
-				"Cannot inspect %s so they will not be used",
+			log.Ctx(ctx).Debug().Msgf(
+				"Cannot inspect %s so they will not be used: %s",
 				strings.Join(gpuProvider.ResourceTypes(), " or "),
+				err.Error(),
 			)
 			continue
 		}
