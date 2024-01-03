@@ -25,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
@@ -42,6 +43,7 @@ type Compute struct {
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
 	computeInfoProvider models.ComputeNodeInfoProvider
+	autoLabelsProvider  models.LabelsProvider
 }
 
 //nolint:funlen
@@ -257,6 +259,13 @@ func NewComputeNode(
 		resultsPath.Close()
 	}
 
+	// Node labels
+	labelsProvider := models.MergeLabelsInOrder(
+		&RuntimeLabelsProvider{},
+		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
+		repo_storage.NewLabelsProvider(),
+	)
+
 	return &Compute{
 		ID:                  host.ID().String(),
 		LocalEndpoint:       baseEndpoint,
@@ -269,6 +278,7 @@ func NewComputeNode(
 		computeCallback:     computeCallback,
 		cleanupFunc:         cleanupFunc,
 		computeInfoProvider: nodeInfoProvider,
+		autoLabelsProvider:  labelsProvider,
 	}, nil
 }
 
