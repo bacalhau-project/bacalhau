@@ -46,7 +46,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 		)
 
 		s.Run(name, func() {
-			args := []string{}
+			args := []string{"--node-type", "requester,compute"}
 			if tc.configuredMax != nil {
 				args = append(args, "--max-job-execution-timeout", tc.configuredMax.String())
 			}
