@@ -1,6 +1,6 @@
 ---
 sidebar_position: 4
-sidebar_label: "Networking"
+sidebar_label: "Internet Access"
 ---
 
 # Accessing the Internet from Jobs

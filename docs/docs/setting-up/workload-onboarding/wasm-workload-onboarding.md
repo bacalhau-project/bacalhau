@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'Workloads (WebAssembly)'
-sidebar_position: 4
+sidebar_position: 3
 ---
 # WebAssembly (WASM) Workloads
 
