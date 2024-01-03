@@ -479,10 +479,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 		_, _ = s.runJobWithContext(ctx, task, id)
 		done <- true
 	}()
-
+	<-done
 	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
 
-	<-done
 	require.Nil(s.T(), reader)
 	require.Error(s.T(), err)
 }
