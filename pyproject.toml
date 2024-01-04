@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "bacalhau"
-version = "0"
+version = "0.1"
 description = ""
 authors = []
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10.5"
 pre-commit = "^2.20.0"
 sgqlc = "^16.0"
 semver = "^2.13.0"
