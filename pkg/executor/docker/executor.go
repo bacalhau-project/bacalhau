@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -36,6 +37,9 @@ const (
 	labelExecutorName = "bacalhau-executor"
 	labelJobName      = "bacalhau-jobID"
 	labelExecutionID  = "bacalhau-executionID"
+
+	outputStreamCheckTickTime = 100 * time.Millisecond
+	outputStreamCheckTimeout  = 5 * time.Second
 )
 
 type Executor struct {
@@ -235,11 +239,44 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	handler, found := e.handlers.Get(executionID)
-	if !found {
-		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
+	// It's possible we've recorded the execution as running, but have not yet added the handler to
+	// the handler map because we're still waiting for the container to start. We will try and wait
+	// for a few seconds to see if the handler is added to the map.
+	chHandler := make(chan *executionHandler)
+	chExit := make(chan struct{})
+
+	go func(ch chan *executionHandler, exit chan struct{}) {
+		// Check the handlers every 100ms and send it down the
+		// channel if we find it. If we don't find it after 5 seconds
+		// then we'll be told on the exit channel
+		ticker := time.NewTicker(outputStreamCheckTickTime)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				h, found := e.handlers.Get(executionID)
+				if found {
+					ch <- h
+					return
+				}
+			case <-exit:
+				ticker.Stop()
+				return
+			}
+		}
+	}(chHandler, chExit)
+
+	// Either we'll find a handler for the execution (which might have finished starting)
+	// or we'll timeout and return an error.
+	select {
+	case handler := <-chHandler:
+		return handler.outputStream(ctx, withHistory, follow)
+	case <-time.After(outputStreamCheckTimeout):
+		chExit <- struct{}{}
 	}
-	return handler.outputStream(ctx, withHistory, found)
+
+	return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
 }
 
 // Run initiates and waits for the completion of an execution in one call.
