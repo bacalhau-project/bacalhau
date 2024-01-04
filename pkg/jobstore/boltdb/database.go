@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -18,7 +19,8 @@ const (
 func GetDatabase(path string) (*bolt.DB, error) {
 	database, err := bolt.Open(path, DefaultDatabasePermissions, &bolt.Options{Timeout: 2 * time.Second})
 	if err != nil {
-		return nil, err
+		//nolint:lll
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to open database at %s - often caused because a bacalhau process is already running.", path))
 	}
 	return database, nil
 }
