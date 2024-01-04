@@ -30,4 +30,5 @@ lint: ## Run linters
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	codespell -L "te,raison,fo" --skip="./docs/build,./.git" --ignore-words="./.gitprecommit/codespell_ignore_words.txt"
+

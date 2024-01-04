@@ -18,6 +18,7 @@ repos:
           [
             --check-filenames,
             --ignore-words=.gitprecommit/codespell_ignore_words.txt,
+            --skip=integration/flyte/Makefile,
           ]
   - repo: local
     hooks:

@@ -80,7 +80,7 @@ def to_requirements_log(stdoutBytes, stderrBytes):
 
 def single_file(working_dir):
     """
-    If we only find a single file ready to be deployed, we'll read pip install instrcutions
+    If we only find a single file ready to be deployed, we'll read pip install instructions
     from the module doc (if it exists).
     """
     installed = 0

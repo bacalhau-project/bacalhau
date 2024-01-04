@@ -29,8 +29,8 @@ import (
 
 // Translator defines what functions are required for a component that
 // is able to translate from one job to another. It is important that
-// implementors ensure that their implementation is reentrant - which
-// means it should not use any mutable state after initialisation.
+// implementers ensure that their implementation is reentrant - which
+// means it should not use any mutable state after initialization.
 type Translator interface {
 	provider.Providable
 
