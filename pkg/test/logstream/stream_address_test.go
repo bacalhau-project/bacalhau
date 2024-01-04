@@ -3,8 +3,6 @@
 package logstream
 
 import (
-	"runtime"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
