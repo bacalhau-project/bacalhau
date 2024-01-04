@@ -3,8 +3,6 @@
 package logstream
 
 import (
-	"runtime"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -19,13 +17,6 @@ import (
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
-	// Test to see if we're running on a Mac where docker doesn't work
-	// because the loopback for Docker is different than the loopback
-	// on Linux and skip the test if we are
-	if runtime.GOOS == "darwin" {
-		s.T().Skip("Skipping test on Mac")
-	}
-
 	docker.MustHaveDocker(s.T())
 
 	node := s.stack.Nodes[0]
