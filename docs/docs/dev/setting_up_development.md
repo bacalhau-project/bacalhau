@@ -1,13 +1,22 @@
+---
+sidebar_label: Setting Up Your Development Environment
+---
+
+If you are looking to develop on the project, this page will help you get started.
+
 **Instructions**
 - Set environment variables:
 ```
 export PYTHONVER='3.11.7'
 export GOLANGCILINTVER='v1.51.2'
+export GOLANGVER='1.20'
 ```
 
 - Install asdf: `brew install asdf`
 - Install asdf python plug-in: `asdf plugin add python`
 - Install python: `asdf local python $PYTHONVER`
+- Install asdf golang plug-in: `asdf plugin add golang`
+- Install golang: `asdf install golang $GOLANGVER`
 - Install golangci-lint: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINTVER`
 
 **Useful VSCode launch.json**
@@ -43,13 +52,45 @@ export GOLANGCILINTVER='v1.51.2'
       }
     },
     {
-      "name": "Launch WebUI",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "main.go",
-      "args": ["serve", "--web-ui", "--web-ui-port", "3000"]
+        "name": "Launch test function",
+        "type": "go",
+        "request": "launch",
+        "mode": "test",
+        "program": "${workspaceFolder}",
+        "args": [
+            "-test.run",
+            "MyTestFunction"
+        ]
+    },
+    {
+        "name": "Launch file",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${file}"
+    },
+    {
+        "name": "Launch Package",
+        "type": "go",
+        "request": "launch",
+        "mode": "auto",
+        "program": "${fileDirname}"
+    },
+    {
+        "name": "Launch WebUI",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "main.go",
+        "args": [
+            "serve",
+            "--web-ui"
+            "--web-ui-port",
+            "8888"
+        ]
     }
+    ]
+}
   ]
 }
 ```
