@@ -992,6 +992,8 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, eval)
 	})
 
+	eval.Revision = 1
+
 	data, err := b.marshaller.Marshal(eval)
 	if err != nil {
 		return err
@@ -1093,49 +1095,55 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, evalID string) (models.Evaluat
 	return eval, nil
 }
 
-func (b *BoltJobStore) UpdateEvaluation(ctx context.Context, eval models.Evaluation) error {
+func (b *BoltJobStore) UpdateEvaluation(ctx context.Context, updateRequest jobstore.UpdateEvaluationRequest) error {
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		return b.updateEvaluation(tx, eval)
+		return b.updateEvaluation(tx, updateRequest)
 	})
 }
 
-func (b *BoltJobStore) updateEvaluation(tx *bolt.Tx, eval models.Evaluation) error {
+func (b *BoltJobStore) updateEvaluation(tx *bolt.Tx, updateRequest jobstore.UpdateEvaluationRequest) error {
 	// If there is an error getting the current evaluation we should not be updating it
-	existingEval, err := b.getEvaluation(tx, eval.ID)
+	existingEval, err := b.getEvaluation(tx, updateRequest.EvaluationID)
 	if err != nil {
-		return bacerrors.NewEvaluationNotFound(eval.ID)
+		return bacerrors.NewEvaluationNotFound(updateRequest.EvaluationID)
 	}
 
 	tx.OnCommit(func() {
-		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.UpdateEvent, eval)
+		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.UpdateEvent, existingEval)
 	})
 
-	data, err := json.Marshal(eval)
+	// Evaluate the current state and revision for the evaluation making sure we have what we expect in the store
+	if err := updateRequest.Condition.Validate(existingEval); err != nil {
+		return err
+	}
+
+	existingEval.Revision += updateRequest.Revision
+	existingEval.ModifyTime = updateRequest.ModificationTime
+
+	data, err := b.marshaller.Marshal(existingEval)
 	if err != nil {
 		return err
 	}
 
-	if bkt, err := NewBucketPath(BucketJobs, eval.JobID, BucketJobEvaluations).Get(tx, false); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, updateRequest.JobID, BucketJobEvaluations).Get(tx, false); err != nil {
 		return err
 	} else {
-		if err = bkt.Put([]byte(eval.ID), data); err != nil {
+		if err := bkt.Put([]byte(updateRequest.EvaluationID), data); err != nil {
 			return err
 		}
 	}
 
-	errs := new(multierror.Error)
-
-	// Remove the old evaluation state index and set the new one if it has changed
-	if existingEval.Status != eval.Status {
-		if err = b.evaluationStateIndex.Remove(tx, []byte(existingEval.ID), []byte(existingEval.Status)); err != nil {
-			errs = multierror.Append(errs, err)
+	// Remove the old evaluation state index and set the new one only if it has changed
+	if existingEval.Status != updateRequest.NewStatus {
+		if err := b.evaluationStateIndex.Remove(tx, []byte(existingEval.ID), []byte(existingEval.Status)); err != nil {
+			return err
 		}
-		if err = b.evaluationStateIndex.Add(tx, []byte(eval.ID), []byte(eval.Status)); err != nil {
-			errs = multierror.Append(errs, err)
+		if err := b.evaluationStateIndex.Add(tx, []byte(updateRequest.EvaluationID), []byte(updateRequest.NewStatus)); err != nil {
+			return err
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return nil
 }
 
 func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error) {

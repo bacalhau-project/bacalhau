@@ -83,7 +83,7 @@ type Store interface {
 	GetEvaluationsByState(ctx context.Context, state string) ([]models.Evaluation, error)
 
 	// UpdateEvaluation updates the stored evaluation
-	UpdateEvaluation(ctx context.Context, eval models.Evaluation) error
+	UpdateEvaluation(ctx context.Context, update UpdateEvaluationRequest) error
 
 	// DeleteEvaluation deletes the specified evaluation
 	DeleteEvaluation(ctx context.Context, id string) error
@@ -105,6 +105,31 @@ type UpdateExecutionRequest struct {
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
 	Comment     string
+}
+
+type UpdateEvaluationRequest struct {
+	JobID            string
+	EvaluationID     string
+	NewStatus        string
+	ModificationTime int64
+	Revision         uint64
+	Condition        UpdateEvaluationCondition
+}
+
+type UpdateEvaluationCondition struct {
+	ExpectedState    models.EvaluationStateType
+	ExpectedRevision uint64
+}
+
+// Validate checks if the condition matches the given job
+func (condition UpdateEvaluationCondition) Validate(eval models.Evaluation) error {
+	if condition.ExpectedState != "" && condition.ExpectedState != models.EvaluationStateType(eval.Status) {
+		return NewErrInvalidEvaluationState(eval.ID, models.EvaluationStateType(eval.Status), condition.ExpectedState)
+	}
+	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != eval.Revision {
+		return NewErrInvalidEvaluationVersion(eval.ID, eval.Revision, condition.ExpectedRevision)
+	}
+	return nil
 }
 
 type UpdateJobCondition struct {

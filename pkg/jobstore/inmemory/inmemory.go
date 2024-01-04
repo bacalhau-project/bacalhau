@@ -438,6 +438,8 @@ func (d *InMemoryJobStore) CreateEvaluation(ctx context.Context, eval models.Eva
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
+	eval.Revision = 1
+
 	_, ok := d.jobs[eval.JobID]
 	if !ok {
 		return jobstore.NewErrJobNotFound(eval.JobID)
@@ -485,11 +487,22 @@ func (d *InMemoryJobStore) GetEvaluationsByState(ctx context.Context, state stri
 }
 
 // UpdateEvaluation updates the stored evaluation
-func (d *InMemoryJobStore) UpdateEvaluation(ctx context.Context, eval models.Evaluation) error {
+func (d *InMemoryJobStore) UpdateEvaluation(ctx context.Context, update jobstore.UpdateEvaluationRequest) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	d.evaluations[eval.ID] = eval
+	eval := d.evaluations[update.EvaluationID]
+
+	if err := update.Condition.Validate(eval); err != nil {
+		return err
+	}
+
+	eval.Status = update.NewStatus
+	eval.ModifyTime = update.ModificationTime
+	eval.Revision = update.Revision
+
+	d.evaluations[update.EvaluationID] = eval
+
 	d.triggerEvent(jobstore.EvaluationWatcher, jobstore.UpdateEvent, eval)
 	return nil
 }

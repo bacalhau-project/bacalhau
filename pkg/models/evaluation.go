@@ -7,6 +7,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 )
 
+type EvaluationStateType string
+
 const (
 	// Evaluations can be in one of several states, with only two of them `pending`
 	// and `ready` being active states, the rest being considered terminal. The
@@ -81,6 +83,10 @@ type Evaluation struct {
 	// WaitUntil is the time until which the evaluation should be ignored, such as to implement backoff when
 	// repeatedly failing to assess a job.
 	WaitUntil time.Time `json:"WaitUntil"`
+
+	// Revision is a per-evaluation monotonically increasing revision number that is incremented
+	// on each update to the job's state or specification
+	Revision uint64 `json:"Revision"`
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`

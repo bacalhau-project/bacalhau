@@ -157,3 +157,39 @@ func (e ErrExecutionAlreadyTerminal) Error() string {
 	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
 		e.ExecutionID, e.Actual, e.NewState)
 }
+
+// ErrInvalidEvaluationState is returned when an evaluation is in an invalid/wrong state
+type ErrInvalidEvaluationState struct {
+	EvaluationID string
+	Actual       models.EvaluationStateType
+	Expected     models.EvaluationStateType
+}
+
+func NewErrInvalidEvaluationState(id string,
+	actual models.EvaluationStateType,
+	expected models.EvaluationStateType) ErrInvalidEvaluationState {
+	return ErrInvalidEvaluationState{EvaluationID: id, Actual: actual, Expected: expected}
+}
+
+func (e ErrInvalidEvaluationState) Error() string {
+	if e.Expected == "" {
+		return fmt.Sprintf("job %s is in unexpected state %s", e.EvaluationID, e.Actual)
+	}
+
+	return fmt.Sprintf("job %s is in state %s but expected %s", e.EvaluationID, e.Actual, e.Expected)
+}
+
+// ErrInvalidJobVersion is returned when an job has an invalid version.
+type ErrInvalidEvaluationVersion struct {
+	EvaluationID string
+	Actual       uint64
+	Expected     uint64
+}
+
+func NewErrInvalidEvaluationVersion(id string, actual, expected uint64) ErrInvalidEvaluationVersion {
+	return ErrInvalidEvaluationVersion{EvaluationID: id, Actual: actual, Expected: expected}
+}
+
+func (e ErrInvalidEvaluationVersion) Error() string {
+	return fmt.Sprintf("evaluation %s has version %d but expected %d", e.EvaluationID, e.Actual, e.Expected)
+}

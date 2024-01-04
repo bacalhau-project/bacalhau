@@ -229,9 +229,9 @@ func (mr *MockStoreMockRecorder) GetJobs(ctx, query any) *gomock.Call {
 }
 
 // UpdateEvaluation mocks base method.
-func (m *MockStore) UpdateEvaluation(ctx context.Context, eval models.Evaluation) error {
+func (m *MockStore) UpdateEvaluation(ctx context.Context, update UpdateEvaluationRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateEvaluation", ctx, eval)
+	ret := m.ctrl.Call(m, "UpdateEvaluation", ctx, update)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

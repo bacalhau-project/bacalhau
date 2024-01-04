@@ -656,8 +656,6 @@ func (b *InMemoryBroker) Nack(evalID, receiptHandle string) error {
 	} else {
 		queue = e.Type
 		e.WaitUntil = time.Now().Add(b.nackReenqueueDelay(e, dequeues)).UTC()
-
-		b.evaluationStateChange(e, models.EvalStatusBlocked)
 	}
 	return b.enqueueLocked(e, queue)
 }
@@ -845,6 +843,9 @@ func (b *InMemoryBroker) RegisterStateChangeCallback(callback models.EvaluationS
 
 func (b *InMemoryBroker) evaluationStateChange(e *models.Evaluation, newState string) {
 	e.Status = newState
+	e.ModifyTime = time.Now().Unix()
+	e.Revision += 1
+
 	for _, callback := range b.evaluationStateCallbacks {
 		callback(e)
 	}

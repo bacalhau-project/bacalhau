@@ -503,8 +503,14 @@ func (s *InMemoryTestSuite) TestUpdateGetEvaluations() {
 	err := s.store.CreateEvaluation(s.ctx, eval)
 	s.Require().NoError(err)
 
+	update := jobstore.UpdateEvaluationRequest{
+		JobID:        eval.JobID,
+		EvaluationID: eval.ID,
+		NewStatus:    models.EvalStatusFailed,
+	}
+
 	eval.Status = models.EvalStatusFailed
-	err = s.store.UpdateEvaluation(s.ctx, eval)
+	err = s.store.UpdateEvaluation(s.ctx, update)
 	s.Require().NoError(err)
 
 	evals, err := s.store.GetEvaluationsByState(s.ctx, models.EvalStatusFailed)

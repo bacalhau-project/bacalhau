@@ -602,8 +602,13 @@ func (s *BoltJobstoreTestSuite) TestUpdateGetEvaluations() {
 	err := s.store.CreateEvaluation(s.ctx, eval)
 	s.Require().NoError(err)
 
-	eval.Status = models.EvalStatusFailed
-	err = s.store.UpdateEvaluation(s.ctx, eval)
+	update := jobstore.UpdateEvaluationRequest{
+		JobID:        eval.JobID,
+		EvaluationID: eval.ID,
+		NewStatus:    models.EvalStatusFailed,
+	}
+
+	err = s.store.UpdateEvaluation(s.ctx, update)
 	s.Require().NoError(err)
 
 	evals, err := s.store.GetEvaluationsByState(s.ctx, models.EvalStatusFailed)
@@ -647,9 +652,11 @@ func (s *BoltJobstoreTestSuite) TestEvaluationsByState() {
 	// we should get e2, followed by e1
 	s.Require().Equal("e2", evals[0].ID)
 	s.Require().Equal("e1", evals[1].ID)
-	s.Require().Equal(e, eval)
 
-	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	err = s.store.DeleteEvaluation(s.ctx, evals[1].ID)
+	s.Require().NoError(err)
+
+	err = s.store.DeleteEvaluation(s.ctx, evals[0].ID)
 	s.Require().NoError(err)
 }
 
