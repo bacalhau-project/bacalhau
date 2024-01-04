@@ -115,7 +115,7 @@ ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrz
 
 ## Components to Build
 
-- Build an application that listens for jobs over libp2p, receives payment somehow, runs the job in {kuberenetes, docker, idk}, and returns the result to the use (ideally the 'result' is in the form of an ipfs object and we can just return the hash).
+- Build an application that listens for jobs over libp2p, receives payment somehow, runs the job in {kubernetes, docker, idk}, and returns the result to the use (ideally the 'result' is in the form of an ipfs object and we can just return the hash).
 - The inputs to the job should be a 'program' and a CID. The node should pull the CID requested into a car file (it should already be in this format for sectors that they have sealed) and pass that to the docker image (probably mounted somewhere to the image).
 - This should run as a sidecar to lotus nodes, and should be fairly isolate so as not to mess with the node's primary operation.
 - Need a payment system, payment estimator
