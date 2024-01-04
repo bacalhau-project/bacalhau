@@ -58,26 +58,26 @@ func newUnexpectedResponseError(src unexpectedResponseErrorSource, opts ...unexp
 
 //nolint:lll
 func (e UnexpectedResponseError) Error() string {
-	var eTxt strings.Builder
-	eTxt.WriteString("Unexpected response code")
+	var eText strings.Builder
+	eText.WriteString("Unexpected response code")
 	if e.HasBody() || e.HasStatusCode() {
-		eTxt.WriteString(": ")
+		eText.WriteString(": ")
 	}
 	if e.HasStatusCode() {
-		eTxt.WriteString(fmt.Sprint(e.statusCode))
+		eText.WriteString(fmt.Sprint(e.statusCode))
 		if e.HasBody() {
-			eTxt.WriteRune(' ')
+			eText.WriteRune(' ')
 		}
 	}
 	if e.HasBody() {
-		eTxt.WriteString(fmt.Sprintf("(%s)", e.body))
+		eText.WriteString(fmt.Sprintf("(%s)", e.body))
 	}
 
 	if e.HasAdditional() {
-		eTxt.WriteString(fmt.Sprintf(". Additionally, an error occurred while constructing this error (%s); the body might be truncated or missing.", e.additional.Error()))
+		eText.WriteString(fmt.Sprintf(". Additionally, an error occurred while constructing this error (%s); the body might be truncated or missing.", e.additional.Error()))
 	}
 
-	return eTxt.String()
+	return eText.String()
 }
 
 // UnexpectedResponseErrorOptions are functions passed to NewUnexpectedResponseError

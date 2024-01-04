@@ -10,6 +10,15 @@ repos:
       - id: detect-private-key
       - id: check-yaml
       - id: check-json
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.4
+    hooks:
+      - id: codespell
+        args:
+          [
+            --check-filenames,
+            --ignore-words=.gitprecommit/codespell_ignore_words.txt,
+          ]
   - repo: local
     hooks:
       - id: extra-credential-checking
