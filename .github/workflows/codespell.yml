@@ -18,5 +18,5 @@ jobs:
       - name: Codespell
         uses: codespell-project/actions-codespell@v1
         with:
-          exclude_file: integration/flyte/Makefile,testdata/bad_strings_full.txt,docs/.vale/styles,docs/package-lock.json,testdata,docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md,apps/job-info-consumer/consumer/go.sum
+          skip: integration/flyte/Makefile,testdata,docs/.vale/styles,*package-lock.json*,docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md,*go.sum*,*go.mod*
           ignore_words_file: .gitprecommit/codespell_ignore_words.txt
