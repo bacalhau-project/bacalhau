@@ -17,6 +17,7 @@ import (
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
+
 	docker.MustHaveDocker(s.T())
 
 	node := s.stack.Nodes[0]
