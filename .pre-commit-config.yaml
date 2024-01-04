@@ -16,10 +16,15 @@ repos:
       - id: codespell
         args:
           [
-            --check-filenames,
-            --ignore-words=.gitprecommit/codespell_ignore_words.txt,
-            --skip=integration/flyte/Makefile testdata/bad_strings_full.txt docs/.vale/styles docs/package-lock.json testdata docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md apps/job-info-consumer/consumer/go.sum,
+            "--check-filenames",
+            "--ignore-words=.gitprecommit/codespell_ignore_words.txt",
           ]
+        exclude: >
+          (?x)^(
+            integration/flyte/Makefile|
+            testdata|
+            ^.+\.min\.js$
+          )$
   - repo: local
     hooks:
       - id: extra-credential-checking

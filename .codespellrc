@@ -7,4 +7,4 @@
 ignore-words-list = keypair,keypairs,querys,fo,ndoes,receivedfrom
 # Training-Tensorflow-Model, Prolog-Hello-World,Stable-Diffusion-Dreambooth - contain some output base64 (or else) encoded output,
 # skip for now, filed https://github.com/codespell-project/codespell/issues/2801
-skip = .git,*.pdf,*.svg,Stable-Diffusion-Dreambooth,Prolog-Hello-World,Training-Tensorflow-Model,package-lock.json,testdata,Gemfile.lock,go*.sum,_config.yml,package-lock.json
+skip = .git,*.pdf,*.svg,Stable-Diffusion-Dreambooth,Prolog-Hello-World,Training-Tensorflow-Model,package-lock.json,testdata,Gemfile.lock,go*.sum,_config.yml
