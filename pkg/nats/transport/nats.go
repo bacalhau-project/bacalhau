@@ -60,6 +60,7 @@ func NewNATSTransport(ctx context.Context,
 	}
 
 	// create nats client
+	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	nc, err := nats_helper.NewClient(ctx, config.NodeID, strings.Join(config.Orchestrators, ","))
 	if err != nil {
 		return nil, err

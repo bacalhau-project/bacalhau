@@ -389,36 +389,36 @@ func serve(cmd *cobra.Command) error {
 				peerAddress,
 			))
 		}
+
+		if ipfsConfig.PrivateInternal {
+			ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
+			if err != nil {
+				return fmt.Errorf("error looking up IPFS addresses: %w", err)
+			}
+
+			ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
+			sb.WriteString(fmt.Sprintf("%s ",
+				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
+
+			sb.WriteString(fmt.Sprintf("%s=%s ",
+				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
+				ipfsSwarmAddress,
+			))
+
+			envVarBuilder.WriteString(fmt.Sprintf(
+				"export %s=%s\n",
+				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
+				ipfsSwarmAddress,
+			))
+
+			cmd.Println()
+			cmd.Println(sb.String())
+		}
 	} else {
 		if !clusterConfig.UseNATS {
 			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
 	}
-
-	if ipfsConfig.PrivateInternal {
-		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
-		if err != nil {
-			return fmt.Errorf("error looking up IPFS addresses: %w", err)
-		}
-
-		ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
-		sb.WriteString(fmt.Sprintf("%s ",
-			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
-
-		sb.WriteString(fmt.Sprintf("%s=%s ",
-			configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-			ipfsSwarmAddress,
-		))
-
-		envVarBuilder.WriteString(fmt.Sprintf(
-			"export %s=%s\n",
-			config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-			ipfsSwarmAddress,
-		))
-	}
-
-	cmd.Println()
-	cmd.Println(sb.String())
 
 	summaryShellVariablesString := envVarBuilder.String()
 	cmd.Println()
