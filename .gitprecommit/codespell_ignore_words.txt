@@ -90,3 +90,4 @@ jbtj
 Dreambooth
 testdata
 modtidy
+codespellrc
