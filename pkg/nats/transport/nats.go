@@ -51,6 +51,7 @@ func NewNATSTransport(ctx context.Context,
 			ClientAdvertise: config.AdvertisedAddress,
 			RoutesStr:       strings.Join(config.Orchestrators, ","),
 		}
+		log.Debug().Msgf("Creating NATS server with options: %+v", serverOps)
 		ns, err = nats_helper.NewServer(ctx, serverOps)
 		if err != nil {
 			return nil, err
