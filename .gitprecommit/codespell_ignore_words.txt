@@ -87,3 +87,6 @@ nemt
 nohup
 writefile
 jbtj
+Dreambooth
+testdata
+modtidy
