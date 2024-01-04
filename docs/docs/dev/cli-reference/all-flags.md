@@ -7,54 +7,239 @@ sidebar_position: 7
 
 :::info
 
-The following commands refer to bacalhau cli version `v1.0.3`.
+The following commands refer to bacalhau cli version `v1.2.0`.
 For installing or upgrading a client, follow the instructions in the [installation page](https://docs.bacalhau.org/getting-started/installation).
 Run `bacalhau version` in a terminal to check what version you have.
 
 :::
 
+Let’s run the `bacalhau -- help` command in the terminal to find out information about available commands and flags:
+
 ```
-❯ bacalhau --help
+~$ bacalhau --help
 Compute over data
 
 Usage:
   bacalhau [command]
 
 Available Commands:
+  agent       Commands to query agent information.
   cancel      Cancel a previously submitted job
   completion  Generate the autocompletion script for the specified shell
+  config      Interact with the bacalhau configuration system.
   create      Create a job using a json or yaml file.
   describe    Describe a job on the network
   devstack    Start a cluster of bacalhau nodes for testing and development
   docker      Run a docker job on the network (see run subcommand)
+  exec        Execute a specific job type
   get         Get the results of a job
   help        Help about any command
   id          Show bacalhau node id info
+  job         Commands to submit, query and update jobs.
   list        List jobs on the network
   logs        Follow logs from a currently executing job
-  run         Run a job on the network (see subcommands for supported flavors)
+  node        Commands to query and update nodes information.
   serve       Start the bacalhau compute node
   validate    validate a job using a json or yaml file.
   version     Get the client and server version.
+  wasm        Run and prepare WASM jobs on the network
 
 Flags:
-      --api-host string   The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-      --api-port int      The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-  -h, --help              help for bacalhau
+      --api-host string         The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
+      --api-port int            The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
+  -h, --help                    help for bacalhau
+      --log-mode logging-mode   Log format: 'default','station','json','combined','event' (default default)
+      --repo string             path to bacalhau repo (default "/home/ngaranovich/.bacalhau")
 
 Use "bacalhau [command] --help" for more information about a command.
 ```
 
-## Cancel 
+:::info
+Global Flags
 
-Cancels a job that was previously submitted and stops it running if it has not yet completed.
+<details>
+  <summary>`--api-host string`</summary>
+  <div>
+    <div>Determines the host for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_HOST` environment variable is set.  
+         Default: `bootstrap.production.bacalhau.org`</div>
+  </div>
+</details>
+<details>
+  <summary>`--api-port int`</summary>
+  <div>
+    <div>Determines the port for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_PORT` environment variable is active.  
+         Default: `1234` </div>
+  </div>
+</details>
+<details>
+  <summary>`--log-mode logging-mode`</summary>
+  <div>
+    <div>Determines the preferred log format. Available log formats are: `default`, `station`, `json`, `combined`, `event`.  
+         Default: `default`</div>
+  </div>
+</details>
+<details>
+  <summary>`--repo string`</summary>
+  <div>
+    <div>Specifies the path to the bacalhau repository.  
+         Default: `$HOME/.bacalhau`</div>
+  </div>
+</details>
+:::
 
-```
-Cancel a previously submitted job.
+
+## Agent
+
+The `bacalhau agent` command is a parent command that offers sub-commands to query information about the Bacalhau agent. This can be useful for debugging, monitoring, or managing the agent's behavior and health.
 
 Usage:
-  ./bin/darwin_arm64/bacalhau cancel [id] [flags]
 
+```shell
+bacalhau agent [command]
+```
+Available Commands:
+
+**1. alive**
+```shell
+  $ bacalhau agent alive [flags]
+```
+The `bacalhau agent alive` command retrieves the agent's liveness and health information. This can be helpful to determine if the agent is running and healthy.
+
+```shell
+Flags:
+
+ -h, --help            help for alive
+     --output format   The output format for the command (one of ["json" "yaml"]) (default yaml)
+     --pretty          Pretty print the output. Only applies to json and yaml output formats.
+```
+
+:::info
+<details>
+  <summary>`--output format`</summary>
+  <div>
+    <div>Determines the format in which the output is displayed. Available formats include `JSON` and `YAML`.
+         Default: `yaml`</div>
+  </div>
+</details>
+<details>
+  <summary>`--pretty`</summary>
+  <div>
+    <div>Formats the output for enhanced readability. This flag is relevant only when using JSON or YAML output formats.</div>
+  </div>
+</details>
+:::
+
+#### Examples
+
+Let's have a look at the basic usage output:
+
+```shell
+$ bacalhau agent alive
+Status: OK
+```
+
+Compare the output in JSON format:
+
+```shell
+$ bacalhau agent alive --output json --pretty
+{
+  "Status": "OK"
+}
+```
+
+**2. node** 
+
+```shell
+$ bacalhau agent node [flags]
+```
+
+The `bacalhau agent node` command gathers the agent's node-related information. This might include details about the machine or environment where the agent is running, available resources, supported engines, etc.
+
+```shell
+Flags:
+  -h, --help            help for node
+      --output format   The output format for the command (one of ["json" "yaml"]) (default yaml)
+      --pretty          Pretty print the output. Only applies to json and yaml output formats.
+```
+
+#### Examples
+
+To retrieve Node Information in Default Format (YAML), run:
+
+```shell
+$ bacalhau agent node
+```
+
+To retrieve Node Information in JSON Format, run:
+
+```shell
+$ bacalhau agent node --output json
+```
+
+To retrieve Node Information in Pretty-printed JSON Format, run:
+
+```shell
+$ bacalhau agent node --output json --pretty
+```
+
+**3. version**
+
+```shell
+$ bacalhau agent version [flags]
+```
+
+The `bacalhau agent version` command is used to obtain the version of the bacalhau agent.
+
+```shell
+ Flags:
+  -h, --help            help for version
+      --output format   The output format for the command (one of ["json" "yaml"])
+      --pretty          Pretty print the output. Only applies to json and yaml output formats.
+```
+
+#### Examples
+
+Let's have a look at the command execution in the terminal:
+
+```shell
+$ bacalhau agent version
+Bacalhau v1.2.0
+BuildDate 2023-12-11 18:46:13 +0000 UTC
+GitCommit 4252ba4406c40c3d01bdcf58709f8d7a705fdc75
+```
+To retrieve the agent version in JSON format, run:
+
+```shell
+$ bacalhau agent version --output json
+{"Major":"1","Minor":"2","GitVersion":"v1.2.0","GitCommit":"4252ba4406c40c3d01bdcf58709f8d7a705fdc75","BuildDate":"2023-12-11T18:46:13Z","GOOS":"linux","GOARCH":"amd64"}
+```
+
+To retrieve the agent version in Pretty-printed JSON format, run:
+
+```shell
+$ bacalhau agent version --output json --pretty
+{
+  "Major": "1",
+  "Minor": "2",
+  "GitVersion": "v1.2.0",
+  "GitCommit": "4252ba4406c40c3d01bdcf58709f8d7a705fdc75",
+  "BuildDate": "2023-12-11T18:46:13Z",
+  "GOOS": "linux",
+  "GOARCH": "amd64"
+}
+```
+
+## Cancel 
+
+The `bacalhau cancel` command cancels a job that was previously submitted and stops it running if it has not yet completed.
+
+Usage:
+
+```shell
+$ bacalhau cancel [id] [flags]
+```
+
+```shell
 Flags:
   -h, --help    help for cancel
       --quiet   Do not print anything to stdout or stderr
@@ -62,14 +247,123 @@ Flags:
 
 #### Examples 
 
-```
-Examples:
-  # Cancel a previously submitted job
-  bacalhau cancel 51225160-807e-48b8-88c9-28311c7899e1
+To cancel a previously submitted job, run:
 
-  # Cancel a job, with a short ID.
-  bacalhau cancel ebd9bf2f
+```shell
+ $ bacalhau cancel 51225160-807e-48b8-88c9-28311c7899e1
 ```
+To cancel a job using a short ID, run:
+
+```shell
+ $ bacalhau cancel 51225160
+```
+
+## Completion
+
+The `bacalhau completion` command generates the autocompletion script for bacalhau for the specified shell.
+
+Usage:
+
+```shell
+bacalhau completion [command]
+```
+
+Available Commands:
+
+**1. bash**
+```shell
+  $ bacalhau completion bash [flags]
+```
+
+The `bacalhau completion bash` command generates the autocompletion script for bash.
+
+```shell
+Flags:
+  -h, --help              help for bash
+      --no-descriptions   disable completion descriptions
+```
+
+:::info
+This script depends on the 'bash-completion' package.
+If it is not installed already, you can install it via your OS's package manager.
+:::
+
+**2. fish**
+
+```shell
+  $ bacalhau completion fish [flags]
+```
+
+The `bacalhau completion fish` command generates the autocompletion script for the fish shell.
+
+```shell
+Flags:
+  -h, --help              help for fish
+      --no-descriptions   disable completion descriptions
+```
+:::info
+To load completions in your current shell session:  
+	`bacalhau completion fish | source`  
+To load completions for every new session, execute once:  
+	`bacalhau completion fish > ~/.config/fish/completions/bacalhau.fish`  
+You will need to start a new shell for this setup to take effect.
+:::
+
+
+**3. powershell**
+
+```shell
+  $ bacalhau completion powershell [flags]
+```
+The `bacalhau completion powershell` command generates the autocompletion script for powershell.
+
+```shell
+Flags:
+  -h, --help              help for powershell
+      --no-descriptions   disable completion descriptions
+```
+
+:::info
+To load completions in your current shell session:  
+	`bacalhau completion powershell | Out-String | Invoke-Expression`  
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+:::
+
+**4. zsh**
+
+```shell
+  $ bacalhau completion zsh [flags]
+```
+The `bacalhau completion zsh` command generates the autocompletion script for the zsh shell.
+
+```shell
+Flags:
+  -h, --help              help for zsh
+      --no-descriptions   disable completion descriptions
+```
+
+:::info
+If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:  
+	`echo "autoload -U compinit; compinit" >> ~/.zshrc`
+:::
+
+## Config
+
+The `bacalhau config` command is a parent command that offers sub-commands to modify and query information about the Bacalhau config. This can be useful for debugging, monitoring, or managing the nodes configuration.
+
+Usage:
+
+```shell
+$ bacalhau config [command]
+```
+
+
+
+
+
+
 
 ## Create
 

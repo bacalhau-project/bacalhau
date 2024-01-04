@@ -83,7 +83,7 @@ The interfaces handle the distribution, execution, storage and publishing of job
 
 ### Job preparation
 
-One can define and create jobs in the Bacalhau network, leveraging job types introduced in v1.2 for enhanced orchestration and scheduling. There are a bunch of different provided [Job Types]. Every job may need different variables, resource requirements and data details. Check the [Job Specification] for information on job and server-generated parameters and [task execution specifics].
+You can create jobs in the Bacalhau network using various [job types] introduced in version 1.2. Each job may need specific variables, resource requirements and data details that are described in the [Job Specification].
 
 <details>
   <summary>Advanced job preparation</summary>
@@ -136,10 +136,10 @@ You can use the command with [appropriate flags] to create a job in Bacalhau usi
 </TabItem>
 </Tabs>
 
-You can use the `bacalhau docker run` [command] to start a job in a Docker container. In the following you can see an excerpt of the commands:
+You can use the `bacalhau docker run` [command] to start a job in a Docker container. Below, you can see an excerpt of the commands:
 
 <details>
-  <summary>Bacalhau CLI commands</summary>
+  <summary>Bacalhau Docker CLI commands</summary>
   <div>
     <div>
         ```shell
@@ -198,7 +198,7 @@ You can use the `bacalhau docker run` [command] to start a job in a Docker conta
 
 
 
-You can also use the `bacalhau run python` [command] to run a job in Python. In the following you can find an excerpt of the commands in the Bacalhau CLI:
+You can also use the `bacalhau run python` [command] to run a job in Python. Below, you can find an excerpt of the commands in the Bacalhau CLI:
 
 <details>
   <summary>Bacalhau Python CLI commands</summary>
