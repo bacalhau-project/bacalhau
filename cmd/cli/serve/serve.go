@@ -70,7 +70,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else if peerConnect == "config" {
 		// TODO(forrest): [ux] if the user explicitly passes the peer flag with value `config` read the
-		// boostrap peer list from their config file.
+		// bootstrap peer list from their config file.
 		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
