@@ -208,14 +208,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	if err != nil {
 		return err
 	}
-	requestorConfig, err := serve.GetRequesterConfig()
+	requesterConfig, err := serve.GetRequesterConfig()
 	if err != nil {
 		return err
 	}
 
 	options := append(ODs.Options(),
 		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requestorConfig),
+		devstack.WithRequesterConfig(requesterConfig),
 	)
 	if IsNoop {
 		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
