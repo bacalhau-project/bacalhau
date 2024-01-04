@@ -57,7 +57,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 		var fc *fake.FakeCache[docker.ImageManifest] = fake.NewFakeCache[docker.ImageManifest]()
 		var cc cache.Cache[docker.ImageManifest] = fc
-		semantic.ManifestCache = &cc
+		semantic.ManifestCache = cc
 
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
 			Job: jobForDockerImage(t, "ubuntu:latest"),

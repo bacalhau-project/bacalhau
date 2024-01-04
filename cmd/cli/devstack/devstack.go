@@ -66,12 +66,13 @@ func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false
 	devstackFlags := map[string][]configflags.Definition{
-		"requester-tls":    configflags.RequesterTLSFlags,
-		"job-selection":    configflags.JobSelectionFlags,
-		"disable-features": configflags.DisabledFeatureFlags,
-		"capacity":         configflags.CapacityFlags,
-		"job-timeouts":     configflags.ComputeTimeoutFlags,
-		"translations":     configflags.JobTranslationFlags,
+		"requester-tls":         configflags.RequesterTLSFlags,
+		"job-selection":         configflags.JobSelectionFlags,
+		"disable-features":      configflags.DisabledFeatureFlags,
+		"capacity":              configflags.CapacityFlags,
+		"job-timeouts":          configflags.ComputeTimeoutFlags,
+		"translations":          configflags.JobTranslationFlags,
+		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 
 	devstackCmd := &cobra.Command{
