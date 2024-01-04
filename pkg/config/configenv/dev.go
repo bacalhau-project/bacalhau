@@ -9,12 +9,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 var Development = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
+	},
+	Update: types.UpdateConfig{
+		SkipChecks: true,
 	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
@@ -27,11 +31,12 @@ var Development = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		BootstrapAddresses: []string{
-			"/ip4/34.88.135.65/tcp/1235/p2p/QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo",
-			"/ip4/35.228.112.50/tcp/1235/p2p/QmQM1yRXyKGAfFtYpPSy5grHSief3fic6YjLEWQYpmiGTM",
+			"/ip4/34.86.177.175/tcp/1235/p2p/QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu",
+			"/ip4/35.245.221.171/tcp/1235/p2p/QmNjEQByyK8GiMTvnZqGyURuwXDCtzp9X6gJRKkpWfai7S",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
+		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -52,46 +57,54 @@ var Development = types.BacalhauConfig{
 			PrivateInternal: true,
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
-				"/ip4/34.88.135.65/tcp/4001/p2p/12D3KooWMYUaxS32AucbSN4Y9ae6CPfHcZiLxteAQpbjTBHexG6N",
-				"/ip4/34.88.135.65/udp/4001/quic/p2p/12D3KooWMYUaxS32AucbSN4Y9ae6CPfHcZiLxteAQpbjTBHexG6N",
-				"/ip4/35.228.112.50/tcp/4001/p2p/12D3KooWJE4HiVBbyUp2x3B98xKukKbN76zvU4FN8Uvc1NWZYzHS",
-				"/ip4/35.228.112.50/udp/4001/quic/p2p/12D3KooWJE4HiVBbyUp2x3B98xKukKbN76zvU4FN8Uvc1NWZYzHS",
+				"/ip4/34.86.177.175/tcp/4001/p2p/12D3KooWMSdbPzUf8WWkEcjxpCzkUfToasP9wRjFHy2iCZ6iiZdV",
+				"/ip4/34.86.177.175/udp/4001/quic/p2p/12D3KooWMSdbPzUf8WWkEcjxpCzkUfToasP9wRjFHy2iCZ6iiZdV",
+				"/ip4/35.245.221.171/tcp/4001/p2p/12D3KooWRBYMhTF6MNh6eN84xcZtg6EX2wJguqEtRTNq4C7aytbu",
+				"/ip4/35.245.221.171/udp/4001/quic/p2p/12D3KooWRBYMhTF6MNh6eN84xcZtg6EX2wJguqEtRTNq4C7aytbu",
 			},
+			Profile:                "flatfs",
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
 		},
 		Compute:   DevelopmentComputeConfig,
 		Requester: DevelopmentRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 
 var DevelopmentComputeConfig = types.ComputeConfig{
 	Capacity: types.CapacityConfig{
 		IgnorePhysicalResourceLimits: false,
-		TotalResourceLimits: model.ResourceUsageConfig{
+		TotalResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		JobResourceLimits: model.ResourceUsageConfig{
+		JobResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		DefaultJobResourceLimits: model.ResourceUsageConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
+		DefaultJobResourceLimits: models.ResourcesConfig{
+			CPU:    "500m",
+			Memory: "1Gb",
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: model.ResourceUsageConfig{
+		QueueResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
 	},
-	ExecutionStore: types.StorageConfig{
+	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -109,9 +122,7 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{
-		ExecutorBufferBackoffDuration: types.Duration(50 * time.Millisecond),
-	},
+	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
@@ -126,7 +137,7 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	JobStore: types.StorageConfig{
+	JobStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -150,5 +161,10 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 	},
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Minute),
+	},
+	StorageProvider: types.StorageProviderConfig{
+		S3: types.S3StorageProviderConfig{
+			PreSignedURLExpiration: types.Duration(30 * time.Minute),
+		},
 	},
 }

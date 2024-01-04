@@ -2,23 +2,38 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/migrations"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 const (
 	environmentVariablePrefix = "BACALHAU"
 	inferConfigTypes          = true
 	automaticEnvVar           = true
+
+	// user key files
+	Libp2pPrivateKeyFileName = "libp2p_private_key"
+	UserPrivateKeyFileName   = "user_id.pem"
+
+	// compute paths
+	ComputeStoragesPath = "executor_storages"
+	PluginsPath         = "plugins"
+
+	// requester paths
+	AutoCertCachePath = "autocert-cache"
+
+	// update check paths
+	UpdateCheckStatePath = "update.json"
 )
 
 var (
@@ -26,102 +41,155 @@ var (
 	configDecoderHook          = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
-func WriteConfig(fileName string) error {
-	var cfg types.BacalhauConfig
-	if err := viper.Unmarshal(&cfg, configDecoderHook); err != nil {
-		return err
-	}
+const (
+	configType     = "yaml"
+	configName     = "config"
+	configFileMode = 0666
+)
 
-	cfgBytes, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
-	f, err := os.OpenFile(fileName, flags, os.FileMode(0o644)) //nolint:gomnd
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if _, err := f.Write(cfgBytes); err != nil {
-		return err
-	}
+func Init(path string) (types.BacalhauConfig, error) {
+	// derive the default config for the specified environment.
+	defaultConfig := ForEnvironment()
 
-	// read the config we wrote into viper, setting its values as the defaults used for configuration
-	return viper.ReadInConfig()
+	// set default values for path dependent config.
+	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
+	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
+	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
+	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
+	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+
+	// initialize the configuration with default values.
+	return initConfig(path, WithDefaultConfig(defaultConfig))
 }
 
-func ReadConfig(fileName string) error {
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		// if the config file doesn't exist that's fine, we will just use default configuration values
-		// dictated by the environment
+func Load(path string) (types.BacalhauConfig, error) {
+	// derive the default config for the specified environment.
+	defaultConfig := ForEnvironment()
+
+	// set default values for path dependent config.
+	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
+	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
+	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
+	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
+	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+
+	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
+}
+
+func Migrate(path string) error {
+	// check if the config file exists, if one is not found we don't need to migrate it
+	configPath := filepath.Join(path, "config.yaml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		return err
-	}
-	// else we will read values set from the config, and accept those over the default values.
-	return viper.ReadInConfig()
-}
-
-func Init(defaultConfig types.BacalhauConfig, path string, fileName, fileType string) (types.BacalhauConfig, error) {
-	return initConfig(initParams{
-		filePath:      path,
-		fileName:      fileName,
-		fileType:      fileType,
-		fileHandler:   WriteConfig,
-		defaultConfig: defaultConfig,
-	})
-}
-
-func Load(path string, fileName, fileType string) (types.BacalhauConfig, error) {
-	return initConfig(initParams{
-		filePath:      path,
-		fileName:      fileName,
-		fileType:      fileType,
-		fileHandler:   ReadConfig,
-		defaultConfig: ForEnvironment(),
-	})
-}
-
-func Get[T any](key string) (T, error) {
-	raw := viper.Get(key)
-	if raw == nil {
-		return zeroValue[T](), fmt.Errorf("value not found for %s", key)
+		return fmt.Errorf("failed to stat config file for migration: %w", err)
 	}
 
-	var val T
-	val, ok := raw.(T)
-	if !ok {
-		err := ForKey(key, &val)
+	// open the config file
+	f, err := os.Open(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file at %q: %w", configPath, err)
+	}
+
+	// read it all and unmarshal into yaml
+	b, err := io.ReadAll(f)
+	if err != nil {
+		if err := f.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close config file after failing to read it.")
+		}
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+	// we can close the file now that we read everything.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close config file: %w", err)
+	}
+
+	var cfg types.BacalhauConfig
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return fmt.Errorf("failed to unmarshal config file: %w", err)
+	}
+
+	// get all the migrations we need to apply to it.
+	migs, err := migrations.GetMigrations()
+	if err != nil {
+		return fmt.Errorf("failed to load migration list: %w", err)
+	}
+
+	// apply the migrations
+	currentCfg := cfg
+	for _, m := range migs {
+		log.Info().Msgf("applying migration sequence %d", m.Sequence())
+		currentCfg, err = m.Migrate(currentCfg)
 		if err != nil {
-			return zeroValue[T](), fmt.Errorf("value not of expected type, got: %T", raw)
+			return err
 		}
 	}
+	log.Info().Msgf("config migration complete")
 
-	return val, nil
-}
+	// marshal the migrated config back to yaml
+	marshaledCfg, err := yaml.Marshal(currentCfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal migrated config: %w", err)
+	}
 
-func GetStringMapString(key string) map[string]string {
-	return viper.GetStringMapString(key)
-}
+	// open the file for writing and truncate it.
+	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, configFileMode)
+	if err != nil {
+		return fmt.Errorf("failed to open config file for writing at %q: %w", configPath, err)
+	}
+	defer fw.Close()
 
-func zeroValue[T any]() T {
-	var zero T
-	return zero
-}
+	// write the marshaled data back to the file
+	if _, err := fw.Write(marshaledCfg); err != nil {
+		return fmt.Errorf("failed to write migrated config to file: %w", err)
+	}
 
-// SetDefault sets the default value for the configuration.
-// Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
-func SetDefault(config types.BacalhauConfig) error {
-	types.SetDefaults(config)
 	return nil
 }
 
-// Set sets the configuration value.
-// Will be used instead of values obtained via flags, config file, ENV, default.
-// Useful for testing.
-func Set(config types.BacalhauConfig) error {
-	types.Set(config)
-	return nil
+type Params struct {
+	FileName      string
+	FileType      string
+	FileHandler   func(fileName string) error
+	DefaultConfig types.BacalhauConfig
+}
+
+func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
+	params := &Params{
+		FileName:      configName,
+		FileType:      configType,
+		FileHandler:   NoopConfigHandler,
+		DefaultConfig: ForEnvironment(),
+	}
+
+	for _, opt := range opts {
+		opt(params)
+	}
+
+	viper.AddConfigPath(path)
+	viper.SetConfigName(params.FileName)
+	viper.SetConfigType(params.FileType)
+	viper.SetEnvPrefix(environmentVariablePrefix)
+	viper.SetTypeByDefaultValue(inferConfigTypes)
+	viper.SetEnvKeyReplacer(environmentVariableReplace)
+	if err := SetDefault(params.DefaultConfig); err != nil {
+		return types.BacalhauConfig{}, nil
+	}
+
+	if err := params.FileHandler(filepath.Join(path, fmt.Sprintf("%s.%s", params.FileName, params.FileType))); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	if automaticEnvVar {
+		viper.AutomaticEnv()
+	}
+
+	var out types.BacalhauConfig
+	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	return out, nil
 }
 
 // Reset clears all configuration, useful for testing.
@@ -140,173 +208,4 @@ func KeyAsEnvVar(key string) string {
 	return strings.ToUpper(
 		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
 	)
-}
-
-type initParams struct {
-	filePath      string
-	fileName      string
-	fileType      string
-	fileHandler   func(fileName string) error
-	defaultConfig types.BacalhauConfig
-}
-
-func ForEnvironment() types.BacalhauConfig {
-	env := GetConfigEnvironment()
-	switch env {
-	case EnvironmentProd:
-		return configenv.Production
-	case EnvironmentStaging:
-		return configenv.Staging
-	case EnvironmentDev:
-		return configenv.Development
-	case EnvironmentTest:
-		return configenv.Testing
-	case EnvironmentLocal:
-		return configenv.Local
-	default:
-		// this would indicate an error in the above logic of `GetEnvironment()`
-		return configenv.Local
-	}
-}
-
-func initConfig(params initParams) (types.BacalhauConfig, error) {
-	viper.AddConfigPath(params.filePath)
-	viper.SetConfigName(params.fileName)
-	viper.SetConfigType(params.fileType)
-	viper.SetEnvPrefix(environmentVariablePrefix)
-	viper.SetTypeByDefaultValue(inferConfigTypes)
-	viper.SetEnvKeyReplacer(environmentVariableReplace)
-	if err := SetDefault(params.defaultConfig); err != nil {
-		return types.BacalhauConfig{}, nil
-	}
-	if err := params.fileHandler(filepath.Join(params.filePath, fmt.Sprintf("%s.%s", params.fileName, params.fileType))); err != nil {
-		return types.BacalhauConfig{}, err
-	}
-	if automaticEnvVar {
-		viper.AutomaticEnv()
-	}
-
-	var out types.BacalhauConfig
-	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
-		return types.BacalhauConfig{}, err
-	}
-
-	// TODO this should be a part of the config.
-	telemetry.SetupFromEnvs()
-
-	return out, nil
-}
-
-// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
-// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
-// nested sub-keys are correctly populated into the cfg structure.
-//
-// Parameters:
-//   - key: The configuration key to retrieve values for.
-//   - cfg: The structure into which the configuration values will be unmarshaled.
-//
-// Returns:
-//   - An error if any occurred during unmarshaling; otherwise, nil.
-func ForKey(key string, cfg interface{}) error {
-	return unmarshalCompositeKey(key, cfg)
-}
-
-// unmarshalCompositeKey takes a key and an output structure to unmarshal into. It gets the
-// composite value associated with the given key and decodes it into the provided output structure.
-// It's especially useful when the desired value is not directly associated with the key, but
-// instead is spread across various nested sub-keys within the configuration.
-func unmarshalCompositeKey(key string, output interface{}) error {
-	compositeValue, isNested, err := getCompositeValue(key)
-	if err != nil {
-		return err
-	}
-	decoderConfig := &mapstructure.DecoderConfig{
-		DecodeHook: mapstructure.TextUnmarshallerHookFunc(),
-		Result:     output,
-		TagName:    "mapstructure", // This is the default struct tag name used by Viper.
-	}
-
-	decoder, err := mapstructure.NewDecoder(decoderConfig)
-	if err != nil {
-		return err
-	}
-
-	if isNested {
-		val, ok := compositeValue[key]
-		if !ok {
-			// NB(forrest): this case should never happen as we ensure all configuration values
-			// have a corresponding key via code gen. If this does occur it represents an error we need to debug.
-			return fmt.Errorf("CRITICAL ERROR: invalid configuration detected for key: %s. Config value not found", key)
-		}
-		return decoder.Decode(val)
-	}
-
-	return decoder.Decode(compositeValue)
-}
-
-// getCompositeValue constructs a composite value for a given key. If the key directly corresponds
-// to a set value in Viper, it returns that, and false to indicate the value isn't nested under the key.
-// Otherwise, it collects all nested values under that key and returns them as a nested map and true
-// indicating the value is nested under the key.
-func getCompositeValue(key string) (map[string]interface{}, bool, error) {
-	var compositeValue map[string]interface{}
-
-	// Fetch directly if the exact key exists
-	if viper.IsSet(key) {
-		rawValue := viper.Get(key)
-		switch v := rawValue.(type) {
-		case map[string]interface{}:
-			compositeValue = v
-		default:
-			return map[string]interface{}{
-				key: rawValue,
-			}, true, nil
-		}
-	} else {
-		return nil, false, fmt.Errorf("configuration value not found for key: %s", key)
-	}
-
-	lowerKey := strings.ToLower(key)
-
-	// Prepare a map for faster key lookup.
-	viperKeys := viper.AllKeys()
-	keyMap := make(map[string]string, len(viperKeys))
-	for _, k := range viperKeys {
-		keyMap[strings.ToLower(k)] = k
-	}
-
-	// Build a composite map of values for keys nested under the provided key.
-	for lowerK, originalK := range keyMap {
-		if strings.HasPrefix(lowerK, lowerKey+".") {
-			parts := strings.Split(lowerK[len(lowerKey)+1:], ".")
-			if err := setNested(compositeValue, parts, viper.Get(originalK)); err != nil {
-				return nil, false, nil
-			}
-		}
-	}
-
-	return compositeValue, false, nil
-}
-
-// setNested is a recursive helper function that sets a value in a nested map based on a slice of keys.
-// It goes through each key, creating maps for each level as needed, and ultimately sets the value
-// in the innermost map.
-func setNested(m map[string]interface{}, keys []string, value interface{}) error {
-	if len(keys) == 1 {
-		m[keys[0]] = value
-		return nil
-	}
-
-	// If the next map level doesn't exist, create it.
-	if m[keys[0]] == nil {
-		m[keys[0]] = make(map[string]interface{})
-	}
-
-	// Cast the nested level to a map and return an error if the type assertion fails.
-	nestedMap, ok := m[keys[0]].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("key %s is not of type map[string]interface{}", keys[0])
-	}
-
-	return setNested(nestedMap, keys[1:], value)
 }

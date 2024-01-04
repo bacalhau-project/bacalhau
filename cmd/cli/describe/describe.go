@@ -51,12 +51,13 @@ func NewCmd() *cobra.Command {
 	OD := NewDescribeOptions()
 
 	describeCmd := &cobra.Command{
-		Use:     "describe [id]",
-		Short:   "Describe a job on the network",
-		Long:    describeLong,
-		Example: describeExample,
-		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "describe [id]",
+		Short:    "Describe a job on the network",
+		Long:     describeLong,
+		Example:  describeExample,
+		Args:     cobra.ExactArgs(1),
+		PreRunE:  util.ClientPreRunHooks,
+		PostRunE: util.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
 			if err := describe(cmd, cmdArgs, OD); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -92,7 +93,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	if inputJobID == "" {
 		var byteResult []byte
 		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
-		// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
+		// If there's no input and no stdin, then cmdArgs is nil and byteResult is nil.
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %w", err)
 		}

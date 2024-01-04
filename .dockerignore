@@ -8,7 +8,6 @@
 **/*.swo
 **/*.out
 **/*.tfvars
-**/bin/**
 **/.vscode
 **/vendor/*
 **/stderr

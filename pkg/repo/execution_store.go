@@ -29,7 +29,7 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 		return nil, err
 	}
 	// load the compute nodes execution store config
-	var storeCfg types.StorageConfig
+	var storeCfg types.JobStoreConfig
 	if err := config.ForKey(types.NodeComputeExecutionStore, &storeCfg); err != nil {
 		return nil, err
 	}

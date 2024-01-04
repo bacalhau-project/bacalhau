@@ -6,10 +6,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/c2h5oh/datasize"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -88,10 +89,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		var seenJobs []SeenJobRecord
 		var seenJobsMutex sync.Mutex
-		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
-			Threshold: 10 * time.Millisecond,
-			Id:        "TestTotalResourceLimits.seenJobsMutex",
-		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()
@@ -124,7 +121,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume models.InputSource) (uint64, error) {
-			return model.ConvertBytesString(volume.Target), nil
+			size, err := datasize.ParseString(volume.Target)
+			return size.Bytes(), err
 		}
 
 		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)
@@ -132,9 +130,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		require.NoError(suite.T(), err)
 
 		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
-			TotalResourceLimits:           *parsedResources,
-			IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
-			ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
+			TotalResourceLimits:          *parsedResources,
+			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 		})
 		suite.Require().NoError(err)
 		stack := teststack.Setup(ctx,
@@ -300,6 +297,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			Memory: 1 * 1024 * 1024 * 1024,
 			Disk:   1 * 1024 * 1024 * 1024,
 			GPU:    1,
+			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 	})

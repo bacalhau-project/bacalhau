@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -49,21 +50,21 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		executionStates []models.ExecutionStateType
 	}{
 		{
-			id:              "1",
+			id:              "110",
 			client:          "client1",
 			tags:            map[string]string{"gpu": "true", "fast": "true"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              "2",
+			id:              "120",
 			client:          "client2",
 			tags:            map[string]string{},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              "3",
+			id:              "130",
 			client:          "client3",
 			tags:            map[string]string{"slow": "true"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
@@ -80,13 +81,13 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.Labels = fixture.tags
 		job.Namespace = fixture.client
 		err := s.store.CreateJob(s.ctx, *job)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		s.clock.Add(1 * time.Second)
 		execution := mock.ExecutionForJob(job)
 		execution.ComputeState.StateType = models.ExecutionStateNew
 		err = s.store.CreateExecution(s.ctx, *execution)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		for i, state := range fixture.jobStates {
 			s.clock.Add(1 * time.Second)
@@ -106,7 +107,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 				Comment: fmt.Sprintf("moved to %+v", state),
 			}
 			err = s.store.UpdateJobState(s.ctx, request)
-			s.NoError(err)
+			s.Require().NoError(err)
 		}
 
 		for i, state := range fixture.executionStates {
@@ -132,7 +133,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			}
 
 			err = s.store.UpdateExecution(s.ctx, request)
-			s.NoError(err)
+			s.Require().NoError(err)
 		}
 
 	}
@@ -144,13 +145,23 @@ func (s *BoltJobstoreTestSuite) TearDownTest() {
 }
 
 func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
-	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
-	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 8, len(history))
+	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	s.Require().NoError(err, "failed to get job history")
+	s.Require().Equal(8, len(history))
+
+	history, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryFilterOptions{})
+	s.Require().NoError(err)
+	s.NotEmpty(history)
+	s.Require().Equal("110", history[0].JobID)
+
+	history, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	s.Require().Error(err)
+	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
+	s.Require().Nil(history)
 }
 
 func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
-	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err, "failed to get job history")
 
 	// There are 6 history entries that we created directly, and 2 created by
@@ -171,13 +182,13 @@ func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 		Since: 5,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "1", options)
+	history, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 4, len(history))
 }
 
 func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
-	allHistories, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	allHistories, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err)
 
 	var executionID string
@@ -193,7 +204,7 @@ func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
 		ExecutionID: executionID,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "1", options)
+	history, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 
 	for _, h := range history {
@@ -202,7 +213,7 @@ func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
 }
 
 func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
-	allHistories, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	allHistories, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err)
 
 	var nodeID string
@@ -218,7 +229,7 @@ func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
 		NodeID: nodeID,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "1", options)
+	history, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 
 	for _, h := range history {
@@ -234,10 +245,10 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 		ExcludeJobLevel: true,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "1", jobOptions)
-	s.NoError(err, "failed to get job history")
-	s.Equal(4, len(history))
-	s.Equal(models.JobStateTypePending, history[1].JobState.New)
+	history, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
+	s.Require().NoError(err, "failed to get job history")
+	s.Require().Equal(4, len(history))
+	s.Require().Equal(models.JobStateTypePending, history[1].JobState.New)
 
 	count := lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeJobLevel {
@@ -245,12 +256,12 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 		}
 		return agg
 	}, 0)
-	s.Equal(count, 4)
+	s.Require().Equal(count, 4)
 
-	history, err = s.store.GetJobHistory(s.ctx, "1", execOptions)
-	s.NoError(err, "failed to get job history")
-	s.Equal(4, len(history))
-	s.Equal(models.ExecutionStateAskForBid, history[1].ExecutionState.New)
+	history, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
+	s.Require().NoError(err, "failed to get job history")
+	s.Require().Equal(4, len(history))
+	s.Require().Equal(models.ExecutionStateAskForBid, history[1].ExecutionState.New)
 
 	count = lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeExecutionLevel {
@@ -258,7 +269,7 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 		}
 		return agg
 	}, 0)
-	s.Equal(count, 4)
+	s.Require().Equal(count, 4)
 }
 
 func (s *BoltJobstoreTestSuite) TestSearchJobs() {
@@ -292,7 +303,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"1", "2", "3"}, ids)
+		require.EqualValues(t, []string{"110", "120", "130"}, ids)
 
 		jobs, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -305,7 +316,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"3", "2", "1"}, ids)
+		require.EqualValues(t, []string{"130", "120", "110"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -350,7 +361,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, "1", jobs[0].ID)
+		require.Equal(t, "110", jobs[0].ID)
 	})
 
 	s.T().Run("all but exclude tags", func(t *testing.T) {
@@ -373,11 +384,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 
 	s.T().Run("by id", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID: "1",
+			ID: "110",
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, "1", jobs[0].ID)
+		require.Equal(t, "110", jobs[0].ID)
 	})
 }
 
@@ -389,36 +400,49 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job.Namespace = "client1"
 
 	err := s.store.CreateJob(s.ctx, *job)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	err = s.store.DeleteJob(s.ctx, job.ID)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *BoltJobstoreTestSuite) TestGetJob() {
-	job, err := s.store.GetJob(s.ctx, "1")
-	s.NoError(err)
+	job, err := s.store.GetJob(s.ctx, "110")
+	s.Require().NoError(err)
 	s.NotNil(job)
 
 	_, err = s.store.GetJob(s.ctx, "100")
-	s.Error(err)
+	s.Require().Error(err)
 }
 
 func (s *BoltJobstoreTestSuite) TestGetExecutions() {
-	state, err := s.store.GetExecutions(s.ctx, "1")
-	s.NoError(err)
+	state, err := s.store.GetExecutions(s.ctx, "110")
+	s.Require().NoError(err)
 	s.NotNil(state)
 	s.Greater(len(state), 0)
 
-	_, err = s.store.GetExecutions(s.ctx, "100")
-	s.Error(err)
+	state, err = s.store.GetExecutions(s.ctx, "100")
+	s.Require().Error(err)
+	s.Require().IsType(err, &bacerrors.JobNotFound{})
+	s.Require().Nil(state)
+
+	state, err = s.store.GetExecutions(s.ctx, "11")
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Require().Equal("110", state[0].JobID)
+
+	state, err = s.store.GetExecutions(s.ctx, "1")
+	s.Require().Error(err)
+	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
+	s.Require().Nil(state)
+
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx)
-	s.NoError(err)
-	s.Equal(1, len(infos))
-	s.Equal("3", infos[0].ID)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(infos))
+	s.Require().Equal("130", infos[0].ID)
 }
 
 func (s *BoltJobstoreTestSuite) TestShortIDs() {
@@ -429,12 +453,12 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 	job := makeDockerEngineJob(
 		[]string{"bash", "-c", "echo hello"})
 	job.ID = uuidString
-	job.Namespace = "1"
+	job.Namespace = "110"
 
 	// No matches
 	_, err := s.store.GetJob(s.ctx, shortString)
 	s.Require().Error(err)
-	s.Require().Equal(err.Error(), "Job not found. ID: 9308d0d2")
+	s.Require().IsType(err, &bacerrors.JobNotFound{})
 
 	// Create and fetch the single entry
 	err = s.store.CreateJob(s.ctx, *job)
@@ -451,7 +475,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 
 	_, err = s.store.GetJob(s.ctx, shortString)
 	s.Require().Error(err)
-	s.Require().Equal(err.Error(), "Duplicate jobs found for ID: 9308d0d2")
+	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
@@ -463,23 +487,23 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 	job := makeDockerEngineJob(
 		[]string{"bash", "-c", "echo hello"})
 	job.ID = "10"
-	job.Namespace = "1"
+	job.Namespace = "110"
 
 	var execution models.Execution
 
 	s.Run("job create event", func() {
 		err := s.store.CreateJob(s.ctx, *job)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		// Read an event, it should be a jobcreate
 		ev := <-ch
-		s.Equal(ev.Event, jobstore.CreateEvent)
-		s.Equal(ev.Kind, jobstore.JobWatcher)
+		s.Require().Equal(ev.Event, jobstore.CreateEvent)
+		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 
 		var decodedJob models.Job
 		err = json.Unmarshal(ev.Object, &decodedJob)
-		s.NoError(err)
-		s.Equal(decodedJob.ID, job.ID)
+		s.Require().NoError(err)
+		s.Require().Equal(decodedJob.ID, job.ID)
 	})
 
 	s.Run("execution create event", func() {
@@ -488,12 +512,12 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		execution.JobID = "10"
 		execution.ComputeState = models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew}
 		err := s.store.CreateExecution(s.ctx, execution)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		// Read an event, it should be a ExecutionForJob Create
 		ev := <-ch
-		s.Equal(ev.Event, jobstore.CreateEvent)
-		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
+		s.Require().Equal(ev.Event, jobstore.CreateEvent)
+		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 	})
 
 	s.Run("update job state event", func() {
@@ -507,8 +531,8 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		}
 		_ = s.store.UpdateJobState(s.ctx, request)
 		ev := <-ch
-		s.Equal(ev.Event, jobstore.UpdateEvent)
-		s.Equal(ev.Kind, jobstore.JobWatcher)
+		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
+		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})
 
 	s.Run("update execution state event", func() {
@@ -523,20 +547,20 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			Comment:   "event test",
 		})
 		ev := <-ch
-		s.Equal(ev.Event, jobstore.UpdateEvent)
-		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
+		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
+		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 
 		var decodedExecution models.Execution
 		err := json.Unmarshal(ev.Object, &decodedExecution)
-		s.NoError(err)
-		s.Equal(decodedExecution.ID, execution.ID)
+		s.Require().NoError(err)
+		s.Require().Equal(decodedExecution.ID, execution.ID)
 	})
 
 	s.Run("delete job event", func() {
 		_ = s.store.DeleteJob(s.ctx, job.ID)
 		ev := <-ch
-		s.Equal(ev.Event, jobstore.DeleteEvent)
-		s.Equal(ev.Kind, jobstore.JobWatcher)
+		s.Require().Equal(ev.Event, jobstore.DeleteEvent)
+		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})
 }
 
@@ -553,7 +577,7 @@ func (s *BoltJobstoreTestSuite) TestEvaluations() {
 	s.Require().Error(err)
 
 	// Correct job ID
-	eval.JobID = "1"
+	eval.JobID = "110"
 	err = s.store.CreateEvaluation(s.ctx, eval)
 	s.Require().NoError(err)
 
@@ -623,6 +647,10 @@ func (s *BoltJobstoreTestSuite) TestEvaluationsByState() {
 	// we should get e2, followed by e1
 	s.Require().Equal("e2", evals[0].ID)
 	s.Require().Equal("e1", evals[1].ID)
+	s.Require().Equal(e, eval)
+
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
 }
 
 func makeDockerEngineJob(entrypointArray []string) *models.Job {

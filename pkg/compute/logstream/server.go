@@ -3,11 +3,8 @@ package logstream
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"reflect"
-
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -35,27 +32,10 @@ func NewLogStreamServer(options LogStreamServerOptions) *LogStreamServer {
 		host:           options.Host,
 		executionStore: options.ExecutionStore,
 		executors:      options.Executors,
-		Address:        findTCPAddress(options.Host),
+		Address:        findTCPAddress(options.Ctx, options.Host),
 	}
 	svr.host.SetStreamHandler(LogsProcotolID, svr.Handle)
 	return svr
-}
-
-func findTCPAddress(host host.Host) string {
-	peerID := host.ID().Pretty()
-	hostAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", peerID))
-
-	for _, addr := range host.Addrs() {
-		for _, protocol := range addr.Protocols() {
-			if protocol.Name == "tcp" {
-				return addr.Encapsulate(hostAddr).String()
-			}
-		}
-	}
-
-	// If we can't find TCP, then we'll go with the first record
-	addr := host.Addrs()[0]
-	return addr.Encapsulate(hostAddr).String()
 }
 
 func (s *LogStreamServer) Handle(stream network.Stream) {
@@ -107,7 +87,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 
 	reader, err := e.GetOutputStream(s.ctx, localExecutionState.Execution.ID, request.WithHistory, request.Follow)
 	if err != nil {
-		log.Ctx(s.ctx).Error().Msgf("failed to get output streams from job: %s", localExecutionState.Execution.JobID)
+		log.Ctx(s.ctx).Error().Err(err).Str("JobID", localExecutionState.Execution.JobID).Msgf("failed to get output streams from job")
 		_ = stream.Reset()
 		return
 	}

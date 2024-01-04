@@ -115,7 +115,7 @@ const (
 	StopCancel
 )
 
-// Done stops the spinner, igoring any errors as there
+// Done stops the spinner, ignoring any errors as there
 // is no further use for the spinner.
 func (s *Spinner) Done(reason SpinnerStopReason) {
 	s.complete = true

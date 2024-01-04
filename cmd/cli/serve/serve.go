@@ -3,16 +3,14 @@ package serve
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -21,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/webui"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -51,6 +50,9 @@ var (
 
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
+
+		# Start a public bacalhau node with the WebUI on port 3000 (default:80)
+		bacalhau serve --web-ui --web-ui-port=3000
 `))
 )
 
@@ -92,6 +94,7 @@ func NewCmd() *cobra.Command {
 		"libp2p":           configflags.Libp2pFlags,
 		"ipfs":             configflags.IPFSFlags,
 		"capacity":         configflags.CapacityFlags,
+		"job-timeouts":     configflags.ComputeTimeoutFlags,
 		"job-selection":    configflags.JobSelectionFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"labels":           configflags.LabelFlags,
@@ -99,6 +102,9 @@ func NewCmd() *cobra.Command {
 		"list-local":       configflags.AllowListLocalPathsFlags,
 		"compute-store":    configflags.ComputeStorageFlags,
 		"requester-store":  configflags.RequesterJobStorageFlags,
+		"web-ui":           configflags.WebUIFlags,
+		"node-info-store":  configflags.NodeInfoStoreFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -217,10 +223,13 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
+	nodeInfoStoreTTL, err := config.Get[time.Duration](types.NodeNodeInfoStoreTTL)
+	if err != nil {
+		return err
+	}
+
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
-	// TODO (forrest): [ux] in the future we should make this configurable to users.
-	autoLabel := true
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		CleanupManager:        cm,
@@ -233,9 +242,10 @@ func serve(cmd *cobra.Command) error {
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
-		Labels:                getNodeLabels(autoLabel),
+		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
+		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 	}
 
 	if isRequesterNode {
@@ -266,13 +276,38 @@ func serve(cmd *cobra.Command) error {
 		return fmt.Errorf("error starting node: %w", err)
 	}
 
+	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
+	if err != nil {
+		return err
+	}
+
+	// Start up Dashboard
+	if startWebUI {
+		listenPort, err := config.Get[int](types.NodeWebUIPort)
+		if err != nil {
+			return err
+		}
+
+		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		go func() {
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			apiPort := apiURL.Port()
+			apiPath := apiURL.Path
+
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+			if err != nil {
+				cmd.PrintErrln(err)
+			}
+		}()
+	}
+
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
 	if ipfsConfig.PrivateInternal && libp2pCfg.PeerConnect == DefaultPeerConnect {
-
 		if isComputeNode && !isRequesterNode {
 			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
@@ -396,52 +431,4 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	})
 
 	return addresses[0]
-}
-
-func AutoOutputLabels() map[string]string {
-	m := make(map[string]string)
-	// Get the operating system name
-	os := runtime.GOOS
-	m["Operating-System"] = os
-	m["git-lfs"] = "False"
-	if checkGitLFS() {
-		m["git-lfs"] = "True"
-	}
-	arch := runtime.GOARCH
-	m["Architecture"] = arch
-
-	gpus, err := system_capacity.GetSystemGPUs()
-	if err != nil {
-		// Print the GPU names
-		for i, gpu := range gpus {
-			// Model label e.g. GPU-0: Tesla-T1
-			key := fmt.Sprintf("GPU-%d", gpu.Index)
-			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
-			m[key] = name
-
-			// Memory label e.g. GPU-0-Memory: 15360-MiB
-			key = fmt.Sprintf("GPU-%d-Memory", i)
-			memory := strings.Replace(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-", -1) // Replace spaces with dashes
-			m[key] = memory
-		}
-	}
-	// Get list of installed packages (Only works for linux, make it work for every platform)
-	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// var packageList []string
-	// for _, file := range files {
-	// 	if !file.IsDir() && filepath.Ext(file.FlagName()) == ".list" {
-
-	// 		packageList = append(packageList, file.FlagName()[:len(file.FlagName())-5])
-	// 	}
-	// }
-	// m["Installed-Packages"] = strings.Join(packageList, ",")
-	return m
-}
-
-func checkGitLFS() bool {
-	_, err := exec.LookPath("git-lfs")
-	return err == nil
 }

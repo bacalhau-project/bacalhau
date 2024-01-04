@@ -11,10 +11,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
+	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/describe"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
@@ -43,10 +45,12 @@ func NewRootCmd() *cobra.Command {
 		"logging": configflags.LogFlags,
 	}
 	RootCmd := &cobra.Command{
-		Use:   os.Args[0],
-		Short: "Compute over data",
-		Long:  `Compute over data`,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		Use:     os.Args[0],
+		Short:   "Compute over data",
+		Long:    `Compute over data`,
+		PreRun:  util.StartUpdateCheck,
+		PostRun: util.PrintUpdateCheck,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			repoDir, err := config.Get[string]("repo")
 			if err != nil {
 				util.Fatal(cmd, fmt.Errorf("failed to read --repo value: %w", err), 1)
@@ -82,11 +86,13 @@ func NewRootCmd() *cobra.Command {
 			ctx = context.WithValue(ctx, spanKey, span)
 
 			cmd.SetContext(ctx)
+			return nil
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ctx.Value(spanKey).(trace.Span).End()
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
+			return nil
 		},
 	}
 	// ensure the `repo` key always gets a usable default value, warn if it's not.
@@ -146,12 +152,18 @@ func NewRootCmd() *cobra.Command {
 	// Register nodes subcommands
 	RootCmd.AddCommand(node.NewCmd())
 
+	// Register exec commands
+	RootCmd.AddCommand(exec.NewCmd())
+
 	// ====== Run a server
 
 	// Serve commands
 	RootCmd.AddCommand(serve.NewCmd())
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
+
+	// config command...obviously
+	RootCmd.AddCommand(configcli.NewCmd())
 
 	return RootCmd
 }

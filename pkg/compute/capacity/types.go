@@ -13,8 +13,10 @@ type Tracker interface {
 	// IsWithinLimits returns true if the given resource usage is within the limits of the compute node.
 	// Limits refer to the total capacity of the compute node, and not to the currently available capacity.
 	IsWithinLimits(ctx context.Context, usage models.Resources) bool
-	// AddIfHasCapacity atomically adds the given resource usage to the tracker if the compute node has capacity for it.
-	AddIfHasCapacity(ctx context.Context, usage models.Resources) bool
+	// AddIfHasCapacity atomically adds the given resource usage to the tracker
+	// if the compute node has capacity for it, returning the resource usage
+	// that was added including any allocations that were made, or nil if the usage could not be added.
+	AddIfHasCapacity(ctx context.Context, usage models.Resources) *models.Resources
 	// GetAvailableCapacity returns the available capacity of the compute node.
 	GetAvailableCapacity(ctx context.Context) models.Resources
 	// GetMaxCapacity returns the total capacity of the compute node.
@@ -33,5 +35,9 @@ type UsageCalculator interface {
 // Implementation can return local node capacity if operating with a single node, or capacity of a cluster if compute
 // is backed by a fleet of nodes.
 type Provider interface {
+	// GetAvailableCapacity returns the resources that are available for use by this node.
 	GetAvailableCapacity(ctx context.Context) (models.Resources, error)
+
+	// A set of human-readable strings that explains what this subprovider can detect.
+	ResourceTypes() []string
 }

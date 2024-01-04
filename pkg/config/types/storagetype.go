@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type StorageConfig struct {
+type JobStoreConfig struct {
 	Type StorageType `yaml:"Type"`
 	Path string      `yaml:"Path"`
 }
@@ -49,7 +49,7 @@ func ParseStorageType(s string) (ret StorageType, err error) {
 		}
 	}
 
-	return InMemory, fmt.Errorf("StorageType: unknown type '%s'", s)
+	return InMemory, fmt.Errorf("StorageType: unknown type '%s' (valid types: %q)", s, []StorageType{InMemory, BoltDB})
 }
 
 func equal(a, b string) bool {

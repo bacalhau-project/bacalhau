@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -73,6 +74,8 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
@@ -91,18 +94,18 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	}
 
 	for _, node := range nodes {
-		if _, ok := existingNodes[node.PeerInfo.ID.String()]; ok {
+		if _, ok := existingNodes[node.ID()]; ok {
 			// there is already a healthy execution on this node
 			continue
 		}
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
-			ID:           "e-" + uuid.NewString(),
+			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.PeerInfo.ID.String(),
+			NodeID:       node.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

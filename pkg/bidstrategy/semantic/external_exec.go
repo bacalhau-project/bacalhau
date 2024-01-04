@@ -32,11 +32,15 @@ func NewExternalCommandStrategy(params ExternalCommandStrategyParams) *ExternalC
 	}
 }
 
+const (
+	exitCodeReason = "accept jobs where external command %q returns exit code %d"
+)
+
 func (s *ExternalCommandStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	if s.command == "" {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, notConfiguredReason), nil
 	}
 
 	// TODO: Use context to trace exec call
@@ -65,11 +69,5 @@ func (s *ExternalCommandStrategy) ShouldBid(
 	}
 
 	exitCode := cmd.ProcessState.ExitCode()
-	if exitCode == 0 {
-		return bidstrategy.NewShouldBidResponse(), nil
-	}
-	return bidstrategy.BidStrategyResponse{
-		ShouldBid: false,
-		Reason:    fmt.Sprintf("command `%s` returned non-zero exit code %d", s.command, exitCode),
-	}, nil
+	return bidstrategy.NewBidResponse(exitCode == 0, exitCodeReason, s.command, exitCode), nil
 }

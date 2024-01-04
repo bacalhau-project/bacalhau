@@ -12,17 +12,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func ParsePublishedKey(key string, executionID string, job models.Job, archive bool) string {
+func ParsePublishedKey(key string, execution *models.Execution, archive bool) string {
 	if archive && !strings.HasSuffix(key, ".tar.gz") {
 		key = key + ".tar.gz"
 	}
 	if !archive && !strings.HasSuffix(key, "/") {
 		key = key + "/"
 	}
-	key = strings.ReplaceAll(key, "{executionID}", executionID)
-	key = strings.ReplaceAll(key, "{jobID}", job.ID)
-	key = strings.ReplaceAll(key, "{date}", time.Now().Format("YYYYMMDD"))
-	key = strings.ReplaceAll(key, "{time}", time.Now().Format("HHMMSS"))
+
+	key = strings.ReplaceAll(key, "{nodeID}", execution.NodeID)
+	key = strings.ReplaceAll(key, "{executionID}", execution.ID)
+	key = strings.ReplaceAll(key, "{jobID}", execution.Job.ID)
+	key = strings.ReplaceAll(key, "{date}", time.Now().Format("20060102"))
+	key = strings.ReplaceAll(key, "{time}", time.Now().Format("150405"))
 	return key
 }
 

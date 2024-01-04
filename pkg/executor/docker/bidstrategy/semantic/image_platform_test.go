@@ -6,10 +6,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
@@ -77,7 +78,8 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 		// and have called Set twice, and Get twice with
 		// one successful and one failed lookup.
 		require.Equal(t, 1, fc.ItemCount())
-		require.Equal(t, 2, fc.SetCalls)
+		require.Equal(t, 1, fc.SetCalls)
+		require.Equal(t, 1, fc.FailedGetCalls)
 		require.Equal(t, 2, fc.GetCalls)
 		require.Equal(t, 1, fc.SuccessfulGetCalls)
 

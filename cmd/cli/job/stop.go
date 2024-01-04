@@ -33,7 +33,7 @@ var (
 	checkingJobStatusMessage = i18n.T("Checking job status")
 	connectingMessage        = i18n.T("Connecting to network")
 	gettingJobMessage        = i18n.T("Verifying job state")
-	stoppingJobMessage       = i18n.T("Stoping job")
+	stoppingJobMessage       = i18n.T("Stopping job")
 
 	jobAlreadyCompleteMessage = i18n.T(`Job is already in a terminal state.
 The current state is: %s
@@ -59,7 +59,6 @@ func NewStopCmd() *cobra.Command {
 		Long:    stopLong,
 		Example: stopExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
 		RunE:    o.run,
 	}
 

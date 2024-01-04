@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -17,7 +13,12 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -59,6 +60,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval   routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector          NodeDependencyInjector
 	AllowListedLocalPaths       []string
+	NodeInfoStoreTTL            time.Duration
 
 	FsRepo *repo.FsRepo
 }
@@ -159,18 +161,6 @@ func NewNode(
 		return nil, err
 	}
 
-	// node info provider
-	basicHost, ok := config.Host.(*basichost.BasicHost)
-	if !ok {
-		return nil, fmt.Errorf("host is not a basic host")
-	}
-	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		Host:            basicHost,
-		IdentityService: basicHost.IDService(),
-		Labels:          config.Labels,
-		BacalhauVersion: *version.Get(),
-	})
-
 	// node info publisher
 	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
 	if nodeInfoPublisherInterval.IsZero() {
@@ -179,7 +169,7 @@ func NewNode(
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: 10 * time.Minute,
+		TTL: config.NodeInfoStoreTTL,
 	})
 	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
 
@@ -219,20 +209,11 @@ func NewNode(
 		return nil, err
 	}
 
-	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           config.Host.ID().String(),
-		PeerStore:        config.Host.Peerstore(),
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
-	agent.NewEndpoint(agent.EndpointParams{
-		Router:           apiServer.Router,
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
 	var requesterNode *Requester
 	var computeNode *Compute
+
+	var computeInfoProvider models.ComputeNodeInfoProvider
+	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -252,6 +233,8 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
+		storagePath := pkgconfig.GetStoragePath()
+
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -259,6 +242,7 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
+			storagePath,
 			storageProviders,
 			executors,
 			publishers,
@@ -267,8 +251,38 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
-		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
+
+		computeInfoProvider = computeNode.computeInfoProvider
+		labelsProvider = models.MergeLabelsInOrder(
+			computeNode.autoLabelsProvider,
+			labelsProvider,
+		)
 	}
+
+	// node info provider
+	basicHost, ok := config.Host.(*basichost.BasicHost)
+	if !ok {
+		return nil, fmt.Errorf("host is not a basic host")
+	}
+	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
+		Host:                basicHost,
+		IdentityService:     basicHost.IDService(),
+		LabelsProvider:      labelsProvider,
+		ComputeInfoProvider: computeInfoProvider,
+		BacalhauVersion:     *version.Get(),
+	})
+
+	shared.NewEndpoint(shared.EndpointParams{
+		Router:           apiServer.Router,
+		NodeID:           config.Host.ID().String(),
+		PeerStore:        config.Host.Peerstore(),
+		NodeInfoProvider: nodeInfoProvider,
+	})
+
+	agent.NewEndpoint(agent.EndpointParams{
+		Router:           apiServer.Router,
+		NodeInfoProvider: nodeInfoProvider,
+	})
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
@@ -276,6 +290,18 @@ func NewNode(
 		PubSub:           nodeInfoPubSub,
 		NodeInfoProvider: nodeInfoProvider,
 		IntervalConfig:   nodeInfoPublisherInterval,
+	})
+
+	// Start periodic software update checks.
+	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
+	version.RunUpdateChecker(
+		updateCheckCtx,
+		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
+		version.LogUpdateResponse,
+	)
+	config.CleanupManager.RegisterCallback(func() error {
+		stopUpdateChecks()
+		return nil
 	})
 
 	// cleanup libp2p resources in the desired order
@@ -328,7 +354,7 @@ func (n *Node) IsComputeNode() bool {
 }
 
 func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}

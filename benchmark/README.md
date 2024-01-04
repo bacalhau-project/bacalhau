@@ -44,7 +44,7 @@ export BATCH_SIZE=10 # No. of jobs to send sequentially as a single hyperfine ru
 export CONCURRENCY=2 # No. of concurrent batchs
 export REQUESTER_NODES=1 # No. of requester nodes to call
 ```
-In the above example, we have a total of 60 jobs split across 6 (60/10) separate benchmarks. There can only be 2 concurrent benchamrks at a given time, and both will call 2 separate requester nodes.
+In the above example, we have a total of 60 jobs split across 6 (60/10) separate benchmarks. There can only be 2 concurrent benchmarks at a given time, and both will call 2 separate requester nodes.
 
 
 ### FAQ

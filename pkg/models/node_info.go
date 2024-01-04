@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/exp/maps"
 )
 
 type NodeType int
@@ -45,6 +46,27 @@ type ComputeNodeInfoProvider interface {
 	GetComputeInfo(ctx context.Context) ComputeNodeInfo
 }
 
+type LabelsProvider interface {
+	GetLabels(ctx context.Context) map[string]string
+}
+
+type mergeProvider struct {
+	providers []LabelsProvider
+}
+
+// GetLabels implements LabelsProvider.
+func (p mergeProvider) GetLabels(ctx context.Context) map[string]string {
+	labels := make(map[string]string)
+	for _, provider := range p.providers {
+		maps.Copy(labels, provider.GetLabels(ctx))
+	}
+	return labels
+}
+
+func MergeLabelsInOrder(providers ...LabelsProvider) LabelsProvider {
+	return mergeProvider{providers: providers}
+}
+
 type NodeInfo struct {
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`
@@ -53,18 +75,23 @@ type NodeInfo struct {
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
 }
 
+// ID returns the node ID
+func (n NodeInfo) ID() string {
+	return n.PeerInfo.ID.String()
+}
+
 // IsComputeNode returns true if the node is a compute node
 func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
 }
 
 type ComputeNodeInfo struct {
-	ExecutionEngines   []string
-	Publishers         []string
-	StorageSources     []string
-	MaxCapacity        Resources
-	AvailableCapacity  Resources
-	MaxJobRequirements Resources
-	RunningExecutions  int
-	EnqueuedExecutions int
+	ExecutionEngines   []string  `json:"ExecutionEngines"`
+	Publishers         []string  `json:"Publishers"`
+	StorageSources     []string  `json:"StorageSources"`
+	MaxCapacity        Resources `json:"MaxCapacity"`
+	AvailableCapacity  Resources `json:"AvailableCapacity"`
+	MaxJobRequirements Resources `json:"MaxJobRequirements"`
+	RunningExecutions  int       `json:"RunningExecutions"`
+	EnqueuedExecutions int       `json:"EnqueuedExecutions"`
 }

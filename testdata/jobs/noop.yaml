@@ -1,22 +1,22 @@
-name: Noop Job
-type: batch
-namespace: default
-count: 1
-tasks:
-  - name: main
-    engine:
-      type: noop
-    publisher:
-      type: noop
-    resultpaths:
-      - name: output_custom
-        path: /output_custom
-    inputsources:
-      - alias: input_custom
-        target: /input_custom
-        source:
-          type: noop
-      - alias: input_custom2
-        target: /input_custom2
-        source:
-          type: noop
+Name: Noop Job
+Type: batch
+Namespace: default
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: noop
+    Publisher:
+      Type: noop
+    ResultPaths:
+      - Name: output_custom
+        Path: /output_custom
+    InputSources:
+      - Alias: input_custom
+        Target: /input_custom
+        Source:
+          Type: noop
+      - Alias: input_custom2
+        Target: /input_custom2
+        Source:
+          Type: noop

@@ -80,9 +80,12 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 		},
 	}
 
+	// Let's do this once
+	canRunS3Test := s3helper.CanRunS3Test()
+
 	for _, tc := range tests {
 		s.Run(tc.Name, func() {
-			if tc.Fixture.RequiresS3() && !s3helper.CanRunS3Test() {
+			if tc.Fixture.RequiresS3() && !canRunS3Test {
 				// Skip the S3 tests if we have no AWS credentials installed
 				s.T().Skip("No valid AWS credentials found")
 			}
@@ -96,8 +99,6 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
 			)
-
-			fmt.Println(tc.Fixture.Data)
 
 			require.NoError(s.T(), err, "Error submitting job")
 			testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)

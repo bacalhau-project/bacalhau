@@ -2,20 +2,44 @@ package s3
 
 import (
 	"fmt"
-	"time"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/bacalhau-project/bacalhau/pkg/s3/middleware"
 )
 
 type ClientWrapper struct {
-	S3         *s3.Client
-	Downloader *manager.Downloader
-	Uploader   *manager.Uploader
-	Endpoint   string
-	Region     string
+	S3            *s3.Client
+	presignClient *s3.PresignClient
+	Downloader    *manager.Downloader
+	Uploader      *manager.Uploader
+	Endpoint      string
+	Region        string
+	mu            sync.RWMutex
+}
+
+func (c *ClientWrapper) PresignClient() *s3.PresignClient {
+	c.mu.RLock()
+	if c.presignClient != nil {
+		defer c.mu.RUnlock()
+		return c.presignClient
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.presignClient != nil {
+		return c.presignClient
+	}
+	c.presignClient = s3.NewPresignClient(c.S3)
+	return c.presignClient
+}
+
+// IsAWSEndpoint checks if the given S3 endpoint URL is an AWS endpoint by its suffix.
+func (c *ClientWrapper) IsAWSEndpoint() bool {
+	return IsAWSEndpoint(c.Endpoint)
 }
 
 type ClientProviderParams struct {
@@ -29,16 +53,10 @@ type ClientProvider struct {
 }
 
 func NewClientProvider(params ClientProviderParams) *ClientProvider {
-	c := &ClientProvider{
+	return &ClientProvider{
 		awsConfig: params.AWSConfig,
 		clients:   make(map[string]*ClientWrapper),
 	}
-
-	c.clientsMu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 50 * time.Millisecond,
-		Id:        "S3SClients.mu",
-	})
-	return c
 }
 
 // IsInstalled returns true if the S3 client is installed.
@@ -74,6 +92,7 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 		s3Config.Region = region
 	}
 	if endpoint != "" {
+		//nolint:staticcheck // SA1019: aws.EndpointResolverWithOptionsFunc is deprecated: Use aws.EndpointResolverFunc instead
 		s3Config.EndpointResolverWithOptions =
 			aws.EndpointResolverWithOptionsFunc(func(service, resolvedRegion string, options ...any) (aws.Endpoint, error) {
 				if region != "" {
@@ -87,7 +106,7 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 				}, nil
 			})
 	}
-	s3Client := s3.NewFromConfig(s3Config)
+	s3Client := s3.NewFromConfig(s3Config, middleware.DropAcceptEncoding)
 
 	client = &ClientWrapper{
 		S3:         s3Client,

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -55,7 +56,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			),
 		),
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(model.DownloadFilenameStdout, "file1\nfile2\n"),
+			scenario.FileEquals(downloader.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),

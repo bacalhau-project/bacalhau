@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
@@ -18,14 +19,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
+
+const StorageDirectoryPerms = 0755
 
 type BaseExecutorParams struct {
 	ID                     string
 	Callback               Callback
 	Store                  store.ExecutionStore
 	Storages               storage.StorageProvider
+	StorageDirectory       string
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
@@ -38,8 +41,8 @@ type BaseExecutor struct {
 	ID               string
 	callback         Callback
 	store            store.ExecutionStore
-	cancellers       generic.SyncMap[string, context.CancelFunc]
 	Storages         storage.StorageProvider
+	storageDirectory string
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
@@ -52,6 +55,7 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		callback:         params.Callback,
 		store:            params.Store,
 		Storages:         params.Storages,
+		storageDirectory: params.StorageDirectory,
 		executors:        params.Executors,
 		publishers:       params.Publishers,
 		failureInjection: params.FailureInjectionConfig,
@@ -59,9 +63,12 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvider, inputSources ...*models.InputSource) (
+func prepareInputVolumes(
+	ctx context.Context,
+	strgprovider storage.StorageProvider,
+	storageDirectory string, inputSources ...*models.InputSource) (
 	[]storage.PreparedStorage, func(context.Context) error, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, inputSources...)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -70,14 +77,17 @@ func prepareInputVolumes(ctx context.Context, strgprovider storage.StorageProvid
 	}, nil
 }
 
-func prepareWasmVolumes(ctx context.Context, strgprovider storage.StorageProvider, wasmEngine wasmmodels.EngineSpec) (
+func prepareWasmVolumes(
+	ctx context.Context,
+	strgprovider storage.StorageProvider,
+	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
+	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -115,12 +125,13 @@ type InputCleanupFn = func(context.Context) error
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
+	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, execution.Job.Task().InputSources...)
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, storageDirectory, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -149,7 +160,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, wasmEngine)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, storageDirectory, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -204,25 +215,31 @@ func (r *StartResult) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (result *StartResult) {
-	result = new(StartResult)
+func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *StartResult {
+	result := new(StartResult)
 	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
 		result.Err = fmt.Errorf("getting executor %s: %w", execution.Job.Task().Engine, err)
-		return
+		return result
 	}
 
 	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
-		return
+		return result
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder)
+	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
+	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
+		result.Err = fmt.Errorf("preparing storage path: %w", err)
+		return result
+	}
+
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
-		return
+		return result
 	}
 
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
@@ -234,14 +251,14 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) (
 		NewState: store.ExecutionStateRunning,
 	}); err != nil {
 		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
-		return
+		return result
 	}
 
 	log.Ctx(ctx).Debug().Msg("starting execution")
 
 	if e.failureInjection.IsBadActor {
 		result.Err = fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
-		return
+		return result
 	}
 
 	if err := jobExecutor.Start(ctx, args); err != nil {
@@ -269,7 +286,6 @@ func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState
 		log.Ctx(ctx).Error().Err(err).Msg("failed to wait on execution")
 		return nil, err
 	}
-
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
@@ -342,10 +358,6 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	expectedState := store.ExecutionStateRunning
 	publishedResult := models.SpecConfig{}
-	resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
-	if err != nil {
-		return err
-	}
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
@@ -359,6 +371,21 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 
 		expectedState = store.ExecutionStatePublishing
+
+		resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			// cleanup resources
+			log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+			err = os.RemoveAll(resultsDir)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
+			}
+		}()
+
 		publishedResult, err = e.publish(ctx, state, resultsDir)
 		if err != nil {
 			return err
@@ -372,13 +399,6 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		NewState:       store.ExecutionStateCompleted,
 	}); err != nil {
 		return err
-	}
-
-	// cleanup resources
-	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
-	err = os.RemoveAll(resultsDir)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
 	}
 
 	// notify requester
@@ -405,7 +425,7 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 		return
 	}
-	publishedResult, err = jobPublisher.PublishResult(ctx, execution.ID, *execution.Job, resultFolder)
+	publishedResult, err = jobPublisher.PublishResult(ctx, execution, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to publish result: %w", err)
 		return

@@ -5,23 +5,26 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func CheckVersion(cmd *cobra.Command, args []string) error {
-	// corba doesn't do PersistentPreRun{,E} chaining yet
-	// https://github.com/spf13/cobra/issues/252
-	root := cmd
-	for ; root.HasParent(); root = root.Parent() {
-	}
-	root.PersistentPreRun(cmd, args)
+type Versions struct {
+	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
+	LatestVersion *models.BuildVersionInfo `json:"latestVersion,omitempty"`
+	UpdateMessage string                   `json:"updateMessage,omitempty"`
+}
 
-	// the client will not be known until the root persisten pre run logic is executed which
+func CheckVersion(cmd *cobra.Command, args []string) error {
+	// the client will not be known until the root persistent pre run logic is executed which
 	// sets up the repo and config
 	ctx := cmd.Context()
 	client := GetAPIClient(ctx)
@@ -33,6 +36,58 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func GetAllVersions(ctx context.Context) (Versions, error) {
+	var err error
+	versions := Versions{ClientVersion: version.Get()}
+	versions.ServerVersion, err = client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
+	if err != nil {
+		return versions, errors.Wrap(err, "error running version command")
+	}
+
+	clientID, err := config.GetClientID()
+	if err != nil {
+		return versions, errors.Wrap(err, "error getting client ID")
+	}
+
+	InstallationID, err := config.GetInstallationUserID()
+	if err != nil {
+		return versions, errors.Wrap(err, "error getting Installation ID")
+	}
+
+	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID, InstallationID)
+	if err != nil {
+		return versions, errors.Wrap(err, "failed to get latest version")
+	} else {
+		versions.UpdateMessage = updateCheck.Message
+		versions.LatestVersion = updateCheck.Version
+	}
+
+	return versions, nil
+}
+
+var printMessage *string = nil
+
+// StartUpdateCheck is a Cobra pre run hook to run an update check in the
+// background. There should be no output if the check fails or the context is
+// cancelled before the check can complete.
+func StartUpdateCheck(cmd *cobra.Command, args []string) {
+	version.RunUpdateChecker(
+		cmd.Context(),
+		client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version,
+		func(_ context.Context, ucr *version.UpdateCheckResponse) { printMessage = &ucr.Message },
+	)
+}
+
+// PrintUpdateCheck is a Cobra post run hook to print the results of an update
+// check. The message will be a non-nil pointer only if the update check
+// succeeds and should only have visible output if the message is non-empty.
+func PrintUpdateCheck(cmd *cobra.Command, args []string) {
+	if printMessage != nil && *printMessage != "" {
+		fmt.Fprintln(cmd.ErrOrStderr())
+		fmt.Fprintln(cmd.ErrOrStderr(), *printMessage)
+	}
 }
 
 func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *models.BuildVersionInfo) error {

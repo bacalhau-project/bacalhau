@@ -4,10 +4,10 @@ package models
 // optional human readable message.
 type State[T any] struct {
 	// StateType is the current state of the object.
-	StateType T
+	StateType T `json:"StateType"`
 
 	// Message is a human readable message describing the state.
-	Message string
+	Message string `json:"Message,omitempty"`
 }
 
 // WithMessage returns a new State with the specified message.

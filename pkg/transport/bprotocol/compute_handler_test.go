@@ -51,13 +51,13 @@ func (t *TestEndpoint) BidAccepted(context.Context, compute.BidAcceptedRequest) 
 	return compute.BidAcceptedResponse{ExecutionMetadata: compute.ExecutionMetadata{ExecutionID: "test"}}, nil
 }
 func (t *TestEndpoint) BidRejected(context.Context, compute.BidRejectedRequest) (compute.BidRejectedResponse, error) {
-	return compute.BidRejectedResponse{}, errors.New("No test implemenation")
+	return compute.BidRejectedResponse{}, errors.New("No test implementation")
 }
 func (t *TestEndpoint) CancelExecution(context.Context, compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
-	return compute.CancelExecutionResponse{}, errors.New("No test implemenation")
+	return compute.CancelExecutionResponse{}, errors.New("No test implementation")
 }
 func (t *TestEndpoint) ExecutionLogs(context.Context, compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
-	return compute.ExecutionLogsResponse{}, errors.New("No test implemenation")
+	return compute.ExecutionLogsResponse{}, errors.New("No test implementation")
 }
 
 func (s *ComputeProxyTestSuite) TeardownSuite() {

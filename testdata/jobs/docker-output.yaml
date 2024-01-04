@@ -1,20 +1,20 @@
-name: Docker Job with Output
-type: batch
-namespace: default
-count: 1
-tasks:
-  - name: main
-    engine:
-      type: docker
-      params:
+Name: Docker Job with Output
+Type: batch
+Namespace: default
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
         Image: ubuntu:latest
         Entrypoint:
           - /bin/bash
         Parameters:
           - -c
           - echo 15 > /output_custom/output.txt
-    publisher:
-      type: ipfs
-    resultpaths:
-      - name: output_custom
-        path: /output_custom
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: output_custom
+        Path: /output_custom

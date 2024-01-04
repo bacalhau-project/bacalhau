@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -18,8 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -29,13 +28,21 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
 	}
+
+	totalResources, totalErr := cfg.Capacity.TotalResourceLimits.ToResources()
+	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
+	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
+	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
+	if err := multierr.Combine(totalErr, queueErr, jobErr, defaultErr); err != nil {
+		return node.ComputeConfig{}, err
+	}
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.TotalResourceLimits)),
-		QueueResourceLimits:                   models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.QueueResourceLimits)),
-		JobResourceLimits:                     models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.JobResourceLimits)),
-		DefaultJobResourceLimits:              models.Resources(model.ParseResourceUsageConfig(cfg.Capacity.DefaultJobResourceLimits)),
+		TotalResourceLimits:                   *totalResources,
+		QueueResourceLimits:                   *queueResources,
+		JobResourceLimits:                     *jobResources,
+		DefaultJobResourceLimits:              *defaultResources,
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
-		ExecutorBufferBackoffDuration:         time.Duration(cfg.Queue.ExecutorBufferBackoffDuration),
 		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
 		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
 		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),
@@ -57,6 +64,7 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
 		return node.RequesterConfig{}, err
 	}
+
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
@@ -80,6 +88,9 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
+		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
+		TranslationEnabled:             cfg.TranslationEnabled,
 	})
 }
 
@@ -164,23 +175,6 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	}
 
 	return client, nil
-}
-
-func getNodeLabels(autoLabel bool) map[string]string {
-	labelConfig := config.GetStringMapString(types.NodeLabels)
-	labelMap := make(map[string]string)
-	if autoLabel {
-		AutoLabels := AutoOutputLabels()
-		for key, value := range AutoLabels {
-			labelMap[key] = value
-		}
-	}
-
-	for key, value := range labelConfig {
-		labelMap[key] = value
-	}
-
-	return labelMap
 }
 
 func getDisabledFeatures() (node.FeatureConfig, error) {

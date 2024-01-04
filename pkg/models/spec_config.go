@@ -10,10 +10,10 @@ import (
 
 type SpecConfig struct {
 	// Type of the config
-	Type string
+	Type string `json:"Type"`
 
 	// Params is a map of the config params
-	Params map[string]interface{}
+	Params map[string]interface{} `json:"Params,omitempty"`
 }
 
 // NewSpecConfig returns a new spec config

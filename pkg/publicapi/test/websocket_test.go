@@ -4,9 +4,9 @@ package test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,7 +68,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 		for {
 			var event model.JobEvent
 			err = conn.ReadJSON(&event)
-			if errors.Is(err, net.ErrClosed) {
+			if err != nil && strings.Contains(err.Error(), net.ErrClosed.Error()) {
 				return
 			}
 			require.NoError(s.T(), err)

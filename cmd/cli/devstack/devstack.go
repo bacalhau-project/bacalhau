@@ -9,12 +9,13 @@ import (
 
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/samber/lo"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -69,6 +70,8 @@ func NewCmd() *cobra.Command {
 		"job-selection":    configflags.JobSelectionFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"capacity":         configflags.CapacityFlags,
+		"job-timeouts":     configflags.ComputeTimeoutFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	devstackCmd := &cobra.Command{

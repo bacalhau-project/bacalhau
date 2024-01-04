@@ -2,11 +2,10 @@ package eventhandler
 
 import (
 	"context"
-	"time"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -38,16 +37,10 @@ type TracerContextProvider struct {
 }
 
 func NewTracerContextProvider(nodeID string) *TracerContextProvider {
-	tracer := &TracerContextProvider{
+	return &TracerContextProvider{
 		nodeID:          nodeID,
 		jobNodeContexts: make(map[string]context.Context),
 	}
-
-	tracer.contextMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "Tracer.contextMutex",
-	})
-	return tracer
 }
 
 func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) context.Context {

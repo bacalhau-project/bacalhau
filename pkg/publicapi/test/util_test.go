@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
@@ -55,6 +56,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
 		FsRepo:                    fsRepo,
+		NodeInfoStoreTTL:          10 * time.Minute,
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)

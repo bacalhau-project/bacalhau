@@ -25,7 +25,7 @@ BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
 endif
 
-BINARY_PATH = bin/${GOOS}_${GOARCH}${GOARM}/${BINARY_NAME}
+BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
@@ -65,33 +65,21 @@ install-pre-commit:
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
+#
+# Temporarily creates a build directory so that go vet does not complain that
+# it is missing.
 ################################################################################
 .PHONY: precommit
 precommit:
+	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
+	@rm webui/build/stub
 	cd python && make pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
 $(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it.")
 endif
-
-################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs:
-	@echo "Building swagger docs..."
-	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init \
-		--outputTypes "go,json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		--markdownFiles docs/swagger \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo
-	@echo "Swagger docs built."
 
 ################################################################################
 # Target: build-python-apiclient
@@ -149,6 +137,14 @@ release-bacalhau-airflow:
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
+# Target: release-bacalhau-flyte
+################################################################################
+.PHONY: release-bacalhau-flyte
+release-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} release
+	@echo "Python flyteplugins-bacalhau pushed to PyPi."
+
+################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
@@ -162,6 +158,27 @@ build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
+# Target: build-webui
+################################################################################
+WEB_GO_FILES := $(shell find webui -name '*.go')
+WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
+WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
+WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
+
+.PHONY: build-webui
+build-webui: ${WEB_BUILD_FILES}
+
+webui/build:
+	mkdir -p $@
+
+$(WEB_INSTALL_GUARD): webui/package.json
+	cd webui && npm install
+
+export GENERATE_SOURCEMAP := false
+${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
+	cd webui && npm run build
+
+################################################################################
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
@@ -170,7 +187,7 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
@@ -195,27 +212,24 @@ ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BA
 	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
 endif
 
+BACALHAU_IMAGE_FLAGS := \
+	--progress=plain \
+	--platform linux/amd64,linux/arm64 \
+	--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+	${LATEST_TAG} \
+	--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+	--label org.opencontainers.image.version=${BACALHAU_TAG} \
+	--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+	--file docker/bacalhau-image/Dockerfile \
+	.
+
 .PHONY: build-bacalhau-image
 build-bacalhau-image:
-	docker build --progress=plain \
-		--build-arg TAG=${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		--tag ${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: push-bacalhau-image
 push-bacalhau-image:
-	docker buildx build --push --progress=plain \
-		--platform linux/amd64,linux/arm64 \
-		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-		${LATEST_TAG} \
-		--build-arg TAG=${BACALHAU_TAG} \
-		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		--label org.opencontainers.image.version=${BACALHAU_TAG} \
-		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
-		--file docker/bacalhau-image/Dockerfile \
-		.
+	docker buildx build --push ${BACALHAU_IMAGE_FLAGS}
 
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
@@ -239,6 +253,24 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+################################################################################
+# Target: swagger-docs
+################################################################################
+.PHONY: swagger-docs
+swagger-docs: docs/swagger.json
+
+docs/swagger.json: ${PKG_FILES} .swaggo
+	@echo "Building swagger docs..."
+	swag init \
+		--outputTypes "json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo && \
+	echo >> $@
+#   ^ add newline to appease linter
+	@echo "Swagger docs built."
 
 ################################################################################
 # Target: images
@@ -263,31 +295,11 @@ images: docker/.pulled
 clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
+	${RM} -r webui/build/*
+	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
 	${RM} docker/.pulled
-
-
-################################################################################
-# Target: schema
-################################################################################
-SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-
-.PHONY: schema
-schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
-
-${SCHEMA_DIR}/%.json:
-	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-
-################################################################################
-# Target: all_schemas
-################################################################################
-EARLIEST_TAG := v0.3.12
-ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
-ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
-
-.PHONY: all_schemas
-all_schemas: ${ALL_SCHEMAS}
 
 
 ################################################################################
@@ -410,7 +422,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json &: ${CMD_FILES} ${PKG_FILES} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \

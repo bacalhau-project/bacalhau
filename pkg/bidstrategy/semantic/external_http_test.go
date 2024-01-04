@@ -91,7 +91,7 @@ func TestJobSelectionHttp(t *testing.T) {
 			request := getBidStrategyRequest(t)
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)
-			require.Equal(t, test.expectBid, result.ShouldBid)
+			require.Equal(t, test.expectBid, result.ShouldBid, result.Reason)
 			require.Equal(t, test.expectWait, result.ShouldWait)
 
 			// this makes sure that the http payload was given to the http endpoint

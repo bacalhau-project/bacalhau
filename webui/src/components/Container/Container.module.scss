@@ -1,0 +1,28 @@
+@import '../../styles/variables';
+
+.container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px;
+  }
+  
+  .title {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .titleLine {
+    position: absolute;
+    border-radius: 8px;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 100%;
+    background-color: $bgd-color-dark;
+  }

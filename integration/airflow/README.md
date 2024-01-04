@@ -56,7 +56,7 @@ pip install .
 
 If you're just curious and want to give it a try on your *local machine*, please follow the steps below.
 
-First, install and initalize Airflow:
+First, install and initialize Airflow:
 
 ```shell
 $ pip install apache-airflow

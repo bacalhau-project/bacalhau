@@ -9,12 +9,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 var Testing = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
+	},
+	Update: types.UpdateConfig{
+		SkipChecks: true,
 	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
@@ -31,6 +35,7 @@ var Testing = types.BacalhauConfig{
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
+		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -52,41 +57,49 @@ var Testing = types.BacalhauConfig{
 			SwarmAddresses: []string{
 				"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 			},
+			Profile:                "flatfs",
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
 		},
 		Compute:   TestingComputeConfig,
 		Requester: TestingRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    80,
+		},
 	},
 }
 
 var TestingComputeConfig = types.ComputeConfig{
 	Capacity: types.CapacityConfig{
 		IgnorePhysicalResourceLimits: false,
-		TotalResourceLimits: model.ResourceUsageConfig{
+		TotalResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		JobResourceLimits: model.ResourceUsageConfig{
+		JobResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		DefaultJobResourceLimits: model.ResourceUsageConfig{
+		DefaultJobResourceLimits: models.ResourcesConfig{
 			CPU:    "100m",
 			Memory: "100Mi",
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: model.ResourceUsageConfig{
+		QueueResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
 	},
-	ExecutionStore: types.StorageConfig{
+	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -104,9 +117,7 @@ var TestingComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{
-		ExecutorBufferBackoffDuration: types.Duration(50 * time.Millisecond),
-	},
+	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
@@ -121,7 +132,7 @@ var TestingRequesterConfig = types.RequesterConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	JobStore: types.StorageConfig{
+	JobStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -145,5 +156,10 @@ var TestingRequesterConfig = types.RequesterConfig{
 	},
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Second),
+	},
+	StorageProvider: types.StorageProviderConfig{
+		S3: types.S3StorageProviderConfig{
+			PreSignedURLExpiration: types.Duration(30 * time.Minute),
+		},
 	},
 }

@@ -2,10 +2,7 @@ package util
 
 import (
 	"context"
-	"fmt"
-	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -41,17 +38,17 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(cm, options.API)
+	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
 	if err != nil {
 		return nil, err
 	}
 
-	urlDownloadStorage, err := urldownload.NewStorage(cm)
+	urlDownloadStorage := urldownload.NewStorage()
 	if err != nil {
 		return nil, err
 	}
 
-	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage)
+	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -84,18 +81,6 @@ func NewStandardStorageProvider(
 }
 
 func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-input")
-	if err != nil {
-		return nil, err
-	}
-
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to clean up S3 storage directory: %w", err)
-		}
-		return nil
-	})
-
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
 		return nil, err
@@ -104,7 +89,6 @@ func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider,
 		AWSConfig: cfg,
 	})
 	s3Storage := s3.NewStorage(s3.StorageProviderParams{
-		LocalDir:       dir,
 		ClientProvider: clientProvider,
 	})
 	return s3Storage, nil

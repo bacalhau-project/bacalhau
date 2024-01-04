@@ -68,11 +68,12 @@ func NewCmd() *cobra.Command {
 	OL := NewListOptions()
 
 	listCmd := &cobra.Command{
-		Use:     "list",
-		Short:   "List jobs on the network",
-		Long:    listLong,
-		Example: listExample,
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "list",
+		Short:    "List jobs on the network",
+		Long:     listLong,
+		Example:  listExample,
+		PreRunE:  util.ClientPreRunHooks,
+		PostRunE: util.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := list(cmd, OL); err != nil {
 				util.Fatal(cmd, err, 1)
