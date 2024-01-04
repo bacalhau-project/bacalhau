@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -27,6 +29,8 @@ func jobForDockerImage(t testing.TB, imageID string) models.Job {
 
 func TestBidsBasedOnImagePlatform(t *testing.T) {
 	docker.MustHaveDocker(t)
+
+	config.Set(configenv.Testing)
 
 	client, err := docker.NewDockerClient()
 	require.NoError(t, err)
