@@ -35,7 +35,7 @@ func NewModuleLoader(runtime wazero.Runtime, config wazero.ModuleConfig, storage
 	return &ModuleLoader{runtime: runtime, config: config, storages: storages}
 }
 
-// Load comiples and returns a module located at the passed path.
+// Load compiles and returns a module located at the passed path.
 func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.CompiledModule, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.Load")
 	span.SetAttributes(attribute.String("Path", path))

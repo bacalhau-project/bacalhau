@@ -72,7 +72,7 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (
 		return nil, nil, err
 	}
 
-	// filter nodes with rank bellow 0
+	// filter nodes with rank below 0
 	for _, nodeRank := range rankedNodes {
 		if nodeRank.MeetsRequirement() {
 			selected = append(selected, nodeRank)
