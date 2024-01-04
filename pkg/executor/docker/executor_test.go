@@ -447,7 +447,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	))
 
 	ticker := time.NewTimer(time.Second * 10)
-	// use a different context for waiting as we don't want to timout waiting on the job.
+	// use a different context for waiting as we don't want to timeout waiting on the job.
 	resC, errC := s.executor.Wait(context.Background(), name)
 	select {
 	case res := <-resC:

@@ -124,7 +124,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	if err != nil {
 		// Unable to find a running container for this execution, we will instead check for a handler, and
-		// failing that will create a new containe.
+		// failing that will create a new container.
 		if handler, found := e.handlers.Get(request.ExecutionID); found {
 			if handler.active() {
 				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
