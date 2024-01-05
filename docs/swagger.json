@@ -19,6 +19,25 @@
     "host": "bootstrap.production.bacalhau.org:1234",
     "basePath": "/",
     "paths": {
+        "/": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Utils"
+                ],
+                "operationId": "home",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/agent/alive": {
             "get": {
                 "produces": [
