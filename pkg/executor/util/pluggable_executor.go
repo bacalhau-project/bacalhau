@@ -27,7 +27,7 @@ type PluginExecutorManager struct {
 func (e *PluginExecutorManager) Get(ctx context.Context, key string) (executor.Executor, error) {
 	engine, ok := e.active[key]
 	if !ok {
-		return nil, fmt.Errorf("pluging %s not found", key)
+		return nil, fmt.Errorf("plugin %s not found", key)
 	}
 	return engine.Impl, nil
 }
@@ -66,7 +66,7 @@ type PluginExecutorManagerConfig struct {
 func (e *PluginExecutorManager) RegisterPlugin(config PluginExecutorManagerConfig) error {
 	_, ok := e.registered[config.Name]
 	if ok {
-		return fmt.Errorf("duplicate registration of exector %s", config.Name)
+		return fmt.Errorf("duplicate registration of executor %s", config.Name)
 	}
 
 	if pluginBin, err := os.Stat(filepath.Join(config.Path, config.Command)); err != nil {

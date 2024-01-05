@@ -2,7 +2,7 @@
 Package scenario provides a high-level testing framework for running Bacalhau
 jobs in different configurations and making assertions against the results.
 
-The unit of measure is the `Scenario` which decsribes a Bacalhau network, a job
+The unit of measure is the `Scenario` which describes a Bacalhau network, a job
 to be submitted to it, and a set of checks to exercise that the job was executed
 as expected.
 
@@ -38,7 +38,7 @@ import (
 type Scenario struct {
 	// An optional set of configuration options that define the network of nodes
 	// that the job will be run against. When unspecified, the Stack will
-	// consist of one node with requestor and compute nodes set up according to
+	// consist of one node with requester and compute nodes set up according to
 	// their default configuration, and without a Noop executor.
 	Stack *StackConfig
 

@@ -11,7 +11,7 @@ type JobEventType int
 const (
 	jobEventUndefined JobEventType = iota // must be first
 
-	// Job has been created on the requestor node
+	// Job has been created on the requester node
 	JobEventCreated
 
 	// a compute node bid on a job
