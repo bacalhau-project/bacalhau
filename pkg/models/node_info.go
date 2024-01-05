@@ -45,22 +45,43 @@ type ComputeNodeInfoProvider interface {
 	GetComputeInfo(ctx context.Context) ComputeNodeInfo
 }
 
+// NodeInfo godoc
+//
+// @ID			NodeInfo
+// @Summary		Information about the node.
+// @Description	Information about the node.
+// @Tags		Ops
+// @Produce		json
+// @Success	200	{object}	NodeInfo
+// @Failure	500	{object}	string
+// @Router		/api/v1/agent/node [get]
 type NodeInfo struct {
-	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
+	PeerInfo        peer.AddrInfo     `json:"PeerInfo" swaggertype:"primitive,integer"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
-	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
+	Version         BuildVersionInfo  `json:"Version"`
 }
 
 // ID returns the node ID
+//
+// @ID             NodeInfo_ID
+// @Summary        Get node ID.
+// @Description    Returns the node ID.
+// @Tags           Ops
+// @Produce        json
+// @Success        200 {string}  string
+// @Router         /api/v1/agent/node/{id} [get]
 func (n NodeInfo) ID() string {
 	return n.PeerInfo.ID.String()
 }
 
-// IsComputeNode returns true if the node is a compute node
 func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
+}
+
+func (n NodeInfo) IsRequesterNode() bool {
+	return n.NodeType == NodeTypeRequester
 }
 
 type ComputeNodeInfo struct {

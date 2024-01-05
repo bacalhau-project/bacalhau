@@ -42,7 +42,7 @@ func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
 		util.Fatal(cmd, fmt.Errorf("could not get server version: %w", err), 1)
 	}
 
-	v := serverVersionResponse.BuildVersionInfo
+	v := serverVersionResponse.Version
 	var writeErr error
 
 	// default output if no format is specified

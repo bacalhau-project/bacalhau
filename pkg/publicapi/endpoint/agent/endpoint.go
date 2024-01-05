@@ -40,7 +40,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@ID			agent/alive
 //	@Tags		Ops
 //	@Produce	text/plain
-//	@Success	200	{string}	string	"OK"
+//	@Success	200	{string}	string	"OK" apimodels.Alive
 //	@Router		/api/v1/agent/alive [get]
 func (e *Endpoint) alive(c echo.Context) error {
 	return c.JSON(http.StatusOK, &apimodels.IsAliveResponse{
@@ -55,12 +55,12 @@ func (e *Endpoint) alive(c echo.Context) error {
 //	@Description	See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.
 //	@Tags			Ops
 //	@Produce		json
-//	@Success		200	{object}	apimodels.GetVersionResponse
+//	@Success		200	{object}	models.BuildVersionInfo
 //	@Failure		500	{object}	string
 //	@Router			/api/v1/agent/version [get]
 func (e *Endpoint) version(c echo.Context) error {
 	return c.JSON(http.StatusOK, apimodels.GetVersionResponse{
-		BuildVersionInfo: version.Get(),
+		Version: version.Get(),
 	})
 }
 

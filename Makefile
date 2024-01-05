@@ -510,3 +510,9 @@ else
 	    mkdir -p $(INSTALL_PLUGINS_DEST)
 	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
 endif
+
+.PHONY: generate
+generate:
+	@echo "Generating code..."
+	@./scripts/generate.sh
+	@echo "Done."

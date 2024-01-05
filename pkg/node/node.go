@@ -170,7 +170,7 @@ func NewNode(
 		Host:            basicHost,
 		IdentityService: basicHost.IDService(),
 		Labels:          config.Labels,
-		BacalhauVersion: *version.Get(),
+		Version:         *version.Get(),
 	})
 
 	// node info publisher

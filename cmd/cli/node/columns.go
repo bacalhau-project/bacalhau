@@ -41,19 +41,19 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeInfo]{
 		{
 			ColumnConfig: table.ColumnConfig{Name: "version"},
 			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GitVersion
+				return ni.Version.GitVersion
 			},
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "architecture"},
 			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GOARCH
+				return ni.Version.GOARCH
 			},
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "os"},
 			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GOOS
+				return ni.Version.GOOS
 			},
 		},
 	},

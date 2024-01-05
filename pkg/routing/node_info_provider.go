@@ -14,7 +14,7 @@ type NodeInfoProviderParams struct {
 	IdentityService     identify.IDService
 	Labels              map[string]string
 	ComputeInfoProvider models.ComputeNodeInfoProvider
-	BacalhauVersion     models.BuildVersionInfo
+	Version             models.BuildVersionInfo
 }
 
 type NodeInfoProvider struct {
@@ -22,7 +22,7 @@ type NodeInfoProvider struct {
 	identityService     identify.IDService
 	labels              map[string]string
 	computeInfoProvider models.ComputeNodeInfoProvider
-	bacalhauVersion     models.BuildVersionInfo
+	version             models.BuildVersionInfo
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
@@ -31,7 +31,7 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 		identityService:     params.IdentityService,
 		labels:              params.Labels,
 		computeInfoProvider: params.ComputeInfoProvider,
-		bacalhauVersion:     params.BacalhauVersion,
+		version:             params.Version,
 	}
 }
 
@@ -42,7 +42,7 @@ func (n *NodeInfoProvider) RegisterComputeInfoProvider(provider models.ComputeNo
 
 func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
 	res := models.NodeInfo{
-		BacalhauVersion: n.bacalhauVersion,
+		Version: n.version,
 		PeerInfo: peer.AddrInfo{
 			ID:    n.h.ID(),
 			Addrs: n.identityService.OwnObservedAddrs(),
