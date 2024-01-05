@@ -10,6 +10,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -79,10 +80,11 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { _ = host.Close })
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
-		Router:  echo.New(),
-		Address: "0.0.0.0",
-		Port:    0,
-		Config:  publicapi.DefaultConfig(),
+		Router:     echo.New(),
+		Address:    "0.0.0.0",
+		Port:       0,
+		Config:     publicapi.DefaultConfig(),
+		Authorizer: auth.AlwaysAllow,
 	})
 	s.NoError(err)
 
