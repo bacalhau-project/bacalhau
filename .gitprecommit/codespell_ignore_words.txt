@@ -120,3 +120,5 @@ CODEGEN
 isort
 mypy
 flyteidl
+zerolog
+labstack
