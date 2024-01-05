@@ -122,3 +122,4 @@ mypy
 flyteidl
 zerolog
 labstack
+stretchr
