@@ -1,15 +1,19 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"strings"
 
 	"github.com/open-policy-agent/opa/loader"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -42,7 +46,7 @@ func NewPolicyAuthorizer(policySource fs.FS, policyPath string) (Authorizer, err
 	opts := []regoOpt{
 		rego.Query("data." + AuthzAllowRule),
 	}
-	modules := lo.Map(maps.Values(results.Modules), func(m *loader.RegoFile, _ int) func(*rego.Rego) { return rego.ParsedModule(m.Parsed) })
+	modules := lo.Map(maps.Values(results.Modules), func(m *loader.RegoFile, _ int) regoOpt { return rego.ParsedModule(m.Parsed) })
 	query := rego.New(append(opts, modules...)...)
 
 	allowQuery, err := query.PrepareForEval(context.TODO())
@@ -56,6 +60,20 @@ func (authorizer *policyAuthorizer) ShouldAllow(req *http.Request) (AuthzDecisio
 		return AuthzDecision{}, errors.New("bad HTTP request: missing URL")
 	}
 
+	body := new(bytes.Buffer)
+	if req.Body != nil {
+		written, err := io.Copy(body, req.Body)
+		if err != nil {
+			return AuthzDecision{}, err
+		} else if written != req.ContentLength {
+			return AuthzDecision{}, fmt.Errorf("read %d but was expecting %d", written, req.ContentLength)
+		}
+		defer req.Body.Close()
+
+		// Put the Body back into a readable state.
+		req.Body = io.NopCloser(body)
+	}
+
 	in := map[string]interface{}{
 		"http": map[string]interface{}{
 			"host":    req.Host,
@@ -63,10 +81,12 @@ func (authorizer *policyAuthorizer) ShouldAllow(req *http.Request) (AuthzDecisio
 			"path":    strings.Split(strings.TrimLeft(req.URL.Path, "/"), "/"),
 			"query":   req.URL.Query(),
 			"headers": req.Header,
+			"body":    body.String(),
 		},
 	}
 
-	results, err := authorizer.allowQuery.Eval(req.Context(), rego.EvalInput(in))
+	tracer := topdown.NewBufferTracer()
+	results, err := authorizer.allowQuery.Eval(req.Context(), rego.EvalInput(in), rego.EvalQueryTracer(tracer))
 	if err != nil {
 		return AuthzDecision{}, err
 	}
