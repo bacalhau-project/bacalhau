@@ -7,7 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
-const DuckDBImage = "bacalhauproject/exec-duckdb:0.1"
+const DuckDBImage = "bacalhauproject/exec-duckdb:0.2"
 
 type DuckDBTranslator struct{}
 
