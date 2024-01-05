@@ -223,9 +223,6 @@ jobs:
       - install_go:
           executor: linux-amd64
 
-      - run_generators:
-          command: make generate
-
       - run:
           name: Build tarball
           command: |
@@ -417,7 +414,7 @@ jobs:
           command: |
             make release-python-apiclient
       - run:
-          name: Install Python SDK pre-requistes
+          name: Install Python SDK pre-requisites
           command: |
             curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
             echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
@@ -451,21 +448,15 @@ jobs:
       - install_go:
           executor: linux-amd64
       - run:
-          name: Install Swagger
+          name: Build Swagger
           command: |
-            export GOBIN=${HOME}/bin
-            export PATH=$GOBIN:$PATH
-            go install github.com/swaggo/swag/cmd/swag@v1.8.10
-      - run:
-          name: Build Swagger Docs
-          command: |
-            export GOBIN=${HOME}/bin
-            export PATH=$GOBIN:$PATH
-            make swagger-docs
+            make generate
+
       - persist_to_workspace:
-          root: docs
+          root: .
           paths:
-            - swagger.json
+            - pkg/swagger/docs.go
+            - webui/public/swagger/swagger.json
 
       - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
           condition:
@@ -543,7 +534,7 @@ jobs:
           command: |
             cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
       - run:
-          name: Install Python API client pre-requistes
+          name: Install Python API client pre-requisites
           command: |
             CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
             wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
@@ -559,7 +550,7 @@ jobs:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
       - run:
-          name: Install Python SDK pre-requistes
+          name: Install Python SDK pre-requisites
           command: |
             curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
             echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
@@ -575,7 +566,7 @@ jobs:
             - bacalhau_sdk-*.tar.gz
             - bacalhau_sdk-*.whl
       - run:
-          name: Install bacalhau-airflow pre-requistes
+          name: Install bacalhau-airflow pre-requisites
           command: |
             cd integration/airflow
             pip3 install -r dev-requirements.txt
@@ -584,7 +575,7 @@ jobs:
           command: |
             make build-bacalhau-airflow
       - run:
-          name: Install Flyte plugin pre-requistes
+          name: Install Flyte plugin pre-requisites
           command: |
             cd integration/flyte
             # installs flytekit, flyteidl and deps.

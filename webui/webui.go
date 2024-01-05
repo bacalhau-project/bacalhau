@@ -73,8 +73,8 @@ func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPo
 			// the wrong sort of URI, so we have to manually ask for index.html
 			// if getting the root.
 			r.RequestURI = strings.TrimPrefix(r.RequestURI, "/swagger")
-			if r.RequestURI == "" {
-				r.RequestURI = "/index.html"
+			if r.RequestURI == "" || r.RequestURI == "/" {
+				r.RequestURI = "/swagger/index.html"
 			}
 			swagger.ServeHTTP(w, r)
 		} else {
