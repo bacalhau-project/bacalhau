@@ -51,19 +51,32 @@ func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPo
 		return err
 	}
 
+	swagger := http.StripPrefix("/swagger", httpSwagger.Handler(
+		// The URL pointing to API definition. This is interpreted by the client
+		// so doesn't need the host and port and can be relative to the root.
+		httpSwagger.URL("/swagger/swagger.json"),
+	))
+
 	fileHandler := http.FileServer(http.FS(files))
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		match, err := fs.Glob(files, strings.TrimLeft(r.URL.Path, "/"))
 		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 			_, _ = w.Write(indexPage)
-		} else if r.URL.Path == "/swagger" {
-			httpSwagger.Handler(
-				httpSwagger.URL(fmt.Sprintf("http://%s:%d/swagger/swagger.json", host, listenPort)), //The url pointing to API definition
-			)
 		} else if len(match) > 0 && err == nil {
 			// Serve a static file that matches the request path, if it exists
 			// We need to check this manually to enable the below behavior
 			fileHandler.ServeHTTP(w, r)
+		} else if strings.HasPrefix(r.URL.Path, "/swagger") {
+			// If we didn't match a swagger static file, hand off control to the
+			// swaggo handler. It incorrectly uses the RequestURI field which
+			// isn't overridden by http.StripPrefix, and will panic if passed
+			// the wrong sort of URI, so we have to manually ask for index.html
+			// if getting the root.
+			r.RequestURI = strings.TrimPrefix(r.RequestURI, "/swagger")
+			if r.RequestURI == "" {
+				r.RequestURI = "/index.html"
+			}
+			swagger.ServeHTTP(w, r)
 		} else {
 			// If nothing matches, just serve the index page. This allows the
 			// app to modify the browser URL to refer to client side "pages"
