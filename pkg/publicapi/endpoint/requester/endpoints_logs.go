@@ -124,7 +124,12 @@ func (s *Endpoint) logs(c echo.Context) error {
 			break
 		}
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("Stream read failure. May be reset?: %s", err)
+			log.Ctx(ctx).
+				Error().
+				Err(err).
+				Str("Job", payload.JobID).
+				Str("Execution", payload.ExecutionID).
+				Msgf("Stream read failure. May be reset?: %s", err)
 			break
 		}
 

@@ -59,7 +59,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.2
-	github.com/tetratelabs/wazero v1.5.0
+	github.com/tetratelabs/wazero v1.6.0
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
 	github.com/vincent-petithory/dataurl v1.0.0
@@ -83,8 +83,8 @@ require (
 	golang.org/x/crypto v0.17.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
-	k8s.io/apimachinery v0.28.4
-	k8s.io/kubectl v0.28.4
+	k8s.io/apimachinery v0.29.0
+	k8s.io/kubectl v0.29.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -134,7 +134,9 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
+	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
@@ -151,6 +153,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	k8s.io/cli-runtime v0.29.0 // indirect
 )
 
 require (
@@ -293,7 +296,7 @@ require (
 	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
-	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
+	github.com/onsi/ginkgo/v2 v2.13.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
@@ -315,7 +318,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.39.0
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
@@ -363,12 +366,12 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.3.0 // indirect
-	k8s.io/api v0.28.4 // indirect
-	k8s.io/client-go v0.28.4 // indirect
-	k8s.io/klog/v2 v2.100.1 // indirect
-	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
+	k8s.io/api v0.29.0 // indirect
+	k8s.io/client-go v0.29.0 // indirect
+	k8s.io/klog/v2 v2.110.1 // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )

@@ -4,12 +4,13 @@ cd "${PATH_TO_PROJECT_ROOT}" || exit
 
 echo "Currently executing in ${PWD}"
 swag init \
-  --outputTypes "json" \
+  --outputTypes "go,json" \
   --parseDependency \
   --parseInternal \
   --parseDepth 1 \
   -g "./pkg/publicapi/server.go" \
-  --overridesFile .swaggo
+  --overridesFile .swaggo \
+  --output "${PATH_TO_PROJECT_ROOT}/pkg/publicapi/swagger"
 
 PUBLIC_PATH="./webui/public/swagger"
 echo "swagger.json generated - moving to ${PUBLIC_PATH}"

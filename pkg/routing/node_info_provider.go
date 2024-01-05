@@ -12,7 +12,7 @@ import (
 type NodeInfoProviderParams struct {
 	Host                host.Host
 	IdentityService     identify.IDService
-	Labels              map[string]string
+	LabelsProvider      models.LabelsProvider
 	ComputeInfoProvider models.ComputeNodeInfoProvider
 	Version             models.BuildVersionInfo
 }
@@ -20,7 +20,7 @@ type NodeInfoProviderParams struct {
 type NodeInfoProvider struct {
 	h                   host.Host
 	identityService     identify.IDService
-	labels              map[string]string
+	labelsProvider      models.LabelsProvider
 	computeInfoProvider models.ComputeNodeInfoProvider
 	version             models.BuildVersionInfo
 }
@@ -29,15 +29,10 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	return &NodeInfoProvider{
 		h:                   params.Host,
 		identityService:     params.IdentityService,
-		labels:              params.Labels,
+		labelsProvider:      params.LabelsProvider,
 		computeInfoProvider: params.ComputeInfoProvider,
 		version:             params.Version,
 	}
-}
-
-// RegisterComputeInfoProvider registers a compute info provider with the node info provider.
-func (n *NodeInfoProvider) RegisterComputeInfoProvider(provider models.ComputeNodeInfoProvider) {
-	n.computeInfoProvider = provider
 }
 
 func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
@@ -47,7 +42,7 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
 			ID:    n.h.ID(),
 			Addrs: n.identityService.OwnObservedAddrs(),
 		},
-		Labels:   n.labels,
+		Labels:   n.labelsProvider.GetLabels(ctx),
 		NodeType: models.NodeTypeRequester,
 	}
 	if n.computeInfoProvider != nil {

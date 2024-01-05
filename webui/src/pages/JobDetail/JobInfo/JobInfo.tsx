@@ -71,7 +71,7 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
                 : "No timeout set",
           },
           {
-            label: "Requestor Node",
+            label: "Requester Node",
             value: job.Meta["bacalhau.org/requester.id"],
           },
           // { label: 'Concurrency', value: '' }

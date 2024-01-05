@@ -161,18 +161,6 @@ func NewNode(
 		return nil, err
 	}
 
-	// node info provider
-	basicHost, ok := config.Host.(*basichost.BasicHost)
-	if !ok {
-		return nil, fmt.Errorf("host is not a basic host")
-	}
-	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		Host:            basicHost,
-		IdentityService: basicHost.IDService(),
-		Labels:          config.Labels,
-		Version:         *version.Get(),
-	})
-
 	// node info publisher
 	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
 	if nodeInfoPublisherInterval.IsZero() {
@@ -221,20 +209,11 @@ func NewNode(
 		return nil, err
 	}
 
-	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           config.Host.ID().String(),
-		PeerStore:        config.Host.Peerstore(),
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
-	agent.NewEndpoint(agent.EndpointParams{
-		Router:           apiServer.Router,
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
 	var requesterNode *Requester
 	var computeNode *Compute
+
+	var computeInfoProvider models.ComputeNodeInfoProvider
+	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -272,8 +251,38 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
-		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
+
+		computeInfoProvider = computeNode.computeInfoProvider
+		labelsProvider = models.MergeLabelsInOrder(
+			computeNode.autoLabelsProvider,
+			labelsProvider,
+		)
 	}
+
+	// node info provider
+	basicHost, ok := config.Host.(*basichost.BasicHost)
+	if !ok {
+		return nil, fmt.Errorf("host is not a basic host")
+	}
+	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
+		Host:                basicHost,
+		IdentityService:     basicHost.IDService(),
+		LabelsProvider:      labelsProvider,
+		ComputeInfoProvider: computeInfoProvider,
+		Version:             *version.Get(),
+	})
+
+	shared.NewEndpoint(shared.EndpointParams{
+		Router:           apiServer.Router,
+		NodeID:           config.Host.ID().String(),
+		PeerStore:        config.Host.Peerstore(),
+		NodeInfoProvider: nodeInfoProvider,
+	})
+
+	agent.NewEndpoint(agent.EndpointParams{
+		Router:           apiServer.Router,
+		NodeInfoProvider: nodeInfoProvider,
+	})
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 	// TODO(forrest) #3167 [fixme] we should fix this to make it less racy in testing

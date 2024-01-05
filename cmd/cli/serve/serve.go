@@ -1,11 +1,8 @@
 package serve
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -14,7 +11,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	system_capacity "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -74,7 +70,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else if peerConnect == "config" {
 		// TODO(forrest): [ux] if the user explicitly passes the peer flag with value `config` read the
-		// boostrap peer list from their config file.
+		// bootstrap peer list from their config file.
 		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
@@ -234,8 +230,6 @@ func serve(cmd *cobra.Command) error {
 
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
-	// TODO (forrest): [ux] in the future we should make this configurable to users.
-	autoLabel := true
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		CleanupManager:        cm,
@@ -248,7 +242,7 @@ func serve(cmd *cobra.Command) error {
 		RequesterNodeConfig:   requesterConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
-		Labels:                getNodeLabels(autoLabel),
+		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
@@ -437,53 +431,4 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	})
 
 	return addresses[0]
-}
-
-func AutoOutputLabels() map[string]string {
-	m := make(map[string]string)
-	// Get the operating system name
-	os := runtime.GOOS
-	m["Operating-System"] = os
-	m["git-lfs"] = "False"
-	if checkGitLFS() {
-		m["git-lfs"] = "True"
-	}
-	arch := runtime.GOARCH
-	m["Architecture"] = arch
-
-	provider := system_capacity.NewPhysicalCapacityProvider()
-	resources, err := provider.GetAvailableCapacity(context.Background())
-	if err == nil {
-		// Print the GPU names
-		for i, gpu := range resources.GPUs {
-			// Model label e.g. GPU-0: Tesla-T1
-			key := fmt.Sprintf("GPU-%d", i)
-			name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
-			m[key] = name
-
-			// Memory label e.g. GPU-0-Memory: 15360-MiB
-			key = fmt.Sprintf("GPU-%d-Memory", i)
-			memory := strings.Replace(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-", -1) // Replace spaces with dashes
-			m[key] = memory
-		}
-	}
-	// Get list of installed packages (Only works for linux, make it work for every platform)
-	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// var packageList []string
-	// for _, file := range files {
-	// 	if !file.IsDir() && filepath.Ext(file.FlagName()) == ".list" {
-
-	// 		packageList = append(packageList, file.FlagName()[:len(file.FlagName())-5])
-	// 	}
-	// }
-	// m["Installed-Packages"] = strings.Join(packageList, ",")
-	return m
-}
-
-func checkGitLFS() bool {
-	_, err := exec.LookPath("git-lfs")
-	return err == nil
 }

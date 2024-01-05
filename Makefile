@@ -492,6 +492,13 @@ else
 	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
 endif
 
+.PHONY: spellcheck
+spellcheck:  ## Runs a spellchecker over all code and documentation
+	codespell --skip="./docs/build,./.git,node_modules,./vendor,./webui/build" \
+			  --ignore-words="./.gitprecommit/codespell_ignore_words.txt" \
+			  --skip="./integration/flyte/Makefile"
+
+
 .PHONY: generate
 generate:
 	@echo "Generating code..."
