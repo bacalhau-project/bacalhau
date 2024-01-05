@@ -99,7 +99,7 @@ func StringSliceToMap(slice []string) (map[string]string, error) {
 	for _, item := range slice {
 		key, value, err := flags.SeparatorParser("=")(item)
 		if err != nil {
-			return nil, fmt.Errorf("expected 'key=value', receieved invalid format for key-value pair: %s", item)
+			return nil, fmt.Errorf("expected 'key=value', received invalid format for key-value pair: %s", item)
 		}
 		result[key] = value
 	}
