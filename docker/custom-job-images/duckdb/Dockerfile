@@ -8,8 +8,7 @@ RUN if [ $TARGETPLATFORM = 'linux/arm64' ]; then \
     else \
     wget -O /tmp/ddb.zip "https://github.com/duckdb/duckdb/releases/download/v0.9.2/duckdb_cli-linux-amd64.zip"; \
     fi
-RUN unzip /tmp/ddb.zip 
-
+RUN unzip /tmp/ddb.zip -d /usr/local/bin
 
 LABEL org.opencontainers.image.source https://github.com/bacalhau-project/bacalhau-images
 LABEL org.opencontainers.image.title "Bacalhau custom jobtype - Duckdb"
