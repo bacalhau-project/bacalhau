@@ -91,3 +91,6 @@ Dreambooth
 testdata
 modtidy
 codespellrc
+zerolog
+labstack
+stretchr
