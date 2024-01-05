@@ -30,7 +30,7 @@ import (
 )
 
 //When the entrypoint flag is used on the CLI, eg "docker run --entrypoint /bin/echo image hello world" docker will ignore the CMD
-//Stored in the dockerfile. Any paramaters used after the image will be interpreted as the new CMD.
+//Stored in the dockerfile. Any parameters used after the image will be interpreted as the new CMD.
 //If no entrypoint is specified in the dockerfile, and the CMD appended to the CLI does not contain an executable that can
 //be found in the chosen image's $PATH, the docker daemon will throw an error.
 //Please note that if a dockerfile specifies neither the CMD or ENTRYPOINT then docker will use the base image's (if specified).

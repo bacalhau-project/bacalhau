@@ -48,7 +48,7 @@ make duckdb-build
 
 ## Build problems?
 
-The makefiles provided attempt cross platform builds so that we are able to build on arm64 machines to be executed on amd64 machines. Depending on your setup, this may occassionally show the following error.
+The makefiles provided attempt cross platform builds so that we are able to build on arm64 machines to be executed on amd64 machines. Depending on your setup, this may occasionally show the following error.
 
 ```
 ERROR: Multiple platforms feature is currently not supported for docker driver. 
