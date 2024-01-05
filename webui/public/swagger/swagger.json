@@ -1,22 +1,23 @@
 {
+    "schemes": [
+        "http"
+    ],
     "swagger": "2.0",
     "info": {
-        "description": "The Bacalhau API is a RESTful API that allows you to interact with the Bacalhau network.",
+        "description": "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.",
         "title": "Bacalhau API",
-        "termsOfService": "http://bacalhau.org/terms/",
         "contact": {
-            "name": "API Support",
-            "url": "https://www.expanso.io/contact/",
-            "email": "support@bacalhau.org"
+            "name": "Bacalhau Team",
+            "url": "https://github.com/bacalhau-project/bacalhau",
+            "email": "team@bacalhau.org"
         },
         "license": {
             "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
-        "version": "v1"
+            "url": "https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE"
+        }
     },
-    "host": "localhost:1234",
-    "basePath": "/api/v1",
+    "host": "bootstrap.production.bacalhau.org:1234",
+    "basePath": "/",
     "paths": {
         "/api/v1/agent/alive": {
             "get": {
@@ -1278,10 +1279,7 @@
                 },
                 "RequesterPublicKey": {
                     "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "string"
                 }
             }
         },
@@ -2087,9 +2085,5 @@
                 }
             }
         }
-    },
-    "externalDocs": {
-        "description": "Bacalhau Documentation",
-        "url": "https://docs.bacalhau.org"
     }
 }
