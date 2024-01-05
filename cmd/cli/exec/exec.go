@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -113,6 +114,7 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 	return nil
 }
 
+//nolint:funlen
 func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *ExecOptions) (*models.Job, error) {
 	var err error
 	var jobType, templateString string
@@ -180,13 +182,8 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	job.Tasks[0].Engine.Params["Arguments"] = cmdArgs[1:]
 
 	// Attach any inputs the user specified to the job spec
-	for _, ss := range options.SpecSettings.Inputs.Values() {
-		src, err := legacy.FromLegacyStorageSpecToInputSource(ss)
-		if err != nil {
-			return nil, fmt.Errorf("failed to process input %s: %w", ss.Name, err)
-		}
-
-		job.Tasks[0].InputSources = append(job.Tasks[0].InputSources, src)
+	if err := prepareInputs(options, job); err != nil {
+		return nil, err
 	}
 
 	// Process --code if anything was specified. In future we may want to try and determine this
@@ -197,7 +194,114 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		}
 	}
 
+	// Add the default publisher (which is currently IPFS)
+	publisherSpec := options.SpecSettings.Publisher.Value()
+	job.Tasks[0].Publisher = &models.SpecConfig{
+		Type:   publisherSpec.Type.String(),
+		Params: publisherSpec.Params,
+	}
+
+	// Handle ResultPaths by using the legacy parser and converting.
+	if err := prepareJobOutputs(cmd.Context(), options, job); err != nil {
+		return nil, err
+	}
+
+	// Parse labels from flag, we expect key=value for the non-legacy models.Job
+	if err := prepareLabels(options, job); err != nil {
+		return nil, err
+	}
+
+	// Constraints for node selection
+	if err := prepareConstraints(options, job); err != nil {
+		return nil, err
+	}
+
+	// Environment variables
+	if err := prepareEnvVars(options, job); err != nil {
+		return nil, err
+	}
+
+	// Set the execution timeouts
+	job.Tasks[0].Timeouts = &models.TimeoutConfig{
+		ExecutionTimeout: options.SpecSettings.Timeout,
+	}
+
+	// Unsupported in new job specifications (models.Job)
+	// options.SpecSettings.DoNotTrack
+
 	return job, nil
+}
+
+func prepareConstraints(options *ExecOptions, job *models.Job) error {
+	if nodeSelectorRequirements, err := parse.NodeSelector(options.SpecSettings.Selector); err != nil {
+		return err
+	} else {
+		constraints, err := legacy.FromLegacyLabelSelector(nodeSelectorRequirements)
+		if err != nil {
+			return err
+		}
+		job.Constraints = constraints
+	}
+
+	return nil
+}
+
+func prepareInputs(options *ExecOptions, job *models.Job) error {
+	for _, ss := range options.SpecSettings.Inputs.Values() {
+		src, err := legacy.FromLegacyStorageSpecToInputSource(ss)
+		if err != nil {
+			return fmt.Errorf("failed to process input %s: %w", ss.Name, err)
+		}
+
+		job.Tasks[0].InputSources = append(job.Tasks[0].InputSources, src)
+	}
+	return nil
+}
+
+func prepareLabels(options *ExecOptions, job *models.Job) error {
+	if len(options.SpecSettings.Labels) > 0 {
+		if labels, err := parse.StringSliceToMap(options.SpecSettings.Labels); err != nil {
+			return err
+		} else {
+			job.Labels = labels
+		}
+	}
+	return nil
+}
+
+func prepareEnvVars(options *ExecOptions, job *models.Job) error {
+	if len(options.SpecSettings.EnvVar) > 0 {
+		if env, err := parse.StringSliceToMap(options.SpecSettings.EnvVar); err != nil {
+			return err
+		} else {
+			job.Tasks[0].Env = env
+		}
+	}
+	return nil
+}
+
+func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Job) error {
+	legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
+	if err != nil {
+		return err
+	}
+
+	job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
+	for _, output := range legacyOutputs {
+		rp := &models.ResultPath{
+			Name: output.Name,
+			Path: output.Path,
+		}
+
+		e := rp.Validate()
+		if e != nil {
+			return e
+		}
+
+		job.Tasks[0].ResultPaths = append(job.Tasks[0].ResultPaths, rp)
+	}
+
+	return nil
 }
 
 // addInlineContent will use codeLocation to determine if it is a single file or a
@@ -210,9 +314,12 @@ func addInlineContent(ctx context.Context, codeLocation string, job *models.Job)
 
 	target := "/code"
 
-	finfo, _ := os.Stat(absPath)
-	if !finfo.IsDir() {
-		target = fmt.Sprintf("/code/%s", finfo.Name())
+	if finfo, err := os.Stat(absPath); err != nil {
+		return fmt.Errorf("file '%s' not found", codeLocation)
+	} else {
+		if !finfo.IsDir() {
+			target = fmt.Sprintf("/code/%s", finfo.Name())
+		}
 	}
 
 	specConfig, err := inline.NewStorage().Upload(ctx, absPath)
