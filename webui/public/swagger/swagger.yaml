@@ -1,0 +1,1477 @@
+basePath: /api/v1
+definitions:
+  legacymodels.CancelRequest:
+    properties:
+      client_public_key:
+        description: 'The base64-encoded public key of the client:'
+        type: string
+      payload:
+        allOf:
+        - $ref: '#/definitions/model.JobCancelPayload'
+        description: The data needed to cancel a running job on the network
+      signature:
+        description: 'A base64-encoded signature of the data, signed by the client:'
+        type: string
+    required:
+    - client_public_key
+    - payload
+    - signature
+    type: object
+  legacymodels.CancelResponse:
+    properties:
+      state:
+        $ref: '#/definitions/model.JobState'
+    type: object
+  legacymodels.EventFilterOptions:
+    properties:
+      exclude_execution_level:
+        type: boolean
+      exclude_job_level:
+        type: boolean
+      execution_id:
+        type: string
+      node_id:
+        type: string
+      since:
+        type: integer
+    type: object
+  legacymodels.EventsRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+      filters:
+        allOf:
+        - $ref: '#/definitions/legacymodels.EventFilterOptions'
+        description: Records the number of seconds since the unix epoch (UTC)
+      job_id:
+        example: 9304c616-291f-41ad-b862-54e133c0149e
+        type: string
+    type: object
+  legacymodels.EventsResponse:
+    properties:
+      events:
+        items:
+          $ref: '#/definitions/model.JobHistory'
+        type: array
+    type: object
+  legacymodels.ListRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+      exclude_tags:
+        example:
+        - '[''any-tag'']'
+        items:
+          type: string
+        type: array
+      id:
+        example: 9304c616-291f-41ad-b862-54e133c0149e
+        type: string
+      include_tags:
+        example:
+        - '[''any-tag'']'
+        items:
+          type: string
+        type: array
+      max_jobs:
+        example: 10
+        type: integer
+      return_all:
+        type: boolean
+      sort_by:
+        example: created_at
+        type: string
+      sort_reverse:
+        type: boolean
+    type: object
+  legacymodels.ListResponse:
+    properties:
+      jobs:
+        items:
+          $ref: '#/definitions/model.JobWithInfo'
+        type: array
+    type: object
+  legacymodels.LogRequest:
+    properties:
+      client_public_key:
+        description: 'The base64-encoded public key of the client:'
+        type: string
+      payload:
+        allOf:
+        - $ref: '#/definitions/model.LogsPayload'
+        description: The data needed to cancel a running job on the network
+      signature:
+        description: 'A base64-encoded signature of the data, signed by the client:'
+        type: string
+    required:
+    - client_public_key
+    - payload
+    - signature
+    type: object
+  legacymodels.ResultsResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/model.PublishedResult'
+        type: array
+    type: object
+  legacymodels.StateRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+      job_id:
+        example: 9304c616-291f-41ad-b862-54e133c0149e
+        type: string
+    type: object
+  legacymodels.StateResponse:
+    properties:
+      state:
+        $ref: '#/definitions/model.JobState'
+    type: object
+  legacymodels.SubmitRequest:
+    properties:
+      client_public_key:
+        description: 'The base64-encoded public key of the client:'
+        type: string
+      payload:
+        allOf:
+        - $ref: '#/definitions/model.JobCreatePayload'
+        description: The data needed to cancel a running job on the network
+      signature:
+        description: 'A base64-encoded signature of the data, signed by the client:'
+        type: string
+    required:
+    - client_public_key
+    - payload
+    - signature
+    type: object
+  legacymodels.SubmitResponse:
+    properties:
+      job:
+        $ref: '#/definitions/model.Job'
+    type: object
+  legacymodels.VersionRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+    type: object
+  legacymodels.VersionResponse:
+    properties:
+      build_version_info:
+        $ref: '#/definitions/models.BuildVersionInfo'
+    type: object
+  model.Deal:
+    properties:
+      Concurrency:
+        description: |-
+          The maximum number of concurrent compute node bids that will be
+          accepted by the requester node on behalf of the client.
+        type: integer
+      TargetingMode:
+        description: |-
+          Whether the job should be run on any matching node (false) or all
+          matching nodes (true). If true, other fields in this struct are ignored.
+        type: boolean
+    type: object
+  model.Engine:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    type: integer
+    x-enum-comments:
+      engineDone: must be last
+      engineUnknown: must be first
+    x-enum-varnames:
+    - engineUnknown
+    - EngineNoop
+    - EngineDocker
+    - EngineWasm
+    - engineDone
+  model.EngineSpec:
+    properties:
+      params:
+        additionalProperties: true
+        type: object
+      type:
+        type: string
+    type: object
+  model.ExecutionDesiredState:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - ExecutionDesiredStatePending
+    - ExecutionDesiredStateRunning
+    - ExecutionDesiredStateStopped
+  model.ExecutionState:
+    properties:
+      ComputeReference:
+        description: Compute node reference for this job execution
+        type: string
+      CreateTime:
+        description: CreateTime is the time when the job was created.
+        type: string
+      DesiredState:
+        allOf:
+        - $ref: '#/definitions/model.ExecutionDesiredState'
+        description: DesiredState is the desired state of the execution
+      JobID:
+        description: JobID the job id
+        type: string
+      NodeId:
+        description: which node is running this execution
+        type: string
+      PublishedResults:
+        allOf:
+        - $ref: '#/definitions/model.StorageSpec'
+        description: the published results for this execution
+      RunOutput:
+        allOf:
+        - $ref: '#/definitions/model.RunCommandResult'
+        description: RunOutput of the job
+      State:
+        allOf:
+        - $ref: '#/definitions/model.ExecutionStateType'
+        description: State is the current state of the execution
+      Status:
+        description: an arbitrary status message
+        type: string
+      UpdateTime:
+        description: UpdateTime is the time when the job state was last updated.
+        type: string
+      Version:
+        description: Version is the version of the job state. It is incremented every
+          time the job state is updated.
+        type: integer
+    type: object
+  model.ExecutionStateType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    type: integer
+    x-enum-comments:
+      ExecutionStateBidAccepted: aka running
+    x-enum-varnames:
+    - ExecutionStateUndefined
+    - ExecutionStateNew
+    - ExecutionStateAskForBid
+    - ExecutionStateAskForBidAccepted
+    - ExecutionStateAskForBidRejected
+    - ExecutionStateBidAccepted
+    - ExecutionStateBidRejected
+    - ExecutionStateCompleted
+    - ExecutionStateFailed
+    - ExecutionStateCancelled
+  model.Job:
+    properties:
+      APIVersion:
+        example: V1beta1
+        type: string
+      Metadata:
+        allOf:
+        - $ref: '#/definitions/model.Metadata'
+        description: TODO this doesn't seem like it should be a part of the job as
+          it cannot be known by a client ahead of time.
+      Spec:
+        allOf:
+        - $ref: '#/definitions/model.Spec'
+        description: The specification of this job.
+    type: object
+  model.JobCancelPayload:
+    properties:
+      ClientID:
+        description: the id of the client that is submitting the job
+        type: string
+      JobID:
+        description: the job id of the job to be canceled
+        type: string
+      Reason:
+        description: The reason that the job is being canceled
+        type: string
+    required:
+    - ClientID
+    - JobID
+    type: object
+  model.JobCreatePayload:
+    properties:
+      APIVersion:
+        example: V1beta1
+        type: string
+      ClientID:
+        description: the id of the client that is submitting the job
+        type: string
+      Spec:
+        allOf:
+        - $ref: '#/definitions/model.Spec'
+        description: The specification of this job.
+    required:
+    - APIVersion
+    - ClientID
+    - Spec
+    type: object
+  model.JobHistory:
+    properties:
+      Comment:
+        type: string
+      ComputeReference:
+        type: string
+      ExecutionState:
+        $ref: '#/definitions/model.StateChange-model_ExecutionStateType'
+      JobID:
+        type: string
+      JobState:
+        $ref: '#/definitions/model.StateChange-model_JobStateType'
+      NewVersion:
+        type: integer
+      NodeID:
+        type: string
+      Time:
+        type: string
+      Type:
+        $ref: '#/definitions/model.JobHistoryType'
+    type: object
+  model.JobHistoryType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - jobHistoryTypeUndefined
+    - JobHistoryTypeJobLevel
+    - JobHistoryTypeExecutionLevel
+  model.JobRequester:
+    properties:
+      RequesterNodeID:
+        description: The ID of the requester node that owns this job.
+        example: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+        type: string
+      RequesterPublicKey:
+        description: |-
+          The public key of the Requester node that created this job
+          This can be used to encrypt messages back to the creator
+        items:
+          type: integer
+        type: array
+    type: object
+  model.JobSpecDocker:
+    properties:
+      Entrypoint:
+        description: optionally override the default entrypoint
+        items:
+          type: string
+        type: array
+      EnvironmentVariables:
+        description: a map of env to run the container with
+        items:
+          type: string
+        type: array
+      Image:
+        description: this should be pullable by docker
+        type: string
+      Parameters:
+        description: Parameters holds additional commandline arguments
+        items:
+          type: string
+        type: array
+      WorkingDirectory:
+        description: working directory inside the container
+        type: string
+    type: object
+  model.JobSpecWasm:
+    properties:
+      EntryModule:
+        allOf:
+        - $ref: '#/definitions/model.StorageSpec'
+        description: The module that contains the WASM code to start running.
+      EntryPoint:
+        description: |-
+          The name of the function in the EntryModule to call to run the job. For
+          WASI jobs, this will always be `_start`, but jobs can choose to call
+          other WASM functions instead. The EntryPoint must be a zero-parameter
+          zero-result function.
+        type: string
+      EnvironmentVariables:
+        additionalProperties:
+          type: string
+        description: The variables available in the environment of the running program.
+        type: object
+      ImportModules:
+        description: |-
+          TODO #880: Other WASM modules whose exports will be available as imports
+          to the EntryModule.
+        items:
+          $ref: '#/definitions/model.StorageSpec'
+        type: array
+      Parameters:
+        description: The arguments supplied to the program (i.e. as ARGV).
+        items:
+          type: string
+        type: array
+    type: object
+  model.JobState:
+    properties:
+      CreateTime:
+        description: CreateTime is the time when the job was created.
+        type: string
+      Executions:
+        description: |-
+          Executions is a list of executions of the job across the nodes.
+          A new execution is created when a node is selected to execute the job, and a node can have multiple executions for the same
+          job due to retries, but there can only be a single active execution per node at any given time.
+        items:
+          $ref: '#/definitions/model.ExecutionState'
+        type: array
+      JobID:
+        description: JobID is the unique identifier for the job
+        type: string
+      State:
+        allOf:
+        - $ref: '#/definitions/model.JobStateType'
+        description: State is the current state of the job
+      TimeoutAt:
+        description: TimeoutAt is the time when the job will be timed out if it is
+          not completed.
+        type: string
+      UpdateTime:
+        description: UpdateTime is the time when the job state was last updated.
+        type: string
+      Version:
+        description: Version is the version of the job state. It is incremented every
+          time the job state is updated.
+        type: integer
+    type: object
+  model.JobStateType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    type: integer
+    x-enum-varnames:
+    - JobStateUndefined
+    - JobStateNew
+    - JobStateInProgress
+    - JobStateCancelled
+    - JobStateError
+    - JobStateCompleted
+    - JobStateQueued
+  model.JobWithInfo:
+    properties:
+      History:
+        description: History of changes to the job state. Not always populated in
+          the job description
+        items:
+          $ref: '#/definitions/model.JobHistory'
+        type: array
+      Job:
+        allOf:
+        - $ref: '#/definitions/model.Job'
+        description: Job info
+      State:
+        allOf:
+        - $ref: '#/definitions/model.JobState'
+        description: The current state of the job
+    type: object
+  model.LabelSelectorRequirement:
+    properties:
+      Key:
+        description: key is the label key that the selector applies to.
+        type: string
+      Operator:
+        description: |-
+          operator represents a key's relationship to a set of values.
+          Valid operators are In, NotIn, Exists and DoesNotExist.
+        type: string
+      Values:
+        description: |-
+          values is an array of string values. If the operator is In or NotIn,
+          the values array must be non-empty. If the operator is Exists or DoesNotExist,
+          the values array must be empty. This array is replaced during a strategic
+        items:
+          type: string
+        type: array
+    type: object
+  model.LogsPayload:
+    properties:
+      ClientID:
+        description: the id of the client that is requesting the logs
+        type: string
+      ExecutionID:
+        description: the execution to be shown
+        type: string
+      Follow:
+        description: whether the logs should be followed after the current logs are
+          shown
+        type: boolean
+      JobID:
+        description: the job id of the job to be shown
+        type: string
+      WithHistory:
+        description: whether the logs history is required
+        type: boolean
+    required:
+    - ClientID
+    - ExecutionID
+    - JobID
+    type: object
+  model.Metadata:
+    properties:
+      ClientID:
+        description: The ID of the client that created this job.
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+      CreatedAt:
+        description: Time the job was submitted to the bacalhau network.
+        example: "2022-11-17T13:29:01.871140291Z"
+        type: string
+      ID:
+        description: The unique global ID of this job in the bacalhau network.
+        example: 92d5d4ee-3765-4f78-8353-623f5f26df08
+        type: string
+      Requester:
+        $ref: '#/definitions/model.JobRequester'
+    type: object
+  model.Network:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - NetworkNone
+    - NetworkFull
+    - NetworkHTTP
+  model.NetworkConfig:
+    properties:
+      Domains:
+        items:
+          type: string
+        type: array
+      Type:
+        $ref: '#/definitions/model.Network'
+    type: object
+  model.PublishedResult:
+    properties:
+      Data:
+        $ref: '#/definitions/model.StorageSpec'
+      NodeID:
+        type: string
+    type: object
+  model.Publisher:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    type: integer
+    x-enum-comments:
+      publisherDone: must be last
+      publisherUnknown: must be first
+    x-enum-varnames:
+    - publisherUnknown
+    - PublisherNoop
+    - PublisherIpfs
+    - PublisherEstuary
+    - PublisherS3
+    - publisherDone
+  model.PublisherSpec:
+    properties:
+      Params:
+        additionalProperties: true
+        type: object
+      Type:
+        $ref: '#/definitions/model.Publisher'
+    type: object
+  model.ResourceUsageConfig:
+    properties:
+      CPU:
+        description: https://github.com/BTBurke/k8sresource string
+        type: string
+      Disk:
+        type: string
+      GPU:
+        description: unsigned integer string
+        type: string
+      Memory:
+        description: github.com/c2h5oh/datasize string
+        type: string
+    type: object
+  model.RunCommandResult:
+    properties:
+      exitCode:
+        description: exit code of the run.
+        type: integer
+      runnerError:
+        description: Runner error
+        type: string
+      stderr:
+        description: stderr of the run.
+        type: string
+      stderrtruncated:
+        description: bool describing if stderr was truncated
+        type: boolean
+      stdout:
+        description: stdout of the run. Yaml provided for `describe` output
+        type: string
+      stdouttruncated:
+        description: bool describing if stdout was truncated
+        type: boolean
+    type: object
+  model.S3StorageSpec:
+    properties:
+      Bucket:
+        type: string
+      Checksum:
+        type: string
+      Endpoint:
+        type: string
+      Key:
+        type: string
+      Region:
+        type: string
+      VersionID:
+        type: string
+    type: object
+  model.Spec:
+    properties:
+      Annotations:
+        description: Annotations on the job - could be user or machine assigned
+        items:
+          type: string
+        type: array
+      Deal:
+        allOf:
+        - $ref: '#/definitions/model.Deal'
+        description: The deal the client has made, such as which job bids they have
+          accepted.
+      DoNotTrack:
+        description: Do not track specified by the client
+        type: boolean
+      Docker:
+        allOf:
+        - $ref: '#/definitions/model.JobSpecDocker'
+        description: 'Deprecated: use EngineSpec.'
+      Engine:
+        allOf:
+        - $ref: '#/definitions/model.Engine'
+        description: 'Deprecated: use EngineSpec.'
+      EngineSpec:
+        $ref: '#/definitions/model.EngineSpec'
+      Inputs:
+        description: |-
+          the data volumes we will read in the job
+          for example "read this ipfs cid"
+        items:
+          $ref: '#/definitions/model.StorageSpec'
+        type: array
+      Network:
+        allOf:
+        - $ref: '#/definitions/model.NetworkConfig'
+        description: The type of networking access that the job needs
+      NodeSelectors:
+        description: NodeSelectors is a selector which must be true for the compute
+          node to run this job.
+        items:
+          $ref: '#/definitions/model.LabelSelectorRequirement'
+        type: array
+      Outputs:
+        description: |-
+          the data volumes we will write in the job
+          for example "write the results to ipfs"
+        items:
+          $ref: '#/definitions/model.StorageSpec'
+        type: array
+      Publisher:
+        allOf:
+        - $ref: '#/definitions/model.Publisher'
+        description: 'Deprecated: use PublisherSpec instead'
+      PublisherSpec:
+        $ref: '#/definitions/model.PublisherSpec'
+      Resources:
+        allOf:
+        - $ref: '#/definitions/model.ResourceUsageConfig'
+        description: the compute (cpu, ram) resources this job requires
+      Timeout:
+        description: |-
+          How long a job can run in seconds before it is killed.
+          This includes the time required to run, verify and publish results
+        type: integer
+      Wasm:
+        allOf:
+        - $ref: '#/definitions/model.JobSpecWasm'
+        description: 'Deprecated: use EngineSpec.'
+    type: object
+  model.StateChange-model_ExecutionStateType:
+    properties:
+      New:
+        $ref: '#/definitions/model.ExecutionStateType'
+      Previous:
+        $ref: '#/definitions/model.ExecutionStateType'
+    type: object
+  model.StateChange-model_JobStateType:
+    properties:
+      New:
+        $ref: '#/definitions/model.JobStateType'
+      Previous:
+        $ref: '#/definitions/model.JobStateType'
+    type: object
+  model.StorageSourceType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    type: integer
+    x-enum-comments:
+      storageSourceDone: must be last
+      storageSourceUnknown: must be first
+    x-enum-varnames:
+    - storageSourceUnknown
+    - StorageSourceIPFS
+    - StorageSourceRepoClone
+    - StorageSourceRepoCloneLFS
+    - StorageSourceURLDownload
+    - StorageSourceEstuary
+    - StorageSourceInline
+    - StorageSourceLocalDirectory
+    - StorageSourceS3
+    - storageSourceDone
+  model.StorageSpec:
+    properties:
+      CID:
+        description: |-
+          The unique ID of the data, where it makes sense (for example, in an
+          IPFS storage spec this will be the data's CID).
+          NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
+        example: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+        type: string
+      Metadata:
+        additionalProperties:
+          type: string
+        description: Additional properties specific to each driver
+        type: object
+      Name:
+        description: Name of the spec's data, for reference.
+        example: job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+        type: string
+      Path:
+        description: |-
+          The path that the spec's data should be mounted on, where it makes
+          sense (for example, in a Docker storage spec this will be a filesystem
+          path).
+        type: string
+      ReadWrite:
+        description: Allow write access for locally mounted inputs
+        type: boolean
+      Repo:
+        description: URL of the git Repo to clone
+        type: string
+      S3:
+        $ref: '#/definitions/model.S3StorageSpec'
+      SourcePath:
+        description: The path of the host data if we are using local directory paths
+        type: string
+      StorageSource:
+        allOf:
+        - $ref: '#/definitions/model.StorageSourceType'
+        description: |-
+          StorageSource is the abstract source of the data. E.g. a storage source
+          might be a URL download, but doesn't specify how the execution engine
+          does the download or what it will do with the downloaded data.
+      URL:
+        description: Source URL of the data
+        type: string
+    type: object
+  models.BuildVersionInfo:
+    properties:
+      BuildDate:
+        example: "2022-11-16T14:03:31Z"
+        type: string
+      GOARCH:
+        example: amd64
+        type: string
+      GOOS:
+        example: linux
+        type: string
+      GitCommit:
+        example: d612b63108f2b5ce1ab2b9e02444eb1dac1d922d
+        type: string
+      GitVersion:
+        example: v0.3.12
+        type: string
+      Major:
+        example: "0"
+        type: string
+      Minor:
+        example: "3"
+        type: string
+    type: object
+  models.ComputeNodeInfo:
+    properties:
+      AvailableCapacity:
+        $ref: '#/definitions/models.Resources'
+      EnqueuedExecutions:
+        type: integer
+      ExecutionEngines:
+        items:
+          type: string
+        type: array
+      MaxCapacity:
+        $ref: '#/definitions/models.Resources'
+      MaxJobRequirements:
+        $ref: '#/definitions/models.Resources'
+      Publishers:
+        items:
+          type: string
+        type: array
+      RunningExecutions:
+        type: integer
+      StorageSources:
+        items:
+          type: string
+        type: array
+    type: object
+  models.GPU:
+    properties:
+      index:
+        description: Self-reported index of the device in the system
+        type: integer
+      memory:
+        description: Total GPU memory in mebibytes (MiB)
+        type: integer
+      name:
+        description: Model name of the GPU e.g. Tesla T4
+        type: string
+      pciaddress:
+        description: |-
+          PCI address of the device, in the format AAAA:BB:CC.C
+          Used to discover the correct device rendering cards
+        type: string
+      vendor:
+        allOf:
+        - $ref: '#/definitions/models.GPUVendor'
+        description: Maker of the GPU, e.g. NVidia, AMD, Intel
+    type: object
+  models.GPUVendor:
+    enum:
+    - NVIDIA
+    - AMD/ATI
+    - Intel
+    type: string
+    x-enum-varnames:
+    - GPUVendorNvidia
+    - GPUVendorAMDATI
+    - GPUVendorIntel
+  models.NodeInfo:
+    description: Information about the node.
+    properties:
+      ComputeNodeInfo:
+        $ref: '#/definitions/models.ComputeNodeInfo'
+      Labels:
+        additionalProperties:
+          type: string
+        type: object
+      NodeType:
+        $ref: '#/definitions/models.NodeType'
+      PeerInfo:
+        type: integer
+      Version:
+        $ref: '#/definitions/models.BuildVersionInfo'
+    type: object
+  models.NodeType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - nodeTypeUndefined
+    - NodeTypeRequester
+    - NodeTypeCompute
+  models.Resources:
+    properties:
+      CPU:
+        description: CPU units
+        type: number
+      Disk:
+        description: Disk in bytes
+        type: integer
+      GPU:
+        description: GPU units
+        type: integer
+      GPUs:
+        description: GPU details
+        items:
+          $ref: '#/definitions/models.GPU'
+        type: array
+      Memory:
+        description: Memory in bytes
+        type: integer
+    type: object
+  types.FreeSpace:
+    properties:
+      IPFSMount:
+        $ref: '#/definitions/types.MountStatus'
+      root:
+        $ref: '#/definitions/types.MountStatus'
+      tmp:
+        $ref: '#/definitions/types.MountStatus'
+    type: object
+  types.HealthInfo:
+    properties:
+      FreeSpace:
+        $ref: '#/definitions/types.FreeSpace'
+    type: object
+  types.MountStatus:
+    properties:
+      All:
+        type: integer
+      Free:
+        type: integer
+      Used:
+        type: integer
+    type: object
+externalDocs:
+  description: Bacalhau Documentation
+  url: https://docs.bacalhau.org
+host: localhost:1234
+info:
+  contact:
+    email: support@bacalhau.org
+    name: API Support
+    url: https://www.expanso.io/contact/
+  description: The Bacalhau API is a RESTful API that allows you to interact with
+    the Bacalhau network.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://bacalhau.org/terms/
+  title: Bacalhau API
+  version: v1
+paths:
+  /api/v1/agent/alive:
+    get:
+      operationId: agent/alive
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK" apimodels.Alive
+          schema:
+            type: string
+      tags:
+      - Ops
+  /api/v1/agent/node:
+    get:
+      operationId: agent/node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.NodeInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the info of the node.
+      tags:
+      - Ops
+  /api/v1/agent/node/{id}:
+    get:
+      description: Returns the node ID.
+      operationId: NodeInfo_ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get node ID.
+      tags:
+      - Ops
+  /api/v1/agent/version:
+    get:
+      description: See https://github.com/bacalhau-project/bacalhau/releases for a
+        complete list of `gitversion` tags.
+      operationId: agent/version
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.BuildVersionInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the build version running on the server.
+      tags:
+      - Ops
+  /api/v1/compute/approve:
+    get:
+      operationId: apiServer/approver
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Approves a job to be run on this compute node.
+  /api/v1/compute/debug:
+    get:
+      operationId: apiServer/debug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns debug information on what the current node is doing.
+      tags:
+      - Health
+  /api/v1/healthz:
+    get:
+      operationId: healthz
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.HealthInfo'
+      tags:
+      - Utils
+  /api/v1/id:
+    get:
+      operationId: id
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the id of the host node.
+      tags:
+      - Utils
+  /api/v1/livez:
+    get:
+      operationId: livez
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: TODO
+          schema:
+            type: string
+      tags:
+      - Utils
+  /api/v1/node_info:
+    get:
+      operationId: nodeInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.NodeInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the info of the node.
+      tags:
+      - Utils
+  /api/v1/peers:
+    get:
+      description: |-
+        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture),
+        each node is connected to a number of peer nodes.
+      operationId: peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the peers connected to the host via the transport layer.
+      tags:
+      - Utils
+  /api/v1/requester/cancel:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Cancels a job specified by `id` as long as that job belongs to `client_id`.
+        Returns the current jobstate after the cancel request has been processed.
+      operationId: pkg/requester/publicapi/cancel
+      parameters:
+      - description: ' '
+        in: body
+        name: CancelRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.CancelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.CancelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Cancels the job with the job-id specified in the body payload.
+      tags:
+      - Job
+  /api/v1/requester/debug:
+    get:
+      operationId: pkg/requester/publicapi/debug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns debug information on what the current node is doing.
+      tags:
+      - Health
+  /api/v1/requester/events:
+    post:
+      consumes:
+      - application/json
+      description: Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished)
+        are useful to track the progress of a job.
+      operationId: pkg/requester/publicapi/events
+      parameters:
+      - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
+          you can do the following: (1) submit a dummy job to Bacalhau (or use one
+          you created before), (2) run `bacalhau describe <job-id>` and fetch the
+          `ClientID` field.'
+        in: body
+        name: EventsRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.EventsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.EventsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the events related to the job-id passed in the body payload.
+        Useful for troubleshooting.
+      tags:
+      - Job
+  /api/v1/requester/list:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).
+        If `return_all` is set to true, it returns all jobs on the Bacalhau network.
+        If `id` is set, it returns only the job with that ID.
+      operationId: pkg/requester/publicapi/list
+      parameters:
+      - description: Set `return_all` to `true` to return all jobs on the network
+          (may degrade performance, use with care!).
+        in: body
+        name: ListRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.ListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.ListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Simply lists jobs.
+      tags:
+      - Job
+  /api/v1/requester/logs:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Shows the output from the job specified by `id` as long as that job belongs to `client_id`.
+        The output will be continuous until either, the client disconnects or the execution completes.
+      operationId: pkg/requester/publicapi/logs
+      parameters:
+      - description: ' '
+        in: body
+        name: LogRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.LogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Displays the logs for a current job/execution
+      tags:
+      - Job
+  /api/v1/requester/nodes:
+    get:
+      consumes:
+      - application/json
+      operationId: pkg/requester/publicapi/nodes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.NodeInfo'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Displays the nodes that this requester knows about
+  /api/v1/requester/results:
+    post:
+      consumes:
+      - application/json
+      operationId: pkg/requester/publicapi/results
+      parameters:
+      - description: ' '
+        in: body
+        name: StateRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.StateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.ResultsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the results of the job-id specified in the body payload.
+      tags:
+      - Job
+  /api/v1/requester/states:
+    post:
+      consumes:
+      - application/json
+      operationId: pkg/requester/publicapi/states
+      parameters:
+      - description: ' '
+        in: body
+        name: StateRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.StateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.StateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the state of the job-id specified in the body payload.
+      tags:
+      - Job
+  /api/v1/requester/submit:
+    post:
+      consumes:
+      - application/json
+      operationId: pkg/requester/publicapi/submit
+      parameters:
+      - description: ' '
+        in: body
+        name: SubmitRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.SubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.SubmitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Submits a new job to the network.
+      tags:
+      - Job
+  /api/v1/version:
+    post:
+      consumes:
+      - application/json
+      description: See https://github.com/bacalhau-project/bacalhau/releases for a
+        complete list of `gitversion` tags.
+      operationId: apiServer/version
+      parameters:
+      - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
+          you can do the following: (1) submit a dummy job to Bacalhau (or use one
+          you created before), (2) run `bacalhau describe <job-id>` and fetch the
+          `ClientID` field.'
+        in: body
+        name: VersionRequest
+        required: true
+        schema:
+          $ref: '#/definitions/legacymodels.VersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/legacymodels.VersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the build version running on the server.
+      tags:
+      - Misc
+swagger: "2.0"

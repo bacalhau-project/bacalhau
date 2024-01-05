@@ -276,7 +276,7 @@ func NewNode(
 	}
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
-	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+	// TODO(forrest) #3167 [fixme] we should fix this to make it less racy in testing
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
 		PubSub:           nodeInfoPubSub,
 		NodeInfoProvider: nodeInfoProvider,
