@@ -74,7 +74,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Look for matching nodes and create new executions if:
 	// - Ops jobs: this is the first time we are evaluating the job
-	// - Daemon jobs: everytime the job is evaluated
+	// - Daemon jobs: every time the job is evaluated
 	var newExecs execSet
 	if job.Type == models.JobTypeDaemon || len(existingExecs) == 0 {
 		newExecs, err = b.createMissingExecs(ctx, &job, plan)

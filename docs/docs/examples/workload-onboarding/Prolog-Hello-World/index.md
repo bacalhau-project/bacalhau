@@ -72,7 +72,7 @@ Using the `IPFS cli`
 !nohup ipfs daemon > startup.log &
 ```
 
-Run the command below to check if our script has been uploaded. This commmand outputs the CID.
+Run the command below to check if our script has been uploaded. This command outputs the CID.
 
 
 ```python

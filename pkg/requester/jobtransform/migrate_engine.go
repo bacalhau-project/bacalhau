@@ -49,7 +49,7 @@ func migrateForward(job *model.Job) (bool, error) {
 			Build()
 		return true, nil
 	default:
-		return false, fmt.Errorf("unhandled valied engine: %s", job.Spec.Engine)
+		return false, fmt.Errorf("unhandled valid engine: %s", job.Spec.Engine)
 	}
 }
 

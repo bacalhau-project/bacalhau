@@ -28,7 +28,7 @@ func TestFanoutPublisher(t *testing.T) {
 			NewFanoutPublisher([]publisher.Publisher{&uninstalledPublisher, &sleepyPublisher}),
 			sleepyPublisher,
 		},
-		"noone is installed": {
+		"no publisher is installed": {
 			NewFanoutPublisher([]publisher.Publisher{&uninstalledPublisher}),
 			uninstalledPublisher,
 		},
@@ -48,7 +48,7 @@ func TestFanoutPublisher(t *testing.T) {
 			NewFanoutPublisher([]publisher.Publisher{&sleepyPublisher, &healthyPublisher}, WithTimeout(time.Millisecond*20), WithPrioritization()),
 			healthyPublisher,
 		},
-		"waits for unprioritized value": {
+		"waits for non-prioritized value": {
 			NewFanoutPublisher([]publisher.Publisher{&errorPublisher, &sleepyPublisher}, WithTimeout(time.Millisecond*100), WithPrioritization()),
 			sleepyPublisher,
 		},

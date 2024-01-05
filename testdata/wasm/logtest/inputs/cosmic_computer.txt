@@ -2,7 +2,7 @@ The Project Gutenberg EBook of The Cosmic Computer, by Henry Beam Piper
 
 This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.  You may copy it, give it away or
-re-use it under the terms of the Project Gutenberg License included
+reuse it under the terms of the Project Gutenberg License included
 with this eBook or online at www.gutenberg.org
 
 
@@ -8063,7 +8063,7 @@ copied or distributed:
 
 This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.  You may copy it, give it away or
-re-use it under the terms of the Project Gutenberg License included
+reuse it under the terms of the Project Gutenberg License included
 with this eBook or online at www.gutenberg.org
 
 1.E.2.  If an individual Project Gutenberg-tm electronic work is derived

@@ -17,6 +17,7 @@ func NewViperWithDefaultConfig(cfg types.BacalhauConfig) *viper.Viper {
 	return viperSchema
 }
 
+
 func singleValueOrError(v ...string) (string, error) {
 	if len(v) != 1 {
 		return "", fmt.Errorf("expected single value got %d from %q", len(v), v)

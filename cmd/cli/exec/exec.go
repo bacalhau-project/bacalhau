@@ -187,7 +187,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	}
 
 	// Process --code if anything was specified. In future we may want to try and determine this
-	// ourselves where it is not specified, but it will likely be dependendent on job type.
+	// ourselves where it is not specified, but it will likely be dependent on job type.
 	if options.Code != "" {
 		if err = addInlineContent(cmd.Context(), options.Code, job); err != nil {
 			return nil, err
