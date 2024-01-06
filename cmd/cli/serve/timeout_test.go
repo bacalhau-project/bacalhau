@@ -20,7 +20,7 @@ var (
 	halfNonZeroTimeout = nonZeroTimeout / 2
 )
 
-func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
+func (s *tServeSuite) TestNoTimeoutSetOrApplied() {
 	docker.MustHaveDocker(s.T())
 
 	cases := []struct {
@@ -58,7 +58,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			clientV2 := clientv2.New(clientv2.Options{
 				Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 			})
-			s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
+			s.Require().NoError(apitest.WaitForAlive(s.Ctx, clientV2))
 
 			testJob := model.NewJob()
 			specOpts := []job.SpecOpt{}
@@ -68,11 +68,11 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			testJob.Spec, err = job.MakeSpec(specOpts...)
 			s.Require().NoError(err)
 
-			returnedJob, err := client.Submit(s.ctx, testJob)
+			returnedJob, err := client.Submit(s.Ctx, testJob)
 			s.Require().NoError(err)
 
 			s.Eventually(func() bool {
-				jobState, err := client.GetJobState(s.ctx, returnedJob.ID())
+				jobState, err := client.GetJobState(s.Ctx, returnedJob.ID())
 				s.Require().NoError(err)
 				s.Require().Equal(model.JobStateError.String(), jobState.State.String())
 				return true
