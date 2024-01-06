@@ -99,6 +99,7 @@ func (s *tWebUISuite) Test200ForSwagger() {
 		{"/swagger/", http.StatusOK, swaggerContentString},
 		{"/swagger/index.html", http.StatusOK, swaggerContentString},
 		{"/swagger/BAD_PATH", http.StatusNotFound, ""},
+		{"/swagger/swagger.json", http.StatusOK, "\"swagger\": \"2.0\","},
 	}
 
 	webUIPort, err := s.serveForWebUI()
@@ -109,6 +110,7 @@ func (s *tWebUISuite) Test200ForSwagger() {
 		s.Require().NoError(err, "Error curling swagger endpoint")
 		s.Require().Equal(tt.StatusCode, statusCode, "Did not return correct status code.")
 		if tt.Content != "" {
+			s.T().Logf("Content: %s", string(content))
 			s.Require().Contains(string(content), tt.Content, "Did not return correct content.")
 		}
 	}
