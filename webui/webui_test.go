@@ -86,3 +86,30 @@ func (s *tWebUISuite) Test200ForRoot() {
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
+
+func (s *tWebUISuite) Test200ForSwagger() {
+	swaggerContentString := "SwaggerUIBundle"
+
+	// Create table for testing against swagger with Path, StatusCode, content to grep for
+	swaggerTests := []struct {
+		Path       string
+		StatusCode int
+		Content    string
+	}{
+		{"/swagger/", http.StatusOK, swaggerContentString},
+		{"/swagger/index.html", http.StatusOK, swaggerContentString},
+		{"/swagger/BAD_PATH", http.StatusNotFound, ""},
+	}
+
+	webUIPort, err := s.serveForWebUI()
+	s.Require().NoError(err, "Error starting server")
+
+	for _, tt := range swaggerTests {
+		content, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d%s", webUIPort, tt.Path))
+		s.Require().NoError(err, "Error curling swagger endpoint")
+		s.Require().Equal(tt.StatusCode, statusCode, "Did not return correct status code.")
+		if tt.Content != "" {
+			s.Require().Contains(string(content), tt.Content, "Did not return correct content.")
+		}
+	}
+}
