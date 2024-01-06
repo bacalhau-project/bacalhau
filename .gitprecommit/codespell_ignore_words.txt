@@ -139,3 +139,11 @@ errgroup
 stylecheck
 Msgf
 bodyclose
+devstack
+samber
+pluggable
+multierr
+bidstrategy
+rcmgr
+strs
+maddrs

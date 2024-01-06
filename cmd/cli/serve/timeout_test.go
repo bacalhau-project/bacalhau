@@ -51,7 +51,7 @@ func (s *tServeSuite) TestNoTimeoutSetOrApplied() {
 				args = append(args, "--max-job-execution-timeout", tc.configuredMax.String())
 			}
 
-			port, err := s.serve(args...)
+			port, err := s.serveForCLI(args...)
 			s.Require().NoError(err)
 
 			client := client.NewAPIClient("localhost", port)

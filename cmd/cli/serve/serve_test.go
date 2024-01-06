@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
@@ -64,7 +63,7 @@ func (s *tServeSuite) SetupTest() {
 	s.IPFSPort = node.APIPort
 }
 
-func (s *tServeSuite) serve(extraArgs ...string) (uint16, error) {
+func (s *tServeSuite) serveForCLI(extraArgs ...string) (uint16, error) {
 	extraArgs = append(extraArgs, "--repo", s.RepoPath,
 		"--peer", serve.DefaultPeerConnect,
 		"--private-internal-ipfs")
@@ -82,7 +81,7 @@ func (s *tServeSuite) serve(extraArgs ...string) (uint16, error) {
 }
 
 func (s *tServeSuite) TestHealthcheck() {
-	port, _ := s.serve()
+	port, _ := s.serveForCLI()
 	healthzText, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
@@ -92,14 +91,14 @@ func (s *tServeSuite) TestHealthcheck() {
 }
 
 func (s *tServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serveForCLI("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.Out.String()
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
 func (s *tServeSuite) TestAPINotPrintedForRequesterNode() {
-	port, _ := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serveForCLI("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
 	s.Require().NotContains(s.Out.String(), expectedURL)
 }
@@ -107,7 +106,7 @@ func (s *tServeSuite) TestAPINotPrintedForRequesterNode() {
 func (s *tServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	ctx := context.Background()
-	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
+	port, _ := s.serveForCLI("--node-type", "requester", "--node-type", "compute")
 	client := client.NewAPIClient("localhost", port)
 	clientV2 := clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://127.0.0.1:%d", port),
@@ -208,40 +207,3 @@ func (s *tServeSuite) TestGetPeers() {
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
 }
-
-// Begin WebUI Tests
-func (s *tServeSuite) Test200ForNotStartingWebUI() {
-	port, err := s.serve()
-	s.Require().NoError(err, "Error starting server")
-
-	content, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d/", port))
-	_ = content
-	s.Require().NoError(err, "Error curling root endpoint")
-	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
-}
-
-func (s *tServeSuite) Test200ForRoot() {
-	webUIPort, err := freeport.GetFreePort()
-	if err != nil {
-		s.T().Fatal(err, "Could not get port for web-ui")
-	}
-	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
-	s.Require().NoError(err, "Error starting server")
-
-	_, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
-	s.Require().NoError(err, "Error curling root endpoint")
-	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
-}
-
-// TODO: Can't figure out how to make this test work, it spits out the help text
-// func (s *ServeSuite) TestBadBacalhauDir() {
-// 	badDirString := "/BADDIR"
-
-// 	// if we set the peer connect to "env" it should return the peers from the env
-// 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
-// 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
-// 	os.Setenv("BACALHAU_DIR", badDirString)
-// 	_, err := s.serve("--node-type", "requester", "--node-type", "compute", RETURN_ERROR_FLAG)
-// 	s.Require().Contains(s.out.String(), "Could not write to")
-// 	s.Error(err)
-// }
