@@ -450,6 +450,12 @@ jobs:
       - run:
           name: Build Swagger
           command: |
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install golang.org/x/tools/cmd/stringer
+            go install go.uber.org/mock/gomock
+            go install github.com/golang/mock/mockgen
+            go install github.com/swaggo/swag/cmd/swag@latest
             make generate
 
       - persist_to_workspace:
