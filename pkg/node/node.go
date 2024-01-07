@@ -33,8 +33,9 @@ type FeatureConfig struct {
 }
 
 type NetworkConfig struct {
-	UseNATS    bool
-	Libp2pHost host.Host // only set if using libp2p transport, nil otherwise
+	UseNATS        bool
+	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
+	ReconnectDelay time.Duration
 
 	// NATS config for requesters to be reachable by compute nodes
 	Port              int
@@ -202,7 +203,10 @@ func NewNode(
 		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig, nodeInfoStore)
 	} else {
 		libp2pConfig := libp2p_transport.Libp2pTransportConfig{
-			Host: config.NetworkConfig.Libp2pHost,
+			Host:           config.NetworkConfig.Libp2pHost,
+			Peers:          config.NetworkConfig.ClusterPeers,
+			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
+			CleanupManager: config.CleanupManager,
 		}
 		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, nodeInfoStore)
 	}

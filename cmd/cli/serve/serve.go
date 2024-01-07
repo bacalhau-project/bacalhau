@@ -7,20 +7,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -227,13 +225,12 @@ func serve(cmd *cobra.Command) error {
 		}
 		cm.RegisterCallback(libp2pHost.Close)
 
-		// Start transport layer
-		err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
-		if err != nil {
-			return err
+		peersStr := make([]string, len(peers))
+		for i, p := range peers {
+			peersStr[i] = p.String()
 		}
-
 		networkConfig.Libp2pHost = libp2pHost
+		networkConfig.ClusterPeers = peersStr
 		nodeID = libp2pHost.ID().String()
 	}
 

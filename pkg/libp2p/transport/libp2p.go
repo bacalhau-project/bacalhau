@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/hashicorp/go-multierror"
@@ -21,12 +22,16 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/multiformats/go-multiaddr"
 )
 
 const NodeInfoTopic = "bacalhau-node-info"
 
 type Libp2pTransportConfig struct {
-	Host host.Host
+	Host           host.Host
+	Peers          []string
+	ReconnectDelay time.Duration
+	CleanupManager *system.CleanupManager
 }
 
 type Libp2pTransport struct {
@@ -91,6 +96,21 @@ func NewLibp2pTransport(ctx context.Context,
 	computeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
 		Host: libp2pHost,
 	})
+
+	var libp2pPeer []multiaddr.Multiaddr
+	for _, addr := range config.Peers {
+		maddr, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return nil, err
+		}
+		libp2pPeer = append(libp2pPeer, maddr)
+	}
+
+	err = libp2p_host.ConnectToPeersContinuouslyWithRetryDuration(
+		ctx, config.CleanupManager, libp2pHost, libp2pPeer, config.ReconnectDelay)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Libp2pTransport{
 		Host:              libp2pHost,

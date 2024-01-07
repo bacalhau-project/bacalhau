@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
@@ -138,7 +137,6 @@ func Setup(
 		// ////////////////////////////////////
 		// Transport layer (NATS or Libp2p)
 		// ////////////////////////////////////
-		var libp2pPeer []multiaddr.Multiaddr
 		var swarmPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			const startSwarmPort = 4222 // 4222 is the default NATS port
@@ -177,13 +175,7 @@ func Setup(
 		} else {
 			if i == 0 {
 				if stackConfig.Peer != "" {
-					// connect 0'th node to external peer if specified
-					log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", stackConfig.Peer)
-					peerAddr, addrErr := multiaddr.NewMultiaddr(stackConfig.Peer)
-					if addrErr != nil {
-						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
-					}
-					libp2pPeer = append(libp2pPeer, peerAddr)
+					clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, stackConfig.Peer)
 				}
 			} else {
 				p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Libp2pHost.ID().String())
@@ -191,10 +183,7 @@ func Setup(
 					return nil, err
 				}
 				addresses := multiaddresses.SortLocalhostFirst(nodes[0].Libp2pHost.Addrs())
-				// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-				// connecting/joining topics, when using multiple addresses for a single host.
-				libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
-				log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
+				clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, addresses[0].Encapsulate(p2pAddr).String())
 			}
 
 			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, swarmPort)
@@ -287,14 +276,6 @@ func Setup(
 		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
 			return nil, err
-		}
-
-		// Start libp2p connections
-		if clusterConfig.Libp2pHost != nil {
-			err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, clusterConfig.Libp2pHost, libp2pPeer, 2*time.Second)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		// start the node
