@@ -47,7 +47,7 @@ type DevStackOptions struct {
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
-	return []ConfigOption{
+	opts := []ConfigOption{
 		WithNumberOfHybridNodes(o.NumberOfHybridNodes),
 		WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
 		WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
@@ -61,8 +61,11 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
 		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
-		WithNATS(o.UseNATS),
 	}
+	if o.UseNATS {
+		opts = append(opts, WithNATS(o.UseNATS))
+	}
+	return opts
 }
 
 type DevStack struct {

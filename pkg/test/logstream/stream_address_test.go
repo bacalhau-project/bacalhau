@@ -20,6 +20,10 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	docker.MustHaveDocker(s.T())
 
+	if s.stack.Nodes[0].Libp2pHost == nil {
+		// TODO: un-skip once we add log stream support for nats transport layer
+		s.T().Skip("skipping log stream tests for non-libp2p transports")
+	}
 	node := s.stack.Nodes[0]
 
 	task := mock.TaskBuilder().

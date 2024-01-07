@@ -27,7 +27,7 @@ func NewServerManager(ctx context.Context, opts *server.Options) (*ServerManager
 	if err != nil {
 		return nil, err
 	}
-	ns.SetLoggerV2(NewZeroLogger(log.Logger), opts.Debug, opts.Trace, opts.TraceVerbose)
+	ns.SetLoggerV2(NewZeroLogger(log.Logger, opts.ServerName), opts.Debug, opts.Trace, opts.TraceVerbose)
 	go ns.Start()
 	if !ns.ReadyForConnections(ReadyForConnectionsTimeout) {
 		return nil, fmt.Errorf("could not start nats server on time")

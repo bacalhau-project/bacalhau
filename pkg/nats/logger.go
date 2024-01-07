@@ -7,37 +7,44 @@ import (
 
 // ZeroLogger is a wrapper around zerolog.Logger to implement the NATS Logger interface
 type ZeroLogger struct {
-	logger zerolog.Logger
+	logger   zerolog.Logger
+	serverID string
 }
 
 // NewZeroLogger creates a new ZeroLogger
-func NewZeroLogger(logger zerolog.Logger) ZeroLogger {
+func NewZeroLogger(logger zerolog.Logger, serverID string) ZeroLogger {
 	return ZeroLogger{
-		logger: logger,
+		logger:   logger,
+		serverID: serverID,
 	}
 }
 
 func (N ZeroLogger) Noticef(format string, v ...interface{}) {
-	N.logger.Info().Msgf(format, v...)
+	N.logWithLevel(zerolog.InfoLevel, format, v)
 }
 
 func (N ZeroLogger) Warnf(format string, v ...interface{}) {
-	N.logger.Warn().Msgf(format, v...)
+	N.logWithLevel(zerolog.WarnLevel, format, v)
 }
 
 func (N ZeroLogger) Fatalf(format string, v ...interface{}) {
-	N.logger.Fatal().Msgf(format, v...)
+	N.logWithLevel(zerolog.FatalLevel, format, v)
 }
 
 func (N ZeroLogger) Errorf(format string, v ...interface{}) {
-	N.logger.Error().Msgf(format, v...)
+	N.logWithLevel(zerolog.ErrorLevel, format, v)
 }
 
 func (N ZeroLogger) Debugf(format string, v ...interface{}) {
-	N.logger.Debug().Msgf(format, v...)
+	N.logWithLevel(zerolog.DebugLevel, format, v)
 }
+
 func (N ZeroLogger) Tracef(format string, v ...interface{}) {
-	N.logger.Trace().Msgf(format, v...)
+	N.logWithLevel(zerolog.TraceLevel, format, v)
+}
+
+func (N ZeroLogger) logWithLevel(level zerolog.Level, format string, v []interface{}) {
+	N.logger.WithLevel(level).Str("Server", N.serverID).Msgf(format, v...)
 }
 
 // compile-time check whether the ZeroLogger implements the Logger interface

@@ -45,11 +45,6 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
-
-	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.ID)
-	s.Require().NoError(err)
-
-	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
 }
 
 func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {

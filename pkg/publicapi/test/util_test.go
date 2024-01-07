@@ -2,9 +2,12 @@ package test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 
@@ -35,8 +38,18 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 
 	privKey, err := config.GetLibp2pPrivKey()
 	require.NoError(t, err)
-	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
+
+	peerID, err := peer.IDFromPrivateKey(privKey)
 	require.NoError(t, err)
+	nodeID := peerID.String()
+
+	var libp2pHost host.Host
+	_, useNATS := os.LookupEnv("BACALHAU_NODE_NETWORK_USENATS")
+
+	if !useNATS {
+		libp2pHost, err = libp2p.NewHost(libp2pPort, privKey)
+		require.NoError(t, err)
+	}
 
 	computeConfig, err := node.NewComputeConfigWithDefaults()
 	require.NoError(t, err)
@@ -44,7 +57,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
-		NodeID:                    libp2pHost.ID().String(),
+		NodeID:                    nodeID,
 		CleanupManager:            cm,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
@@ -58,6 +71,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		FsRepo:                    fsRepo,
 		NodeInfoStoreTTL:          10 * time.Minute,
 		NetworkConfig: node.NetworkConfig{
+			UseNATS:    useNATS,
 			Libp2pHost: libp2pHost,
 		},
 	}
