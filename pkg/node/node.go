@@ -53,7 +53,6 @@ type NodeConfig struct {
 	NodeID                      string
 	IPFSClient                  ipfs.Client
 	CleanupManager              *system.CleanupManager
-	Host                        host.Host
 	HostAddress                 string
 	APIPort                     uint16
 	RequesterAutoCert           string

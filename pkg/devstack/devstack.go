@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
@@ -172,28 +174,37 @@ func Setup(
 				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("0.0.0.0:%d", clusterPort))
 			}
 		} else {
+			var libp2pPeer []multiaddr.Multiaddr
 			if i == 0 {
 				if stackConfig.Peer != "" {
-					clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, stackConfig.Peer)
+					// connect 0'th node to external peer if specified
+					log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", stackConfig.Peer)
+					peerAddr, addrErr := multiaddr.NewMultiaddr(stackConfig.Peer)
+					if addrErr != nil {
+						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+					}
+					libp2pPeer = append(libp2pPeer, peerAddr)
 				}
 			} else {
 				p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Libp2pHost.ID().String())
 				if err != nil {
 					return nil, err
 				}
-
-				addrs := nodes[0].Libp2pHost.Addrs()[0]
-				addrs = addrs.Encapsulate(p2pAddr)
-				clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, addrs.String())
+				addresses := multiaddresses.SortLocalhostFirst(nodes[0].Libp2pHost.Addrs())
+				// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
+				// connecting/joining topics, when using multiple addresses for a single host.
+				libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
+				log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 			}
 
-			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, clusterConfig.ClusterPeers, swarmPort)
+			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, libp2pPeer, swarmPort)
 			if err != nil {
 				return nil, err
 			}
 
 			// nodeID must match the libp2p host ID
 			nodeID = clusterConfig.Libp2pHost.ID().String()
+			ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
 		}
 
 		// ////////////////////////////////////
@@ -238,7 +249,8 @@ func Setup(
 			IsComputeNode:       isComputeNode,
 			IsRequesterNode:     isRequesterNode,
 			Labels: map[string]string{
-				"name": nodeID,
+				"id":   nodeID,
+				"name": fmt.Sprintf("node-%d", i),
 				"env":  "devstack",
 			},
 			DependencyInjector:        stackConfig.NodeDependencyInjector,
@@ -298,8 +310,16 @@ func Setup(
 	}, nil
 }
 
-func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []string, port int) (host.Host, error) {
+func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []multiaddr.Multiaddr, port int) (host.Host, error) {
 	var err error
+
+	// TODO(forrest): [devstack] Refactor the devstack s.t. each node has its own repo and config.
+	// previously the config would generate a key using the host port as the postfix
+	// this is not longer the case as a node should have a single libp2p key, but since
+	// all devstack nodes share a repo we will get a self dial error if we use the same
+	// key from the config for each devstack node. The solution here is to refactor the
+	// the devstack such that all nodes in the stack have their own repos and configuration
+	// rather than rely on global values and one off key gen via the config.
 
 	privKey, err := bac_libp2p.GeneratePrivateKey(DefaultLibp2pKeySize)
 	if err != nil {
@@ -311,16 +331,8 @@ func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []st
 		return nil, fmt.Errorf("error creating libp2p host: %w", err)
 	}
 
-	var libp2pPeer []multiaddr.Multiaddr
-	for _, addr := range peers {
-		maddr, err := multiaddr.NewMultiaddr(addr)
-		if err != nil {
-			return nil, err
-		}
-		libp2pPeer = append(libp2pPeer, maddr)
-	}
-
-	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, libp2pPeer)
+	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
+	err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, peers, 2*time.Second)
 	if err != nil {
 		return nil, err
 	}

@@ -163,6 +163,7 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 				Msg("Libp2p transport connected to peer")
 		}
 	}
+	log.Ctx(ctx).Debug().Msgf("Current peers: %s", h.Network().Peers())
 	if len(errors) > 0 {
 		return fmt.Errorf("libp2p transport had errors connecting to peers: %s", errors)
 	}

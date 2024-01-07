@@ -46,7 +46,6 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	nodeConfig := node.NodeConfig{
 		NodeID:                    libp2pHost.ID().String(),
 		CleanupManager:            cm,
-		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
 		ComputeConfig:             computeConfig,
@@ -58,6 +57,9 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
 		FsRepo:                    fsRepo,
 		NodeInfoStoreTTL:          10 * time.Minute,
+		NetworkConfig: node.NetworkConfig{
+			Libp2pHost: libp2pHost,
+		},
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)
