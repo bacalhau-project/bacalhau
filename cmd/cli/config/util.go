@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -16,20 +15,6 @@ func NewViperWithDefaultConfig(cfg types.BacalhauConfig) *viper.Viper {
 	viperSchema := viper.New()
 	types.SetDefaults(cfg, types.WithViper(viperSchema))
 	return viperSchema
-}
-
-// parseStringSliceToMap parses a slice of strings into a map.
-// Each element in the slice should be a key-value pair in the form "key=value".
-func parseStringSliceToMap(slice []string) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, item := range slice {
-		key, value, err := flags.SeparatorParser("=")(item)
-		if err != nil {
-			return nil, fmt.Errorf("expected 'key=value', receieved invalid format for key-value pair: %s", item)
-		}
-		result[key] = value
-	}
-	return result, nil
 }
 
 func singleValueOrError(v ...string) (string, error) {

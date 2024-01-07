@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
@@ -191,7 +190,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, err
 	}
 
-	wasmEnvvar, err := parseArrayAsMap(opts.SpecSettings.EnvVar)
+	wasmEnvvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
@@ -227,23 +226,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		APIVersion: model.APIVersionLatest().String(),
 		Spec:       spec,
 	}, nil
-}
-
-// parseArrayAsMap accepts a string array where each entry is A=B and
-// returns a map with {A: B}
-func parseArrayAsMap(inputArray []string) (map[string]string, error) {
-	resultMap := make(map[string]string)
-
-	for _, v := range inputArray {
-		parts := strings.Split(v, "=")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("malformed entry, expected = in: %s", v)
-		}
-
-		resultMap[parts[0]] = parts[1]
-	}
-
-	return resultMap, nil
 }
 
 func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {
