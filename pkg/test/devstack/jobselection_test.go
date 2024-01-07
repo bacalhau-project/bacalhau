@@ -27,7 +27,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 	suite.Run(t, new(DevstackJobSelectionSuite))
 }
 
-// Re-use the docker executor tests but full end to end with libp2p transport
+// Reuse the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	type TestCase struct {

@@ -24,17 +24,15 @@ type NodeInfoStoreParams struct {
 }
 
 type NodeInfoStore struct {
-	ttl             time.Duration
-	nodeInfoMap     map[string]nodeInfoWrapper
-	engineNodeIDMap map[string]map[string]struct{}
-	mu              sync.RWMutex
+	ttl         time.Duration
+	nodeInfoMap map[string]nodeInfoWrapper
+	mu          sync.RWMutex
 }
 
 func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
 	return &NodeInfoStore{
-		ttl:             params.TTL,
-		nodeInfoMap:     make(map[string]nodeInfoWrapper),
-		engineNodeIDMap: make(map[string]map[string]struct{}),
+		ttl:         params.TTL,
+		nodeInfoMap: make(map[string]nodeInfoWrapper),
 	}
 }
 
@@ -42,34 +40,8 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// delete node from previous engines if it already exists to replace old engines with new ones if they've changed
-	nodeID := nodeInfo.ID()
-	existingNodeInfo, ok := r.nodeInfoMap[nodeID]
-	if ok {
-		if existingNodeInfo.ComputeNodeInfo != nil {
-			for _, engine := range existingNodeInfo.ComputeNodeInfo.ExecutionEngines {
-				delete(r.engineNodeIDMap[engine], nodeID)
-			}
-		}
-	} else {
-		var engines []string
-		if nodeInfo.ComputeNodeInfo != nil {
-			engines = append(engines, nodeInfo.ComputeNodeInfo.ExecutionEngines...)
-		}
-		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store with engines %v", nodeID, engines)
-	}
-
-	// TODO: use data structure that maintains nodes in descending order based on available capacity.
-	if nodeInfo.ComputeNodeInfo != nil {
-		for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
-			if _, ok := r.engineNodeIDMap[engine]; !ok {
-				r.engineNodeIDMap[engine] = make(map[string]struct{})
-			}
-			r.engineNodeIDMap[engine][nodeID] = struct{}{}
-		}
-	}
-
 	// add or update the node info
+	nodeID := nodeInfo.ID()
 	r.nodeInfoMap[nodeID] = nodeInfoWrapper{
 		NodeInfo: nodeInfo,
 		evictAt:  time.Now().Add(r.ttl),
@@ -165,25 +137,6 @@ func (r *NodeInfoStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine string) ([]models.NodeInfo, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var nodeInfos []models.NodeInfo
-	var toEvict []nodeInfoWrapper
-	for nodeID := range r.engineNodeIDMap[engine] {
-		nodeInfo := r.nodeInfoMap[nodeID]
-		if time.Now().After(nodeInfo.evictAt) {
-			toEvict = append(toEvict, nodeInfo)
-		} else {
-			nodeInfos = append(nodeInfos, nodeInfo.NodeInfo)
-		}
-	}
-	if len(toEvict) > 0 {
-		go r.evict(ctx, toEvict...)
-	}
-	return nodeInfos, nil
-}
-
 func (r *NodeInfoStore) Delete(ctx context.Context, nodeID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -207,13 +160,6 @@ func (r *NodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapp
 }
 
 func (r *NodeInfoStore) doDelete(ctx context.Context, nodeID string) error {
-	nodeInfo, ok := r.nodeInfoMap[nodeID]
-	if !ok {
-		return nil
-	}
-	for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
-		delete(r.engineNodeIDMap[engine], nodeID)
-	}
 	delete(r.nodeInfoMap, nodeID)
 	return nil
 }

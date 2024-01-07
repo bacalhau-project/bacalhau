@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -91,4 +92,16 @@ func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpe
 	}
 
 	return returnOutputVolumes, nil
+}
+
+func StringSliceToMap(slice []string) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, item := range slice {
+		key, value, err := flags.SeparatorParser("=")(item)
+		if err != nil {
+			return nil, fmt.Errorf("expected 'key=value', received invalid format for key-value pair: %s", item)
+		}
+		result[key] = value
+	}
+	return result, nil
 }

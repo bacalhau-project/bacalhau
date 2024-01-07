@@ -285,7 +285,7 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	newEval(6, ns2)
 	eval7 := newEval(7, ns2)
 
-	// retreive the stats from the broker, less some stats that aren't
+	// retrieve the stats from the broker, less some stats that aren't
 	// interesting for this test and make the test much more verbose
 	// to include
 	getStats := func() BrokerStats {

@@ -27,6 +27,7 @@ import (
 )
 
 var DefaultSwarmPort = 1235
+var DefaultWebPort = 8483
 
 const DefaultPeerConnect = "none"
 
@@ -52,7 +53,7 @@ var (
 		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
 
-		# Start a public bacalhau node with the WebUI on port 3000 (default:80)
+		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
 		bacalhau serve --web-ui --web-ui-port=3000
 `))
 )
@@ -71,7 +72,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else if peerConnect == "config" {
 		// TODO(forrest): [ux] if the user explicitly passes the peer flag with value `config` read the
-		// boostrap peer list from their config file.
+		// bootstrap peer list from their config file.
 		return config.GetBootstrapPeers()
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
@@ -307,7 +308,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	// Start up Dashboard
+	// Start up Dashboard - default: 8483
 	if startWebUI {
 		listenPort, err := config.Get[int](types.NodeWebUIPort)
 		if err != nil {

@@ -69,7 +69,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	_, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(execLost, plan)
 
-	// Look for new matching nodes and create new executions everytime we evaluate the job
+	// Look for new matching nodes and create new executions every time we evaluate the job
 	_, err = b.createMissingExecs(ctx, &job, plan, existingExecs)
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)

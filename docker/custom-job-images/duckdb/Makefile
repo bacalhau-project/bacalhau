@@ -1,6 +1,6 @@
 MACHINE = $(shell uname -m)
 USERNAME ?= bacalhauproject
-VERSION ?= 0.1
+VERSION ?= 0.2
 
 ifeq ($(MACHINE),x86_64)
     MACHINE := amd64

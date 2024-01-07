@@ -42,6 +42,12 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	pt.GET("/id", e.id)
 	pt.GET("/livez", e.livez)
 
+	// Home group
+	// TODO: Could we use this to redirect to latest API?
+	h := e.router.Group("/")
+	h.Use(middleware.SetContentType(echo.MIMETextPlain))
+	h.GET("", e.home)
+
 	return e
 }
 
@@ -121,4 +127,15 @@ func (e *Endpoint) healthz(c echo.Context) error {
 func (e *Endpoint) livez(c echo.Context) error {
 	// Extremely simple liveness check (should be fine to be public / no-auth)
 	return c.String(http.StatusOK, "OK")
+}
+
+// home godoc
+//
+//	@ID			home
+//	@Tags		Utils
+//	@Produce	text/plain
+//	@Success	200	{object}	string	""
+//	@Router		/ [get]
+func (e *Endpoint) home(c echo.Context) error {
+	return c.JSON(http.StatusOK, version.Get())
 }

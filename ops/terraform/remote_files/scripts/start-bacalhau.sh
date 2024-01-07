@@ -41,7 +41,8 @@ if [[ "${BACALHAU_NODE_NETWORK_USENATS}" == "true" ]]; then
     --private-internal-ipfs=false \
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
-    --labels owner=bacalhau
+    --labels owner=bacalhau \
+    --requester-job-translation-enabled
 
 else
   function getMultiaddress() {
@@ -92,5 +93,6 @@ else
     --private-internal-ipfs=false \
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
-    --labels owner=bacalhau
+    --labels owner=bacalhau \
+    --requester-job-translation-enabled
 fi

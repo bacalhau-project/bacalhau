@@ -81,7 +81,7 @@
 # no.
 #
 # We also need to think about what a domain "could" be used for outside of what
-# the requestor is asking to use it for. E.g. if they are saying they only want
+# the requester is asking to use it for. E.g. if they are saying they only want
 # to use it download some static files, but access to the domain could also
 # enable some bitcoin-mining workflow, we should probably be saying no to that
 # request.

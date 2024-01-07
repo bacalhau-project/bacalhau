@@ -117,24 +117,6 @@ func (s *InMemoryNodeInfoStoreSuite) Test_List() {
 	s.ElementsMatch([]models.NodeInfo{nodeInfo0, nodeInfo1}, allNodeInfos)
 }
 
-func (s *InMemoryNodeInfoStoreSuite) Test_ListForEngine() {
-	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
-	nodeInfo2 := generateNodeInfo(s.T(), nodeIDs[2], models.EngineDocker, models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
-	s.NoError(s.store.Add(ctx, nodeInfo2))
-
-	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
-	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo0, nodeInfo2}, dockerNodes)
-
-	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
-	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1, nodeInfo2}, wasmNodes)
-}
-
 func (s *InMemoryNodeInfoStoreSuite) Test_Delete() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
@@ -144,23 +126,15 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Delete() {
 
 	// delete first node
 	s.NoError(s.store.Delete(ctx, nodeInfo0.ID()))
-	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
+	nodes, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, dockerNodes)
-
-	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
-	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, wasmNodes)
+	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, nodes)
 
 	// delete second node
 	s.NoError(s.store.Delete(ctx, nodeInfo1.ID()))
-	dockerNodes, err = s.store.ListForEngine(ctx, models.EngineDocker)
+	nodes, err = s.store.List(ctx)
 	s.NoError(err)
-	s.Empty(dockerNodes)
-
-	wasmNodes, err = s.store.ListForEngine(ctx, models.EngineWasm)
-	s.NoError(err)
-	s.Empty(wasmNodes)
+	s.Empty(nodes)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
@@ -180,15 +154,6 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, allNodeInfos)
-
-	// test ListForEngine
-	dockerNodes, err := s.store.ListForEngine(ctx, models.EngineDocker)
-	s.NoError(err)
-	s.Empty(dockerNodes)
-
-	wasmNodes, err := s.store.ListForEngine(ctx, models.EngineWasm)
-	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, wasmNodes)
 }
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {

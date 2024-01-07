@@ -26,12 +26,6 @@ func (c *Chain) Add(discoverer ...orchestrator.NodeDiscoverer) {
 	c.discoverers = append(c.discoverers, discoverer...)
 }
 
-func (c *Chain) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
-	return c.chainDiscovery(ctx, "FindNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
-		return r.FindNodes(ctx, job)
-	})
-}
-
 func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
 		return r.ListNodes(ctx)
