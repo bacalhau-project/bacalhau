@@ -1,5 +1,5 @@
-bacalhau_version       = "v1.1.3"
-bacalhau_branch        = ""
+bacalhau_version       = ""
+bacalhau_branch        = "nats"
 bacalhau_port          = "1235"
 bacalhau_node_id_0     = "QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu"
 bacalhau_node_id_1     = "QmNjEQByyK8GiMTvnZqGyURuwXDCtzp9X6gJRKkpWfai7S"
@@ -29,3 +29,4 @@ num_gpu_machines       = 0
 log_level              = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
+use_nats = true

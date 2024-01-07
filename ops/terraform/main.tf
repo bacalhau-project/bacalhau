@@ -71,6 +71,10 @@ export GRAFANA_CLOUD_TEMPO_ENDPOINT="${var.grafana_cloud_tempo_endpoint}"
 export OTEL_COLLECTOR_VERSION="${var.otel_collector_version}"
 export OTEL_EXPORTER_OTLP_ENDPOINT="${var.otel_collector_endpoint}"
 export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=${terraform.workspace}"
+export BACALHAU_NODE_NETWORK_USENATS=${var.use_nats}
+export BACALHAU_NODE_NETWORK_ORCHESTRATORS="${var.internal_ip_addresses[0]}:4222"
+export BACALHAU_NODE_NETWORK_ADVERTISEDADDRESS="${var.public_ip_addresses[count.index]}:4222"
+export BACALHAU_NODE_NETWORK_CLUSTER_PEERS="${var.internal_ip_addresses[0]}:6222"
 
 ### secrets are installed in the install-node.sh script
 export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"
@@ -295,6 +299,8 @@ resource "google_compute_firewall" "bacalhau_ingress_firewall" {
       "55679", // otel collector zpages extension
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts
+      "4222",  // nats
+      "6222",  // nats cluster
     ]
   }
 
@@ -320,6 +326,8 @@ resource "google_compute_firewall" "bacalhau_egress_firewall" {
     ports = [
       "4001",  // ipfs swarm
       "1235",  // bacalhau swarm
+      "4222",  // nats
+      "6222",  // nats cluster
     ]
   }
 

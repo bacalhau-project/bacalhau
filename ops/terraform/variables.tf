@@ -230,3 +230,9 @@ variable "docker_password" {
   default   = ""
   sensitive = true
 }
+
+// Use NATs for transport instead of libp2p
+variable "use_nats" {
+  type    = bool
+  default = false
+}
