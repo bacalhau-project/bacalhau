@@ -92,7 +92,7 @@ func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"requester-tls":    configflags.RequesterTLSFlags,
 		"server-api":       configflags.ServerAPIFlags,
-		"cluster":          configflags.ClusterFlags,
+		"network":          configflags.NetworkFlags,
 		"libp2p":           configflags.Libp2pFlags,
 		"ipfs":             configflags.IPFSFlags,
 		"capacity":         configflags.CapacityFlags,
@@ -204,7 +204,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	clusterConfig, err := getClusterConfig()
+	networkConfig, err := getNetworkConfig()
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	if !clusterConfig.UseNATS {
+	if !networkConfig.UseNATS {
 		peers, err := GetPeers(libp2pCfg.PeerConnect)
 		if err != nil {
 			return err
@@ -232,7 +232,7 @@ func serve(cmd *cobra.Command) error {
 			return err
 		}
 
-		clusterConfig.Libp2pHost = libp2pHost
+		networkConfig.Libp2pHost = libp2pHost
 		nodeID = libp2pHost.ID().String()
 	}
 
@@ -277,7 +277,7 @@ func serve(cmd *cobra.Command) error {
 		AllowListedLocalPaths: allowedListLocalPaths,
 		FsRepo:                fsRepo,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
-		ClusterConfig:         clusterConfig,
+		NetworkConfig:         networkConfig,
 	}
 
 	if isRequesterNode {
@@ -348,37 +348,45 @@ func serve(cmd *cobra.Command) error {
 
 	sb := strings.Builder{}
 	if isRequesterNode {
-		sb.WriteString("To connect another node to this one, run the following command in your shell:\n")
+		if networkConfig.UseNATS {
+			sb.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
 
-		sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
-		// other nodes can be just compute nodes
-		// no need to spawn 1+ requester nodes
-		sb.WriteString(fmt.Sprintf("%s=compute ",
-			configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+			sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
+			// other nodes can be just compute nodes
+			// no need to spawn 1+ requester nodes
+			sb.WriteString(fmt.Sprintf("%s=compute ",
+				configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
 
-		if clusterConfig.UseNATS {
 			sb.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeClusterUseNATS, configflags.ClusterFlags...)))
+				configflags.FlagNameForKey(types.NodeNetworkUseNATS, configflags.NetworkFlags...)))
 			sb.WriteString(fmt.Sprintf("%s=%s:%d ",
-				configflags.FlagNameForKey(types.NodeClusterOrchestrators, configflags.ClusterFlags...),
-				clusterConfig.AdvertisedAddress, clusterConfig.Port,
+				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
+				networkConfig.AdvertisedAddress, networkConfig.Port,
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%v\n",
-				config.KeyAsEnvVar(types.NodeClusterUseNATS),
+				config.KeyAsEnvVar(types.NodeNetworkUseNATS),
 				true,
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%s:%d\n",
-				config.KeyAsEnvVar(types.NodeClusterOrchestrators),
-				clusterConfig.AdvertisedAddress, clusterConfig.Port,
+				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
+				networkConfig.AdvertisedAddress, networkConfig.Port,
 			))
 		} else {
-			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + clusterConfig.Libp2pHost.ID().String())
+			sb.WriteString("To connect another node to this one, run the following command in your shell:\n")
+
+			sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
+			// other nodes can be just compute nodes
+			// no need to spawn 1+ requester nodes
+			sb.WriteString(fmt.Sprintf("%s=compute ",
+				configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + networkConfig.Libp2pHost.ID().String())
 			if err != nil {
 				return err
 			}
-			peerAddress := pickP2pAddress(clusterConfig.Libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
+			peerAddress := pickP2pAddress(networkConfig.Libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
 			sb.WriteString(fmt.Sprintf("%s=%s ",
 				configflags.FlagNameForKey(types.NodeLibp2pPeerConnect, configflags.Libp2pFlags...),
 				peerAddress,
@@ -415,7 +423,7 @@ func serve(cmd *cobra.Command) error {
 			cmd.Println(sb.String())
 		}
 	} else {
-		if !clusterConfig.UseNATS {
+		if !networkConfig.UseNATS {
 			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
 	}

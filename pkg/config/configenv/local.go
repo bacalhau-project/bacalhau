@@ -30,8 +30,12 @@ var Local = types.BacalhauConfig{
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
 		},
-		Cluster: types.ClusterConfig{
+		Network: types.NetworkConfig{
 			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
 		},
 		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),

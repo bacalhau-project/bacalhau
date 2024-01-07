@@ -35,11 +35,12 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint       requester.Endpoint
-	JobStore       jobstore.Store
-	NodeDiscoverer orchestrator.NodeDiscoverer
-	localCallback  compute.Callback
-	cleanupFunc    func(ctx context.Context)
+	Endpoint           requester.Endpoint
+	JobStore           jobstore.Store
+	NodeDiscoverer     orchestrator.NodeDiscoverer
+	localCallback      compute.Callback
+	cleanupFunc        func(ctx context.Context)
+	debugInfoProviders []model.DebugInfoProvider
 }
 
 //nolint:funlen
@@ -302,11 +303,12 @@ func NewRequesterNode(
 	}
 
 	return &Requester{
-		Endpoint:       endpoint,
-		localCallback:  endpoint,
-		NodeDiscoverer: nodeDiscoveryChain,
-		JobStore:       jobStore,
-		cleanupFunc:    cleanupFunc,
+		Endpoint:           endpoint,
+		localCallback:      endpoint,
+		NodeDiscoverer:     nodeDiscoveryChain,
+		JobStore:           jobStore,
+		cleanupFunc:        cleanupFunc,
+		debugInfoProviders: debugInfoProviders,
 	}, nil
 }
 

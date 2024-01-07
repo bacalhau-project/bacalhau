@@ -71,18 +71,21 @@ func (s *PubSubSuite) createNatsServer() *server.Server {
 		Port: port,
 	}
 
-	ns, err := nats_helper.NewServer(ctx, &serverOpts)
+	ns, err := nats_helper.NewServerManager(ctx, &serverOpts)
 	s.Require().NoError(err)
 
-	return ns
+	return ns.Server
 }
 
 func (s *PubSubSuite) createPubSub(ctx context.Context, subject, subscriptionSubject string, server string) *PubSub[string] {
-	conn, err := nats_helper.NewClient(ctx, subject, server)
+	clientManager, err := nats_helper.NewClientManager(ctx, nats_helper.ClientManagerParams{
+		Name:    "test",
+		Servers: server,
+	})
 	s.Require().NoError(err)
 
 	pubSub, err := NewPubSub[string](PubSubParams{
-		Conn:                conn,
+		Conn:                clientManager.Client,
 		Subject:             subject,
 		SubscriptionSubject: subscriptionSubject,
 	})

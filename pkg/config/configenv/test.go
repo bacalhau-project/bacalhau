@@ -30,8 +30,12 @@ var Testing = types.BacalhauConfig{
 			Port: 9999,
 			TLS:  types.TLSConfiguration{},
 		},
-		Cluster: types.ClusterConfig{
-			Port: 9999,
+		Network: types.NetworkConfig{
+			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",

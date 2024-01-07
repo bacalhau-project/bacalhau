@@ -41,6 +41,7 @@ type Compute struct {
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
 	autoLabelsProvider models.LabelsProvider
+	debugInfoProviders []model.DebugInfoProvider
 }
 
 //nolint:funlen
@@ -271,6 +272,7 @@ func NewComputeNode(
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
 		autoLabelsProvider: labelsProvider,
+		debugInfoProviders: debugInfoProviders,
 	}, nil
 }
 

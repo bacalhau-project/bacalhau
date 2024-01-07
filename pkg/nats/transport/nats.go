@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
@@ -13,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,12 +25,18 @@ type NATSTransportConfig struct {
 	AdvertisedAddress string
 	Orchestrators     []string
 	IsRequesterNode   bool
+
+	// Cluster config for requester nodes to connect with each other
+	ClusterName              string
+	ClusterPort              int
+	ClusterAdvertisedAddress string
+	ClusterPeers             []string
 }
 
 type NATSTransport struct {
 	nodeID            string
-	natsServer        *server.Server
-	natsClient        *nats.Conn
+	natsServer        *nats_helper.ServerManager
+	natsClient        *nats_helper.ClientManager
 	computeProxy      compute.Endpoint
 	callbackProxy     compute.Callback
 	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
@@ -41,35 +47,48 @@ func NewNATSTransport(ctx context.Context,
 	config NATSTransportConfig,
 	nodeInfoStore routing.NodeInfoStore) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
-	var ns *server.Server
+	var sm *nats_helper.ServerManager
 	var err error
 	if config.IsRequesterNode {
 		// create nats server with servers acting as its cluster peers
+		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers)
+		if err != nil {
+			return nil, err
+		}
 		serverOps := &server.Options{
 			ServerName:      config.NodeID,
 			Port:            config.Port,
 			ClientAdvertise: config.AdvertisedAddress,
-			RoutesStr:       strings.Join(config.Orchestrators, ","),
+			Routes:          routes,
+			Debug:           true,
+			Cluster: server.ClusterOpts{
+				Name:      config.ClusterName,
+				Port:      config.ClusterPort,
+				Advertise: config.ClusterAdvertisedAddress,
+			},
 		}
 		log.Debug().Msgf("Creating NATS server with options: %+v", serverOps)
-		ns, err = nats_helper.NewServer(ctx, serverOps)
+		sm, err = nats_helper.NewServerManager(ctx, serverOps)
 		if err != nil {
 			return nil, err
 		}
 
-		config.Orchestrators = append(config.Orchestrators, ns.ClientURL())
+		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
 	}
 
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
-	nc, err := nats_helper.NewClient(ctx, config.NodeID, strings.Join(config.Orchestrators, ","))
+	nc, err := nats_helper.NewClientManager(ctx, nats_helper.ClientManagerParams{
+		Name:    config.NodeID,
+		Servers: strings.Join(config.Orchestrators, ","),
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// PubSub to publish and consume node info messages
 	nodeInfoPubSub, err := nats_pubsub.NewPubSub[models.NodeInfo](nats_pubsub.PubSubParams{
-		Conn:                nc,
+		Conn:                nc.Client,
 		Subject:             NodeInfoSubjectPrefix + config.NodeID,
 		SubscriptionSubject: NodeInfoSubjectPrefix + "*",
 	})
@@ -89,17 +108,17 @@ func NewNATSTransport(ctx context.Context,
 
 	// compute proxy
 	computeProxy := proxy.NewComputeProxy(proxy.ComputeProxyParams{
-		Conn: nc,
+		Conn: nc.Client,
 	})
 
 	// Callback to send compute events (i.e. requester endpoint)
 	computeCallback := proxy.NewCallbackProxy(proxy.CallbackProxyParams{
-		Conn: nc,
+		Conn: nc.Client,
 	})
 
 	return &NATSTransport{
 		nodeID:            config.NodeID,
-		natsServer:        ns,
+		natsServer:        sm,
 		natsClient:        nc,
 		computeProxy:      computeProxy,
 		callbackProxy:     computeCallback,
@@ -112,7 +131,7 @@ func NewNATSTransport(ctx context.Context,
 func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error {
 	_, err := proxy.NewCallbackHandler(proxy.CallbackHandlerParams{
 		Name:     t.nodeID,
-		Conn:     t.natsClient,
+		Conn:     t.natsClient.Client,
 		Callback: callback,
 	})
 	return err
@@ -122,7 +141,7 @@ func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error
 func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error {
 	_, err := proxy.NewComputeHandler(proxy.ComputeHandlerParams{
 		Name:            t.nodeID,
-		Conn:            t.natsClient,
+		Conn:            t.natsClient.Client,
 		ComputeEndpoint: endpoint,
 	})
 	return err
@@ -148,13 +167,25 @@ func (t *NATSTransport) NodeInfoDecorator() models.NodeInfoDecorator {
 	return t.nodeInfoDecorator
 }
 
+// DebugInfoProviders returns the debug info of the NATS transport layer
+func (t *NATSTransport) DebugInfoProviders() []model.DebugInfoProvider {
+	var debugInfoProviders []model.DebugInfoProvider
+	if t.natsServer != nil {
+		debugInfoProviders = append(debugInfoProviders, t.natsServer)
+	}
+	if t.natsClient != nil {
+		debugInfoProviders = append(debugInfoProviders, t.natsClient)
+	}
+	return debugInfoProviders
+}
+
 // Close closes the transport layer.
 func (t *NATSTransport) Close(ctx context.Context) error {
 	if t.natsServer != nil {
-		t.natsServer.Shutdown()
+		t.natsServer.Stop()
 	}
 	if t.natsClient != nil {
-		t.natsClient.Close()
+		t.natsClient.Stop()
 	}
 	return nil
 }

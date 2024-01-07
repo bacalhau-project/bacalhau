@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 )
@@ -18,6 +19,8 @@ type TransportLayer interface {
 	NodeInfoPubSub() pubsub.PubSub[models.NodeInfo]
 	// NodeInfoDecorator returns the node info decorator.
 	NodeInfoDecorator() models.NodeInfoDecorator
+	// DebugInfoProviders returns the debug info providers of the transport layer.
+	DebugInfoProviders() []model.DebugInfoProvider
 	// RegisterComputeCallback registers a compute callback with the transport layer.
 	RegisterComputeCallback(callback compute.Callback) error
 	// RegisterComputeEndpoint registers a compute endpoint with the transport layer.

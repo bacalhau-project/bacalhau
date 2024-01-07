@@ -88,7 +88,7 @@ func (n NodeInfo) ID() string {
 	if n.NodeID != "" {
 		return n.NodeID
 	} else if n.PeerInfo != nil {
-		return string(n.PeerInfo.ID)
+		return n.PeerInfo.ID.String()
 	}
 	return ""
 }

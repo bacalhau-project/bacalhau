@@ -186,15 +186,18 @@ func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }
 
-func getClusterConfig() (node.ClusterConfig, error) {
-	var clusterCfg types.ClusterConfig
-	if err := config.ForKey(types.NodeCluster, &clusterCfg); err != nil {
-		return node.ClusterConfig{}, err
+func getNetworkConfig() (node.NetworkConfig, error) {
+	var networkCfg types.NetworkConfig
+	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+		return node.NetworkConfig{}, err
 	}
-	return node.ClusterConfig{
-		UseNATS:           clusterCfg.UseNATS,
-		Port:              clusterCfg.Port,
-		AdvertisedAddress: clusterCfg.AdvertisedAddress,
-		Orchestrators:     clusterCfg.Orchestrators,
+	return node.NetworkConfig{
+		UseNATS:                  networkCfg.UseNATS,
+		Port:                     networkCfg.Port,
+		AdvertisedAddress:        networkCfg.AdvertisedAddress,
+		Orchestrators:            networkCfg.Orchestrators,
+		ClusterPort:              networkCfg.Cluster.Port,
+		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,
+		ClusterPeers:             networkCfg.Cluster.Peers,
 	}, nil
 }

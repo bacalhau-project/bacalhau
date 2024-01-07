@@ -31,8 +31,12 @@ var Staging = types.BacalhauConfig{
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
 		},
-		Cluster: types.ClusterConfig{
+		Network: types.NetworkConfig{
 			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.85.228.65/tcp/1235/p2p/QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv",

@@ -94,6 +94,7 @@ func Setup(
 
 	var nodes []*node.Node
 	orchestratorAddrs := make([]string, 0)
+	clusterPeersAddrs := make([]string, 0)
 
 	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
 	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
@@ -145,20 +146,35 @@ func Setup(
 				return nil, err
 			}
 		}
-		clusterConfig := node.ClusterConfig{
+		clusterConfig := node.NetworkConfig{
 			UseNATS:       stackConfig.UseNATS,
 			Orchestrators: orchestratorAddrs,
 			Port:          swarmPort,
+			ClusterPeers:  clusterPeersAddrs,
 		}
 
 		if stackConfig.UseNATS {
+			var clusterPort int
+			if os.Getenv("PREDICTABLE_API_PORT") != "" {
+				const startClusterPort = 6222
+				clusterPort = startClusterPort + i
+			} else {
+				clusterPort, err = freeport.GetFreePort()
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			if isRequesterNode {
+				clusterConfig.ClusterName = "devstack"
+				clusterConfig.ClusterPort = clusterPort
 				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("0.0.0.0:%d", swarmPort))
+				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("0.0.0.0:%d", clusterPort))
 			}
 		} else {
 			if i == 0 {
 				if stackConfig.Peer != "" {
-					clusterConfig.Orchestrators = append(clusterConfig.Orchestrators, stackConfig.Peer)
+					clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, stackConfig.Peer)
 				}
 			} else {
 				p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Libp2pHost.ID().String())
@@ -168,10 +184,10 @@ func Setup(
 
 				addrs := nodes[0].Libp2pHost.Addrs()[0]
 				addrs = addrs.Encapsulate(p2pAddr)
-				clusterConfig.Orchestrators = append(clusterConfig.Orchestrators, addrs.String())
+				clusterConfig.ClusterPeers = append(clusterConfig.ClusterPeers, addrs.String())
 			}
 
-			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, clusterConfig.Orchestrators, swarmPort)
+			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, clusterConfig.ClusterPeers, swarmPort)
 			if err != nil {
 				return nil, err
 			}
@@ -231,7 +247,7 @@ func Setup(
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 			FsRepo:                    fsRepo,
 			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
-			ClusterConfig:             clusterConfig,
+			NetworkConfig:             clusterConfig,
 		}
 
 		if isRequesterNode {

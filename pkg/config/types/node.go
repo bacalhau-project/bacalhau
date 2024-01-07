@@ -44,7 +44,7 @@ type NodeConfig struct {
 	// Configuration for the web UI
 	WebUI WebUIConfig `yaml:"WebUI"`
 
-	Cluster ClusterConfig `yaml:"Cluster"`
+	Network NetworkConfig `yaml:"Network"`
 }
 
 type APIConfig struct {
@@ -121,9 +121,17 @@ type FeatureConfig struct {
 	Storages   []string `yaml:"Storages"`
 }
 
-type ClusterConfig struct {
-	UseNATS           bool     `yaml:"UseNATS"`
+type NetworkConfig struct {
+	UseNATS           bool                 `yaml:"UseNATS"`
+	Port              int                  `yaml:"Port"`
+	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
+	Orchestrators     []string             `yaml:"Orchestrators"`
+	Cluster           NetworkClusterConfig `yaml:"Cluster"`
+}
+
+type NetworkClusterConfig struct {
+	Name              string   `yaml:"Name"`
 	Port              int      `yaml:"Port"`
 	AdvertisedAddress string   `yaml:"AdvertisedAddress"`
-	Orchestrators     []string `yaml:"Orchestrators"`
+	Peers             []string `yaml:"Peers"`
 }

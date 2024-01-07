@@ -58,9 +58,11 @@ func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
 	return p.conn.Publish(p.subject, payload)
 }
 
-func (p *PubSub[T]) Subscribe(_ context.Context, subscriber pubsub.Subscriber[T]) (err error) {
+func (p *PubSub[T]) Subscribe(ctx context.Context, subscriber pubsub.Subscriber[T]) (err error) {
 	var firstSubscriber bool
 	p.subscriberOnce.Do(func() {
+		log.Ctx(ctx).Debug().Msgf("Subscribing to subject %s", p.subscriptionSubject)
+
 		// register the subscriber
 		p.subscriber = subscriber
 

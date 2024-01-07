@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	libp2p_host "github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
@@ -142,6 +143,11 @@ func (t *Libp2pTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeInfo] {
 // NodeInfoDecorator returns the node info decorator.
 func (t *Libp2pTransport) NodeInfoDecorator() models.NodeInfoDecorator {
 	return t.nodeInfoDecorator
+}
+
+// DebugInfoProviders returns the debug info.
+func (t *Libp2pTransport) DebugInfoProviders() []model.DebugInfoProvider {
+	return []model.DebugInfoProvider{}
 }
 
 // Close closes the transport layer.

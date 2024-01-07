@@ -5,6 +5,7 @@ import (
 	"time"
 
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -31,12 +32,20 @@ type FeatureConfig struct {
 	Storages   []string
 }
 
-type ClusterConfig struct {
-	UseNATS           bool
+type NetworkConfig struct {
+	UseNATS    bool
+	Libp2pHost host.Host // only set if using libp2p transport, nil otherwise
+
+	// NATS config for requesters to be reachable by compute nodes
 	Port              int
 	AdvertisedAddress string
 	Orchestrators     []string
-	Libp2pHost        host.Host // only set if using libp2p transport, nil otherwise
+
+	// NATS config for requester nodes to connect with each other
+	ClusterName              string
+	ClusterPort              int
+	ClusterAdvertisedAddress string
+	ClusterPeers             []string
 }
 
 // Node configuration
@@ -64,7 +73,7 @@ type NodeConfig struct {
 	NodeInfoStoreTTL            time.Duration
 
 	FsRepo        *repo.FsRepo
-	ClusterConfig ClusterConfig
+	NetworkConfig NetworkConfig
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -179,24 +188,31 @@ func NewNode(
 
 	var transportLayer transport.TransportLayer
 
-	if config.ClusterConfig.UseNATS {
+	if config.NetworkConfig.UseNATS {
 		natsConfig := nats_transport.NATSTransportConfig{
-			NodeID:            config.NodeID,
-			Port:              config.ClusterConfig.Port,
-			AdvertisedAddress: config.ClusterConfig.AdvertisedAddress,
-			Orchestrators:     config.ClusterConfig.Orchestrators,
-			IsRequesterNode:   config.IsRequesterNode,
+			NodeID:                   config.NodeID,
+			Port:                     config.NetworkConfig.Port,
+			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
+			Orchestrators:            config.NetworkConfig.Orchestrators,
+			ClusterName:              config.NetworkConfig.ClusterName,
+			ClusterPort:              config.NetworkConfig.ClusterPort,
+			ClusterPeers:             config.NetworkConfig.ClusterPeers,
+			ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
+			IsRequesterNode:          config.IsRequesterNode,
 		}
 		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig, nodeInfoStore)
 	} else {
 		libp2pConfig := libp2p_transport.Libp2pTransportConfig{
-			Host: config.ClusterConfig.Libp2pHost,
+			Host: config.NetworkConfig.Libp2pHost,
 		}
 		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, nodeInfoStore)
 	}
 	if err != nil {
 		return nil, err
 	}
+
+	var debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
 	var requesterNode *Requester
 	var computeNode *Compute
@@ -221,6 +237,7 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
+		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
 	if config.IsComputeNode {
@@ -231,7 +248,7 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			config.CleanupManager,
-			config.ClusterConfig.Libp2pHost,
+			config.NetworkConfig.Libp2pHost,
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
@@ -254,6 +271,7 @@ func NewNode(
 			computeNode.autoLabelsProvider,
 			labelsProvider,
 		)
+		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
 	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
@@ -273,8 +291,9 @@ func NewNode(
 	})
 
 	agent.NewEndpoint(agent.EndpointParams{
-		Router:           apiServer.Router,
-		NodeInfoProvider: nodeInfoProvider,
+		Router:             apiServer.Router,
+		NodeInfoProvider:   nodeInfoProvider,
+		DebugInfoProviders: debugInfoProviders,
 	})
 
 	// node info publisher
@@ -328,7 +347,7 @@ func NewNode(
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
 		NodeInfoStore:  nodeInfoStore,
-		Libp2pHost:     config.ClusterConfig.Libp2pHost,
+		Libp2pHost:     config.NetworkConfig.Libp2pHost,
 	}
 
 	return node, nil
