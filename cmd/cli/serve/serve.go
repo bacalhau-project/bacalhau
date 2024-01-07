@@ -359,9 +359,14 @@ func serve(cmd *cobra.Command) error {
 
 			sb.WriteString(fmt.Sprintf("%s ",
 				configflags.FlagNameForKey(types.NodeNetworkUseNATS, configflags.NetworkFlags...)))
-			sb.WriteString(fmt.Sprintf("%s=%s:%d ",
+
+			advertisedAddr := networkConfig.AdvertisedAddress
+			if advertisedAddr == "" {
+				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", networkConfig.Port)
+			}
+			sb.WriteString(fmt.Sprintf("%s=%s ",
 				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
-				networkConfig.AdvertisedAddress, networkConfig.Port,
+				advertisedAddr,
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%v\n",
@@ -369,9 +374,9 @@ func serve(cmd *cobra.Command) error {
 				true,
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s:%d\n",
+				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-				networkConfig.AdvertisedAddress, networkConfig.Port,
+				advertisedAddr,
 			))
 		} else {
 			sb.WriteString("To connect another node to this one, run the following command in your shell:\n")

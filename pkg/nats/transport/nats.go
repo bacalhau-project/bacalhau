@@ -60,7 +60,7 @@ func NewNATSTransport(ctx context.Context,
 			Port:            config.Port,
 			ClientAdvertise: config.AdvertisedAddress,
 			Routes:          routes,
-			Debug:           true,
+			Debug:           true, // will only be used if log level is debug
 			Cluster: server.ClusterOpts{
 				Name:      config.ClusterName,
 				Port:      config.ClusterPort,
