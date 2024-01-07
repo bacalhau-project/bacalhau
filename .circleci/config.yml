@@ -534,11 +534,11 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /tmp/swagger_spec
+          at: /tmp/swagger_spec/
       - run:
           name: Copy swagger.json from workspace
           command: |
-            cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+            cp  /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
       - run:
           name: Install Python API client pre-requisites
           command: |
