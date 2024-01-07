@@ -88,7 +88,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	database, err := GetDatabase(dbPath)
 	if err != nil {
 		if err == bolt.ErrTimeout {
-			return nil, fmt.Errorf("timed out while opening database, is file %s in use", dbPath)
+			return nil, fmt.Errorf("timed out while opening database, is file %s in use?", dbPath)
 		}
 		return nil, err
 	}

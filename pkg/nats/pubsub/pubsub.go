@@ -22,6 +22,7 @@ type PubSubParams struct {
 	// Conn is the NATS connection to use for publishing and subscribing.
 	Conn *nats.Conn
 }
+
 type PubSub[T any] struct {
 	subject             string
 	subscriptionSubject string

@@ -138,6 +138,7 @@ func Setup(
 		// ////////////////////////////////////
 		// Transport layer (NATS or Libp2p)
 		// ////////////////////////////////////
+		var libp2pPeer []multiaddr.Multiaddr
 		var swarmPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			const startSwarmPort = 4222 // 4222 is the default NATS port
@@ -174,7 +175,6 @@ func Setup(
 				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("0.0.0.0:%d", clusterPort))
 			}
 		} else {
-			var libp2pPeer []multiaddr.Multiaddr
 			if i == 0 {
 				if stackConfig.Peer != "" {
 					// connect 0'th node to external peer if specified
@@ -197,7 +197,7 @@ func Setup(
 				log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 			}
 
-			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, libp2pPeer, swarmPort)
+			clusterConfig.Libp2pHost, err = createLibp2pHost(ctx, cm, swarmPort)
 			if err != nil {
 				return nil, err
 			}
@@ -289,6 +289,14 @@ func Setup(
 			return nil, err
 		}
 
+		// Start libp2p connections
+		if clusterConfig.Libp2pHost != nil {
+			err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, clusterConfig.Libp2pHost, libp2pPeer, 2*time.Second)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// start the node
 		err = n.Start(ctx)
 		if err != nil {
@@ -310,7 +318,7 @@ func Setup(
 	}, nil
 }
 
-func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []multiaddr.Multiaddr, port int) (host.Host, error) {
+func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, port int) (host.Host, error) {
 	var err error
 
 	// TODO(forrest): [devstack] Refactor the devstack s.t. each node has its own repo and config.
@@ -329,12 +337,6 @@ func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, peers []mu
 	libp2pHost, err := bac_libp2p.NewHost(port, privKey)
 	if err != nil {
 		return nil, fmt.Errorf("error creating libp2p host: %w", err)
-	}
-
-	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
-	err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, peers, 2*time.Second)
-	if err != nil {
-		return nil, err
 	}
 
 	return libp2pHost, nil
