@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-PATH_TO_PROJECT_ROOT="${PWD}/../.."
-SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/publicapi/swagger"
+PATH_TO_PROJECT_ROOT=$(git rev-parse --show-toplevel)
+SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/swagger"
+PUBLIC_PATH="${PATH_TO_PROJECT_ROOT}/webui/public/swagger"
 cd "${PATH_TO_PROJECT_ROOT}" || exit
 
 echo "Currently executing in ${PWD}"
@@ -13,7 +14,6 @@ swag init \
   --overridesFile .swaggo \
   --output "${SWAGGER_DIR}"
 
-PUBLIC_PATH="./webui/public/swagger"
 echo "swagger.json generated - moving from ${SWAGGER_DIR} to ${PUBLIC_PATH}"
 
 # See if the path exists, if not create it

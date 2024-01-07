@@ -10,6 +10,18 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// getNode godoc
+//
+//	@ID			apiServer/getNode
+//	@Summary	Returns information about an orchestrator node.
+//	@Tags		Orchestrator
+//	@Produce	json
+//	@Param		id	path	string	true	"Node ID"
+//	@Success	200	{object}	string
+//	@Failure	400	{object}	string
+//	@Failure	404	{object}	string
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/orchestrator/nodes/{id} [get]
 func (e *Endpoint) getNode(c echo.Context) error {
 	ctx := c.Request().Context()
 	if c.Param("id") == "" {
@@ -24,6 +36,20 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	})
 }
 
+// listNodes godoc
+//
+//	@ID			apiServer/listNodes
+//	@Summary	Returns a list of orchestrator nodes.
+//	@Tags		Orchestrator
+//	@Produce	json
+//	@Param		labels	query	string	false	"Labels to filter nodes by"
+//	@Param		limit	query	int	false	"Maximum number of nodes to return"
+//	@Param		order_by	query	string	false	"Field to order nodes by"
+//	@Param		reverse	query	bool	false	"Reverse the order of the nodes"
+//	@Success	200	{object}	string
+//	@Failure	400	{object}	string
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/orchestrator/nodes [get]
 func (e *Endpoint) listNodes(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.ListNodesRequest

@@ -14,6 +14,7 @@ import (
 //
 //	@ID			apiServer/approver
 //	@Summary	Approves a job to be run on this compute node.
+//	@Tags		Compute Node
 //	@Produce	json
 //	@Success	200	{object}	string
 //	@Failure	400	{object}	string
