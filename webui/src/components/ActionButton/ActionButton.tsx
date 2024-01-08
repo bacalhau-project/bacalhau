@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./ActionButton.module.scss";
-import { ReactComponent as ViewIcon } from "../../images/view-icon.svg";
 
 interface ActionButtonProps {
   text: string;

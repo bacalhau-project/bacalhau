@@ -97,3 +97,7 @@ stretchr
 xlarge
 uuidv
 nocheck
+urldownload
+repoclone
+repoclonelfs
+Addrs

@@ -1,5 +1,5 @@
 // Select a random job label from the list of available labels in jobLabels - should be between 0 and 3 labels
-export function selectRandomLabels() {
+export function selectRandomLabels(jobLabels: { [key: string]: string[] }) {
   const labels: { [key: string]: string } = {};
   const numLabels = Math.floor(Math.random() * 4);
   for (let i = 0; i < numLabels; i++) {

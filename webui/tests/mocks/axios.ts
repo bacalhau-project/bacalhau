@@ -1,3 +1,5 @@
+import { jest } from "@jest/globals";
+
 const mockAxios: any = jest.createMockFromModule("axios");
 
 const mockData = {

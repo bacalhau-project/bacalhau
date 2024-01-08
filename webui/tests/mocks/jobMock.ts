@@ -129,12 +129,13 @@ export function generateSampleJob(): Job {
     Meta: {
       "bacalhau.org/client.id": namespace,
       "bacalhau.org/requester.id": `Qm${randomBytes(44).toString("hex")}`,
+      //cspell: disable-next-line
       "bacalhau.org/requester.publicKey": `CAAS${randomBytes(128).toString(
         // eslint-disable-next-line prettier/prettier
         "base64"
       )}`,
     },
-    Labels: { ...selectRandomLabels() },
+    Labels: { ...selectRandomLabels(jobLabels) },
     Tasks: [generateSampleTask()],
     State: {
       StateType: selectRandomElements(jobStates),

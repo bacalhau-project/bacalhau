@@ -1,6 +1,6 @@
 import * as faker from "faker";
 import { v4 as uuidv4 } from "uuid";
-import { selectRandomLabels, selectRandomElements } from "./mockUtilities";
+import { selectRandomElements } from "./mockUtilities";
 
 // Generate an array with one or more of the following strings
 const engine_types = ["wasm", "docker"];
