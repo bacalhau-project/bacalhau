@@ -21,6 +21,8 @@ type CancelResponse struct {
 	State *model.JobState `json:"state"`
 }
 
+type EmptyResponse struct{}
+
 type EventsRequest struct {
 	ClientID string             `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	JobID    string             `json:"job_id" example:"9304c616-291f-41ad-b862-54e133c0149e"`

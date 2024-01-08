@@ -1,74 +1,74 @@
 // styles/SidebarButton.module.scss
-@import '../../../styles/variables';
+@import "../../../styles/variables";
 
 .mb3 {
-    margin-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.navbarToggler {
+  background-color: transparent !important;
+}
+
+.thirdButton {
+  border: none;
+  display: inline-block;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.animatedIcon3 {
+  width: 30px;
+  height: 20px;
+  position: relative;
+  margin: auto;
+
+  span {
+    display: block;
+    position: absolute;
+    height: 3px;
+    width: 100%;
+    background: $text-colour-light;
+    border-radius: 3px;
+    opacity: 1;
+    left: 0;
+    transform: rotate(0deg);
+    transition: 0.3s cubic-bezier(0.85, 0.03, 0.68, 0.22);
+
+    &:nth-child(1) {
+      top: 0px;
+      transform-origin: left center;
+    }
+
+    &:nth-child(2) {
+      top: 10px;
+      transform-origin: left center;
+    }
+
+    &:nth-child(3) {
+      top: 20px;
+      transform-origin: left center;
+    }
   }
 
-  .navbarToggler {
-    background-color: transparent !important;
-  }
-
-  .thirdButton {
-    border: none;
-    display: inline-block;
-    padding: 0;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-  }
-
-  .animatedIcon3 {
-    width: 30px;
-    height: 20px;
-    position: relative;
-    margin: auto;
-
+  &.open {
     span {
-      display: block;
-      position: absolute;
-      height: 3px;
-      width: 100%;
-      background: $text-colour-light;
-      border-radius: 3px;
-      opacity: 1;
-      left: 0;
-      transform: rotate(0deg);
-      transition: 0.3s cubic-bezier(0.85, 0.03, 0.68, 0.22);
-
       &:nth-child(1) {
+        transform: rotate(45deg);
         top: 0px;
-        transform-origin: left center;
+        left: 8px;
       }
 
       &:nth-child(2) {
-        top: 10px;
-        transform-origin: left center;
+        width: 0%;
+        opacity: 0;
       }
 
       &:nth-child(3) {
-        top: 20px;
-        transform-origin: left center;
-      }
-    }
-
-    &.open {
-      span {
-        &:nth-child(1) {
-          transform: rotate(45deg);
-          top: 0px;
-          left: 8px;
-        }
-
-        &:nth-child(2) {
-          width: 0%;
-          opacity: 0;
-        }
-
-        &:nth-child(3) {
-          transform: rotate(-45deg);
-          top: 21px;
-          left: 8px;
-        }
+        transform: rotate(-45deg);
+        top: 21px;
+        left: 8px;
       }
     }
   }
+}

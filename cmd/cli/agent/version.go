@@ -39,7 +39,7 @@ func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
 	serverVersionResponse, err := util.GetAPIClientV2(ctx).Agent().Version()
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get server version: %w", err), 1)
+		util.Fatal(cmd, fmt.Errorf("could not get server version via API Client: %w", err), 1)
 	}
 
 	v := serverVersionResponse.BuildVersionInfo

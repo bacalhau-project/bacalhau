@@ -10,7 +10,7 @@ interface ActionButtonProps {
   id?: string;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({
+export const ActionButton: React.FC<ActionButtonProps> = ({
   text,
   onClick,
   to,
@@ -30,11 +30,8 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   return (
     <div className={styles.column}>
       <button className={styles.actionButton} onClick={handleClick}>
-        <ViewIcon className={styles.viewIcon} />
         {text}
       </button>
     </div>
   );
 };
-
-export default ActionButton;

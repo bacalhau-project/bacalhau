@@ -1,29 +1,29 @@
 .programSummary {
+  display: flex;
+  align-items: center;
+  text-align: left;
+
+  .iconContainer {
+    margin-right: 10px;
+  }
+
+  .icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .text {
     display: flex;
-    align-items: center;
-    text-align: left;
+    flex-direction: column;
+    font-size: 12px;
 
-    .iconContainer {
-        margin-right: 10px;
+    .header {
+      font-size: 14px;
+      margin-bottom: 4px;
     }
 
-    .icon {
-        width: 18px;
-        height: 18px;
+    .input {
+      font-family: monospace;
     }
-
-    .text {
-        display: flex;
-        flex-direction: column;
-        font-size: 12px;
-
-        .header {
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        .input {
-            font-family: monospace;
-        }
-    }
+  }
 }

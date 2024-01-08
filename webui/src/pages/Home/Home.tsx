@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const Home = () => {
+export const Home = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -10,5 +10,3 @@ const Home = () => {
 
   return null;
 };
-
-export default Home;

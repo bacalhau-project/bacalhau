@@ -3,7 +3,7 @@ import Moment from "react-moment";
 import styles from "./JobsTable.module.scss";
 import ProgramSummary from "./ProgramSummary/ProgramSummary";
 import Label from "../../../components/Label/Label";
-import ActionButton from "../../../components/ActionButton/ActionButton";
+import { ActionButton } from "../../../components/ActionButton/ActionButton";
 import {
   capitalizeFirstLetter,
   fromTimestamp,
@@ -56,7 +56,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
   });
 }
 
-const JobsTable: React.FC<TableProps> = ({ data }) => {
+export const JobsTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext);
   const parsedData = parseData(data);
 
@@ -127,5 +127,3 @@ const JobsTable: React.FC<TableProps> = ({ data }) => {
     </div>
   );
 };
-
-export default JobsTable;

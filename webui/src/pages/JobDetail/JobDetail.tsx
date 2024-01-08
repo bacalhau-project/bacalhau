@@ -4,19 +4,19 @@ import Moment from "react-moment";
 import { bacalhauAPI } from "../../services/bacalhau";
 import { Job, Execution } from "../../helpers/jobInterfaces";
 import styles from "./JobDetail.module.scss";
-import Layout from "../../layout/Layout";
+import { Layout } from "../../layout/Layout";
 import {
   getShortenedJobID,
   fromTimestamp,
   capitalizeFirstLetter,
 } from "../../helpers/helperFunctions";
 import Container from "../../components/Container/Container";
-import ActionButton from "../../components/ActionButton/ActionButton";
+import { ActionButton } from "../../components/ActionButton/ActionButton";
 import Table from "../../components/Table/Table";
 import JobInfo from "./JobInfo/JobInfo";
 import CliView from "./CliView/CliView";
 
-const JobDetail: React.FC = () => {
+export const JobDetail: React.FC = () => {
   const { jobId } = useParams<{ jobId?: string }>();
   const [jobData, setJobData] = useState<Job | null>(null);
   const [jobExData, setJobExData] = useState<Execution[] | null>(null);
@@ -129,5 +129,3 @@ const JobDetail: React.FC = () => {
     </Layout>
   );
 };
-
-export default JobDetail;
