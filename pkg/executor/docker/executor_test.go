@@ -510,3 +510,15 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.Equal(s.T(), df.Size, 6)
 	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
 }
+
+func (s *ExecutorTestSuite) TestDockerOOM() {
+	task := mock.TaskBuilder().
+		Engine(
+			dockermodels.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("tail", "/dev/zero").
+				Build()).BuildOrDie()
+
+	result, err := s.runJob(task, uuid.New().String())
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "Memory limit exceeded", result.ErrorMsg)
+}
