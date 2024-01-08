@@ -30,6 +30,7 @@ func (p *ResultPath) Copy() *ResultPath {
 		return nil
 	}
 	return &ResultPath{
+		Name: p.Name,
 		Path: p.Path,
 	}
 }
@@ -44,7 +45,7 @@ func (p *ResultPath) Validate() error {
 		mErr.Errors = append(mErr.Errors, errors.New("path is blank"))
 	}
 	if validate.IsBlank(p.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("name is blank"))
+		mErr.Errors = append(mErr.Errors, errors.New("resultpath name is blank"))
 	}
 	return mErr.ErrorOrNil()
 }

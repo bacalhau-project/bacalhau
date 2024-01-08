@@ -121,9 +121,9 @@ func NewErrInvalidExecutionState(
 
 func (e ErrInvalidExecutionState) Error() string {
 	if len(e.Expected) > 0 {
-		return fmt.Sprintf("execution %s is in unexpted state %s", e.ExecutionID, e.Actual)
+		return fmt.Sprintf("execution %s is in unexpected state %s", e.ExecutionID, e.Actual)
 	}
-	return fmt.Sprintf("execution %s is in state %s, but expeted %s", e.ExecutionID, e.Actual, e.Expected)
+	return fmt.Sprintf("execution %s is in state %s, but expected %s", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.
