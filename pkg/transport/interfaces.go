@@ -11,19 +11,23 @@ import (
 
 // TransportLayer is the interface for the transport layer.
 type TransportLayer interface {
-	// ComputeProxy returns the compute proxy.
+	// ComputeProxy enables orchestrator nodes to send job requests to compute nodes.
 	ComputeProxy() compute.Endpoint
-	// CallbackProxy returns the callback proxy.
+	// CallbackProxy enables compute nodes to send results and responses back to orchestrator nodes
 	CallbackProxy() compute.Callback
-	// NodeInfoPubSub returns the node info pubsub.
+	// NodeInfoPubSub enables compute nodes to publish their info and capabilities
+	// to orchestrator nodes for job matching and discovery.
 	NodeInfoPubSub() pubsub.PubSub[models.NodeInfo]
-	// NodeInfoDecorator returns the node info decorator.
+	// NodeInfoDecorator enables transport layer to enrich node info with data
+	// required for request routing
 	NodeInfoDecorator() models.NodeInfoDecorator
-	// DebugInfoProviders returns the debug info providers of the transport layer.
+	// DebugInfoProviders enables transport layer to provide meaningful debug info to operators
 	DebugInfoProviders() []model.DebugInfoProvider
-	// RegisterComputeCallback registers a compute callback with the transport layer.
+	// RegisterComputeCallback registers a compute callback with the transport layer
+	// so that incoming compute responses are forwarded to the handler
 	RegisterComputeCallback(callback compute.Callback) error
-	// RegisterComputeEndpoint registers a compute endpoint with the transport layer.
+	// RegisterComputeEndpoint registers a compute endpoint with the transport layer
+	// so that incoming orchestrator requests are forwarded to the handler
 	RegisterComputeEndpoint(endpoint compute.Endpoint) error
 	// Close closes the transport layer.
 	Close(ctx context.Context) error
