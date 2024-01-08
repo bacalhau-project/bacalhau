@@ -26,6 +26,8 @@
     "./src/**/*",
     "babel.config.js",
     "tests/App.test.tsx",
-    "tests/services/bacalhau.test.ts"
+    "tests/services/bacalhau.test.ts",
+    "src/components",
+    "src/types/custom.d.ts"
   ]
 }
