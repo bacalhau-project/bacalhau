@@ -5,12 +5,13 @@ sidebar_label: exec
 
 ## Description
 
-The `bacalhau exec` command provides ...
+The `bacalhau exec` command allows for the specification of jobs to be executed from the command line,
+without the need for a job specification file (see [job run](../job/run/)). 
 
 ## Usage
 
 ```shell
-bacalhau exec [flags] [job-type] 
+bacalhau exec [flags] [job-type] arguments
 ```
 
 ## Flags
