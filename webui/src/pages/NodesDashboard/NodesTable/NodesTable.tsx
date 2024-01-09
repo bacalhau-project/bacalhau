@@ -1,8 +1,8 @@
-import React, { useContext } from "react";
-import styles from "./NodesTable.module.scss";
-import TableSettingsContext from "../../../context/TableSettingsContext";
+import React, { useContext } from 'react';
+import styles from './NodesTable.module.scss';
+import { TableSettingsContext } from '../../../context/TableSettingsContext';
 // import ActionButton from "../../../components/ActionButton/ActionButton";
-import { Node, ParsedNodeData } from "../../../helpers/nodeInterfaces";
+import { Node, ParsedNodeData } from '../../../helpers/nodeInterfaces';
 
 interface TableProps {
   data: Node[];
@@ -17,8 +17,8 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
       id: node.PeerInfo.ID,
       type: node.NodeType,
       environment: node.Labels.env,
-      inputs: inputs,
-      outputs: outputs,
+      inputs,
+      outputs,
       version: node.BacalhauVersion.GitVersion,
       // action: "Action",
     };

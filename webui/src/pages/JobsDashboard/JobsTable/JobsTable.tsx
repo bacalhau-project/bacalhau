@@ -1,31 +1,31 @@
-import React, { useContext } from "react";
-import Moment from "react-moment";
-import styles from "./JobsTable.module.scss";
-import ProgramSummary from "./ProgramSummary/ProgramSummary";
-import Label from "../../../components/Label/Label";
-import { ActionButton } from "../../../components/ActionButton/ActionButton";
+import React, { useContext } from 'react';
+import Moment from 'react-moment';
+import styles from './JobsTable.module.scss';
+import ProgramSummary from './ProgramSummary/ProgramSummary';
+import { Label } from '../../../components/Label/Label';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import {
   capitalizeFirstLetter,
   fromTimestamp,
   getShortenedJobID,
   createLabelArray,
-} from "../../../helpers/helperFunctions";
-import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
-import TableSettingsContext from "../../../context/TableSettingsContext";
+} from '../../../helpers/helperFunctions';
+import { Job, ParsedJobData } from '../../../helpers/jobInterfaces';
+import { TableSettingsContext } from '../../../context/TableSettingsContext';
 
 interface TableProps {
   data: Job[];
 }
 
 const labelColorMap: { [key: string]: string } = {
-  running: "green",
-  warning: "orange",
-  error: "red",
-  paused: "blue",
-  stopped: "grey",
-  complete: "green",
-  progress: "orange",
-  failed: "red",
+  running: 'green',
+  warning: 'orange',
+  error: 'red',
+  paused: 'blue',
+  stopped: 'grey',
+  complete: 'green',
+  progress: 'orange',
+  failed: 'red',
 };
 
 function parseData(jobs: Job[]): ParsedJobData[] {
@@ -34,11 +34,11 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`);
     }
     const firstTask = job.Tasks[0];
-    const jobType = job.Type ?? "batch";
+    const jobType = job.Type ?? 'batch';
     const jobShortID = getShortenedJobID(job.ID);
     const jobName = job.Name;
 
-    if (jobType === "batch") {
+    if (jobType === 'batch') {
       job.Name = jobShortID;
     } else {
       job.Name = jobName;
@@ -51,7 +51,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       jobType: capitalizeFirstLetter(jobType),
       label: createLabelArray(job.Labels),
       status: job.State.StateType,
-      action: "Action",
+      action: 'Action',
     };
   });
 }
@@ -99,7 +99,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               {settings.showLabel && (
                 <td className={styles.label}>
                   {jobData.label.map((label) => (
-                    <Label text={label} color={"grey"} />
+                    <Label key={index} text={label} color="grey" />
                   ))}
                 </td>
               )}

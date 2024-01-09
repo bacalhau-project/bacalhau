@@ -1,9 +1,9 @@
 // layout/Sidebar/Sidebar.tsx
-import React from "react";
-import { Link } from "react-router-dom";
-import styles from "./Sidebar.module.scss";
-import Button from "./Button/Button";
-import { ReactSVG } from "react-svg";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ReactSVG } from 'react-svg';
+import styles from './Sidebar.module.scss';
+import Button from './Button/Button';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -16,19 +16,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const links = [
     {
-      path: "/JobsDashboard",
+      path: '/JobsDashboard',
       icon: <ReactSVG src="../../images/jobs-icon.svg" />,
-      title: "Jobs Dashboard",
+      title: 'Jobs Dashboard',
     },
     {
-      path: "/NodesDashboard",
+      path: '/NodesDashboard',
       icon: <ReactSVG src="../../images/nodes-icon.svg" />,
-      title: "Nodes Dashboard",
+      title: 'Nodes Dashboard',
     },
     {
-      path: "/Settings",
+      path: '/Settings',
       icon: <ReactSVG src="../../images/cogwheel.svg" />,
-      title: "Settings",
+      title: 'Settings',
     },
   ];
 

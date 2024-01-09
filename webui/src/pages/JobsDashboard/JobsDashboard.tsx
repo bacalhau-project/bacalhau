@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import styles from "./JobsDashboard.module.scss";
-import { JobsTable } from "./JobsTable/JobsTable";
-import { Layout } from "../../layout/Layout";
-import { Job } from "../../helpers/jobInterfaces";
-import { bacalhauAPI } from "../../services/bacalhau";
+import React, { useEffect, useState } from 'react';
+import styles from './JobsDashboard.module.scss';
+import { JobsTable } from './JobsTable/JobsTable';
+import { Layout } from '../../layout/Layout';
+import { Job } from '../../helpers/jobInterfaces';
+import { bacalhauAPI } from '../../services/bacalhau';
 
 export const JobsDashboard: React.FC = () => {
   const [data, setData] = useState<Job[]>([]);

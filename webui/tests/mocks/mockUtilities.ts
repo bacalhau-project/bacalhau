@@ -12,13 +12,12 @@ export function selectRandomLabels() {
 export function selectRandomElements(all_types, num = 1) {
   if (num === 1) {
     return all_types[Math.floor(Math.random() * all_types.length)];
-  } else {
-    // Create a variable selections that is strongly typed as an array of strings
-    const selections: string[] = [];
-    for (let i = 0; i < num; i++) {
-      const randomIdx = Math.floor(Math.random() * all_types.length);
-      selections.push(all_types[randomIdx]);
-    }
-    return selections;
   }
+  // Create a variable selections that is strongly typed as an array of strings
+  const selections: string[] = [];
+  for (let i = 0; i < num; i++) {
+    const randomIdx = Math.floor(Math.random() * all_types.length);
+    selections.push(all_types[randomIdx]);
+  }
+  return selections;
 }

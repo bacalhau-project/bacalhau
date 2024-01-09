@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, ReactNode } from "react";
+import React, { useState, useContext, useEffect, ReactNode } from 'react';
 
 // Combined table settings interface
 export interface TableSettings {
@@ -42,10 +42,13 @@ const defaultState: TableSettings = {
   showAction: true,
 };
 
-const TableSettingsContext = React.createContext<TableSettingsContextType>({
-  settings: defaultState,
-  toggleSetting: () => {},
-});
+export const TableSettingsContext =
+  React.createContext<TableSettingsContextType>({
+    settings: defaultState,
+    toggleSetting: (key: keyof TableSettings) => {
+      console.log('toggleSetting not implemented: %s', key);
+    },
+  });
 
 export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -54,13 +57,13 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     const loadSettings = () => {
-      const storedSettings = localStorage.getItem("tableSettings");
+      const storedSettings = localStorage.getItem('tableSettings');
       if (storedSettings) {
         setSettings(JSON.parse(storedSettings));
       }
     };
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       loadSettings();
     }
   }, []);
@@ -68,7 +71,7 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
   const toggleSetting = (key: keyof TableSettings) => {
     setSettings((prev) => {
       const newSettings = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("tableSettings", JSON.stringify(newSettings));
+      localStorage.setItem('tableSettings', JSON.stringify(newSettings));
       return newSettings;
     });
   };
@@ -84,10 +87,8 @@ export const useTableSettings = (): TableSettingsContextType => {
   const context = useContext(TableSettingsContext);
   if (!context) {
     throw new Error(
-      "useTableSettings must be used within a TableSettingsProvider",
+      'useTableSettings must be used within a TableSettingsProvider',
     );
   }
   return context;
 };
-
-export default TableSettingsContext;

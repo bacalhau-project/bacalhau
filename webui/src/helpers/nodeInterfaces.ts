@@ -20,8 +20,8 @@ export interface PeerInfo {
 
 export interface Labels {
   Architecture: string;
-  "Operating-System": string;
-  "git-lfs": string;
+  'Operating-System': string;
+  'git-lfs': string;
   name: string;
   env: string;
 }

@@ -1,17 +1,17 @@
-import * as faker from "faker";
-import { v4 as uuidv4 } from "uuid";
-import { selectRandomLabels, selectRandomElements } from "./mockUtilities";
+import * as faker from 'faker';
+import { v4 as uuidv4 } from 'uuid';
+import { selectRandomLabels, selectRandomElements } from './mockUtilities';
 
 // Generate an array with one or more of the following strings
-const engine_types = ["wasm", "docker"];
-const publisher_types = ["noop", "ipfs", "s3", "inline", "urldownload"];
+const engine_types = ['wasm', 'docker'];
+const publisher_types = ['noop', 'ipfs', 's3', 'inline', 'urldownload'];
 const storage_sources = [
-  "ipfs",
-  "urldownload",
-  "inline",
-  "repoclone",
-  "repoclonelfs",
-  "s3",
+  'ipfs',
+  'urldownload',
+  'inline',
+  'repoclone',
+  'repoclonelfs',
+  's3',
 ];
 
 export function generateMockNode() {
@@ -41,11 +41,11 @@ export function generateMockNode() {
         })}/quic-v1`,
       ],
     },
-    NodeType: "Compute",
+    NodeType: 'Compute',
     Labels: {
       Architecture: faker.system.arch(),
-      "Operating-System": faker.os.platform(),
-      "git-lfs": faker.datatype.boolean().toString(),
+      'Operating-System': faker.os.platform(),
+      'git-lfs': faker.datatype.boolean().toString(),
       owner: faker.internet.userName(),
     },
     ComputeNodeInfo: {

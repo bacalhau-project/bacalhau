@@ -1,24 +1,24 @@
 // @ts-nocheck
-import React from "react";
-import { MemoryRouter } from "react-router-dom";
-import { screen, render } from "@testing-library/react";
-import { JobsDashboard } from "../../src/pages/JobsDashboard/JobsDashboard";
-import axios from "axios"; // Import axios module
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { screen, render } from '@testing-library/react';
+import axios from 'axios'; // Import axios module
+import { JobsDashboard } from '../../src/pages/JobsDashboard/JobsDashboard';
 
-jest.mock("axios");
+jest.mock('axios');
 
-axios.get.mockResolvedValueOnce({ data: { Jobs: [{ id: 1, name: "test" }] } });
+axios.get.mockResolvedValueOnce({ data: { Jobs: [{ id: 1, name: 'test' }] } });
 
-describe("JobsDashboard", () => {
+describe('JobsDashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test("renders JobsDashboard", () => {
+  test('renders JobsDashboard', () => {
     render(
       <MemoryRouter>
         <JobsDashboard />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getAllByText(/Jobs Dashboard/i).length).toBeGreaterThan(0);

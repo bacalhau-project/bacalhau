@@ -1,7 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import App from "../src/App";
+import React from 'react';
+import { render, fireEvent, screen } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import App from '../src/App';
 
-test("renders App component with routes", () => {
+test('renders App component with routes', () => {
   render(<App />);
 
   const jobsDashboardElement = screen.getAllByText(/Jobs Dashboard/i);

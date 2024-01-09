@@ -1,9 +1,9 @@
 // src/components/ProgramSummary.tsx
-import React from "react";
-import styles from "./ProgramSummary.module.scss";
-import { Tasks } from "../../../../helpers/jobInterfaces";
-import { ReactComponent as Cogwheel } from "../../../../images/cogwheel.svg";
-import { ReactComponent as DockerLogo } from "../../../../images/docker.svg";
+import React from 'react';
+import styles from './ProgramSummary.module.scss';
+import { Tasks } from '../../../../helpers/jobInterfaces';
+import { ReactComponent as Cogwheel } from '../../../../images/cogwheel.svg';
+import { ReactComponent as DockerLogo } from '../../../../images/docker.svg';
 
 interface ProgramSummaryProps {
   data: Tasks;
@@ -11,7 +11,7 @@ interface ProgramSummaryProps {
 
 const getImageSource = (type: string) => {
   switch (type) {
-    case "docker":
+    case 'docker':
       return <DockerLogo className={styles.icon} />;
     default:
       return <Cogwheel className={styles.icon} />;
@@ -19,9 +19,9 @@ const getImageSource = (type: string) => {
 };
 
 const truncateInput = (text: string, length: number) => {
-  if (text.length === 0) return "";
+  if (text.length === 0) return '';
   if (text[0].length <= length) return text;
-  return text[0].substring(0, length) + "[cont]";
+  return `${text[0].substring(0, length)}[cont]`;
 };
 
 const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
@@ -31,7 +31,7 @@ const ProgramSummary: React.FC<ProgramSummaryProps> = ({ data }) => {
   } = data.Engine;
 
   const imageSource = getImageSource(engineType);
-  const truncatedInput = truncateInput((parameters || []).join(" "), 100);
+  const truncatedInput = truncateInput((parameters || []).join(' '), 100);
 
   return (
     <div className={styles.programSummary}>

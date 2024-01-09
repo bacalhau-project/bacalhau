@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
-import Moment from "react-moment";
-import { Execution, Job } from "../../../helpers/jobInterfaces";
+import React, { useState, useEffect } from 'react';
+import Moment from 'react-moment';
+import { Execution, Job } from '../../../helpers/jobInterfaces';
 import {
   fromTimestamp,
   capitalizeFirstLetter,
-} from "../../../helpers/helperFunctions";
-import styles from "./JobInfo.module.scss";
+} from '../../../helpers/helperFunctions';
+import styles from './JobInfo.module.scss';
 
 interface JobInfoProps {
   job: Job;
   execution: Execution | undefined;
   section:
-    | "overview"
-    | "executionRecord"
-    | "stdout"
-    | "stderr"
-    | "inputs"
-    | "outputs";
+    | 'overview'
+    | 'executionRecord'
+    | 'stdout'
+    | 'stderr'
+    | 'inputs'
+    | 'outputs';
 }
 
 interface DataItem {
@@ -29,12 +29,12 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
 
   useEffect(() => {
     switch (section) {
-      case "overview":
+      case 'overview':
         setDataToDisplay([
-          { label: "Job ID", value: job.ID },
-          { label: "Job Type", value: capitalizeFirstLetter(job.Type) },
+          { label: 'Job ID', value: job.ID },
+          { label: 'Job Type', value: capitalizeFirstLetter(job.Type) },
           {
-            label: "Created",
+            label: 'Created',
             value: (
               <Moment fromNow withTitle>
                 {fromTimestamp(job.CreateTime)}
@@ -42,48 +42,48 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             ),
           },
           {
-            label: "Modified",
+            label: 'Modified',
             value: (
               <Moment fromNow withTitle>
                 {fromTimestamp(job.ModifyTime)}
               </Moment>
             ),
           },
-          { label: "Status", value: job.State.StateType },
+          { label: 'Status', value: job.State.StateType },
           {
-            label: "Executor Type",
+            label: 'Executor Type',
             value: capitalizeFirstLetter(job.Tasks[0].Engine.Type),
           },
-          { label: "Image", value: job.Tasks[0].Engine.Params.Image },
+          { label: 'Image', value: job.Tasks[0].Engine.Params.Image },
           {
-            label: "GPU Details",
+            label: 'GPU Details',
             value: job?.Tasks[0]?.Resources?.GPU
               ? job?.Tasks[0]?.Resources?.GPU.toString()
-              : "Not specified",
+              : 'Not specified',
           },
           {
-            label: "Timeout",
+            label: 'Timeout',
             value:
               job?.Tasks[0]?.Timeouts?.ExecutionTimeout != null
                 ? `${job?.Tasks[0]?.Timeouts?.ExecutionTimeout} second${
-                    job?.Tasks[0]?.Timeouts?.ExecutionTimeout === 1 ? "" : "s"
+                    job?.Tasks[0]?.Timeouts?.ExecutionTimeout === 1 ? '' : 's'
                   }`
-                : "No timeout set",
+                : 'No timeout set',
           },
           {
-            label: "Requester Node",
-            value: job.Meta["bacalhau.org/requester.id"],
+            label: 'Requester Node',
+            value: job.Meta['bacalhau.org/requester.id'],
           },
           // { label: 'Concurrency', value: '' }
         ]);
         break;
-      case "executionRecord":
+      case 'executionRecord':
         if (execution !== undefined)
           setDataToDisplay([
-            { label: "Execution ID", value: execution.ID },
-            { label: "Node ID", value: execution.NodeID },
+            { label: 'Execution ID', value: execution.ID },
+            { label: 'Node ID', value: execution.NodeID },
             {
-              label: "Initiation Time",
+              label: 'Initiation Time',
               value: (
                 <Moment fromNow withTitle>
                   {fromTimestamp(execution.CreateTime)}
@@ -91,7 +91,7 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
               ),
             },
             {
-              label: "Completion Time",
+              label: 'Completion Time',
               value: (
                 <Moment fromNow withTitle>
                   {fromTimestamp(execution.ModifyTime)}
@@ -99,11 +99,11 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
               ),
             },
             {
-              label: "Exit Code",
+              label: 'Exit Code',
               value: execution.RunOutput.exitCode?.toString(),
             },
             {
-              label: "Execution Note",
+              label: 'Execution Note',
               value: capitalizeFirstLetter(execution.DesiredState.Message),
             },
           ]);
