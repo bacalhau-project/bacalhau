@@ -1,4 +1,0 @@
-[codespell]
-skip = .git,*.pdf,*.svg,Stable-Diffusion-Dreambooth,Prolog-Hello-World,Training-Tensorflow-Model,package-lock.json,testdata,Gemfile.lock,go*.sum,_config.yml,./webui/pnpm-lock.yam
-quiet-level = 2
-ignore-words=.gitprecommit/codespell_ignore_words.txt
