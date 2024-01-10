@@ -1,10 +1,10 @@
 // Sidebar/Button.tsx
-import React from "react";
-import styles from "./Button.module.scss";
+import React from "react"
+import styles from "./Button.module.scss"
 
 interface ButtonProps {
-  toggleSidebar: () => void;
-  isCollapsed: boolean;
+  toggleSidebar: () => void
+  isCollapsed: boolean
 }
 
 const Button: React.FC<ButtonProps> = ({ toggleSidebar, isCollapsed }) => {
@@ -33,7 +33,7 @@ const Button: React.FC<ButtonProps> = ({ toggleSidebar, isCollapsed }) => {
         </div>
       </nav>
     </section>
-  );
-};
+  )
+}
 
-export default Button;
+export default Button

@@ -1,10 +1,10 @@
-import React from "react";
-import styles from "./Header.module.scss";
-import { ReactSVG } from "react-svg";
+import React from "react"
+import styles from "./Header.module.scss"
+import { ReactSVG } from "react-svg"
 
 interface HeaderProps {
-  collapsed: boolean;
-  pageTitle: string;
+  collapsed: boolean
+  pageTitle: string
 }
 
 export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
@@ -25,5 +25,5 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
         </div>
       </div>
     </header>
-  );
-};
+  )
+}

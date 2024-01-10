@@ -1,9 +1,9 @@
-import React from "react";
-import styles from "./Container.module.scss";
+import React from "react"
+import styles from "./Container.module.scss"
 
 interface ContainerProps {
-  title: string;
-  children?: React.ReactNode;
+  title: string
+  children?: React.ReactNode
 }
 
 const Container: React.FC<ContainerProps> = ({ title, children }) => {
@@ -15,7 +15,7 @@ const Container: React.FC<ContainerProps> = ({ title, children }) => {
       </div>
       <div className={styles.content}>{children}</div>
     </div>
-  );
-};
+  )
+}
 
-export default Container;
+export default Container

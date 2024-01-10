@@ -1,12 +1,12 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import styles from "./ActionButton.module.scss";
+import React from "react"
+import { useNavigate } from "react-router-dom"
+import styles from "./ActionButton.module.scss"
 
 interface ActionButtonProps {
-  text: string;
-  onClick?: () => void;
-  to?: string;
-  id?: string;
+  text: string
+  onClick?: () => void
+  to?: string
+  id?: string
 }
 
 export const ActionButton: React.FC<ActionButtonProps> = ({
@@ -15,16 +15,16 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   to,
   id,
 }) => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   const handleClick = () => {
     if (onClick) {
-      onClick();
+      onClick()
     } else if (to) {
-      const path = id ? `${to}/${id}` : to;
-      navigate(path);
+      const path = id ? `${to}/${id}` : to
+      navigate(path)
     }
-  };
+  }
 
   return (
     <div className={styles.column}>
@@ -32,5 +32,5 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         {text}
       </button>
     </div>
-  );
-};
+  )
+}

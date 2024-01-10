@@ -1,20 +1,20 @@
-import React, { useContext } from "react";
-import Moment from "react-moment";
-import styles from "./JobsTable.module.scss";
-import ProgramSummary from "./ProgramSummary/ProgramSummary";
-import Label from "../../../components/Label/Label";
-import { ActionButton } from "../../../components/ActionButton/ActionButton";
+import React, { useContext } from "react"
+import Moment from "react-moment"
+import styles from "./JobsTable.module.scss"
+import ProgramSummary from "./ProgramSummary/ProgramSummary"
+import Label from "../../../components/Label/Label"
+import { ActionButton } from "../../../components/ActionButton/ActionButton"
 import {
   capitalizeFirstLetter,
   fromTimestamp,
   getShortenedJobID,
   createLabelArray,
-} from "../../../helpers/helperFunctions";
-import { Job, ParsedJobData } from "../../../helpers/jobInterfaces";
-import TableSettingsContext from "../../../context/TableSettingsContext";
+} from "../../../helpers/helperFunctions"
+import { Job, ParsedJobData } from "../../../helpers/jobInterfaces"
+import TableSettingsContext from "../../../context/TableSettingsContext"
 
 interface TableProps {
-  data: Job[];
+  data: Job[]
 }
 
 const labelColorMap: { [key: string]: string } = {
@@ -26,22 +26,22 @@ const labelColorMap: { [key: string]: string } = {
   complete: "green",
   progress: "orange",
   failed: "red",
-};
+}
 
 function parseData(jobs: Job[]): ParsedJobData[] {
   return jobs.map((job) => {
     if (!job.Tasks || job.Tasks.length === 0) {
-      throw new Error(`Job with ID: ${job.ID} has no tasks.`);
+      throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
-    const firstTask = job.Tasks[0];
-    const jobType = job.Type ?? "batch";
-    const jobShortID = getShortenedJobID(job.ID);
-    const jobName = job.Name;
+    const firstTask = job.Tasks[0]
+    const jobType = job.Type ?? "batch"
+    const jobShortID = getShortenedJobID(job.ID)
+    const jobName = job.Name
 
     if (jobType === "batch") {
-      job.Name = jobShortID;
+      job.Name = jobShortID
     } else {
-      job.Name = jobName;
+      job.Name = jobName
     }
     return {
       longId: job.ID,
@@ -52,13 +52,13 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       label: createLabelArray(job.Labels),
       status: job.State.StateType,
       action: "Action",
-    };
-  });
+    }
+  })
 }
 
 export const JobsTable: React.FC<TableProps> = ({ data }) => {
-  const { settings } = useContext(TableSettingsContext);
-  const parsedData = parseData(data);
+  const { settings } = useContext(TableSettingsContext)
+  const parsedData = parseData(data)
 
   return (
     <div className={styles.tableContainer}>
@@ -125,5 +125,5 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
         </tbody>
       </table>
     </div>
-  );
-};
+  )
+}

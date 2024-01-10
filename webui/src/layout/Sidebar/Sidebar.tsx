@@ -1,16 +1,16 @@
 // layout/Sidebar/Sidebar.tsx
-import React from "react";
-import { Link } from "react-router-dom";
-import styles from "./Sidebar.module.scss";
-import Button from "./Button/Button";
-import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg";
-import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg";
-import { ReactComponent as CogWheelIcon } from "../../images/cogwheel.svg";
-import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg";
+import React from "react"
+import { Link } from "react-router-dom"
+import styles from "./Sidebar.module.scss"
+import Button from "./Button/Button"
+import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
+import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
+import { ReactComponent as CogWheelIcon } from "../../images/cogwheel.svg"
+import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
 
 interface SidebarProps {
-  isCollapsed: boolean;
-  toggleSidebar: () => void;
+  isCollapsed: boolean
+  toggleSidebar: () => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <CogWheelIcon />,
       title: "Settings",
     },
-  ];
+  ]
 
   return (
     <div
@@ -60,5 +60,5 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </div>
     </div>
-  );
-};
+  )
+}

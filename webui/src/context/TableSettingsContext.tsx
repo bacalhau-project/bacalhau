@@ -1,27 +1,33 @@
-import React, { useState, useContext, useEffect, ReactNode } from "react";
+import React, {
+  useState,
+  createContext,
+  useContext,
+  useEffect,
+  ReactNode,
+} from "react"
 
 // Combined table settings interface
 export interface TableSettings {
   // Jobs Table
-  showJobName?: boolean;
-  showCreated?: boolean;
-  showProgram?: boolean;
-  showJobType?: boolean;
-  showLabel?: boolean;
-  showStatus?: boolean;
+  showJobName?: boolean
+  showCreated?: boolean
+  showProgram?: boolean
+  showJobType?: boolean
+  showLabel?: boolean
+  showStatus?: boolean
   // Nodes Table
-  showNodeId?: boolean;
-  showNodeType?: boolean;
-  showEnv?: boolean;
-  showInputs?: boolean;
-  showOutputs?: boolean;
-  showVersion?: boolean;
-  showAction?: boolean;
+  showNodeId?: boolean
+  showNodeType?: boolean
+  showEnv?: boolean
+  showInputs?: boolean
+  showOutputs?: boolean
+  showVersion?: boolean
+  showAction?: boolean
 }
 
 interface TableSettingsContextType {
-  settings: TableSettings;
-  toggleSetting: (key: keyof TableSettings) => void;
+  settings: TableSettings
+  toggleSetting: (key: keyof TableSettings) => void
 }
 
 const defaultState: TableSettings = {
@@ -40,54 +46,56 @@ const defaultState: TableSettings = {
   showOutputs: true,
   showVersion: true,
   showAction: true,
-};
+}
 
-const TableSettingsContext = React.createContext<TableSettingsContextType>({
+const TableSettingsContext = createContext<TableSettingsContextType>({
   settings: defaultState,
-  toggleSetting: () => {},
-});
+  toggleSetting: (key: keyof TableSettings) => {
+    console.log("toggleSetting not implemented: %s", key)
+  },
+})
 
 export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [settings, setSettings] = useState<TableSettings>(defaultState);
+  const [settings, setSettings] = useState<TableSettings>(defaultState)
 
   useEffect(() => {
     const loadSettings = () => {
-      const storedSettings = localStorage.getItem("tableSettings");
+      const storedSettings = localStorage.getItem("tableSettings")
       if (storedSettings) {
-        setSettings(JSON.parse(storedSettings));
+        setSettings(JSON.parse(storedSettings))
       }
-    };
+    }
 
     if (typeof window !== "undefined") {
-      loadSettings();
+      loadSettings()
     }
-  }, []);
+  }, [])
 
   const toggleSetting = (key: keyof TableSettings) => {
     setSettings((prev) => {
-      const newSettings = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("tableSettings", JSON.stringify(newSettings));
-      return newSettings;
-    });
-  };
+      const newSettings = { ...prev, [key]: !prev[key] }
+      localStorage.setItem("tableSettings", JSON.stringify(newSettings))
+      return newSettings
+    })
+  }
 
   return (
     <TableSettingsContext.Provider value={{ settings, toggleSetting }}>
       {children}
     </TableSettingsContext.Provider>
-  );
-};
+  )
+}
 
 export const useTableSettings = (): TableSettingsContextType => {
-  const context = useContext(TableSettingsContext);
+  const context = useContext(TableSettingsContext)
   if (!context) {
     throw new Error(
-      "useTableSettings must be used within a TableSettingsProvider",
-    );
+      "useTableSettings must be used within a TableSettingsProvider"
+    )
   }
-  return context;
-};
+  return context
+}
 
-export default TableSettingsContext;
+export default TableSettingsContext

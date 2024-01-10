@@ -1,9 +1,9 @@
-import React from "react";
-import styles from "./Table.module.scss";
+import React from "react"
+import styles from "./Table.module.scss"
 
 interface TableProps {
-  data: { headers: string[]; rows: { [key: string]: React.ReactNode }[] };
-  style?: React.CSSProperties;
+  data: { headers: string[]; rows: { [key: string]: React.ReactNode }[] }
+  style?: React.CSSProperties
 }
 
 const Table: React.FC<TableProps> = ({ data, style }) => {
@@ -28,7 +28,7 @@ const Table: React.FC<TableProps> = ({ data, style }) => {
         </tbody>
       </table>
     </div>
-  );
-};
+  )
+}
 
-export default Table;
+export default Table

@@ -1,14 +1,14 @@
-import { jest } from "@jest/globals";
+import { jest } from "@jest/globals"
 
-const mockAxios: any = jest.createMockFromModule("axios");
+const mockAxios: any = jest.createMockFromModule("axios")
 
 const mockData = {
   data: {
     Jobs: [{ id: "job1" }, { id: "job2" }],
   },
-};
+}
 
-mockAxios.create = jest.fn(() => mockAxios);
-mockAxios.get = jest.fn(() => Promise.resolve(mockData));
+mockAxios.create = jest.fn(() => mockAxios)
+mockAxios.get = jest.fn(() => Promise.resolve(mockData))
 
-export default mockAxios;
+export default mockAxios
