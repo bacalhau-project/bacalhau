@@ -13,7 +13,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -195,7 +195,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.Host.ID().String(),
 		Config:     config.APIServerConfig,
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.AlwaysAllow,
 	}
 
 	// Only allow autocert for requester nodes
