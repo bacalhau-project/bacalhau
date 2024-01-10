@@ -60,3 +60,15 @@ type Authenticator interface {
 	Authenticate(req *http.Request) (Authentication, error)
 	Requirement() Requirement
 }
+
+// Provider maps "method names" to authenticator implementations. A method name
+// is a human-readable string chosen by the person configuring the system that
+// is shown to users to help them pick the authentication method they want to
+// use. There can be multiple usages of the same Authenticator *type* but with
+// different configs and parameters, each identified with a unique method name.
+//
+// For example, if an implementation wants to allow users to log in with Github
+// or Bitbucket, they might both use an authenticator implementation of type
+// "oidc", and each would appear once on this provider with key / method name
+// "github" and "bitbucket".
+type Provider = provider.Provider[Authenticator]

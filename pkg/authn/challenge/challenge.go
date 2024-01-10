@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"context"
+	"crypto/rsa"
 	"embed"
 	"encoding"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/samber/lo"
 )
 
 //go:embed *.rego
@@ -51,7 +53,7 @@ func NewAuthenticator(p *policy.Policy, getPhrase encoding.BinaryMarshaler, key 
 	return challengeAuthenticator{
 		authnPolicy: p,
 		getPhrase:   getPhrase,
-		key:         key,
+		key:         lo.Must(jwk.New(key)),
 		nodeID:      nodeID,
 		challenge:   policy.AddQuery[policyData, string](p, authn.PolicyTokenRule),
 	}
@@ -108,3 +110,8 @@ func (authenticator challengeAuthenticator) Requirement() authn.Requirement {
 		},
 	}
 }
+
+// AnonymousModePolicy grants read-only access to all namespaces and full access
+// to a namespace matching the user's client ID, derived from their submitted
+// public key.
+var AnonymousModePolicy *policy.Policy = lo.Must(policy.FromFS(policies, "challenge_ns_anon.rego"))
