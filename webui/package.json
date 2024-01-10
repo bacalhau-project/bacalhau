@@ -18,6 +18,7 @@
     "react-scripts": "^5.0.1",
     "react-svg": "^16.1.32",
     "sass": "^1.69.5",
+    "typescript": "^5.3.3",
     "uuid": "^9.0.1",
     "web-vitals": "^2.1.4"
   },
@@ -64,13 +65,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.23.6",
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/preset-typescript": "^7.23.3",
     "@testing-library/dom": "^9.3.3",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/user-event": "^14.5.1",
-    "@types/axios": "^0.14.0",
-    "@types/history": "^5.0.0",
     "@types/jest": "^29.5.11",
     "@types/uuid": "^9.0.7",
     "babel-cli": "^6.26.0",
