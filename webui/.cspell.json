@@ -1,0 +1,12 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "allowCompoundWords": true,
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-words",
+            "path": "./.gitprecommit/codespell_ignore_words.txt",
+            "addWords": true
+        }
+    ]
+}
