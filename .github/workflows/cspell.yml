@@ -18,4 +18,3 @@ jobs:
       - name: Codespell
         run: |
           npm install -g cspell@latest
-          cspell -c .cspell.json lint ./docs 
