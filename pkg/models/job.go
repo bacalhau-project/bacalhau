@@ -41,6 +41,12 @@ const (
 const (
 	// Default scheduling timeout for jobs, in seconds
 	DefaultSchedulingTimeout int64 = 60
+
+	DefaultRetryDelay int64 = 1
+
+	DefaultMaximumRetryDelay int64 = 60
+
+	DefaultRetryDelayGrowthFactor float64 = 2.0
 )
 
 // IsUndefined returns true if the job state is undefined
@@ -123,6 +129,15 @@ type Job struct {
 	// SchedulingTimeout is the time, in seconds, the job is allowed to wait
 	// to be scheduled before we give up trying.
 	SchedulingTimeout int64 `json:"SchedulingDeadline"`
+
+	// How many seconds to wait between retries. This increases each retry, up to MaximumRetryDelay
+	RetryDelay int64 `json:"RetryDelay"`
+
+	// The maximum delay between retries
+	MaximumRetryDelay int64 `json:"MaximumRetryDelay"`
+
+	// The growth factor: how much longer to wait before retrying each time
+	RetryDelayGrowthFactor float64 `json:"RetryDelayGrowthFactor"`
 }
 
 func (j *Job) MetricAttributes() []attribute.KeyValue {
@@ -182,6 +197,18 @@ func (j *Job) Normalize() {
 
 	if j.SchedulingTimeout == 0 {
 		j.SchedulingTimeout = DefaultSchedulingTimeout
+	}
+
+	if j.RetryDelay == 0 {
+		j.RetryDelay = DefaultRetryDelay
+	}
+
+	if j.MaximumRetryDelay == 0 {
+		j.MaximumRetryDelay = DefaultMaximumRetryDelay
+	}
+
+	if j.RetryDelayGrowthFactor < 1.0 {
+		j.RetryDelayGrowthFactor = DefaultRetryDelayGrowthFactor
 	}
 }
 
