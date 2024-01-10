@@ -52,7 +52,7 @@ export const Settings = () => {
   return (
     <Layout pageTitle="Settings">
       {/* Jobs Dashboard Settings */}
-      <Container title={"Jobs Dashboard Settings"}>
+      <Container title="Jobs Dashboard Settings">
         {jobsOptions.map(({ label, key }) => (
           <div className={styles.checkboxGroup}>
             <Checkbox
@@ -62,12 +62,16 @@ export const Settings = () => {
             />
           </div>
         ))}
-        <button onClick={handleSave} className={styles.saveButton}>
+        <button
+          onClick={handleSave}
+          className={styles.saveButton}
+          type="button"
+        >
           Save
         </button>
       </Container>
       {/* Node Dashboard Settings */}
-      <Container title={"Nodes Dashboard Settings"}>
+      <Container title="Nodes Dashboard Settings">
         {nodesOptions.map(({ label, key }) => (
           <div className={styles.checkboxGroup}>
             <Checkbox
@@ -77,7 +81,11 @@ export const Settings = () => {
             />
           </div>
         ))}
-        <button onClick={handleSave} className={styles.saveButton}>
+        <button
+          onClick={handleSave}
+          className={styles.saveButton}
+          type="button"
+        >
           Save
         </button>
       </Container>

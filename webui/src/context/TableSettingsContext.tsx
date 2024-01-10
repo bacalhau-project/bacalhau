@@ -64,7 +64,7 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
     const loadSettings = () => {
       const storedSettings = localStorage.getItem("tableSettings")
       if (storedSettings) {
-        setSettings(JSON.parse(storedSettings))
+        setSettings(JSON.parse(storedSettings) as TableSettings)
       }
     }
 
@@ -82,6 +82,7 @@ export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
   }
 
   return (
+    // eslint-disable-next-line react/jsx-no-constructed-context-values
     <TableSettingsContext.Provider value={{ settings, toggleSetting }}>
       {children}
     </TableSettingsContext.Provider>

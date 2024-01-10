@@ -20,8 +20,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
+      "node_modules/@types",
+      "src/types"
     ],
     "types": [
       "jest",
@@ -33,11 +33,9 @@
     "src/**/*.tsx",
     "src/**/*.ts",
     "src/**/*.d.ts",
-    "./src/**/*",
     "babel.config.js",
-    "tests/App.test.tsx",
-    "tests/services/bacalhau.test.ts",
-    "src/components",
-    "src/types/custom.d.ts"
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "node_modules/**/*.ts"
   ]
 }

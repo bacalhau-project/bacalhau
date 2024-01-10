@@ -6,15 +6,13 @@ interface CheckboxProps {
   label?: string
 }
 
-const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange, label }) => {
-  return (
-    <div>
-      <label>
-        <span>{label && <span>{label}</span>}</span>
-        <input type="checkbox" checked={checked} onChange={onChange} />
-      </label>
-    </div>
-  )
-}
+const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange, label }) => (
+  <div>
+    <label>
+      <span>{label && <span>{label}</span>}</span>
+      <input type="checkbox" checked={checked} onChange={onChange} />
+    </label>
+  </div>
+)
 
 export default Checkbox

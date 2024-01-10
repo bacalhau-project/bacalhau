@@ -7,15 +7,8 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:prettier/recommended",
-    "plugin:import/recommended",
-    "plugin:import/typescript"
-  ],
-  "plugins": ["html", "prettier", "react-hooks"],
+  "extends": ["wesbos/typescript"],
+  "plugins": ["prettier", "import"],
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "off",
@@ -71,8 +64,6 @@
     "node_modules/",
     "src/serviceWorker.ts",
     "*.config.js",
-    "jest.polyfills.js",
-    "jest.setup.js",
-    "build/"
+    "jest.polyfills.js"
   ]
 }

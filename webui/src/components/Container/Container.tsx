@@ -6,16 +6,14 @@ interface ContainerProps {
   children?: React.ReactNode
 }
 
-const Container: React.FC<ContainerProps> = ({ title, children }) => {
-  return (
-    <div className={styles.container}>
-      <div className={styles.title}>
-        <span className={styles.titleLine}></span>
-        {title}
-      </div>
-      <div className={styles.content}>{children}</div>
+const Container: React.FC<ContainerProps> = ({ title, children }) => (
+  <div className={styles.container}>
+    <div className={styles.title}>
+      <span className={styles.titleLine} />
+      {title}
     </div>
-  )
-}
+    <div className={styles.content}>{children}</div>
+  </div>
+)
 
 export default Container

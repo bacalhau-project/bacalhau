@@ -28,7 +28,11 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
 
   return (
     <div className={styles.column}>
-      <button className={styles.actionButton} onClick={handleClick}>
+      <button
+        className={styles.actionButton}
+        onClick={handleClick}
+        type="button"
+      >
         {text}
       </button>
     </div>

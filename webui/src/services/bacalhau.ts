@@ -1,9 +1,9 @@
 import axios, { AxiosInstance } from "axios"
 import {
-  JobListRequest,
-  JobsResponse,
-  JobResponse,
   JobExecutionsResponse,
+  JobListRequest,
+  JobResponse,
+  JobsResponse,
 } from "../helpers/jobInterfaces"
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces"
 
@@ -12,7 +12,7 @@ class BacalhauAPI {
 
   constructor(baseURL: string) {
     this.apiClient = axios.create({
-      baseURL: baseURL,
+      baseURL,
       headers: {
         "Content-Type": "application/json",
       },
@@ -31,7 +31,7 @@ class BacalhauAPI {
       const response = await this.apiClient.get("/orchestrator/jobs", {
         params,
       })
-      return response.data
+      return response.data as JobsResponse
     } catch (error) {
       console.error("An error occurred while listing jobs:", error)
       throw error
@@ -46,7 +46,7 @@ class BacalhauAPI {
       const response = await this.apiClient.get("/orchestrator/nodes", {
         params,
       })
-      return response.data
+      return response.data as NodesResponse
     } catch (error) {
       console.error("An error occurred while listing nodes:", error)
       throw error
@@ -56,7 +56,7 @@ class BacalhauAPI {
   async describeJob(jobId: string): Promise<JobResponse> {
     try {
       const response = await this.apiClient.get(`/orchestrator/jobs/${jobId}`)
-      return response.data
+      return response.data as JobResponse
     } catch (error) {
       console.error(
         `An error occurred while fetching details for job ID: ${jobId}`,
@@ -71,7 +71,7 @@ class BacalhauAPI {
       const response = await this.apiClient.get(
         `/orchestrator/jobs/${jobId}/executions`
       )
-      return response.data
+      return response.data as JobExecutionsResponse
     } catch (error) {
       console.error(
         `An error occurred while fetching details for job executions: ${jobId}`,

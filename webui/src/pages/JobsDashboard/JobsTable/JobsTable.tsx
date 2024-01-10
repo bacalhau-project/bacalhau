@@ -89,7 +89,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
                 </td>
               )}
               {settings.showProgram && (
-                <td className={styles.program}>
+                <td className={styles.program} aria-label="tasks">
                   <ProgramSummary data={jobData.tasks} />
                 </td>
               )}
@@ -99,12 +99,12 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               {settings.showLabel && (
                 <td className={styles.label}>
                   {jobData.label.map((label) => (
-                    <Label text={label} color={"grey"} />
+                    <Label text={label} color="grey" />
                   ))}
                 </td>
               )}
               {settings.showStatus && (
-                <td className={styles.status}>
+                <td className={styles.status} aria-label="status">
                   <Label
                     text={jobData.status}
                     color={labelColorMap[jobData.status.toLowerCase()]}
@@ -112,7 +112,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
                 </td>
               )}
               {settings.showAction && (
-                <td className={styles.action}>
+                <td className={styles.action} aria-label="view details">
                   <ActionButton
                     text="View"
                     to="/JobDetail"

@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from "uuid"
 import { randomBytes } from "crypto"
-import { selectRandomLabels, selectRandomElements } from "./mockUtilities"
+import { v4 as uuidv4 } from "uuid"
+import { selectRandomElements, selectRandomLabels } from "./mockUtilities"
 
 interface Task {
   Name: string
@@ -63,8 +63,8 @@ function createRandomConstraint(): {
 
 // Select a random job type from the list of available types in constants.go
 const jobTypes = ["batch", "service", "ops", "system"]
-function selectRandomJobType() {
-  return selectRandomElements(jobTypes)
+function selectRandomJobType(): string {
+  return selectRandomElements(jobTypes) as string
 }
 
 // Select a random job state from the list of available states in constants.go
@@ -129,7 +129,7 @@ export function generateSampleJob(): Job {
     Meta: {
       "bacalhau.org/client.id": namespace,
       "bacalhau.org/requester.id": `Qm${randomBytes(44).toString("hex")}`,
-      //cspell: disable-next-line
+      // cspell: disable-next-line
       "bacalhau.org/requester.publicKey": `CAAS${randomBytes(128).toString(
         // eslint-disable-next-line prettier/prettier
         "base64"
@@ -138,7 +138,7 @@ export function generateSampleJob(): Job {
     Labels: { ...selectRandomLabels(jobLabels) },
     Tasks: [generateSampleTask()],
     State: {
-      StateType: selectRandomElements(jobStates),
+      StateType: selectRandomElements(jobStates) as string,
     },
     Version: Math.floor(Math.random() * 10),
     Revision: Math.floor(Math.random() * 10),

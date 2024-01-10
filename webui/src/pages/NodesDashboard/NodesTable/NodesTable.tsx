@@ -17,8 +17,8 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
       id: node.PeerInfo.ID,
       type: node.NodeType,
       environment: node.Labels.env,
-      inputs: inputs,
-      outputs: outputs,
+      inputs,
+      outputs,
       version: node.BacalhauVersion.GitVersion,
       // action: "Action",
     }
@@ -59,14 +59,14 @@ export const NodesTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showInputs && (
                 <td className={styles.inputs}>
-                  {nodeData.inputs.map((input, index) => (
+                  {nodeData.inputs.map((input) => (
                     <div key={`input-${index}`}>{input}</div>
                   ))}
                 </td>
               )}
               {settings.showOutputs && (
                 <td className={styles.outputs}>
-                  {nodeData.outputs.map((output, index) => (
+                  {nodeData.outputs.map((output) => (
                     <div key={`output-${index}`}>{output}</div>
                   ))}
                 </td>

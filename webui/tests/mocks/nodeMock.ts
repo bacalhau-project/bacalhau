@@ -1,11 +1,15 @@
-import { os, system, datatype, internet, git } from "@faker-js/faker"
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { datatype, git, internet, os, system } from "@faker-js/faker"
+
 import { v4 as uuidv4 } from "uuid"
 import { selectRandomElements } from "./mockUtilities"
 
 // Generate an array with one or more of the following strings
-const engine_types = ["wasm", "docker"]
-const publisher_types = ["noop", "ipfs", "s3", "inline", "urldownload"]
-const storage_sources = [
+const engineTypes = ["wasm", "docker"]
+const publisherTypes = ["noop", "ipfs", "s3", "inline", "urldownload"]
+const storageSources = [
   "ipfs",
   "urldownload",
   "inline",
@@ -20,16 +24,16 @@ export function generateMockNode() {
   const memory = Math.floor(Math.random() * 1000000000000)
   const disk = Math.floor(Math.random() * 10000000000000)
 
-  const available_cpu = Math.floor(Math.random() * cpu)
-  const available_memory = Math.floor(Math.random() * memory)
-  const available_disk = Math.floor(Math.random() * disk)
+  const availableCPU = Math.floor(Math.random() * cpu)
+  const availableMemory = Math.floor(Math.random() * memory)
+  const availableDisk = Math.floor(Math.random() * disk)
 
-  const max_job_cpu = Math.floor(Math.random() * available_cpu)
-  const max_job_memory = Math.floor(Math.random() * available_memory)
-  const max_job_disk = Math.floor(Math.random() * available_disk)
+  const maxJobCPU = Math.floor(Math.random() * availableCPU)
+  const maxJobMemory = Math.floor(Math.random() * availableMemory)
+  const maxJobDisk = Math.floor(Math.random() * availableDisk)
 
-  const major_version = datatype.number({ min: 99, max: 199 }).toString()
-  const minor_version = datatype.number({ min: 99, max: 199 }).toString()
+  const majorVersion: string = datatype.number({ min: 99, max: 199 }).toString()
+  const minorVersion: string = datatype.number({ min: 99, max: 199 }).toString()
 
   return {
     PeerInfo: {
@@ -49,31 +53,31 @@ export function generateMockNode() {
       owner: internet.userName(),
     },
     ComputeNodeInfo: {
-      ExecutionEngines: selectRandomElements(engine_types, 1),
-      Publishers: selectRandomElements(publisher_types, 1),
-      StorageSources: selectRandomElements(storage_sources, 1),
+      ExecutionEngines: selectRandomElements(engineTypes, 1),
+      Publishers: selectRandomElements(publisherTypes, 1),
+      StorageSources: selectRandomElements(storageSources, 1),
       MaxCapacity: {
         CPU: cpu,
         Memory: memory,
         Disk: disk,
       },
       AvailableCapacity: {
-        CPU: available_cpu,
-        Memory: available_memory,
-        Disk: available_disk,
+        CPU: availableCPU,
+        Memory: availableMemory,
+        Disk: availableDisk,
       },
       MaxJobRequirements: {
         // Randomly generate a number between 0 and the available capacity
-        CPU: max_job_cpu,
-        Memory: max_job_memory,
-        Disk: max_job_disk,
+        CPU: maxJobCPU,
+        Memory: maxJobMemory,
+        Disk: maxJobDisk,
       },
       RunningExecutions: 0,
       EnqueuedExecutions: 0,
     },
     BacalhauVersion: {
-      Major: major_version,
-      Minor: minor_version,
+      Major: majorVersion,
+      Minor: minorVersion,
       // Random semantic versioning
       GitVersion: system.semver(),
       GitCommit: git.shortSha(),

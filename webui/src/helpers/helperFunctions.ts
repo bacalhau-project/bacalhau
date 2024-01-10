@@ -14,9 +14,8 @@ export function getShortenedJobID(jobID: string) {
   const parts = jobID.split("-")
   if (parts[0].length > 1) {
     return parts[0]
-  } else {
-    return parts[0] + "-" + parts[1]
   }
+  return `${parts[0]}-${parts[1]}`
 }
 
 export function createLabelArray(label: { [key: string]: string }): string[] {

@@ -93,7 +93,7 @@ export const JobDetail: React.FC = () => {
     <Layout pageTitle={`Job Detail | ${getShortenedJobID(jobData.ID)}`}>
       <div className={styles.jobDetail}>
         <div>
-          <Container title={"Job Overview"}>
+          <Container title="Job Overview">
             <JobInfo
               job={jobData}
               execution={selectedExecution}
@@ -105,17 +105,17 @@ export const JobDetail: React.FC = () => {
           </Container>
         </div>
         <div>
-          <Container title={"Execution Record"}>
+          <Container title="Execution Record">
             <JobInfo
               job={jobData}
               execution={selectedExecution}
               section="executionRecord"
             />
           </Container>
-          <Container title={"Standard Output"}>
+          <Container title="Standard Output">
             <CliView data={selectedExecution?.RunOutput.Stdout} />
           </Container>
-          <Container title={"Standard Error"}>
+          <Container title="Standard Error">
             <CliView data={selectedExecution?.RunOutput.stderr} />
           </Container>
           {/* <Container title={"Inputs"}>
