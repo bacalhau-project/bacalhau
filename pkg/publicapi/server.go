@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/bacalhau-project/bacalhau/pkg/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/labstack/echo/v4"
@@ -31,6 +32,7 @@ type ServerParams struct {
 	TLSCertificateFile string
 	TLSKeyFile         string
 	Config             Config
+	Authorizer         auth.Authorizer
 }
 
 // Server configures a node's public REST API.
@@ -108,6 +110,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			logLevel),
 		middleware.Otel(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
+		middleware.Authorize(params.Authorizer),
 		echomiddelware.Recover(),
 	)
 

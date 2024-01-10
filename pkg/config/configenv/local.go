@@ -64,6 +64,7 @@ var Local = types.BacalhauConfig{
 			Enabled: false,
 			Port:    8483,
 		},
+		StrictVersionMatch: false,
 	},
 }
 
