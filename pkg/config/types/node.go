@@ -43,6 +43,8 @@ type NodeConfig struct {
 
 	// Configuration for the web UI
 	WebUI WebUIConfig `yaml:"WebUI"`
+
+	StrictVersionMatch bool `yaml:"StrictVersionMatch"`
 }
 
 type APIConfig struct {
