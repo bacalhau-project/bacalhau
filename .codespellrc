@@ -1,10 +1,4 @@
 [codespell]
-# keypair - it is ok as a single word IMHO
-# querys - Python API param querys: Query parameters tuple list to be updated.
-# fo - user in URL query
-# ndoes - side effect of \ndoes
-# ReceivedFrom - used in a comment, taken as candidate for fixing
-ignore-words-list = keypair,keypairs,querys,fo,ndoes,receivedfrom
-# Training-Tensorflow-Model, Prolog-Hello-World,Stable-Diffusion-Dreambooth - contain some output base64 (or else) encoded output,
-# skip for now, filed https://github.com/codespell-project/codespell/issues/2801
 skip = .git,*.pdf,*.svg,Stable-Diffusion-Dreambooth,Prolog-Hello-World,Training-Tensorflow-Model,package-lock.json,testdata,Gemfile.lock,go*.sum,_config.yml,./webui/pnpm-lock.yam
+quiet-level = 2
+ignore-words=.gitprecommit/codespell-ignore-words.txt
