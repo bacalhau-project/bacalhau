@@ -3,7 +3,10 @@ import React from "react";
 import { Link } from "react-router-dom";
 import styles from "./Sidebar.module.scss";
 import Button from "./Button/Button";
-import { ReactSVG } from "react-svg";
+import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg";
+import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg";
+import { ReactComponent as CogWheelIcon } from "../../images/cogwheel.svg";
+import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -17,17 +20,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <ReactSVG src="../../images/jobs-icon.svg" />,
+      icon: <JobsIcon />,
       title: "Jobs Dashboard",
     },
     {
       path: "/NodesDashboard",
-      icon: <ReactSVG src="../../images/nodes-icon.svg" />,
+      icon: <NodesIcon />,
       title: "Nodes Dashboard",
     },
     {
       path: "/Settings",
-      icon: <ReactSVG src="../../images/cogwheel.svg" />,
+      icon: <CogWheelIcon />,
       title: "Settings",
     },
   ];
@@ -40,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <ReactSVG src="../../images/bacalhau.svg" height="24" width="" />
+        <BacalhauIcon height="24" width="" />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (
