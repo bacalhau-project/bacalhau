@@ -16,7 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Codespell
-        uses: codespell-project/actions-codespell@v1
-        with:
-          skip: "./integration/flyte/Makefile,testdata,docs/.vale/styles,*package-lock.json*,docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md,*go.sum*,*go.mod*,*node_modules*,*vendor*,./webui/build"
-          ignore_words_file: .gitprecommit/codespell_ignore_words.txt
+        run: |
+          pip install codespell
+          codespell --config .codespellrc
