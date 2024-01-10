@@ -4,7 +4,6 @@ package challenge
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -17,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,9 +32,6 @@ func setup(t *testing.T) authn.Authenticator {
 	require.NoError(t, err)
 
 	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	jwkKey, err := jwk.New(rsaKey)
 	require.NoError(t, err)
 
 	return NewAuthenticator(anonPolicy, testData([]byte("test")), rsaKey, "node")

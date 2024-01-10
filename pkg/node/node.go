@@ -72,6 +72,7 @@ type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
+	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
 func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
@@ -79,6 +80,7 @@ func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewPluginExecutorFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -87,6 +89,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -135,6 +138,11 @@ func NewNode(
 	}
 
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +233,7 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			storageProviders,
+			authenticators,
 			nodeInfoStore,
 			gossipSub,
 			config.FsRepo,
@@ -385,6 +394,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	if injector.AuthenticatorsFactory == nil {
+		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
 	}
 	return injector
 }
