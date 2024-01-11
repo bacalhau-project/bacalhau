@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
@@ -196,6 +197,7 @@ func NewNode(
 		"/api/v1/requester/logs",
 	}...)
 
+	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
 		Router:     echo.New(),
@@ -204,6 +206,13 @@ func NewNode(
 		HostID:     config.Host.ID().String(),
 		Config:     config.APIServerConfig,
 		Authorizer: authz.AlwaysAllow,
+		Headers: map[string]string{
+			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		},
 	}
 
 	// Only allow autocert for requester nodes
