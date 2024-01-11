@@ -8,9 +8,14 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/Masterminds/semver"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
+
 	"github.com/labstack/echo/v4"
 	echomiddelware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog"
@@ -96,6 +101,11 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		echomiddelware.Rewrite(migrations),
 	)
 
+	serverBuildInfo := version.Get()
+	serverVersion, err := semver.NewVersion(serverBuildInfo.GitVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine server version %w", err)
+	}
 	// base middle after routing
 	server.Router.Use(
 		echomiddelware.TimeoutWithConfig(echomiddelware.TimeoutConfig{
@@ -108,6 +118,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		middleware.RequestLogger(
 			*log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID)),
 			logLevel),
+		middleware.VersionNotifyLogger(log.Ctx(logger.ContextWithNodeIDLogger(context.Background(),
+			params.HostID)), serverVersion),
 		middleware.Otel(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 		middleware.Authorize(params.Authorizer),
