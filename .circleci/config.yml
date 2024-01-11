@@ -524,7 +524,7 @@ jobs:
     - run:
         name: Copy swagger.json from workspace
         command: |
-          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+          cp  /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
     - run:
         name: Install Python API client pre-requistes
         command: |
