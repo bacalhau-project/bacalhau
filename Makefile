@@ -498,3 +498,9 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 			  --ignore-words="./.gitprecommit/codespell_ignore_words.txt" \
 			  --skip="./integration/flyte/Makefile"
 
+
+.PHONY: generate
+generate:
+	@echo "Generating code..."
+	@./scripts/generate.sh
+	@echo "Done."

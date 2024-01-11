@@ -87,6 +87,27 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/agent/node/{id}": {
+            "get": {
+                "description": "Returns the node ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Get node ID.",
+                "operationId": "NodeInfo_ID",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/agent/version": {
             "get": {
                 "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
@@ -102,7 +123,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apimodels.GetVersionResponse"
+                            "$ref": "#/definitions/models.BuildVersionInfo"
                         }
                     },
                     "500": {
@@ -118,6 +139,9 @@ const docTemplate = `{
             "get": {
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "Compute Node"
                 ],
                 "summary": "Approves a job to be run on this compute node.",
                 "operationId": "apiServer/approver",
@@ -155,7 +179,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Compute Node"
                 ],
                 "summary": "Returns debug information on what the current node is doing.",
                 "operationId": "apiServer/debug",
@@ -254,6 +278,482 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.NodeInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs": {
+            "get": {
+                "description": "Returns a list of jobs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns a list of jobs.",
+                "operationId": "orchestrator/listJobs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Namespace to get the jobs for",
+                        "name": "namespace",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of jobs returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to get the next page of jobs",
+                        "name": "next_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the jobs",
+                        "name": "reverse",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order the jobs by the given field",
+                        "name": "order_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Submits a job to the orchestrator.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Submits a job to the orchestrator.",
+                "operationId": "orchestrator/putJob",
+                "parameters": [
+                    {
+                        "description": "Job to submit",
+                        "name": "job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Job"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.PutJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}": {
+            "delete": {
+                "description": "Stops a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Stops a job.",
+                "operationId": "orchestrator/stopJob",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID to stop the job for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Reason for stopping the job",
+                        "name": "reason",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.StopJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}/executions": {
+            "get": {
+                "description": "Returns the executions of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns the executions of a job.",
+                "operationId": "orchestrator/jobExecutions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID to get the job executions for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of executions returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to get the next page of executions",
+                        "name": "next_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the executions",
+                        "name": "reverse",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order the executions by the given field",
+                        "name": "order_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobExecutionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}/history": {
+            "get": {
+                "description": "Returns the history of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns the history of a job.",
+                "operationId": "orchestrator/jobHistory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID to get the job history for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only return history since this time",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only return history of this event type",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only return history of this execution ID",
+                        "name": "execution_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only return history of this node ID",
+                        "name": "node_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobHistoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}/results": {
+            "get": {
+                "description": "Returns the results of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns the results of a job.",
+                "operationId": "orchestrator/jobResults",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID to get the job results for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of results returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to get the next page of results",
+                        "name": "next_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the results",
+                        "name": "reverse",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order the results by the given field",
+                        "name": "order_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobResultsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/nodes": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns a list of orchestrator nodes.",
+                "operationId": "apiServer/listNodes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Labels to filter nodes by",
+                        "name": "labels",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of nodes to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Field to order nodes by",
+                        "name": "order_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the nodes",
+                        "name": "reverse",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/nodes/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns information about an orchestrator node.",
+                "operationId": "apiServer/getNode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "500": {
@@ -749,36 +1249,92 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "apimodels.GetVersionResponse": {
+        "apimodels.GetJobResponse": {
             "type": "object",
             "properties": {
-                "BuildDate": {
-                    "type": "string",
-                    "example": "2022-11-16T14:03:31Z"
+                "Job": {
+                    "$ref": "#/definitions/models.Job"
+                }
+            }
+        },
+        "apimodels.ListJobExecutionsResponse": {
+            "type": "object",
+            "properties": {
+                "executions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Execution"
+                    }
                 },
-                "GOARCH": {
-                    "type": "string",
-                    "example": "amd64"
+                "nextToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.ListJobHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.JobHistory"
+                    }
                 },
-                "GOOS": {
-                    "type": "string",
-                    "example": "linux"
+                "nextToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.ListJobResultsResponse": {
+            "type": "object",
+            "properties": {
+                "nextToken": {
+                    "type": "string"
                 },
-                "GitCommit": {
-                    "type": "string",
-                    "example": "d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SpecConfig"
+                    }
+                }
+            }
+        },
+        "apimodels.ListJobsResponse": {
+            "type": "object",
+            "properties": {
+                "Jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Job"
+                    }
                 },
-                "GitVersion": {
-                    "type": "string",
-                    "example": "v0.3.12"
+                "nextToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.PutJobResponse": {
+            "type": "object",
+            "properties": {
+                "EvaluationID": {
+                    "type": "string"
                 },
-                "Major": {
-                    "type": "string",
-                    "example": "0"
+                "JobID": {
+                    "type": "string"
                 },
-                "Minor": {
-                    "type": "string",
-                    "example": "3"
+                "Warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "apimodels.StopJobResponse": {
+            "type": "object",
+            "properties": {
+                "EvaluationID": {
+                    "type": "string"
                 }
             }
         },
@@ -1488,11 +2044,7 @@ const docTemplate = `{
                 },
                 "Operator": {
                     "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/selection.Operator"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "Values": {
                     "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
@@ -1910,6 +2462,17 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AllocatedResources": {
+            "type": "object",
+            "properties": {
+                "Tasks": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.Resources"
+                    }
+                }
+            }
+        },
         "models.BuildVersionInfo": {
             "type": "object",
             "properties": {
@@ -1981,6 +2544,150 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Execution": {
+            "type": "object",
+            "properties": {
+                "AllocatedResources": {
+                    "description": "AllocatedResources is the total resources allocated for the execution tasks.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AllocatedResources"
+                        }
+                    ]
+                },
+                "ComputeState": {
+                    "description": "ComputeState observed state of the execution on the compute node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.State-models_ExecutionStateType"
+                        }
+                    ]
+                },
+                "CreateTime": {
+                    "description": "CreateTime is the time the execution has finished scheduling and been\nverified by the plan applier.",
+                    "type": "integer"
+                },
+                "DesiredState": {
+                    "description": "DesiredState of the execution on the compute node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.State-models_ExecutionDesiredStateType"
+                        }
+                    ]
+                },
+                "EvalID": {
+                    "description": "ID of the evaluation that generated this execution",
+                    "type": "string"
+                },
+                "FollowupEvalID": {
+                    "description": "FollowupEvalID captures a follow up evaluation created to handle a failed execution\nthat can be rescheduled in the future",
+                    "type": "string"
+                },
+                "ID": {
+                    "description": "ID of the execution (UUID)",
+                    "type": "string"
+                },
+                "Job": {
+                    "description": "TODO: evaluate using a copy of the job instead of a pointer",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Job"
+                        }
+                    ]
+                },
+                "JobID": {
+                    "description": "Job is the parent job of the task being allocated.\nThis is copied at execution time to avoid issues if the job\ndefinition is updated.",
+                    "type": "string"
+                },
+                "ModifyTime": {
+                    "description": "ModifyTime is the time the execution was last updated.",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "Name is a logical name of the execution.",
+                    "type": "string"
+                },
+                "Namespace": {
+                    "description": "Namespace is the namespace the execution is created in",
+                    "type": "string"
+                },
+                "NextExecution": {
+                    "description": "NextExecution is the execution that this execution is being replaced by",
+                    "type": "string"
+                },
+                "NodeID": {
+                    "description": "NodeID is the node this is being placed on",
+                    "type": "string"
+                },
+                "PreviousExecution": {
+                    "description": "PreviousExecution is the execution that this execution is replacing",
+                    "type": "string"
+                },
+                "PublishedResult": {
+                    "description": "the published results for this execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SpecConfig"
+                        }
+                    ]
+                },
+                "Revision": {
+                    "description": "Revision is increment each time the execution is updated.",
+                    "type": "integer"
+                },
+                "RunOutput": {
+                    "description": "RunOutput is the output of the run command\nTODO: evaluate removing this from execution spec in favour of calling ` + "`" + `bacalhau logs` + "`" + `",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.RunCommandResult"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.ExecutionDesiredStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "ExecutionDesiredStatePending",
+                "ExecutionDesiredStateRunning",
+                "ExecutionDesiredStateStopped"
+            ]
+        },
+        "models.ExecutionStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "x-enum-comments": {
+                "ExecutionStateBidAccepted": "aka running"
+            },
+            "x-enum-varnames": [
+                "ExecutionStateUndefined",
+                "ExecutionStateNew",
+                "ExecutionStateAskForBid",
+                "ExecutionStateAskForBidAccepted",
+                "ExecutionStateAskForBidRejected",
+                "ExecutionStateBidAccepted",
+                "ExecutionStateBidRejected",
+                "ExecutionStateCompleted",
+                "ExecutionStateFailed",
+                "ExecutionStateCancelled"
+            ]
+        },
         "models.GPU": {
             "type": "object",
             "properties": {
@@ -2023,12 +2730,224 @@ const docTemplate = `{
                 "GPUVendorIntel"
             ]
         },
-        "models.NodeInfo": {
+        "models.InputSource": {
             "type": "object",
             "properties": {
-                "BacalhauVersion": {
-                    "$ref": "#/definitions/models.BuildVersionInfo"
+                "Alias": {
+                    "description": "Alias is an optional reference to this input source that can be used for\ndynamic linking to this input. (e.g. dynamic import in wasm by alias)",
+                    "type": "string"
                 },
+                "Source": {
+                    "description": "Source is the source of the artifact to be downloaded, e.g a URL, S3 bucket, etc.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SpecConfig"
+                        }
+                    ]
+                },
+                "Target": {
+                    "description": "Target is the path where the artifact should be mounted on",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Job": {
+            "type": "object",
+            "properties": {
+                "Constraints": {
+                    "description": "Constraints is a selector which must be true for the compute node to run this job.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.LabelSelectorRequirement"
+                    }
+                },
+                "Count": {
+                    "description": "Count is the number of replicas that should be scheduled.",
+                    "type": "integer"
+                },
+                "CreateTime": {
+                    "type": "integer"
+                },
+                "ID": {
+                    "description": "ID is a unique identifier assigned to this job.\nIt helps to distinguish jobs with the same name after they have been deleted and re-created.\nThe ID is generated by the server and should not be set directly by the client.",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "Labels is used to associate arbitrary labels with this job, which can be used\nfor filtering.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Meta": {
+                    "description": "Meta is used to associate arbitrary metadata with this job.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "ModifyTime": {
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "Name is the logical name of the job used to refer to it.\nSubmitting a job with the same name as an existing job will result in an\nupdate to the existing job.",
+                    "type": "string"
+                },
+                "Namespace": {
+                    "description": "Namespace is the namespace this job is running in.",
+                    "type": "string"
+                },
+                "Priority": {
+                    "description": "Priority defines the scheduling priority of this job.",
+                    "type": "integer"
+                },
+                "Revision": {
+                    "description": "Revision is a per-job monotonically increasing revision number that is incremented\non each update to the job's state or specification",
+                    "type": "integer"
+                },
+                "State": {
+                    "description": "State is the current state of the job.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.State-models_JobStateType"
+                        }
+                    ]
+                },
+                "Tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Task"
+                    }
+                },
+                "Type": {
+                    "description": "Type is the type of job this is, e.g. \"daemon\" or \"batch\".",
+                    "type": "string"
+                },
+                "Version": {
+                    "description": "Version is a per-job monotonically increasing version number that is incremented\non each job specification update.",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.JobHistory": {
+            "type": "object",
+            "properties": {
+                "Comment": {
+                    "type": "string"
+                },
+                "ExecutionID": {
+                    "type": "string"
+                },
+                "ExecutionState": {
+                    "$ref": "#/definitions/models.StateChange-models_ExecutionStateType"
+                },
+                "JobID": {
+                    "type": "string"
+                },
+                "JobState": {
+                    "$ref": "#/definitions/models.StateChange-models_JobStateType"
+                },
+                "NewRevision": {
+                    "type": "integer"
+                },
+                "NodeID": {
+                    "type": "string"
+                },
+                "Time": {
+                    "type": "string"
+                },
+                "Type": {
+                    "$ref": "#/definitions/models.JobHistoryType"
+                }
+            }
+        },
+        "models.JobHistoryType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "JobHistoryTypeUndefined",
+                "JobHistoryTypeJobLevel",
+                "JobHistoryTypeExecutionLevel"
+            ]
+        },
+        "models.JobStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+            ],
+            "x-enum-varnames": [
+                "JobStateTypeUndefined",
+                "JobStateTypePending",
+                "JobStateTypeRunning",
+                "JobStateTypeCompleted",
+                "JobStateTypeFailed",
+                "JobStateTypeStopped"
+            ]
+        },
+        "models.LabelSelectorRequirement": {
+            "type": "object",
+            "properties": {
+                "Key": {
+                    "description": "key is the label key that the selector applies to.",
+                    "type": "string"
+                },
+                "Operator": {
+                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/selection.Operator"
+                        }
+                    ]
+                },
+                "Values": {
+                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.Network": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "NetworkNone",
+                "NetworkFull",
+                "NetworkHTTP"
+            ]
+        },
+        "models.NetworkConfig": {
+            "type": "object",
+            "properties": {
+                "Domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Type": {
+                    "$ref": "#/definitions/models.Network"
+                }
+            }
+        },
+        "models.NodeInfo": {
+            "description": "Information about the node.",
+            "type": "object",
+            "properties": {
                 "ComputeNodeInfo": {
                     "$ref": "#/definitions/models.ComputeNodeInfo"
                 },
@@ -2042,7 +2961,10 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.NodeType"
                 },
                 "PeerInfo": {
-                    "$ref": "#/definitions/peer.AddrInfo"
+                    "type": "integer"
+                },
+                "Version": {
+                    "$ref": "#/definitions/models.BuildVersionInfo"
                 }
             }
         },
@@ -2087,15 +3009,218 @@ const docTemplate = `{
                 }
             }
         },
-        "peer.AddrInfo": {
+        "models.ResourcesConfig": {
             "type": "object",
             "properties": {
-                "addrs": {
-                    "type": "array",
-                    "items": {}
-                },
-                "id": {
+                "CPU": {
+                    "description": "CPU https://github.com/BTBurke/k8sresource string",
                     "type": "string"
+                },
+                "Disk": {
+                    "description": "Memory github.com/dustin/go-humanize string",
+                    "type": "string"
+                },
+                "GPU": {
+                    "type": "string"
+                },
+                "Memory": {
+                    "description": "Memory github.com/dustin/go-humanize string",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResultPath": {
+            "type": "object",
+            "properties": {
+                "Name": {
+                    "description": "Name",
+                    "type": "string"
+                },
+                "Path": {
+                    "description": "The path to the file/dir",
+                    "type": "string"
+                }
+            }
+        },
+        "models.RunCommandResult": {
+            "type": "object",
+            "properties": {
+                "ErrorMsg": {
+                    "description": "Runner error",
+                    "type": "string"
+                },
+                "ExitCode": {
+                    "description": "exit code of the run.",
+                    "type": "integer"
+                },
+                "StderrTruncated": {
+                    "description": "bool describing if stderr was truncated",
+                    "type": "boolean"
+                },
+                "Stdout": {
+                    "description": "stdout of the run. Yaml provided for ` + "`" + `describe` + "`" + ` output",
+                    "type": "string"
+                },
+                "StdoutTruncated": {
+                    "description": "bool describing if stdout was truncated",
+                    "type": "boolean"
+                },
+                "stderr": {
+                    "description": "stderr of the run.",
+                    "type": "string"
+                }
+            }
+        },
+        "models.SpecConfig": {
+            "type": "object",
+            "properties": {
+                "Params": {
+                    "description": "Params is a map of the config params",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "Type": {
+                    "description": "Type of the config",
+                    "type": "string"
+                }
+            }
+        },
+        "models.State-models_ExecutionDesiredStateType": {
+            "type": "object",
+            "properties": {
+                "Message": {
+                    "description": "Message is a human readable message describing the state.",
+                    "type": "string"
+                },
+                "StateType": {
+                    "description": "StateType is the current state of the object.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ExecutionDesiredStateType"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.State-models_ExecutionStateType": {
+            "type": "object",
+            "properties": {
+                "Message": {
+                    "description": "Message is a human readable message describing the state.",
+                    "type": "string"
+                },
+                "StateType": {
+                    "description": "StateType is the current state of the object.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ExecutionStateType"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.State-models_JobStateType": {
+            "type": "object",
+            "properties": {
+                "Message": {
+                    "description": "Message is a human readable message describing the state.",
+                    "type": "string"
+                },
+                "StateType": {
+                    "description": "StateType is the current state of the object.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JobStateType"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.StateChange-models_ExecutionStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/models.ExecutionStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/models.ExecutionStateType"
+                }
+            }
+        },
+        "models.StateChange-models_JobStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/models.JobStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/models.JobStateType"
+                }
+            }
+        },
+        "models.Task": {
+            "type": "object",
+            "properties": {
+                "Engine": {
+                    "$ref": "#/definitions/models.SpecConfig"
+                },
+                "Env": {
+                    "description": "Map of environment variables to be used by the driver",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "InputSources": {
+                    "description": "InputSources is a list of remote artifacts to be downloaded before running the task\nand mounted into the task.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.InputSource"
+                    }
+                },
+                "Meta": {
+                    "description": "Meta is used to associate arbitrary metadata with this task.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Name": {
+                    "description": "Name of the task",
+                    "type": "string"
+                },
+                "Network": {
+                    "$ref": "#/definitions/models.NetworkConfig"
+                },
+                "Publisher": {
+                    "$ref": "#/definitions/models.SpecConfig"
+                },
+                "Resources": {
+                    "description": "ResourcesConfig is the resources needed by this task",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourcesConfig"
+                        }
+                    ]
+                },
+                "ResultPaths": {
+                    "description": "ResultPaths is a list of task volumes to be included in the task's published result",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResultPath"
+                    }
+                },
+                "Timeouts": {
+                    "$ref": "#/definitions/models.TimeoutConfig"
+                }
+            }
+        },
+        "models.TimeoutConfig": {
+            "type": "object",
+            "properties": {
+                "ExecutionTimeout": {
+                    "description": "ExecutionTimeout is the maximum amount of time a task is allowed to run in seconds.\nZero means no timeout, such as for a daemon task.",
+                    "type": "integer"
                 }
             }
         },
