@@ -13,7 +13,6 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -190,12 +189,11 @@ func NewNode(
 
 	// public http api server
 	serverParams := publicapi.ServerParams{
-		Router:     echo.New(),
-		Address:    config.HostAddress,
-		Port:       config.APIPort,
-		HostID:     config.Host.ID().String(),
-		Config:     config.APIServerConfig,
-		Authorizer: auth.AlwaysAllow,
+		Router:  echo.New(),
+		Address: config.HostAddress,
+		Port:    config.APIPort,
+		HostID:  config.Host.ID().String(),
+		Config:  config.APIServerConfig,
 	}
 
 	// Only allow autocert for requester nodes
@@ -271,7 +269,7 @@ func NewNode(
 		IdentityService:     basicHost.IDService(),
 		LabelsProvider:      labelsProvider,
 		ComputeInfoProvider: computeInfoProvider,
-		BacalhauVersion:     *version.Get(),
+		Version:             *version.Get(),
 	})
 
 	shared.NewEndpoint(shared.EndpointParams{
@@ -287,7 +285,7 @@ func NewNode(
 	})
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
-	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+	// TODO(forrest) #3167 [fixme] we should fix this to make it less racy in testing
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
 		PubSub:           nodeInfoPubSub,
 		NodeInfoProvider: nodeInfoProvider,
