@@ -26,13 +26,11 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 
 	bv := version.Get()
 	headers := map[string][]string{
-		apimodels.HTTPHeaderClientMajorVersion: {bv.Major},
-		apimodels.HTTPHeaderClientMinorVersion: {bv.Minor},
-		apimodels.HTTPHeaderClientGitVersion:   {bv.GitVersion},
-		apimodels.HTTPHeaderClientGitCommit:    {bv.GitCommit},
-		apimodels.HTTPHeaderClientBuildDate:    {bv.BuildDate.UTC().String()},
-		apimodels.HTTPHeaderClientBuildOS:      {bv.GOOS},
-		apimodels.HTTPHeaderClientArch:         {bv.GOARCH},
+		apimodels.HTTPHeaderBacalhauGitVersion: {bv.GitVersion},
+		apimodels.HTTPHeaderBacalhauGitCommit:  {bv.GitCommit},
+		apimodels.HTTPHeaderBacalhauBuildDate:  {bv.BuildDate.UTC().String()},
+		apimodels.HTTPHeaderBacalhauBuildOS:    {bv.GOOS},
+		apimodels.HTTPHeaderBacalhauArch:       {bv.GOARCH},
 	}
 	return clientv2.New(clientv2.Options{
 		Context: ctx,

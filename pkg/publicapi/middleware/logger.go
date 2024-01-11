@@ -21,8 +21,8 @@ func RequestLogger(logger zerolog.Logger, logLevel zerolog.Level) echo.Middlewar
 		LogReferer:      true,
 		LogUserAgent:    true,
 		LogRequestID:    true,
-		LogHeaders: []string{apimodels.HTTPHeaderClientGitVersion, apimodels.HTTPHeaderClientBuildOS,
-			apimodels.HTTPHeaderClientArch},
+		LogHeaders: []string{apimodels.HTTPHeaderBacalhauGitVersion, apimodels.HTTPHeaderBacalhauBuildOS,
+			apimodels.HTTPHeaderBacalhauArch},
 		LogValuesFunc: func(c echo.Context, v echomiddelware.RequestLoggerValues) error {
 			if v.Status >= http.StatusInternalServerError && logLevel < zerolog.ErrorLevel {
 				logLevel = zerolog.ErrorLevel
