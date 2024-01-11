@@ -50,7 +50,6 @@ type executionHandler struct {
 	result *models.RunCommandResult
 }
 
-//nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
 	h.running.Store(true)
 	defer func() {
@@ -102,23 +101,6 @@ func (h *executionHandler) run(ctx context.Context) {
 	case exitStatus := <-statusCh:
 		// success case, the container completed its execution, but may have experienced an error, we will attempt to collect logs.
 		containerExitStatusCode = exitStatus.StatusCode
-		containerJSON, err := h.client.ContainerInspect(ctx, h.containerID)
-		if err != nil {
-			h.logger.Warn().Err(err).Msg("failed to inspect docker container")
-			h.result = &models.RunCommandResult{
-				ExitCode: int(containerExitStatusCode),
-				ErrorMsg: err.Error(),
-			}
-			return
-		}
-		if containerJSON.ContainerJSONBase.State.OOMKilled {
-			containerError = errors.New(`memory limit exceeded. Please refer to https://docs.bacalhau.org/getting-started/resources/#docker-executor for more information`) //nolint:lll
-			h.result = &models.RunCommandResult{
-				ExitCode: int(containerExitStatusCode),
-				ErrorMsg: containerError.Error(),
-			}
-			return
-		}
 		if exitStatus.Error != nil {
 			h.logger.Warn().
 				Str("error", exitStatus.Error.Message).

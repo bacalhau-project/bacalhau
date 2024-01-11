@@ -83,7 +83,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = client.NewAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 

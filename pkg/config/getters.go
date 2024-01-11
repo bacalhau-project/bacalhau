@@ -23,24 +23,6 @@ func ClientAPIHost() string {
 	return viper.GetString(types.NodeClientAPIHost)
 }
 
-func ClientTLSConfig() types.ClientTLSConfig {
-	cfg := types.ClientTLSConfig{
-		UseTLS:   viper.GetBool(types.NodeClientAPIClientTLSUseTLS),
-		Insecure: viper.GetBool(types.NodeClientAPIClientTLSInsecure),
-		CACert:   viper.GetString(types.NodeClientAPIClientTLSCACert),
-	}
-
-	if !cfg.UseTLS {
-		// If we haven't explicitly turned on TLS, but implied it through
-		// the other options, then set it to true
-		if cfg.Insecure || cfg.CACert != "" {
-			cfg.UseTLS = true
-		}
-	}
-
-	return cfg
-}
-
 func ServerAPIPort() uint16 {
 	return uint16(viper.GetInt(types.NodeServerAPIPort))
 }

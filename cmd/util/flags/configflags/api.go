@@ -19,28 +19,6 @@ Ignored if BACALHAU_API_HOST environment variable is set.`,
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_PORT"},
 	},
-	{
-		FlagName:             "tls",
-		DefaultValue:         Default.Node.ClientAPI.ClientTLS.UseTLS,
-		ConfigPath:           types.NodeClientAPIClientTLSUseTLS,
-		Description:          `Instructs the client to use TLS`,
-		EnvironmentVariables: []string{"BACALHAU_API_TLS"},
-	},
-	{
-		FlagName:     "cacert",
-		DefaultValue: Default.Node.ClientAPI.ClientTLS.CACert,
-		ConfigPath:   types.NodeClientAPIClientTLSCACert,
-		Description: `The location of a CA certificate file when self-signed certificates
-	are used by the server`,
-		EnvironmentVariables: []string{"BACALHAU_API_CACERT"},
-	},
-	{
-		FlagName:             "insecure",
-		DefaultValue:         Default.Node.ClientAPI.ClientTLS.Insecure,
-		ConfigPath:           types.NodeClientAPIClientTLSInsecure,
-		Description:          `Enables TLS but does not verify certificates`,
-		EnvironmentVariables: []string{"BACALHAU_API_INSECURE"},
-	},
 }
 
 var ServerAPIFlags = []Definition{

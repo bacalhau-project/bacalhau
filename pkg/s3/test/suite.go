@@ -118,7 +118,7 @@ func (s *HelperSuite) SetupSuite() {
 	}
 
 	// unique runID added to prefix to avoid collisions
-	timestamp := time.Now().UTC().Format("20060102T150405") // yyyyMMddThhmmss
+	timestamp := time.Now().UTC().Format("20060102T150405") // yyyyMMddThhmmss // cspell:disable-line
 	s.JobID = uuid.NewString()
 	s.ExecutionID = uuid.NewString()
 	s.RunID = timestamp + "-" + uuid.NewString()

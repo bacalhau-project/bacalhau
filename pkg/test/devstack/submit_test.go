@@ -43,7 +43,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
+	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}

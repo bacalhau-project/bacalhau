@@ -3,15 +3,10 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -42,46 +37,10 @@ type Options struct {
 
 	// Headers is a map of headers to add to all requests.
 	Headers http.Header
-
-	// TLSConfig provides info on how we want to use TLS
-	TLS TLSConfig
-}
-
-type TLSConfig struct {
-	// UseTLS denotes whether to use TLS or not
-	UseTLS bool
-	// Insecure activates TLS but does not verify any certificate
-	Insecure bool
-	// CACert specifies the location of a self-signed CA certificate
-	// file
-	CACert string
 }
 
 // OptionFn is a function that can be used to configure the client.
 type OptionFn func(*Options)
-
-// UseTLS denotes whether to use TLS or not
-func WithTLS(active bool) OptionFn {
-	return func(o *Options) {
-		o.TLS.UseTLS = active
-	}
-}
-
-// CACert specifies the location of a CA certificate file so
-// that it is possible to use TLS without the insecure flag
-// when the server uses a self-signed certificate
-func WithCACertificate(cacert string) OptionFn {
-	return func(o *Options) {
-		o.TLS.CACert = cacert
-	}
-}
-
-// Insecure activates TLS but does not verify any certificate
-func WithInsecureTLS(insecure bool) OptionFn {
-	return func(o *Options) {
-		o.TLS.Insecure = insecure
-	}
-}
 
 // WithAddress sets the address of the node's public REST API.
 func WithAddress(address string) OptionFn {
@@ -147,45 +106,11 @@ func resolveHTTPClient(config *Options) {
 	config.HTTPClient = defaultHTTPClient(config)
 }
 
-// getTLSTransport builds a http.Transport from the TLS options
-func getTLSTransport(config *Options) *http.Transport {
-	tr := &http.Transport{}
-
-	if !config.TLS.UseTLS {
-		return tr
-	}
-
-	if config.TLS.CACert != "" {
-		caCert, err := os.ReadFile(config.TLS.CACert)
-		if err != nil {
-			// unreachable: we already checked that the file exists at CLI startup
-			// if it has gone missing in the meantime then something is very wrong
-			newErr := errors.Wrap(err, fmt.Sprintf("Error: unable to read CA certificate: %s", config.TLS.CACert))
-			panic(newErr.Error())
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		tr.TLSClientConfig = &tls.Config{
-			RootCAs:    caCertPool,
-			MinVersion: tls.VersionTLS12,
-		}
-	} else if config.TLS.Insecure {
-		tr.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec
-			MinVersion:         tls.VersionTLS12,
-		}
-	}
-	return tr
-}
-
 // defaultHTTPClient is the default client to use if none is provided.
 func defaultHTTPClient(config *Options) *http.Client {
-	tr := getTLSTransport(config)
-
 	return &http.Client{
 		Timeout: config.Timeout,
-		Transport: otelhttp.NewTransport(tr,
+		Transport: otelhttp.NewTransport(nil,
 			otelhttp.WithSpanOptions(
 				trace.WithAttributes(
 					attribute.String("AppID", config.AppID),

@@ -54,7 +54,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			port, err := s.serve(args...)
 			s.Require().NoError(err)
 
-			client := client.NewAPIClient(client.NoTLS, "localhost", port)
+			client := client.NewAPIClient("localhost", port)
 			clientV2 := clientv2.New(clientv2.Options{
 				Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 			})

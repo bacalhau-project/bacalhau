@@ -5,6 +5,7 @@
 //
 //	mockgen --source interfaces.go --destination mocks.go --package orchestrator
 //
+
 // Package orchestrator is a generated GoMock package.
 package orchestrator
 
@@ -288,21 +289,6 @@ func NewMockNodeDiscoverer(ctrl *gomock.Controller) *MockNodeDiscoverer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockNodeDiscoverer) EXPECT() *MockNodeDiscovererMockRecorder {
 	return m.recorder
-}
-
-// FindNodes mocks base method.
-func (m *MockNodeDiscoverer) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindNodes", ctx, job)
-	ret0, _ := ret[0].([]models.NodeInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindNodes indicates an expected call of FindNodes.
-func (mr *MockNodeDiscovererMockRecorder) FindNodes(ctx, job any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindNodes", reflect.TypeOf((*MockNodeDiscoverer)(nil).FindNodes), ctx, job)
 }
 
 // ListNodes mocks base method.

@@ -5,6 +5,7 @@
 //
 //	mockgen --source type.go --destination mocks.go --package bidstrategy
 //
+
 // Package bidstrategy is a generated GoMock package.
 package bidstrategy
 
