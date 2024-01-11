@@ -47,7 +47,7 @@ Bacalhau supports GPU workloads. Learn how to run a job using GPU workloads with
 
 ## Usage
 
-Use following command to see available resoruces amount:
+Use following command to see available resources amount:
 
 ```bash
 bacalhau node list --show=capacity
