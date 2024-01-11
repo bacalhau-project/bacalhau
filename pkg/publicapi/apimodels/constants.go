@@ -13,4 +13,13 @@ const (
 
 	// HTTPHeaderAppID is the header used to pass the application ID to the server.
 	HTTPHeaderAppID = "X-Bacalhau-App-ID"
+
+	HTTPHeaderClientMajorVersion = "X-Bacalhau-Client-Major-Version"
+	HTTPHeaderClientMinorVersion = "X-Bacalhau-Client-Minor-Version"
+	HTTPHeaderClientPatchVersion = "X-Bacalhau-Client-Patch-Version"
+	HTTPHeaderClientGitVersion   = "X-Bacalhau-Git-Version"
+	HTTPHeaderClientGitCommit    = "X-Bacalhau-Client-Git-Commit"
+	HTTPHeaderClientBuildDate    = "X-Bacalhau-Client-Build-Date"
+	HTTPHeaderClientBuildOS      = "X-Bacalhau-Client-Build-OS"
+	HTTPHeaderClientArch         = "X-Bacalhau-Client-Arch"
 )

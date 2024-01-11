@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const DevelopmentGitVersion = "v0.0.0-xxxxxxx"
@@ -44,6 +45,7 @@ func Get() *models.BuildVersionInfo {
 	versionInfo := &models.BuildVersionInfo{
 		Major:      strconv.FormatInt(s.Major(), 10), //nolint:gomnd // base10, magic number appropriate
 		Minor:      strconv.FormatInt(s.Minor(), 10), //nolint:gomnd // base10, magic number appropriate
+		Patch:      strconv.FormatInt(s.Patch(), 10), //nolint:gomnd // base10, magic number appropriate
 		GitVersion: GITVERSION,
 		GitCommit:  revision,
 		BuildDate:  revisionTime,
