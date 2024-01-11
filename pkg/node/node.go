@@ -13,6 +13,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
+	"github.com/bacalhau-project/bacalhau/pkg/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -189,11 +190,12 @@ func NewNode(
 
 	// public http api server
 	serverParams := publicapi.ServerParams{
-		Router:  echo.New(),
-		Address: config.HostAddress,
-		Port:    config.APIPort,
-		HostID:  config.Host.ID().String(),
-		Config:  config.APIServerConfig,
+		Router:     echo.New(),
+		Address:    config.HostAddress,
+		Port:       config.APIPort,
+		HostID:     config.Host.ID().String(),
+		Config:     config.APIServerConfig,
+		Authorizer: auth.AlwaysAllow,
 	}
 
 	// Only allow autocert for requester nodes
