@@ -501,6 +501,6 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 
 .PHONY: generate
 generate:
-	@echo "Generating code..."
+	@echo "Generating code...."
 	@./scripts/generate.sh
 	@echo "Done."
