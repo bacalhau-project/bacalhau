@@ -11,7 +11,7 @@ import (
 //
 //	@ID			apiServer/debug
 //	@Summary	Returns debug information on what the current node is doing.
-//	@Tags		Health
+//	@Tags		Compute Node
 //	@Produce	json
 //	@Success	200	{object}	string
 //	@Failure	500	{object}	string
