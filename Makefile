@@ -254,25 +254,6 @@ dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
 ################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs: docs/swagger.json
-
-docs/swagger.json: ${PKG_FILES} .swaggo
-	@echo "Building swagger docs..."
-	swag init \
-		--outputTypes "json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo && \
-	echo >> $@
-#   ^ add newline to appease linter
-	@echo "Swagger docs built."
-
-################################################################################
 # Target: images
 ################################################################################
 IMAGE_REGEX := 'Image ?(:|=)\s*"[^"]+"'

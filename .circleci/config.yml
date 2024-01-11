@@ -427,63 +427,63 @@ jobs:
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
-    - checkout
-    - add_ssh_keys:
-        fingerprints:
-        - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
-    - install_go:
-        executor: linux-amd64
-    - run:
-        name: Install Swagger
-        command: |
-          export GOBIN=${HOME}/bin
-          export PATH=$GOBIN:$PATH
-          go install github.com/swaggo/swag/cmd/swag@v1.8.10
-    - run:
-        name: Build Swagger Docs
-        command: |
-          export GOBIN=${HOME}/bin
-          export PATH=$GOBIN:$PATH
-          make swagger-docs
-    - persist_to_workspace:
-        root: docs
-        paths:
-        - swagger.json
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - install_go:
+          executor: linux-amd64
+      - run:
+          name: Build Swagger
+          command: |
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install golang.org/x/tools/cmd/stringer
+            go install go.uber.org/mock/gomock
+            go install github.com/golang/mock/mockgen
+            go install github.com/swaggo/swag/cmd/swag@latest
+            make generate
 
-    - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
-        condition:
-          equal: ["main", << pipeline.git.branch >>]
-        steps:
-        - run:
-            name: Install gh
-            command: |
-              wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
-              sudo dpkg -i gh_2.14.7_linux_amd64.deb
-              echo "$GITHUB_PR_PAT" | gh auth login --with-token
-              rm gh_2.14.7_linux_amd64.deb
-        - run:
-            name: Install human-id generator
-            command: |
-              pip3 install human-id
-        - run:
-            name: Git commit
-            command: |
-              git config user.email "$(git log --format='format:%ae' -n1)"
-              git config user.name "$(git log --format='format:%an' -n1)"
-              # Note: we delete this branch after the PR is merged
-              GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
-              git checkout -b $GH_BRANCH_NAME
-              if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
-                git add --verbose -- ./docs
-                COMMIT_MSG="Build swagger reference - this is an automatic commit"
-                git commit -m "[circleci] $COMMIT_MSG [skip ci]"
-                git push --set-upstream origin $GH_BRANCH_NAME
-                # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-                PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
-                echo "Pull request: $PR_URL"
-                sleep 3
-                gh pr merge --auto --delete-branch -r $PR_URL
-              fi
+      - persist_to_workspace:
+          root: .
+          paths:
+            - pkg/swagger/docs.go
+            - webui/public/swagger/swagger.json
+
+      - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
+          condition:
+            equal: ["main", << pipeline.git.branch >>]
+          steps:
+            - run:
+                name: Install gh
+                command: |
+                  wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+                  sudo dpkg -i gh_2.14.7_linux_amd64.deb
+                  echo "$GITHUB_PR_PAT" | gh auth login --with-token
+                  rm gh_2.14.7_linux_amd64.deb
+            - run:
+                name: Install human-id generator
+                command: |
+                  pip3 install human-id
+            - run:
+                name: Git commit
+                command: |
+                  git config user.email "$(git log --format='format:%ae' -n1)"
+                  git config user.name "$(git log --format='format:%an' -n1)"
+                  # Note: we delete this branch after the PR is merged
+                  GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
+                  git checkout -b $GH_BRANCH_NAME
+                  if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
+                    git add --verbose -- ./docs
+                    COMMIT_MSG="Build swagger reference - this is an automatic commit"
+                    git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+                    git push --set-upstream origin $GH_BRANCH_NAME
+                    # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
+                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
+                    echo "Pull request: $PR_URL"
+                    sleep 3
+                    gh pr merge --auto --delete-branch -r $PR_URL
+                  fi
 
   docker:
     executor: linux-amd64
