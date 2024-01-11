@@ -50,6 +50,7 @@ type executionHandler struct {
 	result *models.RunCommandResult
 }
 
+//nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
 	h.running.Store(true)
 	defer func() {
@@ -111,10 +112,10 @@ func (h *executionHandler) run(ctx context.Context) {
 			return
 		}
 		if containerJSON.ContainerJSONBase.State.OOMKilled {
-			containerError = errors.New("memory limit exceeded")
+			containerError = errors.New(`memory limit exceeded. Please refer to https://docs.bacalhau.org/getting-started/resources/#docker-executor for more information`) //nolint:lll
 			h.result = &models.RunCommandResult{
 				ExitCode: int(containerExitStatusCode),
-				ErrorMsg: fmt.Sprintf(containerError.Error()),
+				ErrorMsg: containerError.Error(),
 			}
 			return
 		}

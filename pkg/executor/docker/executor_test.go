@@ -520,5 +520,5 @@ func (s *ExecutorTestSuite) TestDockerOOM() {
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), "memory limit exceeded", result.ErrorMsg)
+	require.Contains(s.T(), result.ErrorMsg, "memory limit exceeded")
 }
