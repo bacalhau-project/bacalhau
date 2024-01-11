@@ -13,7 +13,7 @@ This section describes how to migrate a workload based on a Docker container int
 
 :::info
 
-You can check out this example tutorial on [how to work with custom containers in Bacalhau](https://docs.bacalhau.org/examples/workload-onboarding/custom-containers/) to see how we used all these steps together.
+You can check out this example tutorial on [how to work with custom containers in Bacalhau](../setting-up/workload-onboarding/custom-containers/index.md) to see how we used all these steps together.
 
 :::
 
@@ -47,7 +47,20 @@ You won't be able to pull `data/code/weights/` etc. from an external source.
 
 2. **Data Passing with Docker Volumes**:
 
-Data passing is implemented with Docker volumes, using [Bacalhau's input/output volumes].
+A job includes the concept of input and output volumes, and the Docker executor implements support for these. This means you can specify your CIDs, URLs, and/or S3 objects as `input` paths and also write results to an `output` volume. This can be seen in the following example:
+
+```shell
+bacalhau docker run \
+  -i s3://mybucket/logs-2023-04*:/input \
+  -o apples:/output_folder \
+  ubuntu \
+  bash -c 'ls /input > /output_folder/file.txt'
+```
+The above example demonstrates an input volume flag `-i s3://mybucket/logs-2023-04*`, which mounts all S3 objects in bucket `mybucket` with `logs-2023-04` prefix within the docker container at location `/input` (root).
+
+Output volumes are mounted to the Docker container at the location specified. In the example above, any content written to `/output_folder` will be made available within the `apples` folder in the job results CID.
+
+Once the job has run on the executor, the contents of `stdout` and `stderr` will be added to any named output volumes the job has used (in this case `apples`), and all those entities will be packaged into the results folder which is then published to a remote location by the publisher.
 
 
 ## Onboarding Your Workload
@@ -60,7 +73,7 @@ We make the assumption that you are reading from a directory called `/inputs`, w
 
 :::info
 
-You can specify which directory the data is written to with the [`--input`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
+You can specify which directory the data is written to with the [`--input`](../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
@@ -72,7 +85,7 @@ We make the assumption that you are writing to a directory called `/outputs`, wh
 
 :::info
 
-You can specify which directory the data is written to with the [`--output-volumes`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
+You can specify which directory the data is written to with the [`--output-volumes`](../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
@@ -134,6 +147,9 @@ Bacalhau will use the [default ENTRYPOINT](https://docs.docker.com/engine/refer
 For example:
 
 ```shell
+$ export LOCAL_INPUT_DIR=$PWD
+$ export LOCAL_OUTPUT_DIR=$PWD
+$ export CMD=(sh -c 'ls /inputs; echo "do something useful" > /outputs/stdout')
 $ export IMAGE=ubuntu
 $ docker run --rm \
   -v ${LOCAL_INPUT_DIR}:/inputs  \
@@ -143,10 +159,9 @@ $ docker run --rm \
 $ cat stdout
 ```
 
-This snippet results in:
+The result of the commands' execution is shown below:
 
-```
-...file listing...
+```shell
 do something useful
 ```
 
@@ -154,9 +169,9 @@ do something useful
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-[Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)  
-[Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)  
-[Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/data-ingestion/s3)  
+[Copy data from a URL to public storage](../setting-up/data-ingestion/from-url.md)  
+[Pin Data to public storage](../setting-up/data-ingestion/pin.md)  
+[Copy Data from S3 Bucket to public storage](../setting-up/data-ingestion/s3.md)  
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
@@ -164,50 +179,34 @@ You can mount your data anywhere on your machine, and Bacalhau will be able to r
 
 ### Step 6 - Run the Workload on Bacalhau
 
-To run your workload, run the following command:
+To launch your workload in a Docker container, using the specified image and working with `input` data specified via IPFS CID, run the following command:
 
 ```shell
 $ bacalhau docker run --input ipfs://${CID} ${IMAGE} ${CMD}
 ```
+
 To check the status of your job, run the following command:
 
 ```shell
-$ bacalhau list 
+$ bacalhau list
 ```
-To get more information on your job
+
+To get more information on your job,run:
 
 ```shell
 $ bacalhau describe JOB_ID
 ```
 
-To download your job
+To download your job, run:
 
 ```shell
 $ bacalhau get JOB_ID
 ```
 
-For example, running:
+**TBD** For example, running:
 
 ```shell
-$ job_id=$(bacalhau docker run ubuntu echo hello)
-$ bacalhau list --id-filter $job_id
-$ sleep 5
-$ bacalhau list --id-filter $job_id
-$ bacalhau get $job_id
-$ ls shards
-```
 
-outputs:
-
-```
- CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
- 10:26:00  24440f0d  Docker ubuntu echo h...  Verifying                      
- CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
- 10:26:00  24440f0d  Docker ubuntu echo h...  Published            /ipfs/bafybeiflj3kha... 
-11:26:09.107 | INF bacalhau/get.go:67 > Fetching results of job '24440f0d-3c06-46af-9adf-cb524aa43961'...
-11:26:10.528 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
-11:26:13.144 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/Users/phil/source/filecoin-project/docs.bacalhau.org'
-job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
 ```
 
 :::caution

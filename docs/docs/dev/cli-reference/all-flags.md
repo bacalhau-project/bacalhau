@@ -99,7 +99,7 @@ bacalhau agent [command]
 ```
 Available Commands:
 
-**1. alive**
+### alive
 ```shell
 bacalhau agent alive [flags]
 ```
@@ -151,7 +151,7 @@ Expected Output:
 }
 ```
 
-**2. node** 
+### node
 
 ```shell
 bacalhau agent node [flags]
@@ -186,7 +186,7 @@ To retrieve Node Information in Pretty-printed JSON Format, run:
 bacalhau agent node --output json --pretty
 ```
 
-**3. version**
+### version
 
 ```shell
 bacalhau agent version [flags]
@@ -280,7 +280,7 @@ bacalhau completion [command]
 
 Available Commands:
 
-**1. bash**
+### bash
 ```shell
 bacalhau completion bash [flags]
 ```
@@ -298,7 +298,7 @@ This script depends on the 'bash-completion' package.
 If it is not installed already, you can install it via your OS's package manager.
 :::
 
-**2. fish**
+### fish
 
 ```shell
 bacalhau completion fish [flags]
@@ -320,7 +320,7 @@ You will need to start a new shell for this setup to take effect.
 :::
 
 
-**3. powershell**
+### powershell
 
 ```shell
 bacalhau completion powershell [flags]
@@ -340,7 +340,7 @@ To load completions for every new session, add the output of the above command
 to your powershell profile.
 :::
 
-**4. zsh**
+### zsh
 
 ```shell
 bacalhau completion zsh [flags]
@@ -371,7 +371,7 @@ bacalhau config [command]
 
 Available Commands:
 
-**1. auto-resources**
+### auto-resources
 ```shell
 bacalhau config auto-resources [flags]
 ```
@@ -462,7 +462,7 @@ Config File:
                    memory: 52 GB
    ```
 
-**2.  default**
+### default
 ```shell
 bacalhau config default [flags]
 ```
@@ -486,7 +486,7 @@ bacalhau config default > ~/.bacalhau/config.yaml
 ```
 This command redirects the default configuration output directly into the bacalhau configuration file at `~/.bacalhau/config.yaml`, effectively resetting it to default settings.
 
-**3. list**
+### list
 ```shell
 bacalhau config list [flags]
 ```
@@ -529,7 +529,7 @@ KEY                                                             VALUE
  ...
 ```
 
-**4. set**
+### set
 ```shell
 bacalhau config set <key> <value>
 ```
@@ -1047,7 +1047,7 @@ Usage:
 
 Available Commands:
 
-**1. describe** 
+### describe 
 
 ```shell
 bacalhau job describe [id] [flags]
@@ -1078,7 +1078,7 @@ bacalhau job describe j-e3f8c209
 bacalhau job describe j-e3f8c209 --output json --pretty
 ```
 
-**2. executions**
+### executions
 
 ```shell
 bacalhau job executions [id] [flags]
@@ -1130,7 +1130,7 @@ Expected Output:
     ...
 ```
 
-**3. history**
+### history
 
 ```shell
 bacalhau job history [id] [flags]
@@ -1200,7 +1200,7 @@ Expected Output:
  15:32:07  ExecutionLevel  e-228bbb88  QmeXjeQD  6     BidAccepted        Completed
 ```
 
-**4. list**
+### list
 
 ```shell
 bacalhau job list [flags]
@@ -1302,7 +1302,7 @@ bacalhau job list --limit 1 --output json --pretty
     "Meta":
     ...
 ```
-**5. logs**
+### logs
 
 ```shell
 bacalhau job logs [id] [flags]
@@ -1341,7 +1341,7 @@ Expected Output:
 ... [Logs continue to appear in real-time] ...
 ```
 
-**6. run**
+### run
 
 ```shell
 bacalhau job run [flags]
@@ -1483,7 +1483,7 @@ To get more details about the run executions, execute:
 	bacalhau job executions j-c3441e11-0620-480f-b5d7-a35727398d9a
 ```
 
-**7. stop**
+### stop
 
 ```shell
 bacalhau job stop [id] [flags]
@@ -1603,7 +1603,7 @@ bacalhau node [command]
 
 Available Commands:
 
-**1. describe** 
+### describe 
 
 ```shell
 bacalhau node describe [id] [flags]
@@ -1671,7 +1671,7 @@ Expected Output:
 {"PeerInfo":{"ID":"QmSD38wHdeoLrfysEejQnqpmNx4iUPh83Dh4vfYRHML9aC","Addrs":["/ip4/35.245.41.51/tcp/1235"]},"NodeType":"Compute","Labels":{"Architecture":"amd64","GPU-0":"Tesla-T4","GPU-0-Memory":"15360-MiB","Operating-System":"linux","git-lfs":"True","owner":"bacalhau"},"ComputeNodeInfo":{"ExecutionEngines":["docker","wasm"],"Publishers":["ipfs","s3","noop"],"StorageSources":["urldownload","inline","repoclone","repoclonelfs","s3","ipfs"],"MaxCapacity":{"CPU":3.2,"Memory":12561032806,"Disk":1689504687718,"GPU":1,"GPUs":[{"Index":0,"Name":"Tesla T4","Vendor":"NVIDIA","Memory":15360,"PCIAddress":""}]},"AvailableCapacity":{"CPU":3.2,"Memory":12561032806,"Disk":1689504687718,"GPU":1,"GPUs":[{"Index":0,"Name":"Tesla T4","Vendor":"NVIDIA","Memory":15360,"PCIAddress":""}]},"MaxJobRequirements":{"CPU":3.2,"Memory":12561032806,"Disk":1689504687718,"GPU":1,"GPUs":[{"Index":0,"Name":"Tesla T4","Vendor":"NVIDIA","Memory":15360,"PCIAddress":""}]},"RunningExecutions":0,"EnqueuedExecutions":0},"BacalhauVersion":{"Major":"1","Minor":"2","GitVersion":"v1.2.0","GitCommit":"4252ba4406c40c3d01bdcf58709f8d7a705fdc75","BuildDate":"2023-12-11T18:46:13Z","GOOS":"linux","GOARCH":"amd64"}}
 ```
 
-**2. list**
+### list
 
 ```shell
  bacalhau node list [flags] 
@@ -1929,7 +1929,7 @@ bacalhau wasm [command]
 
 Available Commands:
 
-**1. run** 
+### run
 
 ```shell
 bacalhau wasm run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...] [flags]
@@ -1998,7 +1998,7 @@ bacalhau wasm run <localfile.wasm>
 bacalhau wasm run <cid>
 ```
 
-**2. validate** 
+### validate 
 
 ```shell
 bacalhau wasm validate <local.wasm> [--entry-point <string>] [flags]

@@ -89,13 +89,14 @@ You can create jobs in the Bacalhau network using various [job types] introduced
   <summary>Advanced job preparation</summary>
   <div>
     <div>
-        Prepare data with Bacalhau by [copying from URLs], [pinning to public storage], or [copying from an S3 bucket]. Mount data anywhere for Bacalhau to run against. Refer to [IPFS], [Local], [S3], and [URL] Source Specifications for data source usage.
+        Prepare data with Bacalhau by [copying from URLs](../setting-up/data-ingestion/from-url.md),
+       [pinning to public storage](../setting-up/data-ingestion/pin.md), or [copying from an S3 bucket](../setting-up/data-ingestion/s3.md). Mount data anywhere for Bacalhau to run against. Refer to [IPFS](../setting-up/other-specifications/sources/ipfs.md), [Local](../setting-up/other-specifications/sources/local.md), [S3](../setting-up/other-specifications/sources/s3.md), and [URL](../setting-up/other-specifications/sources/url.md) Source Specifications for data source usage.
 
-        Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker] and [WebAssembly] workloads.
+        Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker](../getting-started/docker-workload-onboarding.md) and [WebAssembly](../getting-started/wasm-workload-onboarding.md) workloads.
 
-        Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads] section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK].
+        Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads](../setting-up/gpu.md) section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK](../integration/python-sdk.md).
 
-        For node operation, refer to the [Running a Node] section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster] for performing tasks without connecting to the main Bacalhau network.
+        For node operation, refer to the [Running a Node](../setting-up/running-node/quick-start.md) section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster](../setting-up/networking-instructions/private-cluster.md) for performing tasks without connecting to the main Bacalhau network.
     </div>
   </div>
 </details>
@@ -123,7 +124,7 @@ values={[
     bacalhau create [flags]
     ```
 
-You can use the command with [appropriate flags] to create a job in Bacalhau using JSON and YAML formats.
+You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#create) to create a job in Bacalhau using JSON and YAML formats.
 
 </TabItem>
 <TabItem value="API">
@@ -131,12 +132,12 @@ You can use the command with [appropriate flags] to create a job in Bacalhau usi
     Endpoint: `PUT /api/v1/orchestrator/jobs`
     ```
 
-    You can use [Create Job API Documentation] to submit a new job for execution.
+    You can use [Create Job API Documentation](../dev/api/jobs.md#create-job) to submit a new job for execution.
 
 </TabItem>
 </Tabs>
 
-You can use the `bacalhau docker run` [command] to start a job in a Docker container. Below, you can see an excerpt of the commands:
+You can use the `bacalhau docker run` [command](../dev/cli-reference/all-flags.md#docker-run) to start a job in a Docker container. Below, you can see an excerpt of the commands:
 
 <details>
   <summary>Bacalhau Docker CLI commands</summary>
@@ -147,109 +148,113 @@ You can use the `bacalhau docker run` [command] to start a job in a Docker conta
             bacalhau docker run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]
 
             Flags:
-            -c, --concurrency int                  How many nodes should run the job (default 1)
-                --confidence int                   The minimum number of nodes that must agree on a verification result
-                --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
-                --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
-                --download                         Should we download the results once the job is complete?
-                --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
-                --dry-run                          Do not submit the job, but instead print out what will be submitted
-                --engine string                    What executor engine to use to run the job (default "docker")
-            -e, --env strings                      The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
-                --filplus                          Mark the job as a candidate for moderation for FIL+ rewards.
-            -f, --follow                           When specified will follow the output from the job as it runs
-            -g, --gettimeout int                   Timeout for getting the results of a job in --wait (default 10)
-                --gpu string                       Job GPU requirement (e.g. 1, 2, 8).
-            -h, --help                             help for run
-                --id-only                          Print out only the Job ID on successful submission.
-            -i, --input storage                    Mount URIs as inputs to the job. Can be specified multiple times. Format: src=URI,dst=PATH[,opt=key=value]
-                                                    Examples:
-                                                    # Mount IPFS CID to /inputs directory
-                                                    -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72
-
-                                                    # Mount S3 object to a specific path
-                                                    -i s3://bucket/key,dst=/my/input/path
-
-                                                    # Mount S3 object with specific endpoint and region
-                                                    -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
-
-                --ipfs-swarm-addrs string          Comma-separated list of IPFS nodes to connect to. (default "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL,/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF,/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3")
-            -l, --labels strings                   List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
-                --local                            Run the job locally. Docker is required
-                --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
-                --min-bids int                     Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)
-                --network network-type             Networking capability required by the job (default None)
-                --node-details                     Print out details of all nodes (overridden by --id-only).
-                --output-dir string                Directory to write the output to.
-            -o, --output-volumes strings           name:path of the output data volumes. 'outputs:/outputs' is always added.
-            -p, --publisher publisher              Where to publish the result of the job (default Estuary)
-                --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
-            -s, --selector string                  Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.
-                --skip-syntax-checking             Skip having 'shellchecker' verify syntax of the command
-                --timeout float                    Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms) (default 1800)
-                --verifier string                  What verification engine to use to run the job (default "noop")
-                --wait                             Wait for the job to finish. (default true)
-                --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
-            -w, --workdir string                   Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).
+                 --concurrency int                  How many nodes should run the job (default 1)
+                 --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
+                 --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
+                 --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+                 --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
+                 --download                         Should we download the results once the job is complete?
+                 --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
+                 --dry-run                          Do not submit the job, but instead print out what will be submitted
+                 --entrypoint strings               Override the default ENTRYPOINT of the image
+             -e, --env strings                      The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
+             -f, --follow                           When specified will follow the output from the job as it runs
+             -g, --gettimeout int                   Timeout for getting the results of a job in --wait (default 10)
+                 --gpu string                       Job GPU requirement (e.g. 1, 2, 8).
+             -h, --help                             help for run
+                 --id-only                          Print out only the Job ID on successful submission.
+             -i, --input storage                    Mount URIs as inputs to the job. Can be specified multiple times. Format: src=URI,dst=PATH[,opt=key=value]
+                                                  Examples:
+                                                  # Mount IPFS CID to /inputs directory
+                                                  -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72
+                                                  # Mount S3 object to a specific path
+                                                  -i s3://bucket/key,dst=/my/input/path
+                                                  # Mount S3 object with specific endpoint and region
+                                                  -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
+                 --ipfs-connect string              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
+                 --ipfs-serve-path string           path local Ipfs node will persist data to
+                 --ipfs-swarm-addrs strings         IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect. (default [/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/35.245.161.250/udp/4001/quic/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/34.86.254.26/tcp/4001/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/34.86.254.26/udp/4001/quic/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/35.245.215.155/tcp/4001/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/35.245.215.155/udp/4001/quic/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/34.145.201.224/tcp/4001/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/34.145.201.224/udp/4001/quic/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/35.245.41.51/tcp/4001/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa,/ip4/35.245.41.51/udp/4001/quic/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa])
+                 --ipfs-swarm-key string            Optional IPFS swarm key required to connect to a private IPFS swarm
+             -l, --labels strings                   List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
+                 --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
+                 --network network-type             Networking capability required by the job. None, HTTP, or Full (default None)
+                 --node-details                     Print out details of all nodes (overridden by --id-only).
+             -o, --output strings                   name:path of the output data volumes. 'outputs:/outputs' is always added unless '/outputs' is mapped to a different name. (default [outputs:/outputs])
+                 --output-dir string                Directory to write the output to.
+                 --private-internal-ipfs            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
+             -p, --publisher publisher              Where to publish the result of the job (default ipfs)
+                 --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
+             -s, --selector string                  Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.
+                 --target all|any                   Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all") (default any)
+                 --timeout int                      Job execution timeout in seconds (e.g. 300 for 5 minutes)
+                 --wait                             Wait for the job to finish. Use --wait=false to return as soon as the job is submitted. (default true)
+                 --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
+             -w, --workdir string                   Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).
         ```
     </div>
   </div>
 </details>
 
 
-
-You can also use the `bacalhau run python` [command] to run a job in Python. Below, you can find an excerpt of the commands in the Bacalhau CLI:
+You can also use the `bacalhau wasm run` [command](../dev/cli-reference/all-flags.md#wasm) to run a job compiled into the (WASM) format. Below, you can find an excerpt of the commands in the Bacalhau CLI:
 
 <details>
-  <summary>Bacalhau Python CLI commands</summary>
+  <summary>Bacalhau WASM CLI commands</summary>
   <div>
     <div>
         ```shell
             Usage:
-                bacalhau run python [flags]
+            bacalhau wasm run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...] [flags]
 
             Flags:
-                -c, --command string                   Program passed in as string (like python)
                     --concurrency int                  How many nodes should run the job (default 1)
-                    --confidence int                   The minimum number of nodes that must agree on a verification result
-                    --context-path string              Path to context (e.g. python code) to send to server (via public IPFS network) for execution (max 10MiB). Set to empty string to disable (default ".")
-                    --deterministic                    Enforce determinism: run job in a single-threaded wasm runtime with no sources of entropy. NB: this will make the python runtime executein an environment where only some libraries are supported, see https://pyodide.org/en/stable/usage/packages-in-pyodide.html (default true)
+                    --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
+                    --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
+                    --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+                    --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
                     --download                         Should we download the results once the job is complete?
                     --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
+                    --dry-run                          Do not submit the job, but instead print out what will be submitted
+                    --entry-point string               The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
+                                         		will execute the job. (default "_start")
                 -e, --env strings                      The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
                 -f, --follow                           When specified will follow the output from the job as it runs
                 -g, --gettimeout int                   Timeout for getting the results of a job in --wait (default 10)
-                -h, --help                             help for python
+                    --gpu string                       Job GPU requirement (e.g. 1, 2, 8).
+                -h, --help                             help for run
                     --id-only                          Print out only the Job ID on successful submission.
+                -U, --import-module-urls url           URL of the WASM modules to import from a URL source. URL accept any valid URL supported by the 'wget' command, and supports both HTTP and HTTPS.
+                -I, --import-module-volumes cid:path   CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.
                 -i, --input storage                    Mount URIs as inputs to the job. Can be specified multiple times. Format: src=URI,dst=PATH[,opt=key=value]
-                                                    Examples:
-                                                    # Mount IPFS CID to /inputs directory
-                                                    -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72
-
-                                                    # Mount S3 object to a specific path
-                                                    -i s3://bucket/key,dst=/my/input/path
-
-                                                    # Mount S3 object with specific endpoint and region
-                                                    -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
-
-                    --ipfs-swarm-addrs string          Comma-separated list of IPFS nodes to connect to. (default "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL,/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF,/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3")
+                                                     Examples:
+                                                     # Mount IPFS CID to /inputs directory
+                                                     -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72
+                                                     # Mount S3 object to a specific path
+                                                     -i s3://bucket/key,dst=/my/input/path
+                                                     # Mount S3 object with specific endpoint and region
+                                                     -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
+                    --ipfs-connect string              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
+                    --ipfs-serve-path string           path local Ipfs node will persist data to
+                    --ipfs-swarm-addrs strings         IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect. (default [/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/35.245.161.250/udp/4001/quic/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/34.86.254.26/tcp/4001/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/34.86.254.26/udp/4001/quic/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/35.245.215.155/tcp/4001/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/35.245.215.155/udp/4001/quic/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/34.145.201.224/tcp/4001/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/34.145.201.224/udp/4001/quic/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/35.245.41.51/tcp/4001/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa,/ip4/35.245.41.51/udp/4001/quic/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa])
+                    --ipfs-swarm-key string            Optional IPFS swarm key required to connect to a private IPFS swarm
                 -l, --labels strings                   List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
-                    --local                            Run the job locally. Docker is required
-                    --min-bids int                     Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)
+                    --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
+                    --network network-type             Networking capability required by the job. None, HTTP, or Full (default None)
                     --node-details                     Print out details of all nodes (overridden by --id-only).
+                -o, --output strings                   name:path of the output data volumes. 'outputs:/outputs' is always added unless '/outputs' is mapped to a different name. (default [outputs:/outputs])
                     --output-dir string                Directory to write the output to.
-                -o, --output-volumes strings           name:path of the output data volumes
+                    --private-internal-ipfs            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
+                -p, --publisher publisher              Where to publish the result of the job (default ipfs)
                     --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
-                -r, --requirement string               Install from the given requirements file. (like pip)
-                    --timeout float                    Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms) (default 1800)
-                    --wait                             Wait for the job to finish. (default true)
+                -s, --selector string                  Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.
+                    --target all|any                   Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all") (default any)
+                    --timeout int                      Job execution timeout in seconds (e.g. 300 for 5 minutes)
+                    --wait                             Wait for the job to finish. Use --wait=false to return as soon as the job is submitted. (default true)
                     --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
         ```
     </div>
   </div>
 </details>
-
-You can also use the `bacalhau wasm run` [command] to run a job compiled into the (WASM) format. 
 
 ### Job Acceptance
 
@@ -257,15 +262,15 @@ When a job is submitted to a requester node, it selects compute nodes that are c
 
 ### Job execution
 
-The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification] to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification].
+The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification](../setting-up/other-specifications/engines/docker.md) to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification](../setting-up/other-specifications/engines/wasm.md).
 
 ### Results publishing
 
 When the Compute node completes the job, it publishes the results to **S3's remote storage**, **IPFS**.
 
-Bacalhau's seamless integration with IPFS ensures that users have a decentralized option for publishing their task results, enhancing accessibility and resilience while reducing dependence on a single point of failure. View [IPFS Publisher Specification] to get the detailed information.
+Bacalhau's seamless integration with IPFS ensures that users have a decentralized option for publishing their task results, enhancing accessibility and resilience while reducing dependence on a single point of failure. View [IPFS Publisher Specification](../setting-up/other-specifications/publishers/ipfs.md) to get the detailed information.
 
-Bacalhau's S3 Publisher provides users with a secure and efficient method to publish task results to any S3-compatible storage service. This publisher supports not just AWS S3, but other S3-compatible services offered by cloud providers like Google Cloud Storage and Azure Blob Storage, as well as open-source options like MinIO. View [S3Publisher Specification] to get the detailed information.
+Bacalhau's S3 Publisher provides users with a secure and efficient method to publish task results to any S3-compatible storage service. This publisher supports not just AWS S3, but other S3-compatible services offered by cloud providers like Google Cloud Storage and Azure Blob Storage, as well as open-source options like MinIO. View [S3Publisher Specification](../setting-up/other-specifications/publishers/s3.md) to get the detailed information.
 
 ## Chapter 3 - Returning Information
 
@@ -280,10 +285,15 @@ Usage:
   bacalhau get [id] [flags]
 
 Flags:
-      --download-timeout-secs int   Timeout duration for IPFS downloads. (default 600)
-  -h, --help                        help for get
-      --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-      --output-dir string           Directory to write the output to. (default ".")
+      --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
+  -h, --help                             help for get
+      --ipfs-connect string              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
+      --ipfs-serve-path string           path local Ipfs node will persist data to
+      --ipfs-swarm-addrs strings         IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect. (default [/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/35.245.161.250/udp/4001/quic/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/34.86.254.26/tcp/4001/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/34.86.254.26/udp/4001/quic/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/35.245.215.155/tcp/4001/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/35.245.215.155/udp/4001/quic/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/34.145.201.224/tcp/4001/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/34.145.201.224/udp/4001/quic/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/35.245.41.51/tcp/4001/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa,/ip4/35.245.41.51/udp/4001/quic/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa])
+      --ipfs-swarm-key string            Optional IPFS swarm key required to connect to a private IPFS swarm
+      --output-dir string                Directory to write the output to.
+      --private-internal-ipfs            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
+      --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
 ```
 
 ### Describe a Job
@@ -300,14 +310,14 @@ values={[
     bacalhau describe [id] [flags]
     ```
 
-    You can use the command with [appropriate flags] to get a full description of a job in yaml format.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#describe) to get a full description of a job in yaml format.
 
 </TabItem>
 <TabItem value="API">
 
     Endpoint: `GET /api/v1/orchestrator/jobs/:jobID`
 
-    You can use [Describe Job API Documentation] to retrieve the specification and current status of a particular job. 
+    You can use [Describe Job API Documentation](../dev/api/jobs.md#describe-job) to retrieve the specification and current status of a particular job. 
 
 </TabItem>
 </Tabs>
@@ -327,14 +337,14 @@ values={[
     bacalhau list [flags]
     ```
 
-    You can use the command with [appropriate flags] to list jobs on the network in yaml format.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#list) to list jobs on the network in yaml format.
 
 </TabItem>
 <TabItem value="API">
 
     Endpoint: `GET /api/v1/orchestrator/jobs`
 
-    You can use [List Jobs API Documentation] to retrieve a list of jobs.
+    You can use [List Jobs API Documentation](../dev/api/jobs.md#list-jobs) to retrieve a list of jobs.
 
 </TabItem>
 </Tabs>
@@ -354,14 +364,14 @@ values={[
     bacalhau job executions [id] [flags]
     ```
 
-    You can use the command with [appropriate flags] to list all executions associated with a job, identified by its ID, in yaml format.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#executions) to list all executions associated with a job, identified by its ID, in yaml format.
 
 </TabItem>
 <TabItem value="API">
 
     Endpoint: `GET /api/v1/orchestrator/jobs/:jobID/executions`
 
-    You can use [Job Executions API Documentation] to retrieve all executions for a particular job.
+    You can use [Job Executions API Documentation](../dev/api/jobs.md#job-executions) to retrieve all executions for a particular job.
 
 </TabItem>
 </Tabs>
@@ -370,8 +380,8 @@ values={[
 ## Chapter 4 - Monitoring and Management
 
 The Bacalhau client provides the user with tools to monitor and manage the execution of jobs. You can get information about status, progress and decide on next steps.
-View the  [Bacalhau Agent APIs] if you want to know the node's health, capabilities, and deployed Bacalhau version. 
-To get information about the status and characteristics of the nodes in the cluster use [Nodes API Documentation].
+View the  [Bacalhau Agent APIs](../dev/api/agent.md) if you want to know the node's health, capabilities, and deployed Bacalhau version. 
+To get information about the status and characteristics of the nodes in the cluster use [Nodes API Documentation](../dev/api/nodes.md).
 
 
 ### Stop a Job
@@ -389,14 +399,14 @@ values={[
     bacalhau cancel [id] [flags]
     ```
 
-    You can use the command with [appropriate flags] to cancel a job that was previously submitted and stop it running if it has not yet completed.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#cancel) to cancel a job that was previously submitted and stop it running if it has not yet completed.
 
 </TabItem>
 <TabItem value="API">
 
     Endpoint: `DELETE /api/v1/orchestrator/jobs/:jobID`
 
-    You can use [Stop Job API Documentation] to terminate a specific job asynchronously.
+    You can use [Stop Job API Documentation](../dev/api/jobs.md#stop-job) to terminate a specific job asynchronously.
 
 </TabItem>
 </Tabs>
@@ -417,14 +427,14 @@ values={[
     bacalhau job history [id] [flags]
     ```
 
-    You can use the command with [appropriate flags] to enumerate the historical events related to a job, identified by its ID.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#history) to enumerate the historical events related to a job, identified by its ID.
 
 </TabItem>
 <TabItem value="API">
 
     Endpoint: `GET /api/v1/orchestrator/jobs/:jobID/history`
 
-    You can use [Job History API Documentation] to retrieve historical events for a specific job.
+    You can use [Job History API Documentation](../dev/api/jobs.md#job-history) to retrieve historical events for a specific job.
 
 </TabItem>
 </Tabs>
@@ -437,8 +447,8 @@ values={[
 bacalhau logs [flags] [id]
 ```
 
-You can use this [command] to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
+You can use this [command](../dev/cli-reference/all-flags.md#logs) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
 
 :::info
- To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands] (refer to bacalhau cli version v1.0.3) and [CLI Commands (Experimental)] (refer to experimental bacalhau cli version v1.1.0.).
+ To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands](../dev/cli-reference/all-flags.md)
  :::
