@@ -5,11 +5,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -41,11 +43,11 @@ type Options struct {
 	// Headers is a map of headers to add to all requests.
 	Headers http.Header
 
-	// TLSOptions provides info on how we want to use TLS
-	TLS TLSOptions
+	// TLSConfig provides info on how we want to use TLS
+	TLS TLSConfig
 }
 
-type TLSOptions struct {
+type TLSConfig struct {
 	// UseTLS denotes whether to use TLS or not
 	UseTLS bool
 	// Insecure activates TLS but does not verify any certificate
@@ -156,7 +158,10 @@ func getTLSTransport(config *Options) *http.Transport {
 	if config.TLS.CACert != "" {
 		caCert, err := os.ReadFile(config.TLS.CACert)
 		if err != nil {
-			panic("invalid ca certificate provided")
+			// unreachable: we already checked that the file exists at CLI startup
+			// if it has gone missing in the meantime then something is very wrong
+			newErr := errors.Wrap(err, fmt.Sprintf("Error: unable to read CA certificate: %s", config.TLS.CACert))
+			panic(newErr.Error())
 		}
 
 		caCertPool := x509.NewCertPool()

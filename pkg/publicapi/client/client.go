@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -80,7 +81,10 @@ func getTLSTransport(config LegacyTLSSupport) *http.Transport {
 	if config.CACert != "" {
 		caCert, err := os.ReadFile(config.CACert)
 		if err != nil {
-			panic("invalid ca certificate provided")
+			// unreachable: we already checked that the file exists at CLI startup
+			// if it has gone missing in the meantime then something is very wrong
+			newErr := errors.Wrap(err, fmt.Sprintf("Error: unable to read CA certificate: %s", config.CACert))
+			panic(newErr.Error())
 		}
 
 		caCertPool := x509.NewCertPool()

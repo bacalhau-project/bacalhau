@@ -81,7 +81,6 @@ type WebUIConfig struct {
 	Port    int  `yaml:"Port"`
 }
 
-  
 type TLSConfiguration struct {
 	// AutoCert specifies a hostname for a certificate to be obtained via ACME.
 	// This is only used by the server, and only by the requester node when it
