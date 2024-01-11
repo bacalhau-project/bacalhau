@@ -131,6 +131,7 @@ func getClientHostAndPort() (string, uint16) {
 	if err != nil {
 		panic(err)
 	}
+
 	port, err := config.Get[uint16](types.NodeClientAPIPort)
 	if err != nil {
 		panic(err)
@@ -140,8 +141,9 @@ func getClientHostAndPort() (string, uint16) {
 }
 
 func getClient() *client.APIClient {
+	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
 	host, port := getClientHostAndPort()
-	return client.NewAPIClient(host, port)
+	return client.NewAPIClient(legacyTLS, host, port)
 }
 
 func getClientV2() *clientv2.Client {

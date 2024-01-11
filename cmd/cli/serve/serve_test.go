@@ -107,7 +107,7 @@ func (s *tServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	ctx := context.Background()
 	port, _ := s.serveForCLI("--node-type", "requester", "--node-type", "compute")
-	client := client.NewAPIClient("localhost", port)
+	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 	clientV2 := clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 	})
