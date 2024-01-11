@@ -13,6 +13,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
+	"github.com/bacalhau-project/bacalhau/pkg/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -161,18 +162,6 @@ func NewNode(
 		return nil, err
 	}
 
-	// node info provider
-	basicHost, ok := config.Host.(*basichost.BasicHost)
-	if !ok {
-		return nil, fmt.Errorf("host is not a basic host")
-	}
-	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		Host:            basicHost,
-		IdentityService: basicHost.IDService(),
-		Labels:          config.Labels,
-		BacalhauVersion: *version.Get(),
-	})
-
 	// node info publisher
 	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
 	if nodeInfoPublisherInterval.IsZero() {
@@ -201,11 +190,12 @@ func NewNode(
 
 	// public http api server
 	serverParams := publicapi.ServerParams{
-		Router:  echo.New(),
-		Address: config.HostAddress,
-		Port:    config.APIPort,
-		HostID:  config.Host.ID().String(),
-		Config:  config.APIServerConfig,
+		Router:     echo.New(),
+		Address:    config.HostAddress,
+		Port:       config.APIPort,
+		HostID:     config.Host.ID().String(),
+		Config:     config.APIServerConfig,
+		Authorizer: auth.AlwaysAllow,
 	}
 
 	// Only allow autocert for requester nodes
@@ -221,20 +211,11 @@ func NewNode(
 		return nil, err
 	}
 
-	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           config.Host.ID().String(),
-		PeerStore:        config.Host.Peerstore(),
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
-	agent.NewEndpoint(agent.EndpointParams{
-		Router:           apiServer.Router,
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
 	var requesterNode *Requester
 	var computeNode *Compute
+
+	var computeInfoProvider models.ComputeNodeInfoProvider
+	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -272,8 +253,38 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
-		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
+
+		computeInfoProvider = computeNode.computeInfoProvider
+		labelsProvider = models.MergeLabelsInOrder(
+			computeNode.autoLabelsProvider,
+			labelsProvider,
+		)
 	}
+
+	// node info provider
+	basicHost, ok := config.Host.(*basichost.BasicHost)
+	if !ok {
+		return nil, fmt.Errorf("host is not a basic host")
+	}
+	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
+		Host:                basicHost,
+		IdentityService:     basicHost.IDService(),
+		LabelsProvider:      labelsProvider,
+		ComputeInfoProvider: computeInfoProvider,
+		BacalhauVersion:     *version.Get(),
+	})
+
+	shared.NewEndpoint(shared.EndpointParams{
+		Router:           apiServer.Router,
+		NodeID:           config.Host.ID().String(),
+		PeerStore:        config.Host.Peerstore(),
+		NodeInfoProvider: nodeInfoProvider,
+	})
+
+	agent.NewEndpoint(agent.EndpointParams{
+		Router:           apiServer.Router,
+		NodeInfoProvider: nodeInfoProvider,
+	})
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 	// TODO(forrest) [fixme] we should fix this to make it less racy in testing

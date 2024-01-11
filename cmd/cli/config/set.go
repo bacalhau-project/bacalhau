@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -91,7 +92,7 @@ func setConfig(key string, values ...string) error {
 	case []string:
 		viperWriter.Set(key, values)
 	case map[string]string:
-		sts, err := parseStringSliceToMap(values)
+		sts, err := parse.StringSliceToMap(values)
 		if err != nil {
 			return err
 		}

@@ -26,7 +26,7 @@ const (
 
 // Store represents an execution store that is backed by a boltdb database
 // on disk.  The structure of the store is in boltdb buckets and sub-buckets
-// so that they can be created and retreived easily.
+// so that they can be created and retrieved easily.
 //
 // The schema (<key> {json-value}) looks like the following where <> represents
 // keys, {} represents values and undecorated values are boltdb buckets.

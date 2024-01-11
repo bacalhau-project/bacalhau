@@ -77,8 +77,9 @@ var Staging = types.BacalhauConfig{
 		Requester: StagingRequesterConfig,
 		WebUI: types.WebUIConfig{
 			Enabled: false,
-			Port:    80,
+			Port:    8483,
 		},
+		StrictVersionMatch: false,
 	},
 }
 

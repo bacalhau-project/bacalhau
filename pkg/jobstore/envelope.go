@@ -3,7 +3,7 @@ package jobstore
 import "github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
 // Envelope provides a wrapper around types that can be stored in a jobstore.
-// It takes responsibility for ser/de for the wrapped type, ensuring that
+// It takes responsibility for the wrapped type, ensuring that
 type Envelope[T any] struct {
 	Body       T
 	marshaller marshaller.Marshaller

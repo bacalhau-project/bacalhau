@@ -18,8 +18,6 @@ type NodeInfoStore interface {
 	GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error)
 	// List returns a list of nodes
 	List(ctx context.Context) ([]models.NodeInfo, error)
-	// ListForEngine returns a list of nodes that support the given engine.
-	ListForEngine(ctx context.Context, engine string) ([]models.NodeInfo, error)
 	// Delete deletes a node info from the repo.
 	Delete(ctx context.Context, nodeID string) error
 }
