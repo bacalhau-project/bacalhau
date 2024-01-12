@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/labstack/echo/v4"
@@ -32,7 +32,7 @@ type ServerParams struct {
 	TLSCertificateFile string
 	TLSKeyFile         string
 	Config             Config
-	Authorizer         auth.Authorizer
+	Authorizer         authz.Authorizer
 }
 
 // Server configures a node's public REST API.

@@ -10,7 +10,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -84,7 +84,7 @@ func (s *ComputeSuite) setupNode() {
 		Address:    "0.0.0.0",
 		Port:       0,
 		Config:     publicapi.DefaultConfig(),
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.AlwaysAllow,
 	})
 	s.NoError(err)
 
