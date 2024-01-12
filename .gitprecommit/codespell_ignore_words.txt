@@ -128,8 +128,6 @@ defence
 deflt
 deleteme
 devstask
-Doesnt
-Dont
 dport
 dupl
 durin
@@ -234,7 +232,6 @@ proto
 protobuf
 protoc
 protoimpl
-providables
 pypi
 rabbitmq
 reenqueuing
@@ -249,7 +246,6 @@ sdktrace
 sharded
 Strs
 struct
-sumbmitted
 touchfs
 ttps
 UCAN
