@@ -373,6 +373,33 @@ jobs:
           command: |
             make precommit
 
+  lint-webui:
+    parallelism: 1
+    working_directory: ~/repo/webui
+    executor: linux-amd64
+    steps:
+      - checkout
+
+      - run:
+          name: Install eslint
+          command: |
+            npm install
+
+      - run:
+          name: Cache ESLint
+          command: |
+            cp package-lock.json eslint-cache-key.txt
+             npm list eslint  >> eslint-cache-key.txt
+
+      - restore_cache:
+          name: Restoring eslint cache
+          key: v1-eslint-cache-{{ checksum "eslint-cache-key.txt" }}
+
+      - run:
+          name: Run linter
+          command: |
+            npm run eslint
+
   release:
     executor: linux-amd64
     steps:

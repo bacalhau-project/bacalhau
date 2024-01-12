@@ -1,19 +1,22 @@
-// components/Sidebar.tsx
-import React from "react";
-import { Link } from "react-router-dom";
-import styles from "./Sidebar.module.scss";
-import Button from "./Button/Button";
-import { ReactComponent as BacalhauLogo } from "../../images/bacalhau.svg";
-import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg";
-import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg";
-import { ReactComponent as Cogwheel } from "../../images/cogwheel.svg";
+// layout/Sidebar/Sidebar.tsx
+import React from "react"
+import { Link } from "react-router-dom"
+import styles from "./Sidebar.module.scss"
+import Button from "./Button/Button"
+import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
+import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
+import { ReactComponent as CogWheelIcon } from "../../images/cogwheel.svg"
+import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
 
 interface SidebarProps {
-  isCollapsed: boolean;
-  toggleSidebar: () => void;
+  isCollapsed: boolean
+  toggleSidebar: () => void
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed,
+  toggleSidebar,
+}) => {
   const links = [
     {
       path: "/JobsDashboard",
@@ -27,10 +30,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     },
     {
       path: "/Settings",
-      icon: <Cogwheel />,
+      icon: <CogWheelIcon />,
       title: "Settings",
     },
-  ];
+  ]
 
   return (
     <div
@@ -40,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <BacalhauLogo height="24" width="" />
+        <BacalhauIcon height="24" width="" />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (
@@ -57,7 +60,5 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         ))}
       </div>
     </div>
-  );
-};
-
-export default Sidebar;
+  )
+}

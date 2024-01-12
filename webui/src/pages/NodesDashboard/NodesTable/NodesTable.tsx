@@ -1,33 +1,33 @@
-import React, { useContext } from "react";
-import styles from "./NodesTable.module.scss";
-import TableSettingsContext from "../../../context/TableSettingsContext";
+import React, { useContext } from "react"
+import styles from "./NodesTable.module.scss"
+import TableSettingsContext from "../../../context/TableSettingsContext"
 // import ActionButton from "../../../components/ActionButton/ActionButton";
-import { Node, ParsedNodeData } from "../../../helpers/nodeInterfaces";
+import { Node, ParsedNodeData } from "../../../helpers/nodeInterfaces"
 
 interface TableProps {
-  data: Node[];
+  data: Node[]
 }
 
 function parseData(nodes: Node[]): ParsedNodeData[] {
   return nodes.map((node) => {
-    const inputs: string[] = node.ComputeNodeInfo?.StorageSources ?? [];
-    const outputs: string[] = node.ComputeNodeInfo?.Publishers ?? [];
+    const inputs: string[] = node.ComputeNodeInfo?.StorageSources ?? []
+    const outputs: string[] = node.ComputeNodeInfo?.Publishers ?? []
 
     return {
       id: node.PeerInfo.ID,
       type: node.NodeType,
       environment: node.Labels.env,
-      inputs: inputs,
-      outputs: outputs,
+      inputs,
+      outputs,
       version: node.BacalhauVersion.GitVersion,
       // action: "Action",
-    };
-  });
+    }
+  })
 }
 
-const NodesTable: React.FC<TableProps> = ({ data }) => {
-  const parsedData = parseData(data);
-  const { settings } = useContext(TableSettingsContext);
+export const NodesTable: React.FC<TableProps> = ({ data }) => {
+  const parsedData = parseData(data)
+  const { settings } = useContext(TableSettingsContext)
 
   return (
     <div className={styles.tableContainer}>
@@ -59,14 +59,14 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showInputs && (
                 <td className={styles.inputs}>
-                  {nodeData.inputs.map((input, index) => (
+                  {nodeData.inputs.map((input) => (
                     <div key={`input-${index}`}>{input}</div>
                   ))}
                 </td>
               )}
               {settings.showOutputs && (
                 <td className={styles.outputs}>
-                  {nodeData.outputs.map((output, index) => (
+                  {nodeData.outputs.map((output) => (
                     <div key={`output-${index}`}>{output}</div>
                   ))}
                 </td>
@@ -84,7 +84,5 @@ const NodesTable: React.FC<TableProps> = ({ data }) => {
         </tbody>
       </table>
     </div>
-  );
-};
-
-export default NodesTable;
+  )
+}

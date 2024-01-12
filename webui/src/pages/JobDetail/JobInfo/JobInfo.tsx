@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from "react";
-import Moment from "react-moment";
-import { Execution, Job } from "../../../helpers/jobInterfaces";
+import React, { useState, useEffect } from "react"
+import Moment from "react-moment"
+import { Execution, Job } from "../../../helpers/jobInterfaces"
 import {
   fromTimestamp,
   capitalizeFirstLetter,
-} from "../../../helpers/helperFunctions";
-import styles from "./JobInfo.module.scss";
+} from "../../../helpers/helperFunctions"
+import styles from "./JobInfo.module.scss"
 
 interface JobInfoProps {
-  job: Job;
-  execution: Execution | undefined;
+  job: Job
+  execution: Execution | undefined
   section:
     | "overview"
     | "executionRecord"
     | "stdout"
     | "stderr"
     | "inputs"
-    | "outputs";
+    | "outputs"
 }
 
 interface DataItem {
-  label: string;
-  value: string | JSX.Element | undefined;
+  label: string
+  value: string | JSX.Element | undefined
 }
 
 const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
-  const [dataToDisplay, setDataToDisplay] = useState<DataItem[]>([]);
+  const [dataToDisplay, setDataToDisplay] = useState<DataItem[]>([])
 
   useEffect(() => {
     switch (section) {
@@ -75,8 +75,8 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             value: job.Meta["bacalhau.org/requester.id"],
           },
           // { label: 'Concurrency', value: '' }
-        ]);
-        break;
+        ])
+        break
       case "executionRecord":
         if (execution !== undefined)
           setDataToDisplay([
@@ -106,12 +106,12 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
               label: "Execution Note",
               value: capitalizeFirstLetter(execution.DesiredState.Message),
             },
-          ]);
-        break;
+          ])
+        break
       default:
-        break;
+        break
     }
-  }, [section, execution, job]);
+  }, [section, execution, job])
 
   return (
     <div className={styles.jobInfo}>
@@ -122,7 +122,7 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
         </p>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default JobInfo;
+export default JobInfo

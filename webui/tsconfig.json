@@ -19,9 +19,24 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ],
+    "types": [
+      "node",
+      "jest",
+      "react",
+      "react-dom",
+    ],
   },
   "include": [
-    "src", "src/**/*.tsx", "src/**/*.ts", "src/**/*.d.ts"
-  ]
+    "src",
+    "src/**/*.tsx",
+    "src/**/*.ts",
+    "babel.config.js",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+  ],
+  "buildOptions": {}
 }

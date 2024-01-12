@@ -1,32 +1,27 @@
-import React from "react";
-import styles from "./Header.module.scss";
-import { ReactComponent as BacalhauLogo } from "../../images/bacalhau.svg";
-import { ReactComponent as ProfileIcon } from "../../images/profile.svg";
+import React from "react"
+import { ReactSVG } from "react-svg"
+import styles from "./Header.module.scss"
 
 interface HeaderProps {
-  collapsed: boolean;
-  pageTitle: string;
+  collapsed: boolean
+  pageTitle: string
 }
 
-const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => {
-  return (
-    <header className={styles.header} data-collapsed={collapsed}>
-      <div className={styles.left}>
-        <BacalhauLogo className={styles.logo} height="24" />
-        <div className={styles.pageTitle}>{pageTitle}</div>
-        <div className={styles.searchBar}>
-          {/* Placeholder for search bar */}
-          {/* <input type="text" placeholder="Search..." /> */}
-        </div>
+export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
+  <header className={styles.header} data-collapsed={collapsed}>
+    <div className={styles.left}>
+      <ReactSVG src="../../images/bacalhau.svg" height="24" width="" />
+      <div className={styles.pageTitle}>{pageTitle}</div>
+      <div className={styles.searchBar}>
+        {/* Placeholder for search bar */}
+        {/* <input type="text" placeholder="Search..." /> */}
       </div>
-      <div className={styles.right}>
-        {/* Profile section */}
-        <div className={styles.profile}>
-          <ProfileIcon />
-        </div>
+    </div>
+    <div className={styles.right}>
+      {/* Profile section */}
+      <div className={styles.profile}>
+        <ReactSVG src="../../images/bacalhau.svg" />
       </div>
-    </header>
-  );
-};
-
-export default Header;
+    </div>
+  </header>
+)
