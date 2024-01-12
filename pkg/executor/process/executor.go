@@ -9,8 +9,6 @@ import (
 	"os/exec"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -85,6 +83,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	rp := &RunningProcess{}
 
+	//nolint:gosec
 	proc := exec.Command(args.Name, args.Arguments...)
 	proc.Stdout = bufio.NewWriter(&rp.stdout)
 	proc.Stderr = bufio.NewWriter(&rp.stderr)
@@ -128,7 +127,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 }
 
 func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
+	return bidstrategy.NewBidResponse(true, "we accept anything"), nil
 }
 
 func (*Executor) ShouldBidBasedOnUsage(
@@ -136,7 +135,7 @@ func (*Executor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
-	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
+	return bidstrategy.NewBidResponse(true, "we accept anything"), nil
 }
 
 func NewExecutor() (*Executor, error) {
