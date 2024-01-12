@@ -1,6 +1,7 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
 import styles from "./ActionButton.module.scss"
+import { ReactComponent as ViewIcon } from "../../images/view.svg";
 
 interface ActionButtonProps {
   text: string
@@ -33,6 +34,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         onClick={handleClick}
         type="button"
       >
+        <ViewIcon className={styles.viewIcon} />
         {text}
       </button>
     </div>
