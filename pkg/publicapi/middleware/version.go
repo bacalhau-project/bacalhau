@@ -25,7 +25,6 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 		// instructs logger to extract given list of headers from request.
 		LogHeaders: []string{apimodels.HTTPHeaderBacalhauGitVersion},
 		LogValuesFunc: func(c echo.Context, v echomiddelware.RequestLoggerValues) error {
-
 			notif := Notification{
 				RequestID:     v.RequestID,
 				ClientID:      c.Response().Header().Get(apimodels.HTTPHeaderClientID),
