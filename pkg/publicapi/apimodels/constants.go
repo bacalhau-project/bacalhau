@@ -13,4 +13,15 @@ const (
 
 	// HTTPHeaderAppID is the header used to pass the application ID to the server.
 	HTTPHeaderAppID = "X-Bacalhau-App-ID"
+
+	// HTTPHeaderBacalhauGitVersion is the header used to pass the agent version, eg v1.2.3
+	HTTPHeaderBacalhauGitVersion = "X-Bacalhau-Git-Version"
+	// HTTPHeaderBacalhauGitCommit is the header used to pass the agent git commit
+	HTTPHeaderBacalhauGitCommit = "X-Bacalhau-Git-Commit"
+	// HTTPHeaderBacalhauBuildDate is the header used to pass the agent build date in UTC
+	HTTPHeaderBacalhauBuildDate = "X-Bacalhau-Build-Date"
+	// HTTPHeaderBacalhauBuildOS is the header used to pass the agent operating system
+	HTTPHeaderBacalhauBuildOS = "X-Bacalhau-Build-OS"
+	// HTTPHeaderBacalhauArch is the header used to pass the agent architecture
+	HTTPHeaderBacalhauArch = "X-Bacalhau-Arch"
 )

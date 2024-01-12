@@ -18,3 +18,4 @@ jobs:
       - name: Codespell
         run: |
           npm install -g cspell@latest
+          make spellcheck

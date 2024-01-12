@@ -1,12 +1,13 @@
 //go:build unit || !integration
 
-package auth
+package authz
 
 import (
 	"bytes"
 	"net/http"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/golang-jwt/jwt"
@@ -59,8 +60,9 @@ func TestAppliesAnonymousNamespacePolicy(t *testing.T) {
 			"other", "other", "test", NamespaceNoPermission, http.MethodDelete, "/api/v1/orchestrator/nodes", require.False},
 	}
 
-	authorizer, err := NewPolicyAuthorizer(policies, "policies/policy_ns_anon.rego")
+	policy, err := policy.FromFS(policies, "policies/policy_ns_anon.rego")
 	require.NoError(t, err)
+	authorizer := NewPolicyAuthorizer(policy)
 
 	for _, testcase := range cases {
 		t.Run(testcase.name, func(t *testing.T) {
@@ -84,7 +86,7 @@ func TestAppliesAnonymousNamespacePolicy(t *testing.T) {
 				request.Header.Add("Authorization", "Bearer "+token)
 			}
 
-			result, err := authorizer.ShouldAllow(request)
+			result, err := authorizer.Authorize(request)
 			require.NoError(t, err)
 			testcase.checker(t, result.Approved)
 		})
