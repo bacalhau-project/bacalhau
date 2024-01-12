@@ -10,36 +10,57 @@ module "gcp_network" {
   subnet_cidr = "10.0.0.0/16" // Example CIDR, adjust as needed
 }
 
-module "requester_instance" {
-  source = "./modules/gcp/compute_instances/requester"
+resource "google_compute_instance" "requester" {
+  name         = "bacalhau-requester"
+  machine_type = var.requester_machine_type
+  zone         = var.gcp_zone
 
-  network             = module.gcp_network.vpc_network_name
-  subnetwork          = module.gcp_network.subnetwork_name
-  requester_static_ip = module.gcp_network.requester_ip
-  zone                = var.gcp_zone
+  metadata = {
+    node_type = "requester"
+  }
 
-  cloud_init_content = ""
-  requester_instance_type = var.requester_machine_type
-  install_bacalhau_argument = var.install_bacalhau_argument
+  boot_disk {
+    initialize_params {
+      image = "projects/forrest-dev-407420/global/images/bacalhau-ubuntu-2004-lts-test-19"
+      size = 50
+    }
+  }
+
+  network_interface {
+    network = module.gcp_network.vpc_network_name
+    subnetwork = module.gcp_network.subnetwork_name
+    access_config {
+      nat_ip = module.gcp_network.requester_ip
+    }
+  }
+
 }
 
-module "compute_instance" {
-  source = "./modules/gcp/compute_instances/compute"
+resource "google_compute_instance" "compute" {
+  count = var.compute_count
+  name         = "compute-instance"
+  machine_type = var.compute_machine_type
+  zone         = var.gcp_zone
 
-  network                 = module.gcp_network.vpc_network_name
-  subnetwork              = module.gcp_network.subnetwork_name
-  zone = var.gcp_zone
+  metadata = {
+    node_type    = "compute"
+    requester_ip = module.gcp_network.requester_ip
+  }
 
-  cloud_init_content = ""
-  // This creates an implicit dependency, meaning Terraform will create the requester_instance before the compute_instance.
-  // In the event the bacalhau process on the compute instance stars BEFORE the requester instance (which would be
-  // abnormal but possible) the compute will fail to bootstrap to the requester and fail to start.
-  // This can happen if setting up the requester VM takes longer than settin up the compute. So there is a TODO here:
-  // Bacalhau should not stop the node if it fails to connect to a peer, it should instead continue to try until is
-  // succeeds and complain loudly along the way as it fails.
-  requester_ip = module.requester_instance.requester_private_ips[0]
-  compute_instance_count = var.compute_count
-  compute_instance_type = var.compute_machine_type
-  install_bacalhau_argument = var.install_bacalhau_argument
+  boot_disk {
+    initialize_params {
+      image = var.gcp_boot_image
+    #   "projects/forrest-dev-407420/global/images/bacalhau-ubuntu-2004-lts-test-18"
+      size = var.gcp_boot_disk_size
+    }
+  }
+
+  network_interface {
+    network = module.gcp_network.vpc_network_name
+    subnetwork = module.gcp_network.subnetwork_name
+    access_config {
+      // Ephemeral public IP will be assigned
+    }
+  }
 
 }

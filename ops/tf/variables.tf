@@ -18,6 +18,11 @@ variable "gcp_boot_image" {
   type        = string
 }
 
+variable "gcp_boot_disk_size" {
+  description = "Boot Disk Size"
+  type        = string
+}
+
 variable "requester_machine_type" {
   description = "Machine type for requester instances"
   type        = string
@@ -31,11 +36,4 @@ variable "compute_machine_type" {
 variable "compute_count" {
   description = "Number of compute instances"
   type        = number
-}
-
-variable "install_bacalhau_argument" {
-  description = "Argument to pass to the install bacalhau script"
-  type        = string
-  # Usage: install-bacalhau [release <version> | branch <branch-name>]
-  default     = ""
 }
