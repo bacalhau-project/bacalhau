@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p/peermgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -267,10 +267,12 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	// Start transport layer
-	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
+	pm, err := peermgr.New(libp2pHost, peers)
 	if err != nil {
-		return err
+		return fmt.Errorf("creting peer manager: %w", err)
 	}
+	pm.Start(ctx)
+	defer pm.Stop(ctx)
 
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
