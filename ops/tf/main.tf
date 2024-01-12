@@ -50,7 +50,6 @@ resource "google_compute_instance" "compute" {
   boot_disk {
     initialize_params {
       image = var.gcp_boot_image
-    #   "projects/forrest-dev-407420/global/images/bacalhau-ubuntu-2004-lts-test-18"
       size = var.gcp_boot_disk_size
     }
   }
@@ -62,5 +61,8 @@ resource "google_compute_instance" "compute" {
       // Ephemeral public IP will be assigned
     }
   }
+
+  // Specify the dependency on the requester instance
+  depends_on = [google_compute_instance.requester]
 
 }
