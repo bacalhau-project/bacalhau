@@ -7,7 +7,10 @@ interface ButtonProps {
   isCollapsed: boolean
 }
 
-const Button: React.FC<ButtonProps> = ({ toggleSidebar, isCollapsed }) => (
+export const Button: React.FC<ButtonProps> = ({
+  toggleSidebar,
+  isCollapsed,
+}) => (
   <section className={styles.mb3}>
     <nav className={`${styles.navbar} ${styles.navbarInfo} ${styles.bgInfo}`}>
       <div className={styles.containerFluid}>
@@ -33,5 +36,3 @@ const Button: React.FC<ButtonProps> = ({ toggleSidebar, isCollapsed }) => (
     </nav>
   </section>
 )
-
-export default Button

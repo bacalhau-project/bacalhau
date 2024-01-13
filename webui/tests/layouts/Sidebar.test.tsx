@@ -10,9 +10,13 @@ const toggleSidebar = () => {
 }
 
 describe("Sidebar", () => {
-  render(
-    <MemoryRouter>
-      <Sidebar isCollapsed={false} toggleSidebar={toggleSidebar} />
-    </MemoryRouter>
-  )
+  it("basic render", () => {
+    render(
+      <MemoryRouter>
+        <Sidebar isCollapsed={false} toggleSidebar={toggleSidebar} />
+      </MemoryRouter>
+    )
+
+    expect(document.body.classList.contains("sidebar-collapsed")).toBe(false)
+  })
 })

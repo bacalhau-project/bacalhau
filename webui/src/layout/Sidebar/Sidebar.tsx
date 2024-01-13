@@ -1,12 +1,12 @@
 // layout/Sidebar/Sidebar.tsx
 import React from "react"
 import { Link } from "react-router-dom"
-import styles from "./Sidebar.module.scss"
-import Button from "./Button/Button"
+import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
 import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
 import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
-import { ReactComponent as CogWheelIcon } from "../../images/cogwheel.svg"
-import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
+import { ReactComponent as CogwheelIcon } from "../../images/cogwheel.svg"
+import styles from "./Sidebar.module.scss"
+import { Button } from "./Button/Button"
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       path: "/Settings",
-      icon: <CogWheelIcon />,
+      icon: <CogwheelIcon />,
       title: "Settings",
     },
   ]
@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <BacalhauIcon height="24" width="" />
+        <BacalhauIcon />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (

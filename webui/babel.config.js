@@ -1,3 +1,5 @@
-export default function (api) {
-  const presets = ["@babel/preset-env", "@babel/preset-react"]
-}
+module.exports = {
+    presets: [
+        "@babel/preset-env", "@babel/preset-react"
+    ]
+};
