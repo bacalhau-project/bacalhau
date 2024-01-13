@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -35,7 +36,7 @@ func DownloadResultsHandler(
 		return fmt.Errorf("no results found")
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	downloaderProvider, err := util.NewStandardDownloaders(cm)
 	if err != nil {
 		return err
 	}

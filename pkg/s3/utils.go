@@ -19,8 +19,7 @@ func DefaultAWSConfig() (aws.Config, error) {
 			return aws.Config{}, err
 		}
 	}
-	var optFns []func(*config.LoadOptions) error
-	return config.LoadDefaultConfig(context.Background(), optFns...)
+	return config.LoadDefaultConfig(context.Background())
 }
 
 // HasValidCredentials returns true if the AWS config has valid credentials.

@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // This test submits a job that uses the Docker executor with an IPFS input.
@@ -71,7 +72,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	// 1 minute for the rest of the test
 	downloadSettings.Timeout = 240 * time.Second
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	downloaderProvider, err := util.NewStandardDownloaders(cm)
 	if err != nil {
 		return err
 	}
