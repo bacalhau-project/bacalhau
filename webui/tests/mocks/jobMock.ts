@@ -122,7 +122,7 @@ export function generateSampleJob(): Job {
     ID: uuidv4(),
     Name: uuidv4(),
     Namespace: namespace,
-    Type: selectRandomJobType(),
+    Type: selectRandomJobType() as string,
     Priority: Math.floor(Math.random() * 10),
     Count: Math.floor(Math.random() * 10),
     Constraints: [createRandomConstraint()],
@@ -138,7 +138,7 @@ export function generateSampleJob(): Job {
     Labels: { ...selectRandomLabels(jobLabels) },
     Tasks: [generateSampleTask()],
     State: {
-      StateType: selectRandomElements(jobStates),
+      StateType: selectRandomElements(jobStates) as string,
     },
     Version: Math.floor(Math.random() * 10),
     Revision: Math.floor(Math.random() * 10),

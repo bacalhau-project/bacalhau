@@ -27,16 +27,15 @@
       "node",
       "jest",
       "react",
-      "react-dom",
-    ],
+      "react-dom"
+    ]
   },
   "include": [
-    "src",
-    "src/**/*.tsx",
-    "src/**/*.ts",
-    "babel.config.js",
-    "tests/**/*.ts",
-    "tests/**/*.tsx",
-  ],
-  "buildOptions": {}
+    "./src",
+    "./src/**/*.tsx",
+    "./src/**/*.ts",
+    "./babel.config.js",
+    "./tests/**/*.ts",
+    "./tests/**/*.tsx"
+  ]
 }

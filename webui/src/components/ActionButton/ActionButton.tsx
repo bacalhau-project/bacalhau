@@ -10,7 +10,7 @@ interface ActionButtonProps {
   id?: string
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({
+const ActionButton: React.FC<ActionButtonProps> = ({
   text,
   onClick,
   to,
@@ -40,3 +40,5 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     </div>
   )
 }
+
+export { ActionButton }
