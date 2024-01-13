@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -213,7 +214,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	if !networkConfig.UseNATS {
+	if networkConfig.Type == models.NetworkTypeLibp2p {
 		peers, err := GetPeers(libp2pCfg.PeerConnect)
 		if err != nil {
 			return err
@@ -346,7 +347,7 @@ func serve(cmd *cobra.Command) error {
 
 	sb := strings.Builder{}
 	if isRequesterNode {
-		if networkConfig.UseNATS {
+		if networkConfig.Type == models.NetworkTypeNATS {
 			sb.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
 
 			sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
@@ -355,8 +356,8 @@ func serve(cmd *cobra.Command) error {
 			sb.WriteString(fmt.Sprintf("%s=compute ",
 				configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
 
-			sb.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeNetworkUseNATS, configflags.NetworkFlags...)))
+			sb.WriteString(fmt.Sprintf("%s=nats ",
+				configflags.FlagNameForKey(types.NodeNetworkType, configflags.NetworkFlags...)))
 
 			advertisedAddr := networkConfig.AdvertisedAddress
 			if advertisedAddr == "" {
@@ -367,9 +368,8 @@ func serve(cmd *cobra.Command) error {
 				advertisedAddr,
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%v\n",
-				config.KeyAsEnvVar(types.NodeNetworkUseNATS),
-				true,
+				"export %s=%s\n",
+				config.KeyAsEnvVar(types.NodeNetworkType), "nats",
 			))
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%s\n",
@@ -426,7 +426,7 @@ func serve(cmd *cobra.Command) error {
 			cmd.Println(sb.String())
 		}
 	} else {
-		if !networkConfig.UseNATS {
+		if networkConfig.Type == models.NetworkTypeLibp2p {
 			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
 	}

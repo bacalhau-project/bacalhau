@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/phayes/freeport"
@@ -44,9 +45,12 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	nodeID := peerID.String()
 
 	var libp2pHost host.Host
-	_, useNATS := os.LookupEnv("BACALHAU_NODE_NETWORK_USENATS")
+	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
+	if !ok {
+		networkType = models.NetworkTypeLibp2p
+	}
 
-	if !useNATS {
+	if networkType == models.NetworkTypeLibp2p {
 		libp2pHost, err = libp2p.NewHost(libp2pPort, privKey)
 		require.NoError(t, err)
 	}
@@ -71,7 +75,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		FsRepo:                    fsRepo,
 		NodeInfoStoreTTL:          10 * time.Minute,
 		NetworkConfig: node.NetworkConfig{
-			UseNATS:    useNATS,
+			Type:       networkType,
 			Libp2pHost: libp2pHost,
 		},
 	}

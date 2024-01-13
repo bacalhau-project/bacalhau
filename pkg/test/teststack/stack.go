@@ -26,7 +26,11 @@ import (
 )
 
 func testDevStackConfig() *devstack.DevStackOptions {
-	_, useNATS := os.LookupEnv("BACALHAU_NODE_NETWORK_USENATS")
+	// Use libp2p by default
+	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
+	if !ok {
+		networkType = models.NetworkTypeLibp2p
+	}
 	return &devstack.DevStackOptions{
 		NumberOfHybridNodes:        0,
 		NumberOfRequesterOnlyNodes: 0,
@@ -41,7 +45,7 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		AllowListedLocalPaths:      nil,
 		NodeInfoPublisherInterval:  routing.NodeInfoPublisherIntervalConfig{},
 		ExecutorPlugins:            false,
-		UseNATS:                    useNATS,
+		NetworkType:                networkType,
 	}
 }
 

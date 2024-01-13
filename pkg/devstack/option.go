@@ -69,7 +69,7 @@ type DevStackConfig struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 	NodeInfoStoreTTL           time.Duration
-	UseNATS                    bool
+	NetworkType                string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -215,8 +215,8 @@ func WithExecutorPlugins(enabled bool) ConfigOption {
 	}
 }
 
-func WithNATS(enabled bool) ConfigOption {
+func WithNetworkType(typ string) ConfigOption {
 	return func(cfg *DevStackConfig) {
-		cfg.UseNATS = enabled
+		cfg.NetworkType = typ
 	}
 }

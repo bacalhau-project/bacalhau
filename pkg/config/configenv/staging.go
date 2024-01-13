@@ -32,6 +32,7 @@ var Staging = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
+			Type: models.NetworkTypeLibp2p,
 			Port: 4222,
 			Cluster: types.NetworkClusterConfig{
 				Name: "global",

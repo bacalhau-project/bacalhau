@@ -7,7 +7,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 

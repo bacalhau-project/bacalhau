@@ -232,7 +232,7 @@ variable "docker_password" {
 }
 
 // Use NATs for transport instead of libp2p
-variable "use_nats" {
-  type    = bool
-  default = false
+variable "network_type" {
+  type    = string
+  default = "libp2p"
 }

@@ -48,6 +48,11 @@ const (
 )
 
 const (
+	NetworkTypeNATS   = "nats"
+	NetworkTypeLibp2p = "libp2p"
+)
+
+const (
 	DownloadFilenameStdout   = "stdout"
 	DownloadFilenameStderr   = "stderr"
 	DownloadFilenameExitCode = "exitCode"

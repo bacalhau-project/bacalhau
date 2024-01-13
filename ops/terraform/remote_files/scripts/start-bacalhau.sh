@@ -26,7 +26,7 @@ TRUSTED_CLIENT_IDS="\
 b43517b5449d383ab00ca1d2b1c558d710ba79f51c800fbf4c35ed4d0198aec5"
 
 # Check if using NATS
-if [[ "${BACALHAU_NODE_NETWORK_USENATS}" == "true" ]]; then
+if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
   # nats related config as set as env vars in main.tf and no need to pass them to serve command
   bacalhau serve \
     --node-type "${BACALHAU_NODE_TYPE}" \

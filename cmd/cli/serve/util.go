@@ -192,7 +192,7 @@ func getNetworkConfig() (node.NetworkConfig, error) {
 		return node.NetworkConfig{}, err
 	}
 	return node.NetworkConfig{
-		UseNATS:                  networkCfg.UseNATS,
+		Type:                     networkCfg.Type,
 		Port:                     networkCfg.Port,
 		AdvertisedAddress:        networkCfg.AdvertisedAddress,
 		Orchestrators:            networkCfg.Orchestrators,

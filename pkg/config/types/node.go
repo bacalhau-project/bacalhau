@@ -122,7 +122,7 @@ type FeatureConfig struct {
 }
 
 type NetworkConfig struct {
-	UseNATS           bool                 `yaml:"UseNATS"`
+	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
 	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
 	Orchestrators     []string             `yaml:"Orchestrators"`

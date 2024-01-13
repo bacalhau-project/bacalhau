@@ -33,7 +33,7 @@ type FeatureConfig struct {
 }
 
 type NetworkConfig struct {
-	UseNATS        bool
+	Type           string
 	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 	ReconnectDelay time.Duration
 
@@ -188,7 +188,7 @@ func NewNode(
 
 	var transportLayer transport.TransportLayer
 
-	if config.NetworkConfig.UseNATS {
+	if config.NetworkConfig.Type == models.NetworkTypeNATS {
 		natsConfig := nats_transport.NATSTransportConfig{
 			NodeID:                   config.NodeID,
 			Port:                     config.NetworkConfig.Port,

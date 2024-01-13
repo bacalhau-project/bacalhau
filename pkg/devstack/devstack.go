@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -43,7 +44,7 @@ type DevStackOptions struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool   // when true pluggable executors will be used.
 	ConfigurationRepo          string // A custom config repo
-	UseNATS                    bool   // Use NATS transport
+	NetworkType                string
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
@@ -61,9 +62,7 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
 		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
-	}
-	if o.UseNATS {
-		opts = append(opts, WithNATS(o.UseNATS))
+		WithNetworkType(o.NetworkType),
 	}
 	return opts
 }
@@ -151,13 +150,13 @@ func Setup(
 			}
 		}
 		clusterConfig := node.NetworkConfig{
-			UseNATS:       stackConfig.UseNATS,
+			Type:          stackConfig.NetworkType,
 			Orchestrators: orchestratorAddrs,
 			Port:          swarmPort,
 			ClusterPeers:  clusterPeersAddrs,
 		}
 
-		if stackConfig.UseNATS {
+		if stackConfig.NetworkType == models.NetworkTypeNATS {
 			var clusterPort int
 			if os.Getenv("PREDICTABLE_API_PORT") != "" {
 				const startClusterPort = 6222
