@@ -1,0 +1,93 @@
+#cloud-config
+
+# Boot-time commands
+
+# Update package database and upgrade the system
+package_update: true
+package_upgrade: true
+
+# List of packages to install
+packages:
+  - git
+  - git-lfs
+  - make
+  - npm
+  - curl
+  - jq
+  - wget
+  - gnupg
+  - ca-certificates
+  - lsb-release
+
+write_files:
+  - path: /etc/config.yaml
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_config_file}
+
+  - path: /etc/systemd/system/bacalhau.service
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_service_file}
+
+  - path: /etc/install-bacalhau.sh
+    encoding: b64
+    owner: root:root
+    permissions: "0700"
+    content: |
+      ${bacalhau_install_file}
+
+runcmd:
+  #
+  # Setup Bacalhau Repo
+  #
+  - mkdir /data
+  - chmod 0700 /data
+  - mv /etc/config.yaml /data/config.yaml
+  #
+  # Install go
+  #
+  - export HOME=/root
+  - export GOCACHE="$HOME/.cache/go-build"
+  - export GOPATH="/root/go"
+  - export PATH="$PATH:$GOPATH/bin:/usr/local/go/bin"
+  - mkdir -p "$GOPATH"
+  # the above steps are from
+  # build cache is required, but could not be located: GOCACHE is not defined and neither $XDG_CACHE_HOME nor $HOME are defined
+  # go build -ldflags "-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=v1.1.7-rc1-5-g298e129b" -trimpath -o bin/linux_amd64/bacalhau .
+  # go: module cache not found: neither GOMODCACHE nor GOPATH is set
+  # go: module cache not found: neither GOMODCACHE nor GOPATH is set
+  # make: *** [Makefile:208: bin/linux_amd64/bacalhau] Error 1
+  # Failed to build bacalhau
+  - sudo rm -fr /usr/local/go /usr/local/bin/go
+  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  - go version
+  #
+  # Install docker
+  #
+  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+  - sudo mkdir -p /etc/apt/keyrings
+  - |
+    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - sudo apt-get update -y
+  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  #
+  # Install Bacalhau
+  #
+  - /etc/install-bacalhau.sh ${bacalhau_install_args}
+  #
+  # Start services
+  #
+  - sudo systemctl daemon-reload
+  - sudo systemctl enable docker
+  - sudo systemctl restart docker
+  - sudo systemctl enable bacalhau.service
+  - sudo systemctl restart bacalhau.service
+
+
