@@ -122,7 +122,7 @@ function install-bacalhau-from-source() {
   pushd bacalhau
   pushd webui && npm install && popd
   make build-bacalhau
-  sudo mv ./bin/*/bacalhau /usr/local/bin/bacalhau
+  sudo mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
   popd
 }
 
