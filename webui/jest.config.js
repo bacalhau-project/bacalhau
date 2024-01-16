@@ -10,6 +10,7 @@ module.exports = {
     "^.+\\.(js|jsx)$": "babel-jest",
   },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  setupFiles: ['./jest.polyfills.js'],
   setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
   testPathIgnorePatterns: [
     "<rootDir>/tests/mocks",
@@ -20,5 +21,8 @@ module.exports = {
     "^@components/(.*)$": "<rootDir>/src/components/$1",
     '\\.svg$': '<rootDir>/tests/mocks/svgMock.js',
   },
-  testEnvironment: "jsdom",
+  testEnvironment: 'jsdom',
+  testEnvironmentOptions: {
+    customExportConditions: [''],
+  },
 }
