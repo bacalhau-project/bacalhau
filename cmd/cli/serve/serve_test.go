@@ -5,16 +5,12 @@ package serve_test
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -23,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
-	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
@@ -34,137 +29,60 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	utilserve "github.com/bacalhau-project/bacalhau/pkg/util/serve"
 )
 
-const maxServeTime = 15 * time.Second
-const maxTestTime = 10 * time.Second
-const RETURN_ERROR_FLAG = "RETURN_ERROR"
-
-type ServeSuite struct {
-	suite.Suite
-
-	out, err strings.Builder
-
-	ipfsPort int
-	ctx      context.Context
-	repoPath string
+type tServeSuite struct {
+	*utilserve.ServeSuite
 }
 
 func TestServeSuite(t *testing.T) {
-	suite.Run(t, new(ServeSuite))
+	suite.Run(t, &tServeSuite{ServeSuite: new(utilserve.ServeSuite)})
 }
 
-func (s *ServeSuite) SetupTest() {
+func (s *tServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
-	s.repoPath = repoPath
+	s.RepoPath = repoPath
 
 	var cancel context.CancelFunc
-	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
+	s.Ctx, cancel = context.WithTimeout(context.Background(), utilserve.MaxTestTime)
 	s.T().Cleanup(func() {
 		cancel()
 	})
 
 	cm := system.NewCleanupManager()
 	s.T().Cleanup(func() {
-		cm.Cleanup(s.ctx)
+		cm.Cleanup(s.Ctx)
 	})
 
-	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
+	node, err := ipfs.NewNodeWithConfig(s.Ctx, cm, types2.IpfsConfig{PrivateInternal: true})
 	s.Require().NoError(err)
-	s.ipfsPort = node.APIPort
+	s.IPFSPort = node.APIPort
 }
 
-func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
+func (s *tServeSuite) serveForCLI(extraArgs ...string) (uint16, error) {
+	extraArgs = append(extraArgs, "--repo", s.RepoPath,
+		"--peer", serve.DefaultPeerConnect,
+		"--private-internal-ipfs")
+
 	// If the slice contains RETURN_ERROR_FLAG, take it out of the array and set returnError to true
-	returnError := false
-	for i, arg := range extraArgs {
-		if arg == RETURN_ERROR_FLAG {
-			extraArgs = append(extraArgs[:i], extraArgs[i+1:]...)
-			returnError = true
-			break
-		}
-	}
-
-	bigPort, err := freeport.GetFreePort()
-	s.Require().NoError(err)
-	port := uint16(bigPort)
-
-	cmd := cmd2.NewRootCmd()
-	cmd.SetOut(&s.out)
-	cmd.SetErr(&s.err)
-
 	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
 	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
-	args := []string{
-		"serve",
-		"--repo", s.repoPath,
-		"--peer", serve.DefaultPeerConnect,
-		"--private-internal-ipfs",
-		"--port", fmt.Sprint(port),
+	returnError, port, err := utilserve.StartServerForTesting(s.ServeSuite, extraArgs)
+
+	if returnError {
+		return port, err
 	}
-	args = append(args, extraArgs...)
-
-	cmd.SetArgs(args)
-	s.T().Logf("Command to execute: %q", args)
-
-	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
-	errs, ctx := errgroup.WithContext(ctx)
-
-	s.T().Cleanup(cancel)
-	errs.Go(func() error {
-		_, err := cmd.ExecuteContextC(ctx)
-		if returnError {
-			return err
-		}
-		s.NoError(err)
-		return nil
-	})
-
-	t := time.NewTicker(10 * time.Millisecond)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			if returnError {
-				return 0, errs.Wait()
-			}
-			s.FailNow("Server did not start in time")
-		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
-			if string(livezText) == "OK" && statusCode == http.StatusOK {
-				return port, nil
-			}
-		}
-	}
+	s.NoError(err)
+	return port, nil
 }
 
-func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(s.ctx, "GET", URL, nil)
-	if err != nil {
-		return nil, http.StatusServiceUnavailable, err
-	}
-	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, http.StatusServiceUnavailable, err
-	}
-	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
-
-	responseText, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, err
-	}
-
-	return responseText, resp.StatusCode, nil
-}
-
-func (s *ServeSuite) TestHealthcheck() {
-	port, _ := s.serve()
-	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
+func (s *tServeSuite) TestHealthcheck() {
+	port, _ := s.serveForCLI()
+	healthzText, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
@@ -172,46 +90,47 @@ func (s *ServeSuite) TestHealthcheck() {
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
-func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+func (s *tServeSuite) TestAPIPrintedForComputeNode() {
+	port, _ := s.serveForCLI("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
-	actualUrl := s.out.String()
+	actualUrl := s.Out.String()
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
-func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
-	port, _ := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
+func (s *tServeSuite) TestAPINotPrintedForRequesterNode() {
+	port, _ := s.serveForCLI("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
-	s.Require().NotContains(s.out.String(), expectedURL)
+	s.Require().NotContains(s.Out.String(), expectedURL)
 }
 
-func (s *ServeSuite) TestCanSubmitJob() {
+func (s *tServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
+	ctx := context.Background()
+	port, _ := s.serveForCLI("--node-type", "requester", "--node-type", "compute")
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 	clientV2 := clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 	})
-	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
+	s.Require().NoError(apitest.WaitForAlive(ctx, clientV2))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
 
-	_, err = client.Submit(s.ctx, job)
+	_, err = client.Submit(s.Ctx, job)
 	s.NoError(err)
 }
 
-func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
+func (s *tServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
 	cm := system.NewCleanupManager()
 
-	client, err := serve.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
+	client, err := serve.SetupIPFSClient(s.Ctx, cm, types2.IpfsConfig{
 		Connect:         "",
 		PrivateInternal: true,
 		SwarmAddresses:  []string{},
 	})
 	s.Require().NoError(err)
 
-	addrs, err := client.SwarmMultiAddresses(s.ctx)
+	addrs, err := client.SwarmMultiAddresses(s.Ctx)
 	s.Require().NoError(err)
 
 	ip4 := multiaddr.ProtocolWithName("ip4")
@@ -239,7 +158,7 @@ func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
 	s.Require().GreaterOrEqual(len(addrs), 1)
 }
 
-func (s *ServeSuite) TestGetPeers() {
+func (s *tServeSuite) TestGetPeers() {
 	// by default it should return no peers
 	peers, err := serve.GetPeers(serve.DefaultPeerConnect)
 	s.NoError(err)
@@ -273,8 +192,8 @@ func (s *ServeSuite) TestGetPeers() {
 
 	// if we pass multiaddresses it should just return them
 	inputPeers := []string{
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz", // cspell:disable-line
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz", // cspell:disable-line
 	}
 	peerConnect := strings.Join(inputPeers, ",")
 	peers, err = serve.GetPeers(peerConnect)
@@ -288,40 +207,3 @@ func (s *ServeSuite) TestGetPeers() {
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
 }
-
-// Begin WebUI Tests
-func (s *ServeSuite) Test200ForNotStartingWebUI() {
-	port, err := s.serve()
-	s.Require().NoError(err, "Error starting server")
-
-	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
-	_ = content
-	s.Require().NoError(err, "Error curling root endpoint")
-	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
-}
-
-func (s *ServeSuite) Test200ForRoot() {
-	webUIPort, err := freeport.GetFreePort()
-	if err != nil {
-		s.T().Fatal(err, "Could not get port for web-ui")
-	}
-	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
-	s.Require().NoError(err, "Error starting server")
-
-	_, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
-	s.Require().NoError(err, "Error curling root endpoint")
-	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
-}
-
-// TODO: Can't figure out how to make this test work, it spits out the help text
-// func (s *ServeSuite) TestBadBacalhauDir() {
-// 	badDirString := "/BADDIR"
-
-// 	// if we set the peer connect to "env" it should return the peers from the env
-// 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
-// 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
-// 	os.Setenv("BACALHAU_DIR", badDirString)
-// 	_, err := s.serve("--node-type", "requester", "--node-type", "compute", RETURN_ERROR_FLAG)
-// 	s.Require().Contains(s.out.String(), "Could not write to")
-// 	s.Error(err)
-// }

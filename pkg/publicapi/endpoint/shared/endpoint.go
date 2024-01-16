@@ -76,7 +76,7 @@ func (e *Endpoint) id(c echo.Context) error {
 // @Description	each node is connected to a number of peer nodes.
 // @Tags			Utils
 // @Produce		json
-// @Success		200	{object}	[]peer.AddrInfo
+// @Success		200	{object}	[]string
 // @Failure		500	{object}	string
 // @Router			/api/v1/peers [get]
 func (e *Endpoint) peers(c echo.Context) error {
