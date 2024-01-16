@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -56,7 +58,8 @@ func NewRequesterNode(
 	host host.Host,
 	apiServer *publicapi.Server,
 	requesterConfig RequesterConfig,
-	storageProviders storage.StorageProvider,
+	storageProvider storage.StorageProvider,
+	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore,
 	gossipSub *libp2p_pubsub.PubSub,
 	fsRepo *repo.FsRepo,
@@ -242,7 +245,7 @@ func NewRequesterNode(
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
-		StorageProviders:           storageProviders,
+		StorageProviders:           storageProvider,
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
@@ -262,7 +265,7 @@ func NewRequesterNode(
 			transformer.NameOptional(),
 			transformer.DefaultsApplier(requesterConfig.JobDefaults),
 			transformer.RequesterInfo(host.ID().String(), marshaledPublicKey),
-			transformer.NewInlineStoragePinner(storageProviders),
+			transformer.NewInlineStoragePinner(storageProvider),
 		},
 		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
@@ -301,6 +304,8 @@ func NewRequesterNode(
 		JobStore:     jobStore,
 		NodeStore:    nodeInfoStore,
 	})
+
+	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
