@@ -23,8 +23,8 @@ func (s *ServerSuite) TestAgentVersion() {
 	resp, err := s.client.Agent().Version()
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.BuildVersionInfo)
-	s.Require().Equal(version.Get(), resp.BuildVersionInfo)
+	s.Require().NotNil(resp.Version)
+	s.Require().Equal(version.Get(), resp.Version)
 
 }
 
@@ -53,7 +53,7 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 }
 
 func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
-	require.Equal(t, a.BacalhauVersion, b.BacalhauVersion)
+	require.Equal(t, a.Version, b.Version)
 	require.Equal(t, a.PeerInfo, b.PeerInfo)
 	require.Equal(t, a.NodeType, b.NodeType)
 	require.Equal(t, a.Labels, b.Labels)

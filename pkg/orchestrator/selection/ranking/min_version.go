@@ -35,10 +35,10 @@ func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, no
 		reason := "Bacalhau version compatible"
 		// TODO: nodes discovered through identity protocol will have nil version
 		//  this is a temporary fix to avoid filtering them out until we no longer depend on identity protocol for node discovery in our tests.
-		if s.match(node.BacalhauVersion, nilVersion) {
+		if s.match(node.Version, nilVersion) {
 			rank = orchestrator.RankPossible
 			reason = "Bacalhau version unknown"
-		} else if !s.isCompatibleVersion(node.BacalhauVersion) {
+		} else if !s.isCompatibleVersion(node.Version) {
 			rank = orchestrator.RankUnsuitable
 			reason = "Bacalhau version is incompatible"
 		}

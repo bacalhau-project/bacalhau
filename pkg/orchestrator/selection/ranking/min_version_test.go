@@ -89,8 +89,8 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes() {
 	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
 		nodes = append(nodes, models.NodeInfo{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
-			BacalhauVersion: t.version,
+			PeerInfo: peer.AddrInfo{ID: peer.ID(t.name)},
+			Version:  t.version,
 		})
 	}
 
@@ -110,8 +110,8 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes_NilMinVersion() {
 	var nodes []models.NodeInfo
 	for _, t := range minVersionNodeRankerTestCases {
 		nodes = append(nodes, models.NodeInfo{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID(t.name)},
-			BacalhauVersion: t.version,
+			PeerInfo: peer.AddrInfo{ID: peer.ID(t.name)},
+			Version:  t.version,
 		})
 	}
 

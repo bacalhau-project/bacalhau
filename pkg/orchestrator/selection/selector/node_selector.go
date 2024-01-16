@@ -4,13 +4,11 @@ import (
 	"context"
 	"sort"
 
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/rs/zerolog/log"
 )
 
 type NodeSelectorParams struct {
@@ -64,14 +62,10 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, des
 }
 
 func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (selected, rejected []orchestrator.NodeRank, err error) {
-	listed, err := n.nodeDiscoverer.ListNodes(ctx)
+	nodeIDs, err := n.nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {
-		return nodeInfo.NodeType == models.NodeTypeCompute
-	})
 
 	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
 	if err != nil {

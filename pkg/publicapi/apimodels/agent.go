@@ -15,12 +15,6 @@ func (r *IsAliveResponse) IsReady() bool {
 	return false
 }
 
-// GetVersionResponse is the response to the Version request.
-type GetVersionResponse struct {
-	BaseGetResponse
-	*models.BuildVersionInfo
-}
-
 // GetAgentNodeRequest is the request to get the agent node.
 type GetAgentNodeRequest struct {
 	BaseGetRequest
