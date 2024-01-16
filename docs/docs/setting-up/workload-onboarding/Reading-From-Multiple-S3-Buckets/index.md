@@ -24,51 +24,46 @@ There are several advantages to converting images from TIFF to JPEG format:
 
 ## Running the job on Bacalhau
 
-We will use the S3 mount feature to mount several bucket objects from public s3 buckets located in different regions.
+We will use the S3 mount feature to mount bucket objects from s3 buckets. Let’s have a look at the example below:
 
-Firstly we will demonstrate how to run the job with just one bucket and then run the same job on 5 buckets located in different regions.
+**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`** It defines S3 object as input to the job:  
+
+`sentinel-s1-rtc-indigo`: bucket’s name  
+
+`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`: represents the key of the object in that bucket. The object to be processed is called `Gamma0_VH.tif` and is located in the subdirectory with the specified path.  
+
+But if you want to specify the entire objects located in the path, you can simply add `*` to the end of the path (`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/*`)  
+
+`dst=/sentinel-s1-rtc-indigo`: the destination to which to mount the s3 bucket object  
+
+`opt=region=us-west-2` : specifying the region in which the bucket is located 
 
 ### Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 
-### Running the job on multiple buckets with multiple objects
+### TBD 1. Running the job on multiple buckets with multiple objects
 
+In the example below, we will mount several bucket objects from public s3 buckets located in a specific region:
 
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---wait \
---id-only \
---timeout 3600 \
---wait-timeout-secs 3600 \
--i src=s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*,dst=/bdc-sentinel-2/,opt=region=us-west-2  \
--i src=s3://sentinel-cogs/sentinel-s2-l2a-cogs/28/M/CV/2022/6/S2B_28MCV_20220620_0_L2A/*,dst=/sentinel-cogs/,opt=region=us-west-2 \
-jsacex/gdal-s3
+    --wait \
+    --id-only \
+    --timeout 3600 \
+    --wait-timeout-secs 3600 \
+    -i src=s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*,dst=/bdc-sentinel-2/,opt=region=us-west-2  \
+    -i src=s3://sentinel-cogs/sentinel-s2-l2a-cogs/28/M/CV/2022/6/S2B_28MCV_20220620_0_L2A/*,dst=/sentinel-cogs/,opt=region=us-west-2 \
+    jsacex/gdal-s3
 ```
 
-**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`**
+The job has been submitted and Bacalhau has printed out the related job ID. We store that in an environment variable so that we can reuse it later on.
 
-Breakdown of the flag:
+## 2. Checking the State of your Jobs
 
-`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`:
-
-Specifying the bucket source along with the keys in this case it's `s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*` but if you want to specify the entire objects located in the path you can simply add `*` to the end of the path `s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*`
-
-`dst=/bdc-sentinel-2/`: the destination to which to mount the s3 bucket object
-
-`opt=region=us-west-2`: Specifying the region in which the bucket is located
-
-
-We find all the .tif files and then convert and save them to /outputs/
-
-
-The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
-
-## Checking the State of your Jobs
-
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -78,7 +73,7 @@ bacalhau list --id-filter=${JOB_ID} --no-style
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -86,7 +81,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -95,11 +90,8 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-After the download has finished you should see the following contents in the results directory.
 
-## Viewing your Job Output
-
-To view the file, run the following command:
+## 3. Viewing your Job Output
 
 ### Display the image
 
@@ -136,6 +128,7 @@ for imageName in glob.glob('results/outputs/*.jpg'):
         display(img)
 
 ```
+The code processes and displays all images in the specified directory by applying cropping and resizing with a specified reduction factor. 
 
     results/outputs/S2-16D_V1_075086_20180218_B04_TCI.jpg
 
