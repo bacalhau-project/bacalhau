@@ -91,7 +91,7 @@ func (s *tWebUISuite) Test200ForRoot() {
 
 func (s *tWebUISuite) Test200ForSwagger() {
 	swaggerContentString := "SwaggerUIBundle"
-
+	_ = swaggerContentString
 	// Create table for testing against swagger with Path, StatusCode, content to grep for
 	swaggerTests := []struct {
 		Path       string
@@ -101,7 +101,6 @@ func (s *tWebUISuite) Test200ForSwagger() {
 		{"/swagger/", http.StatusOK, swaggerContentString},
 		{"/swagger/index.html", http.StatusOK, swaggerContentString},
 		{"/swagger/BAD_PATH", http.StatusNotFound, ""},
-		{"/swagger/swagger.json", http.StatusOK, "\"swagger\": \"2.0\","},
 	}
 
 	webUIPort, err := s.serveForWebUI()

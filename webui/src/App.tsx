@@ -12,6 +12,7 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/swagger/swagger.json" />
           <Route path="/JobsDashboard" element={<JobsDashboard />} />
           <Route path="/NodesDashboard" element={<NodesDashboard />} />
           <Route path="/Settings" element={<Settings />} />
