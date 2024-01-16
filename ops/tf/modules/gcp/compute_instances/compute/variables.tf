@@ -44,3 +44,12 @@ variable "subnetwork" {
   type        = string
 }
 
+variable "aws_access_key_id" {
+  description = "AWS access key id used to authenticate s3 compatible storage"
+  type = string
+}
+
+variable "aws_secret_access_key" {
+  description = "AWS secret access key used to authenticate s3 compatible storage"
+  type = string
+}
