@@ -174,8 +174,8 @@ require (
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
-	github.com/labstack/echo/v4 v4.11.3 // indirect
-	github.com/labstack/gommon v0.4.0 // indirect
+	github.com/labstack/echo/v4 v4.11.4 // indirect
+	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
@@ -206,7 +206,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
@@ -251,9 +251,8 @@ require (
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.3 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.3 // indirect
-	github.com/quic-go/quic-go v0.33.0 // indirect
+	github.com/quic-go/qtls-go1-20 v0.3.1 // indirect
+	github.com/quic-go/quic-go v0.37.7 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -313,7 +312,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.17.0 // indirect
 	go.uber.org/fx v1.19.3 // indirect
-	go.uber.org/mock v0.3.0 // indirect
+	go.uber.org/mock v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
@@ -323,7 +322,7 @@ require (
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.16.1 // indirect
