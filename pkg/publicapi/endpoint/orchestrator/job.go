@@ -4,14 +4,15 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/labstack/echo/v4"
+	"golang.org/x/exp/slices"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/labstack/echo/v4"
-	"golang.org/x/exp/slices"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 // godoc for Orchestrator PutJob

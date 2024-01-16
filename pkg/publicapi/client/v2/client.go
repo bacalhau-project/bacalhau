@@ -21,7 +21,6 @@ func New(options Options, optFns ...OptionFn) *Client {
 	}
 
 	resolveHTTPClient(&options)
-
 	return &Client{
 		httpClient: options.HTTPClient,
 		options:    options,

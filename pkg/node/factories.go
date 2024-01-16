@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
@@ -15,42 +17,30 @@ import (
 )
 
 // Interfaces to inject dependencies into the stack
-type StorageProvidersFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
+type Factory[P provider.Providable] interface {
+	Get(ctx context.Context, nodeConfig NodeConfig) (provider.Provider[P], error)
 }
 
-type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
-}
-
-type PublishersFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
-}
+type (
+	StorageProvidersFactory = Factory[storage.Storage]
+	ExecutorsFactory        = Factory[executor.Executor]
+	PublishersFactory       = Factory[publisher.Publisher]
+	AuthenticatorsFactory   = Factory[authn.Authenticator]
+)
 
 // Functions that implement the factories for easier creation of new implementations
-type StorageProvidersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
+type FactoryFunc[P provider.Providable] func(ctx context.Context, nodeConfig NodeConfig) (provider.Provider[P], error)
 
-func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
+func (f FactoryFunc[P]) Get(ctx context.Context, nodeConfig NodeConfig) (provider.Provider[P], error) {
 	return f(ctx, nodeConfig)
 }
 
-type ExecutorsFactoryFunc func(
-	ctx context.Context,
-	nodeConfig NodeConfig,
-) (executor.ExecutorProvider, error)
-
-func (f ExecutorsFactoryFunc) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig,
-) (executor.ExecutorProvider, error) {
-	return f(ctx, nodeConfig)
-}
-
-type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
-
-func (f PublishersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-	return f(ctx, nodeConfig)
-}
+type (
+	StorageProvidersFactoryFunc = FactoryFunc[storage.Storage]
+	ExecutorsFactoryFunc        = FactoryFunc[executor.Executor]
+	PublishersFactoryFunc       = FactoryFunc[publisher.Publisher]
+	AuthenticatorsFactoryFunc   = FactoryFunc[authn.Authenticator]
+)
 
 // Standard implementations used in prod and when testing prod behavior
 func NewStandardStorageProvidersFactory() StorageProvidersFactory {
@@ -138,4 +128,26 @@ func NewStandardPublishersFactory() PublishersFactory {
 			}
 			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
 		})
+}
+
+func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
+	return AuthenticatorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
+			privKey, err := config.GetClientPrivateKey()
+			if err != nil {
+				return nil, err
+			}
+
+			return provider.NewMappedProvider(
+				map[string]authn.Authenticator{
+					"ClientKey": challenge.NewAuthenticator(
+						challenge.AnonymousModePolicy,
+						nodeConfig.Host.ID(),
+						privKey,
+						nodeConfig.Host.ID().String(),
+					),
+				},
+			), nil
+		},
+	)
 }
