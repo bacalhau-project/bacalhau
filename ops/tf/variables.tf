@@ -32,10 +32,3 @@ variable "compute_count" {
   description = "Number of compute instances"
   type        = number
 }
-
-variable "install_bacalhau_argument" {
-  description = "Argument to pass to the install bacalhau script"
-  type        = string
-  # Usage: install-bacalhau [release <version> | branch <branch-name>]
-  default     = ""
-}
