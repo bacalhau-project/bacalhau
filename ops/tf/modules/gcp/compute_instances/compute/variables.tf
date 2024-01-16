@@ -18,16 +18,15 @@ variable "zone" {
   type        = string
 }
 
-variable "boot_image" {
-  description = "The boot image for the instances"
-  type        = string
-  default     = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
-}
-
 variable "boot_size" {
   description = "The size of the boot disk"
   type        = number
   default     = 50
+}
+
+variable "boot_image" {
+  description = "The boot image for the instances"
+  type        = string
 }
 
 variable "cloud_init_content" {
@@ -43,12 +42,5 @@ variable "network" {
 variable "subnetwork" {
   description = "The subnetwork to attach to the instances"
   type        = string
-}
-
-// Usage: install-bacalhau [release <version> | branch <branch-name>]
-variable "install_bacalhau_argument" {
-  description = "Argument to pass to the install bacalhau script"
-  type        = string
-  default     = ""
 }
 

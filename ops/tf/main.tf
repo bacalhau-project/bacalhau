@@ -17,10 +17,9 @@ module "requester_instance" {
   subnetwork          = module.gcp_network.subnetwork_name
   requester_static_ip = module.gcp_network.requester_ip
   zone                = var.gcp_zone
-
+  boot_image      = var.gcp_boot_image
   cloud_init_content = ""
   requester_instance_type = var.requester_machine_type
-  install_bacalhau_argument = var.install_bacalhau_argument
 }
 
 module "compute_instance" {
@@ -38,8 +37,7 @@ module "compute_instance" {
   // Bacalhau should not stop the node if it fails to connect to a peer, it should instead continue to try until is
   // succeeds and complain loudly along the way as it fails.
   requester_ip = module.requester_instance.requester_private_ips[0]
+  boot_image      = var.gcp_boot_image
   compute_instance_count = var.compute_count
   compute_instance_type = var.compute_machine_type
-  install_bacalhau_argument = var.install_bacalhau_argument
-
 }
