@@ -67,16 +67,6 @@ func MergeLabelsInOrder(providers ...LabelsProvider) LabelsProvider {
 	return mergeProvider{providers: providers}
 }
 
-// NodeInfo godoc
-//
-// @ID			NodeInfo
-// @Summary		Information about the node.
-// @Description	Information about the node.
-// @Tags		Ops
-// @Produce		json
-// @Success	200	{object}	NodeInfo
-// @Failure	500	{object}	string
-// @Router		/api/v1/agent/node [get]
 type NodeInfo struct {
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo" swaggertype:"primitive,integer"`
 	NodeType        NodeType          `json:"NodeType"`

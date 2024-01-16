@@ -13,9 +13,10 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 
@@ -72,6 +73,7 @@ type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
+	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
 func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
@@ -79,6 +81,7 @@ func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewPluginExecutorFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -87,6 +90,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -135,6 +139,11 @@ func NewNode(
 	}
 
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -188,6 +197,7 @@ func NewNode(
 		"/api/v1/requester/logs",
 	}...)
 
+	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
 		Router:     echo.New(),
@@ -195,7 +205,14 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.Host.ID().String(),
 		Config:     config.APIServerConfig,
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.AlwaysAllow,
+		Headers: map[string]string{
+			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		},
 	}
 
 	// Only allow autocert for requester nodes
@@ -225,6 +242,7 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			storageProviders,
+			authenticators,
 			nodeInfoStore,
 			gossipSub,
 			config.FsRepo,
@@ -385,6 +403,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	if injector.AuthenticatorsFactory == nil {
+		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
 	}
 	return injector
 }

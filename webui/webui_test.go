@@ -110,10 +110,10 @@ func (s *tWebUISuite) Test200ForSwagger() {
 	for _, tt := range swaggerTests {
 		content, statusCode, err := utilserve.CurlEndpoint(s.Ctx, fmt.Sprintf("http://127.0.0.1:%d%s", webUIPort, tt.Path))
 		s.Require().NoError(err, "Error curling swagger endpoint")
-		s.Require().Equal(tt.StatusCode, statusCode, "Did not return correct status code.")
+		s.Require().Equal(tt.StatusCode, statusCode, fmt.Sprintf("%s: Did not return correct status code.", tt.Path))
 		if tt.Content != "" {
 			s.T().Logf("Content: %s", string(content))
-			s.Require().Contains(string(content), tt.Content, "Did not return correct content.")
+			s.Require().Contains(string(content), tt.Content, fmt.Sprintf("%s: Did not return correct content.", tt.Path))
 		}
 	}
 }
