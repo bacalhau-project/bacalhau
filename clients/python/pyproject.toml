@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "bacalhau_apiclient"
 version = "0.3.24.dev8"
 authors = [
-{ name="Enrico Rotundo", email="enrico.rotundo@gmail.com" },
+{ name="Bacalhau Project", email="support@bacalhau.org" },
 ]
 description = "A Python client for the Bacalhau public API - https://github.com/bacalhau-project/bacalhau/tree/main/clients/python"
 readme = "README.md"
