@@ -20,6 +20,9 @@ module "requester_instance" {
   boot_image      = var.gcp_boot_image
   cloud_init_content = ""
   requester_instance_type = var.requester_machine_type
+
+  aws_access_key_id = var.aws_access_key_id
+  aws_secret_access_key = var.aws_secret_access_key
 }
 
 module "compute_instance" {
@@ -40,4 +43,7 @@ module "compute_instance" {
   boot_image      = var.gcp_boot_image
   compute_instance_count = var.compute_count
   compute_instance_type = var.compute_machine_type
+
+  aws_access_key_id = var.aws_access_key_id
+  aws_secret_access_key = var.aws_secret_access_key
 }

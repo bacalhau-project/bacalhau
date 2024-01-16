@@ -25,11 +25,36 @@ resource "google_compute_instance" "compute" {
 }
 
 locals {
+  //
+  // templating the bacalhau service file
+  //
+
+  // service env vars
+  bacalhau_env_vars = {
+    LOG_LEVEL                 = "debug"
+    BACALHAU_NODE_LOGGINGMODE = "default"
+    BACALHAU_DIR              = "/data"
+    BACALHAU_ENVIRONMENT      = "local"
+    AWS_ACCESS_KEY_ID         = var.aws_access_key_id
+    AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
+    # Add more variables here as needed
+  }
+  # Convert the map to the required string format for the systemd service file
+  env_vars_string = join("\n", [for k, v in local.bacalhau_env_vars : "Environment=\"${k}=${v}\""])
+
+  // service bacalhau arguments
+  bacalhau_args = ""
+
+  bacalhau_service_content = templatefile("${path.module}/../../../instance_files/bacalhau.service", {
+    env_vars = local.env_vars_string
+    args = local.bacalhau_args,
+  })
+
+  //
+  // templating the bacalhau config file
+  //
   compute_config_content = templatefile("${path.module}/../../../instance_files/compute_config.yaml", {
     requester_ip = var.requester_ip
-  })
-  bacalhau_service_content = templatefile("${path.module}/../../../instance_files/bacalhau.service", {
-    args = "" # replace with your actual arguments
   })
 }
 
