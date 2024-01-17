@@ -49,9 +49,9 @@ For example, Rust users can specify the `wasm32-wasi` target to `rustup` and `ca
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
- [Copy data from a URL to public storage](https://docs.bacalhau.org/examples/data-ingestion/from-url/)  
- [Pin Data to public storage](https://docs.bacalhau.org/examples/data-ingestion/pinning/)  
- [Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/examples/data-ingestion/s3-to-ipfs/)
+ [Copy data from a URL to public storage](../setting-up/data-ingestion/from-url.md)  
+ [Pin Data to public storage](../setting-up/data-ingestion/pin.md)  
+ [Copy Data from S3 Bucket to public storage](../setting-up/data-ingestion/s3.md)
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data

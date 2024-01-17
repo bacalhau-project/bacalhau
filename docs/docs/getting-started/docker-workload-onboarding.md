@@ -188,7 +188,7 @@ $ bacalhau docker run --input ipfs://${CID} ${IMAGE} ${CMD}
 To check the status of your job, run the following command:
 
 ```shell
-$ bacalhau list
+$ bacalhau list --id-filter JOB_ID
 ```
 
 To get more information on your job,run:
@@ -203,10 +203,29 @@ To download your job, run:
 $ bacalhau get JOB_ID
 ```
 
-**TBD** For example, running:
+For example, running:
 
 ```shell
+JOB_ID=$(bacalhau docker run ubuntu echo hello | grep 'Job ID:' | sed 's/.*Job ID: \([^ ]*\).*/\1/')
+echo "The job ID is: $JOB_ID"
+bacalhau list --id-filter $JOB_ID
+sleep 5
+bacalhau list --id-filter $JOB_ID
+bacalhau get $JOB_ID
+ls shards
+```
 
+outputs:
+
+```shell
+CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Verifying                      
+ CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Published            /ipfs/bafybeiflj3kha... 
+11:26:09.107 | INF bacalhau/get.go:67 > Fetching results of job '24440f0d-3c06-46af-9adf-cb524aa43961'...
+11:26:10.528 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
+11:26:13.144 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/Users/phil/source/filecoin-project/docs.bacalhau.org'
+job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
 ```
 
 :::caution
