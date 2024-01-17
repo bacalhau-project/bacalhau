@@ -3,13 +3,12 @@
 package challenge
 
 import (
-	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
@@ -37,15 +36,11 @@ func setup(t *testing.T) authn.Authenticator {
 	return NewAuthenticator(anonPolicy, testData([]byte("test")), rsaKey, "node")
 }
 
-func try(t *testing.T, authenticator authn.Authenticator, r response) authn.Authentication {
-	body := new(bytes.Buffer)
-	err := json.NewEncoder(body).Encode(r)
+func try(t *testing.T, authenticator authn.Authenticator, r any) authn.Authentication {
+	req, err := json.Marshal(r)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge", body)
-	require.NoError(t, err)
-
-	auth, err := authenticator.Authenticate(req)
+	auth, err := authenticator.Authenticate(context.Background(), req)
 	require.NoError(t, err)
 	return auth
 }
@@ -90,14 +85,17 @@ func TestBadlySignedChallenge(t *testing.T) {
 
 func TestGoodChallenge(t *testing.T) {
 	authenticator := setup(t)
-	request := (authenticator.Requirement().Params).(request)
+
+	var req request
+	err := json.Unmarshal(*authenticator.Requirement().Params, &req)
+	require.NoError(t, err)
 
 	userPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
 	userPubKey := base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&userPrivKey.PublicKey))
 
-	signature, err := system.Sign(request.InputPhrase, userPrivKey)
+	signature, err := system.Sign([]byte(req.InputPhrase), userPrivKey)
 	response := response{
 		PhraseSignature: signature,
 		PublicKey:       userPubKey,
