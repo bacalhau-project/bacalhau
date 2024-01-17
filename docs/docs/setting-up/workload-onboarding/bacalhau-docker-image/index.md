@@ -85,7 +85,7 @@ ab95a5cc-e6b7-40f1-957d-596b02251a66
 
 The output you're seeing is in two parts:  
 **The first line:** `13:53:46.478 | INF pkg/repo/fs.go:81 > Initializing repo at '/root/.bacalhau' for environment 'production'` is an informational message indicating the initialization of a repository at the specified directory `('/root/.bacalhau')` for the `production` environment.  
-**The second line:** `ab95a5cc-e6b7-40f1-957d-596b02251a66` is a `job ID`, which represents the result of executing a command inside a Docker container. It can be used to obtain additional information about the executed job or to access the job's results.
+**The second line:** `ab95a5cc-e6b7-40f1-957d-596b02251a66` is a `job ID`, which represents the result of executing a command inside a Docker container. It can be used to obtain additional information about the executed job or to access the job's results. We store that in an environment variable so that we can reuse it later on (env: `JOB_ID=ab95a5cc-e6b7-40f1-957d-596b02251a66`)
 
 To print out the **content of the Job ID**, run the following command:
 
@@ -127,7 +127,7 @@ a46a9aa9-63ef-486a-a2f8-6457d7bafd2e
 
 ## TBD 5. Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -138,7 +138,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 When it says `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -148,7 +148,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in the `result` directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in the `result` directory.
 
 
 ```bash
