@@ -1,4 +1,4 @@
-package util
+package choose
 
 import (
 	"bufio"
@@ -32,7 +32,7 @@ func Choose[Choice any](cmd *cobra.Command, prompt string, choices []Choice) (ch
 			more := reader.Scan()
 			if !more && reader.Err() != nil {
 				return choice, reader.Err()
-			} else if !more {
+			} else if !more || reader.Text() == "" {
 				return choice, io.EOF
 			}
 

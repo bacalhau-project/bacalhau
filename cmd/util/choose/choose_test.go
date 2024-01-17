@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package util
+package choose
 
 import (
 	"bytes"
