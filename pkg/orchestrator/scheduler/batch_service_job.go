@@ -198,7 +198,10 @@ func (b *BatchServiceJobScheduler) handleRetry(plan *models.Plan, job *models.Jo
 		float64(job.RetryDelay)*gomath.Pow(job.RetryDelayGrowthFactor, float64(failures)),
 		float64(job.MaximumRetryDelay))
 
-	log.Debug().Msgf("Deferring job execution for %d seconds (%d * %f ^ %d max %d)", delay, job.RetryDelay, job.RetryDelayGrowthFactor, failures, job.MaximumRetryDelay)
+	log.Debug().Msgf("Deferring job execution for %f seconds (%d * %f ^ %d max %d)",
+		delay,
+		job.RetryDelay, job.RetryDelayGrowthFactor, failures,
+		job.MaximumRetryDelay)
 
 	// Schedule a new evaluation
 	plan.DeferEvaluation(time.Duration(delay * float64(time.Second)))
