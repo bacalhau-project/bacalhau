@@ -1,6 +1,7 @@
-package util
+package hook
 
 import (
+	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -71,8 +72,19 @@ var ClientPreRunHooks runHookE = Chain(
 	Adapt(StartUpdateCheck),
 )
 
+// RemoteCmdPreRunHooks is the set of pre-run hooks that all commands that
+// communicate with remote servers should have applied.
+var RemoteCmdPreRunHooks runHookE = Chain(
+	ClientPreRunHooks,
+	auth.Authenticate,
+)
+
 // ClientPostRunHooks is the set of post-run hooks that all client commands
 // should have applied.
 var ClientPostRunHooks runHookE = Chain(
 	Adapt(PrintUpdateCheck),
 )
+
+// RemoteCmdPostRunHooks is the set of post-run hooks that all commands that
+// communicate with remote servers should have applied.
+var RemoteCmdPostRunHooks runHookE = ClientPostRunHooks

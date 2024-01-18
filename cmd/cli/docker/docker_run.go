@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -81,9 +82,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 
 func NewCmd() *cobra.Command {
 	dockerCmd := &cobra.Command{
-		Use:               "docker",
-		Short:             "Run a docker job on the network (see run subcommand)",
-		PersistentPreRunE: util.AfterParentPreRunHook(util.CheckVersion),
+		Use:   "docker",
+		Short: "Run a docker job on the network (see run subcommand)",
 	}
 
 	dockerCmd.AddCommand(newDockerRunCmd())
@@ -103,8 +103,8 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Long:     runLong,
 		Example:  runExample,
 		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  util.Chain(util.ClientPreRunHooks, configflags.PreRun(dockerRunFlags)),
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
 				util.Fatal(cmd, err, 1)

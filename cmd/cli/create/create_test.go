@@ -138,7 +138,10 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c, out, err := cmdtesting.ExecuteTestCobraCommand("create", "./testdata/empty.yaml")
+		c, out, err := cmdtesting.ExecuteTestCobraCommand("create",
+			"--api-host", s.Host,
+			"--api-port", fmt.Sprint(s.Port),
+			"./testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
