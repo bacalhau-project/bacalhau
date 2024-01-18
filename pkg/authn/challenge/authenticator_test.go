@@ -50,7 +50,7 @@ func TestRequirement(t *testing.T) {
 
 	requirement := authenticator.Requirement()
 	require.Equal(t, authn.MethodTypeChallenge, requirement.Type)
-	require.IsType(t, request{}, requirement.Params)
+	require.NoError(t, json.Unmarshal(*requirement.Params, &request{}))
 }
 
 func TestBadlyStructuredChallenge(t *testing.T) {
