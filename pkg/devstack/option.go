@@ -48,6 +48,11 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 	}, nil
 }
 
+type DevstackTLSSettings struct {
+	Certificate string
+	Key         string
+}
+
 type DevStackConfig struct {
 	ComputeConfig          node.ComputeConfig
 	RequesterConfig        node.RequesterConfig
@@ -69,6 +74,7 @@ type DevStackConfig struct {
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 	NodeInfoStoreTTL           time.Duration
+	TLS                        DevstackTLSSettings
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -211,5 +217,14 @@ func WithNodeInfoPublisherInterval(interval routing.NodeInfoPublisherIntervalCon
 func WithExecutorPlugins(enabled bool) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.ExecutorPlugins = enabled
+	}
+}
+
+func WithSelfSignedCertificate(cert string, key string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.TLS = DevstackTLSSettings{
+			Certificate: cert,
+			Key:         key,
+		}
 	}
 }
