@@ -51,6 +51,7 @@ func GetAllVersions(ctx context.Context) (Versions, error) {
 	versions := Versions{ClientVersion: version.Get()}
 
 	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
+	fmt.Printf("OLGIBBONS DEBUG: getallversions: host: %#v, port: %#v\n", config.ClientAPIHost(), fmt.Sprint(config.ClientAPIPort()))
 	versions.ServerVersion, err = client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")

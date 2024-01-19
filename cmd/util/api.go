@@ -22,6 +22,7 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 	scheme := "http"
 	if tlsConfig.UseTLS {
 		scheme = "https"
+		fmt.Printf("OLGIBBONS DEBUG: Using TLS, so scheme is: %#v", scheme)
 	}
 
 	bv := version.Get()
