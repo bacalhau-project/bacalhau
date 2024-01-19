@@ -1,9 +1,14 @@
 Node:
+  Type:
+    - requester
   ClientAPI:
     Host: 0.0.0.0
     Port: 1234
-  Type:
-    - requester
+  BootstrapAddresses:
+  Compute:
+    JobSelection:
+      Locality: anywhere
+      AcceptNetworkedJobs: ${bacalhau_accept_networked_jobs}
   WebUI: true
   UpdateConfig:
     SkipChecks: true

@@ -55,6 +55,7 @@ locals {
   //
   compute_config_content = templatefile("${path.module}/../../../instance_files/compute_config.yaml", {
     requester_ip = var.requester_ip
+    bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   })
 }
 
