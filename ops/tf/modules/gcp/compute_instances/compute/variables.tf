@@ -53,3 +53,9 @@ variable "aws_secret_access_key" {
   description = "AWS secret access key used to authenticate s3 compatible storage"
   type = string
 }
+
+variable "bacalhau_accept_networked_jobs" {
+  description = "When true bacalhau will accept jobs requiring networking. Otherwise they will be rejected."
+  type = bool
+  default = false
+}

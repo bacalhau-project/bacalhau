@@ -53,6 +53,7 @@ locals {
   //
   requester_config_content = templatefile("${path.module}/../../../instance_files/requester_config.yaml", {
     # add variables you'd like to inject into the config
+    bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   })
 }
 
