@@ -12,5 +12,8 @@ gcp_project_id = "forrest-dev-407420"
 gcp_region = "us-west1"
 gcp_zone = "us-west1-b"
 
+// HMAC keys for accessing buckets over S3 protocol (GCP Bucket or AWS S3 Bucket)
 aws_access_key_id = ""
 aws_secret_access_key = ""
+
+bacalhau_accept_networked_jobs = true

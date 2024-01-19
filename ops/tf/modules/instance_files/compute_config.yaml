@@ -3,9 +3,13 @@ Node:
     - compute
   ClientAPI:
     Host: ${requester_ip}
+    Port: 1234
   BootstrapAddresses:
   Libp2P:
     PeerConnect: /ip4/${requester_ip}/tcp/1234/http
+  Compute:
+    JobSelection:
+      Locality: anywhere
+      AcceptNetworkedJobs: ${bacalhau_accept_networked_jobs}
   UpdateConfig:
     SkipChecks: true
-
