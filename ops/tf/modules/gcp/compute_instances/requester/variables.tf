@@ -54,3 +54,8 @@ variable "bacalhau_accept_networked_jobs" {
   type = bool
   default = false
 }
+
+variable "bacalhau_repo_disk_size" {
+  description = "The size of the disk in GB bacalhau will to store its repo"
+  type        = number
+}
