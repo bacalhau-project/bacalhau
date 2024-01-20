@@ -1,7 +1,7 @@
 import React from "react"
 import { render, fireEvent, screen } from "@testing-library/react"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
-import { ActionButton } from "../../src/components/ActionButton/ActionButton"
+import { ActionButton } from "../ActionButton"
 
 describe("ActionButton", () => {
   test("renders button with provided text", () => {

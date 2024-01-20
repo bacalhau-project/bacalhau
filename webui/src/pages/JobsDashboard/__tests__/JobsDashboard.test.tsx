@@ -1,8 +1,8 @@
 import React from "react"
 import { MemoryRouter } from "react-router-dom"
 import { screen, render } from "@testing-library/react"
-import { JobsDashboard } from "../../src/pages/JobsDashboard/JobsDashboard"
-import { server } from "../mocks/msw/server"
+import { JobsDashboard } from "../JobsDashboard"
+import { server } from "../../../../tests/mocks/msw/server"
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -18,19 +18,16 @@ describe("JobsDashboard", () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
+  it("renders with right title", () => {
+    render(
+      <MemoryRouter>
+        <JobsDashboard />
+      </MemoryRouter>
+    )
 
-  test("renders JobsDashboard", () => {
-    it("renders with right title", () => {
-      render(
-        <MemoryRouter>
-          <JobsDashboard />
-        </MemoryRouter>
-      )
+    console.debug()
 
-      console.debug()
-
-      expect(screen.getAllByText(/Jobs Dashboard/i).length).toBeGreaterThan(0)
-    })
+    expect(screen.getAllByText(/Jobs Dashboard/i).length).toBeGreaterThan(0)
   })
   it("renders with one job", () => {
     server.use()

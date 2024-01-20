@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import React from "react"
-import { render } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
+import { http } from "msw"
 import { server } from "../mocks/msw/server"
+import { sampleQueryResponse } from "../mocks/msw/handlers"
+
+// This is a simple file to test to make sure the configuration of msw is working
+// properly. All components, types, and methods are self contained here.
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -13,23 +18,87 @@ afterEach(() => server.resetHandlers())
 // Don't forget to clean up afterwards.
 afterAll(() => server.close())
 
-function MSWTestComponent() {
-  const [data, setData] = React.useState(null)
-
-  React.useEffect(() => {
-    fetch("http://localhost:1234/sampleQuery")
-      .then((response) => response.json())
-      .then((responseData) => setData(responseData))
-  }, [])
-
-  return data
+export type TestData = {
+  userId: number
+  id: number
+  date: Date
+  bool: boolean
 }
 
-test("should GET /sampleQuery", () => {
-  const respData = render(<MSWTestComponent />)
-  // Query the sampleQuery endpoint and get a response.
-  // Print the response to the console.
-  // console.log(respData)
+type TestDataItemProps = {
+  testData: TestData
+}
 
-  // expect(respData.container).toEqual({ data: { hello: "world" } })
+function TestDataItem({ testData }: TestDataItemProps) {
+  return (
+    <pre>
+      {`${testData.userId},${testData.id},${testData.date.toString()},${testData.bool}`}{" "}
+    </pre>
+  )
+}
+
+type TestDataListProps = {
+  testDataArray: TestData[]
+  setTestData: React.Dispatch<React.SetStateAction<TestData[]>>
+}
+
+export default function TestDataList({
+  testDataArray,
+  setTestData,
+}: TestDataListProps) {
+  let content
+  if (testDataArray.length === 0) {
+    content = <p>No TestData</p>
+  } else {
+    content = (
+      <>
+        {testDataArray.map((testData) => (
+          <TestDataItem key={testData.id} testData={testData} />
+        ))}
+      </>
+    )
+  }
+
+  return content
+}
+
+async function fetchTestData() {
+  try {
+    const res = await fetch("/sampleQuery")
+
+    const testData: TestData[] = (await res.json()) as TestData[]
+
+    return testData
+  } catch (err) {
+    if (err instanceof Error) console.log(err.message)
+    return []
+  }
+}
+
+function MSWTestComponent(): JSX.Element {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [testData, setTestData] = React.useState<TestData[]>([])
+
+  React.useEffect(() => {
+    async function getTestData() {
+      const testDataArray = await fetchTestData()
+      if (testDataArray?.length) setTestData(testDataArray)
+    }
+
+    getTestData()
+  }, [])
+
+  return <TestDataList testDataArray={testData} setTestData={setTestData} />
+}
+
+describe("Basic tests of mocked API", () => {
+  it("should GET React component backed by /sampleQuery", async () => {
+    render(<MSWTestComponent />)
+    // Query the sampleQuery endpoint and get a response.
+    // Print the response to the console.
+    expect(await screen.findByText("Loading"))
+    screen.debug()
+
+    // expect(respData.container).toEqual({ data: { hello: "world" } })
+  })
 })

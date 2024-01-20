@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
+import { TestData } from "../../basic/msw.tests";
 
 const BASE_URL = "https://localhost:1234/"
 
@@ -20,29 +21,45 @@ const BASE_URL = "https://localhost:1234/"
 //     ) as any
 // )
 
-export const sampleQueryResponse = http.get('http://localhost:1234/sampleQuery', ({ cookies }) => {
+export const sampleQueryResponse = http.get('/sampleQuery', ({ cookies }) => {
   // Placeholders for messing around with cookies
   const { v } = cookies
 
-  return new HttpResponse('Hello world', { status: 201 })
+  const mockTestDataArray: TestData[] = [
+    {
+      "userId": 1234,
+      "id": 1,
+      "date": new Date("1970-01-01"),
+      "bool": true
+    },
+    {
+      "userId": 9876,
+      "id": 2,
+      "date": new Date("2023-12-31"),
+      "bool": false
+    },
+  ]
+
+
+  return HttpResponse.json(mockTestDataArray);
 })
 
 
-export const rootResponse = http.get('/', ({ cookies }) => {
+export const jobsDashboardResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ cookies }) => {
   // Placeholders for messing around with cookies
   const { v } = cookies
 
   return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
 })
 
-export const jobsDashboardResponse = http.get('/api/v1/orchestrator/jobs', ({ cookies }) => {
+export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => {
   // Placeholders for messing around with cookies
   const { v } = cookies
 
   return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
 })
 
-export const handlers = [sampleQueryResponse, rootResponse, jobsDashboardResponse]
+export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [sampleQueryResponse, rootResponse, jobsDashboardResponse]
 
 // export const sampResp = http.get<never, RequestBody, { foo: 'a' } | { bar: 'b' }>('/', resolver)
 

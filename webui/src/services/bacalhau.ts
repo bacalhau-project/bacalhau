@@ -3,7 +3,7 @@ import {
   JobExecutionsResponse,
   JobListRequest,
   JobResponse,
-  JobsResponse,
+  JobsResponse
 } from "../helpers/jobInterfaces"
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces"
 
