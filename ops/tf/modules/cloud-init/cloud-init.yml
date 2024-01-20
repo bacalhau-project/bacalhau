@@ -14,18 +14,3 @@ write_files:
     permissions: "0600"
     content: |
       ${bacalhau_service_file}
-
-runcmd:
-  #
-  # Setup Bacalhau Repo
-  #
-  - mkdir /data
-  - chmod 0700 /data
-  - mv /etc/config.yaml /data/config.yaml
-  - sudo systemctl daemon-reload
-  - sudo systemctl enable docker
-  - sudo systemctl restart docker
-  - sudo systemctl enable bacalhau.service
-  - sudo systemctl restart bacalhau.service
-
-

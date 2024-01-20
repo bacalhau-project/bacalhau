@@ -1,3 +1,4 @@
+// define compute instance(s)
 resource "google_compute_instance" "compute" {
   count = var.compute_instance_count
   name         = "bacalhau-compute-${count.index + 1}"
@@ -5,6 +6,7 @@ resource "google_compute_instance" "compute" {
   zone         = var.zone
 
   metadata = {
+    startup-script = data.template_file.bacalhau_start_script.rendered
     user-data = data.cloudinit_config.compute_cloud_init.rendered
   }
 
@@ -22,6 +24,22 @@ resource "google_compute_instance" "compute" {
       // Ephemeral public IP will be assigned
     }
   }
+}
+
+// define disk(s) to contain the bacalhau repo for instance(s)
+resource "google_compute_disk" "bacalhau_repo_disks" {
+  count = var.compute_instance_count
+  name  = "bacalhau-repo-disk-compute-${count.index + 1}"
+  type  = "pd-standard"
+  zone  = var.zone
+  size  = var.bacalhau_repo_disk_size
+}
+
+// attach the disk(s) to instance(s)
+resource "google_compute_attached_disk" "attach_bacalhau_repo_disks" {
+  count = var.compute_instance_count
+  disk     = google_compute_disk.bacalhau_repo_disks[count.index].self_link
+  instance = google_compute_instance.compute[count.index].self_link
 }
 
 locals {
@@ -75,4 +93,8 @@ data "cloudinit_config" "compute_cloud_init" {
       requester_ip          : var.requester_ip,
     })
   }
+}
+
+data "template_file" "bacalhau_start_script" {
+  template = file("${path.module}/../../../instance_files/start.sh")
 }
