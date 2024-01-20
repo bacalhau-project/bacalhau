@@ -4,7 +4,6 @@ package types
 
 import "github.com/spf13/viper"
 
-
 type SetOption func(p *SetParams)
 
 func WithViper(v *viper.Viper) SetOption {
@@ -138,7 +137,6 @@ func SetDefaults(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.SetDefault(NodeComputeStoragePath, cfg.Node.ComputeStoragePath)
 	p.Viper.SetDefault(NodeLoggingMode, cfg.Node.LoggingMode)
 	p.Viper.SetDefault(NodeType, cfg.Node.Type)
-	p.Viper.SetDefault(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
 	p.Viper.SetDefault(NodeAllowListedLocalPaths, cfg.Node.AllowListedLocalPaths)
 	p.Viper.SetDefault(NodeDisabledFeatures, cfg.Node.DisabledFeatures)
 	p.Viper.SetDefault(NodeDisabledFeaturesEngines, cfg.Node.DisabledFeatures.Engines)
@@ -284,7 +282,6 @@ func Set(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.Set(NodeComputeStoragePath, cfg.Node.ComputeStoragePath)
 	p.Viper.Set(NodeLoggingMode, cfg.Node.LoggingMode)
 	p.Viper.Set(NodeType, cfg.Node.Type)
-	p.Viper.Set(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
 	p.Viper.Set(NodeAllowListedLocalPaths, cfg.Node.AllowListedLocalPaths)
 	p.Viper.Set(NodeDisabledFeatures, cfg.Node.DisabledFeatures)
 	p.Viper.Set(NodeDisabledFeaturesEngines, cfg.Node.DisabledFeatures.Engines)

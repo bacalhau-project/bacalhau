@@ -32,8 +32,6 @@ type NodeConfig struct {
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	Type []string `yaml:"Type"`
-	// Deprecated: TODO(forrest) remove.
-	EstuaryAPIKey string `yaml:"EstuaryAPIKey"`
 	// Local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed

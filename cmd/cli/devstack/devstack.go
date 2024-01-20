@@ -224,6 +224,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	} else {
 		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
+
+	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
+	cert, key := config.GetRequesterCertificateSettings()
+	options = append(options, devstack.WithSelfSignedCertificate(cert, key))
+
 	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
 	if err != nil {
 		return err
