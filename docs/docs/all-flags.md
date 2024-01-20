@@ -136,7 +136,7 @@ There is no support for sharding, concurrency or minimum bidding for these jobs.
 
 #### Examples
 
-Refers to example models at balcalhau repository under [pkg/model/tasks](https://github.com/bacalhau-project/bacalhau/tree/main/pkg/model/tasks)
+Refers to example models at bacalhau repository under [pkg/model/tasks](https://github.com/bacalhau-project/bacalhau/tree/main/pkg/model/tasks)
 
 An example UCAN Invocation that runs the same job as the above example would look like:
 
@@ -399,7 +399,7 @@ Flags:
       --concurrency int                  How many nodes should run the job (default 1)
       --confidence int                   The minimum number of nodes that must agree on a verification result
       --context-path string              Path to context (e.g. python code) to send to server (via public IPFS network) for execution (max 10MiB). Set to empty string to disable (default ".")
-      --deterministic                    Enforce determinism: run job in a single-threaded wasm runtime with no sources of entropy. NB: this will make the python runtime executein an environment where only some libraries are supported, see https://pyodide.org/en/stable/usage/packages-in-pyodide.html (default true)
+      --deterministic                    Enforce determinism: run job in a single-threaded wasm runtime with no sources of entropy. NB: this will make the python runtime execute in an environment where only some libraries are supported, see https://pyodide.org/en/stable/usage/packages-in-pyodide.html (default true)
       --download                         Should we download the results once the job is complete?
       --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
   -e, --env strings                      The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
