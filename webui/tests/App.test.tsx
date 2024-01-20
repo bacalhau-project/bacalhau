@@ -17,10 +17,6 @@ afterAll(() => mswServer.close())
 describe("Root Page", () => {
   describe("Static tests", () => {
     it("should render home page", () => {
-      mswServer.listen()
-      mswServer.resetHandlers()
-      mswServer.use(rootResponse)
-
       render(<App />)
 
       console.debug(screen.debug())

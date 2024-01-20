@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { jobsDashboardResponse } from "../../../tests/mocks/msw/handlers"
+import { generateSampleJob } from "../../../tests/mocks/jobMock"
+import {
+    jobsResponse, setJobList
+} from "../../../tests/mocks/msw/handlers"
 import { server as mswServer } from "../../../tests/mocks/msw/server"
+import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../bacalhau"
 
 // This is a simple file to test to make sure the configuration of msw is working
@@ -17,14 +21,19 @@ afterEach(() => mswServer.resetHandlers())
 afterAll(() => mswServer.close())
 
 describe("Basic fetch of mocked API", () => {
-    it("should GET /orchestrator/jobs", async () => {
-        const jobsResponse = { a: 2 }
-
-        mswServer.use(jobsDashboardResponse)
-        mswServer.listHandlers() // on printing handlers, I see the sampleUrl printed
-
+    it("should GET /orchestrator/jobs with no data", async () => {
+        mswServer.use(jobsResponse)
         const jobs = await bacalhauAPI.listJobs()
+        expect(jobs).toHaveLength(0)
+    })
+    it("should GET /orchestrator/jobs with two jobs", async () => {
+        const mockJobList: Job[] = [generateSampleJob(), generateSampleJob()]
+        setJobList(mockJobList)
 
-        expect(jobs).toEqual(jobsResponse)
+        mswServer.use(jobsResponse)
+        mswServer.listHandlers() // on printing handlers, I see the sampleUrl printed
+        const returnJobs = await bacalhauAPI.listJobs(["returnData"])
+        expect(returnJobs).toHaveLength(2)
+        expect(returnJobs).toEqual(mockJobList)
     })
 })

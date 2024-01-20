@@ -3,7 +3,7 @@ import React from "react"
 import { render, screen } from "@testing-library/react"
 import { http } from "msw"
 import { server } from "../mocks/msw/server"
-import { sampleQueryResponse } from "../mocks/msw/handlers"
+import { testDataResponse } from "../mocks/msw/handlers"
 
 // This is a simple file to test to make sure the configuration of msw is working
 // properly. All components, types, and methods are self contained here.
@@ -92,11 +92,21 @@ function MSWTestComponent(): JSX.Element {
 }
 
 describe("Basic tests of mocked API", () => {
-  it("should GET React component backed by /sampleQuery", async () => {
+  it("should GET React component backed by /sampleQuery with no test data", async () => {
     render(<MSWTestComponent />)
     // Query the sampleQuery endpoint and get a response.
     // Print the response to the console.
-    expect(await screen.findByText("Loading"))
+    expect(await screen.findByText("No TestData"))
+    screen.debug()
+
+    // expect(respData.container).toEqual({ data: { hello: "world" } })
+  })
+  it("should GET React component backed by /sampleQuery with two entries", async () => {
+    server.use(testDataResponse)
+    render(<MSWTestComponent />)
+    // Query the sampleQuery endpoint and get a response.
+    // Print the response to the console.
+    expect(await screen.findByText("No TestData"))
     screen.debug()
 
     // expect(respData.container).toEqual({ data: { hello: "world" } })

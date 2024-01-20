@@ -1,30 +1,13 @@
 /* tslint:disable */
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
+import { Job } from "../../../src/helpers/jobInterfaces";
 import { TestData } from "../../basic/msw.tests";
 
 const BASE_URL = "https://localhost:1234/"
 
-// export const fetchTasksIncompleteTaskResponse = http.get(
-//   BASE_URL,
-//   async (req, res, ctx) =>
-//     res(
-//       ctx.status(200),
-//       ctx.json([
-//         {
-//           id: "1",
-//           name: "Finish course",
-//           createdOn: Date.now(),
-//           status: TaskStatus.INCOMPLETE,
-//         },
-//       ])
-//     ) as any
-// )
-
-export const sampleQueryResponse = http.get('/sampleQuery', ({ cookies }) => {
-  // Placeholders for messing around with cookies
-  const { v } = cookies
-
+// This does not have a route in the production app - it's for testing that tests are working
+export const testDataResponse = http.get('/testData', ({ request }) => {
   const mockTestDataArray: TestData[] = [
     {
       "userId": 1234,
@@ -40,16 +23,25 @@ export const sampleQueryResponse = http.get('/sampleQuery', ({ cookies }) => {
     },
   ]
 
+  const url = new URL(request.url)
 
-  return HttpResponse.json(mockTestDataArray);
+  let returnDataArray = null
+  if (url.searchParams.get("returnData")) {
+    returnDataArray = mockTestDataArray;
+  }
+
+  return HttpResponse.json(returnDataArray);
+
 })
 
+let jobList: Job[] = []
 
-export const jobsDashboardResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ cookies }) => {
-  // Placeholders for messing around with cookies
-  const { v } = cookies
+export function setJobList(jobs: Job[]) {
+  jobList = jobs
+}
 
-  return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
+export const jobsResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ request }) => {
+  return HttpResponse.json(jobList)
 })
 
 export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => {
@@ -59,7 +51,7 @@ export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => 
   return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
 })
 
-export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [sampleQueryResponse, rootResponse, jobsDashboardResponse]
+export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse]
 
 // export const sampResp = http.get<never, RequestBody, { foo: 'a' } | { bar: 'b' }>('/', resolver)
 

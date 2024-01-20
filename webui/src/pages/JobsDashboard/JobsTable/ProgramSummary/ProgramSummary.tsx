@@ -1,12 +1,12 @@
 // src/components/ProgramSummary.tsx
 import React from "react"
 import styles from "./ProgramSummary.module.scss"
-import { Tasks } from "../../../../helpers/jobInterfaces"
+import { Task } from "../../../../helpers/jobInterfaces"
 import { ReactComponent as Cogwheel } from "../../../../images/cogwheel.svg"
 import { ReactComponent as DockerLogo } from "../../../../images/docker.svg"
 
 interface ProgramSummaryProps {
-  data: Tasks
+  data: Task
 }
 
 const getImageSource = (type: string) => {
