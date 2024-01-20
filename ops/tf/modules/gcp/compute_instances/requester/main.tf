@@ -1,9 +1,11 @@
+// define requester instance
 resource "google_compute_instance" "requester" {
   name         = "bacalhau-requester"
   machine_type = var.requester_instance_type
   zone         = var.zone
 
   metadata = {
+    startup-script = data.template_file.bacalhau_start_script.rendered
     user-data = data.cloudinit_config.requester_cloud_init.rendered
   }
   boot_disk {
@@ -20,6 +22,20 @@ resource "google_compute_instance" "requester" {
       nat_ip = var.requester_static_ip // Static IP
     }
   }
+}
+
+// define disk to contain the bacalhau repo for instance
+resource "google_compute_disk" "bacalhau_repo_disks" {
+  name  = "bacalhau-repo-disk-requester"
+  type  = "pd-standard"
+  zone  = var.zone
+  size  = var.bacalhau_repo_disk_size
+}
+
+// attach the disk to instance
+resource "google_compute_attached_disk" "attach_bacalhau_repo_disks" {
+  disk     = google_compute_disk.bacalhau_repo_disks.self_link
+  instance = google_compute_instance.requester.self_link
 }
 
 locals {
@@ -72,4 +88,8 @@ data "cloudinit_config" "requester_cloud_init" {
       bacalhau_service_file : base64encode(local.bacalhau_service_content)
     })
   }
+}
+
+data "template_file" "bacalhau_start_script" {
+  template = file("${path.module}/../../../instance_files/start.sh")
 }

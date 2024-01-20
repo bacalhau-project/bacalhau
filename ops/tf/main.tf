@@ -24,6 +24,7 @@ module "requester_instance" {
   aws_access_key_id = var.aws_access_key_id
   aws_secret_access_key = var.aws_secret_access_key
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
+  bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
 }
 
 module "compute_instance" {
@@ -48,4 +49,5 @@ module "compute_instance" {
   aws_access_key_id = var.aws_access_key_id
   aws_secret_access_key = var.aws_secret_access_key
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
+  bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
 }
