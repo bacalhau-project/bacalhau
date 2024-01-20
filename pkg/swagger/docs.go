@@ -2071,7 +2071,6 @@ const docTemplate = `{
                 "publisherUnknown",
                 "PublisherNoop",
                 "PublisherIpfs",
-                "PublisherEstuary",
                 "PublisherS3",
                 "publisherDone"
             ]
@@ -2309,7 +2308,6 @@ const docTemplate = `{
                 "StorageSourceRepoClone",
                 "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
-                "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",
                 "StorageSourceS3",

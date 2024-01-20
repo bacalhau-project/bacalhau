@@ -118,7 +118,7 @@ func NewStandardPublishersFactory() PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			pr, err := publisher_util.NewIPFSPublishers(
+			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,

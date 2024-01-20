@@ -287,7 +287,7 @@ Flags:
       --node-details                     Print out details of all nodes (overridden by --id-only).
       --output-dir string                Directory to write the output to.
   -o, --output-volumes strings           name:path of the output data volumes. 'outputs:/outputs' is always added.
-  -p, --publisher publisher              Where to publish the result of the job (default Estuary)
+  -p, --publisher publisher              Where to publish the result of the job (default IPFS)
       --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
   -s, --selector string                  Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.
       --skip-syntax-checking             Skip having 'shellchecker' verify syntax of the command
@@ -459,7 +459,6 @@ Examples:
   bacalhau serve --peer env --private-internal-ipfs=false
 
 Flags:
-      --estuary-api-key string                           The API key used when using the estuary API.
       --filecoin-unsealed-path string                    The go template that can turn a filecoin CID into a local filepath with the unsealed data.
   -h, --help                                             help for serve
       --host string                                      The host to listen on (for both api and swarm connections). (default "0.0.0.0")

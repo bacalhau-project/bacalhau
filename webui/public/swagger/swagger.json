@@ -2067,7 +2067,6 @@
                 "publisherUnknown",
                 "PublisherNoop",
                 "PublisherIpfs",
-                "PublisherEstuary",
                 "PublisherS3",
                 "publisherDone"
             ]
@@ -2305,7 +2304,6 @@
                 "StorageSourceRepoClone",
                 "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
-                "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",
                 "StorageSourceS3",
