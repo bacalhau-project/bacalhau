@@ -8,9 +8,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: codespell-project/actions-codespell@v2
-        with:
-          path: docs
+      - name: Codespell - Docs
+        run: |
+          npm install -g cspell@latest
+          make spellcheck-docs
 
   build:
     runs-on: ubuntu-latest

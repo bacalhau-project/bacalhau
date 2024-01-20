@@ -19,7 +19,7 @@ import (
 //go:embed *.rego
 var policies embed.FS
 
-// The data that will be passed to the authn policy, once veritifcation of the
+// The data that will be passed to the authn policy, once verification of the
 // input challenge has passed.
 type policyData struct {
 	SigningKey jwk.Key `json:"signingKey"`

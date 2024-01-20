@@ -3,15 +3,17 @@
 This directory manages the documentation for the <a href="https://www.bacalhau.org/">Bacalhau Project</a>. This directory also contains the build scripts and tools to create and contribute to the Bacalhau docs website. <a href="https://docs.bacalhau.org/">Explore the docs →</a></p>
 
 ## Table of contents
-- [Develop docs locally](#develop-docs-locally)
+- [Bacalhau Docs](#bacalhau-docs)
+  - [Table of contents](#table-of-contents)
+  - [Develop docs locally](#develop-docs-locally)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
     - [Render website](#render-website)
-- [Documentatation structure](#documentatation-structure)
-- [Contributing](#contributing)
-  - [Issues and Pull requests](#issues-and-pull-requests)
-- [Be Part of the community ](#be-part-of-the-community )
-- [Resources](#resources)
+  - [Documentation structure](#documentation-structure)
+  - [Contributing](#contributing)
+    - [Issues and Pull requests](#issues-and-pull-requests)
+  - [Be Part of the community](#be-part-of-the-community)
+  - [Resources](#resources)
 
 
 ## Develop docs locally
@@ -36,7 +38,7 @@ npm run start
 ```
 The rendered site will be accessible at http://localhost:3000/
 
-## Documentatation structure
+## Documentation structure
 `docs/` : This is where all the .md files live that control the content of this site. Most contributions happen in this directory.
 
 **Note**: All [code examples](https://docs.bacalhau.org/examples/) live in a dedicated repository https://github.com/bacalhau-project/examples and they are automagically rendered into the [./docs/examples/](./docs/examples) folder by github actions.

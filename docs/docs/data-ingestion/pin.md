@@ -5,7 +5,7 @@ description: "How to pin data to public storage"
 ---
 # Pinning Data
 
-If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Estuary, etc. Pinning services store data on behalf of users. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money.
+If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Pinata, etc. Pinning services store data on behalf of users. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money.
 
 ## Web3.Storage
 
@@ -65,36 +65,3 @@ curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}"
 docker run --rm --env TOKEN=$TOKEN -v $PWD/nodejs:/nodejs node:18-alpine ash -c 'cd /nodejs && wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz && npm install && node put-files.js --token=$TOKEN train-images-idx3-ubyte.gz'
 ```
 
-## Estuary
-
-This example shows you how to pin data using [estuary](https://estuary.tech/api-admin).
-
-- Before you can upload files via estuary, you must create an [account](https://estuary.tech) (if you don't have one already).
-
-- Browse to [the API Key management page](https://estuary.tech/api-admin) and create a key.
-
-### Ways to pin using Esturay
-
-1. **Pin a local file via the Esturay UI**: You can [browse to the Estuary UI](https://estuary.tech/upload) to upload a file via your web browser.
-
-:::tip
-Due to the way Estuary batches files for pinning, it may take some time before your file is accessible/listable.
-:::
-
-2. **Pin a local file via Curl**: Please view the [API documentation](https://docs.estuary.tech/tutorial-uploading-your-first-file) to see all available commands. This example submits a single file to be pinned.
-
-```bash
-export TOKEN=YOUR_API_KEY
-echo hello world > foo.txt
-curl -X POST https://upload.estuary.tech/content/add -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: multipart/form-data" -F "data=@foo.txt"
-```
-
-The response will return the CID of the file.
-
-## View pinned files
-
-If the upload was successful, you can view the file via your [estuary account page](https://estuary.tech/home). Alternatively, you can obtain this information from the CLI:
-
-```bash
-curl -X GET -H "Authorization: Bearer ${TOKEN}" https://api.estuary.tech/content/list
-```

@@ -163,7 +163,7 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
+WEB_INSTALL_GUARD := webui/node_modules/.cache/tsconfig.tsbuildinfo
 
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
@@ -492,12 +492,13 @@ else
 	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
 endif
 
-.PHONY: spellcheck
-spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell --skip="./docs/build,./.git,node_modules,./vendor,./webui/build" \
-			  --ignore-words="./.gitprecommit/codespell_ignore_words.txt" \
-			  --skip="./integration/flyte/Makefile"
+.PHONY: spellcheck-code
+spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
+	cspell -c .cspell-code.json lint ./pkg/authn/**
 
+.PHONY: spellcheck-docs
+spellcheck-docs:  ## Runs a spellchecker over all documentation - MVP just does one directory
+	cspell -c .cspell-docs.json lint ./docs/docs/dev/**
 
 .PHONY: generate
 generate:
