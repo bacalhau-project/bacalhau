@@ -127,7 +127,6 @@ make test
 source ~/.virtualenvs/flytekit/bin/activate
 make fmt
 make lint
-make spellcheck
 ```
 
 ---
