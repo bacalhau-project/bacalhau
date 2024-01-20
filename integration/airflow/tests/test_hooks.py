@@ -22,7 +22,7 @@ class TestBacalhauHook(unittest.TestCase):
         api_version = "V1beta1"
         spec = dict(
             engine="Docker",
-            publisher="Estuary",
+            publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "TestBacalhauAirflowOperator"],

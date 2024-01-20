@@ -18,13 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-/* TODO(forrest): Fix me(!):
-- method has wrong name, this make S3 publisher, and noop, in addition to IPFS
-Issue: https://github.com/bacalhau-project/bacalhau/issues/2555
-
-*/
-
-func NewIPFSPublishers(
+func NewPublisherProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	cl ipfsClient.Client,

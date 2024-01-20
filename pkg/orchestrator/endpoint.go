@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"sigs.k8s.io/yaml"
 )
 
 type BaseEndpointParams struct {
@@ -60,10 +63,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	if err := e.store.CreateJob(ctx, *job); err != nil {
-		return nil, err
-	}
-
 	// We will only perform task translation in the orchestrator if we were provided with a provider
 	// that can give translators to perform the translation.
 	if e.taskTranslator != nil {
@@ -72,23 +71,25 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		// then we will perform the translation and create the evaluation for the new job instead.
 		translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to translate job type: %s", job.Task().Engine.Type))
 		}
 
-		// If we have translated the job (i.e. at least one task was translated) then we will switch
-		// to using the translated job after we have saved it in the jobstore. This results in us
-		// sending the translated job ID to the user for tracking their job, although it will contain
-		// a reference to the job they submitted.  This may cause confusion and we may in future want
-		// to move to versioning of jobs so that we can present both to the user should they request
-		// it.
+		// If we have translated the job (i.e. at least one task was translated) then we will record the original
+		// job that was used to create the translated job. This will allow us to track the provenance of the job
+		// when using `describe` and will ensure only the original job is returned when using `list`.
 		if translatedJob != nil {
-			translatedJob.Meta[models.MetaDerivedFrom] = job.ID
+			if b, err := yaml.Marshal(translatedJob); err != nil {
+				return nil, errors.Wrap(err, "failure converting job to JSON")
+			} else {
+				translatedJob.Meta[models.MetaDerivedFrom] = base64.StdEncoding.EncodeToString(b)
+			}
 
 			job = translatedJob
-			if err := e.store.CreateJob(ctx, *job); err != nil {
-				return nil, err
-			}
 		}
+	}
+
+	if err := e.store.CreateJob(ctx, *job); err != nil {
+		return nil, err
 	}
 
 	eval := &models.Evaluation{
