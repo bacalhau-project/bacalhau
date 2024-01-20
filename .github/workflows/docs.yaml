@@ -3,6 +3,16 @@ name: Docs
 on: [push]
 
 jobs:
+  spelling:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Codespell - Docs
+        run: |
+          npm install -g cspell@latest
+          make spellcheck-docs
+
   build:
     runs-on: ubuntu-latest
     concurrency:
