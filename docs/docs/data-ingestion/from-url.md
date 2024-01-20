@@ -27,7 +27,7 @@ Let's look closely at the command above:
 
 * ` --input=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \`: URL path of the input data volumes downloaded from a URL source. 
 
-The `bacalhau docker run` command takes advantage of the `--input` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to your public storage via Estuary. In our case we are using Filecoin as our public storage.
+The `bacalhau docker run` command takes advantage of the `--input` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to your public storage via IPFS. In our case we are using Filecoin as our public storage.
 
 :::tip
 You can find out more about the [helper container in the examples repository](https://github.com/bacalhau-project/examples/tree/main/tools/upload).
@@ -76,7 +76,7 @@ To get the output CID from a completed job, run the following command:
 %%bash --out cid
 bacalhau list $JOB_ID --output=json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
 ```
-The job will upload the CID to your public storage via Estuary. We will store the _cid_ that in an environment variable so that we can reuse it later on.
+The job will upload the CID to your public storage via IPFS. We will store the _cid_ that in an environment variable so that we can reuse it later on.
 
 ### Use the CID in a New Bacalhau Job
 
