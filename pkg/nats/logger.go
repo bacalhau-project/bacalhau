@@ -19,32 +19,32 @@ func NewZeroLogger(logger zerolog.Logger, serverID string) ZeroLogger {
 	}
 }
 
-func (N ZeroLogger) Noticef(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.InfoLevel, format, v)
+func (l ZeroLogger) Noticef(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.InfoLevel, format, v)
 }
 
-func (N ZeroLogger) Warnf(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.WarnLevel, format, v)
+func (l ZeroLogger) Warnf(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.WarnLevel, format, v)
 }
 
-func (N ZeroLogger) Fatalf(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.FatalLevel, format, v)
+func (l ZeroLogger) Fatalf(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.FatalLevel, format, v)
 }
 
-func (N ZeroLogger) Errorf(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.ErrorLevel, format, v)
+func (l ZeroLogger) Errorf(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.ErrorLevel, format, v)
 }
 
-func (N ZeroLogger) Debugf(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.DebugLevel, format, v)
+func (l ZeroLogger) Debugf(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.DebugLevel, format, v)
 }
 
-func (N ZeroLogger) Tracef(format string, v ...interface{}) {
-	N.logWithLevel(zerolog.TraceLevel, format, v)
+func (l ZeroLogger) Tracef(format string, v ...interface{}) {
+	l.logWithLevel(zerolog.TraceLevel, format, v)
 }
 
-func (N ZeroLogger) logWithLevel(level zerolog.Level, format string, v []interface{}) {
-	N.logger.WithLevel(level).Str("Server", N.serverID).Msgf(format, v...)
+func (l ZeroLogger) logWithLevel(level zerolog.Level, format string, v []interface{}) {
+	l.logger.WithLevel(level).Str("Server", l.serverID).Msgf(format, v...)
 }
 
 // compile-time check whether the ZeroLogger implements the Logger interface
