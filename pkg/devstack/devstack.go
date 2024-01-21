@@ -180,8 +180,8 @@ func Setup(
 			if isRequesterNode {
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
-				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("0.0.0.0:%d", swarmPort))
-				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("0.0.0.0:%d", clusterPort))
+				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", swarmPort))
+				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
 			}
 		} else {
 			if i == 0 {
