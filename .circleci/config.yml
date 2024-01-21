@@ -4,6 +4,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@5.1.0
+bye-github-draft: whyayen/bye-github-draft@0.0.2
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
@@ -603,6 +604,7 @@ jobs:
 workflows:
   lint:
     jobs:
+      - check-skippable-pr
       - lint:
           name: Run linters and static checkers
           filters:
@@ -611,6 +613,7 @@ workflows:
 
   check_canary:
     jobs:
+      - check-skippable-pr
       - build_canary:
           name: Check canary build
           filters:
@@ -619,6 +622,7 @@ workflows:
 
   test:
     jobs:
+      - check-skippable-pr
       - build_webui
       - test:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
@@ -647,6 +651,7 @@ workflows:
 
   python:
     jobs:
+      - check-skippable-pr
       - build_swagger:
           name: build-swagger-spec
           filters: &build_on_branch_and_tag_push
@@ -672,6 +677,7 @@ workflows:
 
   build:
     jobs:
+      - check-skippable-pr
       - build_webui:
           filters: *build_on_branch_and_tag_push
       - build:
