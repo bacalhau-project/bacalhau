@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { generateSampleJob } from "../../../tests/mocks/jobMock"
-import { jobsResponse, setJobList } from "../../../tests/mocks/msw/handlers"
+import { jobsResponse, setJobs } from "../../../tests/mocks/msw/handlers"
 import { server as mswServer } from "../../../tests/mocks/msw/server"
 import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../bacalhau"
@@ -26,7 +26,7 @@ describe("Basic fetch of mocked API", () => {
   })
   it("should GET /orchestrator/jobs with two jobs", async () => {
     const mockJobList: Job[] = [generateSampleJob(), generateSampleJob()]
-    setJobList(mockJobList)
+    setJobs(mockJobList)
 
     mswServer.use(jobsResponse)
     mswServer.listHandlers() // on printing handlers, I see the sampleUrl printed

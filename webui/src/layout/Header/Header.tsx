@@ -11,11 +11,9 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
   <header className={styles.header} data-collapsed={collapsed}>
     <div className={styles.left}>
       <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
-      <div role="main" id="main">
-        <h1 aria-label={pageTitle} className={styles.pageTitle}>
-          {pageTitle}
-        </h1>
-      </div>
+      <h1 aria-label={pageTitle} className={styles.pageTitle}>
+        {pageTitle}
+      </h1>
       <div className={styles.searchBar}>
         {/* Placeholder for search bar */}
         {/* <input type="text" placeholder="Search..." /> */}

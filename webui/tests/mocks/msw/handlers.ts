@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
-import { Job } from "../../../src/helpers/jobInterfaces";
+import { Job, JobsResponse } from "../../../src/helpers/jobInterfaces";
 import { TestData } from "../../basic/msw.tests";
 
 const BASE_URL = "https://localhost:1234/"
@@ -34,14 +34,15 @@ export const testDataResponse = http.get('/testData', ({ request }) => {
 
 })
 
-let jobList: Job[] = []
+let internalJobs: Job[] = []
 
-export function setJobList(jobs: Job[]) {
-  jobList = jobs
+export function setJobs(jobs: Job[]) {
+  internalJobs = jobs
 }
 
 export const jobsResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ request }) => {
-  return HttpResponse.json(jobList)
+  let jobsListResponse: JobsResponse = { Jobs: internalJobs, NextToken: "" }
+  return HttpResponse.json(jobsListResponse)
 })
 
 export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => {

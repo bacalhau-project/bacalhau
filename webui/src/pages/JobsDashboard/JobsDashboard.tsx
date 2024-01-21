@@ -5,7 +5,11 @@ import { Layout } from "../../layout/Layout"
 import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../../services/bacalhau"
 
-export const JobsDashboard: React.FC = () => {
+interface JobDashboardProps {
+  pageTitle?: string
+}
+
+export const JobsDashboard: React.FC<JobDashboardProps> = ({ pageTitle = "Jobs Dashboard"}) => {
   const [data, setData] = useState<Job[]>([])
 
   async function getJobsData() {
@@ -24,10 +28,15 @@ export const JobsDashboard: React.FC = () => {
   }, [])
 
   return (
-    <Layout pageTitle="Jobs Dashboard">
+    <Layout pageTitle={pageTitle}>
       <div className={styles.jobsDashboard}>
         <JobsTable data={data} />
       </div>
     </Layout>
   )
 }
+
+
+JobsDashboard.defaultProps = {
+  pageTitle: "Jobs Dashboard",
+};
