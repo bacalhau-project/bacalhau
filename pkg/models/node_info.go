@@ -74,6 +74,8 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 	return nodeInfo
 }
 
+// NodeInfo
+// TODO: add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
 type NodeInfo struct {
 	NodeID          string            `json:"NodeID"`
 	PeerInfo        *peer.AddrInfo    `json:"PeerInfo,omitempty" yaml:",omitempty"`
