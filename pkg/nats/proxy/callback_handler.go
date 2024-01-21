@@ -36,7 +36,7 @@ func NewCallbackHandler(params CallbackHandlerParams) (*CallbackHandler, error) 
 
 	subject := callbackSubscribeSubject(handler.name)
 	_, err := handler.conn.Subscribe(subject, func(m *nats.Msg) {
-		handleCallback(m, handler)
+		handler.handle(m)
 	})
 	if err != nil {
 		return nil, err
@@ -45,8 +45,8 @@ func NewCallbackHandler(params CallbackHandlerParams) (*CallbackHandler, error) 
 	return handler, nil
 }
 
-// handleRequest handles incoming NATS messages.
-func handleCallback(msg *nats.Msg, handler *CallbackHandler) {
+// handle handles incoming NATS messages.
+func (h *CallbackHandler) handle(msg *nats.Msg) {
 	ctx := context.Background()
 
 	subjectParts := strings.Split(msg.Subject, ".")
@@ -54,13 +54,13 @@ func handleCallback(msg *nats.Msg, handler *CallbackHandler) {
 
 	switch method {
 	case OnBidComplete:
-		processCallback(ctx, msg, handler.callback.OnBidComplete)
+		processCallback(ctx, msg, h.callback.OnBidComplete)
 	case OnRunComplete:
-		processCallback(ctx, msg, handler.callback.OnRunComplete)
+		processCallback(ctx, msg, h.callback.OnRunComplete)
 	case OnCancelComplete:
-		processCallback(ctx, msg, handler.callback.OnCancelComplete)
+		processCallback(ctx, msg, h.callback.OnCancelComplete)
 	case OnComputeFailure:
-		processCallback(ctx, msg, handler.callback.OnComputeFailure)
+		processCallback(ctx, msg, h.callback.OnComputeFailure)
 	default:
 		// Noop, not subscribed to this method
 		return
