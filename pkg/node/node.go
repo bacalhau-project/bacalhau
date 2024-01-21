@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
@@ -31,23 +32,6 @@ type FeatureConfig struct {
 	Storages   []string
 }
 
-type NetworkConfig struct {
-	Type           string
-	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
-	ReconnectDelay time.Duration
-
-	// NATS config for requesters to be reachable by compute nodes
-	Port              int
-	AdvertisedAddress string
-	Orchestrators     []string
-
-	// NATS config for requester nodes to connect with each other
-	ClusterName              string
-	ClusterPort              int
-	ClusterAdvertisedAddress string
-	ClusterPeers             []string
-}
-
 // Node configuration
 type NodeConfig struct {
 	NodeID                      string
@@ -73,6 +57,13 @@ type NodeConfig struct {
 
 	FsRepo        *repo.FsRepo
 	NetworkConfig NetworkConfig
+}
+
+func (c *NodeConfig) Validate() error {
+	// TODO: add more validations
+	var mErr *multierror.Error
+	mErr = multierror.Append(mErr, c.NetworkConfig.Validate())
+	return mErr.ErrorOrNil()
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -135,6 +126,11 @@ func NewNode(
 	// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
 	if system.GetEnvironment() == system.EnvironmentTest || system.GetEnvironment() == system.EnvironmentDev {
 		config.APIServerConfig.LogLevel = "trace"
+	}
+
+	err = config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("error validating node config. %w", err)
 	}
 
 	storageProviders, err := config.DependencyInjector.StorageProvidersFactory.Get(ctx, config)

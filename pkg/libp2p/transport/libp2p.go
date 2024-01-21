@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	libp2p_host "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -34,6 +35,13 @@ type Libp2pTransportConfig struct {
 	CleanupManager *system.CleanupManager
 }
 
+func (c *Libp2pTransportConfig) Validate() error {
+	var mErr *multierror.Error
+	mErr = multierror.Append(mErr, validate.IsNotNil(c.Host, "libp2p host cannot be nil"))
+	mErr = multierror.Append(mErr, validate.IsNotNil(c.CleanupManager, "cleanupManager cannot be nil"))
+	return mErr.ErrorOrNil()
+}
+
 type Libp2pTransport struct {
 	Host              host.Host
 	computeProxy      *bprotocol.ComputeProxy
@@ -45,7 +53,13 @@ type Libp2pTransport struct {
 func NewLibp2pTransport(ctx context.Context,
 	config Libp2pTransportConfig,
 	nodeInfoStore routing.NodeInfoStore) (*Libp2pTransport, error) {
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("error validating libp2p transport config. %w", err)
+	}
+
 	// Monkey patch the identify protocol to allow discovering advertised addresses of networks of 3 or more nodes, instead of 5.
+	// Setting the value to 2 means two other nodes must see the same addr for a node to discover its observed addr, which enables a network
+	// of at least 3 nodes.
 	identify.ActivationThresh = 2
 
 	libp2pHost := config.Host

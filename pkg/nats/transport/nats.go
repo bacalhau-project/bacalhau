@@ -2,9 +2,12 @@ package transport
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
@@ -13,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog/log"
 )
@@ -33,6 +37,31 @@ type NATSTransportConfig struct {
 	ClusterPeers             []string
 }
 
+func (c *NATSTransportConfig) Validate() error {
+	var mErr *multierror.Error
+	if validate.IsBlank(c.NodeID) {
+		mErr = multierror.Append(mErr, errors.New("missing node ID"))
+	} else if validate.ContainsSpaces(c.NodeID) {
+		mErr = multierror.Append(mErr, errors.New("node ID contains a space"))
+	} else if validate.ContainsNull(c.NodeID) {
+		mErr = multierror.Append(mErr, errors.New("node ID contains a null character"))
+	}
+
+	if c.IsRequesterNode {
+		mErr = multierror.Append(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
+
+		// if cluster config is set, validate it
+		if c.ClusterName != "" || c.ClusterPort != 0 || c.ClusterAdvertisedAddress != "" || len(c.ClusterPeers) > 0 {
+			mErr = multierror.Append(mErr, validate.IsGreaterThanZero(c.ClusterPort, "cluster port %d must be greater than zero", c.Port))
+		}
+	} else {
+		if validate.IsEmpty(c.Orchestrators) {
+			mErr = multierror.Append(mErr, errors.New("missing orchestrators"))
+		}
+	}
+	return mErr.ErrorOrNil()
+}
+
 type NATSTransport struct {
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
@@ -47,8 +76,11 @@ func NewNATSTransport(ctx context.Context,
 	config NATSTransportConfig,
 	nodeInfoStore routing.NodeInfoStore) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("error validating nats transport config. %w", err)
+	}
+
 	var sm *nats_helper.ServerManager
-	var err error
 	if config.IsRequesterNode {
 		// create nats server with servers acting as its cluster peers
 		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers)
