@@ -107,6 +107,15 @@ func Setup(
 		return nil, fmt.Errorf("at least one requester node is required")
 	}
 
+	// Enable testing using different network stacks by setting env variable
+	if stackConfig.NetworkType == "" {
+		networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
+		if !ok {
+			networkType = models.NetworkTypeLibp2p
+		}
+		stackConfig.NetworkType = networkType
+	}
+
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
 		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)

@@ -78,5 +78,5 @@ func processCallback[Request any](
 		return
 	}
 
-	f(ctx, *request)
+	go f(ctx, *request)
 }

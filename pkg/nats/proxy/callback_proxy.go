@@ -62,7 +62,8 @@ func proxyCallbackRequest(
 	subject := callbackPublishSubject(destNodeID, method)
 	log.Ctx(ctx).Trace().Msgf("Sending request %+v to subject %s", request, subject)
 
-	_, err = conn.RequestWithContext(ctx, subject, data)
+	// We use Publish instead of Request as Orchestrator callbacks do not return a response, for now.
+	err = conn.Publish(subject, data)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to send callback to node %s", reflect.TypeOf(request), destNodeID)
 		return

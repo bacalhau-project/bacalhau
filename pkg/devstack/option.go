@@ -85,7 +85,8 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
 		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
 		Bool("PublicIPFSMode", o.PublicIPFSMode).
-		Bool("ExecutorPlugins", o.ExecutorPlugins)
+		Bool("ExecutorPlugins", o.ExecutorPlugins).
+		Str("NetworkType", o.NetworkType)
 }
 
 func (o *DevStackConfig) Validate() error {
