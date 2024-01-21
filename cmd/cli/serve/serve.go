@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -11,6 +12,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -18,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -174,18 +178,11 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	// for now, use libp2p host ID as node ID, regardless of using NATS or Libp2p
-	// TODO: allow users to specify node ID
-	var nodeID string
-	privKey, err := config.GetLibp2pPrivKey()
+	nodeID, err := getNodeID()
 	if err != nil {
 		return err
 	}
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	if err != nil {
-		return err
-	}
-	nodeID = peerID.String()
+	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
 
 	// configure node type
 	isRequesterNode, isComputeNode, err := getNodeType()
@@ -209,34 +206,14 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	libp2pCfg, err := config.GetLibp2pConfig()
-	if err != nil {
-		return err
-	}
-
 	if networkConfig.Type == models.NetworkTypeLibp2p {
-		peers, err := GetPeers(libp2pCfg.PeerConnect)
+		libp2pHost, peers, err := setupLibp2p()
 		if err != nil {
 			return err
-		}
-		// configure libp2p
-		libp2pHost, err := setupLibp2pHost(libp2pCfg, privKey)
-		if err != nil {
-			return err
-		}
-		cm.RegisterCallback(libp2pHost.Close)
-
-		peersStr := make([]string, len(peers))
-		for i, p := range peers {
-			peersStr[i] = p.String()
 		}
 		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = peersStr
-		nodeID = libp2pHost.ID().String()
+		networkConfig.ClusterPeers = peers
 	}
-
-	// add nodeID to logging context
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
 
 	computeConfig, err := GetComputeConfig()
 	if err != nil {
@@ -332,111 +309,22 @@ func serve(cmd *cobra.Command) error {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
-	// Print out node info and shell variables to connect to this node
-	envVarBuilder := strings.Builder{}
-	envVarBuilder.WriteString(fmt.Sprintf(
-		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIHost),
-		config.ServerAPIHost(),
-	))
-	envVarBuilder.WriteString(fmt.Sprintf(
-		"export %s=%d\n",
-		config.KeyAsEnvVar(types.NodeClientAPIPort),
-		config.ServerAPIPort(),
-	))
-
-	sb := strings.Builder{}
-	if isRequesterNode {
-		if networkConfig.Type == models.NetworkTypeNATS {
-			sb.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
-
-			sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
-			// other nodes can be just compute nodes
-			// no need to spawn 1+ requester nodes
-			sb.WriteString(fmt.Sprintf("%s=compute ",
-				configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
-
-			sb.WriteString(fmt.Sprintf("%s=nats ",
-				configflags.FlagNameForKey(types.NodeNetworkType, configflags.NetworkFlags...)))
-
-			advertisedAddr := networkConfig.AdvertisedAddress
-			if advertisedAddr == "" {
-				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", networkConfig.Port)
-			}
-			sb.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
-				advertisedAddr,
-			))
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeNetworkType), "nats",
-			))
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-				advertisedAddr,
-			))
-		} else {
-			sb.WriteString("To connect another node to this one, run the following command in your shell:\n")
-
-			sb.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
-			// other nodes can be just compute nodes
-			// no need to spawn 1+ requester nodes
-			sb.WriteString(fmt.Sprintf("%s=compute ",
-				configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
-
-			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + networkConfig.Libp2pHost.ID().String())
-			if err != nil {
-				return err
-			}
-			peerAddress := pickP2pAddress(networkConfig.Libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
-			sb.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeLibp2pPeerConnect, configflags.Libp2pFlags...),
-				peerAddress,
-			))
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
-				peerAddress,
-			))
-		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
-			sb.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
-
-			sb.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-				ipfsSwarmAddress,
-			))
-
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-				ipfsSwarmAddress,
-			))
-
-			cmd.Println()
-			cmd.Println(sb.String())
-		}
-	} else {
-		if networkConfig.Type == models.NetworkTypeLibp2p {
-			cmd.Println("Make sure there's at least one requester node in your network.")
-		}
+	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
+	if err != nil {
+		return err
 	}
+	cmd.Println()
+	cmd.Println(connectCmd)
 
-	summaryShellVariablesString := envVarBuilder.String()
+	envVars, err := buildEnvVariables(ctx, &nodeConfig, ipfsConfig)
+	if err != nil {
+		return err
+	}
 	cmd.Println()
 	cmd.Println("To connect to this node from the client, run the following commands in your shell:")
-	cmd.Println(summaryShellVariablesString)
+	cmd.Println(envVars)
 
-	ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
+	ripath, err := fsRepo.WriteRunInfo(ctx, envVars)
 	if err != nil {
 		return fmt.Errorf("writing run info to repo: %w", err)
 	} else {
@@ -452,6 +340,180 @@ func serve(cmd *cobra.Command) error {
 
 	<-ctx.Done() // block until killed
 	return nil
+}
+
+func setupLibp2p() (libp2pHost host.Host, peers []string, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to setup libp2p node. %w", err)
+		}
+	}()
+	libp2pCfg, err := config.GetLibp2pConfig()
+	if err != nil {
+		return
+	}
+
+	privKey, err := config.GetLibp2pPrivKey()
+	if err != nil {
+		return
+	}
+
+	libp2pHost, err = bac_libp2p.NewHost(libp2pCfg.SwarmPort, privKey, rcmgr.DefaultResourceManager)
+	if err != nil {
+		return
+	}
+
+	peersAddrs, err := GetPeers(libp2pCfg.PeerConnect)
+	if err != nil {
+		return
+	}
+	peers = make([]string, len(peersAddrs))
+	for i, p := range peersAddrs {
+		peers[i] = p.String()
+	}
+	return
+}
+
+func getNodeID() (string, error) {
+	// for now, use libp2p host ID as node ID, regardless of using NATS or Libp2p
+	// TODO: allow users to specify node ID
+	privKey, err := config.GetLibp2pPrivKey()
+	if err != nil {
+		return "", err
+	}
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		return "", err
+	}
+	return peerID.String(), nil
+}
+
+func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+	headerB := strings.Builder{}
+	cmdB := strings.Builder{}
+	if nodeConfig.IsRequesterNode {
+		cmdB.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		cmdB.WriteString(fmt.Sprintf("%s=compute ",
+			configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+
+		cmdB.WriteString(fmt.Sprintf("%s=%s ",
+			configflags.FlagNameForKey(types.NodeNetworkType, configflags.NetworkFlags...),
+			nodeConfig.NetworkConfig.Type))
+
+		switch nodeConfig.NetworkConfig.Type {
+		case models.NetworkTypeNATS:
+			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
+			if advertisedAddr == "" {
+				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
+			}
+
+			headerB.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
+
+			cmdB.WriteString(fmt.Sprintf("%s=%s ",
+				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
+				advertisedAddr,
+			))
+
+		case models.NetworkTypeLibp2p:
+			headerB.WriteString("To connect another node to this one, run the following command in your shell:\n")
+
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodeConfig.NetworkConfig.Libp2pHost.ID().String())
+			if err != nil {
+				return "", err
+			}
+			peerAddress := pickP2pAddress(nodeConfig.NetworkConfig.Libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
+			cmdB.WriteString(fmt.Sprintf("%s=%s ",
+				configflags.FlagNameForKey(types.NodeLibp2pPeerConnect, configflags.Libp2pFlags...),
+				peerAddress,
+			))
+		}
+
+		if ipfsConfig.PrivateInternal {
+			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
+			if err != nil {
+				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
+			}
+
+			cmdB.WriteString(fmt.Sprintf("%s ",
+				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
+
+			cmdB.WriteString(fmt.Sprintf("%s=%s ",
+				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
+				pickP2pAddress(ipfsAddresses).String(),
+			))
+		}
+	} else {
+		if nodeConfig.NetworkConfig.Type == models.NetworkTypeLibp2p {
+			headerB.WriteString("Make sure there's at least one requester node in your network.")
+		}
+	}
+
+	return headerB.String() + cmdB.String(), nil
+}
+
+func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+	// build shell variables to connect to this node
+	envVarBuilder := strings.Builder{}
+	envVarBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config.KeyAsEnvVar(types.NodeClientAPIHost),
+		config.ServerAPIHost(),
+	))
+	envVarBuilder.WriteString(fmt.Sprintf(
+		"export %s=%d\n",
+		config.KeyAsEnvVar(types.NodeClientAPIPort),
+		config.ServerAPIPort(),
+	))
+
+	if nodeConfig.IsRequesterNode {
+		envVarBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config.KeyAsEnvVar(types.NodeNetworkType), nodeConfig.NetworkConfig.Type,
+		))
+
+		switch nodeConfig.NetworkConfig.Type {
+		case models.NetworkTypeNATS:
+			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
+			if advertisedAddr == "" {
+				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
+			}
+
+			envVarBuilder.WriteString(fmt.Sprintf(
+				"export %s=%s\n",
+				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
+				advertisedAddr,
+			))
+		case models.NetworkTypeLibp2p:
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodeConfig.NetworkConfig.Libp2pHost.ID().String())
+			if err != nil {
+				return "", err
+			}
+			peerAddress := pickP2pAddress(nodeConfig.NetworkConfig.Libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
+
+			envVarBuilder.WriteString(fmt.Sprintf(
+				"export %s=%s\n",
+				config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
+				peerAddress,
+			))
+		}
+
+		if ipfsConfig.PrivateInternal {
+			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
+			if err != nil {
+				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
+			}
+
+			envVarBuilder.WriteString(fmt.Sprintf(
+				"export %s=%s\n",
+				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
+				pickP2pAddress(ipfsAddresses).String(),
+			))
+		}
+	}
+
+	return envVarBuilder.String(), nil
 }
 
 // pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
@@ -18,8 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -111,14 +107,6 @@ func getNodeType() (requester, compute bool, err error) {
 		}
 	}
 	return
-}
-
-func setupLibp2pHost(cfg types.Libp2pConfig, privKey libp2p_crypto.PrivKey) (host.Host, error) {
-	libp2pHost, err := bac_libp2p.NewHost(cfg.SwarmPort, privKey, rcmgr.DefaultResourceManager)
-	if err != nil {
-		return nil, fmt.Errorf("error creating libp2p host: %w", err)
-	}
-	return libp2pHost, nil
 }
 
 func getIPFSConfig() (types.IpfsConfig, error) {
