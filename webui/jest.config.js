@@ -1,5 +1,5 @@
 module.exports = {
-  roots: ["<rootDir>/src", "<rootDir>/tests"],
+  roots: ["<rootDir>/src"],
   testMatch: [
     "**/tests/**/*.+(ts|tsx|js)",
     "**/?(*.)+(spec|test).+(ts|tsx|js)",
@@ -10,11 +10,11 @@ module.exports = {
     "^.+\\.(js|jsx)$": "babel-jest",
   },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
-  setupFiles: ['./jest.polyfills.js'],
-  setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
+  setupFiles: ['<rootDir>/jest.polyfills.js'],
+  setupFilesAfterEnv: [],
   testPathIgnorePatterns: [
-    "<rootDir>/tests/mocks",
-    "<rootDir>/tests/setupTests.ts",
+  "<rootDir>/tests/mocks",
+  "<rootDir>/tests/setupTests.ts",
   ],
   moduleNameMapper: {
     "^@pages/(.*)$": "<rootDir>/src/pages/$1",
@@ -25,4 +25,8 @@ module.exports = {
   testEnvironmentOptions: {
     customExportConditions: [''],
   },
+  runner: 'jest-runner',
+  watchPlugins: ['jest-watch-select-projects', 'jest-watch-typeahead/filename', 'jest-watch-typeahead/testname'],
+  watchman: false,
+  maxWorkers: 1,
 }

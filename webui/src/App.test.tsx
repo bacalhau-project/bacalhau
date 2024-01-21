@@ -1,8 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import React from "react"
-import { server as mswServer } from "./mocks/msw/server"
-import App from "../src/App"
-import { rootResponse } from "./mocks/msw/handlers"
+import { server as mswServer } from "../tests/mocks/msw/server"
+import App from "./App"
 
 // Enable request interception.
 beforeAll(() => mswServer.listen())
@@ -19,10 +18,8 @@ describe("Root Page", () => {
     it("should render home page", () => {
       render(<App />)
 
-      console.debug(screen.debug())
-
       // Should redirect to the jobs dashboard, so that's the page title
-      // expect(screen.getByText(/Jobs Dashboard/)).toBeInTheDocument()
+      expect(screen.getByRole("main").innerHTML.includes("Jobs Dashboard"))
     })
   })
 })

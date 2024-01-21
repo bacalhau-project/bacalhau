@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react"
-import { ReactComponent as JobsIcon } from "../../src/images/jobs-icon.svg"
+import { ReactComponent as JobsIcon } from "../jobs-icon.svg"
 
 export const AppTest = () => <JobsIcon />
 

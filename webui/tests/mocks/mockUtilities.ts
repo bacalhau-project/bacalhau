@@ -1,8 +1,11 @@
-export function selectRandomKeyAndValue(allKVs: Record<string, string[]>): { key: string, value: string } {
-  const keys = Object.keys(allKVs);
-  const key: string = keys[Math.floor(Math.random() * keys.length)];
+export function selectRandomKeyAndValue(allKVs: Record<string, string[]>): {
+  key: string
+  value: string
+} {
+  const keys = Object.keys(allKVs)
+  const key: string = keys[Math.floor(Math.random() * keys.length)]
   const value: string = selectRandomElements(allKVs[key], 1) as string
-  return { key, value };
+  return { key, value }
 }
 export function selectRandomElements(
   allTypes: string[],

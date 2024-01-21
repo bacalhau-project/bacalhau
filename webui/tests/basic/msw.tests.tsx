@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import React from "react"
 import { render, screen } from "@testing-library/react"
-import { http } from "msw"
 import { server } from "../mocks/msw/server"
 import { testDataResponse } from "../mocks/msw/handlers"
 
@@ -39,13 +38,9 @@ function TestDataItem({ testData }: TestDataItemProps) {
 
 type TestDataListProps = {
   testDataArray: TestData[]
-  setTestData: React.Dispatch<React.SetStateAction<TestData[]>>
 }
 
-export default function TestDataList({
-  testDataArray,
-  setTestData,
-}: TestDataListProps) {
+export default function TestDataList({ testDataArray }: TestDataListProps) {
   let content
   if (testDataArray.length === 0) {
     content = <p>No TestData</p>

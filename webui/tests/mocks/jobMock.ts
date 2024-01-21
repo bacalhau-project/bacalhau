@@ -38,10 +38,10 @@ const jobStates = [
 
 // Create a set of random job labels as key value pairs
 const jobLabels: { [key: string]: string[] } = {
-  "canary": ["true", "false"],
-  "region": ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1"],
-  "owner": ["bacalhau", "test", "dev", "prod"],
-  "instanceType": ["m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
+  canary: ["true", "false"],
+  region: ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1"],
+  owner: ["bacalhau", "test", "dev", "prod"],
+  instanceType: ["m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
 }
 
 function generateSampleTask(): Task {
@@ -101,7 +101,7 @@ export function generateSampleJob(): Job {
     Tasks: [generateSampleTask()],
     State: {
       StateType: selectRandomElements(jobStates) as string,
-      Message: "State Message"
+      Message: "State Message",
     },
     Version: Math.floor(Math.random() * 10),
     Revision: Math.floor(Math.random() * 10),

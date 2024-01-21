@@ -4,7 +4,7 @@
 // learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom"
 
-import { server as mswServer } from "./mocks/msw/server"
+import { server as mswServer } from "../tests/mocks/msw/server"
 // Establish API mocking before all tests.
 beforeAll(() => mswServer.listen())
 

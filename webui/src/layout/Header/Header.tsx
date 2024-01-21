@@ -1,5 +1,5 @@
 import React from "react"
-import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
+import { SVGImage } from "../../images/svg-image"
 import styles from "./Header.module.scss"
 
 interface HeaderProps {
@@ -10,8 +10,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
   <header className={styles.header} data-collapsed={collapsed}>
     <div className={styles.left}>
-      <BacalhauIcon />
-      <div className={styles.pageTitle}>{pageTitle}</div>
+      <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
+      <div role="main" id="main">
+        <h1 aria-label={pageTitle} className={styles.pageTitle}>
+          {pageTitle}
+        </h1>
+      </div>
       <div className={styles.searchBar}>
         {/* Placeholder for search bar */}
         {/* <input type="text" placeholder="Search..." /> */}
@@ -20,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
     <div className={styles.right}>
       {/* Profile section */}
       <div className={styles.profile}>
-        <BacalhauIcon />
+        <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
       </div>
     </div>
   </header>
