@@ -36,7 +36,7 @@ func DefaultsApplier(defaults JobDefaults) JobTransformer {
 	return JobFn(f)
 }
 
-// RequesterInfo is a transformer that sets the requester ID and public key in the job meta.
+// RequesterInfo is a transformer that sets the requester ID in the job meta.
 func RequesterInfo(requesterNodeID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		job.Meta[models.MetaRequesterID] = requesterNodeID
