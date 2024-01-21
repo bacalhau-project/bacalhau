@@ -100,7 +100,9 @@ func NewNATSTransport(ctx context.Context,
 			},
 		}
 		log.Debug().Msgf("Creating NATS server with options: %+v", serverOps)
-		sm, err = nats_helper.NewServerManager(ctx, serverOps)
+		sm, err = nats_helper.NewServerManager(ctx, nats_helper.ServerManagerParams{
+			Options: serverOps,
+		})
 		if err != nil {
 			return nil, err
 		}

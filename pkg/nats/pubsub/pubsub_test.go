@@ -71,7 +71,9 @@ func (s *PubSubSuite) createNatsServer() *server.Server {
 		Port: port,
 	}
 
-	ns, err := nats_helper.NewServerManager(ctx, &serverOpts)
+	ns, err := nats_helper.NewServerManager(ctx, nats_helper.ServerManagerParams{
+		Options: &serverOpts,
+	})
 	s.Require().NoError(err)
 
 	return ns.Server

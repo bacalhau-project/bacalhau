@@ -13,7 +13,8 @@ import (
 const ReadyForConnectionsTimeout = 5 * time.Second
 
 type ServerManagerParams struct {
-	Options *server.Options
+	Options           *server.Options
+	ConnectionTimeout time.Duration
 }
 
 // ServerManager is a helper struct to manage a NATS server
@@ -22,17 +23,22 @@ type ServerManager struct {
 }
 
 // NewServerManager is a helper function to create a NATS server with a given options
-func NewServerManager(ctx context.Context, opts *server.Options) (*ServerManager, error) {
+func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerManager, error) {
+	opts := params.Options
 	ns, err := server.NewServer(opts)
 	if err != nil {
 		return nil, err
 	}
 	ns.SetLoggerV2(NewZeroLogger(log.Logger, opts.ServerName), opts.Debug, opts.Trace, opts.TraceVerbose)
 	go ns.Start()
-	if !ns.ReadyForConnections(ReadyForConnectionsTimeout) {
+
+	if params.ConnectionTimeout == 0 {
+		params.ConnectionTimeout = ReadyForConnectionsTimeout
+	}
+	if !ns.ReadyForConnections(params.ConnectionTimeout) {
 		return nil, fmt.Errorf("could not start nats server on time")
 	}
-	log.Info().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
+	log.Ctx(ctx).Info().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
 	return &ServerManager{
 		Server: ns,
 	}, err
