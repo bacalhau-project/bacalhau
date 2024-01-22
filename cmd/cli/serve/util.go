@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
@@ -17,8 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -112,18 +109,6 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func setupLibp2pHost(cfg types.Libp2pConfig) (host.Host, error) {
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return nil, err
-	}
-	libp2pHost, err := bac_libp2p.NewHost(cfg.SwarmPort, privKey, rcmgr.DefaultResourceManager)
-	if err != nil {
-		return nil, fmt.Errorf("error creating libp2p host: %w", err)
-	}
-	return libp2pHost, nil
-}
-
 func getIPFSConfig() (types.IpfsConfig, error) {
 	var ipfsConfig types.IpfsConfig
 	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
@@ -187,4 +172,21 @@ func getDisabledFeatures() (node.FeatureConfig, error) {
 
 func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
+}
+
+func getNetworkConfig() (node.NetworkConfig, error) {
+	var networkCfg types.NetworkConfig
+	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+		return node.NetworkConfig{}, err
+	}
+	return node.NetworkConfig{
+		Type:                     networkCfg.Type,
+		Port:                     networkCfg.Port,
+		AdvertisedAddress:        networkCfg.AdvertisedAddress,
+		Orchestrators:            networkCfg.Orchestrators,
+		ClusterName:              networkCfg.Cluster.Name,
+		ClusterPort:              networkCfg.Cluster.Port,
+		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,
+		ClusterPeers:             networkCfg.Cluster.Peers,
+	}, nil
 }

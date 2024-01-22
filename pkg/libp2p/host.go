@@ -78,6 +78,9 @@ func ConnectToPeersContinuouslyWithRetryDuration(
 	peers []multiaddr.Multiaddr,
 	tickDuration time.Duration,
 ) error {
+	if tickDuration == 0 {
+		tickDuration = continuouslyConnectPeersLoopDelay
+	}
 	if err := connectToPeers(ctx, h, peers); err != nil {
 		return err
 	}

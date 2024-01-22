@@ -31,6 +31,14 @@ var Production = types.BacalhauConfig{
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
 		},
+		Network: types.NetworkConfig{
+			Type: models.NetworkTypeLibp2p,
+			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
+		},
 		BootstrapAddresses: []string{
 			"/ip4/35.245.161.250/tcp/1235/p2p/QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws",
 			"/ip4/34.86.254.26/tcp/1235/p2p/QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe",
