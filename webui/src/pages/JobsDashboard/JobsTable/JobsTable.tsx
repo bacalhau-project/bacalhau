@@ -77,7 +77,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
         </thead>
         <tbody>
           {parsedData.map((jobData, index) => (
-            <tr key={index}>
+            <tr key={jobData.longId}>
               {settings.showJobName && (
                 <td className={styles.name}>{jobData.name}</td>
               )}
@@ -99,7 +99,8 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               {settings.showLabel && (
                 <td className={styles.label}>
                   {jobData.label.map((label) => (
-                    <Label text={label} color="grey" />
+                    // Render label key with job ID to avoid duplicate keys
+                    <Label text={label} color="grey" key={`label-${jobData.longId}-${label}`}/>
                   ))}
                 </td>
               )}
@@ -108,6 +109,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
                   <Label
                     text={jobData.status}
                     color={labelColorMap[jobData.status.toLowerCase()]}
+                    key="status-${jobData.longId}"
                   />
                 </td>
               )}

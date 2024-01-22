@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import React from "react"
 import { render, screen } from "@testing-library/react"
-import { server } from "../mocks/msw/server"
-import { testDataResponse } from "../mocks/msw/handlers"
+import { server } from "../server"
+import { testDataResponse } from "../handlers"
 
 // This is a simple file to test to make sure the configuration of msw is working
 // properly. All components, types, and methods are self contained here.
@@ -83,7 +83,7 @@ function MSWTestComponent(): JSX.Element {
     getTestData()
   }, [])
 
-  return <TestDataList testDataArray={testData} setTestData={setTestData} />
+  return <TestDataList testDataArray={testData} />
 }
 
 describe("Basic tests of mocked API", () => {

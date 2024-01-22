@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { generateSampleJob } from "../../../tests/mocks/jobMock"
-import { jobsResponse, setJobs } from "../../../tests/mocks/msw/handlers"
-import { server as mswServer } from "../../../tests/mocks/msw/server"
+import { jobsResponse, setJobs } from "../../../tests/msw/handlers"
+import { server as mswServer } from "../../../tests/msw/server"
 import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../bacalhau"
 
@@ -22,7 +22,7 @@ describe("Basic fetch of mocked API", () => {
   it("should GET /orchestrator/jobs with no data", async () => {
     mswServer.use(jobsResponse)
     const jobs = await bacalhauAPI.listJobs()
-    expect(jobs).toHaveLength(0)
+    expect(jobs.Jobs).toHaveLength(0)
   })
   it("should GET /orchestrator/jobs with two jobs", async () => {
     const mockJobList: Job[] = [generateSampleJob(), generateSampleJob()]
@@ -31,7 +31,7 @@ describe("Basic fetch of mocked API", () => {
     mswServer.use(jobsResponse)
     mswServer.listHandlers() // on printing handlers, I see the sampleUrl printed
     const returnJobs = await bacalhauAPI.listJobs(["returnData"])
-    expect(returnJobs).toHaveLength(2)
-    expect(returnJobs).toEqual(mockJobList)
+    expect(returnJobs.Jobs).toHaveLength(2)
+    expect(returnJobs.Jobs).toEqual(mockJobList)
   })
 })

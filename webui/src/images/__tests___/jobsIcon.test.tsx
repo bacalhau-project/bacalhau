@@ -6,7 +6,5 @@ export const AppTest = () => <JobsIcon />
 test("renders JobsIcon", () => {
   render(<AppTest />)
 
-  screen.debug()
-
   expect(screen.findAllByText("JobsIcon")).toBeTruthy()
 })

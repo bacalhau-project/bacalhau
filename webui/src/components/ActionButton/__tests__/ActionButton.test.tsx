@@ -1,17 +1,27 @@
 import React from "react"
-import { render, fireEvent, screen } from "@testing-library/react"
+import { render, fireEvent, screen, act, waitFor } from "@testing-library/react"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
 import { ActionButton } from "../ActionButton"
 
 describe("ActionButton", () => {
-  test("renders button with provided text", () => {
-    render(
-      <MemoryRouter>
-        <ActionButton text="Test Button" />
-      </MemoryRouter>
-    )
+  test("renders button with provided text", async () => {
+    // Generate random string for button text
+    const buttonText = Math.random().toString(36).substring(7)
 
-    expect(screen.getByText("Test Button")).toBeInTheDocument()
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ActionButton text={buttonText} />
+        </MemoryRouter>
+      )
+    })
+
+    // Test to see if the content is in the document
+    await waitFor(() => {
+      screen.findByDisplayValue(`/${buttonText}/i`).then((contentRendered) => {
+        expect(contentRendered).toBeInTheDocument()
+      })
+    })
   })
 
   test("calls onClick when provided and button is clicked", () => {

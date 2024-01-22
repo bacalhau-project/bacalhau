@@ -1,10 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
-import { Job, JobsResponse } from "../../../src/helpers/jobInterfaces";
-import { TestData } from "../../basic/msw.tests";
+import { Job, JobsResponse } from "../../src/helpers/jobInterfaces";
+import { TestData } from "./__tests__/msw.test";
 
-const BASE_URL = "https://localhost:1234/"
+const BASE_URL = "https://localhost:1234"
 
 // This does not have a route in the production app - it's for testing that tests are working
 export const testDataResponse = http.get('/testData', ({ request }) => {

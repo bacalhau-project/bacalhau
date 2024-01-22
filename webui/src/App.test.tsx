@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, act } from "@testing-library/react"
 import React from "react"
-import { server as mswServer } from "../tests/mocks/msw/server"
+import { server as mswServer } from "../tests/msw/server"
 import App from "./App"
 
 // Enable request interception.
@@ -15,8 +15,11 @@ afterAll(() => mswServer.close())
 
 describe("Root Page", () => {
   describe("Static tests", () => {
-    it("should render home page", () => {
-      render(<App />)
+    it("should render home page", async () => {
+      
+      await act(async () => {
+        render(<App />)
+      })
 
       // Should redirect to the jobs dashboard, so that's the page title
       expect(screen.getByRole("main").innerHTML.includes("Jobs Dashboard"))
