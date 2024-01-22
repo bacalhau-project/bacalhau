@@ -8,7 +8,7 @@ permissions:
 jobs:
   trigger-circle-ci:
     # if: github.event.label.name != 'do-not-merge' || github.event.label.name != 'wip'
-    if: github.event.label.name == 'circle-ci'
+    if: ${{ github.event.pull_request.labels.*.name == 'circle-ci' }}
     runs-on: ubuntu-latest
     name: Pull Request Triggered CircleCI
     steps:
