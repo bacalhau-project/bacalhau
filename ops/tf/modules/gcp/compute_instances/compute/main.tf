@@ -17,12 +17,22 @@ resource "google_compute_instance" "compute" {
     }
   }
 
+  scheduling {
+  on_host_maintenance = "TERMINATE"
+  automatic_restart   = false
+  }
+
   network_interface {
     network = var.network
     subnetwork = var.subnetwork
     access_config {
       // Ephemeral public IP will be assigned
     }
+  }
+
+  guest_accelerator {
+  type  = var.accelerator
+  count = var.accelerator_count
   }
 }
 

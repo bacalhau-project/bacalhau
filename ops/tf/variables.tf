@@ -13,9 +13,23 @@ variable "gcp_zone" {
   type        = string
 }
 
-variable "gcp_boot_image" {
-  description = "Boot image for GCP instances"
+variable "gcp_boot_image_requester" {
+  description = "Boot image for GCP requester instances"
   type        = string
+}
+
+variable "gcp_boot_image_compute" {
+  description = "Boot image for GCP Compute instances"
+  type        = string
+}
+
+variable "accelerator" {
+  description = "Accelerator for GCP Compute instances"
+  type        = string
+}
+variable "accelerator_count" {
+  description = "Accelerator Count for GCP Compute instances, 0 Implies no accelerator"
+  type        = number
 }
 
 variable "requester_machine_type" {
