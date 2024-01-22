@@ -21,7 +21,6 @@ func New(options Options, optFns ...OptionFn) *Client {
 	}
 
 	resolveHTTPClient(&options)
-
 	return &Client{
 		httpClient: options.HTTPClient,
 		options:    options,
@@ -147,15 +146,6 @@ func (c *Client) toHTTP(method, endpoint string, r *apimodels.HTTPRequest) (*htt
 		return nil, err
 	}
 
-	// Optionally configure HTTP basic authentication
-	if u.User != nil {
-		username := u.User.Username()
-		password, _ := u.User.Password()
-		req.SetBasicAuth(username, password)
-	} else if c.options.HTTPAuth != nil {
-		req.SetBasicAuth(c.options.HTTPAuth.Username, c.options.HTTPAuth.Password)
-	}
-
 	// build headers
 	req.Header = r.Header
 	req.Header.Add("Accept-Encoding", "gzip")
@@ -166,6 +156,12 @@ func (c *Client) toHTTP(method, endpoint string, r *apimodels.HTTPRequest) (*htt
 		req.Header.Set(apimodels.HTTPHeaderAppID, c.options.AppID)
 		req.Header.Add("User-Agent", c.options.AppID)
 	}
+
+	// Optionally configure HTTP authorization
+	if c.options.HTTPAuth != nil {
+		req.Header.Set("Authorization", c.options.HTTPAuth.String())
+	}
+
 	for key, values := range c.options.Headers {
 		for _, value := range values {
 			req.Header.Add(key, value)

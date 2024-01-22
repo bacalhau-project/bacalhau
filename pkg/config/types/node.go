@@ -32,8 +32,6 @@ type NodeConfig struct {
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	Type []string `yaml:"Type"`
-	// Deprecated: TODO(forrest) remove.
-	EstuaryAPIKey string `yaml:"EstuaryAPIKey"`
 	// Local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed
@@ -45,6 +43,8 @@ type NodeConfig struct {
 	WebUI WebUIConfig `yaml:"WebUI"`
 
 	Network NetworkConfig `yaml:"Network"`
+
+	StrictVersionMatch bool `yaml:"StrictVersionMatch"`
 }
 
 type APIConfig struct {
@@ -52,8 +52,28 @@ type APIConfig struct {
 	Host string `yaml:"Host"`
 	// Port is the port that an environment serves the public API on.
 	Port int `yaml:"Port"`
-	// TLS returns information about how TLS is configured for the public server
+
+	// ClientTLS specifies tls options for the client connecting to the
+	// API.
+	ClientTLS ClientTLSConfig `yaml:"ClientTLS"`
+
+	// TLS returns information about how TLS is configured for the public server.
+	// This is only used in APIConfig for NodeConfig.ServerAPI
 	TLS TLSConfiguration `yaml:"TLS"`
+}
+
+type ClientTLSConfig struct {
+	// Used for NodeConfig.ClientAPI, instructs the client to connect over
+	// TLS.  Auto enabled if Insecure or CACert are specified.
+	UseTLS bool `yaml:"UseTLS"`
+
+	// Used for NodeConfig.ClientAPI, specifies the location of a ca certificate
+	// file (primarily for self-signed server certs). Will use HTTPS for requests.
+	CACert string `yaml:"CACert"`
+
+	// Used for NodeConfig.ClientAPI, and when true instructs the client to use
+	// HTTPS, but not to attempt to verify the certificate.
+	Insecure bool `yaml:"Insecure"`
 }
 
 type WebUIConfig struct {

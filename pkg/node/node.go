@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
@@ -12,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -72,6 +74,7 @@ type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
+	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
 func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
@@ -79,6 +82,7 @@ func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewPluginExecutorFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -87,6 +91,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -148,19 +153,33 @@ func NewNode(
 		return nil, err
 	}
 
+	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
 	// timeoutHandler doesn't implement http.Hijacker, so we need to skip it for websocket endpoints
 	config.APIServerConfig.SkippedTimeoutPaths = append(config.APIServerConfig.SkippedTimeoutPaths, []string{
 		"/api/v1/requester/websocket/events",
 		"/api/v1/requester/logs",
 	}...)
 
+	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
-		Router:  echo.New(),
-		Address: config.HostAddress,
-		Port:    config.APIPort,
-		HostID:  config.NodeID,
-		Config:  config.APIServerConfig,
+		Router:     echo.New(),
+		Address:    config.HostAddress,
+		Port:       config.APIPort,
+		HostID:     config.NodeID,
+		Config:     config.APIServerConfig,
+		Authorizer: authz.AlwaysAllow,
+		Headers: map[string]string{
+			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		},
 	}
 
 	// Only allow autocert for requester nodes
@@ -224,6 +243,7 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			storageProviders,
+			authenticators,
 			nodeInfoStore,
 			config.FsRepo,
 			transportLayer.ComputeProxy(),
@@ -370,6 +390,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	if injector.AuthenticatorsFactory == nil {
+		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
 	}
 	return injector
 }

@@ -89,7 +89,7 @@ def __ensure_config_dir() -> Path:
         log.debug("BACALHAU_DIR not set, using default of ~/.bacalhau")
         home_path = Path.home()
         config_dir = home_path.joinpath(".bacalhau")
-        config_dir.mkdir(mode=700, parents=True, exist_ok=True)
+        config_dir.mkdir(mode=stat.S_IRWXU, parents=True, exist_ok=True)
     else:
         os.stat(config_dir_str)
         config_dir = Path(config_dir_str)

@@ -262,15 +262,11 @@ func Setup(
 			NetworkConfig:             clusterConfig,
 		}
 
-		if isRequesterNode {
-			// If we are setting up the requester node, then we should set the TLS
-			// settings needed for AutoCert.
-			nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
-			nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
-
-			cert, key := config.GetRequesterCertificateSettings()
-			nodeConfig.RequesterTLSCertificateFile = cert
-			nodeConfig.RequesterTLSKeyFile = key
+		if isRequesterNode && stackConfig.TLS.Certificate != "" && stackConfig.TLS.Key != "" {
+			// Does not make a lot of sense to use autotls with devstack, but we might want
+			// to use a self-signed certificate for testing purposes.
+			nodeConfig.RequesterTLSCertificateFile = stackConfig.TLS.Certificate
+			nodeConfig.RequesterTLSKeyFile = stackConfig.TLS.Key
 		}
 
 		// allow overriding configs of some nodes

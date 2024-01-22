@@ -8,9 +8,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: codespell-project/actions-codespell@v2
-        with:
-          path: docs
+      - name: Codespell - Docs
+        run: |
+          npm install -g cspell@latest
+          make spellcheck-docs
 
   build:
     runs-on: ubuntu-latest
@@ -39,8 +40,8 @@ jobs:
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
 
     # Deploy to the environment
     environment:

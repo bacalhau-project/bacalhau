@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -56,8 +57,8 @@ func NewCmd() *cobra.Command {
 		Long:     describeLong,
 		Example:  describeExample,
 		Args:     cobra.ExactArgs(1),
-		PreRunE:  util.ClientPreRunHooks,
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.RemoteCmdPreRunHooks,
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
 			if err := describe(cmd, cmdArgs, OD); err != nil {
 				util.Fatal(cmd, err, 1)

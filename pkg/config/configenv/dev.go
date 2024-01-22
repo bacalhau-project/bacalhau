@@ -48,7 +48,6 @@ var Development = types.BacalhauConfig{
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
-		EstuaryAPIKey:             "",
 		AllowListedLocalPaths:     []string{},
 		Labels:                    map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
@@ -81,6 +80,7 @@ var Development = types.BacalhauConfig{
 			Enabled: false,
 			Port:    8483,
 		},
+		StrictVersionMatch: false,
 	},
 }
 
