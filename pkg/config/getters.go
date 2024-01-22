@@ -41,6 +41,14 @@ func ClientTLSConfig() types.ClientTLSConfig {
 	return cfg
 }
 
+func ClientAPIBase() string {
+	scheme := "http"
+	if ClientTLSConfig().UseTLS {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s:%d", scheme, ClientAPIHost(), ClientAPIPort())
+}
+
 func ServerAPIPort() uint16 {
 	return uint16(viper.GetInt(types.NodeServerAPIPort))
 }

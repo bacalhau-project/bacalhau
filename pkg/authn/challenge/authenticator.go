@@ -6,13 +6,12 @@ import (
 	"embed"
 	"encoding"
 	"encoding/json"
-	"errors"
-	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 )
 
@@ -59,11 +58,11 @@ func NewAuthenticator(p *policy.Policy, getPhrase encoding.BinaryMarshaler, key 
 	}
 }
 
-func (authenticator challengeAuthenticator) Authenticate(req *http.Request) (authn.Authentication, error) {
+func (authenticator challengeAuthenticator) Authenticate(ctx context.Context, req []byte) (authn.Authentication, error) {
 	var userInput response
-	err := json.NewDecoder(req.Body).Decode(&userInput)
+	err := json.Unmarshal(req, &userInput)
 	if err != nil {
-		return authn.Error(err)
+		return authn.Error(errors.Wrap(err, "invalid authentication data"))
 	}
 
 	inputPhrase, err := authenticator.getPhrase.MarshalBinary()
@@ -88,7 +87,7 @@ func (authenticator challengeAuthenticator) Authenticate(req *http.Request) (aut
 		ClientID:   system.ConvertToClientID(userKey),
 	}
 
-	token, err := authenticator.challenge(req.Context(), data)
+	token, err := authenticator.challenge(ctx, data)
 	if errors.Is(err, policy.ErrNoResult) {
 		return authn.Failed("signature verified but user credentials rejected"), nil
 	} else if err != nil {
@@ -103,11 +102,14 @@ func (challengeAuthenticator) IsInstalled(context.Context) (bool, error) {
 }
 
 func (authenticator challengeAuthenticator) Requirement() authn.Requirement {
+	req := request{
+		InputPhrase: lo.Must(authenticator.getPhrase.MarshalBinary()),
+	}
+
+	params := json.RawMessage(lo.Must(json.Marshal(req)))
 	return authn.Requirement{
-		Type: authn.MethodTypeChallenge,
-		Params: request{
-			InputPhrase: lo.Must(authenticator.getPhrase.MarshalBinary()),
-		},
+		Type:   authn.MethodTypeChallenge,
+		Params: &params,
 	}
 }
 
