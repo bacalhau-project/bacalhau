@@ -13,7 +13,7 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -27,16 +27,16 @@
       "node",
       "jest",
       "react",
-      "react-dom",
-    ],
+      "react-dom"
+    ]
   },
   "include": [
-    "src",
-    "src/**/*.tsx",
-    "src/**/*.ts",
-    "babel.config.js",
-    "tests/**/*.ts",
-    "tests/**/*.tsx",
-  ],
-  "buildOptions": {}
+    "./src",
+    "./src/**/*.tsx",
+    "./src/**/*.ts",
+    "./babel.config.js",
+    "./tests/**/*.ts",
+    "./tests/**/*.tsx",
+    "tests/mocks/svgMock.js"
+  ]
 }

@@ -118,11 +118,13 @@ function generateSampleTask(): Task {
 
 export function generateSampleJob(): Job {
   const namespace = randomBytes(64).toString("hex")
+  const jobState = selectRandomElements(jobStates)[0]
+  const jobType = selectRandomElements(jobTypes)[0]
   return {
     ID: uuidv4(),
     Name: uuidv4(),
     Namespace: namespace,
-    Type: selectRandomJobType(),
+    Type: jobType,
     Priority: Math.floor(Math.random() * 10),
     Count: Math.floor(Math.random() * 10),
     Constraints: [createRandomConstraint()],
@@ -138,7 +140,7 @@ export function generateSampleJob(): Job {
     Labels: { ...selectRandomLabels(jobLabels) },
     Tasks: [generateSampleTask()],
     State: {
-      StateType: selectRandomElements(jobStates),
+      StateType: jobState,
     },
     Version: Math.floor(Math.random() * 10),
     Revision: Math.floor(Math.random() * 10),

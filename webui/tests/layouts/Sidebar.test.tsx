@@ -1,6 +1,6 @@
 import React from "react"
-import { render } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
+import { render } from "@testing-library/react"
 import { Sidebar } from "../../src/layout/Sidebar/Sidebar"
 
 const toggleSidebar = () => {
@@ -10,11 +10,13 @@ const toggleSidebar = () => {
 }
 
 describe("Sidebar", () => {
-  test("renders", () => {
+  it("basic render", () => {
     render(
       <MemoryRouter>
         <Sidebar isCollapsed={false} toggleSidebar={toggleSidebar} />
       </MemoryRouter>
     )
+
+    expect(document.body.classList.contains("sidebar-collapsed")).toBe(false)
   })
 })

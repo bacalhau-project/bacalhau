@@ -5,7 +5,7 @@ export function selectRandomLabels(jobLabels: { [key: string]: string[] }): {
   const labels: { [key: string]: string[] } = {}
   const numLabels = Math.floor(Math.random() * 4)
   for (let i = 0; i < numLabels; i += 1) {
-    const label = selectRandomElements(Object.keys(jobLabels)) as string
+    const label = selectRandomElements(Object.keys(jobLabels))[0]
     labels[label] = selectRandomElements(jobLabels[label]) as string[]
   }
   return labels
@@ -14,9 +14,9 @@ export function selectRandomLabels(jobLabels: { [key: string]: string[] }): {
 export function selectRandomElements(
   allTypes: string[],
   num = 1
-): string | string[] {
+): string[] {
   if (num === 1) {
-    return allTypes[Math.floor(Math.random() * allTypes.length)]
+    return [allTypes[Math.floor(Math.random() * allTypes.length)]]
   }
   // Create a variable selections that is strongly typed as an array of strings
   const selections: string[] = []

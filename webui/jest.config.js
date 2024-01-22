@@ -7,11 +7,7 @@ module.exports = {
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest",
     "\\.(css|scss)$": "jest-css-modules-transform",
-    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
-    "^.+\\.svg$": "<rootDir>/tests/mocks/svgMock.ts",
-  },
-  moduleNameMapper: {
-    "\\.svg$": "<rootDir>/tests/mocks/svgMock.ts",
+    "^.+\\.(js|jsx)$": "babel-jest",
   },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
   setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
@@ -22,6 +18,7 @@ module.exports = {
   moduleNameMapper: {
     "^@pages/(.*)$": "<rootDir>/src/pages/$1",
     "^@components/(.*)$": "<rootDir>/src/components/$1",
+    '\\.svg$': '<rootDir>/tests/mocks/svgMock.js',
   },
   testEnvironment: "jsdom",
 }
