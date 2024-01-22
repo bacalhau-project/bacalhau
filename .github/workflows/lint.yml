@@ -1,0 +1,30 @@
+name: Lints
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Setup nodejs and build the webui so that go vet can 
+    # compile the go code that embeds the webui.
+    - name: Setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 21
+    - run: cd webui && npm install
+    - run: cd webui && npm run build
+
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '1.20.6'
+    - run: go mod tidy
+    - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+    - uses: pre-commit/action@v3.0.0
+
