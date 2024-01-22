@@ -11,5 +11,7 @@ Node:
     JobSelection:
       Locality: anywhere
       AcceptNetworkedJobs: ${bacalhau_accept_networked_jobs}
+  AllowListedLocalPaths:
+    - /local_data
   UpdateConfig:
     SkipChecks: true
