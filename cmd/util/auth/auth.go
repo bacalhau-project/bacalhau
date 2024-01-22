@@ -19,11 +19,12 @@ import (
 
 type responder = func(request *json.RawMessage) (response []byte, err error)
 
-var supportedMethods map[authn.MethodType]responder = map[authn.MethodType]responder{
-	authn.MethodTypeChallenge: challenge.Respond,
-}
-
 func RunAuthenticationFlow(cmd *cobra.Command) (string, error) {
+	supportedMethods := map[authn.MethodType]responder{
+		authn.MethodTypeChallenge: challenge.Respond,
+		authn.MethodTypeAsk:       askResponder(cmd),
+	}
+
 	client := util.GetAPIClientV2(cmd.Context())
 	methods, err := client.Auth().Methods(&apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
