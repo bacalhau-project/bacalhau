@@ -166,6 +166,8 @@ func SetDefaults(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.SetDefault(UpdateSkipChecks, cfg.Update.SkipChecks)
 	p.Viper.SetDefault(UpdateCheckStatePath, cfg.Update.CheckStatePath)
 	p.Viper.SetDefault(UpdateCheckFrequency, cfg.Update.CheckFrequency.AsTimeDuration())
+	p.Viper.SetDefault(Auth, cfg.Auth)
+	p.Viper.SetDefault(AuthTokensPath, cfg.Auth.TokensPath)
 
 }
 
@@ -319,4 +321,6 @@ func Set(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.Set(UpdateSkipChecks, cfg.Update.SkipChecks)
 	p.Viper.Set(UpdateCheckStatePath, cfg.Update.CheckStatePath)
 	p.Viper.Set(UpdateCheckFrequency, cfg.Update.CheckFrequency.AsTimeDuration())
+	p.Viper.Set(Auth, cfg.Auth)
+	p.Viper.Set(AuthTokensPath, cfg.Auth.TokensPath)
 }
