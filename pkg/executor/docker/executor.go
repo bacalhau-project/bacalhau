@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
@@ -20,7 +22,6 @@ import (
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -36,6 +37,9 @@ const (
 	labelExecutorName = "bacalhau-executor"
 	labelJobName      = "bacalhau-jobID"
 	labelExecutionID  = "bacalhau-executionID"
+
+	outputStreamCheckTickTime = 100 * time.Millisecond
+	outputStreamCheckTimeout  = 5 * time.Second
 )
 
 type Executor struct {
@@ -101,8 +105,7 @@ func (e *Executor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
-	// TODO(forrest): should this just return true always?
-	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
+	return bidstrategy.NewBidResponse(true, "not place additional requirements on Docker jobs"), nil
 }
 
 // Start initiates an execution based on the provided RunCommandRequest.
@@ -112,38 +115,51 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		Str("jobID", request.JobID).
 		Msg("starting execution")
 
-	if handler, found := e.handlers.Get(request.ExecutionID); found {
-		if handler.active() {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
-		} else {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
-		}
-	}
+	// It's possible that this is being called due to a restart. Whilst we check the handlers to see
+	// if we already have a running execution, this map will be empty on a compute node restart. As
+	// a result we need to explicitly ask docker if there is a running container with the relevant
+	// bacalhau execution label _before_ we do anything else.  If we are able to find one then we
+	// will use that container in the executionHandler that we create.
+	containerID, err := e.FindRunningContainer(ctx, request.ExecutionID)
 
-	jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
-		ExecutionID:   request.ExecutionID,
-		JobID:         request.JobID,
-		EngineSpec:    request.EngineParams,
-		NetworkConfig: request.Network,
-		Resources:     request.Resources,
-		Inputs:        request.Inputs,
-		Outputs:       request.Outputs,
-		ResultsDir:    request.ResultsDir,
-	})
 	if err != nil {
-		return fmt.Errorf("failed to create docker job container: %w", err)
+		// Unable to find a running container for this execution, we will instead check for a handler, and
+		// failing that will create a new container.
+		if handler, found := e.handlers.Get(request.ExecutionID); found {
+			if handler.active() {
+				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
+			} else {
+				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
+			}
+		}
+
+		jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
+			ExecutionID:   request.ExecutionID,
+			JobID:         request.JobID,
+			EngineSpec:    request.EngineParams,
+			NetworkConfig: request.Network,
+			Resources:     request.Resources,
+			Inputs:        request.Inputs,
+			Outputs:       request.Outputs,
+			ResultsDir:    request.ResultsDir,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create docker job container: %w", err)
+		}
+
+		containerID = jobContainer.ID
 	}
 
 	handler := &executionHandler{
 		client: e.client,
 		logger: log.With().
-			Str("container", jobContainer.ID).
+			Str("container", containerID).
 			Str("execution", request.ExecutionID).
 			Str("job", request.JobID).
 			Logger(),
 		ID:          e.ID,
 		executionID: request.ExecutionID,
-		containerID: jobContainer.ID,
+		containerID: containerID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
 		keepStack:   config.ShouldKeepStack(),
@@ -223,11 +239,44 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	handler, found := e.handlers.Get(executionID)
-	if !found {
-		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
+	// It's possible we've recorded the execution as running, but have not yet added the handler to
+	// the handler map because we're still waiting for the container to start. We will try and wait
+	// for a few seconds to see if the handler is added to the map.
+	chHandler := make(chan *executionHandler)
+	chExit := make(chan struct{})
+
+	go func(ch chan *executionHandler, exit chan struct{}) {
+		// Check the handlers every 100ms and send it down the
+		// channel if we find it. If we don't find it after 5 seconds
+		// then we'll be told on the exit channel
+		ticker := time.NewTicker(outputStreamCheckTickTime)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				h, found := e.handlers.Get(executionID)
+				if found {
+					ch <- h
+					return
+				}
+			case <-exit:
+				ticker.Stop()
+				return
+			}
+		}
+	}(chHandler, chExit)
+
+	// Either we'll find a handler for the execution (which might have finished starting)
+	// or we'll timeout and return an error.
+	select {
+	case handler := <-chHandler:
+		return handler.outputStream(ctx, withHistory, follow)
+	case <-time.After(outputStreamCheckTimeout):
+		chExit <- struct{}{}
 	}
-	return handler.outputStream(ctx, withHistory, found)
+
+	return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
 }
 
 // Run initiates and waits for the completion of an execution in one call.
@@ -292,16 +341,11 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 
 	// Create GPU request if the job requests it
 	// TODO we need to use the resource units requested by for the GPU.
-	var deviceRequests []container.DeviceRequest
-	if params.Resources.GPU > 0 {
-		deviceRequests = append(deviceRequests,
-			container.DeviceRequest{
-				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
-				Capabilities: [][]string{{"gpu"}},
-			},
-		)
-		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
+	deviceRequests, deviceMappings, err := configureDevices(ctx, params.Resources)
+	if err != nil {
+		return container.CreateResponse{}, fmt.Errorf("creating container devices: %w", err)
 	}
+	log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
 
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
@@ -309,6 +353,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 			Memory:         int64(params.Resources.Memory),
 			NanoCPUs:       int64(params.Resources.CPU * NanoCPUCoefficient),
 			DeviceRequests: deviceRequests,
+			Devices:        deviceMappings,
 		},
 	}
 
@@ -339,6 +384,55 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 		return container.CreateResponse{}, fmt.Errorf("creating container: %w", err)
 	}
 	return jobContainer, nil
+}
+
+func configureDevices(ctx context.Context, resources *models.Resources) ([]container.DeviceRequest, []container.DeviceMapping, error) {
+	requests := []container.DeviceRequest{}
+	mappings := []container.DeviceMapping{}
+	vendorGroups := lo.GroupBy(resources.GPUs, func(gpu models.GPU) models.GPUVendor { return gpu.Vendor })
+
+	for vendor, gpus := range vendorGroups {
+		switch vendor {
+		case models.GPUVendorNvidia:
+			requests = append(requests, container.DeviceRequest{
+				DeviceIDs:    lo.Map(gpus, func(gpu models.GPU, _ int) string { return fmt.Sprint(gpu.Index) }),
+				Capabilities: [][]string{{"gpu"}},
+			})
+		case models.GPUVendorAMDATI:
+			// https://docs.amd.com/en/latest/deploy/docker.html
+			mappings = append(mappings, container.DeviceMapping{
+				PathOnHost:        "/dev/kfd",
+				PathInContainer:   "/dev/kfd",
+				CgroupPermissions: "rwm",
+			})
+			fallthrough
+		case models.GPUVendorIntel:
+			// https://github.com/openvinotoolkit/docker_ci/blob/master/docs/accelerators.md
+			paths := lo.FlatMap[models.GPU, string](gpus, func(gpu models.GPU, _ int) []string {
+				return []string{
+					filepath.Join("/dev/dri/by-path/", fmt.Sprintf("pci-%s-card", gpu.PCIAddress)),
+					filepath.Join("/dev/dri/by-path/", fmt.Sprintf("pci-%s-render", gpu.PCIAddress)),
+				}
+			})
+
+			for _, path := range paths {
+				// We need to use the PCI address of the GPU to look up the correct devices to expose
+				absPath, err := filepath.EvalSymlinks(path)
+				if err != nil {
+					return nil, nil, errors.Wrapf(err, "could not find attached device for GPU at %q", path)
+				}
+
+				mappings = append(mappings, container.DeviceMapping{
+					PathOnHost:        absPath,
+					PathInContainer:   absPath,
+					CgroupPermissions: "rwm",
+				})
+			}
+		default:
+			return nil, nil, fmt.Errorf("job requires GPU from unsupported vendor %q", vendor)
+		}
+	}
+	return requests, mappings, nil
 }
 
 func makeContainerMounts(
@@ -377,7 +471,6 @@ func makeContainerMounts(
 		srcd := filepath.Join(resultsDir, output.Name)
 		if err := os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
-
 		}
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
@@ -424,3 +517,10 @@ func labelExecutionValue(executorID string, executionID string) string {
 
 // Compile-time interface check:
 var _ executor.Executor = (*Executor)(nil)
+
+// FindRunningContainer, not part of the Executor interface, is a utility function that
+// helps locate a container durin a restart check.
+func (e *Executor) FindRunningContainer(ctx context.Context, executionID string) (string, error) {
+	labelValue := labelExecutionValue(e.ID, executionID)
+	return e.client.FindContainer(ctx, labelExecutionID, labelValue)
+}

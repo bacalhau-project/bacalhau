@@ -48,6 +48,10 @@ func GetClientID() (string, error) {
 	return loadClientID()
 }
 
+func GetInstallationUserID() (string, error) {
+	return loadInstallationUserIDKey()
+}
+
 // loadClientID loads a hash identifying a user based on their ID key.
 func loadClientID() (string, error) {
 	key, err := loadUserIDKey()
@@ -76,6 +80,14 @@ func encodePublicKey(key *rsa.PublicKey) string {
 	return base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(key))
 }
 
+func loadInstallationUserIDKey() (string, error) {
+	key := viper.GetString(types.UserInstallationID)
+	if key == "" {
+		return "", fmt.Errorf("config error: user-installation-id-key not set")
+	}
+	return key, nil
+}
+
 // loadUserIDKey loads the user ID key from whatever source is configured.
 func loadUserIDKey() (*rsa.PrivateKey, error) {
 	keyFile := viper.GetString(types.UserKeyPath)
@@ -99,7 +111,7 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode user ID key file %q", keyFile)
 	}
 
-	// TODO: Add support for both rsa _and_ ecdsa private keys, see cryto.PrivateKey.
+	// TODO: #3159 Add support for both rsa _and_ ecdsa private keys, see crypto.PrivateKey.
 	//       Since we have access to the private key we can hack it by signing a
 	//       message twice and comparing them, rather than verifying directly.
 	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)

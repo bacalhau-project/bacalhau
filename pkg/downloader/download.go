@@ -6,19 +6,19 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // specialFiles - i.e. anything that is not a volume
 // the boolean value is whether we should append to the global log
 var specialFiles = map[string]bool{
-	model.DownloadFilenameStdout:   true,
-	model.DownloadFilenameStderr:   true,
-	model.DownloadFilenameExitCode: true,
+	DownloadFilenameStdout:   true,
+	DownloadFilenameStderr:   true,
+	DownloadFilenameExitCode: true,
 }
 
 // DownloadResults downloads published results from a storage source and saves
@@ -29,7 +29,7 @@ var specialFiles = map[string]bool{
 // the future if we don't expose merging results from multiple jobs.
 //
 // * make a temp dir
-// * download all cids into temp dir
+// * download all results into temp dir
 // * ensure top level output dir exists
 // * iterate over each published result
 // * copy stdout, stderr, exitCode
@@ -39,12 +39,12 @@ var specialFiles = map[string]bool{
 // * iterate over each result and merge files in output folder to results dir
 func DownloadResults( //nolint:funlen,gocyclo
 	ctx context.Context,
-	publishedResults []model.PublishedResult,
+	publishedResults []*models.SpecConfig,
 	downloadProvider DownloaderProvider,
-	settings *model.DownloaderSettings,
+	settings *DownloaderSettings,
 ) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadResults")
-	defer span.End()
+	ctx, cancelFunc := context.WithTimeout(ctx, settings.Timeout)
+	defer cancelFunc()
 
 	if len(publishedResults) == 0 {
 		log.Ctx(ctx).Debug().Msg("No results to download")
@@ -64,139 +64,59 @@ func DownloadResults( //nolint:funlen,gocyclo
 		return fmt.Errorf("output dir does not exist: %s", resultsOutputDir)
 	}
 
-	// cidParentDir is the target folder for downloads before they are moved into
+	// rawParentDir is the target folder for downloads before they are moved into
 	// the end folder at resultsOutputDir. This is typically a directory inside the
 	// target directory.
-	cidParentDir := filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName)
-	err = os.MkdirAll(cidParentDir, model.DownloadFolderPerm)
+	rawParentDir := filepath.Join(resultsOutputDir, DownloadRawFolderName)
+	err = os.MkdirAll(rawParentDir, DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
 
 	log.Ctx(ctx).Info().Msgf("Downloading %d results to: %s.", len(publishedResults), resultsOutputDir)
-
-	// keep track of which cids we have downloaded to avoid
-	// downloading the same cid multiple times
-	downloadedCids := map[string]string{}
-	var downloader Downloader
-
-	if settings.SingleFile != "" {
-		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
-			if err != nil {
-				return err
-			}
-
-			cid, err := findSingleEntry(ctx, publishedResult, downloader, settings.SingleFile)
-			if err != nil {
-				return err
-			}
-
-			// We need to make sure the target folder for this file exists so that we can
-			// write to it.
-			targetFile := filepath.Join(cidParentDir, settings.SingleFile)
-			targetDir := filepath.Dir(targetFile)
-			if len(targetDir) > len(cidParentDir) {
-				log.Ctx(ctx).Debug().
-					Str("Folder", targetDir).
-					Msg("creating target folder for single file download")
-				err = os.MkdirAll(targetDir, model.DownloadFolderPerm)
-				if err != nil {
-					log.Ctx(ctx).
-						Debug().
-						Str("Folder", targetDir).
-						Msg("failed to create folder for single file download")
-					return err
-				}
-			}
-
-			// We want to specify the target directory to copy from as the key
-			// but the DownloadItem itself specifies the target file to be
-			// written to.
-			item := model.DownloadItem{
-				Name:       settings.SingleFile,
-				CID:        cid,
-				SourceType: publishedResult.Data.StorageSource,
-				Target:     targetFile,
-			}
-
-			err = downloader.FetchResult(ctx, item)
-			if err != nil {
-				return err
-			}
-
-			downloadedCids[item.CID] = cidParentDir
+	downloadedResults := make(map[string]struct{})
+	for _, publishedResult := range publishedResults {
+		downloader, err := downloadProvider.Get(ctx, publishedResult.Type)
+		if err != nil {
+			return err
 		}
-	} else {
-		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource.String()) //nolint
-			if err != nil {
-				return err
-			}
-
-			cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
-			_, alreadyExists := downloadedCids[publishedResult.Data.CID]
-			if alreadyExists {
-				// We don't want to download the same CID twice, so we will just move
-				// on to the next item
-				log.Ctx(ctx).Debug().
-					Str("CID", publishedResult.Data.CID).
-					Msg("asked to download a CID a second time")
-				continue
-			}
-
-			item := model.DownloadItem{
-				Name:       publishedResult.Data.Name,
-				CID:        publishedResult.Data.CID,
-				SourceType: publishedResult.Data.StorageSource,
-				Target:     cidDownloadDir,
-			}
-
-			err = downloader.FetchResult(ctx, item)
-			if err != nil {
-				return err
-			}
-
-			downloadedCids[item.CID] = cidDownloadDir
+		resultPath, err := downloader.FetchResult(ctx, DownloadItem{
+			Result:     publishedResult,
+			SingleFile: settings.SingleFile,
+			ParentPath: rawParentDir,
+		})
+		if err != nil {
+			return err
 		}
+		downloadedResults[resultPath] = struct{}{}
 	}
 
 	if settings.Raw {
 		return nil
 	} else {
-		// for since file cidDownloadDir is parentid, otherwise it is a cid folder
-		for ident, cidDownloadDir := range downloadedCids {
+		for resultPath := range downloadedResults {
 			log.Ctx(ctx).Debug().
-				Str("CID", ident).
-				Str("Source", cidDownloadDir).
+				Str("Source", resultPath).
 				Str("Target", resultsOutputDir).
 				Msg("Copying downloaded data to target")
 
-			err = moveData(ctx, cidDownloadDir, resultsOutputDir, len(downloadedCids) > 1)
+			// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)
+			if strings.HasSuffix(resultPath, ".tar.gz") {
+				newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
+				if err = gzip.Decompress(resultPath, newResultPath); err != nil {
+					return err
+				}
+				resultPath = newResultPath
+			}
+
+			err = moveData(ctx, resultPath, resultsOutputDir, len(downloadedResults) > 1)
 			if err != nil {
 				return err
 			}
 		}
 
-		return os.RemoveAll(cidParentDir)
+		return os.RemoveAll(rawParentDir)
 	}
-}
-
-func findSingleEntry(ctx context.Context, result model.PublishedResult, downloader Downloader, name string) (string, error) {
-	filemap, err := downloader.DescribeResult(ctx, result)
-	if err != nil {
-		return "", err
-	}
-
-	cid, present := filemap[name]
-	if !present {
-		e := fmt.Errorf("failed to find cid for %s", name)
-		log.Ctx(ctx).Error().Err(e).
-			Msgf("Finding the CID of %s", name)
-		return "", e
-	}
-
-	return cid, nil
 }
 
 func moveData(
@@ -233,7 +153,7 @@ func moveData(
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
 
 		if d.IsDir() {
-			err = os.MkdirAll(globalTargetPath, model.DownloadFolderPerm)
+			err = os.MkdirAll(globalTargetPath, DownloadFolderPerm)
 			if err != nil {
 				return err
 			}
@@ -277,7 +197,7 @@ func appendFile(sourcePath, targetPath string) error {
 	}
 	defer source.Close()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, model.DownloadFilePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
 	if err != nil {
 		return err
 	}

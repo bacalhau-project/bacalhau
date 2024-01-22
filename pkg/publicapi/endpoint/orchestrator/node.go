@@ -6,18 +6,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 func (e *Endpoint) getNode(c echo.Context) error {
 	ctx := c.Request().Context()
-	nodeID, err := peer.Decode(c.Param("id"))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	if c.Param("id") == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
 	}
-	job, err := e.nodeStore.Get(ctx, nodeID)
+	job, err := e.nodeStore.GetByPrefix(ctx, c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -53,7 +51,7 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	var sortFnc func(a, b *models.NodeInfo) bool
 	switch args.OrderBy {
 	case "id", "":
-		sortFnc = func(a, b *models.NodeInfo) bool { return a.PeerInfo.ID < b.PeerInfo.ID }
+		sortFnc = func(a, b *models.NodeInfo) bool { return a.ID() < b.ID() }
 	case "type":
 		sortFnc = func(a, b *models.NodeInfo) bool { return a.NodeType < b.NodeType }
 	case "available_cpu":

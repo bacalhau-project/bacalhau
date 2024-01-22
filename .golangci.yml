@@ -1,10 +1,10 @@
 linters-settings:
   depguard:
-    list-type: denylist
-    packages:
-    - github.com/sirupsen/logrus
-    packages-with-error-message:
-    - github.com/sirupsen/logrus: "logging is allowed only by zerolog"
+    rules:
+      main:
+        deny:
+          - pkg: github.com/sirupsen/logrus
+            desc: "logging is allowed only by zerolog"
   dupl:
     threshold: 100
   funlen:
@@ -82,7 +82,7 @@ linters:
   - funlen
   - gochecknoinits
   - goconst
-  # - gocritic
+#   - gocritic
   - gocyclo
   - gofmt
   - goimports

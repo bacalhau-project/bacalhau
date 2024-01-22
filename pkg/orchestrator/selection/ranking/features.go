@@ -74,7 +74,8 @@ func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, 
 
 		if !found {
 			// Target wasn't found – we can end early as we won't use this node.
-			return orchestrator.RankUnsuitable, fmt.Sprintf("does not support %T %s, only %s", requiredKey, requiredKey, providedKeys)
+			availableKeys := strings.Join(providedKeys, ", ")
+			return orchestrator.RankUnsuitable, fmt.Sprintf("does not support %s, only %s", requiredKey, availableKeys)
 		}
 	}
 

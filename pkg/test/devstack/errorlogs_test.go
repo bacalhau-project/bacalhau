@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -66,8 +67,8 @@ var errorLogsTestCase = scenario.Scenario{
 		},
 	},
 	ResultsChecker: scenario.ManyChecks(
-		scenario.FileEquals(model.DownloadFilenameStdout, "apples"),
-		scenario.FileEquals(model.DownloadFilenameStderr, "oranges"),
+		scenario.FileEquals(downloader.DownloadFilenameStdout, "apples"),
+		scenario.FileEquals(downloader.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
 		job.WaitForSuccessfulCompletion(),

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -46,9 +47,14 @@ func NodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error)
 	return model.ToLabelSelectorRequirements(requirements...), nil
 }
 
+var DefaultOutputSpec = model.StorageSpec{
+	StorageSource: model.StorageSourceIPFS,
+	Name:          "outputs",
+	Path:          "/outputs",
+}
+
 func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
-	outputVolumesMap := make(map[string]model.StorageSpec)
-	outputVolumes = append(outputVolumes, "outputs:/outputs")
+	outputVolumesMap := make(map[string]model.StorageSpec, len(outputVolumes)+1)
 
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
@@ -76,10 +82,26 @@ func JobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpe
 		}
 	}
 
+	if _, found := outputVolumesMap[DefaultOutputSpec.Path]; !found {
+		outputVolumesMap[DefaultOutputSpec.Path] = DefaultOutputSpec
+	}
+
 	var returnOutputVolumes []model.StorageSpec
 	for _, storageSpec := range outputVolumesMap {
 		returnOutputVolumes = append(returnOutputVolumes, storageSpec)
 	}
 
 	return returnOutputVolumes, nil
+}
+
+func StringSliceToMap(slice []string) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, item := range slice {
+		key, value, err := flags.SeparatorParser("=")(item)
+		if err != nil {
+			return nil, fmt.Errorf("expected 'key=value', received invalid format for key-value pair: %s", item)
+		}
+		result[key] = value
+	}
+	return result, nil
 }

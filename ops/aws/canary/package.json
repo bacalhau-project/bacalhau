@@ -13,18 +13,18 @@
     "postinstall": "rm -rf node_modules/aws-cdk/lib/init-templates/*app/go"
   },
   "devDependencies": {
-    "@types/jest": "^27.5.2",
-    "@types/node": "10.17.27",
-    "@types/prettier": "2.6.0",
-    "jest": "^27.5.1",
-    "ts-jest": "^27.1.4",
-    "aws-cdk": "2.41.0",
+    "@types/jest": "^29.5.8",
+    "@types/node": "20.9.0",
+    "@types/prettier": "2.7.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "aws-cdk": "2.105.0",
     "ts-node": "^10.9.1",
-    "typescript": "~3.9.7"
+    "typescript": "~5.2.2"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.80.0",
-    "constructs": "^10.0.0",
+    "aws-cdk-lib": "2.105.0",
+    "constructs": "^10.3.0",
     "source-map-support": "^0.5.21"
   }
 }

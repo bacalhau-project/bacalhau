@@ -20,11 +20,11 @@ var MaxStdoutFileLength = 1 * datasize.GB
 // MaxStderrFileLength sets the max size for stderr file during container execution (needed to prevent DoS)
 var MaxStderrFileLength = 1 * datasize.GB
 
-// MaxStdoutReturnLength sets the max size for stdout string return into RunOutput (with trunctation)
+// MaxStdoutReturnLength sets the max size for stdout string return into RunOutput (with truncation)
 // from container execution (needed to prevent DoS)
 var MaxStdoutReturnLength = 2 * datasize.KB
 
-// MaxStderrReturnLength sets the max size for stderr string return into RunOutput (with trunctation)
+// MaxStderrReturnLength sets the max size for stderr string return into RunOutput (with truncation)
 // from container execution (needed to prevent DoS)
 var MaxStderrReturnLength = 2 * datasize.KB
 

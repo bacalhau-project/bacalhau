@@ -6,11 +6,13 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -108,6 +110,18 @@ func PrintJobExecutionLegacy(
 	js, err := client.GetJobState(ctx, jobReturn.Job.Metadata.ID)
 	if err != nil {
 		return fmt.Errorf("error getting job state: %w", err)
+	}
+
+	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+		cmd.Println("\nJob Results By Node:")
+		for message, nodes := range summariseExecutionsLegacy(js) {
+			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+			if strings.ContainsRune(message, '\n') {
+				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+			} else {
+				cmd.Println(message)
+			}
+		}
 	}
 
 	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
@@ -302,4 +316,29 @@ To cancel the job, run:
 	}
 
 	return returnError
+}
+
+// Groups the executions in the job state, returning a map of printable messages
+// to node(s) that generated that message.
+func summariseExecutionsLegacy(state model.JobState) map[string][]string {
+	results := make(map[string][]string, len(state.Executions))
+	for _, execution := range state.Executions {
+		var message string
+		if execution.RunOutput != nil {
+			if execution.RunOutput.ErrorMsg != "" {
+				message = execution.RunOutput.ErrorMsg
+			} else if execution.RunOutput.ExitCode > 0 {
+				message = execution.RunOutput.STDERR
+			} else {
+				message = execution.RunOutput.STDOUT
+			}
+		} else if execution.State.IsDiscarded() {
+			message = execution.Status
+		}
+
+		if message != "" {
+			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
+		}
+	}
+	return results
 }

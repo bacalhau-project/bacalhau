@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
 	"sigs.k8s.io/yaml"
 )
@@ -88,4 +89,11 @@ func ConfirmMaxSliceSize[T any](t T, maxSize int) error {
 		}
 	}
 	return nil
+}
+
+// normalizeIfApplicable attempts to normalize the object if it implements the Normalizable interface.
+func normalizeIfApplicable(obj interface{}) {
+	if normalizable, ok := obj.(models.Normalizable); ok {
+		normalizable.Normalize()
+	}
 }

@@ -95,7 +95,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				s.Require().Equal(
 					submittedJobEngineSpec,
 					returnedJobEngineSpec,
-					fmt.Sprintf("Submitted job entrypoints not the same as the description. expected: %+v, recevied: %+v",
+					fmt.Sprintf("Submitted job entrypoints not the same as the description. expected: %+v, received: %+v",
 						submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec))
 
 				// Job Id in the middle

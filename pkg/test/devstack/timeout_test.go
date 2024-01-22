@@ -62,17 +62,20 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		})
 		suite.Require().NoError(err)
 
+		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+			JobDefaults: transformer.JobDefaults{
+				ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
+			},
+			HousekeepingBackgroundTaskInterval: 1 * time.Second,
+			RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
+		})
+		suite.Require().NoError(err)
+
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
 				ComputeConfig:   computeConfig,
-				RequesterConfig: node.NewRequesterConfigWith(node.RequesterConfigParams{
-					JobDefaults: transformer.JobDefaults{
-						ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
-					},
-					HousekeepingBackgroundTaskInterval: 1 * time.Second,
-					RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
-				}),
+				RequesterConfig: requesterConfig,
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
 						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {

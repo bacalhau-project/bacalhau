@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -15,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -23,11 +25,11 @@ import (
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 
 var eventsWorthPrinting = map[models.JobStateType]eventStruct{
-	models.JobStateTypePending:   {Message: "Creating job for submission", IsTerminal: false, IsError: false},
-	models.JobStateTypeRunning:   {Message: "Job in progress", IsTerminal: false, IsError: false},
+	models.JobStateTypePending:   {Message: "Creating job for submission"},
+	models.JobStateTypeRunning:   {Message: "Job in progress"},
 	models.JobStateTypeFailed:    {Message: "Error while executing the job", IsTerminal: true, IsError: true},
-	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true, IsError: false},
-	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true, IsError: false},
+	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true},
+	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true},
 }
 
 type eventStruct struct {
@@ -74,6 +76,23 @@ func PrintJobExecution(
 		}
 	}
 
+	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+		executions, err := client.Jobs().Executions(&apimodels.ListJobExecutionsRequest{
+			JobID: jobID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job executions: %w", err)
+		}
+		cmd.Println("\nJob Results By Node:")
+		for message, nodes := range summariseExecutions(executions.Executions) {
+			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+			if strings.ContainsRune(message, '\n') {
+				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+			} else {
+				cmd.Println(message)
+			}
+		}
+	}
 	if !quiet {
 		cmd.Println()
 		cmd.Println("To get more details about the run, execute:")
@@ -250,6 +269,13 @@ To cancel the job, run:
 			break
 		}
 
+		// If the job is long running, and it's running, we can stop the spinner
+		if resp.Job.IsLongRunning() && resp.Job.State.StateType == models.JobStateTypeRunning {
+			spinner.Done(StopSuccess)
+			cmdShuttingDown = true
+			break
+		}
+
 		// Have we been cancel(l)ed?
 		if condition := ctx.Err(); condition != nil {
 			break
@@ -260,4 +286,29 @@ To cancel the job, run:
 	}
 
 	return returnError
+}
+
+// Groups the executions in the job state, returning a map of printable messages
+// to node(s) that generated that message.
+func summariseExecutions(executions []*models.Execution) map[string][]string {
+	results := make(map[string][]string, len(executions))
+	for _, execution := range executions {
+		var message string
+		if execution.RunOutput != nil {
+			if execution.RunOutput.ErrorMsg != "" {
+				message = execution.RunOutput.ErrorMsg
+			} else if execution.RunOutput.ExitCode > 0 {
+				message = execution.RunOutput.STDERR
+			} else {
+				message = execution.RunOutput.STDOUT
+			}
+		} else if execution.IsDiscarded() {
+			message = execution.ComputeState.Message
+		}
+
+		if message != "" {
+			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
+		}
+	}
+	return results
 }

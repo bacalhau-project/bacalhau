@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -73,7 +74,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Look for matching nodes and create new executions if:
 	// - Ops jobs: this is the first time we are evaluating the job
-	// - Daemon jobs: everytime the job is evaluated
+	// - Daemon jobs: every time the job is evaluated
 	var newExecs execSet
 	if job.Type == models.JobTypeDaemon || len(existingExecs) == 0 {
 		newExecs, err = b.createMissingExecs(ctx, &job, plan)
@@ -91,6 +92,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 			plan.MarkJobCompleted()
 		}
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
@@ -108,11 +111,11 @@ func (b *OpsJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
-			ID:           "e-" + uuid.NewString(),
+			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.PeerInfo.ID.String(),
+			NodeID:       node.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

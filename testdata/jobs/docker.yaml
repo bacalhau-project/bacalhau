@@ -1,12 +1,12 @@
-name: Docker Job
-type: batch
-namespace: default
-count: 1
-tasks:
-  - name: main
-    engine:
-      type: docker
-      params:
+Name: Docker Job
+Type: batch
+Namespace: default
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
         Image: ubuntu:latest
         Entrypoint:
           - /bin/bash

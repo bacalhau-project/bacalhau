@@ -4,9 +4,10 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.0  | :white_check_mark: |
-| < 0.0.x | :white_check_mark: |
+| 1.1.x  | ✅ |
+| 1.0.x  | ❌ |
+| < 0.0.x | ❌ |
 
 ## Reporting a Vulnerability
 
-Find the #bacalhau channel on the [Filecoin Slack]([url](https://filecoin.io/slack)) and report the issue to owners privately.
+Find the #bacalhau-development channel on the [Bacalhau Slack]([url](https://bit.ly/bacalhau-project-slack)) and report the issue privately to the owners .

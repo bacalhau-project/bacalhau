@@ -1,63 +1,44 @@
 //go:build integration || !unit
 
-package s3
+package s3_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
 
 	"github.com/stretchr/testify/suite"
 )
 
-const bucket = "bacalhau-test-datasets"
 const root = "integration-tests-do-not-delete/"
 const prefix1 = root + "set1/"
 const prefix2 = root + "set2/"
-const region = "eu-west-1"
 
 type StorageTestSuite struct {
-	suite.Suite
-	storage *StorageProvider
-}
-
-func (s *StorageTestSuite) SetupSuite() {
-	s.Require().NoError(config.Set(configenv.Local))
-	cfg, err := s3helper.DefaultAWSConfig()
-	s.Require().NoError(err)
-	if !s3helper.HasValidCredentials(cfg) {
-		s.T().Skip("No valid AWS credentials found")
-	}
-
-	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
-		AWSConfig: cfg,
-	})
-	s.storage = NewStorage(StorageProviderParams{
-		LocalDir:       s.T().TempDir(),
-		ClientProvider: clientProvider,
-	})
+	*s3test.HelperSuite
 }
 
 func TestStorageTestSuite(t *testing.T) {
-	suite.Run(t, new(StorageTestSuite))
+	helperSuite := s3test.NewTestHelper(t, s3test.HelperSuiteParams{})
+	suite.Run(t, &StorageTestSuite{HelperSuite: helperSuite})
 }
 
 func (s *StorageTestSuite) TestHasStorageLocally() {
 	ctx := context.Background()
-	res, err := s.storage.HasStorageLocally(ctx, models.InputSource{})
+	res, err := s.Storage.HasStorageLocally(ctx, models.InputSource{})
 	s.Require().NoError(err)
 	s.False(res)
 }
 
 func (s *StorageTestSuite) TestIsInstalled() {
 	ctx := context.Background()
-	res, err := s.storage.IsInstalled(ctx)
+	res, err := s.Storage.IsInstalled(ctx)
 	s.Require().NoError(err)
 	s.True(res)
 }
@@ -71,6 +52,7 @@ func (s *StorageTestSuite) TestStorage() {
 	for _, tc := range []struct {
 		name            string
 		key             string
+		pattern         string
 		expectedOutputs []expectedOutput
 		checksum        string
 		versionID       string
@@ -133,6 +115,40 @@ func (s *StorageTestSuite) TestStorage() {
 				{"202", "set2/202.txt"},
 				{"301", "set2/nested/301.txt"},
 				{"302", "set2/nested/302.txt"},
+			},
+		},
+		{
+			name:    "single directory filter",
+			key:     prefix1 + "*",
+			pattern: "[0-1]01.txt",
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+				{"101", "101.txt"},
+			},
+		},
+		{
+			name:    "nested directory filter",
+			key:     prefix2,
+			pattern: "nested/.*",
+			expectedOutputs: []expectedOutput{
+				{"301", "nested/301.txt"},
+				{"302", "nested/302.txt"},
+			},
+		},
+		{
+			name:            "filter filters all",
+			key:             prefix1 + "*",
+			pattern:         "nonexistent",
+			expectedOutputs: []expectedOutput{},
+		},
+		{
+			name:    "filter with no key",
+			pattern: fmt.Sprintf("^%s.*", prefix1),
+			expectedOutputs: []expectedOutput{
+				{"001", prefix1 + "001.txt"},
+				{"002", prefix1 + "002.txt"},
+				{"101", prefix1 + "101.txt"},
+				{"102", prefix1 + "102.txt"},
 			},
 		},
 		{
@@ -200,15 +216,16 @@ func (s *StorageTestSuite) TestStorage() {
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceS3,
 					Params: s3helper.SourceSpec{
-						Bucket:         bucket,
+						Bucket:         s.Bucket,
 						Key:            tc.key,
-						Region:         region,
+						Filter:         tc.pattern,
+						Region:         s.Region,
 						ChecksumSHA256: tc.checksum,
 						VersionID:      tc.versionID,
 					}.ToMap(),
 				},
 			}
-			size, err := s.storage.GetVolumeSize(ctx, storageSpec)
+			size, err := s.Storage.GetVolumeSize(ctx, storageSpec)
 			if tc.shouldFail {
 				s.Error(err)
 				return
@@ -216,7 +233,7 @@ func (s *StorageTestSuite) TestStorage() {
 			s.Require().NoError(err)
 			s.Equal(uint64(len(tc.expectedOutputs)*4), size) // each file is 4 bytes long
 
-			volume, err := s.storage.PrepareStorage(ctx, storageSpec)
+			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
 			s.Require().NoError(err)
 
 			// check that the files are there
@@ -229,7 +246,7 @@ func (s *StorageTestSuite) TestStorage() {
 			}
 
 			// check that the files are not there anymore
-			err = s.storage.CleanupStorage(ctx, storageSpec, volume)
+			err = s.Storage.CleanupStorage(ctx, storageSpec, volume)
 			s.Require().NoError(err)
 
 			_, err = os.Stat(volume.Source)
@@ -244,17 +261,17 @@ func (s *StorageTestSuite) TestNotFound() {
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceS3,
 			Params: s3helper.SourceSpec{
-				Bucket: bucket,
+				Bucket: s.Bucket,
 				Key:    prefix1 + "00",
-				Region: region,
+				Region: s.Region,
 			}.ToMap(),
 		},
 	}
 
-	_, err := s.storage.GetVolumeSize(ctx, storageSpec)
+	_, err := s.Storage.GetVolumeSize(ctx, storageSpec)
 	s.Require().Error(err)
 
-	_, err = s.storage.PrepareStorage(ctx, storageSpec)
+	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
 	s.Require().Error(err)
 }
 

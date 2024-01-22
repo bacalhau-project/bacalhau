@@ -37,6 +37,14 @@ type ReadLogsResponse struct {
 	ExecutionComplete bool
 }
 
+type GetResultsRequest struct {
+	JobID string
+}
+
+type GetResultsResponse struct {
+	Results []*models.SpecConfig
+}
+
 // NodeRank represents a node and its rank. The higher the rank, the more preferable a node is to execute the job.
 // A negative rank means the node is not suitable to execute the job.
 type NodeRank struct {
@@ -62,7 +70,7 @@ func (r NodeRank) MeetsRequirement() bool {
 }
 
 func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
-	e.Stringer("Node", r.NodeInfo.PeerInfo.ID).
+	e.Str("Node", r.NodeInfo.ID()).
 		Bool("MeetsRequirement", r.MeetsRequirement()).
 		Str("Reason", r.Reason)
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -64,8 +65,8 @@ func runURLTest(
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
 		),
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(model.DownloadFilenameStderr, ""),
-			scenario.FileEquals(model.DownloadFilenameStdout, allContent),
+			scenario.FileEquals(downloader.DownloadFilenameStderr, ""),
+			scenario.FileEquals(downloader.DownloadFilenameStdout, allContent),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForSuccessfulCompletion(),
@@ -251,7 +252,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 					Build(),
 			),
 		),
-		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, URLContent+IPFSContent),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+IPFSContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 

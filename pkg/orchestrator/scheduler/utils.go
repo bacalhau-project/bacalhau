@@ -26,7 +26,7 @@ func existingNodeInfos(ctx context.Context,
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
 	}
 	for i, node := range discoveredNodes {
-		nodesMap[node.PeerInfo.ID.String()] = &discoveredNodes[i]
+		nodesMap[node.ID()] = &discoveredNodes[i]
 	}
 
 	for _, execution := range existingExecutions {

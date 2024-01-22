@@ -3,6 +3,7 @@ package bidstrategy
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
@@ -46,6 +47,8 @@ func (c *ChainedBidStrategy) AddStrategy(opts ...StrategyOpt) {
 // ShouldBid Iterate over all strategies, and return shouldBid if no error is thrown
 // and none of the strategies return should not bid.
 func (c *ChainedBidStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+	reasons := make([]string, 0, len(c.Semantics))
+
 	for _, strategy := range c.Semantics {
 		response, err := strategy.ShouldBid(ctx, request)
 		if err != nil {
@@ -64,15 +67,17 @@ func (c *ChainedBidStrategy) ShouldBid(ctx context.Context, request BidStrategyR
 				reflect.TypeOf(strategy).String(), status, response.Reason)
 			return response, nil
 		}
+		reasons = append(reasons, response.Reason)
 	}
 
-	return NewShouldBidResponse(), nil
+	return BidStrategyResponse{ShouldBid: true, Reason: strings.Join(reasons, "; ")}, nil
 }
 
 // ShouldBidBasedOnUsage Iterate over all strategies, and return shouldBid if no error is thrown
 // and none of the strategies return should not bid.
 func (c *ChainedBidStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request BidStrategyRequest, usage models.Resources) (BidStrategyResponse, error) {
+	reasons := make([]string, 0, len(c.Resources))
 	for _, strategy := range c.Resources {
 		response, err := strategy.ShouldBidBasedOnUsage(ctx, request, usage)
 		if err != nil {
@@ -93,5 +98,8 @@ func (c *ChainedBidStrategy) ShouldBidBasedOnUsage(
 		}
 	}
 
-	return NewShouldBidResponse(), nil
+	return BidStrategyResponse{ShouldBid: true, Reason: strings.Join(reasons, "; ")}, nil
 }
+
+var _ SemanticBidStrategy = (*ChainedBidStrategy)(nil)
+var _ ResourceBidStrategy = (*ChainedBidStrategy)(nil)

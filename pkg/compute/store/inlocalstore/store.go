@@ -6,11 +6,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"time"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -58,15 +57,10 @@ func NewPersistentExecutionStore(params PersistentJobStoreParams) (*PersistentEx
 		return nil, err
 	}
 
-	res := &PersistentExecutionStore{
+	return &PersistentExecutionStore{
 		store:     params.Store,
 		stateFile: jsonFilepath,
-	}
-	res.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 50 * time.Millisecond,
-		Id:        "PersistentExecutionStore.mu",
-	})
-	return res, nil
+	}, nil
 }
 
 // CreateExecution implements store.ExecutionStore

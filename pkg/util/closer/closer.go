@@ -22,7 +22,7 @@ func ContextCloserWithLogOnError(ctx context.Context, name string, c CloseWithCo
 
 // DrainAndCloseWithLogOnError will first ensure the contents of the reader has been read before being closed. This is
 // useful when dealing with HTTP response bodies which need to be drained and closed so that the connection may be
-// re-used by the OS.
+// reused by the OS.
 func DrainAndCloseWithLogOnError(ctx context.Context, name string, c io.ReadCloser) {
 	if _, err := io.Copy(io.Discard, c); err != nil {
 		l := log.Ctx(ctx).With().CallerWithSkipFrameCount(3).Logger()

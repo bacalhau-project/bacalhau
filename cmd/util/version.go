@@ -5,34 +5,76 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func CheckVersion(cmd *cobra.Command, args []string) error {
-	// corba doesn't do PersistentPreRun{,E} chaining yet
-	// https://github.com/spf13/cobra/issues/252
-	root := cmd
-	for ; root.HasParent(); root = root.Parent() {
-	}
-	root.PersistentPreRun(cmd, args)
+type Versions struct {
+	ClientVersion *models.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *models.BuildVersionInfo `json:"serverVersion,omitempty"`
+	LatestVersion *models.BuildVersionInfo `json:"latestVersion,omitempty"`
+	UpdateMessage string                   `json:"updateMessage,omitempty"`
+}
 
-	// the client will not be known until the root persisten pre run logic is executed which
+func CheckVersion(cmd *cobra.Command, args []string) error {
+	strictVersioning, err := config.Get[bool](types.NodeStrictVersionMatch)
+	if err != nil {
+		return fmt.Errorf("DEVELOPER ERROR: please file an issue with this error message: %w", err)
+	}
+	if !strictVersioning {
+		return nil
+	}
+	// the client will not be known until the root persistent pre run logic is executed which
 	// sets up the repo and config
 	ctx := cmd.Context()
-	client := GetAPIClient(ctx)
+	apiClient := GetAPIClient(ctx)
 
 	// Check that the server version is compatible with the client version
-	serverVersion, _ := client.Version(ctx) // Ok if this fails, version validation will skip
+	serverVersion, _ := apiClient.Version(ctx) // Ok if this fails, version validation will skip
 	if err := EnsureValidVersion(ctx, version.Get(), serverVersion); err != nil {
-		return fmt.Errorf("version validation failed: %s", err)
+		return fmt.Errorf("version validation failed: %w", err)
 	}
 
 	return nil
+}
+
+func GetAllVersions(ctx context.Context) (Versions, error) {
+	var err error
+	versions := Versions{ClientVersion: version.Get()}
+
+	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
+	versions.ServerVersion, err = client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
+	if err != nil {
+		return versions, errors.Wrap(err, "error running version command")
+	}
+
+	clientID, err := config.GetClientID()
+	if err != nil {
+		return versions, errors.Wrap(err, "error getting client ID")
+	}
+
+	InstallationID, err := config.GetInstallationUserID()
+	if err != nil {
+		return versions, errors.Wrap(err, "error getting Installation ID")
+	}
+
+	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID, InstallationID)
+	if err != nil {
+		return versions, errors.Wrap(err, "failed to get latest version")
+	} else {
+		versions.UpdateMessage = updateCheck.Message
+		versions.LatestVersion = updateCheck.Version
+	}
+
+	return versions, nil
 }
 
 func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *models.BuildVersionInfo) error {

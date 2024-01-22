@@ -1,3 +1,12 @@
+// This file contains modifications based on work originally from the HashiCorp Nomad project.
+// The original file can be found at:
+// https://github.com/hashicorp/nomad/blob/f005448366ed3e796a2f22696d8c063dff4677f8/nomad/eval_broker.go
+//
+// Both the original work and the modifications in this file are licensed under the Mozilla Public License 2.0.
+
+// Original Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package evaluation
 
 import (

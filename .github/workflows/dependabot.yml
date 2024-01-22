@@ -24,7 +24,7 @@ jobs:
           go-version: ${{ steps.runtimes.outputs.golang-version }}
 
       - name: Update go package metadata
-        run: go vet
+        run: go work sync; go mod tidy
 
       - name: Commit any changes
         continue-on-error: true

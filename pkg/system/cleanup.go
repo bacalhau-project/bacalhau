@@ -3,11 +3,9 @@ package system
 import (
 	"context"
 	"errors"
-	realsync "sync"
-	"time"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,12 +20,7 @@ type CleanupManager struct {
 
 // NewCleanupManager returns a new CleanupManager instance.
 func NewCleanupManager() *CleanupManager {
-	c := &CleanupManager{}
-	c.fnsMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "CleanupManager.fnsMutex",
-	})
-	return c
+	return &CleanupManager{}
 }
 
 // RegisterCallback registers a clean-up function.
@@ -63,7 +56,7 @@ func (cm *CleanupManager) Cleanup(ctx context.Context) {
 		return
 	}
 
-	var wg realsync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(cm.fns))
 
 	detachedContext := util.NewDetachedContext(ctx)

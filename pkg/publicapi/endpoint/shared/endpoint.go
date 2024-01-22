@@ -8,21 +8,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 )
 
 type EndpointParams struct {
 	Router           *echo.Echo
 	NodeID           string
-	PeerStore        peerstore.Peerstore
 	NodeInfoProvider models.NodeInfoProvider
 }
 
 type Endpoint struct {
 	router           *echo.Echo
 	nodeID           string
-	peerStore        peerstore.Peerstore
 	nodeInfoProvider models.NodeInfoProvider
 }
 
@@ -30,14 +26,12 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
 		router:           params.Router,
 		nodeID:           params.NodeID,
-		peerStore:        params.PeerStore,
 		nodeInfoProvider: params.NodeInfoProvider,
 	}
 
 	// JSON group
 	g := e.router.Group("/api/v1")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
-	g.GET("/peers", e.peers)
 	g.GET("/node_info", e.nodeInfo)
 	g.POST("/version", e.version)
 	g.GET("/healthz", e.healthz)
@@ -47,6 +41,12 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
 	pt.GET("/id", e.id)
 	pt.GET("/livez", e.livez)
+
+	// Home group
+	// TODO: Could we use this to redirect to latest API?
+	h := e.router.Group("/")
+	h.Use(middleware.SetContentType(echo.MIMETextPlain))
+	h.GET("", e.home)
 
 	return e
 }
@@ -62,24 +62,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@Router		/api/v1/id [get]
 func (e *Endpoint) id(c echo.Context) error {
 	return c.String(http.StatusOK, e.nodeID)
-}
-
-// peers godoc
-//
-//	@ID						peers
-//	@Summary				Returns the peers connected to the host via the transport layer.
-//	@Description.markdown	endpoints_peers
-//	@Tags					Utils
-//	@Produce				json
-//	@Success				200	{object}	[]peer.AddrInfo
-//	@Failure				500	{object}	string
-//	@Router					/api/v1/peers [get]
-func (e *Endpoint) peers(c echo.Context) error {
-	var peerInfos []peer.AddrInfo
-	for _, p := range e.peerStore.Peers() {
-		peerInfos = append(peerInfos, e.peerStore.PeerInfo(p))
-	}
-	return c.JSON(http.StatusOK, peerInfos)
 }
 
 // nodeInfo godoc
@@ -145,4 +127,15 @@ func (e *Endpoint) healthz(c echo.Context) error {
 func (e *Endpoint) livez(c echo.Context) error {
 	// Extremely simple liveness check (should be fine to be public / no-auth)
 	return c.String(http.StatusOK, "OK")
+}
+
+// home godoc
+//
+//	@ID			home
+//	@Tags		Utils
+//	@Produce	text/plain
+//	@Success	200	{object}	string	""
+//	@Router		/ [get]
+func (e *Endpoint) home(c echo.Context) error {
+	return c.JSON(http.StatusOK, version.Get())
 }

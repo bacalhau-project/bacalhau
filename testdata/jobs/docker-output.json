@@ -1,14 +1,14 @@
 {
-  "name": "Docker Job With Output",
-  "type": "batch",
-  "namespace": "default",
-  "count": 1,
-  "tasks": [
+  "Name": "Docker Job With Output",
+  "Type": "batch",
+  "Namespace": "default",
+  "Count": 1,
+  "Tasks": [
     {
-      "name": "main",
-      "engine": {
-        "type": "docker",
-        "params": {
+      "Name": "main",
+      "Engine": {
+        "Type": "docker",
+        "Params": {
           "Image": "ubuntu:latest",
           "Entrypoint": [
             "/bin/bash"
@@ -19,13 +19,13 @@
           ]
         }
       },
-      "publisher": {
-        "type": "ipfs"
+      "Publisher": {
+        "Type": "ipfs"
       },
-      "resultpaths": [
+      "ResultPaths": [
         {
-          "name": "output_custom",
-          "path": "/output_custom"
+          "Name": "output_custom",
+          "Path": "/output_custom"
         }
       ]
     }

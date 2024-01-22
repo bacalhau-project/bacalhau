@@ -9,10 +9,10 @@ import (
 
 type PublisherHandlerIsInstalled func(ctx context.Context) (bool, error)
 type PublisherHandlerPublishResult func(
-	ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error)
+	ctx context.Context, execution *models.Execution, resultPath string) (models.SpecConfig, error)
 
 func ErrorResultPublisher(err error) PublisherHandlerPublishResult {
-	return func(ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error) {
+	return func(ctx context.Context, execution *models.Execution, resultPath string) (models.SpecConfig, error) {
 		return models.SpecConfig{}, err
 	}
 }
@@ -52,9 +52,9 @@ func (publisher *NoopPublisher) ValidateJob(ctx context.Context, j models.Job) e
 }
 
 func (publisher *NoopPublisher) PublishResult(
-	ctx context.Context, executionID string, job models.Job, resultPath string) (models.SpecConfig, error) {
+	ctx context.Context, execution *models.Execution, resultPath string) (models.SpecConfig, error) {
 	if publisher.externalHooks.PublishResult != nil {
-		return publisher.externalHooks.PublishResult(ctx, executionID, job, resultPath)
+		return publisher.externalHooks.PublishResult(ctx, execution, resultPath)
 	}
 	return models.SpecConfig{}, nil
 }

@@ -26,21 +26,20 @@ type Msg struct {
 	ErrorMessage string
 }
 
-// logs godoc
-//
-//	@ID						pkg/requester/publicapi/logs
-//	@Summary				Displays the logs for a current job/execution
-//	@Description.markdown	endpoints_log
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					LogRequest	body		legacymodels.LogRequest	true	" "
-//	@Success				200			{object}	string
-//	@Failure				400			{object}	string
-//	@Failure				401			{object}	string
-//	@Failure				403			{object}	string
-//	@Failure				500			{object}	string
-//	@Router					/api/v1/requester/logs [post]
+// @ID				pkg/requester/publicapi/logs
+// @Summary		Displays the logs for a current job/execution
+// @Description	Shows the output from the job specified by `id` as long as that job belongs to `client_id`.
+// @Description	The output will be continuous until either, the client disconnects or the execution completes.
+// @Tags			Job
+// @Accept			json
+// @Produce		json
+// @Param			LogRequest	body		legacymodels.LogRequest	true	" "
+// @Success		200			{object}	string
+// @Failure		400			{object}	string
+// @Failure		401			{object}	string
+// @Failure		403			{object}	string
+// @Failure		500			{object}	string
+// @Router			/api/v1/requester/logs [post]
 //
 //nolint:funlen,gocyclo
 func (s *Endpoint) logs(c echo.Context) error {
@@ -125,7 +124,12 @@ func (s *Endpoint) logs(c echo.Context) error {
 			break
 		}
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("Stream read failure. May be reset?: %s", err)
+			log.Ctx(ctx).
+				Error().
+				Err(err).
+				Str("Job", payload.JobID).
+				Str("Execution", payload.ExecutionID).
+				Msgf("Stream read failure. May be reset?: %s", err)
 			break
 		}
 

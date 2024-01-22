@@ -38,6 +38,15 @@ func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
 }
 
+func (suite *ListSuite) setupRun() {
+	// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
+	suite.TearDownTest()
+	// Clear the repo that was created by the previous run so a fresh one is created
+	// TODO: find a better solution to set the repo path for tests in pkg/setup/setup.go:49 instead of env vars to avoid such hacks
+	suite.T().Setenv("BACALHAU_DIR", "")
+	suite.SetupTest()
+}
+
 func (suite *ListSuite) TestList_NumberOfJobs() {
 	tests := []struct {
 		numberOfJobs       int
@@ -47,7 +56,6 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 		{numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
-
 	}
 
 	for _, tc := range tests {
@@ -68,8 +76,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				"--reverse", "false",
 			)
 			require.NoError(suite.T(), err)
-
-			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"), out)
 		})
 	}
 }
@@ -169,9 +176,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 	for _, tc := range testCases {
 		suite.Run(tc.Name, func() {
 			ctx := context.Background()
-			// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
-			suite.TearDownTest()
-			suite.SetupTest()
+			suite.setupRun()
 
 			testJob := testutils.MakeJobWithOpts(suite.T(),
 				jobutils.WithAnnotations(tc.JobLabels...),
@@ -259,10 +264,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 		for _, sortFlags := range sortFlagsToTest {
 			suite.Run(fmt.Sprintf("%+v/%+v", tc, sortFlags), func() {
 				ctx := context.Background()
-
-				// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
-				suite.TearDownTest()
-				suite.SetupTest()
+				suite.setupRun()
 
 				var jobIDs []string
 				for i := 0; i < tc.numberOfJobs; i++ {

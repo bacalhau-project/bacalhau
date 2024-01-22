@@ -32,11 +32,16 @@ func NewExternalHTTPStrategy(params ExternalHTTPStrategyParams) *ExternalHTTPStr
 	}
 }
 
+const (
+	notConfiguredReason = "have HTTP moderation unconfigured"
+	statusCodeReason    = "accept jobs where url %q returns HTTP status code %d"
+)
+
 func (s *ExternalHTTPStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	if s.url == "" {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, notConfiguredReason), nil
 	}
 
 	data := bidstrategy.GetJobSelectionPolicyProbeData(request)
@@ -59,15 +64,16 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 	}
 	defer closer.DrainAndCloseWithLogOnError(ctx, s.url, resp.Body)
 
+	// HTTP call returned an error code of some sort - treat this as a job
+	// rejection.
 	if resp.StatusCode >= http.StatusBadRequest {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason:    fmt.Sprintf("url `%s` returned %d status code", s.url, resp.StatusCode),
-		}, nil
+		return bidstrategy.NewBidResponse(false, statusCodeReason, s.url, resp.StatusCode), nil
 	}
 
+	// HTTP call returned a positive status code. If it didn't return JSON, we
+	// can just accept now. If it did, it should return a JSON bid response.
 	if resp.Header.Get("Content-Type") != "application/json" {
-		return bidstrategy.NewShouldBidResponse(), nil
+		return bidstrategy.NewBidResponse(true, statusCodeReason, s.url, resp.StatusCode), nil
 	}
 
 	if resp.ContentLength > int64(marshaller.MaxSerializedStringInput) {

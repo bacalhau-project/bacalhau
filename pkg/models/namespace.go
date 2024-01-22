@@ -4,8 +4,8 @@ import "fmt"
 
 // NamespacedID is a tuple of an ID and a namespace
 type NamespacedID struct {
-	ID        string
-	Namespace string
+	ID        string `json:"ID"`
+	Namespace string `json:"Namespace"`
 }
 
 // NewNamespacedID returns a new namespaced ID given the ID and namespace

@@ -26,8 +26,8 @@ func disabledTestSpec(t testing.TB) scenario.Scenario {
 	return scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				NumberOfRequesterOnlyNodes: 1,
-				NumberOfComputeOnlyNodes:   1,
+				NumberOfHybridNodes:      1,
+				NumberOfComputeOnlyNodes: 1,
 			},
 		},
 		Spec: scenario.WasmHelloWorld(t).Spec,

@@ -10,12 +10,6 @@ import (
 )
 
 func ToLegacyJob(job *models.Job) (*model.Job, error) {
-	pk := new(model.PublicKey)
-	err := pk.UnmarshalText([]byte(job.Meta[models.MetaRequesterPublicKey]))
-	if err != nil {
-		return nil, err
-	}
-
 	spec, err := ToLegacyJobSpec(job)
 	if err != nil {
 		return nil, err
@@ -28,8 +22,7 @@ func ToLegacyJob(job *models.Job) (*model.Job, error) {
 			CreatedAt: time.Unix(0, job.CreateTime),
 			ClientID:  job.Meta[models.MetaClientID],
 			Requester: model.JobRequester{
-				RequesterNodeID:    job.Meta[models.MetaRequesterID],
-				RequesterPublicKey: *pk,
+				RequesterNodeID: job.Meta[models.MetaRequesterID],
 			},
 		},
 		Spec: *spec,
@@ -160,11 +153,14 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 			URL:           storage.Params["URL"].(string),
 		}, nil
 	case models.StorageSourceLocalDirectory:
-		return model.StorageSpec{
+		storageSpec := model.StorageSpec{
 			StorageSource: model.StorageSourceLocalDirectory,
-			Path:          storage.Params["SourcePath"].(string),
-			ReadWrite:     storage.Params["ReadWrite"].(bool),
-		}, nil
+			SourcePath:    storage.Params["SourcePath"].(string),
+		}
+		if readWrite, ok := storage.Params["ReadWrite"].(bool); ok {
+			storageSpec.ReadWrite = readWrite
+		}
+		return storageSpec, nil
 	case models.StorageSourceS3:
 		s3Spec := &model.S3StorageSpec{
 			Bucket: storage.Params["Bucket"].(string),

@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -39,4 +40,10 @@ func CanRunS3Test() bool {
 	}
 
 	return HasValidCredentials(cfg)
+}
+
+// IsAWSEndpoint checks if the given S3 endpoint URL is an AWS endpoint by its suffix.
+// If the endpoint is empty, it is considered an AWS endpoint.
+func IsAWSEndpoint(endpoint string) bool {
+	return endpoint == "" || strings.HasSuffix(endpoint, "amazonaws.com")
 }

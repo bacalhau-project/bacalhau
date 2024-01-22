@@ -11,14 +11,14 @@ import (
 
 type InputSource struct {
 	// Source is the source of the artifact to be downloaded, e.g a URL, S3 bucket, etc.
-	Source *SpecConfig
+	Source *SpecConfig `json:"Source"`
 
 	// Alias is an optional reference to this input source that can be used for
 	// dynamic linking to this input. (e.g. dynamic import in wasm by alias)
-	Alias string
+	Alias string `json:"Alias"`
 
 	// Target is the path where the artifact should be mounted on
-	Target string
+	Target string `json:"Target"`
 }
 
 // Normalize normalizes the artifact's source and target

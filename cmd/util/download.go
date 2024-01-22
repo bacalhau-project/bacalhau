@@ -7,14 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func DownloadResultsHandler(
@@ -25,40 +24,28 @@ func DownloadResultsHandler(
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
-	j, _, err := GetAPIClient(ctx).Get(ctx, jobID)
+	response, err := GetAPIClientV2(ctx).Jobs().Results(&apimodels.ListJobResultsRequest{
+		JobID: jobID,
+	})
 	if err != nil {
-		if _, ok := err.(*bacerrors.JobNotFound); ok {
-			return err
-		} else {
-			Fatal(cmd, fmt.Errorf("unknown error trying to get job (ID: %s): %+w", jobID, err), 1)
-		}
+		Fatal(cmd, fmt.Errorf("could not get results for job %s: %w", jobID, err), 1)
 	}
 
-	results, err := GetAPIClient(ctx).GetResults(ctx, j.Job.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
-	if len(results) == 0 {
+	if len(response.Results) == 0 {
 		return fmt.Errorf("no results found")
 	}
 
-	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Job.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
-	downloaderProvider := util.NewStandardDownloaders(cm, (*model.DownloaderSettings)(processedDownloadSettings))
+	downloaderProvider := util.NewStandardDownloaders(cm)
 	if err != nil {
 		return err
 	}
 
 	// check if we don't support downloading the results
-	for _, result := range results {
-		if !downloaderProvider.Has(ctx, result.Data.StorageSource.String()) {
+	for _, result := range response.Results {
+		if !downloaderProvider.Has(ctx, result.Type) {
 			cmd.PrintErrln(
 				"No supported downloader found for the published results. You will have to download the results differently.")
-			b, err := json.MarshalIndent(results, "", "    ")
+			b, err := json.MarshalIndent(response.Results, "", "    ")
 			if err != nil {
 				return err
 			}
@@ -67,11 +54,16 @@ func DownloadResultsHandler(
 		}
 	}
 
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, jobID)
+	if err != nil {
+		return err
+	}
+
 	err = downloader.DownloadResults(
 		ctx,
-		results,
+		response.Results,
 		downloaderProvider,
-		(*model.DownloaderSettings)(processedDownloadSettings),
+		(*downloader.DownloaderSettings)(processedDownloadSettings),
 	)
 
 	if err != nil {

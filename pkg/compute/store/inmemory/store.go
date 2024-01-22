@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"golang.org/x/exp/maps"
 )
 
@@ -22,17 +22,12 @@ type Store struct {
 }
 
 func NewStore() *Store {
-	res := &Store{
+	return &Store{
 		executionMap: make(map[string]store.LocalExecutionState),
 		jobMap:       make(map[string][]string),
 		liveMap:      make(map[string]struct{}),
 		history:      make(map[string][]store.LocalStateHistory),
 	}
-	res.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "InMemoryExecutionStore.mu",
-	})
-	return res
 }
 
 func (s *Store) GetExecution(ctx context.Context, id string) (store.LocalExecutionState, error) {

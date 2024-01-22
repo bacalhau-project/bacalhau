@@ -14,34 +14,32 @@ import (
 func TestJobSelectionExec(t *testing.T) {
 	testCases := []struct {
 		name           string
-		failMode       bool
+		testCommand    string
 		expectedResult bool
+		expectedReason string
 	}{
 		{
 			"fail the response and don't select the job",
-			true,
+			"exit 1",
 			false,
+			"this node does not accept jobs where external command \"exit 1\" returns exit code 1",
 		},
 		{
 			"succeed the response and select the job",
-			false,
+			"exit 0",
 			true,
+			"this node does accept jobs where external command \"exit 0\" returns exit code 0",
 		},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			command := "exit 0"
-			if test.failMode {
-				command = "exit 1"
-			}
-			params := semantic.ExternalCommandStrategyParams{
-				Command: command,
-			}
+			params := semantic.ExternalCommandStrategyParams{Command: test.testCommand}
 			strategy := semantic.NewExternalCommandStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), getBidStrategyRequest(t))
 			require.NoError(t, err)
 			require.Equal(t, test.expectedResult, result.ShouldBid)
+			require.Equal(t, test.expectedReason, result.Reason)
 		})
 	}
 }

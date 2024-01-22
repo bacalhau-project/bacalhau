@@ -1,0 +1,11 @@
+.cliView {
+    background-color: white;
+    color: black;
+    font-family: 'Courier New', Courier, monospace; // or any monospaced font
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin: 10px 0;
+    white-space: pre-wrap; // This will keep the formatting of content
+    overflow-x: auto; // In case of long lines
+}

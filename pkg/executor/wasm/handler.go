@@ -7,7 +7,9 @@ import (
 	"io"
 	"io/fs"
 	"sort"
+	"time"
 
+	"github.com/dylibso/observe-sdk/go/adapter/opentelemetry"
 	"github.com/rs/zerolog"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
@@ -19,6 +21,7 @@ import (
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -77,7 +80,26 @@ func (h *executionHandler) run(ctx context.Context) {
 		h.cancel()
 	}()
 
-	tracingEngine := tracedRuntime{h.runtime}
+	var adapter *opentelemetry.OTelAdapter
+	conf := opentelemetry.OTelConfig{
+		ServiceName:        "bacalhau",
+		EmitTracesInterval: time.Second * 1,
+		TraceBatchMax:      10,
+		// the remaining fields are completed from a system-configured client
+		// by using the `UseCustomClient` method on the adapter below
+	}
+	traceClient, err := telemetry.GetTraceClient()
+	if err != nil {
+		h.logger.Err(err).Msg("Failed to create OTLP client")
+	}
+	if traceClient != nil {
+		adapter = opentelemetry.NewOTelAdapter(&conf)
+		adapter.UseCustomClient(traceClient)
+		adapter.Start(ctx)
+		defer func() { _ = adapter.StopWithContext(ctx, true) }()
+	}
+
+	tracingEngine := tracedRuntime{Runtime: h.runtime, adapter: adapter}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", tracingEngine)
 	stdout, stderr := h.logManager.GetWriters()
 	// Configure the modules. We don't want to execute any start functions
@@ -102,6 +124,7 @@ func (h *executionHandler) run(ctx context.Context) {
 
 	h.logger.Info().Msg("instantiating wasm modules")
 	loader := NewModuleLoader(tracingEngine, config, h.inputs...)
+
 	// TODO we have been ignoring errors from this method for ages. Now that we actually check them tests fail! nice..
 	// v1.0.3: https://github.com/bacalhau-project/bacalhau/blob/v1.0.3/pkg/executor/wasm/executor.go#L243
 	// current: https://github.com/bacalhau-project/bacalhau/blob/ff1bd9cb1c09fa3652c4a68943a97476340dbe33/pkg/executor/wasm/executor.go#L216
@@ -171,6 +194,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	// execution has finished and there's nothing else to read from so inform
 	// the logs that it is time to drain any remaining items.
 	h.logManager.Drain()
+
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
 
 	h.result = executor.WriteJobResults(h.resultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.limits)

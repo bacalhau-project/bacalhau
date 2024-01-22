@@ -8,10 +8,10 @@
 //
 // To do this, touchfs tracks a directory prefix (as a string) which is both
 // where it will serve and create files. Deeply nested directories are not
-// supported, i.e. calling Open('a/b/c') where 'b' does not exist will sitll
+// supported, i.e. calling Open('a/b/c') where 'b' does not exist will still
 // throw an error.
 //
-// This is really a limitation of the fs.FS interface and wazero shoudn't be
+// This is really a limitation of the fs.FS interface and wazero shouldn't be
 // using it to provide a writable filesystem.
 
 package touchfs

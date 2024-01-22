@@ -3,6 +3,7 @@ package bidstrategy
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -20,9 +21,23 @@ type BidStrategyResponse struct {
 	Reason     string `json:"reason"`
 }
 
-func NewShouldBidResponse() BidStrategyResponse {
+const (
+	reasonPrefix   string = "this node does "
+	reasonNegation string = "not "
+)
+
+func FormatReason(success bool, jobRequiresNodeTo string, fmtArgs ...any) string {
+	msg := reasonPrefix
+	if !success {
+		msg += reasonNegation
+	}
+	return fmt.Sprintf(msg+jobRequiresNodeTo, fmtArgs...)
+}
+
+func NewBidResponse(success bool, jobRequiresNodeTo string, fmtArgs ...any) BidStrategyResponse {
 	return BidStrategyResponse{
-		ShouldBid: true,
+		ShouldBid: success,
+		Reason:    FormatReason(success, jobRequiresNodeTo, fmtArgs...),
 	}
 }
 

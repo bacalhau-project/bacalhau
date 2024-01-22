@@ -1,28 +1,28 @@
 package models
 
 type PlanExecutionDesiredUpdate struct {
-	Execution    *Execution
-	DesiredState ExecutionDesiredStateType
-	Comment      string
+	Execution    *Execution                `json:"Execution"`
+	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
+	Comment      string                    `json:"Comment,omitempty"`
 }
 
 // Plan holds actions as a result of processing an evaluation by the scheduler.
 type Plan struct {
-	EvalID      string
-	EvalReceipt string
+	EvalID      string `json:"EvalID"`
+	EvalReceipt string `json:"EvalReceipt"`
 	// TODO: passing the evalID should be enough once we persist evaluations
-	Eval     *Evaluation
-	Priority int
+	Eval     *Evaluation `json:"Eval,omitempty"`
+	Priority int         `json:"Priority"`
 
-	Job *Job
+	Job *Job `json:"Job,omitempty"`
 
-	DesiredJobState JobStateType
-	Comment         string
+	DesiredJobState JobStateType `json:"DesiredJobState,omitempty"`
+	Comment         string       `json:"Comment,omitempty"`
 
 	// NewExecutions holds the executions to be created.
-	NewExecutions []*Execution
+	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
 
-	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate
+	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate `json:"UpdatedExecutions,omitempty"`
 }
 
 // NewPlan creates a new Plan instance.
@@ -66,6 +66,27 @@ func (p *Plan) MarkJobCompleted() {
 	p.NewExecutions = []*Execution{}
 }
 
+// MarkJobRunningIfEligible updates the job state to "Running" under certain conditions.
+func (p *Plan) MarkJobRunningIfEligible() {
+	// Exit the function if DesiredJobState is already defined.
+	if !p.DesiredJobState.IsUndefined() {
+		return
+	}
+
+	// Only proceed if the current job state is "Pending".
+	if p.Job.State.StateType != JobStateTypePending {
+		return
+	}
+
+	// Check if there are any running executions; if not, exit the function.
+	if !p.hasRunningExecutions() {
+		return
+	}
+
+	// All conditions met, set DesiredJobState to "Running".
+	p.DesiredJobState = JobStateTypeRunning
+}
+
 func (p *Plan) MarkJobFailed(comment string) {
 	p.DesiredJobState = JobStateTypeFailed
 	p.Comment = comment
@@ -77,4 +98,19 @@ func (p *Plan) MarkJobFailed(comment string) {
 			delete(p.UpdatedExecutions, id)
 		}
 	}
+}
+
+// hasRunningExecutions returns true if the plan has executions in desired state "Running".
+func (p *Plan) hasRunningExecutions() bool {
+	for _, exec := range p.NewExecutions {
+		if exec.DesiredState.StateType == ExecutionDesiredStateRunning {
+			return true
+		}
+	}
+	for _, update := range p.UpdatedExecutions {
+		if update.DesiredState == ExecutionDesiredStateRunning {
+			return true
+		}
+	}
+	return false
 }

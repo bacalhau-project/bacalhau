@@ -30,7 +30,7 @@ func getIpfsStorage(t *testing.T) *StorageProvider {
 	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
 	require.NoError(t, err)
 
-	storage, err := NewStorage(cm, node.Client())
+	storage, err := NewStorage(node.Client())
 	require.NoError(t, err)
 
 	return storage
@@ -78,7 +78,7 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			_, err = storage.PrepareStorage(ctx, models.InputSource{
+			_, err = storage.PrepareStorage(ctx, t.TempDir(), models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{

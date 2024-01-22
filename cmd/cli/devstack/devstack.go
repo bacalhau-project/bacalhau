@@ -9,12 +9,13 @@ import (
 
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/samber/lo"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -69,6 +70,8 @@ func NewCmd() *cobra.Command {
 		"job-selection":    configflags.JobSelectionFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"capacity":         configflags.CapacityFlags,
+		"job-timeouts":     configflags.ComputeTimeoutFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 
 	devstackCmd := &cobra.Command{
@@ -144,7 +147,9 @@ func NewCmd() *cobra.Command {
 		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
 		"Folder to act as the devstack configuration repo",
 	)
-
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.NetworkType, "network", ODs.NetworkType,
+		"Type of inter-node network layer. e.g. nats and libp2p")
 	return devstackCmd
 }
 
@@ -205,14 +210,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	if err != nil {
 		return err
 	}
-	requestorConfig, err := serve.GetRequesterConfig()
+	requesterConfig, err := serve.GetRequesterConfig()
 	if err != nil {
 		return err
 	}
 
 	options := append(ODs.Options(),
 		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requestorConfig),
+		devstack.WithRequesterConfig(requesterConfig),
 	)
 	if IsNoop {
 		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
@@ -221,6 +226,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	} else {
 		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
+
+	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
+	cert, key := config.GetRequesterCertificateSettings()
+	options = append(options, devstack.WithSelfSignedCertificate(cert, key))
+
 	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
 	if err != nil {
 		return err

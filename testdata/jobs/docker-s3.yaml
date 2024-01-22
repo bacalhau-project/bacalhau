@@ -1,24 +1,24 @@
-name: Docker Job withS3
-type: batch
-namespace: default
-count: 1
-tasks:
-  - name: main
-    engine:
-      type: docker
-      params:
+Name: Docker Job with S3
+Type: batch
+Namespace: default
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
         Image: ubuntu:latest
         Entrypoint:
           - /bin/bash
         Parameters:
           - -c
           - ls /input_custom
-    inputsources:
-      - alias: input_custom
-        target: /input_custom
-        source:
-          type: s3
-          params:
+    InputSources:
+      - Alias: input_custom
+        Target: /input_custom
+        Source:
+          Type: s3
+          Params:
             Bucket: bacalhau-test-datasets
             Key: integration-tests-do-not-delete/set1/
             Region: eu-west-1

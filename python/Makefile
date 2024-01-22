@@ -1,10 +1,17 @@
-POETRY := $(shell command -v poetry 2> /dev/null)
+POETRY ?= $(shell command -v poetry)
 VERSION ?= $${PYPI_VERSION}
 
 sources = bacalhau_sdk
 
-.`.PHONY: all
+.PHONY: all
 all: format lint pre-commit build
+
+.PHONY: setup
+setup:
+	$(POETRY) lock --no-update --no-interaction
+	$(POETRY) install --no-root --no-interaction --no-ansi --with test
+## workaround for https://github.com/bacalhau-project/bacalhau/issues/2683:
+	mkdir ~/.bacalhau
 
 .PHONY: test
 test: unittest coverage

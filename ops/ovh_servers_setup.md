@@ -23,7 +23,7 @@ Let's dive in! :zap:
 
 ## 1) Install Ubuntu via OVH Console
 
-Get the credentails from David Aronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
+Get the credentials from David Aronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
 Under "Dedicated servers" you'll see 4 entries. Click on one of those (need to repeat this step for each machine), then use the `...` menu to open the installation modal.
 
 <img width="1269" alt="Screenshot 2022-10-11 at 18 04 21" src="https://user-images.githubusercontent.com/4340327/195142902-17249c42-0e27-4925-82d6-f875d254964e.png">
@@ -33,7 +33,7 @@ Select `Install one of your templates` and pick `bacalhau - ubuntu2204-server`, 
 <img width="627" alt="Screenshot 2022-10-11 at 18 06 25" src="https://user-images.githubusercontent.com/4340327/195143328-3c455971-1248-42ec-aeb9-7808b518a373.png">
 
 OVH console allows you to select only one ssh key (using Enrico's for now), that's not a problem because we'll add the team's keys later on, but to move past this point you need to figure out how to add your key to OVH console so that it's listed in the dropdown menu.
-Once you confrim you'll see the progess bar slowing making its way to the right end of the stick.
+Once you confirm you'll see the progress bar slowing making its way to the right end of the stick.
 Go brew one or two ☕ because this step takes really a long time...
 
 <img width="609" alt="Screenshot 2022-10-11 at 18 08 52" src="https://user-images.githubusercontent.com/4340327/195143814-978f5f54-deb5-4d25-a911-9f286920a8c1.png">
@@ -71,9 +71,9 @@ Note `fdisk` is an interactive util so you need to manually follow a number of s
 
 1. press `n` for a new partition
 1. press enter and confirm all defaults
-1. press `t` to select the partiton type
+1. press `t` to select the partition type
 1. insert `29` that is the alias for `29 Linux RAID` for `51.81.184.74` only. For the other 3 hosts use `FD` that stands for `raid`. The machines are different, not sure why.
-1. press `w` to write out the partiton to disk
+1. press `w` to write out the partition to disk
 
 Repeat the steps above for each disk:
 
@@ -122,7 +122,7 @@ nvme0n1       3.5T                   disk
     /dev/nvme5n1p1
 ```
 
-Confirm Yes upon promtps.
+Confirm Yes upon prompts.
 Now a new `md0` array should be visible:
 
 ```bash
@@ -184,7 +184,7 @@ We're going to open some ports, [this terraform script](./terraform/main.tf) is 
 > sudo ufw enable
 ```
 
-Confrim the last prompt, then check the firewall status:
+Confirm the last prompt, then check the firewall status:
 
 ```bash
 > sudo ufw status numbered

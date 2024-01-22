@@ -11,13 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -133,41 +134,42 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
-			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
-			if string(livezText) == "OK" {
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
 		}
 	}
 }
 
-func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
+func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(s.ctx, "GET", URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusServiceUnavailable, err
 	}
 	req.Header.Set("Accept", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusServiceUnavailable, err
 	}
 	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, resp.StatusCode, err
 	}
 
-	return responseText, nil
+	return responseText, resp.StatusCode, nil
 }
 
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
-	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
+	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
+	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
@@ -186,7 +188,7 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
-	client := client.NewAPIClient("localhost", port)
+	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 	clientV2 := clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 	})
@@ -285,6 +287,30 @@ func (s *ServeSuite) TestGetPeers() {
 	peerConnect = strings.Join(inputPeers, ",")
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
+}
+
+// Begin WebUI Tests
+func (s *ServeSuite) Test200ForNotStartingWebUI() {
+	port, err := s.serve()
+	s.Require().NoError(err, "Error starting server")
+
+	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
+	_ = content
+	s.Require().NoError(err, "Error curling root endpoint")
+	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
+}
+
+func (s *ServeSuite) Test200ForRoot() {
+	webUIPort, err := freeport.GetFreePort()
+	if err != nil {
+		s.T().Fatal(err, "Could not get port for web-ui")
+	}
+	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
+	s.Require().NoError(err, "Error starting server")
+
+	_, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
+	s.Require().NoError(err, "Error curling root endpoint")
+	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
 // TODO: Can't figure out how to make this test work, it spits out the help text

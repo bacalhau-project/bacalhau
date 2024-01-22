@@ -27,6 +27,15 @@ func (b *TaskBuilder) Engine(engine *SpecConfig) *TaskBuilder {
 	return b
 }
 
+func (b *TaskBuilder) Meta(key string, value string) *TaskBuilder {
+	if b.task.Meta == nil {
+		b.task.Meta = make(map[string]string)
+	}
+
+	b.task.Meta[key] = value
+	return b
+}
+
 func (b *TaskBuilder) Publisher(publisher *SpecConfig) *TaskBuilder {
 	b.task.Publisher = publisher
 	return b

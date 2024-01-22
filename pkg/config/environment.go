@@ -6,6 +6,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 	flag "github.com/spf13/pflag"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 type Environment string
@@ -29,6 +32,25 @@ func (e Environment) IsKnown() bool {
 		return true
 	}
 	return false
+}
+
+func ForEnvironment() types.BacalhauConfig {
+	env := GetConfigEnvironment()
+	switch env {
+	case EnvironmentProd:
+		return configenv.Production
+	case EnvironmentStaging:
+		return configenv.Staging
+	case EnvironmentDev:
+		return configenv.Development
+	case EnvironmentTest:
+		return configenv.Testing
+	case EnvironmentLocal:
+		return configenv.Local
+	default:
+		// this would indicate an error in the above logic of `GetEnvironment()`
+		return configenv.Local
+	}
 }
 
 func GetConfigEnvironment() Environment {

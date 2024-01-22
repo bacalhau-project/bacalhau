@@ -29,7 +29,7 @@ func TestLoggingTracerProvider_addsSpanIDToLogger(t *testing.T) {
 	log.Logger = zerolog.New(sb)
 	zerolog.DefaultContextLogger = &log.Logger
 
-	subject := loggingTracerProvider{trace.NewTracerProvider()}
+	subject := loggingTracerProvider{delegate: trace.NewTracerProvider()}
 	t.Cleanup(func() {
 		assert.NoError(t, subject.Shutdown(context.Background()))
 	})

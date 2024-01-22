@@ -24,7 +24,6 @@ import (
 
 type BaseEndpointParams struct {
 	ID                         string
-	PublicKey                  []byte
 	EvaluationBroker           orchestrator.EvaluationBroker
 	Store                      jobstore.Store
 	EvaluationQueue            *EvaluationQueue
@@ -50,7 +49,7 @@ type BaseEndpoint struct {
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
-		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
+		jobtransform.NewRequesterInfo(params.ID),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(),
 		jobtransform.NewEngineMigrator(),

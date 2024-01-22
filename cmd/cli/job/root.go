@@ -1,11 +1,16 @@
 package job
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/spf13/cobra"
+)
 
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "job",
-		Short: "Commands to submit, query and update jobs.",
+		Use:                "job",
+		Short:              "Commands to submit, query and update jobs.",
+		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
+		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
 
 	cmd.AddCommand(NewDescribeCmd())

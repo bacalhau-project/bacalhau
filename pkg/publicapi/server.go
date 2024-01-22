@@ -8,18 +8,21 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/docs"
+	"github.com/Masterminds/semver"
+	"golang.org/x/time/rate"
+
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
+
 	"github.com/labstack/echo/v4"
 	echomiddelware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
-	"golang.org/x/time/rate"
 )
 
 const TimeoutMessage = "Server Timeout!"
@@ -34,6 +37,8 @@ type ServerParams struct {
 	TLSCertificateFile string
 	TLSKeyFile         string
 	Config             Config
+	Authorizer         authz.Authorizer
+	Headers            map[string]string
 }
 
 // Server configures a node's public REST API.
@@ -50,6 +55,7 @@ type Server struct {
 	useTLS     bool
 }
 
+//nolint:funlen
 func NewAPIServer(params ServerParams) (*Server, error) {
 	server := &Server{
 		Router:  params.Router,
@@ -96,27 +102,37 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		echomiddelware.Rewrite(migrations),
 	)
 
+	serverBuildInfo := version.Get()
+	serverVersion, err := semver.NewVersion(serverBuildInfo.GitVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine server agent version %w", err)
+	}
+	middlewareLogger := log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))
 	// base middle after routing
 	server.Router.Use(
-		echomiddelware.TimeoutWithConfig(echomiddelware.TimeoutConfig{
-			Timeout:      params.Config.RequestHandlerTimeout,
-			ErrorMessage: TimeoutMessage,
-			Skipper:      middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
-		}),
-		echomiddelware.RateLimiter(echomiddelware.NewRateLimiterMemoryStore(rate.Limit(params.Config.ThrottleLimit))),
-		echomiddelware.RequestID(),
-		middleware.RequestLogger(
-			*log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID)),
-			logLevel),
-		middleware.Otel(),
-		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
 		echomiddelware.Recover(),
-	)
+		echomiddelware.RequestID(),
+		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
+		echomiddelware.RateLimiter(
+			echomiddelware.NewRateLimiterMemoryStore(rate.Limit(
+				params.Config.ThrottleLimit,
+			))),
+		echomiddelware.TimeoutWithConfig(
+			echomiddelware.TimeoutConfig{
+				Timeout:      params.Config.RequestHandlerTimeout,
+				ErrorMessage: TimeoutMessage,
+				Skipper:      middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
+			}),
 
-	if server.config.EnableSwaggerUI {
-		docs.SwaggerInfo.Version = version.Get().GitVersion
-		server.Router.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
-	}
+		middleware.Otel(),
+		middleware.Authorize(params.Authorizer),
+		// sets headers on the server based on provided config
+		middleware.ServerHeader(params.Headers),
+		// logs request at appropriate error level based on status code
+		middleware.RequestLogger(*middlewareLogger, logLevel),
+		// logs requests made by clients with different versions than the server
+		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
+	)
 
 	var tlsConfig *tls.Config
 	if params.AutoCertDomain != "" {

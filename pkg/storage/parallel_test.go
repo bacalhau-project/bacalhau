@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -75,24 +73,22 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 		},
 		Target: "/inputs/test.txt",
 	}
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, artifact)
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	var files []string
 	for _, v := range volumes {
-		files = append(files, v.Volume.Source)
+		s.Require().FileExists(v.Volume.Source)
 	}
-	// IPFS cleanup doesn't actually return an error as it deletes a folder
-	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
 
-	// Check that all of the files have gone by statting them and expecting
-	// an error for each one
-	lo.ForEach(files, func(filepath string, index int) {
-		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
-	})
+	// Cleanup the directory and make sure there are no longer any assets left
+	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	s.Require().NoError(err)
+
+	for _, v := range volumes {
+		s.Require().NoFileExists(v.Volume.Source)
+	}
 }
 
 func (s *ParallelStorageSuite) TestURLCleanup() {
@@ -113,23 +109,19 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		Target: "/inputs/test.txt",
 	}
 
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, artifact)
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	var files []string
 	for _, v := range volumes {
-		files = append(files, v.Volume.Source)
+		s.Require().FileExists(v.Volume.Source)
 	}
 
-	// URL cleanup doesn't actually return an error as it deletes a folder
-	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	s.Require().NoError(err)
 
-	// Check that all of the files have gone by statting them and expecting
-	// an error for each one
-	lo.ForEach(files, func(filepath string, index int) {
-		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
-	})
+	for _, v := range volumes {
+		s.Require().NoFileExists(v.Volume.Source)
+	}
 }

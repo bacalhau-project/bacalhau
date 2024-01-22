@@ -17,11 +17,11 @@
 //  3. For clients running the SDK or in constrained (e.g IoT) environments, it
 //     will be easier to interact with just the Bacalhau SDK than also having to
 //     first persist storage and wait for this to complete. E.g. an IoT client
-//     could submit some data it has collected directly to the requestor node.
+//     could submit some data it has collected directly to the requester node.
 //
 // The storage system doesn't enforce any maximum size of the stored data. It is
 // up to the rest of the system to pick a limit it thinks is suitable and
-// enforce it. This is so that e.g. a requestor node can decide that an inline
+// enforce it. This is so that e.g. a requester node can decide that an inline
 // payload is too large and commit the data to IPFS instead, which would be out
 // of the scope of this package.
 package inline
@@ -94,12 +94,12 @@ func (*InlineStorage) IsInstalled(context.Context) (bool, error) {
 // PrepareStorage extracts the data from the "data:" URL and writes it to a
 // temporary directory. If the data was a compressed tarball, it decompresses it
 // into a directory structure.
-func (i *InlineStorage) PrepareStorage(_ context.Context, spec models.InputSource) (storage.StorageVolume, error) {
+func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory string, spec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(spec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-	tempdir, err := os.MkdirTemp(os.TempDir(), "inline-storage")
+	tempdir, err := os.MkdirTemp(storageDirectory, "inline-storage")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}

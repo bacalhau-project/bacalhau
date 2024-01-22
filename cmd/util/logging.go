@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -75,18 +73,6 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 		return fmt.Errorf("reading log output: %w", err)
 	}
 	return nil
-}
-
-// ApplyPorcelainLogLevel sets the log level of loggers running on user-facing
-// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
-func ApplyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
-	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err == nil {
-		return
-	}
-
-	ctx := cmd.Context()
-	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
-	cmd.SetContext(ctx)
 }
 
 type Msg struct {

@@ -1,10 +1,13 @@
 package types
 
-import "github.com/bacalhau-project/bacalhau/pkg/model"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
 
 type ComputeConfig struct {
 	Capacity       CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore StorageConfig            `yaml:"ExecutionStore"`
+	ExecutionStore JobStoreConfig           `yaml:"ExecutionStore"`
 	JobTimeouts    JobTimeoutConfig         `yaml:"JobTimeouts"`
 	JobSelection   model.JobSelectionPolicy `yaml:"JobSelection"`
 	Queue          QueueConfig              `yaml:"Queue"`
@@ -14,13 +17,11 @@ type ComputeConfig struct {
 type CapacityConfig struct {
 	IgnorePhysicalResourceLimits bool `yaml:"IgnorePhysicalResourceLimits"`
 	// Total amount of resource the system can be using at one time in aggregate for all jobs.
-	TotalResourceLimits model.ResourceUsageConfig `yaml:"TotalResourceLimits"`
+	TotalResourceLimits models.ResourcesConfig `yaml:"TotalResourceLimits"`
 	// Per job amount of resource the system can be using at one time.
-	JobResourceLimits        model.ResourceUsageConfig `yaml:"JobResourceLimits"`
-	DefaultJobResourceLimits model.ResourceUsageConfig `yaml:"DefaultJobResourceLimits"`
-	QueueResourceLimits      model.ResourceUsageConfig `yaml:"QueueResourceLimits"`
-	// The maximum time a job can execute for.
-	MaxJobExecutionTimeout Duration `yaml:"MaxJobExecutionTimeout"`
+	JobResourceLimits        models.ResourcesConfig `yaml:"JobResourceLimits"`
+	DefaultJobResourceLimits models.ResourcesConfig `yaml:"DefaultJobResourceLimits"`
+	QueueResourceLimits      models.ResourcesConfig `yaml:"QueueResourceLimits"`
 }
 
 type JobTimeoutConfig struct {
@@ -41,8 +42,6 @@ type JobTimeoutConfig struct {
 }
 
 type QueueConfig struct {
-	// How long the buffer would backoff before polling the queue again for new jobs
-	ExecutorBufferBackoffDuration Duration `yaml:"ExecutorBufferBackoffDuration"`
 }
 
 type LoggingConfig struct {

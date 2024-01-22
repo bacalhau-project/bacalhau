@@ -41,13 +41,13 @@ type StateChange[StateType any] struct {
 // {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
-	Type           JobHistoryType `json:"Type"`
-	JobID          string
-	NodeID         string
-	ExecutionID    string
-	JobState       *StateChange[JobStateType]
-	ExecutionState *StateChange[ExecutionStateType]
-	NewRevision    uint64
-	Comment        string
-	Time           time.Time
+	Type           JobHistoryType                   `json:"Type"`
+	JobID          string                           `json:"JobID"`
+	NodeID         string                           `json:"NodeID,omitempty"`
+	ExecutionID    string                           `json:"ExecutionID,omitempty"`
+	JobState       *StateChange[JobStateType]       `json:"JobState,omitempty"`
+	ExecutionState *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
+	NewRevision    uint64                           `json:"NewRevision"`
+	Comment        string                           `json:"Comment,omitempty"`
+	Time           time.Time                        `json:"Time"`
 }

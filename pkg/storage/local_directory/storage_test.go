@@ -236,7 +236,7 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 				path += ":rw"
 			}
 			spec := s.prepareStorageSpec(path)
-			volume, err := storageProvider.PrepareStorage(context.Background(), spec)
+			volume, err := storageProvider.PrepareStorage(context.Background(), s.T().TempDir(), spec)
 			require.NoError(s.T(), err)
 			require.Equal(s.T(), volume.Source, folderPath)
 			require.Equal(s.T(), volume.Target, spec.Target)

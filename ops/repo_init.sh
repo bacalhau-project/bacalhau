@@ -6,3 +6,8 @@ poetry run pre-commit install
 
 pushd python
 poetry install
+popd
+
+pushd webui
+npm install
+popd

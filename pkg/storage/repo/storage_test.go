@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -52,7 +51,7 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	}
 
 	cl := ipfs.NewClient(node.Client().API)
-	storage, err := apicopy.NewStorage(cm, cl)
+	storage, err := apicopy.NewStorage(cl)
 	if err != nil {
 		return nil, err
 	}
@@ -60,37 +59,13 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	return storage, nil
 }
 
-func (s *StorageSuite) TestNewStorageProvider() {
-	cm := system.NewCleanupManager()
-	storage, err := getIpfsStorage()
-	if err != nil {
-		panic(err)
-	}
-	sp, err := NewStorage(cm, storage)
-	require.NoError(s.T(), err, "failed to create storage provider")
-
-	// is dir writable?
-	fmt.Println(sp.LocalDir)
-	f, err := os.Create(filepath.Join(sp.LocalDir, "data.txt"))
-	require.NoError(s.T(), err, "failed to create file")
-
-	_, err = f.WriteString("test\n")
-	require.NoError(s.T(), err, "failed to write to file")
-
-	f.Close()
-	// if sp.IPFSClient == nil {
-	// 	require.Fail(s.T(), "IPFSClient is nil")
-	// }
-}
-
 func (s *StorageSuite) TestHasStorageLocally() {
-	cm := system.NewCleanupManager()
 	ctx := context.Background()
 	storage, err := getIpfsStorage()
 	if err != nil {
 		panic(err)
 	}
-	sp, err := NewStorage(cm, storage)
+	sp, err := NewStorage(storage)
 	require.NoError(s.T(), err, "failed to create storage provider")
 
 	spec := models.InputSource{
@@ -116,9 +91,8 @@ func (s *StorageSuite) TestCloneRepo() {
 	// is connected to the internet and skip this test if they are not.
 	// This test will also fail if the URL is not reachable.
 	// Using -test.short flag for now
-	if testing.Short() {
-		s.T().Skip("Skipping test that requires internet connection")
-	}
+	s.T().Skip("Skipping test that requires internet connection")
+
 	type repostruct struct {
 		Site     string
 		URL      string
@@ -134,13 +108,12 @@ func (s *StorageSuite) TestCloneRepo() {
 		name := fmt.Sprintf("%s-%s", ftc.Site, ftc.URL)
 
 		hash, err := func() (string, error) {
-			cm := system.NewCleanupManager()
 			ctx := context.Background()
 			storage, err := getIpfsStorage()
 			if err != nil {
 				panic(err)
 			}
-			sp, err := NewStorage(cm, storage)
+			sp, err := NewStorage(storage)
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}
@@ -155,7 +128,7 @@ func (s *StorageSuite) TestCloneRepo() {
 				Target: "/inputs/" + ftc.repoName,
 			}
 
-			volume, err := sp.PrepareStorage(ctx, spec)
+			volume, err := sp.PrepareStorage(ctx, s.T().TempDir(), spec)
 
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)

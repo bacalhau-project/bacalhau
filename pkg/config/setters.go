@@ -6,22 +6,25 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-func SetUserKey(path string) {
-	viper.Set(types.UserKeyPath, path)
+func SetIntallationID(path string) {
+	viper.Set(types.UserInstallationID, path)
 }
 
-func SetLibp2pKey(path string) {
-	viper.Set(types.UserLibp2pKeyPath, path)
+func SetUpdateCheckStatePath(path string) {
+	viper.Set(types.UpdateCheckStatePath, path)
 }
 
-func SetExecutorPluginPath(path string) {
-	viper.Set(types.NodeExecutorPluginPath, path)
+// SetDefault sets the default value for the configuration.
+// Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
+func SetDefault(config types.BacalhauConfig) error {
+	types.SetDefaults(config)
+	return nil
 }
 
-func SetComputeStoragesPath(path string) {
-	viper.Set(types.NodeComputeStoragePath, path)
-}
-
-func SetAutoCertCachePath(path string) {
-	viper.Set(types.NodeServerAPITLSAutoCertCachePath, path)
+// Set sets the configuration value.
+// Will be used instead of values obtained via flags, config file, ENV, default.
+// Useful for testing.
+func Set(config types.BacalhauConfig) error {
+	types.Set(config)
+	return nil
 }

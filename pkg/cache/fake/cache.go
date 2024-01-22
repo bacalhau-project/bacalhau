@@ -1,6 +1,6 @@
 package fake
 
-// MockCache is a simple map-based cache useable
+// MockCache is a simple map-based cache usable
 // in tests without using a real cache.
 type FakeCache[T any] struct {
 	inner              map[string]FakeCacheItem[T]

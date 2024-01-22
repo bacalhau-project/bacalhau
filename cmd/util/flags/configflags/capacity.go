@@ -4,12 +4,6 @@ import "github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 var CapacityFlags = []Definition{
 	{
-		FlagName:     "job-execution-timeout-bypass-client-id",
-		ConfigPath:   types.NodeComputeJobTimeoutsJobExecutionTimeoutClientIDBypassList,
-		DefaultValue: Default.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
-		Description:  `List of IDs of clients that are allowed to bypass the job execution timeout check`,
-	},
-	{
 		FlagName:             "ignore-physical-resource-limits",
 		ConfigPath:           types.NodeComputeCapacityIgnorePhysicalResourceLimits,
 		DefaultValue:         Default.Node.Compute.Capacity.IgnorePhysicalResourceLimits,
@@ -51,11 +45,5 @@ var CapacityFlags = []Definition{
 		ConfigPath:   types.NodeComputeCapacityJobResourceLimitsGPU,
 		DefaultValue: Default.Node.Compute.Capacity.JobResourceLimits.GPU,
 		Description:  `Job GPU limit to run all jobs (e.g. 1, 2, or 8).`,
-	},
-	{
-		FlagName:     "max-timeout",
-		ConfigPath:   types.NodeComputeCapacityMaxJobExecutionTimeout,
-		DefaultValue: Default.Node.Compute.Capacity.MaxJobExecutionTimeout,
-		Description:  `Job time exeuciton limit for a single job (e.g. 30m, 1hr)`,
 	},
 }

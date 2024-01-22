@@ -9,12 +9,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 var Staging = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
 		Libp2pTracerPath: os.DevNull,
 		EventTracerPath:  os.DevNull,
+	},
+	Update: types.UpdateConfig{
+		SkipChecks:     false,
+		CheckFrequency: types.Duration(24 * time.Hour),
 	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
@@ -26,17 +31,25 @@ var Staging = types.BacalhauConfig{
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
 		},
+		Network: types.NetworkConfig{
+			Type: models.NetworkTypeLibp2p,
+			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
+		},
 		BootstrapAddresses: []string{
-			"/ip4/34.85.197.247/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
-			"/ip4/35.245.163.45/tcp/1235/p2p/QmXRdLruWyETS2Z8XFrXxBFYXctfjT8T9mZWyuqwUm6rQk",
-			"/ip4/35.199.63.137/tcp/1235/p2p/QmVXwmdZUHsa88UHRKwQvvapguAXgHxd2uvVEpHrhjchAH",
+			"/ip4/34.85.228.65/tcp/1235/p2p/QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv",
+			"/ip4/34.86.73.105/tcp/1235/p2p/QmVHCeiLzhFJPCyCj5S1RTAk1vBEvxd8r5A6E4HyJGQtbJ",
+			"/ip4/34.150.138.100/tcp/1235/p2p/QmRr9qPTe4mU7aS9faKnWgvn1NtXt36FT8YUULRPCn2f3K",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
+		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
-		EstuaryAPIKey:             "",
 		AllowListedLocalPaths:     []string{},
 		Labels:                    map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
@@ -53,50 +66,59 @@ var Staging = types.BacalhauConfig{
 			PrivateInternal: true,
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
-				"/ip4/34.85.197.247/tcp/4001/p2p/12D3KooWDaveKrxPZSCrHY2hjsk4pcWVSCE3eUKFotmKWL8nJDZi",
-				"/ip4/34.85.197.247/udp/4001/quic/p2p/12D3KooWDaveKrxPZSCrHY2hjsk4pcWVSCE3eUKFotmKWL8nJDZi",
-				"/ip4/35.245.163.45/tcp/4001/p2p/12D3KooWDzhR9PAsCNc2xY7v6NQJ4oKEmhvpwaxKCS3Jbxw36G3C",
-				"/ip4/35.245.163.45/udp/4001/quic/p2p/12D3KooWDzhR9PAsCNc2xY7v6NQJ4oKEmhvpwaxKCS3Jbxw36G3C",
-				"/ip4/35.199.63.137/tcp/4001/p2p/12D3KooWKFN8bf1yK1n2zXZMUp2NpTcCLn9szcpYiwrrg9YbrKap",
-				"/ip4/35.199.63.137/udp/4001/quic/p2p/12D3KooWKFN8bf1yK1n2zXZMUp2NpTcCLn9szcpYiwrrg9YbrKap",
-				"/ip4/35.188.227.44/tcp/4001/p2p/12D3KooWGzqdeV1oM7voQghTtnwSQmmfadPswTweDTtya6qMJC3j",
-				"/ip4/35.188.227.44/udp/4001/quic/p2p/12D3KooWGzqdeV1oM7voQghTtnwSQmmfadPswTweDTtya6qMJC3j",
+				"/ip4/34.85.228.65/tcp/4001/p2p/12D3KooWCWSTjjWh7SVoVv24W47z3T1Ly1tgnwZ56CCqCku5e4dS",
+				"/ip4/34.85.228.65/udp/4001/quic/p2p/12D3KooWCWSTjjWh7SVoVv24W47z3T1Ly1tgnwZ56CCqCku5e4dS",
+				"/ip4/34.86.73.105/tcp/4001/p2p/12D3KooWQuhW3LSpvhea25Zed47Z7fD5Cq2nw1xmapQ2tAUJ3q4F",
+				"/ip4/34.86.73.105/udp/4001/quic/p2p/12D3KooWQuhW3LSpvhea25Zed47Z7fD5Cq2nw1xmapQ2tAUJ3q4F",
+				"/ip4/34.150.138.100/tcp/4001/p2p/12D3KooWQm1T8EN8fMBz7rLviHxTGdRnohZ9nDPGbW4bfi78ckVT",
+				"/ip4/34.150.138.100/udp/4001/quic/p2p/12D3KooWQm1T8EN8fMBz7rLviHxTGdRnohZ9nDPGbW4bfi78ckVT",
+				"/ip4/35.245.247.85/tcp/4001/p2p/12D3KooWEztGEJtqtzy7th2d7cTw2iR4CQCPHFUYvj66rhh9Cf7h",
+				"/ip4/35.245.247.85/udp/4001/quic/p2p/12D3KooWEztGEJtqtzy7th2d7cTw2iR4CQCPHFUYvj66rhh9Cf7h",
 			},
+			Profile:                "flatfs",
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
 		},
 		Compute:   StagingComputeConfig,
 		Requester: StagingRequesterConfig,
+		WebUI: types.WebUIConfig{
+			Enabled: false,
+			Port:    8483,
+		},
+		StrictVersionMatch: false,
 	},
 }
 
 var StagingComputeConfig = types.ComputeConfig{
 	Capacity: types.CapacityConfig{
 		IgnorePhysicalResourceLimits: false,
-		TotalResourceLimits: model.ResourceUsageConfig{
+		TotalResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		JobResourceLimits: model.ResourceUsageConfig{
+		JobResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
-		DefaultJobResourceLimits: model.ResourceUsageConfig{
-			CPU:    "100m",
-			Memory: "100Mi",
+		DefaultJobResourceLimits: models.ResourcesConfig{
+			CPU:    "500m",
+			Memory: "1Gb",
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: model.ResourceUsageConfig{
+		QueueResourceLimits: models.ResourcesConfig{
 			CPU:    "",
 			Memory: "",
 			Disk:   "",
 			GPU:    "",
 		},
 	},
-	ExecutionStore: types.StorageConfig{
+	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -114,9 +136,7 @@ var StagingComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{
-		ExecutorBufferBackoffDuration: types.Duration(50 * time.Millisecond),
-	},
+	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
@@ -131,7 +151,7 @@ var StagingRequesterConfig = types.RequesterConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	JobStore: types.StorageConfig{
+	JobStore: types.JobStoreConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
@@ -155,5 +175,10 @@ var StagingRequesterConfig = types.RequesterConfig{
 	},
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Minute),
+	},
+	StorageProvider: types.StorageProviderConfig{
+		S3: types.S3StorageProviderConfig{
+			PreSignedURLExpiration: types.Duration(30 * time.Minute),
+		},
 	},
 }

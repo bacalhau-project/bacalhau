@@ -41,7 +41,7 @@ func TestTimeoutStrategy(t *testing.T) {
 				},
 			},
 			shouldBid: false,
-			reason:    "job timeout 9223372037 exceeds maximum possible value 9223372036",
+			reason:    "this node does not accept jobs with timeout 9223372037 (the maximum allowed is 9223372036)",
 		},
 		{
 			name: "client-skip-list",
@@ -61,7 +61,7 @@ func TestTimeoutStrategy(t *testing.T) {
 				},
 			},
 			shouldBid: true,
-			reason:    "",
+			reason:    "this node does allow client \"client\" to bypass timeout limits",
 		},
 	}
 

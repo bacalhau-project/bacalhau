@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -41,25 +40,8 @@ func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 }
 
-func (s *StorageSuite) TestNewStorageProvider() {
-	cm := system.NewCleanupManager()
-
-	sp, err := NewStorage(cm)
-	s.Require().NoError(err, "failed to create storage provider")
-
-	// is dir writable?
-	f, err := os.Create(filepath.Join(sp.localDir, "data.txt"))
-	s.Require().NoError(err, "failed to create file")
-
-	_, err = f.WriteString("test\n")
-	s.Require().NoError(err, "failed to write to file")
-
-	s.NoError(f.Close())
-	s.Require().NotNil(sp.client, "HTTPClient is nil")
-}
-
 func (s *StorageSuite) TestHasStorageLocally() {
-	sp := newStorage(s.T().TempDir())
+	sp := NewStorage()
 
 	spec := models.InputSource{
 		Source: &models.SpecConfig{
@@ -322,7 +304,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			}))
 			s.T().Cleanup(ts.Close)
 
-			subject := newStorage(s.T().TempDir())
+			subject := NewStorage()
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
 			spec := models.InputSource{
@@ -335,7 +317,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				Target: "/inputs",
 			}
 
-			vol, err := subject.PrepareStorage(context.Background(), spec)
+			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)

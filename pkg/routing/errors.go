@@ -2,19 +2,34 @@ package routing
 
 import (
 	"fmt"
-
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-// ErrNodeNotFound is returned when nodeInfo was not found for a requested peer id
+// ErrNodeNotFound is returned when nodeInfo was not found for a requested node id
 type ErrNodeNotFound struct {
-	peerID peer.ID
+	nodeID string
 }
 
-func NewErrNodeNotFound(peerID peer.ID) ErrNodeNotFound {
-	return ErrNodeNotFound{peerID: peerID}
+func NewErrNodeNotFound(nodeID string) ErrNodeNotFound {
+	return ErrNodeNotFound{nodeID: nodeID}
 }
 
 func (e ErrNodeNotFound) Error() string {
-	return fmt.Errorf("nodeInfo not found for peer id: %s", e.peerID).Error()
+	return fmt.Errorf("nodeInfo not found for nodeID: %s", e.nodeID).Error()
+}
+
+// ErrMultipleNodesFound is returned when multiple nodes were found for a requested node id prefix
+type ErrMultipleNodesFound struct {
+	nodeIDPrefix    string
+	matchingNodeIDs []string
+}
+
+func NewErrMultipleNodesFound(nodeIDPrefix string, matchingNodeIDs []string) ErrMultipleNodesFound {
+	if len(matchingNodeIDs) > 3 {
+		matchingNodeIDs = append(matchingNodeIDs[:3], "...")
+	}
+	return ErrMultipleNodesFound{nodeIDPrefix: nodeIDPrefix, matchingNodeIDs: matchingNodeIDs}
+}
+
+func (e ErrMultipleNodesFound) Error() string {
+	return fmt.Errorf("multiple nodes found for nodeID prefix: %s, matching nodeIDs: %v", e.nodeIDPrefix, e.matchingNodeIDs).Error()
 }

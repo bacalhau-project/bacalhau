@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -28,8 +29,8 @@ func CatFileToStdout(t testing.TB) Scenario {
 			simpleMountPath,
 		),
 		ResultsChecker: ManyChecks(
-			FileEquals(model.DownloadFilenameStderr, ""),
-			FileEquals(model.DownloadFilenameStdout, helloWorld),
+			FileEquals(downloader.DownloadFilenameStderr, ""),
+			FileEquals(downloader.DownloadFilenameStdout, helloWorld),
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
 			jobutils.WithEngineSpec(
@@ -75,7 +76,7 @@ func GrepFile(t testing.TB) Scenario {
 			simpleMountPath,
 		),
 		ResultsChecker: FileContains(
-			model.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			[]string{"kiwi is delicious"},
 			2,
 		),
@@ -96,7 +97,7 @@ func SedFile(t testing.TB) Scenario {
 			simpleMountPath,
 		),
 		ResultsChecker: FileContains(
-			model.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			[]string{"LISBON"},
 			5, //nolint:gomnd // magic number ok for testing
 		),
@@ -122,7 +123,7 @@ func AwkFile(t testing.TB) Scenario {
 			simpleMountPath,
 		),
 		ResultsChecker: FileContains(
-			model.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			[]string{"LISBON"},
 			501, //nolint:gomnd // magic number appropriate for test
 		),
@@ -144,7 +145,7 @@ func AwkFile(t testing.TB) Scenario {
 func WasmHelloWorld(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileEquals(
-			model.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			"Hello, world!\n",
 		),
 		Spec: model.Spec{
@@ -158,7 +159,7 @@ func WasmHelloWorld(t testing.TB) Scenario {
 func WasmExitCode(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileEquals(
-			model.DownloadFilenameExitCode,
+			downloader.DownloadFilenameExitCode,
 			"5",
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
@@ -233,7 +234,7 @@ func WasmDynamicLink(t testing.TB) Scenario {
 			"/inputs",
 		),
 		ResultsChecker: FileEquals(
-			model.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			"17\n",
 		),
 		Spec: testutils.MakeSpecWithOpts(t,

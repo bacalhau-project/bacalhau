@@ -117,7 +117,7 @@ func init() {
 	JsonJobWasmEngineSpec = NewLegacySpecFixture(jobJsonWasmEngineSpec)
 
 	DockerJobYAML = NewJobFixture("docker job", dockerJobYAML, false)
-	DockerOutputYAML = NewJobFixture("docker with output", dockerOutputYAML, false)
+	DockerOutputYAML = NewJobFixture("docker with output yaml", dockerOutputYAML, false)
 	DockerOutputJSON = NewJobFixture("docker with output json", dockerOutputJSON, false)
 	DockerS3YAML = NewJobFixture("docker with s3", dockerS3YAML, false)
 	EmptyJobYAML = NewJobFixture("empty job", emptyJobYAML, true)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
@@ -27,12 +26,6 @@ func (c *Chain) Add(discoverer ...orchestrator.NodeDiscoverer) {
 	c.discoverers = append(c.discoverers, discoverer...)
 }
 
-func (c *Chain) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
-	return c.chainDiscovery(ctx, "FindNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
-		return r.FindNodes(ctx, job)
-	})
-}
-
 func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
 		return r.ListNodes(ctx)
@@ -45,14 +38,14 @@ func (c *Chain) chainDiscovery(
 	getNodes func(orchestrator.NodeDiscoverer) ([]models.NodeInfo, error),
 ) ([]models.NodeInfo, error) {
 	var err error
-	uniqueNodes := make(map[peer.ID]models.NodeInfo, 0)
+	uniqueNodes := make(map[string]models.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
 		nodeInfos, discoverErr := getNodes(discoverer)
 		err = multierr.Append(err, errors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
 		currentNodesCount := len(uniqueNodes)
 		for _, nodeInfo := range nodeInfos {
-			if _, ok := uniqueNodes[nodeInfo.PeerInfo.ID]; !ok {
-				uniqueNodes[nodeInfo.PeerInfo.ID] = nodeInfo
+			if _, ok := uniqueNodes[nodeInfo.ID()]; !ok {
+				uniqueNodes[nodeInfo.ID()] = nodeInfo
 			}
 		}
 		log.Ctx(ctx).Debug().Msgf("[%s] found %d more nodes by %T", caller, len(uniqueNodes)-currentNodesCount, discoverer)

@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
@@ -17,9 +18,15 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	requesterConfig, err := node.NewRequesterConfigWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	return &DevStackConfig{
 		ComputeConfig:          computeConfig,
-		RequesterConfig:        node.NewRequesterConfigWithDefaults(),
+		RequesterConfig:        requesterConfig,
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
 
@@ -37,7 +44,13 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
 		ExecutorPlugins:            false,
+		NodeInfoStoreTTL:           10 * time.Minute,
 	}, nil
+}
+
+type DevstackTLSSettings struct {
+	Certificate string
+	Key         string
 }
 
 type DevStackConfig struct {
@@ -60,6 +73,9 @@ type DevStackConfig struct {
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
+	NodeInfoStoreTTL           time.Duration
+	TLS                        DevstackTLSSettings
+	NetworkType                string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -75,7 +91,8 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
 		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
 		Bool("PublicIPFSMode", o.PublicIPFSMode).
-		Bool("ExecutorPlugins", o.ExecutorPlugins)
+		Bool("ExecutorPlugins", o.ExecutorPlugins).
+		Str("NetworkType", o.NetworkType)
 }
 
 func (o *DevStackConfig) Validate() error {
@@ -202,5 +219,20 @@ func WithNodeInfoPublisherInterval(interval routing.NodeInfoPublisherIntervalCon
 func WithExecutorPlugins(enabled bool) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.ExecutorPlugins = enabled
+	}
+}
+
+func WithNetworkType(typ string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.NetworkType = typ
+	}
+}
+
+func WithSelfSignedCertificate(cert string, key string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.TLS = DevstackTLSSettings{
+			Certificate: cert,
+			Key:         key,
+		}
 	}
 }

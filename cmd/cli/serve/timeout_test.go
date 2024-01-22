@@ -46,15 +46,15 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 		)
 
 		s.Run(name, func() {
-			args := []string{}
+			args := []string{"--node-type", "requester,compute"}
 			if tc.configuredMax != nil {
-				args = append(args, "--max-timeout", tc.configuredMax.String())
+				args = append(args, "--max-job-execution-timeout", tc.configuredMax.String())
 			}
 
 			port, err := s.serve(args...)
 			s.Require().NoError(err)
 
-			client := client.NewAPIClient("localhost", port)
+			client := client.NewAPIClient(client.NoTLS, "localhost", port)
 			clientV2 := clientv2.New(clientv2.Options{
 				Address: fmt.Sprintf("http://127.0.0.1:%d", port),
 			})

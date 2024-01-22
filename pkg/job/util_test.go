@@ -56,7 +56,7 @@ func (s *JobUtilSuite) TestRun_URLs() {
 				errorMsg: "TYPE: Bad scheme"},
 			{submittedURL: "example.com",
 				valid:    false,
-				errorMsg: "TYPE: Mising scheme"},
+				errorMsg: "TYPE: Missing scheme"},
 			{submittedURL: "http://example.com:8080/file.txt",
 				valid:    true,
 				errorMsg: "TYPE: With Ports"},

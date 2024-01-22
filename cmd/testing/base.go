@@ -40,22 +40,22 @@ func (s *BaseSuite) SetupTest() {
 	})
 	s.Require().NoError(err)
 	ctx := context.Background()
+	requesterConfig, err := node.NewRequesterConfigWith(
+		node.RequesterConfigParams{
+			HousekeepingBackgroundTaskInterval: 1 * time.Second,
+		},
+	)
+	s.Require().NoError(err)
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(
-			node.NewRequesterConfigWith(
-				node.RequesterConfigParams{
-					HousekeepingBackgroundTaskInterval: 1 * time.Second,
-				},
-			),
-		),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = client.NewAPIClient(s.Host, s.Port)
+	s.Client = client.NewAPIClient(client.NoTLS, s.Host, s.Port)
 	s.ClientV2 = clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://%s:%d", s.Host, s.Port),
 	})

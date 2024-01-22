@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -195,6 +196,6 @@ func (b Bidder) doBidding(
 	return &bidstrategy.BidStrategyResponse{
 		ShouldBid:  resourceResponse.ShouldBid,
 		ShouldWait: semanticResponse.ShouldWait || resourceResponse.ShouldWait,
-		Reason:     "",
+		Reason:     resourceResponse.Reason,
 	}, *resourceUsage, nil
 }

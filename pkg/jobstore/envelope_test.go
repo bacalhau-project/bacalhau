@@ -3,9 +3,9 @@
 package jobstore
 
 import (
-	"encoding/json"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,7 +24,7 @@ func (s *EnvelopeTestSuite) TestEnvelope() {
 
 	e := NewEnvelope[test](
 		WithBody(test{Value: "hello"}),
-		WithMarshaller[test](json.Marshal, json.Unmarshal),
+		WithMarshaller[test](marshaller.NewJSONMarshaller()),
 	)
 
 	encoded, err := e.Serialize()
@@ -42,7 +42,7 @@ func (s *EnvelopeTestSuite) TestEnvelopeBinaryEncoding() {
 
 	e := NewEnvelope[test](
 		WithBody(test{Value: "hello"}),
-		WithMarshaller[test](BinaryMarshal, BinaryUnmarshal),
+		WithMarshaller[test](marshaller.NewBinaryMarshaller()),
 	)
 
 	encoded, err := e.Serialize()

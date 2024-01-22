@@ -2,7 +2,6 @@ package semantic
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -47,14 +46,13 @@ func (s *ProviderInstalledStrategy[P]) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (resp bidstrategy.BidStrategyResponse, err error) {
-	resp.ShouldBid = true
-	for _, key := range s.getter(&request.Job) {
-		resp.ShouldBid = s.provider.Has(ctx, key)
-		resp.Reason = fmt.Sprintf("%s installed: %t", key, resp.ShouldBid)
-		if !resp.ShouldBid {
-			return
+	keys := s.getter(&request.Job)
+	for _, key := range keys {
+		supportsKey := s.provider.Has(ctx, key)
+		if !supportsKey {
+			return bidstrategy.NewBidResponse(false, "support %q", key), nil
 		}
 	}
 
-	return
+	return bidstrategy.NewBidResponse(true, "support %v", keys), nil
 }

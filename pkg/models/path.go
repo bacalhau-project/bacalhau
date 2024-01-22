@@ -10,9 +10,9 @@ import (
 
 type ResultPath struct {
 	// Name
-	Name string
+	Name string `json:"Name"`
 	// The path to the file/dir
-	Path string
+	Path string `json:"Path"`
 }
 
 // Normalize normalizes the path to a canonical form
@@ -30,6 +30,7 @@ func (p *ResultPath) Copy() *ResultPath {
 		return nil
 	}
 	return &ResultPath{
+		Name: p.Name,
 		Path: p.Path,
 	}
 }
@@ -44,7 +45,7 @@ func (p *ResultPath) Validate() error {
 		mErr.Errors = append(mErr.Errors, errors.New("path is blank"))
 	}
 	if validate.IsBlank(p.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("name is blank"))
+		mErr.Errors = append(mErr.Errors, errors.New("resultpath name is blank"))
 	}
 	return mErr.ErrorOrNil()
 }

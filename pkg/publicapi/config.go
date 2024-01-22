@@ -34,9 +34,6 @@ type Config struct {
 
 	// LogLevel is the minimum log level to log requests
 	LogLevel string
-
-	// EnableSwaggerUI is a flag to enable swagger UI
-	EnableSwaggerUI bool
 }
 
 // defaultConfig default values for Config
@@ -110,12 +107,6 @@ func WithProtocol(protocol string) Option {
 func WithLogLevel(logLevel string) Option {
 	return func(c *Config) {
 		c.LogLevel = logLevel
-	}
-}
-
-func WithEnableSwaggerUI(enableSwaggerUI bool) Option {
-	return func(c *Config) {
-		c.EnableSwaggerUI = enableSwaggerUI
 	}
 }
 

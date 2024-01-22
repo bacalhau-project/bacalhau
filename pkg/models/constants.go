@@ -36,6 +36,7 @@ const (
 	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
+	StorageSourceS3PreSigned    = "s3PreSigned"
 	StorageSourceInline         = "inline"
 	StorageSourceLocalDirectory = "localDirectory"
 )
@@ -44,6 +45,11 @@ const (
 	PublisherNoop = "noop"
 	PublisherIPFS = "ipfs"
 	PublisherS3   = "s3"
+)
+
+const (
+	NetworkTypeNATS   = "nats"
+	NetworkTypeLibp2p = "libp2p"
 )
 
 const (
@@ -56,8 +62,12 @@ const (
 )
 
 const (
-	MetaReservedPrefix     = "bacalhau.org/"
-	MetaRequesterID        = "bacalhau.org/requester.id"
-	MetaRequesterPublicKey = "bacalhau.org/requester.publicKey"
-	MetaClientID           = "bacalhau.org/client.id"
+	MetaReservedPrefix = "bacalhau.org/"
+	MetaRequesterID    = "bacalhau.org/requester.id"
+	MetaClientID       = "bacalhau.org/client.id"
+
+	// Job provenance metadata used to track the origin of a job where
+	// it may have been translated from another job.
+	MetaDerivedFrom  = "bacalhau.org/derivedFrom"
+	MetaTranslatedBy = "bacalhau.org/translatedBy"
 )

@@ -35,11 +35,10 @@ func NewListOptions() *ListOptions {
 func NewListCmd() *cobra.Command {
 	o := NewListOptions()
 	nodeCmd := &cobra.Command{
-		Use:    "list",
-		Short:  "List info of network nodes. ",
-		PreRun: util.ApplyPorcelainLogLevel,
-		Args:   cobra.NoArgs,
-		Run:    o.run,
+		Use:   "list",
+		Short: "List info of network nodes. ",
+		Args:  cobra.NoArgs,
+		Run:   o.run,
 	}
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))

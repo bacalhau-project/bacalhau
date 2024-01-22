@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	realsync "sync"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -38,8 +37,8 @@ type BufferingPubSub[T any] struct {
 	maxBufferAge   time.Duration
 
 	subscriber     Subscriber[T]
-	subscriberOnce realsync.Once
-	closeOnce      realsync.Once
+	subscriberOnce sync.Once
+	closeOnce      sync.Once
 
 	currentBuffer     BufferingEnvelope
 	oldestMessageTime time.Time
@@ -50,19 +49,12 @@ type BufferingPubSub[T any] struct {
 }
 
 func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T] {
-	newPubSub := &BufferingPubSub[T]{
+	return &BufferingPubSub[T]{
 		delegatePubSub:     params.DelegatePubSub,
 		maxBufferSize:      params.MaxBufferSize,
 		maxBufferAge:       params.MaxBufferAge,
 		antiStarvationStop: make(chan struct{}),
 	}
-
-	newPubSub.flushMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "BufferingPubSub.flushMutex",
-	})
-
-	return newPubSub
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {

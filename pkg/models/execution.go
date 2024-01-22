@@ -54,61 +54,61 @@ const (
 // Execution is used to allocate the placement of a task group to a node.
 type Execution struct {
 	// ID of the execution (UUID)
-	ID string
+	ID string `json:"ID"`
 
 	// Namespace is the namespace the execution is created in
-	Namespace string
+	Namespace string `json:"Namespace"`
 
 	// ID of the evaluation that generated this execution
-	EvalID string
+	EvalID string `json:"EvalID"`
 
 	// Name is a logical name of the execution.
-	Name string
+	Name string `json:"Name"`
 
 	// NodeID is the node this is being placed on
-	NodeID string
+	NodeID string `json:"NodeID"`
 
 	// Job is the parent job of the task being allocated.
 	// This is copied at execution time to avoid issues if the job
 	// definition is updated.
-	JobID string
+	JobID string `json:"JobID"`
 	// TODO: evaluate using a copy of the job instead of a pointer
-	Job *Job
+	Job *Job `json:"Job,omitempty"`
 
 	// AllocatedResources is the total resources allocated for the execution tasks.
-	AllocatedResources *AllocatedResources
+	AllocatedResources *AllocatedResources `json:"AllocatedResources"`
 
 	// DesiredState of the execution on the compute node
-	DesiredState State[ExecutionDesiredStateType]
+	DesiredState State[ExecutionDesiredStateType] `json:"DesiredState"`
 
 	// ComputeState observed state of the execution on the compute node
-	ComputeState State[ExecutionStateType]
+	ComputeState State[ExecutionStateType] `json:"ComputeState"`
 
 	// the published results for this execution
-	PublishedResult *SpecConfig
+	PublishedResult *SpecConfig `json:"PublishedResult"`
 
 	// RunOutput is the output of the run command
 	// TODO: evaluate removing this from execution spec in favour of calling `bacalhau logs`
-	RunOutput *RunCommandResult
+	RunOutput *RunCommandResult `json:"RunOutput"`
 
 	// PreviousExecution is the execution that this execution is replacing
-	PreviousExecution string
+	PreviousExecution string `json:"PreviousExecution"`
 
 	// NextExecution is the execution that this execution is being replaced by
-	NextExecution string
+	NextExecution string `json:"NextExecution"`
 
 	// FollowupEvalID captures a follow up evaluation created to handle a failed execution
 	// that can be rescheduled in the future
-	FollowupEvalID string
+	FollowupEvalID string `json:"FollowupEvalID"`
 
 	// Revision is increment each time the execution is updated.
-	Revision uint64
+	Revision uint64 `json:"Revision"`
 
 	// CreateTime is the time the execution has finished scheduling and been
 	// verified by the plan applier.
-	CreateTime int64
+	CreateTime int64 `json:"CreateTime"`
 	// ModifyTime is the time the execution was last updated.
-	ModifyTime int64
+	ModifyTime int64 `json:"ModifyTime"`
 }
 
 func (e *Execution) String() string {
@@ -219,22 +219,22 @@ func (e *Execution) TotalAllocatedResources() *Resources {
 
 type RunCommandResult struct {
 	// stdout of the run. Yaml provided for `describe` output
-	STDOUT string `json:"stdout"`
+	STDOUT string `json:"Stdout"`
 
 	// bool describing if stdout was truncated
-	StdoutTruncated bool `json:"stdouttruncated"`
+	StdoutTruncated bool `json:"StdoutTruncated"`
 
 	// stderr of the run.
 	STDERR string `json:"stderr"`
 
 	// bool describing if stderr was truncated
-	StderrTruncated bool `json:"stderrtruncated"`
+	StderrTruncated bool `json:"StderrTruncated"`
 
 	// exit code of the run.
-	ExitCode int `json:"exitCode"`
+	ExitCode int `json:"ExitCode"`
 
 	// Runner error
-	ErrorMsg string `json:"runnerError"`
+	ErrorMsg string `json:"ErrorMsg"`
 }
 
 func NewRunCommandResult() *RunCommandResult {

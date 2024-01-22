@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -49,7 +48,7 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	//NB: if a test suite has defined a repo use it, otherwise make one.
+	// NB: if a test suite has defined a repo use it, otherwise make one.
 	repoPath := os.Getenv("BACALHAU_DIR")
 	var fsRepo *repo.FsRepo
 	if repoPath != "" {
@@ -75,9 +74,10 @@ func Setup(
 
 	// Wait for nodes to have announced their presence.
 	//nolint:gomnd
-	assert.Eventually(t, func() bool {
-		return allNodesDiscovered(t, stack)
-	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
+	require.Eventually(t,
+		func() bool {
+			return allNodesDiscovered(t, stack)
+		}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
 
 	return stack
 }
@@ -93,7 +93,7 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.ID)
 
 		if !node.IsRequesterNode() || node.RequesterNode == nil {
 			continue
@@ -110,7 +110,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 
 		discoveredNodeIDs := make([]string, len(discoveredNodes))
 		for i, discoveredNode := range discoveredNodes {
-			discoveredNodeIDs[i] = discoveredNode.PeerInfo.ID.String()
+			discoveredNodeIDs[i] = discoveredNode.ID()
 		}
 		require.ElementsMatch(t, expectedNodes, discoveredNodeIDs)
 	}

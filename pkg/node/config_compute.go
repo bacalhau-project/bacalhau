@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -42,8 +43,6 @@ type ComputeConfigParams struct {
 	PhysicalResourcesProvider    capacity.Provider
 	IgnorePhysicalResourceLimits bool
 
-	ExecutorBufferBackoffDuration time.Duration
-
 	// Timeout config
 	JobNegotiationTimeout      time.Duration
 	MinJobExecutionTimeout     time.Duration
@@ -72,9 +71,6 @@ type ComputeConfig struct {
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	IgnorePhysicalResourceLimits bool
-
-	// How long the buffer would backoff before polling the queue again for new jobs
-	ExecutorBufferBackoffDuration time.Duration
 
 	// JobNegotiationTimeout default timeout value to hold a bid for a job
 	JobNegotiationTimeout time.Duration
@@ -127,9 +123,6 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
 	}
-	if params.ExecutorBufferBackoffDuration == 0 {
-		params.ExecutorBufferBackoffDuration = DefaultComputeConfig.ExecutorBufferBackoffDuration
-	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
@@ -161,12 +154,11 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		Merge(DefaultComputeConfig.DefaultJobResourceLimits)
 
 	config := ComputeConfig{
-		TotalResourceLimits:           *totalResourceLimits,
-		QueueResourceLimits:           params.QueueResourceLimits,
-		JobResourceLimits:             *jobResourceLimits,
-		DefaultJobResourceLimits:      *defaultJobResourceLimits,
-		IgnorePhysicalResourceLimits:  params.IgnorePhysicalResourceLimits,
-		ExecutorBufferBackoffDuration: params.ExecutorBufferBackoffDuration,
+		TotalResourceLimits:          *totalResourceLimits,
+		QueueResourceLimits:          params.QueueResourceLimits,
+		JobResourceLimits:            *jobResourceLimits,
+		DefaultJobResourceLimits:     *defaultJobResourceLimits,
+		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
 
 		JobNegotiationTimeout:      params.JobNegotiationTimeout,
 		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
@@ -186,6 +178,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	if err := validateConfig(config, physicalResources); err != nil {
 		return ComputeConfig{}, fmt.Errorf("validating compute config: %w", err)
 	}
+	log.Debug().Msgf("Compute config: %+v", config)
 	return config, nil
 }
 

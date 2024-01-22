@@ -9,6 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -44,12 +45,14 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("waiting until completed: %s", err)
 	}
 
-	results, err := client.GetResults(ctx, submittedJob.Metadata.ID)
+	results, err := getClientV2().Jobs().Results(&apimodels.ListJobResultsRequest{
+		JobID: submittedJob.Metadata.ID,
+	})
 	if err != nil {
 		return fmt.Errorf("getting results: %s", err)
 	}
 
-	if len(results) == 0 {
+	if len(results.Results) == 0 {
 		return fmt.Errorf("no results found")
 	}
 
@@ -68,12 +71,12 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	// 1 minute for the rest of the test
 	downloadSettings.Timeout = 240 * time.Second
 
-	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm)
 	if err != nil {
 		return err
 	}
 
-	err = downloader.DownloadResults(ctx, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadResults(ctx, results.Results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return fmt.Errorf("downloading job: %s", err)
 	}

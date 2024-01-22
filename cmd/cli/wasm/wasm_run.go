@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
@@ -20,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
@@ -73,9 +73,10 @@ func NewWasmOptions() *WasmRunOptions {
 
 func NewCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
-		Use:               "wasm",
-		Short:             "Run and prepare WASM jobs on the network",
-		PersistentPreRunE: util.CheckVersion,
+		Use:                "wasm",
+		Short:              "Run and prepare WASM jobs on the network",
+		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
+		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
 
 	wasmCmd.AddCommand(
@@ -94,19 +95,13 @@ func newRunCmd() *cobra.Command {
 	}
 
 	wasmRunCmd := &cobra.Command{
-		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
-		Short:   "Run a WASM job on the network",
-		Long:    wasmRunLong,
-		Example: wasmRunExample,
-		Args:    cobra.MinimumNArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			err := configflags.BindFlags(cmd, wasmRunFlags)
-			if err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-			return err
-		},
+		Use:      "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
+		Short:    "Run a WASM job on the network",
+		Long:     wasmRunLong,
+		Example:  wasmRunExample,
+		Args:     cobra.MinimumNArgs(1),
+		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
+		PostRunE: hook.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -197,7 +192,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, err
 	}
 
-	wasmEnvvar, err := parseArrayAsMap(opts.SpecSettings.EnvVar)
+	wasmEnvvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
@@ -233,23 +228,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		APIVersion: model.APIVersionLatest().String(),
 		Spec:       spec,
 	}, nil
-}
-
-// parseArrayAsMap accepts a string array where each entry is A=B and
-// returns a map with {A: B}
-func parseArrayAsMap(inputArray []string) (map[string]string, error) {
-	resultMap := make(map[string]string)
-
-	for _, v := range inputArray {
-		parts := strings.Split(v, "=")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("malformed entry, expected = in: %s", v)
-		}
-
-		resultMap[parts[0]] = parts[1]
-	}
-
-	return resultMap, nil
 }
 
 func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {

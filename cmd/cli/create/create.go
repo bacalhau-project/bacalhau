@@ -17,6 +17,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -59,12 +60,13 @@ func NewCmd() *cobra.Command {
 	OC := NewCreateOptions()
 
 	createCmd := &cobra.Command{
-		Use:     "create",
-		Short:   "Create a job using a json or yaml file.",
-		Long:    createLong,
-		Example: createExample,
-		Args:    cobra.MinimumNArgs(0),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "create",
+		Short:    "Create a job using a json or yaml file.",
+		Long:     createLong,
+		Example:  createExample,
+		Args:     cobra.MinimumNArgs(0),
+		PreRunE:  hook.RemoteCmdPreRunHooks,
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := create(cmd, cmdArgs, OC); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -141,7 +143,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 		job, err := model.NewJobWithSaneProductionDefaults()
 		if err != nil {
-			// TODO this is a bit extream, maybe just ensure the above call doesn't return an error? the mergo package is a bit pointless there.
+			// TODO this is a bit extreme, maybe just ensure the above call doesn't return an error? the mergo package is a bit pointless there.
 			panic(err)
 		}
 
@@ -200,6 +202,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
+			//nolint:staticcheck // TODO: remove this when we have a proper publisher
 			Type: j.Spec.Publisher,
 		}
 	}

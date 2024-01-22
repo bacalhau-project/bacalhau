@@ -66,7 +66,6 @@ func NewListCmd() *cobra.Command {
 		Short:   listShort,
 		Long:    listLong,
 		Example: listExample,
-		PreRun:  util.ApplyPorcelainLogLevel,
 		Args:    cobra.NoArgs,
 		Run:     o.run,
 	}

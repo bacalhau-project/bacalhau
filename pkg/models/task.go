@@ -11,31 +11,31 @@ import (
 
 type Task struct {
 	// Name of the task
-	Name string
+	Name string `json:"Name"`
 
-	Engine *SpecConfig
+	Engine *SpecConfig `json:"Engine"`
 
-	Publisher *SpecConfig
+	Publisher *SpecConfig `json:"Publisher"`
 
 	// Map of environment variables to be used by the driver
-	Env map[string]string
+	Env map[string]string `json:"Env,omitempty"`
 
 	// Meta is used to associate arbitrary metadata with this task.
-	Meta map[string]string
+	Meta map[string]string `json:"Meta,omitempty"`
 
 	// InputSources is a list of remote artifacts to be downloaded before running the task
 	// and mounted into the task.
-	InputSources []*InputSource
+	InputSources []*InputSource `json:"InputSources,omitempty"`
 
 	// ResultPaths is a list of task volumes to be included in the task's published result
-	ResultPaths []*ResultPath
+	ResultPaths []*ResultPath `json:"ResultPaths,omitempty"`
 
 	// ResourcesConfig is the resources needed by this task
-	ResourcesConfig *ResourcesConfig
+	ResourcesConfig *ResourcesConfig `json:"Resources,omitempty"`
 
-	Network *NetworkConfig
+	Network *NetworkConfig `json:"Network,omitempty"`
 
-	Timeouts *TimeoutConfig
+	Timeouts *TimeoutConfig `json:"Timeouts,omitempty"`
 }
 
 func (t *Task) Normalize() {

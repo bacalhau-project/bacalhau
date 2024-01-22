@@ -4,9 +4,9 @@ package test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,7 +41,7 @@ func (s *WebsocketSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	n, _ := setupNodeForTest(s.T())
 	s.node = n
-	s.client = client.NewAPIClient(n.APIServer.Address, n.APIServer.Port)
+	s.client = client.NewAPIClient(client.NoTLS, n.APIServer.Address, n.APIServer.Port)
 }
 
 // After each test
@@ -68,7 +68,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 		for {
 			var event model.JobEvent
 			err = conn.ReadJSON(&event)
-			if errors.Is(err, net.ErrClosed) {
+			if err != nil && strings.Contains(err.Error(), net.ErrClosed.Error()) {
 				return
 			}
 			require.NoError(s.T(), err)

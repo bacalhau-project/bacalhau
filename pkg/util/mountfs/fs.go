@@ -77,7 +77,7 @@ func (m *MountDir) Mount(path string, filesystem fs.FS) error {
 	prefix, rest := getPathPrefix(path)
 
 	if rest != "" {
-		// There were path seperators in the prefix, so make a new MountFS or
+		// There were path separators in the prefix, so make a new MountFS or
 		// get the existing one and pass the rest of the path onto it
 		existingLayer, exists := m.mounts[prefix]
 		if !exists {

@@ -94,7 +94,7 @@ func RunTestCase(
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
 
-	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, strgProvider, execution, resultsDirectory)
+	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, strgProvider, t.TempDir(), execution, resultsDirectory)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := cleanup(ctx); err != nil {

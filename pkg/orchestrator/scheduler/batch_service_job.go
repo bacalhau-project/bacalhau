@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -108,10 +109,13 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
 	overSubscriptions.markStopped(execNotNeeded, plan)
 
-	// mark job as completed
+	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
+		// If there are no remaining tasks to be done, mark the job as completed.
 		plan.MarkJobCompleted()
 	}
+
+	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
 }
 
@@ -122,7 +126,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
-			ID:           "e-" + uuid.NewString(),
+			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
@@ -151,7 +155,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 		}
 		i := 0
 		for _, exec := range execs {
-			exec.NodeID = selectedNodes[i].PeerInfo.ID.String()
+			exec.NodeID = selectedNodes[i].ID()
 			i++
 		}
 	}

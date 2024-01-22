@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black
+.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black setup
 .DEFAULT_GOAL := help
 VERSION ?= $${PYPI_VERSION}
 
@@ -28,6 +28,11 @@ all: lint dist
 
 help:
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+
+setup:
+	pip3 install -r dev-requirements.txt
+## workaround for https://github.com/bacalhau-project/bacalhau/issues/2683:
+	mkdir ~/.bacalhau
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 

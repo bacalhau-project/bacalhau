@@ -3,6 +3,7 @@ package copy
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -36,11 +37,14 @@ func CopyOversize(
 	specs []*models.InputSource,
 	srcType, dstType string,
 	maxSingle, maxTotal datasize.ByteSize,
-) (modified bool, err error) {
+) (bool, error) {
+	var modified bool
+	var err error
+
 	srcStorage, err := provider.Get(ctx, srcType)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get %s storage provider", srcType)
-		return
+		return false, err
 	}
 
 	specsizes := make([]specSize, 0, len(specs))
@@ -52,7 +56,7 @@ func CopyOversize(
 		size, rerr := srcStorage.GetVolumeSize(ctx, *spec)
 		if rerr != nil {
 			err = errors.Wrapf(rerr, "failed to read spec %v", spec)
-			return
+			return modified, err
 		}
 		specsizes = append(specsizes, specSize{artifact: spec, size: datasize.ByteSize(size)})
 	}
@@ -98,7 +102,17 @@ func Copy(
 		return models.InputSource{}, err
 	}
 
-	volume, err := srcStorage.PrepareStorage(ctx, spec)
+	// Create a temporary folder to hold the source storage
+	// which we will clean up after the copy
+	tmpDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		return models.InputSource{}, err
+	}
+	defer func() {
+		os.RemoveAll(tmpDir)
+	}()
+
+	volume, err := srcStorage.PrepareStorage(ctx, tmpDir, spec)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to prepare %s spec", spec.Source.Type)
 		return models.InputSource{}, err
