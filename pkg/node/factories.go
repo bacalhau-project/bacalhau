@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -136,17 +137,15 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
-			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
+			privKey, allErr := config.GetClientPrivateKey()
+			if allErr != nil {
+				return nil, allErr
+			}
 
+			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
 				switch authnConfig.Type {
 				case authn.MethodTypeChallenge:
-					privKey, err := config.GetClientPrivateKey()
-					if err != nil {
-						allErr = multierr.Append(allErr, err)
-						continue
-					}
-
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
 					if err != nil {
 						allErr = multierr.Append(allErr, err)
@@ -156,6 +155,18 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 					authns[name] = challenge.NewAuthenticator(
 						methodPolicy,
 						challenge.NewStringMarshaller(nodeConfig.NodeID),
+						privKey,
+						nodeConfig.NodeID,
+					)
+				case authn.MethodTypeAsk:
+					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
+					if err != nil {
+						allErr = multierr.Append(allErr, err)
+						continue
+					}
+
+					authns[name] = ask.NewAuthenticator(
+						methodPolicy,
 						privKey,
 						nodeConfig.NodeID,
 					)
