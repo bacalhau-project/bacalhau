@@ -1,7 +1,8 @@
 package authn
 
 import (
-	"net/http"
+	"context"
+	"encoding/json"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 )
@@ -49,7 +50,7 @@ type Requirement struct {
 	Type MethodType `json:"type"`
 	// Parameters specific to this authentication type. For example, a list of
 	// required information, or minimum acceptable key sizes.
-	Params any `json:"params"`
+	Params *json.RawMessage `json:"params"`
 }
 
 // Authenticator accepts HTTP requests for user authentications and returns the
@@ -57,7 +58,7 @@ type Requirement struct {
 type Authenticator interface {
 	provider.Providable
 
-	Authenticate(req *http.Request) (Authentication, error)
+	Authenticate(ctx context.Context, req []byte) (Authentication, error)
 	Requirement() Requirement
 }
 

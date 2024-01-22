@@ -5,6 +5,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -18,7 +19,7 @@ var (
 		# Follow logs for a previously submitted job
 		bacalhau logs j-51225160-807e-48b8-88c9-28311c7899e1
 
-		# Follow output with a short ID 
+		# Follow output with a short ID
 		bacalhau logs j-ebd9bf2f
 `))
 )
@@ -32,11 +33,12 @@ func NewCmd() *cobra.Command {
 	options := LogCommandOptions{}
 
 	logsCmd := &cobra.Command{
-		Use:     "logs [id]",
-		Short:   logsShortDesc,
-		Example: logsExample,
-		Args:    cobra.ExactArgs(1),
-		PreRun:  util.ApplyPorcelainLogLevel,
+		Use:      "logs [id]",
+		Short:    logsShortDesc,
+		Example:  logsExample,
+		Args:     cobra.ExactArgs(1),
+		PreRunE:  hook.RemoteCmdPreRunHooks,
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := util.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
 				util.Fatal(cmd, err, 1)

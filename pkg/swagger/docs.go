@@ -2060,8 +2060,7 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4,
-                5
+                4
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -2295,8 +2294,7 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8,
-                9
+                8
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",

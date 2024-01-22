@@ -35,7 +35,7 @@ type Options struct {
 	HTTPClient *http.Client
 
 	// HTTPAuth is the auth info to use for http access.
-	HTTPAuth *apimodels.HTTPBasicAuth
+	HTTPAuth *apimodels.HTTPCredential
 
 	// Timeout is the timeout for requests.
 	Timeout time.Duration
@@ -120,9 +120,9 @@ func WithHTTPClient(client *http.Client) OptionFn {
 }
 
 // WithHTTPAuth sets the auth info to use for http access.
-func WithHTTPAuth(auth *apimodels.HTTPBasicAuth) OptionFn {
+func WithHTTPAuth(credential *apimodels.HTTPCredential) OptionFn {
 	return func(o *Options) {
-		o.HTTPAuth = auth
+		o.HTTPAuth = credential
 	}
 }
 

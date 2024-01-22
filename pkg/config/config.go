@@ -34,6 +34,9 @@ const (
 
 	// update check paths
 	UpdateCheckStatePath = "update.json"
+
+	// auth paths
+	TokensPath = "tokens.json"
 )
 
 var (
@@ -57,6 +60,7 @@ func Init(path string) (types.BacalhauConfig, error) {
 	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
 	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
 
 	// initialize the configuration with default values.
 	return initConfig(path, WithDefaultConfig(defaultConfig))
@@ -72,6 +76,7 @@ func Load(path string) (types.BacalhauConfig, error) {
 	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
 	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
+	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
 
 	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
 }
