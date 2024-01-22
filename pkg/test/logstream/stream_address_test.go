@@ -19,6 +19,10 @@ import (
 func (s *LogStreamTestSuite) TestStreamAddress() {
 	docker.MustHaveDocker(s.T())
 
+	if s.stack.Nodes[0].Libp2pHost == nil {
+		// TODO: un-skip once we add log stream support for nats transport layer
+		s.T().Skip("skipping log stream tests for non-libp2p transports")
+	}
 	node := s.stack.Nodes[0]
 
 	task := mock.TaskBuilder().
@@ -30,7 +34,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.NodeID = node.Host.ID().Pretty()
+	execution.NodeID = node.ID
 	execution.AllocateResources(task.Name, models.Resources{})
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)

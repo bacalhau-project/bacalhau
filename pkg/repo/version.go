@@ -17,6 +17,11 @@ const (
 	RepoVersionFile = "repo.version"
 )
 
+// IsValidVersion returns true if the version is valid.
+func IsValidVersion(version int) bool {
+	return version == RepoVersion1 || version == RepoVersion2
+}
+
 type RepoVersion struct {
 	Version int
 }
