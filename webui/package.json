@@ -53,6 +53,19 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest",
+      "plugin:prettier/recommended"
+    ],
+    "plugins": [
+      "prettier"
+    ],
+    "rules": {
+      "prettier/prettier": "off"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",
