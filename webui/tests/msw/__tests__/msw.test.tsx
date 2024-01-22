@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { render, screen, act, waitFor } from "@testing-library/react"
 import { useState, useEffect } from "react"
-import crypto from "crypto"
 import { server } from "../server"
 import { mockTestDataArray } from "../handlers"
 
@@ -9,6 +8,7 @@ import { mockTestDataArray } from "../handlers"
 // properly. All components, types, and methods are self contained here.
 
 export const RETURN_DATA_PARAMETER = "returnData"
+export const TEST_DATA_ID = "testDataId"
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -25,18 +25,6 @@ export type TestData = {
   id: number
   date: Date
   bool: boolean
-}
-
-type TestDataItemProps = {
-  testData: TestData
-}
-
-function TestDataItem({ testData }: TestDataItemProps) {
-  return (
-    <>
-      {`${testData.userId},${testData.id},${testData.date.toString()},${testData.bool}`}{" "}
-    </>
-  )
 }
 
 async function fetchTestData(returnData: boolean = false) {
@@ -61,27 +49,33 @@ export const MSWTestComponent: React.FC<MSWProps> = ({
   ShouldReturnData = false,
 }) => {
   const [testDataArray, setTestDataArray] = useState<TestData[]>([])
+  const [loadingData, setLoadingData] = useState<boolean>(true)
 
   useEffect(() => {
     async function fetchTestDataAsync() {
       const fetchedTestDataArray = await fetchTestData(ShouldReturnData)
       setTestDataArray(fetchedTestDataArray)
+      setLoadingData(false)
     }
     fetchTestDataAsync()
   }, [ShouldReturnData])
 
   return (
-    <div id="dataList">
-      {testDataArray?.length ? (
-        testDataArray.map((testDataItem) => (
-          <div key={crypto.randomBytes(16).toString("hex")}>
-            <TestDataItem testData={testDataItem} />
-          </div>
-        ))
-      ) : (
-        <p>No TestData</p>
-      )}
+    <div className="App">
+      {loadingData ? <div>loading...</div> : renderTestData(testDataArray)}
     </div>
+  )
+}
+
+function renderTestData(testDataArray: TestData[]) {
+  return testDataArray.length === 0 ? (
+    <p>No TestData</p>
+  ) : (
+    <ul data-testid={TEST_DATA_ID}>
+      {testDataArray.map((testDataItem, i) => (
+        <li key={i}>{convertTestItemToText(testDataItem)}</li>
+      ))}
+    </ul>
   )
 }
 
@@ -98,19 +92,27 @@ describe("Basic tests of mocked API", () => {
     })
   })
   it("should GET React component backed by /testData with two entries", async () => {
-    const result = render(<MSWTestComponent ShouldReturnData />)
-    const dom = result.container
+    render(<MSWTestComponent ShouldReturnData />)
+    const loading = await screen.findByText("loading...")
+    expect(loading).toBeInTheDocument()
 
-    await waitFor(() => {
-      // Get the expect for the div with id "dataList"
-      const dataList = dom.querySelector("#dataList")
+    await waitFor(async () => {
+      expect(loading).not.toBeInTheDocument()
 
-      expect(dataList).toBeInTheDocument()
+      const listNode = await screen.findByTestId(TEST_DATA_ID)
 
-      // Query the sampleQuery endpoint and get a response.
-      // Print the response to the console.
-      expect(dataList).toHaveTextContent(mockTestDataArray[0].id.toString())
-      expect(dataList).toHaveTextContent(mockTestDataArray[1].id.toString())
+      expect(listNode.childNodes.length).toBe(2)
+
+      for (let i = 0; i < listNode.childNodes.length; i += 1) {
+        expect(listNode.childNodes[i]).toHaveTextContent(
+          convertTestItemToText(mockTestDataArray[i])
+        )
+      }
     })
   })
 })
+
+function convertTestItemToText(testItem: TestData) {
+  const dateString = new Date(testItem.date)
+  return `${testItem.userId} ${testItem.id} ${dateString.toISOString()} ${testItem.bool}`
+}

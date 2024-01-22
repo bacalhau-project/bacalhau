@@ -276,6 +276,7 @@ struct
 swarmenv
 swipl
 testdata
+testid
 tfvars
 touchfs
 traceid
