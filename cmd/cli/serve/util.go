@@ -162,14 +162,6 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
-func getDisabledFeatures() (node.FeatureConfig, error) {
-	var featureConfig node.FeatureConfig
-	if err := config.ForKey(types.NodeDisabledFeatures, &featureConfig); err != nil {
-		return node.FeatureConfig{}, err
-	}
-	return featureConfig, nil
-}
-
 func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }

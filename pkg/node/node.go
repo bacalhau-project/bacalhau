@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -49,6 +50,7 @@ type NodeConfig struct {
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
+	AuthConfig                  types.AuthConfig
 	IsRequesterNode             bool
 	IsComputeNode               bool
 	Labels                      map[string]string
