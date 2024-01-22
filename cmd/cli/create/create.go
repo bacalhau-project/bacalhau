@@ -17,6 +17,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -64,8 +65,8 @@ func NewCmd() *cobra.Command {
 		Long:     createLong,
 		Example:  createExample,
 		Args:     cobra.MinimumNArgs(0),
-		PreRunE:  util.ClientPreRunHooks,
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.RemoteCmdPreRunHooks,
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := create(cmd, cmdArgs, OC); err != nil {
 				util.Fatal(cmd, err, 1)

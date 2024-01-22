@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
@@ -65,8 +66,8 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		Long:               getLong,
 		Example:            getExample,
 		Args:               cobra.MinimumNArgs(1),
-		PreRunE:            util.ClientPreRunHooks,
-		PostRunE:           util.ClientPostRunHooks,
+		PreRunE:            hook.RemoteCmdPreRunHooks,
+		PostRunE:           hook.RemoteCmdPostRunHooks,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			// Find the unknown arguments from the original args.  We only want to find the

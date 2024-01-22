@@ -2,13 +2,13 @@ package util
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/rs/zerolog/log"
 )
 
 func GetAPIClient(ctx context.Context) *client.APIClient {
@@ -17,12 +17,8 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 }
 
 func GetAPIClientV2(ctx context.Context) *clientv2.Client {
+	base := config.ClientAPIBase()
 	tlsConfig := config.ClientTLSConfig()
-
-	scheme := "http"
-	if tlsConfig.UseTLS {
-		scheme = "https"
-	}
 
 	bv := version.Get()
 	headers := map[string][]string{
@@ -32,13 +28,25 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 		apimodels.HTTPHeaderBacalhauBuildOS:    {bv.GOOS},
 		apimodels.HTTPHeaderBacalhauArch:       {bv.GOARCH},
 	}
-	return clientv2.New(clientv2.Options{
-		Context: ctx,
-		Address: fmt.Sprintf("%s://%s:%d", scheme, config.ClientAPIHost(), config.ClientAPIPort()),
-	},
+
+	opts := []clientv2.OptionFn{
 		clientv2.WithCACertificate(tlsConfig.CACert),
 		clientv2.WithInsecureTLS(tlsConfig.Insecure),
 		clientv2.WithTLS(tlsConfig.UseTLS),
 		clientv2.WithHeaders(headers),
-	)
+	}
+
+	token, err := ReadToken(base)
+	if err != nil {
+		log.Ctx(ctx).Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+	}
+
+	if token != "" {
+		opts = append(opts, clientv2.WithHTTPAuth(&apimodels.HTTPCredential{
+			Scheme: "Bearer",
+			Value:  token,
+		}))
+	}
+
+	return clientv2.New(clientv2.Options{Context: ctx, Address: base}, opts...)
 }
