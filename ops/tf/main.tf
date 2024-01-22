@@ -50,4 +50,5 @@ module "compute_instance" {
   aws_secret_access_key = var.aws_secret_access_key
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
+  bacalhau_local_disk_size = var.bacalhau_local_disk_size
 }

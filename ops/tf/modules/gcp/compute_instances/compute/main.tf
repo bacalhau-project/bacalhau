@@ -6,7 +6,7 @@ resource "google_compute_instance" "compute" {
   zone         = var.zone
 
   metadata = {
-    startup-script = data.template_file.bacalhau_start_script.rendered
+    startup-script = local.bacalhau_start_script
     user-data = data.cloudinit_config.compute_cloud_init.rendered
   }
 
@@ -40,6 +40,24 @@ resource "google_compute_attached_disk" "attach_bacalhau_repo_disks" {
   count = var.compute_instance_count
   disk     = google_compute_disk.bacalhau_repo_disks[count.index].self_link
   instance = google_compute_instance.compute[count.index].self_link
+  device_name = "bacalhau-repo"
+}
+
+// define disk(s) to contain the bacalhau repo for instance(s)
+resource "google_compute_disk" "bacalhau_local_disks" {
+  count = var.compute_instance_count
+  name  = "bacalhau-local-disk-compute-${count.index + 1}"
+  type  = "pd-standard"
+  zone  = var.zone
+  size  = var.bacalhau_local_disk_size
+}
+
+// attach the disk(s) to instance(s)
+resource "google_compute_attached_disk" "attach_bacalhau_local_disks" {
+  count = var.compute_instance_count
+  disk     = google_compute_disk.bacalhau_local_disks[count.index].self_link
+  instance = google_compute_instance.compute[count.index].self_link
+  device_name = "bacalhau-local"
 }
 
 locals {
@@ -75,6 +93,14 @@ locals {
     requester_ip = var.requester_ip
     bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   })
+
+  //
+  // templating the bacalhau start script
+  //
+  bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
+    node_type = "compute"
+    // Add more arguments as needed
+  })
 }
 
 
@@ -93,8 +119,4 @@ data "cloudinit_config" "compute_cloud_init" {
       requester_ip          : var.requester_ip,
     })
   }
-}
-
-data "template_file" "bacalhau_start_script" {
-  template = file("${path.module}/../../../instance_files/start.sh")
 }
