@@ -1,0 +1,61 @@
+receivers:
+  # gather telemetry from host machine
+  hostmetrics:
+    scrapers:
+      cpu:
+      disk:
+      load:
+      filesystem:
+      memory:
+      network:
+      paging:
+  # gather telemetry from bacalhau process (from otel sdk)
+  otlp:
+    protocols:
+      http:
+  # gather telemetry from otel collector process
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 5s
+          static_configs:
+            - targets: [ '0.0.0.0:8888' ]
+
+# modify the collection of telemetry data before exporting
+processors:
+  batch:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 4000
+    spike_limit_mib: 500
+  resourcedetection/gcp:
+    detectors: [ env, gcp ]
+    timeout: 2s
+    override: false
+  resource:
+    attributes:
+      - key: service.namespace
+        value: bacalhau
+        action: insert
+  # TODO why is this here?
+  attributes/metrics:
+    actions:
+      - pattern: net\.sock.+
+        action: delete
+
+# export telemetry gathered to stderr of otel process
+exporters:
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
+      exporters: [logging]
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
+      exporters: [logging]
