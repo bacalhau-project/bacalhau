@@ -25,15 +25,23 @@ describe("JobsDashboard", () => {
     expect(screen.getByRole('heading', { level: 1 }).innerHTML).toContain(pageTitle)
   })
   describe("integration test that renders", () => {
-    server.use()
+    beforeEach(() => {
+        server.resetHandlers();
+    });
     it("with one job", async () => {
-      await renderWithNumberOfJobs(1)
+      await act(async () => {
+        await renderWithNumberOfJobs(1)
+      })
     })
     it("with multiple jobs", async () => {
-      await renderWithNumberOfJobs(10)
+      await act(async () => {
+        await renderWithNumberOfJobs(10)
+      })
     })
     it("with 11+ jobs", async () => {
-      await renderWithNumberOfJobs(11)
+      await act(async () => {
+        await renderWithNumberOfJobs(11)
+      })
     })
   })
 })
