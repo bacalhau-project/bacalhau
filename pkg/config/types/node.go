@@ -146,7 +146,7 @@ type DockerCacheConfig struct {
 	Duration  Duration `yaml:"Duration"`
 	Frequency Duration `yaml:"Frequency"`
 }
-  
+
 type NetworkConfig struct {
 	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
