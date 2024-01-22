@@ -1,0 +1,26 @@
+name: CircleCI Trigger Action
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-circle-ci:
+    # if: github.event.label.name != 'do-not-merge' || github.event.label.name != 'wip'
+    if: github.event.label.name == 'circle-ci'
+    runs-on: ubuntu-latest
+    name: Pull Request Triggered CircleCI
+    steps:
+    - uses: actions/checkout@v2
+    - name: Trigger CircleCI
+      id: curl-circle-ci
+      uses: Open-Source-Contrib/circle-ci-trigger-action@latest
+      with:
+        circle_ci_token: ${{ secrets.CIRCLE_CI_TOKEN }}
+        circle_ci_job: ${{ secrets.CIRCLE_CI_QA_JOB }}
+        circle_ci_project_url: ${{ github.event.pull_request.head.ref }}
+    # Use the output from the `hello` step
+    - name: Get the output response
+      run: echo "The response was ${{ steps.curl-circle-ci.outputs.response }}"
+            

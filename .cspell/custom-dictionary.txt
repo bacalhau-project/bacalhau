@@ -305,3 +305,7 @@ xlarge
 xmap
 xvfz
 zerolog
+flyteidl
+humanid
+isort
+mypy

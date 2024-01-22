@@ -3,12 +3,6 @@
     "ignorePaths": [],
     "dictionaryDefinitions": [],
     "dictionaries": [],
-    "words": [
-        "flyteidl",
-        "humanid",
-        "isort",
-        "mypy"
-    ],
     "ignoreWords": [],
     "import": [
         ".cspell-docs.json",
