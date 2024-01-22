@@ -67,12 +67,14 @@ locals {
 
   // service env vars
   bacalhau_env_vars = {
-    LOG_LEVEL                 = "debug"
-    BACALHAU_NODE_LOGGINGMODE = "default"
-    BACALHAU_DIR              = "/data"
-    BACALHAU_ENVIRONMENT      = "local"
-    AWS_ACCESS_KEY_ID         = var.aws_access_key_id
-    AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
+    LOG_LEVEL                   = "debug"
+    BACALHAU_NODE_LOGGINGMODE   = "default"
+    BACALHAU_DIR                = "/data"
+    BACALHAU_ENVIRONMENT        = "local"
+    // TODO make this a variable
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+    AWS_ACCESS_KEY_ID           = var.aws_access_key_id
+    AWS_SECRET_ACCESS_KEY       = var.aws_secret_access_key
     # Add more variables here as needed
   }
   # Convert the map to the required string format for the systemd service file
@@ -101,6 +103,20 @@ locals {
     node_type = "compute"
     // Add more arguments as needed
   })
+
+  //
+  // templating otel config file
+  //
+  otel_config_content = templatefile("${path.module}/../../../instance_files/otel-collector.yaml", {
+    // add more arguments as needed
+  })
+
+  //
+  // templating otel service file
+  //
+  otel_service_content = templatefile("${path.module}/../../../instance_files/otel.service", {
+    // add more arguments as needed
+  })
 }
 
 
@@ -116,6 +132,8 @@ data "cloudinit_config" "compute_cloud_init" {
     content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
       bacalhau_config_file  : base64encode(local.compute_config_content),
       bacalhau_service_file : base64encode(local.bacalhau_service_content),
+      otel_config_file      : base64encode(local.otel_config_content)
+      otel_service_file     : base64encode(local.otel_service_content),
       requester_ip          : var.requester_ip,
     })
   }
