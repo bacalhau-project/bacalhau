@@ -33,9 +33,6 @@ type TestDataItemProps = {
 }
 
 function TestDataItem({ testData }: TestDataItemProps) {
-  // unique key is required for each element in a list - generate unique key
-  // by concatenating all the values of the testData object
-  let uniqueKey = crypto.randomUUID()
   return (<>
     {`${testData.userId},${testData.id},${testData.date.toString()},${testData.bool}`}{" "}
     </>
@@ -77,7 +74,9 @@ export const MSWTestComponent: React.FC<MSWProps>  = ({
     <div id="dataList">
       {testDataArray?.length ? (
         testDataArray.map((testDataItem) => (
-          <TestDataItem testData={testDataItem} />
+          <div key={crypto.randomBytes(16).toString("hex")}>
+            <TestDataItem testData={testDataItem} />
+          </div>
         ))
       ) : (
         <p>No TestData</p>
@@ -105,8 +104,6 @@ describe("Basic tests of mocked API", () => {
     const dom = result.container;
     
     await waitFor(() => {
-      console.log(screen.debug())
-      
       // Get the expect for the div with id "dataList"
       const dataList = dom.querySelector("#dataList");
       
