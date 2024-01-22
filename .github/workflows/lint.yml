@@ -12,7 +12,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    # Setup nodejs and build the webui so that go vet can 
+    # Setup nodejs and build the webui so that we can 
     # compile the go code that embeds the webui.
     - name: Setup node
       uses: actions/setup-node@v4
