@@ -9,6 +9,7 @@ import (
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -166,6 +167,11 @@ func NewNode(
 		"/api/v1/requester/logs",
 	}...)
 
+	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+	if err != nil {
+		return nil, err
+	}
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
@@ -174,7 +180,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.AlwaysAllow,
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
