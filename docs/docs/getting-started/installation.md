@@ -80,7 +80,7 @@ values={[
 </TabItem>
 </Tabs>
 
-If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](https://docs.bacalhau.org/#our-vision) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
+If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](../setting-up/running-node/quick-start.md#ensure-your-storage-server-is-running) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
 
 
 ## Step 2 - Submit a Hello World job
@@ -132,7 +132,7 @@ Checking job status...
 The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `9d20bbad`. 
 
 :::info
-While this command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [flags (see CLI Reference)](https://docs.bacalhau.org/all-flags#docker-run) to support its computing model.
+While this command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [flags](../dev/cli-reference/all-flags.md#docker-run) to support its computing model.
 :::
 
 </TabItem>
@@ -180,7 +180,7 @@ CREATED   ID          JOB                                       STATE      PUBLI
 When it says `Completed`, that means the job is done, and we can get the results.
 
 :::info
-For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
+For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../dev/cli-reference/all-flags.md#list-2).
 :::
 
 ### Step 3.2 - Job information: 
@@ -258,17 +258,17 @@ That should print out the string `Hello World`.
 
 ![image](../../static/img/Installation/cat-jobid1.png 'cat-jobid')
 
-With that, you have just successfully run a job on the Bacalhau network! :fish:
+With that, you have just successfully run a job on Bacalhau! :fish:
 
 ## Step 5 - Where to go next?
 
 Here are few resources that provide a deeper dive into running jobs with Bacalhau:
 
- [How Bacalhau works]  
- [Setting up Bacalhau]  
- [Examples & Use Cases]  
+ [How Bacalhau works](../getting-started/architecture.md)  
+ [Setting up Bacalhau](../setting-up)  
+ [Examples & Use Cases](../examples)  
 
 
-## Need Support?
+## Support
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://bit.ly/bacalhau-project-slack)
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

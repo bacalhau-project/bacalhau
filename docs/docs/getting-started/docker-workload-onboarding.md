@@ -264,5 +264,5 @@ This can often be resolved by re-tagging your docker image
 
 ## Support
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bit.ly/bacalhau-project-slack/archives/C02RLM3JHUY) in the #general channel.
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
 

@@ -40,7 +40,7 @@ But if you want to specify the entire objects located in the path, you can simpl
 
 ### Prerequisite
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
 
 ### TBD 1. Running the job on multiple buckets with multiple objects
@@ -59,7 +59,11 @@ bacalhau docker run \
     jsacex/gdal-s3
 ```
 
-The job has been submitted and Bacalhau has printed out the related job ID. We store that in an environment variable so that we can reuse it later on.
+The job has been submitted and Bacalhau has printed out the related `job_id`. We store that in an environment variable so that we can reuse it later on:
+
+```python
+%env JOB_ID={job_id}
+```
 
 ## 2. Checking the State of your Jobs
 
@@ -147,3 +151,5 @@ The code processes and displays all images in the specified directory by applyin
 ![png](index_files/index_19_3.png)
     
 
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

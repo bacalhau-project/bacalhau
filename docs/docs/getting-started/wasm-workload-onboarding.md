@@ -141,4 +141,4 @@ See [the Rust example](../examples/workload-onboarding/rust-wasm/index.md) for a
 ## Support
 
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bit.ly/bacalhau-project-slack/archives/C02RLM3JHUY)(#bacalhau channel)
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

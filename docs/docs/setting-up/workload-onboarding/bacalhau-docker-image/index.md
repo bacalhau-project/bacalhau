@@ -12,7 +12,7 @@ This documentation explains how to use the Bacalhau Docker image to run tasks an
 
 ## Prerequisites
 
-To get started, you need to install the Bacalhau client (see more information [here](https://docs.bacalhau.org/getting-started/installation)) and Docker.
+To get started, you need to install the Bacalhau client (see more information [here](../../../getting-started/installation.md)) and Docker.
 
 ## 1. Pull the Docker image
 
@@ -167,7 +167,7 @@ After the download has finished you should see the following contents in the res
 
 
 
-## Need Support?
+## Support
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
 

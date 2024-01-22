@@ -11,18 +11,15 @@ sidebar_position: 5
 ## **Introduction**
 
 
-In this tutorial example, we will walk you through building your own docker container and running the container on the bacalhau network.
-
-## TD;LR
-Running a Python container on Bacalhau
+In this tutorial example, we will walk you through building your own Python container and running the container on Bacalhau.
 
 ## Prerequisites
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
-## Sample Recommendation Dataset
+## 1. Sample Recommendation Dataset
 
-We will be using a simple recommendation script that when given a movie ID will recommend other movies based on user ratings. Assuming you want if recommendations for the movie Toy Story (1995) it will recommend movies from similar categories:
+We will be using a simple recommendation script that, when given a movie ID, recommends other movies based on user ratings. Assuming you want recommendations for the movie 'Toy Story' (1995), it will suggest movies from similar categories:
 
 ```
 Recommendations for Toy Story (1995):
@@ -49,16 +46,7 @@ Download Movielens1M dataset from this link [https://files.grouplens.org/dataset
 !wget https://files.grouplens.org/datasets/movielens/ml-1m.zip
 ```
 
-In this example, we’ll be using 2 files from the MovieLens 1M dataset: ratings.dat and movies.dat. After the dataset is downloaded extract the zip and place ratings.dat and movies.dat into a folder called input
-
-The structure of the input directory should be
-
-```
-input
-├── movies.dat
-└── ratings.dat
-```
-
+In this example, we’ll be using 2 files from the MovieLens 1M dataset: `ratings.dat` and `movies.dat`.After the dataset is downloaded extract the zip and place `ratings.dat` and `movies.dat` into a folder called `input`:
 
 ```python
 # Extracting the downloaded zip file
@@ -71,10 +59,17 @@ input
 !mkdir input; mv ml-1m/movies.dat ml-1m/ratings.dat input/
 ```
 
+The structure of the input directory should be
+
+```
+input
+├── movies.dat
+└── ratings.dat
+```
 
 ### Installing Dependencies
 
-Create a `requirements.txt` for the Python libraries we’ll be using:
+To create a `requirements.txt` for the Python libraries we’ll be using, run:
 
 
 ```python
@@ -83,7 +78,7 @@ numpy
 pandas
 ```
 
-To install the dependencies run the command
+To install the dependencies, run:
 
 
 
@@ -175,27 +170,28 @@ print_similar_movies(movie_data, movie_id, top_indexes)
 
 What the similar-movies.py script does
 
-* Read the files with pandas
-* Create the ratings matrix of shape (m×u) with rows as movies and columns as user
-* Normalise matrix (subtract mean off)
-* Compute SVD
-* Calculate cosine similarity, sort by most similar, and return the top N.
-* Select k principal components to represent the movies, a movie_id to find recommendations, and print the top_n results.
+1. Read the files with pandas. The code uses Pandas to read data from the files `ratings.dat` and `movies.dat`.
+
+2. Create the ratings matrix of shape (m×u) with rows as movies and columns as user
+3. Normalise matrix (subtract mean off). The ratings matrix is normalized by subtracting the mean off.
+4. Compute SVD: a singular value decomposition (SVD) of the normalized ratings matrix is performed.
+5. Calculate cosine similarity, sort by most similar, and return the top N.
+6. Select k principal components to represent the movies, a `movie_id` to find recommendations, and print the `top_n` results.
 
 For further reading on how the script works, go to [Simple Movie Recommender Using SVD | Alyssa](https://alyssaq.github.io/2015/20150426-simple-movie-recommender-using-svd/)
 
 
 ### Running the Script
 
-Running the script similar-movies.py using the default values you can also use other flags to set your own values
-
+Running the script `similar-movies.py` using the default values: 
 
 
 ```python
 ! python similar-movies.py
 ```
+You can also use other flags to set your own values.
 
-## Setting Up Docker
+## 2. Setting Up Docker
 
 We will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
 
@@ -210,7 +206,7 @@ RUN pip install -r requirements.txt
 ```
 
 
-We will use the python:3.8 docker image and add our script `similar-movies.py` to copy the script to the docker image, similarly, we also add the dataset directory and also the requirements, after that run the command to install the dependencies in the image
+We will use the `python:3.8` docker image and add our script `similar-movies.py` to copy the script to the docker image, similarly, we also add the `dataset` directory and also the `requirements`, after that run the command to install the dependencies in the image
 
 The final folder structure will look like this:
 
@@ -231,29 +227,29 @@ See more information on how to containerize your script/app [here](https://docs.
 
 ### Build the container
 
-We will run `docker build` command to build the container;
+We will run `docker build` command to build the container:
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
-Before running the command replace;
+Before running the command replace:
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+**`hub-user`** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-- **repo-name** with the name of the container, you can name it anything you want
+**`repo-name`** with the name of the container, you can name it anything you want
 
-- **tag** this is not required but you can use the latest tag
+**`tag`** this is not required, but you can use the `latest` tag
 
-In our case
+In our case:
 
 ```bash
-docker build -t jsace/python-similar-movies
+docker build -t jsace/python-similar-movies .
 ```
 
 ### Push the container
 
-Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+Next, upload the image to the registry. This can be done by using the `Docker hub username`, `repo name` or `tag`.
 
 ```
 docker push <hub-user>/<repo-name>:<tag>
@@ -265,9 +261,9 @@ In our case
 docker push jsace/python-similar-movies
 ```
 
-## Running a Bacalhau Job
+## 3. Running a Bacalhau Job
 
-After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. You can submit a Bacalhau job using by running your container on Bacalhau with default or custom parameters
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. You can submit a Bacalhau job by running your container on Bacalhau with default or custom parameters.
 
 ### Running the Container with Default Parameters
 
@@ -277,21 +273,19 @@ To submit a Bacalhau job by running your container on Bacalhau with default para
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---id-only \
---wait \
-jsace/python-similar-movies \
--- python similar-movies.py
+    --id-only \
+    --wait \
+    jsace/python-similar-movies \
+    -- python similar-movies.py
 ```
 
 ### Structure of the command
 
-Let's look closely at the command above:
+`bacalhau docker run`: call to Bacalhau
 
-* `bacalhau docker run`: call to bacalhau
+`jsace/python-similar-movies`: the name and of the docker image we are using
 
-* `jsace/python-similar-movies`: the name and the tag of the docker image we are using
-
-* `-- python similar-movies.py`: execute the Python script
+`-- python similar-movies.py`: execute the Python script
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
@@ -302,23 +296,21 @@ To submit a Bacalhau job by running your container on Bacalhau with custom param
 
 ```
 bacalhau docker run \
-jsace/python-similar-movies \
--- python similar-movies.py --k 50 --id 10 --n 10
+    jsace/python-similar-movies \
+    -- python similar-movies.py --k 50 --id 10 --n 10
 ```
 
 ### Structure of the command
 
-Let's look closely at the command above:
+`bacalhau docker run`: call to Bacalhau
 
-* `bacalhau docker run`: call to bacalhau
+`jsace/python-similar-movies`: the name of the docker image we are using
 
-* `jsace/python-similar-movies`: the name and the tag of the docker image we are using
+`-- python similar-movies.py --k 50 --id 10 --n 10`: execute the python script. The script will use Singular Value Decomposition (SVD) and cosine similarity to find 10 movies most similar to the one with identifier 10, using 50 principal components.
 
-* `-- python similar-movies.py --k 50 --id 10 --n 10`: execute the python script
+## 4. Checking the State of your Jobs
 
-## Checking the State of your Jobs
-
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -328,7 +320,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -336,7 +328,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -345,7 +337,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-## Viewing your Job Output
+## 5. Viewing your Job Output
 
 To view the file, run the following command:
 
@@ -353,3 +345,6 @@ To view the file, run the following command:
 ```python
 !cat results/stdout # displays the contents of the file
 ```
+
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
