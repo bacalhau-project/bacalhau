@@ -148,7 +148,7 @@ func (s *RetriesSuite) SetupSuite() {
 	)
 
 	s.requester = stack.Nodes[0]
-	s.client = client.NewAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
 }

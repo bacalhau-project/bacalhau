@@ -27,6 +27,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 )
 
@@ -48,7 +49,7 @@ func NewCmd() *cobra.Command {
 		Use:    "version",
 		Short:  "Get the client and server version.",
 		Args:   cobra.NoArgs,
-		PreRun: util.ApplyPorcelainLogLevel,
+		PreRun: hook.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := runVersion(cmd, oV); err != nil {
 				util.Fatal(cmd, err, 1)

@@ -45,11 +45,9 @@ func NewRootCmd() *cobra.Command {
 		"logging": configflags.LogFlags,
 	}
 	RootCmd := &cobra.Command{
-		Use:     os.Args[0],
-		Short:   "Compute over data",
-		Long:    `Compute over data`,
-		PreRun:  util.StartUpdateCheck,
-		PostRun: util.PrintUpdateCheck,
+		Use:   os.Args[0],
+		Short: "Compute over data",
+		Long:  `Compute over data`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			repoDir, err := config.Get[string]("repo")
 			if err != nil {

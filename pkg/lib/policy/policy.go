@@ -60,7 +60,7 @@ func AddQuery[Input, Output any](runner *Policy, rule string) Query[Input, Outpu
 		defer func() {
 			// Output tracing information, but only if the log level is appropriate
 			// So we avoid going into a long loop of no-ops
-			const logAt zerolog.Level = zerolog.WarnLevel
+			const logAt zerolog.Level = zerolog.TraceLevel
 			if logger := log.Ctx(ctx); logger.GetLevel() <= logAt {
 				buf := strings.Builder{}
 				topdown.PrettyTraceWithLocation(&buf, *tracer)
