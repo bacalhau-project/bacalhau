@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
@@ -42,10 +43,21 @@ func adaptAuthenticator(method authn.Authenticator, route *echo.Group) {
 	})
 
 	route.POST("", func(c echo.Context) error {
-		result, err := method.Authenticate(c.Request())
+		var req apimodels.AuthnRequest
+		if err := c.Bind(&req); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
+		}
+
+		authentication, err := method.Authenticate(c.Request().Context(), req.MethodData)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		} else if !result.Success {
+		}
+
+		result := apimodels.AuthnResponse{Authentication: authentication}
+		if !authentication.Success {
 			return c.JSON(http.StatusUnauthorized, result)
 		} else {
 			return c.JSON(http.StatusOK, result)
@@ -62,5 +74,5 @@ func (e *Endpoint) list(c echo.Context) error {
 		},
 	)
 
-	return c.JSON(http.StatusOK, methods)
+	return c.JSON(http.StatusOK, apimodels.ListAuthnMethodsResponse{Methods: methods})
 }

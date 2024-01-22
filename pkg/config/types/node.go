@@ -42,6 +42,8 @@ type NodeConfig struct {
 	// Configuration for the web UI
 	WebUI WebUIConfig `yaml:"WebUI"`
 
+	Network NetworkConfig `yaml:"Network"`
+
 	StrictVersionMatch bool `yaml:"StrictVersionMatch"`
 }
 
@@ -143,4 +145,19 @@ type DockerCacheConfig struct {
 	Size      uint64   `yaml:"Size"`
 	Duration  Duration `yaml:"Duration"`
 	Frequency Duration `yaml:"Frequency"`
+}
+  
+type NetworkConfig struct {
+	Type              string               `yaml:"Type"`
+	Port              int                  `yaml:"Port"`
+	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
+	Orchestrators     []string             `yaml:"Orchestrators"`
+	Cluster           NetworkClusterConfig `yaml:"Cluster"`
+}
+
+type NetworkClusterConfig struct {
+	Name              string   `yaml:"Name"`
+	Port              int      `yaml:"Port"`
+	AdvertisedAddress string   `yaml:"AdvertisedAddress"`
+	Peers             []string `yaml:"Peers"`
 }
