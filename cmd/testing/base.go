@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/slices"
@@ -112,7 +111,7 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 		os.Args[2] = ""
 	}
 
-	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
+	s.T().Logf("Command to execute: %v", arguments)
 
 	c, err = root.ExecuteC()
 	return c, buf.String(), err

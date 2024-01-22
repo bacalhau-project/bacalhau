@@ -91,6 +91,9 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 	})
 }
 
+// Returns whether the requester node(s) in the stack have discovered all of the
+// other nodes in the stack and have complete information for them (i.e. each
+// node has actually announced itself.)
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.ID)
@@ -153,7 +156,3 @@ func (m *mixedExecutorFactory) Get(
 }
 
 var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
-
-// Returns whether the requester node(s) in the stack have discovered all of the
-// other nodes in the stack and have complete information for them (i.e. each
-// node has actually announced itself.)

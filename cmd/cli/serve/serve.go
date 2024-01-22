@@ -225,7 +225,12 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	featureConfig, err := getDisabledFeatures()
+	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)
+	if err != nil {
+		return err
+	}
+
+	authConfig, err := config.Get[types.AuthConfig](types.Auth)
 	if err != nil {
 		return err
 	}
@@ -247,6 +252,7 @@ func serve(cmd *cobra.Command) error {
 		APIPort:               config.ServerAPIPort(),
 		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   requesterConfig,
+		AuthConfig:            authConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                config.GetStringMapString(types.NodeLabels),
