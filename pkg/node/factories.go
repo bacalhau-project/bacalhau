@@ -70,7 +70,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
+					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},
 			)
 			if err != nil {
@@ -142,9 +142,9 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 				map[string]authn.Authenticator{
 					"ClientKey": challenge.NewAuthenticator(
 						challenge.AnonymousModePolicy,
-						nodeConfig.Host.ID(),
+						challenge.NewStringMarshaller(nodeConfig.NodeID),
 						privKey,
-						nodeConfig.Host.ID().String(),
+						nodeConfig.NodeID,
 					),
 				},
 			), nil

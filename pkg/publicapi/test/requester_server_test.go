@@ -42,7 +42,9 @@ func (s *RequesterSuite) SetupTest() {
 
 // After each test
 func (s *RequesterSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup(context.Background())
+	if s.node != nil {
+		s.node.CleanupManager.Cleanup(context.Background())
+	}
 }
 
 func (s *RequesterSuite) TestList() {

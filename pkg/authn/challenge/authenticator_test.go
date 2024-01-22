@@ -18,12 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testData []byte
-
-func (t testData) MarshalBinary() ([]byte, error) {
-	return t, nil
-}
-
 func setup(t *testing.T) authn.Authenticator {
 	logger.ConfigureTestLogging(t)
 
@@ -33,7 +27,7 @@ func setup(t *testing.T) authn.Authenticator {
 	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	return NewAuthenticator(anonPolicy, testData([]byte("test")), rsaKey, "node")
+	return NewAuthenticator(anonPolicy, NewStringMarshaller("test"), rsaKey, "node")
 }
 
 func try(t *testing.T, authenticator authn.Authenticator, r any) authn.Authentication {

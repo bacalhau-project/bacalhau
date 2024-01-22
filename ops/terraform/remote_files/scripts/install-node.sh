@@ -117,12 +117,14 @@ function install-bacalhau-from-release() {
 
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
-  sudo apt-get -y install --no-install-recommends jq nodejs npm make
+  # make sure we have the desired version of nodejs to build webui
+  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+  sudo apt-get -y install --no-install-recommends jq nodejs make
   git clone --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
   pushd bacalhau
   pushd webui && npm install && popd
   make build-bacalhau
-  sudo mv ./bin/*/bacalhau /usr/local/bin/bacalhau
+  sudo mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
   popd
 }
 

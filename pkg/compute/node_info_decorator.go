@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
-type NodeInfoProviderParams struct {
+type NodeInfoDecoratorParams struct {
 	Executors          executor.ExecutorProvider
 	Publisher          publisher.PublisherProvider
 	Storages           storage.StorageProvider
@@ -19,7 +19,7 @@ type NodeInfoProviderParams struct {
 	MaxJobRequirements models.Resources
 }
 
-type NodeInfoProvider struct {
+type NodeInfoDecorator struct {
 	executors          executor.ExecutorProvider
 	publishers         publisher.PublisherProvider
 	storages           storage.StorageProvider
@@ -28,8 +28,8 @@ type NodeInfoProvider struct {
 	maxJobRequirements models.Resources
 }
 
-func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
-	return &NodeInfoProvider{
+func NewNodeInfoDecorator(params NodeInfoDecoratorParams) *NodeInfoDecorator {
+	return &NodeInfoDecorator{
 		executors:          params.Executors,
 		publishers:         params.Publisher,
 		storages:           params.Storages,
@@ -39,8 +39,9 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	}
 }
 
-func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNodeInfo {
-	return models.ComputeNodeInfo{
+func (n *NodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo models.NodeInfo) models.NodeInfo {
+	nodeInfo.NodeType = models.NodeTypeCompute
+	nodeInfo.ComputeNodeInfo = &models.ComputeNodeInfo{
 		ExecutionEngines:   n.executors.Keys(ctx),
 		Publishers:         n.publishers.Keys(ctx),
 		StorageSources:     n.storages.Keys(ctx),
@@ -50,7 +51,8 @@ func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNod
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
 		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
 	}
+	return nodeInfo
 }
 
 // compile-time interface check
-var _ models.ComputeNodeInfoProvider = &NodeInfoProvider{}
+var _ models.NodeInfoDecorator = &NodeInfoDecorator{}
