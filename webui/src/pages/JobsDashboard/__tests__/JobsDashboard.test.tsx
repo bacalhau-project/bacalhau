@@ -30,18 +30,18 @@ describe("JobsDashboard", () => {
     beforeEach(() => {
       server.resetHandlers()
     })
-    it("with one job", () => {
-      act(async () => {
+    it("with one job", async () => {
+      await act(async () => {
         await renderWithNumberOfJobs(1)
       })
     })
-    it("with multiple jobs", () => {
-      act(async () => {
+    it("with multiple jobs", async () => {
+      await act(async () => {
         await renderWithNumberOfJobs(10)
       })
     })
-    it("with 11+ jobs", () => {
-      act(async () => {
+    it("with 11+ jobs", async () => {
+      await act(async () => {
         await renderWithNumberOfJobs(11)
       })
     })

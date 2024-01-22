@@ -2,31 +2,31 @@
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
 import { Job, JobsResponse } from "../../src/helpers/jobInterfaces";
-import { TestData } from "./__tests__/msw.test";
+import { RETURN_DATA_PARAMETER, TestData } from "./__tests__/msw.test";
 
 const BASE_URL = "https://localhost:1234"
 
+export const mockTestDataArray: TestData[] = [
+  {
+    "userId": 1234,
+    "id": 1,
+    "date": new Date("1970-01-01"),
+    "bool": true
+  },
+  {
+    "userId": 9876,
+    "id": 2,
+    "date": new Date("2023-12-31"),
+    "bool": false
+  },
+]
+
 // This does not have a route in the production app - it's for testing that tests are working
 export const testDataResponse = http.get('/testData', ({ request }) => {
-  const mockTestDataArray: TestData[] = [
-    {
-      "userId": 1234,
-      "id": 1,
-      "date": new Date("1970-01-01"),
-      "bool": true
-    },
-    {
-      "userId": 9876,
-      "id": 2,
-      "date": new Date("2023-12-31"),
-      "bool": false
-    },
-  ]
-
   const url = new URL(request.url)
 
-  let returnDataArray = null
-  if (url.searchParams.get("returnData")) {
+  let returnDataArray: TestData[] = []
+  if (url.searchParams.get(RETURN_DATA_PARAMETER)) {
     returnDataArray = mockTestDataArray;
   }
 

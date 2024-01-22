@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import React from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, act, waitFor, queryByAttribute, RenderResult } from "@testing-library/react"
 import { server } from "../server"
-import { testDataResponse } from "../handlers"
+import { mockTestDataArray } from "../handlers"
+import { useState, useEffect } from "react"
+import crypto from "crypto"
 
 // This is a simple file to test to make sure the configuration of msw is working
 // properly. All components, types, and methods are self contained here.
+
+export const RETURN_DATA_PARAMETER = "returnData"
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -29,37 +33,19 @@ type TestDataItemProps = {
 }
 
 function TestDataItem({ testData }: TestDataItemProps) {
-  return (
-    <pre>
-      {`${testData.userId},${testData.id},${testData.date.toString()},${testData.bool}`}{" "}
-    </pre>
+  // unique key is required for each element in a list - generate unique key
+  // by concatenating all the values of the testData object
+  let uniqueKey = crypto.randomUUID()
+  return (<>
+    {`${testData.userId},${testData.id},${testData.date.toString()},${testData.bool}`}{" "}
+    </>
   )
 }
 
-type TestDataListProps = {
-  testDataArray: TestData[]
-}
-
-export default function TestDataList({ testDataArray }: TestDataListProps) {
-  let content
-  if (testDataArray.length === 0) {
-    content = <p>No TestData</p>
-  } else {
-    content = (
-      <>
-        {testDataArray.map((testData) => (
-          <TestDataItem key={testData.id} testData={testData} />
-        ))}
-      </>
-    )
-  }
-
-  return content
-}
-
-async function fetchTestData() {
+async function fetchTestData(returnData:boolean = false) {
   try {
-    const res = await fetch("/sampleQuery")
+    const appendString = returnData ? `?${RETURN_DATA_PARAMETER}=true` : ""
+    const res = await fetch(`http://localhost/testData${appendString}`)
 
     const testData: TestData[] = (await res.json()) as TestData[]
 
@@ -70,40 +56,67 @@ async function fetchTestData() {
   }
 }
 
-function MSWTestComponent(): JSX.Element {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [testData, setTestData] = React.useState<TestData[]>([])
+type MSWProps = {
+  ShouldReturnData?: boolean
+}
 
-  React.useEffect(() => {
-    async function getTestData() {
-      const testDataArray = await fetchTestData()
-      if (testDataArray?.length) setTestData(testDataArray)
+export const MSWTestComponent: React.FC<MSWProps>  = ({
+  ShouldReturnData = false,
+}) => {
+  const [testDataArray, setTestDataArray] = useState<TestData[]>([]);
+
+  useEffect(() => {
+    async function fetchTestDataAsync() {
+      const fetchedTestDataArray = await fetchTestData(ShouldReturnData)
+      setTestDataArray(fetchedTestDataArray)
     }
+    fetchTestDataAsync();
+  }, []);
 
-    getTestData()
-  }, [])
-
-  return <TestDataList testDataArray={testData} />
+  return (
+    <div id="dataList">
+      {testDataArray?.length ? (
+        testDataArray.map((testDataItem) => (
+          <TestDataItem testData={testDataItem} />
+        ))
+      ) : (
+        <p>No TestData</p>
+      )}
+    </div>
+  )
 }
 
 describe("Basic tests of mocked API", () => {
-  it("should GET React component backed by /sampleQuery with no test data", async () => {
-    render(<MSWTestComponent />)
-    // Query the sampleQuery endpoint and get a response.
-    // Print the response to the console.
-    expect(await screen.findByText("No TestData"))
-    screen.debug()
+  it("should GET React component backed by /testData with no test data", async () => {
+    await act(() => {
+      render(<MSWTestComponent />)
+    })
+    
+    await waitFor(() => {
+      // Query the sampleQuery endpoint and get a response.
+      // Print the response to the console.
+      expect(screen.getByText("No TestData")).toBeInTheDocument()
+    })
 
-    // expect(respData.container).toEqual({ data: { hello: "world" } })
   })
-  it("should GET React component backed by /sampleQuery with two entries", async () => {
-    server.use(testDataResponse)
-    render(<MSWTestComponent />)
-    // Query the sampleQuery endpoint and get a response.
-    // Print the response to the console.
-    expect(await screen.findByText("No TestData"))
-    screen.debug()
+  it("should GET React component backed by /testData with two entries", async () => {
+    let result: RenderResult;
+    result = render(<MSWTestComponent ShouldReturnData={true} />);
+    const dom = result.container;
+    
+    await waitFor(() => {
+      console.log(screen.debug())
+      
+      // Get the expect for the div with id "dataList"
+      const dataList = dom.querySelector("#dataList");
+      
+      expect(dataList).toBeInTheDocument();
+      
+      // Query the sampleQuery endpoint and get a response.
+      // Print the response to the console.
+      expect(dataList).toHaveTextContent(mockTestDataArray[0].id.toString())
+      expect(dataList).toHaveTextContent(mockTestDataArray[1].id.toString())
+    })
 
-    // expect(respData.container).toEqual({ data: { hello: "world" } })
   })
 })
