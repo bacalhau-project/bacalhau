@@ -3,11 +3,11 @@ sidebar_position: 4
 sidebar_label: "Internet Access"
 ---
 
-# Internet access
+# Accessing the Network From Jobs
 
-By default, Bacalhau jobs do not have any access to the internet. This is to keep both compute providers and users safe from malicious activities.
+By default, after launch Bacalhau jobs do not have any access to the external network - Internet or other nodes in the same network. This is to keep both compute providers and users safe from malicious activities.
 
-However, you can access your data before or during the execution of a job:
+However, there are 2 ways to access your data - before or during the execution of a job:
 - Using Data Volumes to download the input data and upload the results
 - Using `--network` flag to allow job to access the internet 
 :::info
@@ -45,12 +45,12 @@ The required networking can be specified using the `--network` flag. For `http` 
 Bacalhau jobs are explicitly prevented from starting other Bacalhau jobs, even if a Bacalhau requester node is specified on the HTTP allowlist.
 :::
 
-## Support for networked jobs on the public network
+## Support for networked jobs on the demo network
 
-Bacalhau supports *describing* jobs that can access the internet during job execution. The ability of a public network to run jobs, that require internet access depends on what compute nodes are currently part of the network.
+Bacalhau supports *describing* jobs that can access the internet during job execution. The ability of a demo network to run jobs, that require internet access depends on what compute nodes are currently part of the network.
 
-Compute nodes that join the Bacalhau network do not accept networked jobs by default (i.e. they only accept jobs that specify `--network=none`, which is also the default).
+Compute nodes that join the Bacalhau demo network do not accept networked jobs by default (i.e. they only accept jobs that specify `--network=none`, which is also the default).
 
-The public compute nodes provided by the Bacalhau network will accept jobs that require HTTP networking as long as the domains are from [this allowlist](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/scripts/http-domain-allowlist.txt).
+The demo compute nodes provided by the Bacalhau network will accept jobs that require HTTP networking as long as the domains are from [this allowlist](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/scripts/http-domain-allowlist.txt).
 
 If you need to access a domain that isn't on the allowlist, you can make a request to the [Bacalhau Project team](https://github.com/bacalhau-project/bacalhau/discussions) to include your required domains. You can also set up your own compute node that implements the allowlist you need.
