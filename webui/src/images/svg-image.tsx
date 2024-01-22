@@ -12,7 +12,7 @@
 // </svg>
 
 // Reusable SVG rendering component below:
-import React, { SVGProps } from "react"
+import React from "react"
 
 interface SVGImageProps {
   src: string

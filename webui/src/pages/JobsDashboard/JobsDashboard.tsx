@@ -9,7 +9,9 @@ interface JobDashboardProps {
   pageTitle?: string
 }
 
-export const JobsDashboard: React.FC<JobDashboardProps> = ({ pageTitle = "Jobs Dashboard"}) => {
+export const JobsDashboard: React.FC<JobDashboardProps> = ({
+  pageTitle = "Jobs Dashboard",
+}) => {
   const [data, setData] = useState<Job[]>([])
 
   async function getJobsData() {
@@ -36,7 +38,6 @@ export const JobsDashboard: React.FC<JobDashboardProps> = ({ pageTitle = "Jobs D
   )
 }
 
-
 JobsDashboard.defaultProps = {
   pageTitle: "Jobs Dashboard",
-};
+}

@@ -4,11 +4,11 @@ import { MemoryRouter, Routes, Route } from "react-router-dom"
 import { ActionButton } from "../ActionButton"
 
 describe("ActionButton", () => {
-  test("renders button with provided text", async () => {
+  it("renders button with provided text", () => {
     // Generate random string for button text
     const buttonText = Math.random().toString(36).substring(7)
 
-    await act(async () => {
+    act(() => {
       render(
         <MemoryRouter>
           <ActionButton text={buttonText} />
@@ -17,21 +17,29 @@ describe("ActionButton", () => {
     })
 
     // Test to see if the content is in the document
-    await waitFor(() => {
+    waitFor(() => {
       screen.findByDisplayValue(`/${buttonText}/i`).then((contentRendered) => {
         expect(contentRendered).toBeInTheDocument()
       })
     })
   })
 
-  test("calls onClick when provided and button is clicked", () => {
+  it("calls onClick when provided and button is clicked", () => {
     const handleClick = jest.fn()
 
-    render(
-      <MemoryRouter>
-        <ActionButton text="Test Button" onClick={handleClick} />
-      </MemoryRouter>
-    )
+    act(() => {
+      render(
+        <MemoryRouter>
+          <ActionButton text="Test Button" onClick={handleClick} />
+        </MemoryRouter>
+      )
+    })
+
+    waitFor(() => {
+      screen.findByDisplayValue(/Test Button/i).then((contentRendered) => {
+        expect(contentRendered).toBeInTheDocument()
+      })
+    })
 
     fireEvent.click(screen.getByText("Test Button"))
 
@@ -39,17 +47,25 @@ describe("ActionButton", () => {
   })
 
   test("navigates to 'to' path when provided and button is clicked", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route
-            path="/"
-            element={<ActionButton text="Test Button" to="/test-path" />}
-          />
-          <Route path="/test-path" element={<div>Test Page</div>} />
-        </Routes>
-      </MemoryRouter>
-    )
+    act(() => {
+      render(
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route
+              path="/"
+              element={<ActionButton text="Test Button" to="/test-path" />}
+            />
+            <Route path="/test-path" element={<div>Test Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+
+    waitFor(() => {
+      screen.findByDisplayValue(/Test Button/i).then((contentRendered) => {
+        expect(contentRendered).toBeInTheDocument()
+      })
+    })
 
     fireEvent.click(screen.getByText("Test Button"))
 
