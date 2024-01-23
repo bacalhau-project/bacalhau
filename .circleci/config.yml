@@ -614,12 +614,8 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  circle_ci_tester:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - build_webui
-
   lint:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - lint:
           name: Run linters and static checkers
@@ -628,6 +624,7 @@ workflows:
               ignore: /.*/
 
   check_canary:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_canary:
           name: Check canary build
@@ -636,6 +633,7 @@ workflows:
               ignore: /.*/
 
   test:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_webui
       - test:
@@ -664,6 +662,7 @@ workflows:
             - test
 
   python:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_swagger:
           name: build-swagger-spec
@@ -689,6 +688,7 @@ workflows:
             <<: *build_on_branch_and_tag_push
 
   build:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_webui:
           filters: *build_on_branch_and_tag_push
