@@ -7,11 +7,10 @@ permissions:
 
 jobs:
   trigger-circle-ci:
-    # if: github.event.label.name != 'do-not-merge' || github.event.label.name != 'wip'
-    if: ${{ github.event.pull_request.labels.*.name == 'circle-ci' }}
     runs-on: ubuntu-latest
     name: Pull Request Triggered CircleCI
     steps:
+    - uses: LedgerHQ/actions/gh-context@main
     - uses: actions/checkout@v2
     - name: Trigger CircleCI
       id: curl-circle-ci
@@ -22,4 +21,5 @@ jobs:
     # Use the output from the `hello` step
     - name: Get the output response
       run: echo "The response was ${{ steps.curl-circle-ci.outputs.response }}"
-            
+    # if: github.event.label.name != 'do-not-merge' || github.event.label.name != 'wip'
+    # if: ${{ github.event.pull_request.labels.*.name == 'circle-ci' }}
