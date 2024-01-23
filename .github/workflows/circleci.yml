@@ -15,14 +15,10 @@ jobs:
     name: Pull Request Triggered CircleCI
     steps:
     - uses: LedgerHQ/actions/gh-context@main
-    - uses: actions/checkout@v2
     - name: Trigger CircleCI
       id: curl-circle-ci
       uses: Open-Source-Contrib/circle-ci-trigger-action@latest
       with:
         circle_ci_token: ${{ secrets.CIRCLE_CI_TOKEN }}
         circle_ci_project_url: ${{ github.event.pull_request.head.ref }}
-    # Use the output from the `hello` step
-    - name: Get the output response
-      run: echo "The response was ${{ steps.curl-circle-ci.outputs.response }}"
 
