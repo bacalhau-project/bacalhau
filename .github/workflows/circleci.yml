@@ -17,7 +17,7 @@ jobs:
     - name: Trigger CircleCI
       id: trigger-circle-ci
       run: |
-        ./.cirlceci/trigger_pipeline.sh
+        ./.circleci/trigger_pipeline.sh
       env:
         CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
         BRANCH: ${{ github.event.pull_request.head.ref }}
