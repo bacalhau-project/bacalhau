@@ -3,7 +3,6 @@
 package agent_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -26,10 +25,7 @@ type VersionSuite struct {
 }
 
 func (s *VersionSuite) TestVersionHumanOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("agent", "version",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
-	)
+	_, out, err := s.ExecuteTestCobraCommand("agent", "version")
 	s.Require().NoError(err)
 
 	expectedVersion := version.Get()
@@ -40,9 +36,7 @@ func (s *VersionSuite) TestVersionHumanOutput() {
 }
 
 func (s *VersionSuite) TestVersionJSONOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("agent", "version",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("agent", "version",
 		"--output", string(output.JSONFormat),
 	)
 	s.Require().NoError(err, "Could not request version with json output.")
@@ -55,9 +49,7 @@ func (s *VersionSuite) TestVersionJSONOutput() {
 }
 
 func (s *VersionSuite) TestVersionYAMLOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("agent", "version",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("agent", "version",
 		"--output", string(output.YAMLFormat),
 	)
 	s.Require().NoError(err, "Could not request version with json output.")

@@ -68,9 +68,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 		s.Run(fmt.Sprintf("job%d", tc.numberOfJobs), func() {
 			ctx := context.Background()
 			randomUUID := uuid.New()
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
+			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 				"ubuntu",
 				"echo",
 				randomUUID.String(),
@@ -92,9 +90,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 		func() {
 			randomUUID := uuid.New()
 			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
+			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 				"ubuntu",
 				entrypointCommand,
 				"--dry-run",
@@ -139,9 +135,9 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
+			allArgs := []string{"docker", "run"}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
+			_, out, submitErr := s.ExecuteTestCobraCommand(allArgs...)
 
 			if tc.fatalErr {
 				s.Require().Contains(out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -177,9 +173,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
 			s.Require().NoError(err)
 
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
+			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
 				"--output-dir", s.T().TempDir(),
@@ -231,9 +225,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port)}
+				flagsArray := []string{"docker", "run"}
 				for _, iv := range tcids.inputVolumes {
 					ivString := iv.cid
 					if iv.path != "" {
@@ -243,7 +235,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu", "cat", "/inputs/foo.txt") // This doesn't exist, but shouldn't error
 
-				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
+				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -300,14 +292,12 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port)}
+				flagsArray := []string{"docker", "run"}
 
 				flagsArray = append(flagsArray, turls.inputURL.flag, turls.inputURL.url)
 				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURL.pathInContainer, turls.inputURL.filename))
 
-				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
+				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -351,9 +341,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port)}
+				flagsArray := []string{"docker", "run"}
 				ovString := ""
 				for _, ov := range tcids.outputVolumes {
 					if ov.name != "" {
@@ -368,7 +356,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu", "echo", "'hello world'")
 
-				_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
+				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 				if tcids.err != "" {
 					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -428,9 +416,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
+			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 				"ubuntu",
 				"echo", "'hello world'",
 			)
@@ -490,7 +476,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 			for _, labelTest := range annotationsToTest {
 				var args []string
 
-				args = append(args, "docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port))
+				args = append(args, "docker", "run")
 				for _, label := range labelTest.Annotations {
 					args = append(args, "-l", label)
 				}
@@ -498,7 +484,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
 				args = append(args, "ubuntu", "echo", fmt.Sprintf("'hello world - %s'", randNum.String()))
 
-				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+				_, out, err := s.ExecuteTestCobraCommand(args...)
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -546,9 +532,9 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port)}
+			allArgs := []string{"docker", "run"}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
+			_, out, submitErr := s.ExecuteTestCobraCommand(allArgs...)
 
 			if tc.fatalErr {
 				s.Require().Contains(out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -586,13 +572,11 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
-			flagsArray := []string{"docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port)}
+			flagsArray := []string{"docker", "run"}
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu", "pwd")
 
-			_, out, err := cmdtesting.ExecuteTestCobraCommand(flagsArray...)
+			_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 			if tc.errorCode != 0 {
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -638,14 +622,12 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	allArgs := []string{
 		"docker", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
 		"--wait",
 		"-i", fmt.Sprintf("ipfs://%s,dst=/inputs", directoryCid),
 		"ubuntu", "echo", "hello",
 	}
 
-	_, _, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
+	_, _, submitErr := s.ExecuteTestCobraCommand(allArgs...)
 	s.Require().NoError(submitErr)
 }
 
@@ -692,10 +674,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	for name, tc := range tests {
 		s.Run(name, func() {
 			ctx := context.Background()
-			_, out, err := cmdtesting.ExecuteTestCobraCommand(
+			_, out, err := s.ExecuteTestCobraCommand(
 				"docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
 				"ubuntu", "--", "perl", "-e", fmt.Sprintf(`print "=" x %d`, tc.inputLength),
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
@@ -737,14 +717,11 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		ctx := context.Background()
 		var args []string
 
-		args = append(args, "docker", "run",
-			"--api-host", s.Host,
-			"--api-port", fmt.Sprint(s.Port),
-		)
+		args = append(args, "docker", "run")
 		args = append(args, tc.inputFlags...)
 		args = append(args, "ubuntu", "--", "ls", "/input")
 
-		_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+		_, out, err := s.ExecuteTestCobraCommand(args...)
 		s.Require().NoError(err, "Error submitting job")
 
 		j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -792,13 +769,10 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 			var args []string
 
-			args = append(args, "docker", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
-			)
+			args = append(args, "docker", "run")
 			args = append(args, tc.imageName, "--", tc.executable)
 
-			_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+			_, out, err := s.ExecuteTestCobraCommand(args...)
 			s.Require().NoError(err, "Error submitting job")
 
 			if !tc.isValid {
@@ -815,12 +789,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 
 	ctx := context.Background()
 
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
-		"@", "--",
-		"true",
-	)
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "@", "--", "true")
 	s.Require().NoError(err)
 
 	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -837,9 +806,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	ctx := context.Background()
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 		"ubuntu",
 		"echo", "'hello world'",
 	)
@@ -855,9 +822,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	const expectedTimeout = 999 * time.Second
 
 	ctx := context.Background()
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",

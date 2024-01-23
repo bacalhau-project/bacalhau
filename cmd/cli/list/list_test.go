@@ -68,10 +68,8 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				require.NoError(suite.T(), err)
 			}
 
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
+			_, out, err := suite.ExecuteTestCobraCommand("list",
 				"--hide-header",
-				"--api-host", suite.Host,
-				"--api-port", fmt.Sprint(suite.Port),
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 				"--reverse", "false",
 			)
@@ -95,10 +93,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 		jobLongIds = append(jobLongIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
+	_, out, err := suite.ExecuteTestCobraCommand("list",
 		"--hide-header",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
 		"--id-filter", jobIds[0],
 		"--wide",
 	)
@@ -113,10 +109,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 	//// Test --output json
 
 	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
-	_, out, err = cmdtesting.ExecuteTestCobraCommand("list",
+	_, out, err = suite.ExecuteTestCobraCommand("list",
 		"--hide-header",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
 		"--id-filter", jobLongIds[0],
 		"--output", "json",
 	)
@@ -187,12 +181,10 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			checkList := func(shouldAppear bool, flags ...string) {
 				args := []string{"list",
 					"--hide-header",
-					"--api-host", suite.Host,
-					"--api-port", fmt.Sprint(suite.Port),
 					"--output", "json",
 				}
 				args = append(args, flags...)
-				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+				_, out, err := suite.ExecuteTestCobraCommand(args...)
 				require.NoError(suite.T(), err)
 
 				response := legacymodels.ListResponse{}
@@ -288,11 +280,9 @@ func (suite *ListSuite) TestList_SortFlags() {
 					reverseString = "--reverse"
 				}
 
-				_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
+				_, out, err := suite.ExecuteTestCobraCommand("list",
 					"--hide-header",
 					"--no-style",
-					"--api-host", suite.Host,
-					"--api-port", fmt.Sprint(suite.Port),
 					"--sort-by", sortFlags.sortFlag,
 					"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 					reverseString,
