@@ -66,21 +66,3 @@ export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => 
 })
 
 export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse, nodesResponse]
-
-// export const sampResp = http.get<never, RequestBody, { foo: 'a' } | { bar: 'b' }>('/', resolver)
-
-// export const fetchTasksEmptyResponse: HttpResponseResolver = async (_req: MockedRequest, res: ResponseComposition, ctx: Context) => await res(ctx.status(200), ctx.json([]))
-
-// export const saveTasksEmptyResponse: HttpResponseResolver = async (_req: http.MockedRequest, res: http.ResponseComposition, ctx: http.Context) => await res(ctx.status(200), ctx.json([]))
-
-// export const handlers = [
-//   fetchTasksEmptyResponse,
-//   saveTasks_empty_response,
-// ]
-// export const loadOneJob = http.get(BASE_URL, async (req, res, ctx) =>
-//   res(ctx.status(200), ctx.json([]))
-// )
-
-// export const handlers = [
-//   http.get("http://localhost:1234/api/v1/*", () => passthrough()),
-// ]

@@ -83,4 +83,9 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
       // Test to see if the content is in the document
       expect(contentRendered).toBeInTheDocument()
     })
+  
+  screen.findAllByText(/BAD_STRING_SHOULD_NOT_BE_FOUND/i).then((contentRendered) => {
+    // Test to make sure tests are working
+    expect(contentRendered).not.toBeInTheDocument()
+  })
 }
