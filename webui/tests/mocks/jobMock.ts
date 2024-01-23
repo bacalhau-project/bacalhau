@@ -44,7 +44,7 @@ const jobLabels: { [key: string]: string[] } = {
   instanceType: ["m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
 }
 
-function generateSampleTask(): Task {
+function generateMockTask(): Task {
   // TODO: Implement actual random task
   // For now, just return a static task
   return {
@@ -78,7 +78,7 @@ function generateSampleTask(): Task {
   }
 }
 
-export function generateSampleJob(): Job {
+export function generateMockJob(): Job {
   const namespace = randomBytes(64).toString("hex")
   const jobState = selectRandomElements(jobStates)[0]
   const jobType = selectRandomElements(jobTypes)[0]
@@ -100,7 +100,7 @@ export function generateSampleJob(): Job {
       )}`,
     },
     Labels: { ...selectRandomKeyAndValue(jobLabels) },
-    Tasks: [generateSampleTask()],
+    Tasks: [generateMockTask()],
     State: {
       StateType: jobState,
       Message: "State Message",

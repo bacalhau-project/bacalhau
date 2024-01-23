@@ -4,7 +4,7 @@ import { screen, render, waitFor, act } from "@testing-library/react"
 import { JobsTable } from "../JobsTable"
 import { Job } from "../../../../helpers/jobInterfaces"
 import { server } from "../../../../../tests/msw/server"
-import { generateSampleJob } from "../../../../../tests/mocks/jobMock"
+import { generateMockJob } from "../../../../../tests/mocks/jobMock"
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -38,7 +38,7 @@ describe("JobsTable", () => {
 async function renderWithNumberOfJobs(numberOfJobs: number) {
   const mockJobs: Job[] = []
   for (let i = 0; i < numberOfJobs; i += 1) {
-    mockJobs.push(generateSampleJob())
+    mockJobs.push(generateMockJob())
   }
 
   act(() => {

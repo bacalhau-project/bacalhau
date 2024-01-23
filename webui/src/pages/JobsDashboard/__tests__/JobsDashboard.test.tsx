@@ -5,7 +5,7 @@ import { JobsDashboard } from "../JobsDashboard"
 import { Job } from "../../../helpers/jobInterfaces"
 import { server } from "../../../../tests/msw/server"
 import { setJobs } from "../../../../tests/msw/handlers"
-import { generateSampleJob } from "../../../../tests/mocks/jobMock"
+import { generateMockJob } from "../../../../tests/mocks/jobMock"
 
 describe("JobsDashboard", () => {
   beforeEach(() => {
@@ -53,7 +53,7 @@ async function renderWithNumberOfJobs(numberOfJobs: number) {
 
   act(() => {
     for (let i = 0; i < numberOfJobs; i += 1) {
-      mockJobs.push(generateSampleJob())
+      mockJobs.push(generateMockJob())
     }
 
     setJobs(mockJobs)
