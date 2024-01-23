@@ -7,7 +7,6 @@ permissions:
 
 jobs:
   trigger-circle-ci:
-    # Not contains
     if: |
       !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
       !contains(github.event.pull_request.labels.*.name, 'wip')
