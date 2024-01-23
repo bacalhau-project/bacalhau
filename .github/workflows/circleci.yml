@@ -15,9 +15,8 @@ jobs:
     steps:
     - uses: LedgerHQ/actions/gh-context@main
     - name: Trigger CircleCI
-      id: curl-circle-ci
-      uses: Open-Source-Contrib/circle-ci-trigger-action@latest
-      with:
+      id: trigger-circle-ci
+      uses: circleci/trigger_circleci_pipeline@v1.0
+      env:
         circle_ci_token: ${{ secrets.CIRCLE_CI_TOKEN }}
-        circle_ci_project_url: ${{ github.event.pull_request.head.ref }}
 
