@@ -16,7 +16,7 @@ jobs:
     - uses: LedgerHQ/actions/gh-context@main
     - name: Trigger CircleCI
       id: trigger-circle-ci
-      uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.0.5
+      uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.1.0
       env:
         circle_ci_token: ${{ secrets.CIRCLE_CI_TOKEN }}
 
