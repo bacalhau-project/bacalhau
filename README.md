@@ -162,3 +162,4 @@ Others are allowed to make their own distribution of the software, but they cann
 We explicitly grant permission for you to make a build that includes our trademarks while developing Bacalhau software itself. You may not publish or share the build, and you may not use that build to run Bacalhau software for any other purpose.
 
 We have borrowed the above Open Source clause from the excellent [System Initiative](https://github.com/systeminit/si/blob/main/CONTRIBUTING.md) 
+
