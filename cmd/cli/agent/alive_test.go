@@ -3,7 +3,6 @@
 package agent_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -23,9 +22,7 @@ type AliveSuite struct {
 }
 
 func (s *AliveSuite) TestAliveJSONOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("agent", "alive",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("agent", "alive",
 		"--output", string(output.JSONFormat),
 	)
 	s.Require().NoError(err, "Could not request alive with json output.")
@@ -37,10 +34,7 @@ func (s *AliveSuite) TestAliveJSONOutput() {
 }
 
 func (s *AliveSuite) TestAliveYAMLOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("agent", "alive",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
-	)
+	_, out, err := s.ExecuteTestCobraCommand("agent", "alive")
 	s.Require().NoError(err, "Could not request alive with yaml output.")
 
 	aliveInfo := &apimodels.IsAliveResponse{}
