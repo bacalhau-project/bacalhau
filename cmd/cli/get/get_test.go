@@ -106,8 +106,6 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"-o", "data:/data",
 		"--wait",
@@ -133,7 +131,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 		"--wait",
 		"--download",
 	})
-	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
 	hostID := s.Node.ID
@@ -154,7 +152,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 		"--download",
 		"--output-dir", tempDir,
 	})
-	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
 	hostID := s.Node.ID
@@ -174,14 +172,12 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.ID
 
-	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
-		"--api-host", s.Node.APIServer.Address,
-		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
+	_, getOutput, err := s.ExecuteTestCobraCommand("get",
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
@@ -198,13 +194,11 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 
-	_, getoutput, err := cmdtesting.ExecuteTestCobraCommand("get",
-		"--api-host", s.Node.APIServer.Address,
-		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
+	_, getoutput, err := s.ExecuteTestCobraCommand("get",
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/missing", jobID),
 	)
@@ -221,14 +215,12 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.ID
 
-	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
-		"--api-host", s.Node.APIServer.Address,
-		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
+	_, getOutput, err := s.ExecuteTestCobraCommand("get",
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
@@ -247,12 +239,12 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.ID
 
-	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
+	_, getOutput, err := s.ExecuteTestCobraCommand("get",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -284,15 +276,13 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+	_, out, err := s.ExecuteTestCobraCommand(args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 	hostID := s.Node.ID
 
-	_, getOutput, err := cmdtesting.ExecuteTestCobraCommand("get",
-		"--api-host", s.Node.APIServer.Address,
-		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
+	_, getOutput, err := s.ExecuteTestCobraCommand("get",
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
 		jobID,
