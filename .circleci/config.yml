@@ -14,6 +14,17 @@ parameters:
   GHA_Meta:
     type: string
     default: ""
+  run_workflow_build:
+    default: true
+    type: boolean
+
+  run_workflow_test:
+    default: true
+    type: boolean
+
+  run_workflow_lint:
+    default: true
+    type: boolean
 
 orbs:
   node: circleci/node@5.1.0
