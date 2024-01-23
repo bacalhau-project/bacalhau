@@ -7,6 +7,10 @@ permissions:
 
 jobs:
   trigger-circle-ci:
+    # Not contains
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
+      !contains(github.event.pull_request.labels.*.name, 'wip')
     runs-on: ubuntu-latest
     name: Pull Request Triggered CircleCI
     steps:
@@ -21,5 +25,4 @@ jobs:
     # Use the output from the `hello` step
     - name: Get the output response
       run: echo "The response was ${{ steps.curl-circle-ci.outputs.response }}"
-    # if: github.event.label.name != 'do-not-merge' || github.event.label.name != 'wip'
-    # if: ${{ github.event.pull_request.labels.*.name == 'circle-ci' }}
+
