@@ -30,14 +30,14 @@ export function generateMockNode(): Node {
   const maxJobMemory = Math.floor(Math.random() * availableMemory)
   const maxJobDisk = Math.floor(Math.random() * availableDisk)
 
-  const majorVersion: string = faker.datatype.number({ min: 99, max: 199 }).toString()
-  const minorVersion: string = faker.datatype.number({ min: 99, max: 199 }).toString()
+  const majorVersion: string = faker.number.int({ min: 99, max: 199 }).toString()
+  const minorVersion: string = faker.number.int({ min: 99, max: 199 }).toString()
 
   return {
     PeerInfo: {
       ID: id,
       Addrs: [
-        `${faker.internet.ip()}/udp/${faker.datatype.number({
+        `${faker.internet.ip()}/udp/${faker.number.int({
           min: 2048,
           max: 65535,
         })}/quic-v1`,
@@ -79,7 +79,7 @@ export function generateMockNode(): Node {
       Minor: minorVersion,
       // Random semantic versioning
       GitVersion: faker.system.semver(),
-      GitCommit: faker.git.shortSha(),
+      GitCommit: faker.git.commitSha({ length: 7 }),
       BuildDate: new Date().toISOString(),
       GOOS: `GOOS-${faker.string.alphanumeric(10)}`,
       GOARCH: `GOARCH-${faker.string.alphanumeric(10)}`,

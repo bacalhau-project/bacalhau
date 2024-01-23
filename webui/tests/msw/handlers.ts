@@ -2,6 +2,7 @@
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
 import { Job, JobsResponse } from "../../src/helpers/jobInterfaces";
+import { Node, NodesResponse } from "../../src/helpers/nodeInterfaces";
 import { RETURN_DATA_PARAMETER, TestData } from "./__tests__/msw.test";
 
 const BASE_URL = "https://localhost:1234"
@@ -40,10 +41,22 @@ export function setJobs(jobs: Job[]) {
   internalJobs = jobs
 }
 
+let internalNodes: Node[] = []
+
+export function setNodes(nodes: Node[]) {
+  internalNodes = nodes
+}
+
 export const jobsResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ request }) => {
   let jobsListResponse: JobsResponse = { Jobs: internalJobs, NextToken: "" }
   return HttpResponse.json(jobsListResponse)
 })
+
+export const nodesResponse = http.get('http://localhost:1234/api/v1/orchestrator/nodes', ({ request }) => {
+  let nodesListResponse: NodesResponse = { Nodes: internalNodes, NextToken: "" }
+  return HttpResponse.json(nodesListResponse)
+})
+
 
 export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => {
   // Placeholders for messing around with cookies
@@ -52,7 +65,7 @@ export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => 
   return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
 })
 
-export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse]
+export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse, nodesResponse]
 
 // export const sampResp = http.get<never, RequestBody, { foo: 'a' } | { bar: 'b' }>('/', resolver)
 
