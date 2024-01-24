@@ -12,6 +12,7 @@ type ComputeConfig struct {
 	JobSelection   model.JobSelectionPolicy `yaml:"JobSelection"`
 	Queue          QueueConfig              `yaml:"Queue"`
 	Logging        LoggingConfig            `yaml:"Logging"`
+	ManifestCache  DockerCacheConfig        `yaml:"ManifestCache"`
 }
 
 type CapacityConfig struct {

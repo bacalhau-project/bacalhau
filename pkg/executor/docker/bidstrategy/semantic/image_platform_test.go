@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -27,6 +29,8 @@ func jobForDockerImage(t testing.TB, imageID string) models.Job {
 
 func TestBidsBasedOnImagePlatform(t *testing.T) {
 	docker.MustHaveDocker(t)
+
+	config.Set(configenv.Testing)
 
 	client, err := docker.NewDockerClient()
 	require.NoError(t, err)
@@ -57,7 +61,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 		var fc *fake.FakeCache[docker.ImageManifest] = fake.NewFakeCache[docker.ImageManifest]()
 		var cc cache.Cache[docker.ImageManifest] = fc
-		semantic.ManifestCache = &cc
+		semantic.ManifestCache = cc
 
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
 			Job: jobForDockerImage(t, "ubuntu:latest"),

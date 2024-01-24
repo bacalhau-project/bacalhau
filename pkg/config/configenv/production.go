@@ -150,6 +150,11 @@ var ProductionComputeConfig = types.ComputeConfig{
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
+	ManifestCache: types.DockerCacheConfig{
+		Size:      1000,
+		Duration:  types.Duration(1 * time.Hour),
+		Frequency: types.Duration(1 * time.Hour),
+	},
 }
 
 var ProductionRequesterConfig = types.RequesterConfig{
