@@ -24,3 +24,5 @@ bacalhau serve --node-type=compute,requester
 - export dashboard data from grafana as json
 - save it to file ./grafana/provisioning/dashboards/dashboard.json
 
+# Best Practices for Telemetry Collections
+[OpenTelemetry In Bacalhau](../../docs/docs/dev/open_telemetry_in_bacalhau.md)
