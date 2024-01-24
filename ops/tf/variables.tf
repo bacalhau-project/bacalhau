@@ -68,3 +68,9 @@ variable "bacalhau_repo_disk_size" {
   type        = number
   default = 50
 }
+
+variable "bacalhau_local_disk_size" {
+  description = "The size of the disk in GB bacalhau will to store local data"
+  type        = number
+  default = 50
+}

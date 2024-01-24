@@ -1,27 +1,52 @@
 #!/bin/bash
 
+NODE_TYPE="${node_type}"
+
 # mount or format repo disk
-function setup-bacalhau-disk() {
+function setup-bacalhau-repo-disk() {
     # Check if /data is already mounted
     if ! mountpoint -q /data; then
-        # Assuming /dev/sdb is the new disk
-        # Check if /dev/sdb has a filesystem
-        if sudo blkid /dev/sdb; then
-            echo "Disk already formatted, mounting..."
+        # Check if disk has a filesystem
+        if sudo blkid /dev/disk/by-id/google-bacalhau-repo; then
+            echo "Repo disk already formatted, mounting..."
         else
-            echo "Formatting disk..."
-            sudo mkfs.ext4 /dev/sdb
+            echo "Formatting repo disk..."
+            sudo mkfs.ext4 /dev/disk/by-id/google-bacalhau-repo
         fi
-        echo "Mounting disk..."
+        echo "Mounting repo disk..."
         sudo mkdir -p /data
-        sudo mount /dev/sdb /data
-        echo "/dev/sdb /data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+        sudo mount /dev/disk/by-id/google-bacalhau-repo /data
+        echo "/dev/disk/by-id/google-bacalhau-repo /data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
     fi
+}
+
+function setup-bacalhau-local-disk() {
+    # Check if /local_data is already mounted
+    if ! mountpoint -q /local_data; then
+        # Check if disk has a filesystem
+        if sudo blkid /dev/disk/by-id/google-bacalhau-local; then
+            echo "Local data disk already formatted, mounting..."
+        else
+            echo "Formatting local data disk..."
+            sudo mkfs.ext4 /dev/disk/by-id/google-bacalhau-local
+        fi
+        echo "Mounting local data disk..."
+        sudo mkdir -p /local_data
+        sudo mount /dev/disk/by-id/google-bacalhau-local /local_data
+        echo "/dev/disk/by-id/google-bacalhau-local /local_data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+    fi
+
 }
 
 function setup-bacalhau-config() {
   echo "Moving bacalhau config to repo..."
   sudo mv /etc/config.yaml /data/config.yaml
+}
+
+function install-otel-collector() {
+    wget "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.92.0/otelcol-contrib_0.92.0_linux_386.tar.gz"
+    tar xvf "otelcol-contrib_0.92.0_linux_386.tar.gz"
+    sudo mv otelcol-contrib /usr/local/bin/otelcol
 }
 
 # reload service files and enable services
@@ -30,6 +55,7 @@ function setup-services() {
   sudo systemctl daemon-reload
   echo "Enabling systemctl services..."
   sudo systemctl enable docker
+  sudo systemctl enable otel.service
   sudo systemctl enable bacalhau.service
 }
 
@@ -37,13 +63,21 @@ function setup-services() {
 function start-services() {
   echo "Starting systemctl services..."
   sudo systemctl restart docker
+  sudo systemctl restart otel.service
   sudo systemctl restart bacalhau.service
 }
 
 # setup and start everything
 function start() {
   echo "Starting..."
-  setup-bacalhau-disk
+  setup-bacalhau-repo-disk
+
+  if [ "$NODE_TYPE" == "compute" ]; then
+    setup-bacalhau-local-disk
+  fi
+
+  # TODO move this into the VMI, maybe?
+  install-otel-collector
   setup-bacalhau-config
   setup-services
   start-services

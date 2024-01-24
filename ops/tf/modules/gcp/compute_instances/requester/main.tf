@@ -5,7 +5,7 @@ resource "google_compute_instance" "requester" {
   zone         = var.zone
 
   metadata = {
-    startup-script = data.template_file.bacalhau_start_script.rendered
+    startup-script = local.bacalhau_start_script
     user-data = data.cloudinit_config.requester_cloud_init.rendered
   }
   boot_disk {
@@ -36,6 +36,7 @@ resource "google_compute_disk" "bacalhau_repo_disks" {
 resource "google_compute_attached_disk" "attach_bacalhau_repo_disks" {
   disk     = google_compute_disk.bacalhau_repo_disks.self_link
   instance = google_compute_instance.requester.self_link
+  device_name = "bacalhau-repo"
 }
 
 locals {
@@ -45,12 +46,14 @@ locals {
 
   // service env vars
   bacalhau_env_vars = {
-    LOG_LEVEL                 = "debug"
-    BACALHAU_NODE_LOGGINGMODE = "default"
-    BACALHAU_DIR              = "/data"
-    BACALHAU_ENVIRONMENT      = "local"
-    AWS_ACCESS_KEY_ID         = var.aws_access_key_id
-    AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
+    LOG_LEVEL                   = "debug"
+    BACALHAU_NODE_LOGGINGMODE   = "default"
+    BACALHAU_DIR                = "/data"
+    BACALHAU_ENVIRONMENT        = "local"
+    // TODO make this a variable
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+    AWS_ACCESS_KEY_ID           = var.aws_access_key_id
+    AWS_SECRET_ACCESS_KEY       = var.aws_secret_access_key
     # Add more variables here as needed
   }
   # Convert the map to the required string format for the systemd service file
@@ -71,6 +74,28 @@ locals {
     # add variables you'd like to inject into the config
     bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   })
+
+  //
+  // templating the bacalhau start script
+  //
+  bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
+    node_type = "requester"
+    // Add more arguments as needed
+  })
+
+  //
+  // templating otel config file
+  //
+  otel_config_content = templatefile("${path.module}/../../../instance_files/otel-collector.yaml", {
+    // add more arguments as needed
+  })
+
+  //
+  // templating otel service file
+  //
+  otel_service_content = templatefile("${path.module}/../../../instance_files/otel.service", {
+    // add more arguments as needed
+  })
 }
 
 
@@ -86,10 +111,8 @@ data "cloudinit_config" "requester_cloud_init" {
     content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
       bacalhau_config_file  : base64encode(local.requester_config_content),
       bacalhau_service_file : base64encode(local.bacalhau_service_content)
+      otel_config_file      : base64encode(local.otel_config_content)
+      otel_service_file     : base64encode(local.otel_service_content),
     })
   }
-}
-
-data "template_file" "bacalhau_start_script" {
-  template = file("${path.module}/../../../instance_files/start.sh")
 }

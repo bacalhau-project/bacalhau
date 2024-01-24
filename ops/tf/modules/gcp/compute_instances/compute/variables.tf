@@ -74,3 +74,8 @@ variable "bacalhau_repo_disk_size" {
   description = "The size of the disk in GB bacalhau will to store its repo"
   type        = number
 }
+
+variable "bacalhau_local_disk_size" {
+  description = "The size of the disk in GB bacalhau will to store local data"
+  type        = number
+}
