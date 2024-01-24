@@ -10,6 +10,7 @@ import (
 
 const (
 	DefaultTTLSeconds = int64(3600)
+	DefaultMaxCost    = uint64(1000)
 )
 
 type BasicCache[T any] struct {
@@ -29,7 +30,7 @@ type CacheItem[T any] struct {
 func NewCache[T any](options ...Option) (*BasicCache[T], error) {
 	// initialize config with default values (these could be constants).
 	config := &Config{
-		maxCost:          1000,
+		maxCost:          DefaultMaxCost,
 		cleanupFrequency: time.Hour,
 		evictionFunction: func(key string, cost uint64, expiresAt int64, now int64) bool {
 			return expiresAt != 0 && expiresAt <= now
