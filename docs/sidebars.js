@@ -54,7 +54,7 @@ module.exports = {
       link: {
         type: 'generated-index',
         title: 'Advanced Guides',
-        slug: '/dev',
+        slug: '/advanced-guides',
       },
       collapsed: true,
       items: [
