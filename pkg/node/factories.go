@@ -9,11 +9,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"go.uber.org/multierr"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -133,21 +135,36 @@ func NewStandardPublishersFactory() PublishersFactory {
 func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
-			privKey, err := config.GetClientPrivateKey()
-			if err != nil {
-				return nil, err
-			}
+			var allErr error
+			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 
-			return provider.NewMappedProvider(
-				map[string]authn.Authenticator{
-					"ClientKey": challenge.NewAuthenticator(
-						challenge.AnonymousModePolicy,
+			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
+				switch authnConfig.Type {
+				case authn.MethodTypeChallenge:
+					privKey, err := config.GetClientPrivateKey()
+					if err != nil {
+						allErr = multierr.Append(allErr, err)
+						continue
+					}
+
+					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
+					if err != nil {
+						allErr = multierr.Append(allErr, err)
+						continue
+					}
+
+					authns[name] = challenge.NewAuthenticator(
+						methodPolicy,
 						challenge.NewStringMarshaller(nodeConfig.NodeID),
 						privKey,
 						nodeConfig.NodeID,
-					),
-				},
-			), nil
+					)
+				default:
+					allErr = multierr.Append(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
+				}
+			}
+
+			return provider.NewMappedProvider(authns), allErr
 		},
 	)
 }
