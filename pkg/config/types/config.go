@@ -26,7 +26,3 @@ type UpdateConfig struct {
 	CheckStatePath string   `yaml:"StatePath"`
 	CheckFrequency Duration `yaml:"CheckFrequency"`
 }
-
-type AuthConfig struct {
-	TokensPath string `yaml:"TokensPath"`
-}
