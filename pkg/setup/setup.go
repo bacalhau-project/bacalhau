@@ -14,15 +14,7 @@ import (
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
 func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
-	fsRepo, err := setupRepo(repoDir)
-	if err != nil {
-		return nil, err
-	}
-	return fsRepo, nil
-}
-
-func setupRepo(path string) (*repo.FsRepo, error) {
-	fsRepo, err := repo.NewFS(path)
+	fsRepo, err := repo.NewFS(repoDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}
@@ -47,7 +39,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)
-	fsRepo, err := setupRepo(path)
+	fsRepo, err := SetupBacalhauRepo(path)
 	if err != nil {
 		t.Fatal(err)
 	}

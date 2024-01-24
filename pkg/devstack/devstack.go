@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
@@ -260,6 +261,13 @@ func Setup(
 			FsRepo:                    fsRepo,
 			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
 			NetworkConfig:             clusterConfig,
+			AuthConfig: types.AuthConfig{
+				Methods: map[string]types.AuthenticatorConfig{
+					"ClientKey": {
+						Type: authn.MethodTypeChallenge,
+					},
+				},
+			},
 		}
 
 		if isRequesterNode && stackConfig.TLS.Certificate != "" && stackConfig.TLS.Key != "" {
