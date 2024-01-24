@@ -148,9 +148,10 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 Let's take a look at the results of the command execution in the terminal:
 
-
-
-![image](../../static/img/Installation/docker-run1.png 'docker-run')
+```shell
+14:02:25.992 | INF pkg/repo/fs.go:81 > Initializing repo at '/root/.bacalhau' for environment 'production'
+19b105c9-4cb5-43bd-a12f-d715d738addd
+```
 
 </TabItem>
 </Tabs>
