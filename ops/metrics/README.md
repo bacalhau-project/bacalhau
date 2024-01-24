@@ -19,3 +19,8 @@ bacalhau serve --node-type=compute,requester
 
 **Clean up**
 - Remove volumes associated with containers to reset state.
+
+**Saving Changes to a Grafana Dashboard**
+- export dashboard data from grafana as json
+- save it to file ./grafana/provisioning/dashboards/dashboard.json
+
