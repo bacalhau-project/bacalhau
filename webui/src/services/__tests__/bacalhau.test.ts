@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { generateSampleJob } from "../../../tests/mocks/jobMock"
+import { generateMockJob } from "../../../tests/mocks/jobMock"
 import { jobsResponse, setJobs } from "../../../tests/msw/handlers"
 import { server as mswServer } from "../../../tests/msw/server"
 import { Job } from "../../helpers/jobInterfaces"
@@ -25,7 +25,7 @@ describe("Basic fetch of mocked API", () => {
     expect(jobs.Jobs).toHaveLength(0)
   })
   it("should GET /orchestrator/jobs with two jobs", async () => {
-    const mockJobList: Job[] = [generateSampleJob(), generateSampleJob()]
+    const mockJobList: Job[] = [generateMockJob(), generateMockJob()]
     setJobs(mockJobList)
 
     mswServer.use(jobsResponse)

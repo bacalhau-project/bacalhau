@@ -4,13 +4,10 @@ import { screen, render, waitFor, act } from "@testing-library/react"
 import { JobsDashboard } from "../JobsDashboard"
 import { Job } from "../../../helpers/jobInterfaces"
 import { server } from "../../../../tests/msw/server"
-import { setJobs } from "../../../../tests/msw/handlers"
-import { generateSampleJob } from "../../../../tests/mocks/jobMock"
+import { setJobs, JOBS_RETURN_LIMIT } from "../../../../tests/msw/handlers"
+import { generateMockJob } from "../../../../tests/mocks/jobMock"
 
 describe("JobsDashboard", () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
   it("renders with right title", () => {
     // Create a random string for pageTitle
     const pageTitle = Math.random().toString(36).substring(7)
@@ -30,33 +27,31 @@ describe("JobsDashboard", () => {
     beforeEach(() => {
       server.resetHandlers()
     })
-    it("with one job", async () => {
-      await act(async () => {
-        await renderWithNumberOfJobs(1)
-      })
+    it("with 01 job", async () => {
+      await renderWithNumberOfJobs(1)
     })
-    it("with multiple jobs", async () => {
-      await act(async () => {
-        await renderWithNumberOfJobs(10)
-      })
+    it("with JOBS_RETURN_LIMIT - 1 jobs", async () => {
+      await renderWithNumberOfJobs(JOBS_RETURN_LIMIT - 1)
     })
-    it("with 11+ jobs", async () => {
-      await act(async () => {
-        await renderWithNumberOfJobs(11)
-      })
+    it("with JOBS_RETURN_LIMIT jobs", async () => {
+      await renderWithNumberOfJobs(JOBS_RETURN_LIMIT)
+    })
+    it("with JOBS_RETURN_LIMIT + 1 jobs", async () => {
+      await renderWithNumberOfJobs(JOBS_RETURN_LIMIT + 1)
     })
   })
 })
 
 async function renderWithNumberOfJobs(numberOfJobs: number) {
   const mockJobs: Job[] = []
+  for (let i = 1; i <= numberOfJobs; i += 1) {
+    const job = generateMockJob()
+    mockJobs.push(job)
+  }
+
+  setJobs(mockJobs)
 
   act(() => {
-    for (let i = 0; i < numberOfJobs; i += 1) {
-      mockJobs.push(generateSampleJob())
-    }
-
-    setJobs(mockJobs)
     render(
       <MemoryRouter>
         <JobsDashboard />
@@ -64,23 +59,35 @@ async function renderWithNumberOfJobs(numberOfJobs: number) {
     )
   })
 
-  await waitFor(() => {
-    screen
-      .findByDisplayValue(`/${mockJobs[0].Name}/i`)
-      .then((contentRendered) => {
-        // Test to see if the content is in the document
-        expect(contentRendered).toBeInTheDocument()
-      })
+  await waitFor(async () => {
+    // Wait for the element with the test ID 'jobsTableContainer' to be present
+    const jobsTableContainer = await screen.findByTestId("jobsTableContainer")
+
+    // Now you can check the content of the 'jobsTableContainer'
+    expect(jobsTableContainer).toHaveTextContent("Job")
   })
 
+  const firstJobName = mockJobs[0].Name
+  const c1 = screen.getAllByText(firstJobName)[0]
+  expect(c1.innerHTML).toContain(firstJobName)
+
   // Last job to be displayed is 10th job, or length of mockJobs, whatever is smaller
-  const lastJobIndex = Math.min(10, mockJobs.length - 1)
+  const lastJobIndex = Math.min(JOBS_RETURN_LIMIT, mockJobs.length)
+
+  // Ensure the correct number of jobs are displayed
+  const numberOfJobRows = await screen.findAllByTestId("jobRow")
+  expect(numberOfJobRows.length).toEqual(lastJobIndex)
 
   // Test to see if the last job is in the document
-  screen
-    .findByDisplayValue(`/${mockJobs[lastJobIndex].Name}/i`)
-    .then((contentRendered) => {
-      // Test to see if the content is in the document
-      expect(contentRendered).toBeInTheDocument()
-    })
+  const lastJobName = mockJobs[lastJobIndex - 1].Name
+  const c2 = screen.getAllByText(lastJobName)[0]
+  expect(c2.innerHTML).toContain(lastJobName)
+
+  // Test to ensure tests are working
+  const BAD_JOB_NAME = "BAD JOB NAME"
+  const badPromise = waitFor(() => {
+    const c = screen.getByText(BAD_JOB_NAME)
+    expect(c).toContain(BAD_JOB_NAME)
+  })
+  expect(badPromise).rejects.toThrow()
 }

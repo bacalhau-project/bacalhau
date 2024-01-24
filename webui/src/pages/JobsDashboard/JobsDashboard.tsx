@@ -5,33 +5,33 @@ import { Layout } from "../../layout/Layout"
 import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../../services/bacalhau"
 
-interface JobDashboardProps {
+interface JobsDashboardProps {
   pageTitle?: string
 }
 
-export const JobsDashboard: React.FC<JobDashboardProps> = ({
+export const JobsDashboard: React.FC<JobsDashboardProps> = ({
   pageTitle = "Jobs Dashboard",
 }) => {
   const [data, setData] = useState<Job[]>([])
 
-  async function getJobsData() {
+  useEffect(() => {
     try {
-      const response = await bacalhauAPI.listJobs()
-      if (response.Jobs) {
-        setData(response.Jobs)
-      }
+      bacalhauAPI
+        .listJobs()
+        .then((response) => response.Jobs)
+        .then((jobs) => {
+          if (jobs) {
+            setData(jobs)
+          }
+        })
     } catch (error) {
       console.error(error)
     }
-  }
-
-  useEffect(() => {
-    getJobsData()
   }, [])
 
   return (
     <Layout pageTitle={pageTitle}>
-      <div className={styles.jobsDashboard}>
+      <div className={styles.jobsDashboard} data-testid="jobsTableContainer">
         <JobsTable data={data} />
       </div>
     </Layout>

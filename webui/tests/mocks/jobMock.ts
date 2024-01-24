@@ -19,9 +19,6 @@ function createRandomConstraint(): {
 
 // Select a random job type from the list of available types in constants.go
 const jobTypes = ["batch", "service", "ops", "system"]
-function selectRandomJobType() {
-  return selectRandomElements(jobTypes)
-}
 
 // Select a random job state from the list of available states in constants.go
 const jobStates = [
@@ -44,7 +41,7 @@ const jobLabels: { [key: string]: string[] } = {
   instanceType: ["m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
 }
 
-function generateSampleTask(): Task {
+function generateMockTask(): Task {
   // TODO: Implement actual random task
   // For now, just return a static task
   return {
@@ -78,7 +75,7 @@ function generateSampleTask(): Task {
   }
 }
 
-export function generateSampleJob(): Job {
+export function generateMockJob(): Job {
   const namespace = randomBytes(64).toString("hex")
   const jobState = selectRandomElements(jobStates)[0]
   const jobType = selectRandomElements(jobTypes)[0]
@@ -100,7 +97,7 @@ export function generateSampleJob(): Job {
       )}`,
     },
     Labels: { ...selectRandomKeyAndValue(jobLabels) },
-    Tasks: [generateSampleTask()],
+    Tasks: [generateMockTask()],
     State: {
       StateType: jobState,
       Message: "State Message",

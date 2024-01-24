@@ -4,7 +4,7 @@ import { screen, render, waitFor, act } from "@testing-library/react"
 import { JobsTable } from "../JobsTable"
 import { Job } from "../../../../helpers/jobInterfaces"
 import { server } from "../../../../../tests/msw/server"
-import { generateSampleJob } from "../../../../../tests/mocks/jobMock"
+import { generateMockJob } from "../../../../../tests/mocks/jobMock"
 
 // Enable request interception.
 beforeAll(() => server.listen())
@@ -38,7 +38,7 @@ describe("JobsTable", () => {
 async function renderWithNumberOfJobs(numberOfJobs: number) {
   const mockJobs: Job[] = []
   for (let i = 0; i < numberOfJobs; i += 1) {
-    mockJobs.push(generateSampleJob())
+    mockJobs.push(generateMockJob())
   }
 
   act(() => {
@@ -50,11 +50,26 @@ async function renderWithNumberOfJobs(numberOfJobs: number) {
   })
 
   await waitFor(() => {
-    screen
-      .findByDisplayValue(`/${mockJobs[0].Name}/i`)
-      .then((contentRendered) => {
-        // Test to see if the content is in the document
-        expect(contentRendered).toBeInTheDocument()
-      })
+    const firstJobName = mockJobs[0].Name
+    const c = screen.getByText(firstJobName)
+    expect(c.innerHTML).toContain(firstJobName)
   })
+
+  // Last job to be displayed is 10th job, or length of mockJobs, whatever is smaller
+  const lastJobIndex = Math.min(10, mockJobs.length - 1)
+
+  // Test to see if the last job is in the document
+  await waitFor(() => {
+    const lastJobName = mockJobs[lastJobIndex].Name
+    const c = screen.getByText(lastJobName)
+    expect(c.innerHTML).toContain(lastJobName)
+  })
+
+  // Test to ensure tests are working
+  const BAD_JOB_NAME = "BAD JOB NAME"
+  const badPromise = waitFor(() => {
+    const c = screen.getByText(BAD_JOB_NAME)
+    expect(c).toContain(BAD_JOB_NAME)
+  })
+  expect(badPromise).rejects.toThrow()
 }

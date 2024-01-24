@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { datatype, git, internet, os, system } from "@faker-js/faker"
-
-import { v4 as uuidv4 } from "uuid"
+import { faker } from "@faker-js/faker"
+import { randomUUID } from "crypto"
+import { Node } from "../../src/helpers/nodeInterfaces"
 import { selectRandomElements } from "./mockUtilities"
 
 // Generate an array with one or more of the following strings
@@ -18,8 +16,8 @@ const storageSources = [
   "s3",
 ]
 
-export function generateMockNode() {
-  const id = uuidv4()
+export function generateMockNode(): Node {
+  const id = randomUUID()
   const cpu = Math.random() * 100
   const memory = Math.floor(Math.random() * 1000000000000)
   const disk = Math.floor(Math.random() * 10000000000000)
@@ -32,14 +30,18 @@ export function generateMockNode() {
   const maxJobMemory = Math.floor(Math.random() * availableMemory)
   const maxJobDisk = Math.floor(Math.random() * availableDisk)
 
-  const majorVersion: string = datatype.number({ min: 99, max: 199 }).toString()
-  const minorVersion: string = datatype.number({ min: 99, max: 199 }).toString()
+  const majorVersion: string = faker.number
+    .int({ min: 99, max: 199 })
+    .toString()
+  const minorVersion: string = faker.number
+    .int({ min: 99, max: 199 })
+    .toString()
 
   return {
     PeerInfo: {
       ID: id,
       Addrs: [
-        `${internet.ip()}/udp/${datatype.number({
+        `${faker.internet.ip()}/udp/${faker.number.int({
           min: 2048,
           max: 65535,
         })}/quic-v1`,
@@ -47,10 +49,11 @@ export function generateMockNode() {
     },
     NodeType: "Compute",
     Labels: {
-      Architecture: system.arch(),
-      "Operating-System": os.platform(),
-      "git-lfs": datatype.boolean().toString(),
-      owner: internet.userName(),
+      Architecture: `arch-${faker.string.alphanumeric(10)}`,
+      "Operating-System": `os-${faker.string.alphanumeric(10)}`,
+      "git-lfs": faker.datatype.boolean().toString(),
+      name: faker.internet.userName(),
+      env: `env-${faker.string.alphanumeric(100)}`,
     },
     ComputeNodeInfo: {
       ExecutionEngines: selectRandomElements(engineTypes, 1),
@@ -79,11 +82,11 @@ export function generateMockNode() {
       Major: majorVersion,
       Minor: minorVersion,
       // Random semantic versioning
-      GitVersion: system.semver(),
-      GitCommit: git.shortSha(),
+      GitVersion: faker.system.semver(),
+      GitCommit: faker.git.commitSha({ length: 7 }),
       BuildDate: new Date().toISOString(),
-      GOOS: system.platform(),
-      GOARCH: system.architecture(),
+      GOOS: `GOOS-${faker.string.alphanumeric(10)}`,
+      GOARCH: `GOARCH-${faker.string.alphanumeric(10)}`,
     },
   }
 }

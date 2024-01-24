@@ -2,8 +2,11 @@
 /* eslint-disable */
 import { http, HttpResponse, RequestHandler, RequestHandlerOptions } from "msw";
 import { Job, JobsResponse } from "../../src/helpers/jobInterfaces";
-import { RETURN_DATA_PARAMETER, TestData } from "./__tests__/msw.test";
+import { RETURN_DATA_PARAMETER, TestData } from "../../src/helpers/mswInterfaces";
+import { Node, NodesResponse } from "../../src/helpers/nodeInterfaces";
 
+export const JOBS_RETURN_LIMIT = 10
+export const NODES_RETURN_LIMIT = 10
 const BASE_URL = "https://localhost:1234"
 
 export const mockTestDataArray: TestData[] = [
@@ -36,14 +39,41 @@ export const testDataResponse = http.get('/testData', ({ request }) => {
 
 let internalJobs: Job[] = []
 
+export function getJobs() {
+  return internalJobs
+}
+
 export function setJobs(jobs: Job[]) {
   internalJobs = jobs
 }
 
+let internalNodes: Node[] = []
+
+export function getNodes() {
+  return internalNodes
+}
+
+export function setNodes(nodes: Node[]) {
+  internalNodes = nodes
+}
+
+// TODO: #3304 Implement testing for pagination
+
+// TODO: #3303 Build a go generator that generates constants / types from the Go code - examples: Job, Node type, default limits, etc.
 export const jobsResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ request }) => {
-  let jobsListResponse: JobsResponse = { Jobs: internalJobs, NextToken: "" }
+  // return number of jobs based on limit
+  const limitedJobs = internalJobs.slice(0, JOBS_RETURN_LIMIT)
+  const jobsListResponse: JobsResponse = { Jobs: limitedJobs, NextToken: "" }
   return HttpResponse.json(jobsListResponse)
 })
+
+export const nodesResponse = http.get('http://localhost:1234/api/v1/orchestrator/nodes', ({ request }) => {
+  // return number of nodes based on limit
+  const limitedNodes = internalNodes.slice(0, NODES_RETURN_LIMIT)
+  const nodesListResponse: NodesResponse = { Nodes: limitedNodes, NextToken: "" }
+  return HttpResponse.json(nodesListResponse)
+})
+
 
 export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => {
   // Placeholders for messing around with cookies
@@ -52,22 +82,4 @@ export const rootResponse = http.get('http://localhost:1234/', ({ cookies }) => 
   return HttpResponse.json(v === 'a' ? { foo: 'a' } : { bar: 'b' })
 })
 
-export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse]
-
-// export const sampResp = http.get<never, RequestBody, { foo: 'a' } | { bar: 'b' }>('/', resolver)
-
-// export const fetchTasksEmptyResponse: HttpResponseResolver = async (_req: MockedRequest, res: ResponseComposition, ctx: Context) => await res(ctx.status(200), ctx.json([]))
-
-// export const saveTasksEmptyResponse: HttpResponseResolver = async (_req: http.MockedRequest, res: http.ResponseComposition, ctx: http.Context) => await res(ctx.status(200), ctx.json([]))
-
-// export const handlers = [
-//   fetchTasksEmptyResponse,
-//   saveTasks_empty_response,
-// ]
-// export const loadOneJob = http.get(BASE_URL, async (req, res, ctx) =>
-//   res(ctx.status(200), ctx.json([]))
-// )
-
-// export const handlers = [
-//   http.get("http://localhost:1234/api/v1/*", () => passthrough()),
-// ]
+export const handlers: RequestHandler<any, any, any, RequestHandlerOptions>[] = [testDataResponse, rootResponse, jobsResponse, nodesResponse]
