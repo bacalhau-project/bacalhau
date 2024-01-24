@@ -57,6 +57,8 @@ This repository comprises four directories and seven files:
 5. `update.json`:
    - A file containing the date/time when the last version check was made.
    - Format: JSON, e.g., `{"LastCheck":"2024-01-24T11:06:14.631816Z"}`
+6. `tokens.json`:
+   - A file containing the tokens obtained through authenticating with bacalhau clusters.
 
 #### Directories
 
