@@ -8,6 +8,7 @@ type Config struct {
 	maxCost          uint64
 	cleanupFrequency time.Duration
 	evictionFunction EvictItemFunc
+	defaultTTL       int64
 }
 
 // EvictItemFunc can be used to tell the cache not to evict an
@@ -31,5 +32,11 @@ func WithCleanupFrequency(cleanupFrequency time.Duration) Option {
 func WithEvictionFunction(f EvictItemFunc) Option {
 	return func(o *Config) {
 		o.evictionFunction = f
+	}
+}
+
+func WithTTL(ttl time.Duration) Option {
+	return func(o *Config) {
+		o.defaultTTL = int64(ttl.Seconds())
 	}
 }

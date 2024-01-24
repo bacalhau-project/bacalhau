@@ -183,6 +183,16 @@ func GetStoragePath() string {
 	return path
 }
 
+func GetDockerManifestCacheSettings() (*types.DockerCacheConfig, error) {
+	//var cfg types.DockerCacheConfig
+
+	if cfg, err := Get[types.DockerCacheConfig](types.NodeComputeManifestCache); err != nil {
+		return nil, err
+	} else {
+		return &cfg, nil
+	}
+}
+
 // PreferredAddress will allow for the specifying of
 // the preferred address to listen on for cases where it
 // is not clear, or where the address does not appear when

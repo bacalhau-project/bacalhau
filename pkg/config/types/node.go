@@ -141,6 +141,12 @@ type FeatureConfig struct {
 	Storages   []string `yaml:"Storages"`
 }
 
+type DockerCacheConfig struct {
+	Size      uint64   `yaml:"Size"`
+	Duration  Duration `yaml:"Duration"`
+	Frequency Duration `yaml:"Frequency"`
+}
+
 type NetworkConfig struct {
 	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
