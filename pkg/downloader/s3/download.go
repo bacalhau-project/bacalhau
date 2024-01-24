@@ -10,26 +10,26 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	s32 "github.com/bacalhau-project/bacalhau/pkg/s3"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 )
 
 type Downloader struct {
-	provider *s32.ClientProvider
+	provider *s3helper.ClientProvider
 }
 
 func (d *Downloader) IsInstalled(ctx context.Context) (bool, error) {
-	return true, nil
+	return d.provider.IsInstalled(), nil
 }
 
-func NewDownloader(provider *s32.ClientProvider) *Downloader {
+func NewDownloader(provider *s3helper.ClientProvider) *Downloader {
 	return &Downloader{provider: provider}
 }
 
 // TODO this would be WAY easier if we TAR'd the file before uploading
 func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadItem) (string, error) {
-	resultSpec, err := s32.DecodeSourceSpec(item.Result)
+	resultSpec, err := s3helper.DecodeSourceSpec(item.Result)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to decode results spec: %w", err)
 	}
 
 	client := d.provider.GetClient(resultSpec.Endpoint, resultSpec.Region)
@@ -46,7 +46,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		for _, obj := range page.Contents {
 			downloadPath := filepath.Join(item.ParentPath, *obj.Key) // local directory path
 			if err := d.downloadFile(ctx, dwnld, resultSpec.Bucket, *obj.Key, downloadPath); err != nil {
-				return "", fmt.Errorf("failed to download file, %w", err)
+				return "", fmt.Errorf("failed to download file to %s for key %s: %w", downloadPath, *obj.Key, err)
 			}
 		}
 	}
@@ -75,5 +75,5 @@ func (d *Downloader) downloadFile(ctx context.Context, dwnld *manager.Downloader
 		return err
 	}
 
-	return err
+	return nil
 }
