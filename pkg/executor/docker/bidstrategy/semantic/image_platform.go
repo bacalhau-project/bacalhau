@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"context"
+	"sync"
 
 	"go.uber.org/multierr"
 
@@ -20,9 +21,19 @@ const oneDayInSeconds = int64(86400)
 
 var _ bidstrategy.SemanticBidStrategy = (*ImagePlatformBidStrategy)(nil)
 
-var ManifestCache *cache.Cache[docker.ImageManifest] = &docker.DockerManifestCache
+var ManifestCache cache.Cache[docker.ImageManifest]
+var mu sync.Mutex
 
 func NewImagePlatformBidStrategy(client *docker.Client) *ImagePlatformBidStrategy {
+	mu.Lock()
+	// We will create the local reference to a manifest cache on demand,
+	// ensuring that we lock access to the cache here to avoid race
+	// conditions
+	if ManifestCache == nil {
+		ManifestCache = docker.NewManifestCache()
+	}
+	mu.Unlock()
+
 	return &ImagePlatformBidStrategy{client: client}
 }
 
@@ -53,7 +64,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		}, nil
 	}
 
-	manifest, found := (*ManifestCache).Get(dockerEngine.Image)
+	manifest, found := ManifestCache.Get(dockerEngine.Image)
 	if !found {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
@@ -68,7 +79,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		// about managing eviction. In the meantime we get this through calling
 		// Set even when don't have to, to reset the expiry time.
 		defer func() {
-			err = (*ManifestCache).Set(
+			err = ManifestCache.Set(
 				dockerEngine.Image, manifest, 1, oneDayInSeconds,
 			) //nolint:gomnd
 			if err != nil {
