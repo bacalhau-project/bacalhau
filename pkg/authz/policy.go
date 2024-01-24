@@ -87,6 +87,10 @@ func (authorizer *policyAuthorizer) Authorize(req *http.Request) (Authorization,
 	return Authorization{Approved: approved}, err
 }
 
+// AlwaysAllowPolicy is a policy that will always permit access, irrespective of
+// the passed in data, which is useful for testing.
+var AlwaysAllowPolicy = lo.Must(policy.FromFS(policies, "policies/policy_test_allow.rego"))
+
 // AlwaysAllow is an authorizer that will always permit access, irrespective of
 // the passed in data, which is useful for testing.
-var AlwaysAllow = NewPolicyAuthorizer(lo.Must(policy.FromFS(policies, "policies/policy_test_allow.rego")))
+var AlwaysAllow = NewPolicyAuthorizer(AlwaysAllowPolicy)

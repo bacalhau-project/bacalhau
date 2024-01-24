@@ -34,31 +34,20 @@ func TestCancelSuite(t *testing.T) {
 
 func (suite *CancelSuite) TestCancelTerminalJob() {
 	ctx := context.Background()
-	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.IPVMTaskDocker.Data, "create",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-	)
+	_, stdout, err := suite.ExecuteTestCobraCommandWithStdinBytes(testdata.IPVMTaskDocker.Data, "create")
 	require.NoError(suite.T(), err, "Error submitting job")
 
 	job := testutils.GetJobFromTestOutputLegacy(ctx, suite.T(), suite.Client, stdout)
 	suite.T().Logf("Created job %s", job.Metadata.ID)
 
-	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
-		job.Metadata.ID,
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-	)
+	_, stdout, err = suite.ExecuteTestCobraCommand("cancel", job.Metadata.ID)
 	require.ErrorContains(suite.T(), err, "already in a terminal state")
 }
 
 func (suite *CancelSuite) TestCancelJob() {
 	ctx := context.Background()
 
-	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.JsonJobCancel.Data, "create",
-		"--wait=false",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-	)
+	_, stdout, err := suite.ExecuteTestCobraCommandWithStdinBytes(testdata.JsonJobCancel.Data, "create", "--wait=false")
 	require.NoError(suite.T(), err, "Error submitting job")
 
 	// Read the job ID from stdout of the create command and make sure
@@ -68,11 +57,7 @@ func (suite *CancelSuite) TestCancelJob() {
 	jobInfo, _, err := suite.Client.Get(ctx, stdout)
 	require.NoError(suite.T(), err, "Error finding newly created job")
 
-	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
-		jobInfo.Job.Metadata.ID,
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-	)
+	_, stdout, err = suite.ExecuteTestCobraCommand("cancel", jobInfo.Job.Metadata.ID)
 	require.NoError(suite.T(), err, "Error cancelling job")
 
 	successMsg := fmt.Sprintf("Job successfully canceled. Job ID: %s", jobInfo.Job.Metadata.ID)

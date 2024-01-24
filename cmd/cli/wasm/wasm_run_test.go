@@ -4,7 +4,6 @@ package wasm_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -25,9 +24,7 @@ func TestWasmRunSuite(t *testing.T) {
 
 func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	ctx := context.Background()
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("wasm", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("wasm", "run",
 		"../../../testdata/wasm/noop/main.wasm",
 	)
 	s.Require().NoError(err)
@@ -37,9 +34,7 @@ func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 
 func (s *WasmRunSuite) TestSpecifyingEnvVars() {
 	ctx := context.Background()
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("wasm", "run",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
+	_, out, err := s.ExecuteTestCobraCommand("wasm", "run",
 		"../../../testdata/wasm/env/main.wasm",
 		"-e A=B,C=D",
 	)

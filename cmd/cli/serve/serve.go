@@ -94,23 +94,24 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
-		"requester-tls":    configflags.RequesterTLSFlags,
-		"server-api":       configflags.ServerAPIFlags,
-		"network":          configflags.NetworkFlags,
-		"libp2p":           configflags.Libp2pFlags,
-		"ipfs":             configflags.IPFSFlags,
-		"capacity":         configflags.CapacityFlags,
-		"job-timeouts":     configflags.ComputeTimeoutFlags,
-		"job-selection":    configflags.JobSelectionFlags,
-		"disable-features": configflags.DisabledFeatureFlags,
-		"labels":           configflags.LabelFlags,
-		"node-type":        configflags.NodeTypeFlags,
-		"list-local":       configflags.AllowListLocalPathsFlags,
-		"compute-store":    configflags.ComputeStorageFlags,
-		"requester-store":  configflags.RequesterJobStorageFlags,
-		"web-ui":           configflags.WebUIFlags,
-		"node-info-store":  configflags.NodeInfoStoreFlags,
-		"translations":     configflags.JobTranslationFlags,
+		"requester-tls":         configflags.RequesterTLSFlags,
+		"server-api":            configflags.ServerAPIFlags,
+		"network":               configflags.NetworkFlags,
+		"libp2p":                configflags.Libp2pFlags,
+		"ipfs":                  configflags.IPFSFlags,
+		"capacity":              configflags.CapacityFlags,
+		"job-timeouts":          configflags.ComputeTimeoutFlags,
+		"job-selection":         configflags.JobSelectionFlags,
+		"disable-features":      configflags.DisabledFeatureFlags,
+		"labels":                configflags.LabelFlags,
+		"node-type":             configflags.NodeTypeFlags,
+		"list-local":            configflags.AllowListLocalPathsFlags,
+		"compute-store":         configflags.ComputeStorageFlags,
+		"requester-store":       configflags.RequesterJobStorageFlags,
+		"web-ui":                configflags.WebUIFlags,
+		"node-info-store":       configflags.NodeInfoStoreFlags,
+		"translations":          configflags.JobTranslationFlags,
+		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 
 	serveCmd := &cobra.Command{
@@ -225,7 +226,12 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	featureConfig, err := getDisabledFeatures()
+	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)
+	if err != nil {
+		return err
+	}
+
+	authConfig, err := config.Get[types.AuthConfig](types.Auth)
 	if err != nil {
 		return err
 	}
@@ -247,6 +253,7 @@ func serve(cmd *cobra.Command) error {
 		APIPort:               config.ServerAPIPort(),
 		ComputeConfig:         computeConfig,
 		RequesterNodeConfig:   requesterConfig,
+		AuthConfig:            authConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
 		Labels:                config.GetStringMapString(types.NodeLabels),

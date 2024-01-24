@@ -112,6 +112,10 @@ func SetDefaults(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.SetDefault(NodeComputeQueue, cfg.Node.Compute.Queue)
 	p.Viper.SetDefault(NodeComputeLogging, cfg.Node.Compute.Logging)
 	p.Viper.SetDefault(NodeComputeLoggingLogRunningExecutionsInterval, cfg.Node.Compute.Logging.LogRunningExecutionsInterval.AsTimeDuration())
+	p.Viper.SetDefault(NodeComputeManifestCache, cfg.Node.Compute.ManifestCache)
+	p.Viper.SetDefault(NodeComputeManifestCacheSize, cfg.Node.Compute.ManifestCache.Size)
+	p.Viper.SetDefault(NodeComputeManifestCacheDuration, cfg.Node.Compute.ManifestCache.Duration.AsTimeDuration())
+	p.Viper.SetDefault(NodeComputeManifestCacheFrequency, cfg.Node.Compute.ManifestCache.Frequency.AsTimeDuration())
 	p.Viper.SetDefault(NodeRequester, cfg.Node.Requester)
 	p.Viper.SetDefault(NodeRequesterJobDefaults, cfg.Node.Requester.JobDefaults)
 	p.Viper.SetDefault(NodeRequesterJobDefaultsExecutionTimeout, cfg.Node.Requester.JobDefaults.ExecutionTimeout.AsTimeDuration())
@@ -177,6 +181,8 @@ func SetDefaults(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.SetDefault(UpdateCheckFrequency, cfg.Update.CheckFrequency.AsTimeDuration())
 	p.Viper.SetDefault(Auth, cfg.Auth)
 	p.Viper.SetDefault(AuthTokensPath, cfg.Auth.TokensPath)
+	p.Viper.SetDefault(AuthMethods, cfg.Auth.Methods)
+	p.Viper.SetDefault(AuthAccessPolicyPath, cfg.Auth.AccessPolicyPath)
 
 }
 
@@ -276,6 +282,10 @@ func Set(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.Set(NodeComputeQueue, cfg.Node.Compute.Queue)
 	p.Viper.Set(NodeComputeLogging, cfg.Node.Compute.Logging)
 	p.Viper.Set(NodeComputeLoggingLogRunningExecutionsInterval, cfg.Node.Compute.Logging.LogRunningExecutionsInterval.AsTimeDuration())
+	p.Viper.Set(NodeComputeManifestCache, cfg.Node.Compute.ManifestCache)
+	p.Viper.Set(NodeComputeManifestCacheSize, cfg.Node.Compute.ManifestCache.Size)
+	p.Viper.Set(NodeComputeManifestCacheDuration, cfg.Node.Compute.ManifestCache.Duration.AsTimeDuration())
+	p.Viper.Set(NodeComputeManifestCacheFrequency, cfg.Node.Compute.ManifestCache.Frequency.AsTimeDuration())
 	p.Viper.Set(NodeRequester, cfg.Node.Requester)
 	p.Viper.Set(NodeRequesterJobDefaults, cfg.Node.Requester.JobDefaults)
 	p.Viper.Set(NodeRequesterJobDefaultsExecutionTimeout, cfg.Node.Requester.JobDefaults.ExecutionTimeout.AsTimeDuration())
@@ -341,4 +351,6 @@ func Set(cfg BacalhauConfig, opts ...SetOption) {
 	p.Viper.Set(UpdateCheckFrequency, cfg.Update.CheckFrequency.AsTimeDuration())
 	p.Viper.Set(Auth, cfg.Auth)
 	p.Viper.Set(AuthTokensPath, cfg.Auth.TokensPath)
+	p.Viper.Set(AuthMethods, cfg.Auth.Methods)
+	p.Viper.Set(AuthAccessPolicyPath, cfg.Auth.AccessPolicyPath)
 }
