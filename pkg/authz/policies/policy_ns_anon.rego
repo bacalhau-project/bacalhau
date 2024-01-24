@@ -26,10 +26,15 @@ allow if {
     namespace_readable(job_namespace_perms)
 }
 
-# Allow reading all other endpoints
+# Allow reading all other endpoints, inclduing by users who don't have a token
 allow if {
     input.http.path != job_endpoint
     input.http.method in http_safe_methods
+}
+
+# Allow posting to auth endpoints, neccessary to get a token in the first place
+allow if {
+    input.http.path[2] == "auth"
 }
 
 

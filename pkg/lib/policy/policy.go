@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"strings"
 
 	"github.com/open-policy-agent/opa/loader"
@@ -36,6 +37,22 @@ func FromFS(source fs.FS, path string) (*Policy, error) {
 	)
 
 	return &Policy{modules: modules}, nil
+}
+
+// Load a policy from the host filesystem at path. Path can either be a single
+// file, or a directory. In the latter case, all of the files in the directory
+// will be loaded as policy documents and will be in scope for prepared queries.
+func FromPath(path string) (*Policy, error) {
+	return FromFS(os.DirFS("/"), strings.TrimLeft(path, "/."))
+}
+
+// Like FromPath, but returns a default if the path is empty.
+func FromPathOrDefault(path string, def *Policy) (*Policy, error) {
+	if path == "" {
+		return def, nil
+	} else {
+		return FromPath(path)
+	}
 }
 
 type regoOpt = func(*rego.Rego)
