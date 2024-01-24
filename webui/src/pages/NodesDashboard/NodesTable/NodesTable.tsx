@@ -30,8 +30,8 @@ export const NodesTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext)
 
   return (
-    <div className={styles.tableContainer}>
-      <table>
+    <div className={styles.tableContainer} >
+      <table data-testid="nodeTableContainer">
         <thead>
           <tr>
             {settings.showNodeId && <th>Node</th>}
@@ -45,7 +45,7 @@ export const NodesTable: React.FC<TableProps> = ({ data }) => {
         </thead>
         <tbody>
           {parsedData.map((nodeData, index) => (
-            <tr key={index}>
+            <tr key={index} data-testid="nodeRow">
               {settings.showNodeId && (
                 <td className={styles.id}>{nodeData.id}</td>
               )}

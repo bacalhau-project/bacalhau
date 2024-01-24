@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { faker } from '@faker-js/faker';
-import { randomUUID } from "crypto";
-import { Node } from "../../src/helpers/nodeInterfaces";
-import { selectRandomElements } from "./mockUtilities";
+import { faker } from "@faker-js/faker"
+import { randomUUID } from "crypto"
+import { Node } from "../../src/helpers/nodeInterfaces"
+import { selectRandomElements } from "./mockUtilities"
 
 // Generate an array with one or more of the following strings
 const engineTypes = ["wasm", "docker"]
@@ -30,8 +30,12 @@ export function generateMockNode(): Node {
   const maxJobMemory = Math.floor(Math.random() * availableMemory)
   const maxJobDisk = Math.floor(Math.random() * availableDisk)
 
-  const majorVersion: string = faker.number.int({ min: 99, max: 199 }).toString()
-  const minorVersion: string = faker.number.int({ min: 99, max: 199 }).toString()
+  const majorVersion: string = faker.number
+    .int({ min: 99, max: 199 })
+    .toString()
+  const minorVersion: string = faker.number
+    .int({ min: 99, max: 199 })
+    .toString()
 
   return {
     PeerInfo: {
@@ -45,11 +49,11 @@ export function generateMockNode(): Node {
     },
     NodeType: "Compute",
     Labels: {
-      "Architecture": `arch-${faker.string.alphanumeric(10)}`,
+      Architecture: `arch-${faker.string.alphanumeric(10)}`,
       "Operating-System": `os-${faker.string.alphanumeric(10)}`,
       "git-lfs": faker.datatype.boolean().toString(),
-      "name": faker.internet.userName(),
-      "env": `env-${faker.string.alphanumeric(100)}`,
+      name: faker.internet.userName(),
+      env: `env-${faker.string.alphanumeric(100)}`,
     },
     ComputeNodeInfo: {
       ExecutionEngines: selectRandomElements(engineTypes, 1),

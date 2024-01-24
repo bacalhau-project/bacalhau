@@ -3,11 +3,14 @@ import { render, screen, act, waitFor } from "@testing-library/react"
 import { useState, useEffect } from "react"
 import { server } from "../server"
 import { mockTestDataArray } from "../handlers"
+import {
+  RETURN_DATA_PARAMETER,
+  TestData,
+} from "../../../src/helpers/mswInterfaces"
 
 // This is a simple file to test to make sure the configuration of msw is working
 // properly. All components, types, and methods are self contained here.
 
-export const RETURN_DATA_PARAMETER = "returnData"
 export const TEST_DATA_ID = "testDataId"
 
 // Enable request interception.
@@ -19,13 +22,6 @@ afterEach(() => server.resetHandlers())
 
 // Don't forget to clean up afterwards.
 afterAll(() => server.close())
-
-export type TestData = {
-  userId: number
-  id: number
-  date: Date
-  bool: boolean
-}
 
 async function fetchTestData(returnData: boolean = false) {
   try {

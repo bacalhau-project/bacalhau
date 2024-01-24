@@ -6,17 +6,13 @@ import { Node } from "../../helpers/nodeInterfaces"
 import { bacalhauAPI } from "../../services/bacalhau"
 import { useTableSettings } from "../../context/TableSettingsContext"
 
-
 interface NodesDashboardProps {
   pageTitle?: string
 }
 
-
-  
 export const NodesDashboard: React.FC<NodesDashboardProps> = ({
   pageTitle = "Nodes Dashboard",
 }) => {
-  
   const [data, setData] = useState<Node[]>([])
   const { settings } = useTableSettings()
 
@@ -37,7 +33,7 @@ export const NodesDashboard: React.FC<NodesDashboardProps> = ({
 
   return (
     <Layout pageTitle={pageTitle}>
-      <div className={styles.nodesDashboard}>
+      <div className={styles.nodesDashboard} data-testid="nodesTableContainer">
         <NodesTable key={JSON.stringify(settings)} data={data} />
       </div>
     </Layout>

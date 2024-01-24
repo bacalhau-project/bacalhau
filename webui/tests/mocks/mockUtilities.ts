@@ -7,10 +7,7 @@ export function selectRandomKeyAndValue(allKVs: Record<string, string[]>): {
   const value: string = selectRandomElements(allKVs[key], 1)[0]
   return { key, value }
 }
-export function selectRandomElements(
-  allTypes: string[],
-  num = 1
-): string[] {
+export function selectRandomElements(allTypes: string[], num = 1): string[] {
   if (num === 1) {
     return [allTypes[Math.floor(Math.random() * allTypes.length)]]
   }

@@ -38,7 +38,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     const jobShortID = getShortenedJobID(job.ID)
     const jobName = job.Name
 
-    if (jobType === "batch") {
+    if (jobType === "batch" && jobName === "") {
       job.Name = jobShortID
     } else {
       job.Name = jobName
@@ -61,7 +61,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
   const parsedData = parseData(data)
 
   return (
-    <div className={styles.tableContainer}>
+    <div id="jobsTableContainer" className={styles.tableContainer}>
       <table>
         <thead>
           <tr>
@@ -77,7 +77,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
         </thead>
         <tbody>
           {parsedData.map((jobData, _index) => (
-            <tr key={jobData.longId}>
+            <tr key={jobData.longId} data-testid="jobRow">
               {settings.showJobName && (
                 <td className={styles.name}>{jobData.name}</td>
               )}
