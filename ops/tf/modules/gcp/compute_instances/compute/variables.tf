@@ -21,12 +21,22 @@ variable "zone" {
 variable "boot_size" {
   description = "The size of the boot disk"
   type        = number
-  default     = 50
+  default     = 100
 }
 
 variable "boot_image" {
   description = "The boot image for the instances"
   type        = string
+}
+
+variable "accelerator" {
+  description = "Accelerator for GCP Compute instances"
+  type        = string
+}
+
+variable "accelerator_count" {
+  description = "Accelerator Count for GCP Compute instances, 0 Implies no accelerator"
+  type        = number
 }
 
 variable "cloud_init_content" {
