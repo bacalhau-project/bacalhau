@@ -30,7 +30,7 @@ export const NodesTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext)
 
   return (
-    <div className={styles.tableContainer} >
+    <div className={styles.tableContainer}>
       <table data-testid="nodeTableContainer">
         <thead>
           <tr>

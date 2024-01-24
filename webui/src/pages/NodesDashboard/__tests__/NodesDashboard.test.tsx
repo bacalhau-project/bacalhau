@@ -36,7 +36,6 @@ describe("NodesDashboard", () => {
     it("with NODES_RETURN_LIMIT + 1 jobs", async () => {
       await renderWithNumberOfNodes(NODES_RETURN_LIMIT + 1)
     })
-
   })
 })
 
@@ -46,9 +45,9 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
     const node = generateMockNode()
     mockNodes.push(node)
   }
-  
+
   setNodes(mockNodes)
-  
+
   act(() => {
     for (let i = 0; i < numberOfNodes; i += 1) {
       mockNodes.push(generateMockNode())
@@ -62,14 +61,14 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
     )
   })
 
-  await waitFor(async () => {
+  await waitFor(() => {
     // Wait for the element with the test ID 'nodesTableContainer' to be present
-    const nodesTableContainer = await screen.getAllByTestId('nodeRow');
+    const nodesTableContainer = screen.getAllByTestId("nodeRow")
 
     // Now you can check the content of the 'nodesTableContainer'
-    expect(nodesTableContainer.length).toBeGreaterThan(0);
+    expect(nodesTableContainer.length).toBeGreaterThan(0)
   })
-  
+
   const firstNodeID = mockNodes[0].PeerInfo.ID
   const c1 = screen.getAllByText(firstNodeID)[0]
   expect(c1.innerHTML).toContain(firstNodeID)
@@ -78,9 +77,9 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
   const lastNodeIndex = Math.min(10, mockNodes.length)
 
   // Count number of nodes displayed
-  const nodesDisplayed = screen.getAllByTestId('nodeRow')
+  const nodesDisplayed = screen.getAllByTestId("nodeRow")
   expect(nodesDisplayed.length).toEqual(lastNodeIndex)
-  
+
   // Test to see if the last node is in the document
   const lastNodeID = mockNodes[lastNodeIndex - 1].PeerInfo.ID
   const c2 = screen.getAllByText(lastNodeID)[0]

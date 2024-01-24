@@ -48,9 +48,9 @@ async function renderWithNumberOfJobs(numberOfJobs: number) {
     const job = generateMockJob()
     mockJobs.push(job)
   }
-  
+
   setJobs(mockJobs)
-  
+
   act(() => {
     render(
       <MemoryRouter>
@@ -61,21 +61,21 @@ async function renderWithNumberOfJobs(numberOfJobs: number) {
 
   await waitFor(async () => {
     // Wait for the element with the test ID 'jobsTableContainer' to be present
-    const jobsTableContainer = await screen.findByTestId('jobsTableContainer');
+    const jobsTableContainer = await screen.findByTestId("jobsTableContainer")
 
     // Now you can check the content of the 'jobsTableContainer'
-    expect(jobsTableContainer).toHaveTextContent('Job');
+    expect(jobsTableContainer).toHaveTextContent("Job")
   })
-  
+
   const firstJobName = mockJobs[0].Name
   const c1 = screen.getAllByText(firstJobName)[0]
   expect(c1.innerHTML).toContain(firstJobName)
 
   // Last job to be displayed is 10th job, or length of mockJobs, whatever is smaller
   const lastJobIndex = Math.min(JOBS_RETURN_LIMIT, mockJobs.length)
-  
+
   // Ensure the correct number of jobs are displayed
-  const numberOfJobRows = await screen.findAllByTestId('jobRow')
+  const numberOfJobRows = await screen.findAllByTestId("jobRow")
   expect(numberOfJobRows.length).toEqual(lastJobIndex)
 
   // Test to see if the last job is in the document

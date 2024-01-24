@@ -13,7 +13,7 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({
   pageTitle = "Jobs Dashboard",
 }) => {
   const [data, setData] = useState<Job[]>([])
-  
+
   useEffect(() => {
     try {
       bacalhauAPI
@@ -27,8 +27,8 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({
     } catch (error) {
       console.error(error)
     }
-  }, []) 
-  
+  }, [])
+
   return (
     <Layout pageTitle={pageTitle}>
       <div className={styles.jobsDashboard} data-testid="jobsTableContainer">

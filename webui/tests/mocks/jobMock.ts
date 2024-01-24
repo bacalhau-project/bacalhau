@@ -19,9 +19,6 @@ function createRandomConstraint(): {
 
 // Select a random job type from the list of available types in constants.go
 const jobTypes = ["batch", "service", "ops", "system"]
-function selectRandomJobType() {
-  return selectRandomElements(jobTypes)
-}
 
 // Select a random job state from the list of available states in constants.go
 const jobStates = [
