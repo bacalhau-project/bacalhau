@@ -17,7 +17,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Executing Bacalhau Jobs with Python Scripts
 
-To demonstrate this example, I will use the data generated from the [ethereum analysis example](../../data-engineering/blockchain-etl/index.md). This produced a list of hashes that I will iterate over and execute a job for each one.
+To demonstrate this example, I will use the data generated from a Ethereum example. This produced a list of hashes that I will iterate over and execute a job for each one.
 
 
 ```python
@@ -191,4 +191,4 @@ Success! We've now executed a bunch of jobs in parallel using Python. This is a 
 
 You might also be interested in the following examples:
 
-* [Analysing Ethereum Data with Python](../../data-engineering/blockchain-etl/index.md)
+* [Analysing Data with Python Pandas](../python-pandas/index.md)
