@@ -13,7 +13,7 @@ This section describes how to migrate a workload based on a Docker container int
 
 :::info
 
-You can check out this example tutorial on [how to work with custom containers in Bacalhau](../setting-up/workload-onboarding/custom-containers/index.md) to see how we used all these steps together.
+You can check out this example tutorial on [how to work with custom containers in Bacalhau](../workload-onboarding/custom-containers/index.md) to see how we used all these steps together.
 
 :::
 
@@ -42,7 +42,7 @@ To help provide a safe, secure network for all users, we add the following runti
 
 1. **Limited Ingress/Egress Networking**:
 
-All ingress/egress networking is limited as described in the [networking](../setting-up/networking-instructions/fundamentals.md) documentation.
+All ingress/egress networking is limited as described in the [networking](../networking-instructions/fundamentals.md) documentation.
 You won't be able to pull `data/code/weights/` etc. from an external source.
 
 2. **Data Passing with Docker Volumes**:
@@ -73,7 +73,7 @@ We make the assumption that you are reading from a directory called `/inputs`, w
 
 :::info
 
-You can specify which directory the data is written to with the [`--input`](../dev/cli-reference/all-flags.md#docker-run) CLI flag.
+You can specify which directory the data is written to with the [`--input`](../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
@@ -85,13 +85,13 @@ We make the assumption that you are writing to a directory called `/outputs`, wh
 
 :::info
 
-You can specify which directory the data is written to with the [`--output-volumes`](../dev/cli-reference/all-flags.md#docker-run) CLI flag.
+You can specify which directory the data is written to with the [`--output-volumes`](../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
 ### Step 3 - Build and Push Your Image To a Registry
 
-At this step, you create (or update) a Docker image that Bacalhau will use to perform your task. You [build your image](https://docs.docker.com/engine/reference/commandline/build/) from your code and dependencies, then [push it](https://docs.docker.com/engine/reference/commandline/push/) to a public registry so that Bacalhau can access it. This is necessary for other Bacalhau nodes to run your container and execute the task.
+At this step, you create (or update) a Docker image that Bacalhau will use to perform your task. You [build your image](https://docs.docker.com/engine/reference/commandline/build/) from your code and dependencies, then [push it](https://docs.docker.com/engine/reference/commandline/push/) to a public registry so that Bacalhau can access it. This is necessary for other Bacalhau nodes to run your container and execute the given task.
 
 :::caution
 
@@ -169,9 +169,9 @@ do something useful
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-[Copy data from a URL to public storage](../setting-up/data-ingestion/from-url.md)  
-[Pin Data to public storage](../setting-up/data-ingestion/pin.md)  
-[Copy Data from S3 Bucket to public storage](../setting-up/data-ingestion/s3.md)  
+[Copy data from a URL to public storage](../data-ingestion/from-url.md)  
+[Pin Data to public storage](../data-ingestion/pin.md)  
+[Copy Data from S3 Bucket to public storage](../data-ingestion/s3.md)  
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
