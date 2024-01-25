@@ -257,7 +257,9 @@ $ cat job-9d20bbad/stdout
 
 That should print out the string `Hello World`.
 
-![image](../../static/img/Installation/cat-jobid1.png 'cat-jobid')
+```shell
+Hello world
+```
 
 With that, you have just successfully run a job on Bacalhau! :fish:
 
