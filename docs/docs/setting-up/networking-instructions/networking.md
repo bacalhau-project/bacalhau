@@ -11,7 +11,7 @@ However, by using data volumes you can read and access your data from within job
 
 ## Using Data Volumes
 
-When you submit a Bacalhau job, you'll need to specify the internet locations to download data from and write results to. Both [Docker](../getting-started/docker-workload-onboarding.md) and [WebAssembly](../getting-started/wasm-workload-onboarding.md) jobs support these features.
+When you submit a Bacalhau job, you'll need to specify the internet locations to download data from and write results to. Both [Docker](../workload-onboarding/docker-workload-onboarding.md) and [WebAssembly](../workload-onboarding/wasm-workload-onboarding.md) jobs support these features.
 
 When submitting a Bacalhau job, you can specify the CID (Content IDentifier) or HTTP(S) URL to download data from. The data will be retrieved before the job starts and made available to the job as a directory on the filesystem. When running Bacalhau jobs, you can specify as many CIDs or URLs as needed using `--input` which is accepted by both `bacalhau docker run` and `bacalhau wasm run`. See [command line flags](https://docs.bacalhau.org/all-flags) for more information.
 
