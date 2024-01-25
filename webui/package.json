@@ -21,9 +21,9 @@
     "@types/react-dom": "^18.2.18",
     "axios": "^1.6.2",
     "babel-preset-react": "^6.24.1",
+    "eslint-config-wesbos": "^4.0.1",
     "moment": "^2.29.4",
-    "msw": "^2.1.4",
-    "or": "^0.2.0",
+    "msw": "^2.1.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
@@ -33,6 +33,7 @@
     "react-scripts": "^5.0.1",
     "sass": "^1.69.5",
     "svgo": "^3.2.0",
+    "typescript": "^4",
     "undici": "^5.28.2",
     "uuid": "^9.0.1",
     "web-vitals": "^2.1.4",
@@ -48,11 +49,6 @@
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\""
-  },
-  "eslintConfig": {
-    "extends": [
-      "plugin:storybook/recommended"
-    ]
   },
   "browserslist": {
     "production": [
@@ -91,6 +87,7 @@
     "jest-watch-typeahead": "^2.2.2",
     "prettier": "^3.2.4",
     "prop-types": "^15.8.1",
+    "storybook": "^7.6.10",
     "ts-jest": "^29.1.2",
     "webpack": "^5.90.0",
     "wesbos": "^1.0.1"
