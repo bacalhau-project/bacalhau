@@ -22,6 +22,8 @@ type RequesterConfig struct {
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
 	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`
+
+	TagCache DockerCacheConfig `yaml:"TagCache"`
 }
 
 type EvaluationBrokerConfig struct {

@@ -148,9 +148,10 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 Let's take a look at the results of the command execution in the terminal:
 
-
-
-![image](../../static/img/Installation/docker-run1.png 'docker-run')
+```shell
+14:02:25.992 | INF pkg/repo/fs.go:81 > Initializing repo at '/root/.bacalhau' for environment 'production'
+19b105c9-4cb5-43bd-a12f-d715d738addd
+```
 
 </TabItem>
 </Tabs>
@@ -256,7 +257,9 @@ $ cat job-9d20bbad/stdout
 
 That should print out the string `Hello World`.
 
-![image](../../static/img/Installation/cat-jobid1.png 'cat-jobid')
+```shell
+Hello world
+```
 
 With that, you have just successfully run a job on Bacalhau! :fish:
 

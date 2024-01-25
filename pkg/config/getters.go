@@ -23,6 +23,32 @@ func ClientAPIHost() string {
 	return viper.GetString(types.NodeClientAPIHost)
 }
 
+func ClientTLSConfig() types.ClientTLSConfig {
+	cfg := types.ClientTLSConfig{
+		UseTLS:   viper.GetBool(types.NodeClientAPIClientTLSUseTLS),
+		Insecure: viper.GetBool(types.NodeClientAPIClientTLSInsecure),
+		CACert:   viper.GetString(types.NodeClientAPIClientTLSCACert),
+	}
+
+	if !cfg.UseTLS {
+		// If we haven't explicitly turned on TLS, but implied it through
+		// the other options, then set it to true
+		if cfg.Insecure || cfg.CACert != "" {
+			cfg.UseTLS = true
+		}
+	}
+
+	return cfg
+}
+
+func ClientAPIBase() string {
+	scheme := "http"
+	if ClientTLSConfig().UseTLS {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s:%d", scheme, ClientAPIHost(), ClientAPIPort())
+}
+
 func ServerAPIPort() uint16 {
 	return uint16(viper.GetInt(types.NodeServerAPIPort))
 }
@@ -155,6 +181,16 @@ func GetStoragePath() string {
 		return os.TempDir()
 	}
 	return path
+}
+
+func GetDockerManifestCacheSettings() (*types.DockerCacheConfig, error) {
+	//var cfg types.DockerCacheConfig
+
+	if cfg, err := Get[types.DockerCacheConfig](types.NodeComputeManifestCache); err != nil {
+		return nil, err
+	} else {
+		return &cfg, nil
+	}
 }
 
 // PreferredAddress will allow for the specifying of

@@ -1,0 +1,52 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "allowCompoundWords": true,
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-words",
+            "path": ".gitprecommit/codespell_ignore_words.txt",
+            "addWords": true
+        }
+    ],
+    "dictionaries": [
+        "en",
+        "custom-words"
+    ],
+    "ignorePaths": [
+        "**/docs/package-lock.json",
+        "**/docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md",
+        "docs/docs/examples/model-training/Training-Tensorflow-Model/index.md",
+        "./webui/build",
+        "./webui/node_modules",
+        "./webui/package.json",
+        "./webui/package-lock.json",
+        "./webui/pnpm-lock.yaml",
+        "./.gitprecommit",
+        "./pnpm-lock.yaml",
+        "./webui/tsconfig.json",
+        "./vendor",
+        "go.sum",
+        "go.mod",
+        "go.work.sum",
+        "apps"
+    ],
+    "ignoreRegExpList": [
+        "Urls",
+        "Email",
+        "RsaCert",
+        "SshRsa",
+        "Base64MultiLine",
+        "Base64SingleLine",
+        "CommitHash",
+        "CommitHashLink",
+        "CStyleHexValue",
+        "CSSHexValue",
+        "SHA",
+        "HashStrings",
+        "UnicodeRef",
+        "UUID",
+        "/github.com.*/",
+        "/\\w+{12,}/"
+    ]
+}

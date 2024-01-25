@@ -12,6 +12,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -72,8 +73,8 @@ func NewCmd() *cobra.Command {
 		Short:    "List jobs on the network",
 		Long:     listLong,
 		Example:  listExample,
-		PreRunE:  util.ClientPreRunHooks,
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.RemoteCmdPreRunHooks,
+		PostRunE: hook.RemoteCmdPostRunHooks,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := list(cmd, OL); err != nil {
 				util.Fatal(cmd, err, 1)
