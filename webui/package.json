@@ -14,8 +14,6 @@
     "@jest/globals": "^29.7.0",
     "@jridgewell/sourcemap-codec": "^1.4.15",
     "@rollup/plugin-terser": "^0.4.4",
-    "@storybook/react": "^7.6.10",
-    "@storybook/test": "^7.6.10",
     "@testing-library/jest-dom": "^6.2.0",
     "@testing-library/react": "^14.1.2",
     "@types/node": "^20.11.6",
@@ -94,7 +92,6 @@
     "prettier": "^3.2.4",
     "prop-types": "^15.8.1",
     "ts-jest": "^29.1.2",
-    "typescript": "github:wesbos/typescript",
     "webpack": "^5.90.0",
     "wesbos": "^1.0.1"
   },
