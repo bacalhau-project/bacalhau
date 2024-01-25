@@ -97,5 +97,7 @@
   },
   "msw": {
     "workerDirectory": "public"
-  }
+  },
+  "license": "MIT",
+  "packageManager": "yarn@4.0.2"
 }
