@@ -15,7 +15,7 @@ In this tutorial, you'll learn how to install and run a job with the Bacalhau cl
 The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau.  The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
 
 :::info
-By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../next-steps/private-cluster).
+By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../setting-up/networking-instructions/private-cluster).
 :::
 
 ### Step 1.1 - Install the Bacalhau CLI
