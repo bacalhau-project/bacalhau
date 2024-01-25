@@ -244,7 +244,7 @@ jobs:
         working_directory: webui
         environment:
           GENERATE_SOURCEMAP: "false"
-        command: npm run build
+        command: yarn run build
     - persist_to_workspace:
         root: .
         paths:
@@ -321,13 +321,13 @@ jobs:
       - run:
           name: Install eslint
           command: |
-            npm install
+            yarn install
 
       - run:
           name: Cache ESLint
           command: |
             cp package-lock.json eslint-cache-key.txt
-             npm list eslint  >> eslint-cache-key.txt
+             yarn list eslint  >> eslint-cache-key.txt
 
       - restore_cache:
           name: Restoring eslint cache
@@ -336,7 +336,7 @@ jobs:
       - run:
           name: Run linter
           command: |
-            npm run eslint
+            yarn run eslint
 
   release:
     executor: linux-amd64

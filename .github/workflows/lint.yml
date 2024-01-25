@@ -21,8 +21,8 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '${{ env.NODE_VER }}'
-    - run: cd webui && npm install
-    - run: cd webui && npm run build
+    - run: cd webui && yarn install
+    - run: cd webui && yarn run build
 
     - uses: actions/setup-go@v4
       with:

@@ -3,7 +3,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import {CanaryConfig, getCanaryConfig, PipelineConfig} from "./config";
+import { CanaryConfig, getCanaryConfig, PipelineConfig } from "./config";
 
 export interface PipelineStackProps extends cdk.StackProps {
     readonly lambdaCode: lambda.CfnParametersCode;
@@ -179,12 +179,12 @@ export class PipelineStack extends cdk.Stack {
                     install: {
                         commands: [
                             'cd ops/aws/canary',
-                            'npm install',
+                            'yarn install',
                         ]
                     },
                     pre_build: {
                         commands: [
-                            'npm run build',
+                            'yarn run build',
                         ],
                     },
                     build: {

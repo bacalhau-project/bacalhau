@@ -67,10 +67,10 @@ These are the resources that had to be created/updated manually outside of CDK:
 
 ## Useful CDK commands
 Keep in mind that you might need to pass your AWS profile and the stack name in some of these commands:
-* `npm run build`   compile typescript to js
-* `npm run postinstall` deletes cdk golang templates that can result in breaking go commands due to invalid file naming pattern
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
+* `yarn run build`   compile typescript to js
+* `yarn run postinstall` deletes cdk golang templates that can result in breaking go commands due to invalid file naming pattern
+* `yarn run watch`   watch for changes and compile
+* `yarn run test`    perform the jest unit tests
 * `cdk deploy`      deploy this stack to your default AWS account/region
 * `cdk diff`        compare deployed stack with current state
 * `cdk synth`       emits the synthesized CloudFormation template
