@@ -1,0 +1,52 @@
+version: '3.5'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus-storage:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources  # Datasource provisioning
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards  # Dashboard provisioning
+
+    ports:
+      - 3000:3000
+    restart: always
+
+  opentelemetry-collector:
+    image: otel/opentelemetry-collector:latest
+    command: [ "--config=/etc/otel-collector-config.yaml" ] # Command to use the custom config
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - 127.0.0.1:4318:4318 # HTTP
+      - 55681:55681 # OpenTelemetry protocol
+    depends_on:
+      - prometheus
+
+  jaeger:
+    container_name: jaeger
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "5778:5778"
+      - "4316:4316"
+      - "16686:16686"
+      - "14268:14268"
+
+volumes:
+  prometheus-storage: {}

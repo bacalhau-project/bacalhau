@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: 'default'  # A unique name for this provider
+    orgId: 1         # Optional: specify organization ID, 1 is default
+    folder: ''       # The folder to save dashboards in Grafana
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards  # Path within the container
