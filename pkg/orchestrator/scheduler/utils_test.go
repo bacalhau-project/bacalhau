@@ -7,15 +7,13 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/stretchr/testify/require"
 )
 
 type PlanMatcher struct {
 	t                         *testing.T
 	JobState                  models.JobStateType
 	Evaluation                *models.Evaluation
-	NewExecutionsNodes        []peer.ID
+	NewExecutionsNodes        []string
 	NewExecutionsDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions         []string
 	ApprovedExecutions        []string
@@ -24,7 +22,7 @@ type PlanMatcher struct {
 type PlanMatcherParams struct {
 	JobState                 models.JobStateType
 	Evaluation               *models.Evaluation
-	NewExecutionsNodes       []peer.ID
+	NewExecutionsNodes       []string
 	NewExecutionDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions        []string
 	ApprovedExecutions       []string
@@ -68,7 +66,7 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 		return false
 	}
 	for _, node := range m.NewExecutionsNodes {
-		desiredState, ok := newExecutionNodes[node.String()]
+		desiredState, ok := newExecutionNodes[node]
 		if !ok {
 			m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
 			return false
@@ -123,11 +121,7 @@ func (m PlanMatcher) String() string {
 }
 
 func mockNodeInfo(t *testing.T, nodeID string) *models.NodeInfo {
-	id, err := peer.Decode(nodeID)
-	require.NoError(t, err)
 	return &models.NodeInfo{
-		PeerInfo: peer.AddrInfo{
-			ID: id,
-		},
+		NodeID: nodeID,
 	}
 }

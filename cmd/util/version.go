@@ -49,7 +49,9 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 func GetAllVersions(ctx context.Context) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
-	versions.ServerVersion, err = client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
+
+	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
+	versions.ServerVersion, err = client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
 	}
@@ -73,29 +75,6 @@ func GetAllVersions(ctx context.Context) (Versions, error) {
 	}
 
 	return versions, nil
-}
-
-var printMessage *string = nil
-
-// StartUpdateCheck is a Cobra pre run hook to run an update check in the
-// background. There should be no output if the check fails or the context is
-// cancelled before the check can complete.
-func StartUpdateCheck(cmd *cobra.Command, args []string) {
-	version.RunUpdateChecker(
-		cmd.Context(),
-		client.NewAPIClient(config.ClientAPIHost(), config.ClientAPIPort()).Version,
-		func(_ context.Context, ucr *version.UpdateCheckResponse) { printMessage = &ucr.Message },
-	)
-}
-
-// PrintUpdateCheck is a Cobra post run hook to print the results of an update
-// check. The message will be a non-nil pointer only if the update check
-// succeeds and should only have visible output if the message is non-empty.
-func PrintUpdateCheck(cmd *cobra.Command, args []string) {
-	if printMessage != nil && *printMessage != "" {
-		fmt.Fprintln(cmd.ErrOrStderr())
-		fmt.Fprintln(cmd.ErrOrStderr(), *printMessage)
-	}
 }
 
 func EnsureValidVersion(ctx context.Context, clientVersion, serverVersion *models.BuildVersionInfo) error {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,15 +21,15 @@ type MaxUsageNodeRankerSuite struct {
 
 func (s *MaxUsageNodeRankerSuite) SetupSuite() {
 	s.smallPeer = models.NodeInfo{
-		PeerInfo:        peer.AddrInfo{ID: peer.ID("small")},
+		NodeID:          "small",
 		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1}},
 	}
 	s.medPeer = models.NodeInfo{
-		PeerInfo:        peer.AddrInfo{ID: peer.ID("med")},
+		NodeID:          "med",
 		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2}},
 	}
 	s.largePeer = models.NodeInfo{
-		PeerInfo:        peer.AddrInfo{ID: peer.ID("large")},
+		NodeID:          "large",
 		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3}},
 	}
 }

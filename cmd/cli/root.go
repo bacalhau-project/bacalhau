@@ -32,6 +32,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -45,11 +46,9 @@ func NewRootCmd() *cobra.Command {
 		"logging": configflags.LogFlags,
 	}
 	RootCmd := &cobra.Command{
-		Use:     os.Args[0],
-		Short:   "Compute over data",
-		Long:    `Compute over data`,
-		PreRun:  util.StartUpdateCheck,
-		PostRun: util.PrintUpdateCheck,
+		Use:   os.Args[0],
+		Short: "Compute over data",
+		Long:  `Compute over data`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			repoDir, err := config.Get[string]("repo")
 			if err != nil {
@@ -66,6 +65,14 @@ func NewRootCmd() *cobra.Command {
 
 			if err := configflags.BindFlags(cmd, rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
+			}
+
+			// If a CA certificate was provided, it must be a file that exists. If it does not
+			// exist we should not continue.
+			if caCert, err := config.Get[string](types.NodeClientAPIClientTLSCACert); err == nil && caCert != "" {
+				if _, err := os.Stat(caCert); os.IsNotExist(err) {
+					util.Fatal(cmd, fmt.Errorf("CA certificate file '%s' does not exist", caCert), 1)
+				}
 			}
 
 			ctx := cmd.Context()

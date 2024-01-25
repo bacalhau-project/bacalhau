@@ -3,16 +3,18 @@
 
 We welcome all contributions to Bacalhau  documentation ❤️
 
-- [Documentatation structure](#documentatation-structure)
+- [Contributing Guide](#contributing-guide)
+- [Documentation Structure](#documentation-structure)
 - [Issues](#issues)
-- [Pull requests](#pull-requests)
+- [Pull Requests](#pull-requests)
 - [Editing Docs Locally](#editing-docs-locally)
 - [Creating a new page](#creating-a-new-page)
 - [Waiting for a review](#waiting-for-a-review)
 - [Merging your fix](#merging-your-fix)
+- [Finishing up](#finishing-up)
 
 
-## Documentatation Structure
+## Documentation Structure
 
 `docs/` : This is where all the .md files live that control the content of this site. Most contributions happen in this directory.
 

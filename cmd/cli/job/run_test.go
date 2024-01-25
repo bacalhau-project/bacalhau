@@ -40,10 +40,7 @@ func (s *RunSuite) TestRun() {
 			}
 
 			ctx := context.Background()
-			_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(tc.Data, "job", "run",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
-			)
+			_, out, err := s.ExecuteTestCobraCommandWithStdinBytes(tc.Data, "job", "run")
 
 			fmt.Println(tc.Data)
 

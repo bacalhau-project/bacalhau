@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
@@ -59,10 +58,10 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 		Evaluation:               evaluation,
 		JobState:                 models.JobStateTypeRunning,
 		NewExecutionDesiredState: models.ExecutionDesiredStateRunning,
-		NewExecutionsNodes: []peer.ID{
-			nodeInfos[0].PeerInfo.ID,
-			nodeInfos[1].PeerInfo.ID,
-			nodeInfos[2].PeerInfo.ID,
+		NewExecutionsNodes: []string{
+			nodeInfos[0].ID(),
+			nodeInfos[1].ID(),
+			nodeInfos[2].ID(),
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -105,7 +104,7 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhe
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
-		NewExecutionsNodes: []peer.ID{},
+		NewExecutionsNodes: []string{},
 		StoppedExecutions: []string{
 			executions[0].ID,
 		},

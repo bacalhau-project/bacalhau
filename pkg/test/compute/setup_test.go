@@ -10,7 +10,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -84,31 +84,14 @@ func (s *ComputeSuite) setupNode() {
 		Address:    "0.0.0.0",
 		Port:       0,
 		Config:     publicapi.DefaultConfig(),
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.AlwaysAllow,
 	})
 	s.NoError(err)
 
 	storagePath := s.T().TempDir()
 
 	noopstorage := noop_storage.NewNoopStorage()
-	s.node, err = node.NewComputeNode(
-		context.Background(),
-		s.cm,
-		host,
-		apiServer,
-		s.config,
-		storagePath,
-		provider.NewNoopProvider[storage.Storage](noopstorage),
-		provider.NewNoopProvider[executor.Executor](s.executor),
-		provider.NewNoopProvider[publisher.Publisher](s.publisher),
-		repo,
-	)
-	s.NoError(err)
-	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
-		ExecutionStore: s.node.ExecutionStore,
-	})
-
-	s.node.RegisterLocalComputeCallback(compute.CallbackMock{
+	callback := compute.CallbackMock{
 		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
 			s.bidChannel <- result
 		},
@@ -118,7 +101,27 @@ func (s *ComputeSuite) setupNode() {
 		OnComputeFailureHandler: func(ctx context.Context, err compute.ComputeError) {
 			s.failureChannel <- err
 		},
+	}
+
+	s.node, err = node.NewComputeNode(
+		context.Background(),
+		host.ID().String(),
+		s.cm,
+		host,
+		apiServer,
+		s.config,
+		storagePath,
+		provider.NewNoopProvider[storage.Storage](noopstorage),
+		provider.NewNoopProvider[executor.Executor](s.executor),
+		provider.NewNoopProvider[publisher.Publisher](s.publisher),
+		repo,
+		callback,
+	)
+	s.NoError(err)
+	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
+		ExecutionStore: s.node.ExecutionStore,
 	})
+
 	s.T().Cleanup(func() { close(s.bidChannel) })
 }
 
