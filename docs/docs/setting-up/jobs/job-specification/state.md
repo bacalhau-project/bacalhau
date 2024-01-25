@@ -1,6 +1,7 @@
 ---
 sidebar_label: State
 ---
+# State
 ### `State` Structure Specification
 
 Within Bacalhau, the `State` structure is designed to represent the status or state of an object (like a [`Job`](job)), coupled with a human-readable message for added context. Below is a breakdown of the structure:

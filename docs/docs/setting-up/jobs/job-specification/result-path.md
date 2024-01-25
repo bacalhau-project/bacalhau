@@ -6,7 +6,7 @@ sidebar_label: ResultPath
 
 A `ResultPath` denotes a specific location within a `Task` that contains meaningful output or results. By specifying a `ResultPath`, you can pinpoint which files or directories are essential and should be retained or published after the task's execution.
 
-## `ResultPath` Parameters:
+## `ResultPath` Parameters
 
 - **Name**: A descriptive label or identifier for the result, allowing for easier referencing and understanding of the output's nature or significance.
 
