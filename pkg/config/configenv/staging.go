@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -20,6 +21,13 @@ var Staging = types.BacalhauConfig{
 	Update: types.UpdateConfig{
 		SkipChecks:     false,
 		CheckFrequency: types.Duration(24 * time.Hour),
+	},
+	Auth: types.AuthConfig{
+		Methods: map[string]types.AuthenticatorConfig{
+			"ClientKey": {
+				Type: authn.MethodTypeChallenge,
+			},
+		},
 	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
@@ -139,6 +147,11 @@ var StagingComputeConfig = types.ComputeConfig{
 	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
+	},
+	ManifestCache: types.DockerCacheConfig{
+		Size:      1000,
+		Duration:  types.Duration(1 * time.Hour),
+		Frequency: types.Duration(1 * time.Hour),
 	},
 }
 

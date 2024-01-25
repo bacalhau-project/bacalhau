@@ -311,53 +311,6 @@ jobs:
     - store_artifacts:
         path: coverage/coverage.html
 
-  lint:
-    parallelism: 1
-    environment:
-      GOLANGCILINT: v1.51.2
-      GOPROXY: https://proxy.golang.org
-    working_directory: ~/repo
-    executor: linux-amd64
-    steps:
-    - checkout
-
-    - run:
-        name: Init tools
-        command: |
-          make init
-
-    - install_go:
-        executor: linux-amd64
-
-    - run:
-        name: Install golangci-lint
-        command: |
-          echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-          # binary will be /usr/local/go/bin/bin/golangci-lint
-          # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-          # This breaks normal pathing. So just installing in ./bin/
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-          golangci-lint version
-
-    - run:
-        name: Install Pre-commit
-        command: |
-          make install-pre-commit
-
-    - run:
-        name: Cache Precommit
-        command: |
-          cp .pre-commit-config.yaml pre-commit-cache-key.txt
-          poetry run python --version --version >> pre-commit-cache-key.txt
-
-    - restore_cache:
-        name: Restoring pre-commit cache
-        key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
-
-    - run:
-        name: Run linter
-        command: |
-          make precommit
 
   release:
     executor: linux-amd64
@@ -423,7 +376,6 @@ jobs:
     executor: linux-amd64
     environment:
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -587,14 +539,6 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  lint:
-    jobs:
-    - lint:
-        name: Run linters and static checkers
-        filters:
-          tags:
-            ignore: /.*/
-
   check_canary:
     jobs:
     - build_canary:

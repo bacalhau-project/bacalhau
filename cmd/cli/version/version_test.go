@@ -16,7 +16,6 @@ limitations under the License.
 package version_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -39,10 +38,7 @@ type VersionSuite struct {
 }
 
 func (suite *VersionSuite) TestVersionHumanOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-	)
+	_, out, err := suite.ExecuteTestCobraCommand("version")
 	require.NoError(suite.T(), err)
 
 	require.Contains(suite.T(), out, "CLIENT", "Client version not in output")
@@ -50,11 +46,7 @@ func (suite *VersionSuite) TestVersionHumanOutput() {
 }
 
 func (suite *VersionSuite) TestVersionJSONOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-		"--output", string(output.JSONFormat),
-	)
+	_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.JSONFormat))
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
 	jsonDoc := &util.Versions{}
@@ -64,11 +56,7 @@ func (suite *VersionSuite) TestVersionJSONOutput() {
 }
 
 func (suite *VersionSuite) TestVersionYAMLOutput() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
-		"--api-host", suite.Host,
-		"--api-port", fmt.Sprint(suite.Port),
-		"--output", string(output.YAMLFormat),
-	)
+	_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.YAMLFormat))
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
 	yamlDoc := &util.Versions{}

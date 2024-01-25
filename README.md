@@ -97,7 +97,7 @@ The Bacalhau docs is the best starting point as it contains all the information 
 
 Developers can spin up bacalhau and run a local demo using the `devstack` command.
 
-Please see [docs/running_locally.md](docs/running_locally.md) for instructions. Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
+Please see [running_locally.md](docs/docs/dev/running-locally.md) for instructions. Also, see [debugging_locally.md](docs/docs/dev/debugging_locally.md) for some useful tricks for debugging.
 
 ### Notes for Dev contributors
 
