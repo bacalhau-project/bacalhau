@@ -1,7 +1,7 @@
 // layout/Sidebar/Sidebar.tsx
 import React from "react"
 import { Link } from "react-router-dom"
-import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
+import { SVGImage } from "../../images/svg-image"
 import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
 import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
 import { ReactComponent as CogwheelIcon } from "../../images/cogwheel.svg"
@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <BacalhauIcon />
+        <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (
