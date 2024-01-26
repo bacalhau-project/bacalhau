@@ -5,8 +5,6 @@ sidebar_position: 10
 # Run CUDA programs on Bacalhau
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 ### What is CUDA
 
 In this tutorial, we will look at how to run CUDA programs on Bacalhau. CUDA (Compute Unified Device Architecture) is an extension of C/C++ programming. It is a parallel computing platform and programming model created by NVIDIA. It helps developers speed up their applications by harnessing the power of GPU accelerators.
@@ -51,10 +49,8 @@ wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/mas
 1. **`00-hello-world.cu`**:
 
 ```bash
-%%bash
-
 # View the contents of the standard C++ program
-cat inputs/00-hello-world.cu
+!cat inputs/00-hello-world.cu
 
 # Measure the time it takes to compile and run the program
 %%timeit
@@ -66,8 +62,6 @@ This example represents a standard C++ program that inefficiently utilizes GPU r
 2. **`02-cuda-hello-world-faster.cu`**:
 
 ```bash
-%%bash
-
 # View the contents of the CUDA program with vector addition
 !cat inputs/02-cuda-hello-world-faster.cu
 
@@ -115,6 +109,10 @@ Note that there is `;` between the commands:
 
 `./outputs/hello`: Execution hello binary:
 You can combine compilation and execution commands. 
+
+:::info
+Note that the CUDA version will need to be compatible with the graphics card on the host machine.
+:::
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on:
 
