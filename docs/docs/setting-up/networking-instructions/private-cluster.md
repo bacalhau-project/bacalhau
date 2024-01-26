@@ -59,14 +59,14 @@ bacalhau serve \
 ```
 
 :::tip
-The exact command arguments will be different on each computer and is outputted by the `bacalhau serve --node-type requester ...` command
+The exact command arguments will be different on each computer and will be output by the `bacalhau serve --node-type requester ...` command
 :::
 
 The command `bacalhau serve --private-internal-ipfs --peer ...` starts up a compute node and adds it to the cluster.
 
 ## Submitting Jobs
 
-To use this cluster from the client, run the following commands in your shell, setting following environment variables:
+To use this cluster from the client, run the following commands in your shell, setting the following environment variables:
 
 ```
 export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/<ip-address>/tcp/<port>/p2p/<peer-id>
@@ -75,10 +75,10 @@ export BACALHAU_API_PORT=1234
 ```
 
 :::tip
-The exact command arguments will be different on each computer and is outputted by the `bacalhau serve --node-type requester ...` command
+The exact command arguments will be different on each computer and will be output by the `bacalhau serve --node-type requester ...` command
 :::
 
-The command `export BACALHAU_IPFS_SWARM_ADDRESSES=...` sets environment variable, which overrides default ipfs swarm address, allowing to send jobs into the cluster from the command line client. You can also use `bacalhau config set` with a `node.ipfs.swarmaddresses` parameter to change the ipfs swarm address:
+The command `export BACALHAU_IPFS_SWARM_ADDRESSES=...` sets an environment variable, which overrides the default ipfs swarm address, allowing the command line client to interact with the cluster. You can also use `bacalhau config set` with a `node.ipfs.swarmaddresses` parameter to change the ipfs swarm address:
 ```bash
 bacalhau config set node.ipfs.swarmaddresses /ip4/10.0.2.15/tcp/39437/p2p/QmdqAPqfeCpFFYHTK4tAV5oSUi7soZg2v6ggzJpe441zsZ
 ```
