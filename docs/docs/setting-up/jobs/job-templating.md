@@ -8,7 +8,7 @@ description: Templating Support in Bacalhau Job Run
 
 ## Overview
 
-This documentation introduces templating support for [`bacalhau job run`](/references/cli/job/run), providing users with the ability to dynamically inject variables into their job specifications. This feature is particularly useful when running multiple jobs with varying parameters such as DuckDB query, S3 buckets, prefixes, and time ranges without the need to edit each job specification file manually.
+This documentation introduces templating support for [`bacalhau job run`](../../dev/cli-reference/cli/job/run), providing users with the ability to dynamically inject variables into their job specifications. This feature is particularly useful when running multiple jobs with varying parameters such as DuckDB query, S3 buckets, prefixes, and time ranges without the need to edit each job specification file manually.
 
 ## Motivation
 
