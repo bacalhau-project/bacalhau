@@ -20,17 +20,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <JobsIcon />,
+      icon: <SVGImage src="../../images/jobs-icon.svg" alt="Jobs" />,
       title: "Jobs Dashboard",
     },
     {
       path: "/NodesDashboard",
-      icon: <NodesIcon />,
+      icon: <SVGImage src="../../images/nodes-icon.svg" alt="Nodes" />,
       title: "Nodes Dashboard",
     },
     {
       path: "/Settings",
-      icon: <CogwheelIcon />,
+      icon: <SVGImage src="../../images/cogwheel.svg" alt="Settings" />,
       title: "Settings",
     },
   ]

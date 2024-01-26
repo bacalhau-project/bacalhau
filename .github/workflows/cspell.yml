@@ -17,5 +17,5 @@ jobs:
         uses: actions/checkout@v3
       - name: Codespell
         run: |
-          npm install -g cspell@latest
+          yarn install -g cspell@latest
           make spellcheck-code

@@ -39,7 +39,6 @@ module.exports = {
   moduleNameMapper: {
     "^@pages/(.*)$": "<rootDir>/src/pages/$1",
     "^@components/(.*)$": "<rootDir>/src/components/$1",
-    '\\.svg$': '<rootDir>/tests/mocks/svgMock.js',
     "^react-native$": "react-native-web",
     "^.+\\.module\\.(css|sass|scss)$": "identity-obj-proxy"
   },

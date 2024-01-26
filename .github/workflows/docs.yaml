@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Codespell - Docs
         run: |
-          npm install -g cspell@latest
+          yarn install -g cspell@latest
           make spellcheck-docs
 
   build:
@@ -22,11 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          cache: npm
+          cache: yarn
           cache-dependency-path: docs
-      - run: npm install
+      - run: yarn install
         working-directory: docs
-      - run: npm run build
+      - run: yarn run build
         working-directory: docs
       - uses: actions/upload-pages-artifact@v2
         with:
