@@ -12,15 +12,15 @@ Bacalhau uses [libp2p](https://libp2p.io/) under the hood to communicate with ot
 Because bacalhau is built using libp2p, the concept of peer identity is used to identify nodes on the network.
 
 Bacalhau uses 2 keys to identify the node and the user:
-- A private Ed25519 `libp2p_private_key` key is used to get the Peer ID in libp2p
-- A private RSA key in the PKCS1 format `user_id.pem` is used to uniquely identify user on the network when making reqeusts from CLI
+- A private Ed25519 `libp2p_private_key` key is used to get the Peer ID in libp2p and to identify a server node
+- A private RSA key in the PKCS1 format `user_id.pem` is used to uniquely identify user on the network when making requests from CLI
 
 By default, Bacalhau creates its own keys on installation. These keys can be found at the path given by the config:
 - key `User.KeyPath` for a RSA key, which by default is `~/.bacalhau/user_id.pem`
 - key `User.Libp2pkeypath` for an Ed25519 key, which by default is `~/.bacalhau/libp2p_private_key`
 
 
-When you start a bacalhau node using `bacalhau serve`, it will look for these keys in the paths, specified in the environmental variable or config. If it doesn't find them, it will generate a new ones and save them there.
+When you start a bacalhau node using `bacalhau serve`, it will look for the `libp2p_private_key` in the path, specified in the environmental variable or config. If it doesn't find key, it will generate a new one and save it there.
 
 :::info
 The following source prioritization applies to both this and the rest of the application settings:
@@ -76,7 +76,7 @@ bacalhau serve \
 To ensure that the node can communicate with other nodes on the network, make sure the swarm port is open and accessible by other nodes.
 
 :::info
-In the libp2p the term swarm has been replaced by [switch](https://docs.libp2p.io/concepts/appendix/glossary/#switch), however swarm is still used for historical reasons 
+In libp2p the term swarm has been replaced by [switch](https://docs.libp2p.io/concepts/appendix/glossary/#switch), however swarm is still used for historical reasons 
 :::
 
 ## REST API port
