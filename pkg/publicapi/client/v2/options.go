@@ -18,9 +18,6 @@ import (
 )
 
 type Config struct {
-	// Address is the address of the node's public REST API.
-	Address string
-
 	// Namespace is the default namespace to use for all requests.
 	Namespace string
 
@@ -77,13 +74,6 @@ func WithCACertificate(cacert string) OptionFn {
 func WithInsecureTLS(insecure bool) OptionFn {
 	return func(o *Config) {
 		o.TLS.Insecure = insecure
-	}
-}
-
-// WithAddress sets the address of the node's public REST API.
-func WithAddress(address string) OptionFn {
-	return func(o *Config) {
-		o.Address = address
 	}
 }
 

@@ -149,9 +149,7 @@ func getClient() *client.APIClient {
 
 func getClientV2() *clientv2.Client {
 	host, port := getClientHostAndPort()
-	return clientv2.New(clientv2.Config{
-		Address: fmt.Sprintf("http://%s:%d", host, port),
-	})
+	return clientv2.New(fmt.Sprintf("http://%s:%d", host, port))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

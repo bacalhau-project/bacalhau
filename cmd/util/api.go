@@ -49,5 +49,5 @@ func GetAPIClientV2() *clientv2.Client {
 		}))
 	}
 
-	return clientv2.New(clientv2.Config{Address: base}, opts...)
+	return clientv2.New(base, opts...)
 }
