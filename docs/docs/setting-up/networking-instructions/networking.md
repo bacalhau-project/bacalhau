@@ -16,7 +16,7 @@ For more details about flags and recent updates see the [CLI Guide](../../dev/cl
 
 ## Using Data Volumes
 
-If you need to process data located on a certain network resource and/or save the result of the job execution to such resource - you will need to specify the internet locations to download data from and write results to when creating the job. Both [Docker](../../getting-started/docker-workload-onboarding.md) and [WebAssembly](../../getting-started/wasm-workload-onboarding.md) jobs support these features.
+If you need to process data located on a certain network resource - you will need to specify the internet location to download data from when creating the job. Both [Docker](../../getting-started/docker-workload-onboarding.md) and [WebAssembly](../../getting-started/wasm-workload-onboarding.md) jobs support this feature.
 
 When submitting a Bacalhau job, you can specify the CID (Content IDentifier) or HTTP(S) URL to download data from. The data will be retrieved before the job starts and made available to the job as a directory on the filesystem. When running Bacalhau jobs, you can specify as many CIDs or URLs as needed using `--input` which is accepted by both `bacalhau docker run` and `bacalhau wasm run`. See [command line flags](../../dev/cli-reference/all-flags.md) for more information. Make sure the nodes on the network have enough resources to download and process specified data.
 
@@ -25,7 +25,7 @@ You can write back results from your Bacalhau jobs to your public storage locati
 
 ## Specifying Jobs to Access the Internet
 
-For some workloads, the required data is computed as part of the job if the purpose of the job is to process web results. In these cases, networking may be possible during job execution. To run Docker jobs on Bacalhau with internet access, you'll need to use a `--netwwork` flag and specify one of the following options:
+For some workloads there is a requirement for the job to fetch data at runtime, particularly when it requires access to external APIs. In these cases, networking may be possible during job execution. To run Docker jobs on Bacalhau with internet access, you'll need to use a `--netwwork` flag and specify one of the following options:
 
 * **full**: unfiltered networking for any protocol `--network=full`
 * **http**: HTTP(S)-only networking to a specified list of domains `--network=http`
