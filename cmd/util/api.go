@@ -17,7 +17,7 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 	return client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort())
 }
 
-func GetAPIClientV2(ctx context.Context) *clientv2.Client {
+func GetAPIClientV2() *clientv2.Client {
 	base := config.ClientAPIBase()
 	tlsConfig := config.ClientTLSConfig()
 
@@ -39,7 +39,7 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 
 	token, err := ReadToken(base)
 	if err != nil {
-		log.Ctx(ctx).Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
 	}
 
 	if token != "" {
@@ -49,5 +49,5 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 		}))
 	}
 
-	return clientv2.New(clientv2.Config{Context: ctx, Address: base}, opts...)
+	return clientv2.New(clientv2.Config{Address: base}, opts...)
 }

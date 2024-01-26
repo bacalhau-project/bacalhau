@@ -2,7 +2,6 @@
 package client
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -27,9 +26,6 @@ type Config struct {
 
 	// The optional application specific identifier appended to the User-Agent header.
 	AppID string
-
-	// Context is the default context to use for requests.
-	Context context.Context
 
 	// HTTPClient is the client to use. Default will be used if not provided.
 	// If set, other configuration options will be ignored, such as Timeout
@@ -102,13 +98,6 @@ func WithNamespace(namespace string) OptionFn {
 func WithAppID(appID string) OptionFn {
 	return func(o *Config) {
 		o.AppID = appID
-	}
-}
-
-// WithContext sets the default context to use for requests.
-func WithContext(ctx context.Context) OptionFn {
-	return func(o *Config) {
-		o.Context = ctx
 	}
 }
 
