@@ -3,12 +3,13 @@ package util
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/rs/zerolog/log"
 )
 
 func GetAPIClient(ctx context.Context) *client.APIClient {
@@ -48,5 +49,5 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 		}))
 	}
 
-	return clientv2.New(clientv2.Options{Context: ctx, Address: base}, opts...)
+	return clientv2.New(clientv2.Config{Context: ctx, Address: base}, opts...)
 }
