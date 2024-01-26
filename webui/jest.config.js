@@ -19,7 +19,6 @@ module.exports = {
   moduleNameMapper: {
     "^@pages/(.*)$": "<rootDir>/src/pages/$1",
     "^@components/(.*)$": "<rootDir>/src/components/$1",
-    '\\.svg$': '<rootDir>/tests/mocks/svgMock.js',
   },
   testEnvironment: 'jsdom',
   testEnvironmentOptions: {
