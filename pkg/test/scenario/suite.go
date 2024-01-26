@@ -152,9 +152,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 
 	apiServer := stack.Nodes[0].APIServer
 	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
-	apiClientV2 := clientv2.New(clientv2.Config{
-		Address: fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port),
-	})
+	apiClientV2 := clientv2.New(fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port))
 
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {

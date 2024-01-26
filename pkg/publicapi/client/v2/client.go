@@ -10,18 +10,24 @@ import (
 )
 
 type Client struct {
+	address string
+
 	httpClient *http.Client
 	config     Config
 }
 
 // New creates a new client.
-func New(cfg Config, optFns ...OptionFn) *Client {
+func New(address string, optFns ...OptionFn) *Client {
+	// define default filed on the config by setting them here, then
+	// modify with options to override.
+	var cfg Config
 	for _, optFn := range optFns {
 		optFn(&cfg)
 	}
 
 	resolveHTTPClient(&cfg)
 	return &Client{
+		address:    address,
 		httpClient: cfg.HTTPClient,
 		config:     cfg,
 	}
@@ -178,7 +184,10 @@ func (c *Client) toHTTP(ctx context.Context, method, endpoint string, r *apimode
 
 // generate URL for a given endpoint
 func (c *Client) url(endpoint string) (*url.URL, error) {
-	base, _ := url.Parse(c.config.Address)
+	base, err := url.Parse(c.address)
+	if err != nil {
+		return nil, err
+	}
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err

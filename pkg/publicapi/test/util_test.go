@@ -87,9 +87,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	apiClient := client.New(client.Config{
-		Address: n.APIServer.GetURI().String(),
-	})
+	apiClient := client.New(n.APIServer.GetURI().String())
 	require.NoError(t, WaitForNodes(ctx, apiClient))
 	return n, apiClient
 }
