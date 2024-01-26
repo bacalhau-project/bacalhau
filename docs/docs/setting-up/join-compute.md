@@ -9,7 +9,7 @@ toc_max_heading_level: 4
 Bacalhau is a peer-to-peer network of computing providers that will run jobs submitted by users. A Compute Provider (CP) is anyone who is running a Bacalhau compute node participating in the Bacalhau compute network.
 
 
-This section will show you how to configure and run public Bacalhau node and start accepting and running jobs.
+This section will show you how to configure and run a public Bacalhau node and start accepting and running jobs.
 
 To bootstrap your node and join the network as a CP you can leap right into the [Ubuntu 22.04 quick start](#quick-start-ubuntu-2204) below, or find more setup details in these guides:
 
@@ -25,8 +25,8 @@ We'll add instructions for your favorite OS.
 
 :::
 
-### Important Note: Public Network Peculiarity
-This guide describes the process of setting up and joining a public network. The public network exists to get familiar with the application and to perform test jobs. Any user can start their own node. Therefore, the public network is not intended for processing personal and sensitive information, nor does it guarantee the safety and security of user data.
+### Important Note: Demo Network Peculiarity
+This guide describes the process of setting up and joining the demo network. The demo network exists to get familiar with the application and to perform test jobs, but should not be relied upon for production use. Any user can start their own node. Therefore, the demo network is not intended for processing personal and sensitive information, nor does it guarantee the safety and security of user data.
 
 ## Quick start (Ubuntu 22.04)
 
