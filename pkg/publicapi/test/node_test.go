@@ -4,13 +4,17 @@ package test
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+
+	"context"
+
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
 func (s *ServerSuite) TestNodeList() {
-	resp, err := s.client.Nodes().List(&apimodels.ListNodesRequest{})
+	ctx := context.Background()
+	resp, err := s.client.Nodes().List(ctx, &apimodels.ListNodesRequest{})
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), resp)
 	require.NotEmpty(s.T(), resp.Nodes)
@@ -18,12 +22,13 @@ func (s *ServerSuite) TestNodeList() {
 }
 
 func (s *ServerSuite) TestNodeListLabels() {
+	ctx := context.Background()
 	req1, err := labels.NewRequirement("name", selection.Equals, []string{"node-1"})
 	require.NoError(s.T(), err)
 	req2, err := labels.NewRequirement("env", selection.Equals, []string{"devstack"})
 	require.NoError(s.T(), err)
 
-	resp, err := s.client.Nodes().List(&apimodels.ListNodesRequest{
+	resp, err := s.client.Nodes().List(ctx, &apimodels.ListNodesRequest{
 		Labels: []labels.Requirement{*req1, *req2},
 	})
 	require.NoError(s.T(), err)

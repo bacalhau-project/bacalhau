@@ -153,7 +153,6 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	apiServer := stack.Nodes[0].APIServer
 	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
 	apiClientV2 := clientv2.New(clientv2.Config{
-		Context: s.Ctx,
 		Address: fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port),
 	})
 
@@ -177,7 +176,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	// Check outputs
 	if scenario.ResultsChecker != nil {
 		s.T().Log("Checking output")
-		results, err := apiClientV2.Jobs().Results(&apimodels.ListJobResultsRequest{
+		results, err := apiClientV2.Jobs().Results(s.Ctx, &apimodels.ListJobResultsRequest{
 			JobID: submittedJob.Metadata.ID,
 		})
 		s.Require().NoError(err)
