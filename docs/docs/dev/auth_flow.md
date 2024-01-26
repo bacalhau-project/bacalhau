@@ -83,6 +83,25 @@ return to the endpoint.
 }
 ```
 
+### `ask` authentication
+
+This method requires the user to manually input some information. This method
+can be used to implement username and password authentication, shared secret
+authentication, and even 2FA or security question auth.
+
+The required information is represented by a JSON Schema in the object itself.
+The implementation should parse the JSON Schema and ask the user questions to
+populate an object that is valid by it.
+
+```json
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bacalhau.org/auth/ask",
+    "type": "object",
+    "$ref": "https://json-schema.org/draft/2020-12/schema",
+}
+```
+
 ## 2. Run the authn flow and submit the result for an access token
 
 The user agent decides which authentication method to use (e.g. by asking the
