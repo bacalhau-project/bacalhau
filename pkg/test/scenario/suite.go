@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -151,7 +152,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 
 	apiServer := stack.Nodes[0].APIServer
 	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
-	apiClientV2 := clientv2.New(clientv2.Options{
+	apiClientV2 := clientv2.New(clientv2.Config{
 		Context: s.Ctx,
 		Address: fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port),
 	})

@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -86,7 +87,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	apiClient := client.New(client.Options{
+	apiClient := client.New(client.Config{
 		Address: n.APIServer.GetURI().String(),
 	})
 	require.NoError(t, WaitForNodes(ctx, apiClient))

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -15,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -148,7 +149,7 @@ func getClient() *client.APIClient {
 
 func getClientV2() *clientv2.Client {
 	host, port := getClientHostAndPort()
-	return clientv2.New(clientv2.Options{
+	return clientv2.New(clientv2.Config{
 		Address: fmt.Sprintf("http://%s:%d", host, port),
 	})
 }

@@ -11,19 +11,19 @@ import (
 
 type Client struct {
 	httpClient *http.Client
-	options    Options
+	config     Config
 }
 
 // New creates a new client.
-func New(options Options, optFns ...OptionFn) *Client {
+func New(cfg Config, optFns ...OptionFn) *Client {
 	for _, optFn := range optFns {
-		optFn(&options)
+		optFn(&cfg)
 	}
 
-	resolveHTTPClient(&options)
+	resolveHTTPClient(&cfg)
 	return &Client{
-		httpClient: options.HTTPClient,
-		options:    options,
+		httpClient: cfg.HTTPClient,
+		config:     cfg,
 	}
 }
 
@@ -118,8 +118,8 @@ func (c *Client) toHTTP(method, endpoint string, r *apimodels.HTTPRequest) (*htt
 	}
 
 	// build parameters
-	if c.options.Namespace != "" && r.Params.Get("namespace") == "" {
-		r.Params.Add("namespace", c.options.Namespace)
+	if c.config.Namespace != "" && r.Params.Get("namespace") == "" {
+		r.Params.Add("namespace", c.config.Namespace)
 	}
 	// Add in the query parameters, if any
 	for key, values := range u.Query() {
@@ -152,17 +152,17 @@ func (c *Client) toHTTP(method, endpoint string, r *apimodels.HTTPRequest) (*htt
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	if c.options.AppID != "" {
-		req.Header.Set(apimodels.HTTPHeaderAppID, c.options.AppID)
-		req.Header.Add("User-Agent", c.options.AppID)
+	if c.config.AppID != "" {
+		req.Header.Set(apimodels.HTTPHeaderAppID, c.config.AppID)
+		req.Header.Add("User-Agent", c.config.AppID)
 	}
 
 	// Optionally configure HTTP authorization
-	if c.options.HTTPAuth != nil {
-		req.Header.Set("Authorization", c.options.HTTPAuth.String())
+	if c.config.HTTPAuth != nil {
+		req.Header.Set("Authorization", c.config.HTTPAuth.String())
 	}
 
-	for key, values := range c.options.Headers {
+	for key, values := range c.config.Headers {
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
@@ -187,7 +187,7 @@ func (c *Client) requestContext(r *apimodels.HTTPRequest) context.Context {
 
 // generate URL for a given endpoint
 func (c *Client) url(endpoint string) (*url.URL, error) {
-	base, _ := url.Parse(c.options.Address)
+	base, _ := url.Parse(c.config.Address)
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
