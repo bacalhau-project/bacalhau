@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -52,6 +53,7 @@ type executionHandler struct {
 
 //nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
+	ActiveExecutions.Inc(ctx, attribute.String("executor_id", h.ID))
 	h.running.Store(true)
 	defer func() {
 		destroyTimeout := time.Second * 10
@@ -60,6 +62,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		}
 		h.running.Store(false)
 		close(h.waitCh)
+		ActiveExecutions.Dec(ctx, attribute.String("executor_id", h.ID))
 	}()
 	// start the container
 	h.logger.Info().Msg("starting container execution")
