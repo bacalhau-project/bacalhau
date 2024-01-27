@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -37,6 +38,22 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
+	if len(args.Headers) == 0 {
+		log.Info().Msg("HTTP Payload did not contain header")
+	} else {
+		log.Info().Msgf("HTTP Payload contains header values header: %s", args.Headers)
+	}
+	if args.Namespace != "" {
+		log.Info().Msgf("HTTP Payload contains namespace: %s", args.Namespace)
+	} else {
+		log.Info().Msg("HTTP Payload did not contain namespace")
+	}
+	if len(c.Request().Header) == 0 {
+		log.Info().Msg("HTTP Request did not contain header")
+	} else {
+		log.Info().Msgf("HTTP Request contains headers: %s", c.Request().Header)
+	}
+
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
 		Job: args.Job,
 	})

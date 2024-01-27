@@ -1,9 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -107,6 +111,11 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, r *apim
 	}
 
 	start := time.Now()
+	s, err := AsCurlCommand(req)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 	resp, err := c.httpClient.Do(req)
 	diff := time.Since(start)
 
@@ -199,4 +208,34 @@ func (c *Client) url(endpoint string) (*url.URL, error) {
 		Path:    u.Path,
 		RawPath: u.RawPath,
 	}, nil
+}
+
+func AsCurlCommand(req *http.Request) (string, error) {
+	var command strings.Builder
+
+	// Start the curl command with the method and URL
+	command.WriteString(fmt.Sprintf("curl -X %s '%s'", req.Method, req.URL))
+
+	// Add headers
+	for name, values := range req.Header {
+		for _, value := range values {
+			command.WriteString(fmt.Sprintf(" -H '%s: %s'", name, value))
+		}
+	}
+
+	// Add body if present
+	if req.Body != nil && req.ContentLength != 0 {
+		bodyBytes, err := ioutil.ReadAll(req.Body)
+		// Important: Restore the body so it can be used again
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		if err != nil {
+			return "", err
+		}
+
+		// Use --data-binary to preserve the exact original body contents
+		command.WriteString(fmt.Sprintf(" --data-binary '%s'", string(bodyBytes)))
+	}
+
+	return command.String(), nil
 }

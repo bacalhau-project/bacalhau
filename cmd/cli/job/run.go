@@ -154,6 +154,14 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	client := util.GetAPIClientV2()
 	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
+		BasePutRequest: apimodels.BasePutRequest{
+			BaseRequest: apimodels.BaseRequest{
+				Namespace: "TheNamespace",
+				Headers: map[string]string{
+					"foo": "bar",
+				},
+			},
+		},
 	})
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
