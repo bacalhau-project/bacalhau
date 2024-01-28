@@ -72,6 +72,6 @@
     "build/",
     "public/mockServiceWorker.js",
     "config/env.js",
-    "src/stories/"
+    "src/stories/",
   ]
 }

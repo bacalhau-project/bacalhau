@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
     <div className={styles.right}>
       {/* Profile section */}
       <div className={styles.profile}>
-        <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
+        <SVGImage src="../../images/profile.svg" alt="Profile Icon" />
       </div>
     </div>
   </header>
