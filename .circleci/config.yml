@@ -33,11 +33,11 @@ executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: xlarge
   linux-arm64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: arm.xlarge
   darwin-amd64:
     macos:
@@ -334,6 +334,7 @@ jobs:
 
     - store_artifacts:
         path: coverage/coverage.html
+
 
   release:
     executor: linux-amd64
