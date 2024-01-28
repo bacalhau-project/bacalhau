@@ -5,7 +5,6 @@
 //
 //	mockgen --source types.go --destination mocks.go --package requester
 //
-
 // Package requester is a generated GoMock package.
 package requester
 
