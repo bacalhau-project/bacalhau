@@ -1,50 +1,6 @@
-import { randomBytes } from "crypto"
-import { v4 as uuidv4 } from "uuid"
-import { selectRandomElements, selectRandomLabels } from "./mockUtilities"
-
-interface Task {
-  Name: string
-  Engine: {
-    Type: string
-    Params: {
-      Entrypoint: string[]
-      EnvironmentVariables: any
-      Image: string
-      Parameters: any
-      WorkingDirectory: string
-    }
-  }
-  Publisher: {
-    Type: string
-  }
-  Resources: object
-  Network: {
-    Type: string
-  }
-  Timeouts: {
-    ExecutionTimeout: number
-  }
-}
-
-interface Job {
-  ID: string
-  Name: string
-  Namespace: string
-  Type: string
-  Priority: number
-  Count: number
-  Constraints: { Key: string; Operator: string; Values: string[] }[]
-  Meta: object
-  Labels: object
-  Tasks: Task[]
-  State: {
-    StateType: string
-  }
-  Version: number
-  Revision: number
-  CreateTime: number
-  ModifyTime: number
-}
+import { randomBytes, randomUUID } from "crypto"
+import { Job, Task } from "../../src/helpers/jobInterfaces"
+import { selectRandomElements, selectRandomKeyAndValue } from "./mockUtilities"
 
 function createRandomConstraint(): {
   Key: string
@@ -57,15 +13,12 @@ function createRandomConstraint(): {
   return {
     Key: keys[Math.floor(Math.random() * keys.length)],
     Operator: operators[Math.floor(Math.random() * operators.length)],
-    Values: [uuidv4()],
+    Values: [randomUUID()],
   }
 }
 
 // Select a random job type from the list of available types in constants.go
 const jobTypes = ["batch", "service", "ops", "system"]
-function selectRandomJobType() {
-  return selectRandomElements(jobTypes)
-}
 
 // Select a random job state from the list of available states in constants.go
 const jobStates = [
@@ -81,14 +34,14 @@ const jobStates = [
 ]
 
 // Create a set of random job labels as key value pairs
-const jobLabels = {
+const jobLabels: { [key: string]: string[] } = {
   canary: ["true", "false"],
   region: ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1"],
   owner: ["bacalhau", "test", "dev", "prod"],
   instanceType: ["m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
 }
 
-function generateSampleTask(): Task {
+function generateMockTask(): Task {
   // TODO: Implement actual random task
   // For now, just return a static task
   return {
@@ -96,33 +49,39 @@ function generateSampleTask(): Task {
     Engine: {
       Type: "docker",
       Params: {
-        Entrypoint: ["echo", "hello λ!"],
-        EnvironmentVariables: null,
+        Entrypoint: "echo",
+        EnvironmentVariables: [],
         Image: "ubuntu",
-        Parameters: null,
+        Parameters: [],
         WorkingDirectory: "",
       },
     },
     Publisher: {
       Type: "ipfs",
     },
-    Resources: {},
+    Resources: {
+      CPU: "1",
+      Disk: "2",
+      Memory: "3",
+      GPU: "0",
+    },
     Network: {
       Type: "None",
     },
     Timeouts: {
       ExecutionTimeout: Math.floor(Math.random() * 3600), // 1 hour max
     },
+    ResultPaths: [{ Name: "tmp", Path: "/tmp" }],
   }
 }
 
-export function generateSampleJob(): Job {
+export function generateMockJob(): Job {
   const namespace = randomBytes(64).toString("hex")
   const jobState = selectRandomElements(jobStates)[0]
   const jobType = selectRandomElements(jobTypes)[0]
   return {
-    ID: uuidv4(),
-    Name: uuidv4(),
+    ID: randomUUID(),
+    Name: randomUUID(),
     Namespace: namespace,
     Type: jobType,
     Priority: Math.floor(Math.random() * 10),
@@ -137,10 +96,11 @@ export function generateSampleJob(): Job {
         "base64"
       )}`,
     },
-    Labels: { ...selectRandomLabels(jobLabels) },
-    Tasks: [generateSampleTask()],
+    Labels: { ...selectRandomKeyAndValue(jobLabels) },
+    Tasks: [generateMockTask()],
     State: {
       StateType: jobState,
+      Message: "State Message",
     },
     Version: Math.floor(Math.random() * 10),
     Revision: Math.floor(Math.random() * 10),

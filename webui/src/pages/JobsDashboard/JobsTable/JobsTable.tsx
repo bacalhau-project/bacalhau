@@ -38,7 +38,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     const jobShortID = getShortenedJobID(job.ID)
     const jobName = job.Name
 
-    if (jobType === "batch") {
+    if (jobType === "batch" && jobName === "") {
       job.Name = jobShortID
     } else {
       job.Name = jobName
@@ -61,7 +61,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
   const parsedData = parseData(data)
 
   return (
-    <div className={styles.tableContainer}>
+    <div id="jobsTableContainer" className={styles.tableContainer}>
       <table>
         <thead>
           <tr>
@@ -76,8 +76,8 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
           </tr>
         </thead>
         <tbody>
-          {parsedData.map((jobData, index) => (
-            <tr key={index}>
+          {parsedData.map((jobData, _index) => (
+            <tr key={jobData.longId} data-testid="jobRow">
               {settings.showJobName && (
                 <td className={styles.name}>{jobData.name}</td>
               )}
@@ -99,7 +99,12 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               {settings.showLabel && (
                 <td className={styles.label}>
                   {jobData.label.map((label) => (
-                    <Label text={label} color="grey" />
+                    // Render label key with job ID to avoid duplicate keys
+                    <Label
+                      text={label}
+                      color="grey"
+                      key={`label-${jobData.longId}-${label}`}
+                    />
                   ))}
                 </td>
               )}
@@ -108,6 +113,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
                   <Label
                     text={jobData.status}
                     color={labelColorMap[jobData.status.toLowerCase()]}
+                    key={`status-${jobData.longId}`}
                   />
                 </td>
               )}

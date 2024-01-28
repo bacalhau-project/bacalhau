@@ -1,20 +1,13 @@
-// Select a random job label from the list of available labels in jobLabels - should be between 0 and 3 labels
-export function selectRandomLabels(jobLabels: { [key: string]: string[] }): {
-  [key: string]: string[]
+export function selectRandomKeyAndValue(allKVs: Record<string, string[]>): {
+  key: string
+  value: string
 } {
-  const labels: { [key: string]: string[] } = {}
-  const numLabels = Math.floor(Math.random() * 4)
-  for (let i = 0; i < numLabels; i += 1) {
-    const label = selectRandomElements(Object.keys(jobLabels))[0]
-    labels[label] = selectRandomElements(jobLabels[label]) as string[]
-  }
-  return labels
+  const keys = Object.keys(allKVs)
+  const key: string = keys[Math.floor(Math.random() * keys.length)]
+  const value: string = selectRandomElements(allKVs[key], 1)[0]
+  return { key, value }
 }
-
-export function selectRandomElements(
-  allTypes: string[],
-  num = 1
-): string[] {
+export function selectRandomElements(allTypes: string[], num = 1): string[] {
   if (num === 1) {
     return [allTypes[Math.floor(Math.random() * allTypes.length)]]
   }

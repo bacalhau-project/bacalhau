@@ -26,7 +26,7 @@ export interface Job {
     [key: string]: string // Assuming all values in Meta are strings
   }
   Labels: { [key: string]: string } // Assuming all values in Labels are strings
-  Tasks: Tasks[]
+  Tasks: Task[]
   State: {
     StateType: string
     Message: string
@@ -37,7 +37,7 @@ export interface Job {
   ModifyTime: number
 }
 
-export interface Tasks {
+export interface Task {
   Name: string
   Engine: Engine
   Publisher: {
@@ -80,7 +80,7 @@ export interface ParsedJobData {
   longId: string
   name: string
   createdAt: Date
-  tasks: Tasks
+  tasks: Task
   jobType: string
   label: string[]
   status: string

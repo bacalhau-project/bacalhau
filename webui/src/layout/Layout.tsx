@@ -22,7 +22,9 @@ export const Layout: React.FC<LayoutProps> = ({ pageTitle, children }) => {
         }`}
       >
         <Header pageTitle={pageTitle} collapsed={!isSidebarCollapsed} />
-        <main>{children}</main>
+        <main role="main" id="main">
+          {children}
+        </main>
       </div>
     </div>
   )
