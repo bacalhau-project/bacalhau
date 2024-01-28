@@ -6,8 +6,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
