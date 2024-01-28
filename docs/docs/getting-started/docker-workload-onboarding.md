@@ -71,7 +71,7 @@ If you haven't already, you'll need to [build your image](https://docs.docker.co
 
 :::caution
 
-Most Bacalhau nodes are of an `x86_64` architecture, therefore containers should be built for [`x86_64` systems](#what-containers-to-use).
+Most Bacalhau nodes are of an `x86_64` architecture, therefore containers should be built for `x86_64` systems.
 
 :::
 
