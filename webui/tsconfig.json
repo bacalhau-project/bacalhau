@@ -38,5 +38,6 @@
     "./tests/**/*.ts",
     "./tests/**/*.tsx",
     "tests/mocks/svgMock.js",
-    "src/setupTests.ts"  ]
+    "src/setupTests.ts"
+  ]
 }
