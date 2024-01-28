@@ -236,12 +236,12 @@ jobs:
 
   build_webui:
     executor: node/default
+    working_directory: ~/repo/webui
     steps:
     - checkout
-    - node/install-packages:
-        app-dir: webui
+    - node/run:
+        yarn-run: build
     - run:
-        working_directory: webui
         environment:
           GENERATE_SOURCEMAP: "false"
         command: yarn run build
