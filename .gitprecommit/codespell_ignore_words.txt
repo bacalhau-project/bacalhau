@@ -273,7 +273,6 @@ stackdriver
 stretchr
 Strs
 struct
-svgr
 swarmenv
 swipl
 testdata
@@ -308,7 +307,6 @@ wasmmodels
 wazero
 wdbaruni's
 webui
-wesbos
 winderresearch
 workdir
 Wrapf

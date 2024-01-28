@@ -14,6 +14,8 @@
     "@jest/globals": "^29.7.0",
     "@jridgewell/sourcemap-codec": "^1.4.15",
     "@rollup/plugin-terser": "^0.4.4",
+    "@storybook/react": "^7.6.10",
+    "@storybook/test": "^7.6.10",
     "@testing-library/jest-dom": "^6.2.0",
     "@testing-library/react": "^14.1.2",
     "@types/node": "^20.11.6",
@@ -21,7 +23,8 @@
     "babel-preset-react": "^6.24.1",
     "eslint-config-wesbos": "^4.0.1",
     "moment": "^2.29.4",
-    "msw": "^2.1.5",
+    "msw": "^2.1.4",
+    "or": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
@@ -31,7 +34,7 @@
     "react-scripts": "^5.0.1",
     "react-svg": "^16.1.32",
     "sass": "^1.69.5",
-    "typescript": "^5.3.3",
+    "svgo": "^3.2.0",
     "undici": "^5.28.2",
     "uuid": "^9.0.1",
     "web-vitals": "^2.1.4",
@@ -47,6 +50,11 @@
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\""
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:storybook/recommended"
+    ]
   },
   "browserslist": {
     "production": [
@@ -65,9 +73,8 @@
     "@babel/preset-env": "^7.23.8",
     "@babel/preset-react": "^7.23.3",
     "@babel/preset-typescript": "^7.23.3",
-    "@svgr/webpack": "^8.1.0",
-    "@testing-library/dom": "^9.3.4",
-    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/dom": "^9.3.3",
+    "@testing-library/user-event": "^14.5.1",
     "@types/jest": "^29.5.11",
     "@types/uuid": "^9.0.7",
     "babel-cli": "^6.26.0",
@@ -84,16 +91,14 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-watch-select-projects": "^2.0.0",
     "jest-watch-typeahead": "^2.2.2",
-    "prettier": "^3.2.4",
+    "prettier": "^3.1.1",
     "prop-types": "^15.8.1",
-    "storybook": "^7.6.10",
-    "ts-jest": "^29.1.2",
-    "webpack": "^5.90.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^4.9.5",
+    "webpack": "^5.89.0",
     "wesbos": "^1.0.1"
   },
   "msw": {
     "workerDirectory": "public"
-  },
-  "license": "MIT",
-  "packageManager": "yarn@4.0.2"
+  }
 }

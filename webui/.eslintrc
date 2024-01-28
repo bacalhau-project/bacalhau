@@ -70,8 +70,6 @@
     "jest.polyfills.js",
     "jest.setup.js",
     "build/",
-    "public/mockServiceWorker.js",
-    "config/env.js",
-    "tests/mocks/svgMock.js"
+    "public/mockServiceWorker.js"
   ]
 }
