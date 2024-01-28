@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -95,8 +95,8 @@ func newAutoResourceCmd() *cobra.Command {
 		Use:      "auto-resources [flags]",
 		Short:    "Auto set compute resources values in the config.",
 		Args:     cobra.MinimumNArgs(0),
-		PreRunE:  util.ClientPreRunHooks,
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.ClientPreRunHooks,
+		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := settings.validate(); err != nil {
 				return err

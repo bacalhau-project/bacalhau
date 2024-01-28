@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,23 +21,23 @@ type FeatureNodeRankerSuite struct {
 func (s *FeatureNodeRankerSuite) Nodes() []models.NodeInfo {
 	return []models.NodeInfo{
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("docker")},
+			NodeID:          "docker",
 			ComputeNodeInfo: &models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineDocker}},
 		},
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("wasm")},
+			NodeID:          "wasm",
 			ComputeNodeInfo: &models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineWasm}},
 		},
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("ipfs")},
+			NodeID:          "ipfs",
 			ComputeNodeInfo: &models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceIPFS}},
 		},
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("url")},
+			NodeID:          "url",
 			ComputeNodeInfo: &models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceURL}},
 		},
 		{
-			PeerInfo: peer.AddrInfo{ID: peer.ID("combo")},
+			NodeID: "combo",
 			ComputeNodeInfo: &models.ComputeNodeInfo{
 				ExecutionEngines: []string{models.EngineDocker, models.EngineWasm},
 				Publishers:       []string{models.PublisherIPFS, models.PublisherS3},
@@ -46,7 +45,7 @@ func (s *FeatureNodeRankerSuite) Nodes() []models.NodeInfo {
 			},
 		},
 		{
-			PeerInfo: peer.AddrInfo{ID: peer.ID("unknown")},
+			NodeID: "unknown",
 		},
 	}
 }

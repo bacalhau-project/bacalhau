@@ -19,7 +19,7 @@ type BaseEndpointParams struct {
 	UsageCalculator capacity.UsageCalculator
 	Bidder          Bidder
 	Executor        Executor
-	LogServer       logstream.LogStreamServer
+	LogServer       *logstream.LogStreamServer
 }
 
 // Base implementation of Endpoint
@@ -29,7 +29,7 @@ type BaseEndpoint struct {
 	usageCalculator capacity.UsageCalculator
 	bidder          Bidder
 	executor        Executor
-	logServer       logstream.LogStreamServer
+	logServer       *logstream.LogStreamServer
 }
 
 func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
@@ -142,6 +142,10 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 
 func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (ExecutionLogsResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("processing log request for %s", request.ExecutionID)
+	// TODO: remove this once we support log streaming with nats
+	if s.logServer == nil {
+		return ExecutionLogsResponse{}, fmt.Errorf("log server not configured")
+	}
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return ExecutionLogsResponse{}, err

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -34,7 +34,7 @@ func (s *APIServerTestSuite) SetupTest() {
 			WithRequestHandlerTimeout(testTimeout),
 			WithMaxBytesToReadInBody(testMaxBytesToReadInBody),
 		),
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.AlwaysAllow,
 	}
 	var err error
 	s.server, err = NewAPIServer(params)

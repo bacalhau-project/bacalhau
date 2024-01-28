@@ -1,38 +1,34 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.2.0
-    hooks:
-      - id: check-merge-conflict
-      - id: detect-aws-credentials
-        args: [--allow-missing-credentials]
-      - id: detect-private-key
-      - id: check-yaml
-      - id: check-json
-  - repo: local
-    hooks:
-      - id: extra-credential-checking
-        name: Extra Credential Checking
-        entry: .gitprecommit/aws_key_checker.sh
-        language: script
-      - id: go-vet
-        name: go vet
-        entry: .gitprecommit/go_vet.sh
-        language: script
-      - id: go-fmt
-        name: go fmt
-        entry: .gitprecommit/go_fmt.sh
-        language: script
-      - id: golangci-lint
-        name: golangci-lint --fix
-        entry: .gitprecommit/golangci-lint.sh
-        language: script
-      - id: go-mod-tidy-check
-        name: make modtidy check-diff
-        entry: .gitprecommit/go_mod_tidy_check.sh
-        language: script
-      - id: "go-test-build-header"
-        name: "Go test '//go:build' header present"
-        entry: ".gitprecommit/go_test_build_header.sh"
-        language: "script"
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v3.2.0
+  hooks:
+  - id: check-merge-conflict
+  - id: detect-aws-credentials
+    args: [--allow-missing-credentials]
+  - id: detect-private-key
+  - id: check-yaml
+  - id: check-json
+- repo: local
+  hooks:
+  - id: extra-credential-checking
+    name: Extra Credential Checking
+    entry: .gitprecommit/aws_key_checker.sh
+    language: script
+  - id: go-fmt
+    name: go fmt
+    entry: .gitprecommit/go_fmt.sh
+    language: script
+  - id: golangci-lint
+    name: golangci-lint --fix
+    entry: .gitprecommit/golangci-lint.sh
+    language: script
+  - id: go-mod-tidy-check
+    name: make modtidy check-diff
+    entry: .gitprecommit/go_mod_tidy_check.sh
+    language: script
+  - id: "go-test-build-header"
+    name: "Go test '//go:build' header present"
+    entry: ".gitprecommit/go_test_build_header.sh"
+    language: "script"

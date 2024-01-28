@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
@@ -72,9 +73,10 @@ func NewWasmOptions() *WasmRunOptions {
 
 func NewCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
-		Use:               "wasm",
-		Short:             "Run and prepare WASM jobs on the network",
-		PersistentPreRunE: util.AfterParentPreRunHook(util.CheckVersion),
+		Use:                "wasm",
+		Short:              "Run and prepare WASM jobs on the network",
+		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
+		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
 
 	wasmCmd.AddCommand(
@@ -98,8 +100,8 @@ func newRunCmd() *cobra.Command {
 		Long:     wasmRunLong,
 		Example:  wasmRunExample,
 		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  util.Chain(util.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
+		PostRunE: hook.ClientPostRunHooks,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
 				util.Fatal(cmd, err, 1)

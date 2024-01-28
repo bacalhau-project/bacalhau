@@ -5,34 +5,33 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
+	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
-
-const JobInfoTopic = "bacalhau-job-info"
-const NodeInfoTopic = "bacalhau-node-info"
 
 type FeatureConfig struct {
 	Engines    []string
@@ -42,9 +41,9 @@ type FeatureConfig struct {
 
 // Node configuration
 type NodeConfig struct {
+	NodeID                      string
 	IPFSClient                  ipfs.Client
 	CleanupManager              *system.CleanupManager
-	Host                        host.Host
 	HostAddress                 string
 	APIPort                     uint16
 	RequesterAutoCert           string
@@ -55,6 +54,7 @@ type NodeConfig struct {
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
+	AuthConfig                  types.AuthConfig
 	IsRequesterNode             bool
 	IsComputeNode               bool
 	Labels                      map[string]string
@@ -63,7 +63,15 @@ type NodeConfig struct {
 	AllowListedLocalPaths       []string
 	NodeInfoStoreTTL            time.Duration
 
-	FsRepo *repo.FsRepo
+	FsRepo        *repo.FsRepo
+	NetworkConfig NetworkConfig
+}
+
+func (c *NodeConfig) Validate() error {
+	// TODO: add more validations
+	var mErr *multierror.Error
+	mErr = multierror.Append(mErr, c.NetworkConfig.Validate())
+	return mErr.ErrorOrNil()
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -72,6 +80,7 @@ type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
+	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
 func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
@@ -79,6 +88,7 @@ func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewPluginExecutorFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
@@ -87,18 +97,20 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
 	}
 }
 
 type Node struct {
 	// Visible for testing
+	ID             string
 	APIServer      *publicapi.Server
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	NodeInfoStore  routing.NodeInfoStore
 	CleanupManager *system.CleanupManager
 	IPFSClient     ipfs.Client
-	Host           host.Host
+	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -109,19 +121,27 @@ func (n *Node) Start(ctx context.Context) error {
 func NewNode(
 	ctx context.Context,
 	config NodeConfig) (*Node, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/node.NewNode")
-	defer span.End()
-
-	identify.ActivationThresh = 2
+	var err error
+	ctx, cancel := context.WithCancel(ctx)
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
 
 	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
-	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
+	err = mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
 		return nil, err
 	}
 	// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
 	if system.GetEnvironment() == system.EnvironmentTest || system.GetEnvironment() == system.EnvironmentDev {
 		config.APIServerConfig.LogLevel = "trace"
+	}
+
+	err = config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("error validating node config. %w", err)
 	}
 
 	storageProviders, err := config.DependencyInjector.StorageProvidersFactory.Get(ctx, config)
@@ -139,45 +159,7 @@ func NewNode(
 		return nil, err
 	}
 
-	// A single gossipSub instance that will be used by all topics
-	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
-	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
-	defer func() {
-		if err != nil {
-			gossipSubCancel()
-		}
-	}()
-
-	if err != nil {
-		return nil, err
-	}
-
-	// PubSub to publish node info to the network
-	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeInfo](libp2p.PubSubParams{
-		Host:      config.Host,
-		TopicName: NodeInfoTopic,
-		PubSub:    gossipSub,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// node info publisher
-	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval.IsZero() {
-		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
-	}
-
-	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
-	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: config.NodeInfoStoreTTL,
-	})
-	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
-
-	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
-	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
+	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -188,14 +170,27 @@ func NewNode(
 		"/api/v1/requester/logs",
 	}...)
 
+	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
 		Router:     echo.New(),
 		Address:    config.HostAddress,
 		Port:       config.APIPort,
-		HostID:     config.Host.ID().String(),
+		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: auth.AlwaysAllow,
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy),
+		Headers: map[string]string{
+			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		},
 	}
 
 	// Only allow autocert for requester nodes
@@ -211,27 +206,67 @@ func NewNode(
 		return nil, err
 	}
 
+	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
+	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
+		TTL: config.NodeInfoStoreTTL,
+	})
+
+	var transportLayer transport.TransportLayer
+
+	if config.NetworkConfig.Type == models.NetworkTypeNATS {
+		natsConfig := nats_transport.NATSTransportConfig{
+			NodeID:                   config.NodeID,
+			Port:                     config.NetworkConfig.Port,
+			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
+			Orchestrators:            config.NetworkConfig.Orchestrators,
+			ClusterName:              config.NetworkConfig.ClusterName,
+			ClusterPort:              config.NetworkConfig.ClusterPort,
+			ClusterPeers:             config.NetworkConfig.ClusterPeers,
+			ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
+			IsRequesterNode:          config.IsRequesterNode,
+		}
+		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig, nodeInfoStore)
+	} else {
+		libp2pConfig := libp2p_transport.Libp2pTransportConfig{
+			Host:           config.NetworkConfig.Libp2pHost,
+			Peers:          config.NetworkConfig.ClusterPeers,
+			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
+			CleanupManager: config.CleanupManager,
+		}
+		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, nodeInfoStore)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
+
 	var requesterNode *Requester
 	var computeNode *Compute
-
-	var computeInfoProvider models.ComputeNodeInfoProvider
 	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
 
 	// setup requester node
 	if config.IsRequesterNode {
 		requesterNode, err = NewRequesterNode(
 			ctx,
-			routedHost,
+			config.NodeID,
 			apiServer,
 			config.RequesterNodeConfig,
 			storageProviders,
+			authenticators,
 			nodeInfoStore,
-			gossipSub,
 			config.FsRepo,
+			transportLayer.ComputeProxy(),
 		)
 		if err != nil {
 			return nil, err
 		}
+		err = transportLayer.RegisterComputeCallback(requesterNode.localCallback)
+		if err != nil {
+			return nil, err
+		}
+		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
 	if config.IsComputeNode {
@@ -240,8 +275,9 @@ func NewNode(
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
+			config.NodeID,
 			config.CleanupManager,
-			routedHost,
+			config.NetworkConfig.Libp2pHost,
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
@@ -249,47 +285,56 @@ func NewNode(
 			executors,
 			publishers,
 			config.FsRepo,
+			transportLayer.CallbackProxy(),
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		computeInfoProvider = computeNode.computeInfoProvider
+		err = transportLayer.RegisterComputeEndpoint(computeNode.LocalEndpoint)
+		if err != nil {
+			return nil, err
+		}
+
 		labelsProvider = models.MergeLabelsInOrder(
 			computeNode.autoLabelsProvider,
 			labelsProvider,
 		)
+		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
-	// node info provider
-	basicHost, ok := config.Host.(*basichost.BasicHost)
-	if !ok {
-		return nil, fmt.Errorf("host is not a basic host")
-	}
 	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		Host:                basicHost,
-		IdentityService:     basicHost.IDService(),
-		LabelsProvider:      labelsProvider,
-		ComputeInfoProvider: computeInfoProvider,
-		BacalhauVersion:     *version.Get(),
+		NodeID:          config.NodeID,
+		LabelsProvider:  labelsProvider,
+		BacalhauVersion: *version.Get(),
 	})
+	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
+	if computeNode != nil {
+		nodeInfoProvider.RegisterNodeInfoDecorator(computeNode.nodeInfoDecorator)
+	}
 
 	shared.NewEndpoint(shared.EndpointParams{
 		Router:           apiServer.Router,
-		NodeID:           config.Host.ID().String(),
-		PeerStore:        config.Host.Peerstore(),
+		NodeID:           config.NodeID,
 		NodeInfoProvider: nodeInfoProvider,
 	})
 
 	agent.NewEndpoint(agent.EndpointParams{
-		Router:           apiServer.Router,
-		NodeInfoProvider: nodeInfoProvider,
+		Router:             apiServer.Router,
+		NodeInfoProvider:   nodeInfoProvider,
+		DebugInfoProviders: debugInfoProviders,
 	})
+
+	// node info publisher
+	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
+	if nodeInfoPublisherInterval.IsZero() {
+		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
+	}
 
 	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           nodeInfoPubSub,
+		PubSub:           transportLayer.NodeInfoPubSub(),
 		NodeInfoProvider: nodeInfoProvider,
 		IntervalConfig:   nodeInfoPublisherInterval,
 	})
@@ -315,31 +360,32 @@ func NewNode(
 			requesterNode.cleanup(ctx)
 		}
 		nodeInfoPublisher.Stop(ctx)
-		cleanupErr := nodeInfoPubSub.Close(ctx)
-		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
-		gossipSubCancel()
 
-		cleanupErr = config.Host.Close()
-		util.LogDebugIfContextCancelled(ctx, cleanupErr, "host")
-
-		cleanupErr = apiServer.Shutdown(ctx)
-		return cleanupErr
+		var errors *multierror.Error
+		errors = multierror.Append(errors, transportLayer.Close(ctx))
+		errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+		cancel()
+		return errors.ErrorOrNil()
 	})
 
-	if requesterNode != nil && computeNode != nil {
-		// To enable nodes self-dialing themselves as libp2p doesn't support it.
-		computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
-		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
-	}
-
+	metrics.NodeInfo.Add(ctx, 1,
+		attribute.String("node_id", config.NodeID),
+		attribute.String("node_network_transport", config.NetworkConfig.Type),
+		attribute.Bool("node_is_compute", config.IsComputeNode),
+		attribute.Bool("node_is_requester", config.IsRequesterNode),
+		attribute.StringSlice("node_engines", executors.Keys(ctx)),
+		attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
+		attribute.StringSlice("node_storages", storageProviders.Keys(ctx)),
+	)
 	node := &Node{
+		ID:             config.NodeID,
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
 		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
 		NodeInfoStore:  nodeInfoStore,
-		Host:           routedHost,
+		Libp2pHost:     config.NetworkConfig.Libp2pHost,
 	}
 
 	return node, nil
@@ -355,27 +401,6 @@ func (n *Node) IsComputeNode() bool {
 	return n.ComputeNode != nil
 }
 
-func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
-	if err != nil {
-		return nil, err
-	}
-
-	pgParams := libp2p_pubsub.NewPeerGaterParams(
-		0.33, //nolint:gomnd
-		libp2p_pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
-		libp2p_pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
-	)
-
-	return libp2p_pubsub.NewGossipSub(
-		ctx,
-		nodeConfig.Host,
-		libp2p_pubsub.WithPeerExchange(true),
-		libp2p_pubsub.WithPeerGater(pgParams),
-		libp2p_pubsub.WithEventTracer(tracer),
-	)
-}
-
 func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector NodeDependencyInjector) NodeDependencyInjector {
 	if injector.StorageProvidersFactory == nil {
 		injector.StorageProvidersFactory = defaultInjector.StorageProvidersFactory
@@ -385,6 +410,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	if injector.AuthenticatorsFactory == nil {
+		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
 	}
 	return injector
 }

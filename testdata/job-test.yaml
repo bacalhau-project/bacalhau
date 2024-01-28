@@ -2,23 +2,23 @@
 APIVersion: v1beta1
 Engine: Docker
 Verifier: Noop
-Publisher: Estuary
+Publisher: IPFS
 JobSpecDocker:
   # docker image you want to use
   Image: ubuntu
   Entrypoint:
-    # Command to run inside the container
-    - /bin/bash
-    - -c
-    - echo "hello"
+  # Command to run inside the container
+  - /bin/bash
+  - -c
+  - echo "hello"
   EnvironmentVariables: []
 # if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
 inputs: []
 Contexts: []
 outputs:
-  - StorageEngine: IPFS
-    # default output volume is outputs
-    Name: outputs
-    CID: ""
-    URL: ""
-    path: /outputs
+- StorageEngine: IPFS
+  # default output volume is outputs
+  Name: outputs
+  CID: ""
+  URL: ""
+  path: /outputs

@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -20,6 +21,13 @@ var Testing = types.BacalhauConfig{
 	Update: types.UpdateConfig{
 		SkipChecks: true,
 	},
+	Auth: types.AuthConfig{
+		Methods: map[string]types.AuthenticatorConfig{
+			"ClientKey": {
+				Type: authn.MethodTypeChallenge,
+			},
+		},
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "test",
@@ -30,6 +38,14 @@ var Testing = types.BacalhauConfig{
 			Port: 9999,
 			TLS:  types.TLSConfiguration{},
 		},
+		Network: types.NetworkConfig{
+			Type: models.NetworkTypeLibp2p,
+			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
+		},
 		BootstrapAddresses: []string{
 			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 		},
@@ -39,7 +55,6 @@ var Testing = types.BacalhauConfig{
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
-		EstuaryAPIKey:             "",
 		AllowListedLocalPaths:     []string{},
 		Labels:                    map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
@@ -68,6 +83,7 @@ var Testing = types.BacalhauConfig{
 			Enabled: false,
 			Port:    8483,
 		},
+		StrictVersionMatch: false,
 	},
 }
 
@@ -120,6 +136,11 @@ var TestingComputeConfig = types.ComputeConfig{
 	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
+	},
+	ManifestCache: types.DockerCacheConfig{
+		Size:      1000,
+		Duration:  types.Duration(1 * time.Hour),
+		Frequency: types.Duration(1 * time.Hour),
 	},
 }
 

@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -24,7 +23,6 @@ import (
 
 type BaseEndpointParams struct {
 	ID                         string
-	PublicKey                  []byte
 	EvaluationBroker           orchestrator.EvaluationBroker
 	Store                      jobstore.Store
 	EventEmitter               orchestrator.EventEmitter
@@ -48,7 +46,7 @@ type BaseEndpoint struct {
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
-		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
+		jobtransform.NewRequesterInfo(params.ID),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(),
 		jobtransform.NewEngineMigrator(),
@@ -128,6 +126,8 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 			return nil, err
 		}
 	}
+
+	JobsSubmitted.Inc(ctx, job.MetricAttributes()...)
 
 	err = e.store.CreateJob(ctx, *job)
 	if err != nil {

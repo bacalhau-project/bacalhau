@@ -9,11 +9,11 @@ executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: xlarge
   linux-arm64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: arm.xlarge
   darwin-amd64:
     macos:
@@ -181,21 +181,21 @@ jobs:
     parallelism: 1
     executor: linux-amd64
     steps:
-      - checkout
-      - install_python
-      - run:
-          working_directory: integration/airflow
-          command: make setup test-all
+    - checkout
+    - install_python
+    - run:
+        working_directory: integration/airflow
+        command: make setup test-all
 
   test-python-flyte:
     parallelism: 1
     executor: linux-amd64
     steps:
-      - checkout
-      - install_python
-      - run:
-          working_directory: integration/flyte
-          command: make setup test
+    - checkout
+    - install_python
+    - run:
+        working_directory: integration/flyte
+        command: make setup test
 
   build:
     parallelism: 1
@@ -237,19 +237,19 @@ jobs:
   build_webui:
     executor: node/default
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: webui
-      - run:
-          working_directory: webui
-          environment:
-            GENERATE_SOURCEMAP: "false"
-          command: npm run build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - "webui/build/*"
-            - "webui/node_modules/*"
+    - checkout
+    - node/install-packages:
+        app-dir: webui
+    - run:
+        working_directory: webui
+        environment:
+          GENERATE_SOURCEMAP: "false"
+        command: npm run build
+    - persist_to_workspace:
+        root: .
+        paths:
+        - "webui/build/*"
+        - "webui/node_modules/*"
 
   build_canary:
     parallelism: 1
@@ -311,53 +311,6 @@ jobs:
     - store_artifacts:
         path: coverage/coverage.html
 
-  lint:
-    parallelism: 1
-    environment:
-      GOLANGCILINT: v1.51.2
-      GOPROXY: https://proxy.golang.org
-    working_directory: ~/repo
-    executor: linux-amd64
-    steps:
-    - checkout
-
-    - run:
-        name: Init tools
-        command: |
-          make init
-
-    - install_go:
-        executor: linux-amd64
-
-    - run:
-        name: Install golangci-lint
-        command: |
-          echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-          # binary will be /usr/local/go/bin/bin/golangci-lint
-          # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-          # This breaks normal pathing. So just installing in ./bin/
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-          golangci-lint version
-
-    - run:
-        name: Install Pre-commit
-        command: |
-          make install-pre-commit
-
-    - run:
-        name: Cache Precommit
-        command: |
-          cp .pre-commit-config.yaml pre-commit-cache-key.txt
-          poetry run python --version --version >> pre-commit-cache-key.txt
-
-    - restore_cache:
-        name: Restoring pre-commit cache
-        key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
-
-    - run:
-        name: Run linter
-        command: |
-          make precommit
 
   release:
     executor: linux-amd64
@@ -400,7 +353,7 @@ jobs:
         command: |
           make release-python-apiclient
     - run:
-        name: Install Python SDK pre-requistes
+        name: Install Python SDK pre-requisites
         command: |
           curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
           echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
@@ -423,7 +376,6 @@ jobs:
     executor: linux-amd64
     environment:
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -434,21 +386,21 @@ jobs:
     - install_go:
         executor: linux-amd64
     - run:
-        name: Install Swagger
+        name: Build Swagger
         command: |
           export GOBIN=${HOME}/bin
           export PATH=$GOBIN:$PATH
-          go install github.com/swaggo/swag/cmd/swag@v1.8.10
-    - run:
-        name: Build Swagger Docs
-        command: |
-          export GOBIN=${HOME}/bin
-          export PATH=$GOBIN:$PATH
-          make swagger-docs
+          go install golang.org/x/tools/cmd/stringer
+          go install go.uber.org/mock/gomock
+          go install github.com/golang/mock/mockgen
+          go install github.com/swaggo/swag/cmd/swag@latest
+          make generate
+
     - persist_to_workspace:
-        root: docs
+        root: .
         paths:
-        - swagger.json
+        - pkg/swagger/docs.go
+        - webui/public/swagger/swagger.json
 
     - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
         condition:
@@ -485,6 +437,7 @@ jobs:
                 gh pr merge --auto --delete-branch -r $PR_URL
               fi
 
+
   docker:
     executor: linux-amd64
     steps:
@@ -520,13 +473,13 @@ jobs:
     steps:
     - checkout
     - attach_workspace:
-        at: /tmp/swagger_spec
+        at: /tmp/swagger_spec/
     - run:
         name: Copy swagger.json from workspace
         command: |
-          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+          cp   /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
     - run:
-        name: Install Python API client pre-requistes
+        name: Install Python API client pre-requisites
         command: |
           CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
           wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
@@ -542,7 +495,7 @@ jobs:
         - bacalhau_apiclient-*.tar.gz
         - bacalhau_apiclient-*.whl
     - run:
-        name: Install Python SDK pre-requistes
+        name: Install Python SDK pre-requisites
         command: |
           curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
           echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
@@ -558,7 +511,7 @@ jobs:
         - bacalhau_sdk-*.tar.gz
         - bacalhau_sdk-*.whl
     - run:
-        name: Install bacalhau-airflow pre-requistes
+        name: Install bacalhau-airflow pre-requisites
         command: |
           cd integration/airflow
           pip3 install -r dev-requirements.txt
@@ -567,7 +520,7 @@ jobs:
         command: |
           make build-bacalhau-airflow
     - run:
-        name: Install Flyte plugin pre-requistes
+        name: Install Flyte plugin pre-requisites
         command: |
           cd integration/flyte
           # installs flytekit, flyteidl and deps.
@@ -586,14 +539,6 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  lint:
-    jobs:
-    - lint:
-        name: Run linters and static checkers
-        filters:
-          tags:
-            ignore: /.*/
-
   check_canary:
     jobs:
     - build_canary:
@@ -609,19 +554,19 @@ workflows:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
         requires:
-          - build_webui
+        - build_webui
         matrix:
           parameters:
             target_os: ["linux", "darwin", "windows"]
             target_arch: ["amd64", "arm64"]
             build_tags: ["unit", "integration"]
           exclude:
-            - target_os: windows
-              target_arch: arm64
-              build_tags: unit
-            - target_os: windows
-              target_arch: arm64
-              build_tags: integration
+          - target_os: windows
+            target_arch: arm64
+            build_tags: unit
+          - target_os: windows
+            target_arch: arm64
+            build_tags: integration
     - test-python-sdk
     - test-python-airflow
     - test-python-flyte
@@ -653,7 +598,7 @@ workflows:
         filters: &build_on_release_only
           branches:
             ignore: /.*/ # don't run on any branches - only tags
-          <<: *build_on_branch_and_tag_push
+          !!merge <<: *build_on_branch_and_tag_push
 
   build:
     jobs:
