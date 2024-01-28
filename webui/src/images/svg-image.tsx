@@ -13,15 +13,29 @@
 
 // Reusable SVG rendering component below:
 import React from "react"
+import { ReactSVG } from "react-svg"
 
-interface SVGImageProps {
+export interface SVGImageProps {
   src: string
   alt: string
+  svgClassName?: string
+  wrapperClassName?: string
 }
 
-export const SVGImage: React.FC<SVGImageProps> = ({ src, alt }) => (
-  // use alt prop to set aria-label
-  <svg role="img" aria-label={alt}>
-    <image href={src} />
-  </svg>
+export const SVGImage: React.FC<SVGImageProps> = ({
+  src,
+  alt,
+  svgClassName,
+  wrapperClassName,
+}) => (
+  <ReactSVG
+    role="img"
+    aria-label={alt}
+    src={src}
+    className={wrapperClassName}
+    beforeInjection={(svg) => {
+      svg.classList.add(svgClassName || "")
+    }}
+    wrapper="div"
+  />
 )
