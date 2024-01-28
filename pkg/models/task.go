@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 type Task struct {
@@ -36,6 +38,14 @@ type Task struct {
 	Network *NetworkConfig `json:"Network,omitempty"`
 
 	Timeouts *TimeoutConfig `json:"Timeouts,omitempty"`
+}
+
+func (t *Task) MetricAttributes() []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("task_engine", t.Engine.Type),
+		attribute.String("task_publisher", t.Publisher.Type),
+		attribute.String("task_network", t.Network.Type.String()),
+	}
 }
 
 func (t *Task) Normalize() {
