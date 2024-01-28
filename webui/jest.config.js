@@ -13,8 +13,8 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testPathIgnorePatterns: [
-  "<rootDir>/tests/mocks",
-  "<rootDir>/tests/setupTests.ts",
+    "<rootDir>/tests/mocks",
+    "<rootDir>/tests/setupTests.ts",
   ],
   moduleNameMapper: {
     "^@pages/(.*)$": "<rootDir>/src/pages/$1",
