@@ -34,7 +34,11 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         onClick={handleClick}
         type="button"
       >
-        <SVGImage src="../../images/view-icon.svg" alt="View More Details" className={styles.viewIcon} />
+        <SVGImage
+          src="/images/view-icon.svg"
+          alt="View More Details"
+          svgClassName={styles.viewIcon}
+        />
         {text}
       </button>
     </div>

@@ -11,9 +11,21 @@ interface ProgramSummaryProps {
 const getImageSource = (type: string) => {
   switch (type) {
     case "docker":
-      return <SVGImage src="../../images/docker.svg" alt="Docker" className={styles.icon} />
+      return (
+        <SVGImage
+          src="../../images/docker.svg"
+          alt="Docker"
+          svgClassName={styles.icon}
+        />
+      )
     default:
-      return <SVGImage src="../../images/cogwheel.svg" alt="Settings" className={styles.icon} />
+      return (
+        <SVGImage
+          src="../../images/cogwheel.svg"
+          alt="Settings"
+          svgClassName={styles.icon}
+        />
+      )
   }
 }
 
