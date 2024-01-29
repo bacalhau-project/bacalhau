@@ -254,10 +254,10 @@ jobs:
     working_directory: ~/repo/bacalhau
     steps:
       - checkout
+      - restore_cache:
+          key: webui-{{ checksum "webui/yarn.lock" }}
       - run:
           working_directory: webui
-          command: yarn build
-      - run:
           environment:
             GENERATE_SOURCEMAP: "false"
           command: yarn run build
@@ -266,6 +266,10 @@ jobs:
           paths:
             - "webui/build/*"
             - "webui/node_modules/*"
+      - save_cache:
+          key: webui-{{ checksum "webui/yarn.lock" }}
+          paths:
+            - "webui/node_modules"
 
   build_canary:
     parallelism: 4
