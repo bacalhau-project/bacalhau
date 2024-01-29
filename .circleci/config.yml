@@ -270,7 +270,7 @@ jobs:
           root: .
           paths:
             - "webui/build/*"
-            - "webui/node_modules/*"
+            - ".yarn/cache"
       - save_cache:
           name: Save Yarn Package Cache
           key: yarn-packages-{{ checksum "yarn.lock" }}
