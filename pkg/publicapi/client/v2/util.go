@@ -13,6 +13,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -31,6 +32,7 @@ func encodeBody(obj interface{}) (io.Reader, error) {
 	if err := enc.Encode(obj); err != nil {
 		return nil, err
 	}
+	fmt.Println("Encoded HTTP Body: ", buf.String())
 	return buf, nil
 }
 
