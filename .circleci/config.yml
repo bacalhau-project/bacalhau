@@ -249,6 +249,7 @@ jobs:
           path: dist/
 
   build_webui:
+    parallelism: 4
     executor: node/default
     working_directory: ~/repo/bacalhau
     steps:
@@ -267,7 +268,7 @@ jobs:
             - "webui/node_modules/*"
 
   build_canary:
-    parallelism: 1
+    parallelism: 4
     environment:
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
@@ -306,6 +307,7 @@ jobs:
           path: ops/aws/canary/lambda/tests.xml
 
   coverage:
+    parallelism: 4
     executor: linux-amd64
     environment:
       GOPROXY: https://proxy.golang.org
@@ -327,6 +329,7 @@ jobs:
           path: coverage/coverage.html
 
   release:
+    parallelism: 4
     executor: linux-amd64
     steps:
       - checkout
@@ -347,6 +350,7 @@ jobs:
             gh release upload $TAG dist/bacalhau_$TAG_*
 
   release_python:
+    parallelism: 4
     executor: linux-amd64
     working_directory: ~/repo
     steps:
@@ -387,6 +391,7 @@ jobs:
             make release-bacalhau-flyte
 
   build_swagger:
+    parallelism: 4
     executor: linux-amd64
     environment:
       GOPROXY: https://proxy.golang.org
@@ -452,6 +457,7 @@ jobs:
                   fi
 
   docker:
+    parallelism: 4
     executor: linux-amd64
     steps:
       - checkout
@@ -478,6 +484,7 @@ jobs:
             - run: make push-bacalhau-image
 
   build_python_packages:
+    parallelism: 4
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
@@ -560,7 +567,7 @@ workflows:
             tags:
               ignore: /.*/
 
-  test:
+  test_workflow:
     jobs:
       - build_webui
       - test:
@@ -612,7 +619,7 @@ workflows:
               ignore: /.*/ # don't run on any branches - only tags
             !!merge <<: *build_on_branch_and_tag_push
 
-  build:
+  build_workflow:
     jobs:
       - build_webui:
           filters: *build_on_branch_and_tag_push
