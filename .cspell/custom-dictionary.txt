@@ -1,3 +1,4 @@
+# Custom Dictionary Words
 abcdefghi
 Acked
 acks
@@ -267,6 +268,7 @@ sdkmetric
 sdktrace
 sharded
 shellescape
+skippable
 softmax
 sparkoperator
 stackdriver
@@ -308,6 +310,7 @@ wazero
 wdbaruni's
 webui
 wesbos
+whyayen
 winderresearch
 workdir
 Wrapf

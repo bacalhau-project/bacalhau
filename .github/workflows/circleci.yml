@@ -1,0 +1,25 @@
+name: CircleCI Trigger Action
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-circle-ci:
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
+      !contains(github.event.pull_request.labels.*.name, 'wip')
+    runs-on: ubuntu-latest
+    name: Pull Request Triggered CircleCI
+    steps:
+    - uses: LedgerHQ/actions/gh-context@main
+    - uses: actions/checkout@v3
+    - name: Trigger CircleCI
+      id: trigger-circle-ci
+      run: |
+        ./.circleci/trigger_pipeline.sh
+      env:
+        CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
+        BRANCH: ${{ github.event.pull_request.head.ref }}
+
