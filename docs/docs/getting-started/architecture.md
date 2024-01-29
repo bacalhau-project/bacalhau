@@ -47,7 +47,6 @@ The interface handles the distribution, execution, storage and publishing of job
 - [Transport](#transport)
 - [Executor](#executor)
 - [Storage Provider](#storage-provider)
-- [Verifier](#verifier)
 - [Publisher](#publisher)
 
 ### Transport
@@ -56,7 +55,7 @@ The transport interface is responsible for sending messages about jobs that are 
 
 To achieve this, the transport interface uses a protocol called **bprotocol**, which is a point-to-point scheduling protocol that runs over [libp2p](https://libp2p.io/) and is used to distribute job messages efficiently to other nodes on the network. This is our upgrade to the [GossipSub](https://docs.libp2p.io/concepts/publish-subscribe/) handler as it ensures that messages are delivered to the right nodes without causing network congestion, thereby making communication between nodes more scalable and efficient.
 
-### Executor
+### <a name="executor"></a>Executor
 
 The executor is a critical component of the Bacalhau network that handles the execution of jobs and ensures that the storage used by the job is local. One of its main responsibilities is to present the input and output storage volumes into the job when it is run.
 

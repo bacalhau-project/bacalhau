@@ -95,7 +95,7 @@ curl 127.0.0.1:1234/api/v1/orchestrator/nodes/QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7r
 Retrieve a list of nodes.
 
 **Parameters**:
-  - `labels`: Use label-based criteria to filter nodes. See [Label Filtering](../api#label-filtering) for usage details.
+  - `labels`: Use label-based criteria to filter nodes. See [Label Filtering](../api) for usage details.
   - `limit`: Set the maximum number of jobs to return. Default is set to 10.
   - `next_token`: Utilize this parameter for pagination continuation.
   - `order_by`: Determine the ordering of jobs. Choose between `id`, `type`, `available_cpu`, `available_memory`, `available_disk` or `available_gpu`. (default is `id`).

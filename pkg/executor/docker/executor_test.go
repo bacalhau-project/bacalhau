@@ -213,7 +213,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 
 	task := mock.TaskBuilder().
-		Engine(dockermodels.NewDockerEngineBuilder("ubuntu").
+		Engine(dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
 			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
 			Build()).
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
@@ -223,6 +223,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	require.NoError(s.T(), err)
 
 	values := strings.Fields(result)
+	s.Require().Len(values, 2, "the container reported CPU (%s) does not match the expected format", result)
 
 	numerator, err := strconv.Atoi(values[0])
 	require.NoError(s.T(), err)
@@ -255,7 +256,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	for _, p := range tests {
 		task := mock.TaskBuilder().
 			Engine(
-				dockermodels.NewDockerEngineBuilder("ubuntu").
+				dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
 					WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
 					Build()).
 			ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(p.in).BuildOrDie()).
@@ -263,6 +264,8 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 
 		result, err := s.runJobGetStdout(task, uuid.New().String())
 		require.NoError(s.T(), err)
+
+		s.Require().NotEmpty(result, "the container reported memory returned an empty string")
 
 		intVar, err := strconv.Atoi(strings.TrimSpace(result))
 		require.NoError(s.T(), err)
@@ -509,4 +512,16 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.Equal(s.T(), string(df.Data), "hello\n")
 	require.Equal(s.T(), df.Size, 6)
 	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
+}
+
+func (s *ExecutorTestSuite) TestDockerOOM() {
+	task := mock.TaskBuilder().
+		Engine(
+			dockermodels.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("tail", "/dev/zero").
+				Build()).BuildOrDie()
+
+	result, err := s.runJob(task, uuid.New().String())
+	require.NoError(s.T(), err)
+	require.Contains(s.T(), result.ErrorMsg, "memory limit exceeded")
 }

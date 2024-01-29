@@ -75,6 +75,6 @@
     "scripts/",
     "src/react-app-env.d.ts",,
     "config/env.js",
-    "tests/mocks/svgMock.js"
+    "src/stories/",
   ]
 }

@@ -37,6 +37,7 @@
     "./babel.config.js",
     "./tests/**/*.ts",
     "./tests/**/*.tsx",
-    "tests/mocks/svgMock.ts",
-    "src/setupTests.ts"  ]
+    "tests/mocks/svgMock.js",
+    "src/setupTests.ts"
+  ]
 }

@@ -1,3 +1,4 @@
 python 3.10.5
 nodejs 21.5.0
 go 1.20.6
+direnv 2.33.0

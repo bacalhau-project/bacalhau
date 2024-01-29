@@ -9,11 +9,11 @@ executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: xlarge
   linux-arm64:
     machine:
-      image: ubuntu-2204:2022.07.1
+      image: default
       resource_class: arm.xlarge
   darwin-amd64:
     macos:
@@ -236,12 +236,12 @@ jobs:
 
   build_webui:
     executor: node/default
+    working_directory: ~/repo/webui
     steps:
     - checkout
-    - node/install-packages:
-        app-dir: webui
+    - node/run:
+        yarn-run: build
     - run:
-        working_directory: webui
         environment:
           GENERATE_SOURCEMAP: "false"
         command: yarn run build

@@ -20,17 +20,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <SVGImage src="../../images/jobs-icon.svg" alt="Jobs" />,
+      icon: (
+        <SVGImage
+          src="/images/jobs-icon.svg"
+          alt="Jobs"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Jobs Dashboard",
     },
     {
       path: "/NodesDashboard",
-      icon: <SVGImage src="../../images/nodes-icon.svg" alt="Nodes" />,
+      icon: (
+        <SVGImage
+          src="/images/nodes-icon.svg"
+          alt="Nodes"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Nodes Dashboard",
     },
     {
       path: "/Settings",
-      icon: <SVGImage src="../../images/cogwheel.svg" alt="Settings" />,
+      icon: (
+        <SVGImage
+          src="/images/cogwheel.svg"
+          alt="Settings"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Settings",
     },
   ]
@@ -43,7 +64,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
+        <SVGImage
+          src="/images/bacalhau.svg"
+          alt="Bacalhau Icon"
+          svgClassName={styles.sidebarLogo}
+        />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (

@@ -23,7 +23,7 @@ of the requester HTTP API and the number of jobs accepted/completed/received.
 ## Tracing
 Traces are produced for all major pieces of work when processing a job, although the naming of some spans is still being worked on. You can find relevant traces covering working on a job by searching for the `jobid` attribute.
 
-## Viewing
+## <a name="viewing"></a>Viewing
 The metrics and traces can easily be forwarded to a variety of different services as we use OpenTelemetry, such as Honeycomb or Datadog.
 
 To view the data locally, or simply to not use a SaaS offering, you can start up Jaeger and Prometheus placing these three files into a directory then running `docker compose start` while running Bacalhau with the

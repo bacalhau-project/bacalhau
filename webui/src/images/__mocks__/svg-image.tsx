@@ -1,5 +1,7 @@
-import React from 'react';
+import React from "react"
 
-export const SVGImage = ({ src, alt }: { src: string, alt: string }) => {
-  return <div>SRC: {src} ALT:{alt} </div>;
-};
+export const SVGImage = ({ src, alt }: { src: string; alt: string }) => (
+  <div>
+    SRC: {src} ALT:{alt}{" "}
+  </div>
+)

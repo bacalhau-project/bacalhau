@@ -56,6 +56,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
 	github.com/rs/zerolog v1.31.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
@@ -83,7 +84,7 @@ require (
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.17.0
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
 	k8s.io/apimachinery v0.29.0
 	k8s.io/kubectl v0.29.0
@@ -373,7 +374,7 @@ require (
 	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/term v0.16.0
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0
 	golang.org/x/tools v0.16.1 // indirect

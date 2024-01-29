@@ -40,6 +40,9 @@ const (
 	// An authentication method that provides a challenge string that the user
 	// must sign using their private key.
 	MethodTypeChallenge MethodType = "challenge"
+
+	// An authentication method that asks the user to supply some credentials.
+	MethodTypeAsk MethodType = "ask"
 )
 
 // Requirement represents information about how to authenticate using a
