@@ -120,7 +120,7 @@ function install-bacalhau-from-source() {
   # make sure we have the desired version of nodejs to build webui
   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
   sudo apt-get -y install --no-install-recommends jq nodejs make
-  git clone --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
+  git clone --branch "${BACALHAU_BRANCH}" https://github.com/bacalhau-project/bacalhau.git
   pushd bacalhau
   pushd webui && yarn install && popd
   make build-bacalhau

@@ -2,9 +2,6 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import { SVGImage } from "../../images/svg-image"
-import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
-import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
-import { ReactComponent as CogwheelIcon } from "../../images/cogwheel.svg"
 import styles from "./Sidebar.module.scss"
 import { Button } from "./Button/Button"
 

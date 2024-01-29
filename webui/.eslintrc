@@ -73,8 +73,8 @@
     "public/mockServiceWorker.js",
     "config/",
     "scripts/",
-    "src/react-app-env.d.ts",,
+    "src/react-app-env.d.ts",
     "config/env.js",
-    "src/stories/",
+    "src/stories/"
   ]
 }
