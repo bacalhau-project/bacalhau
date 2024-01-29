@@ -239,8 +239,8 @@ jobs:
     working_directory: ~/repo/webui
     steps:
     - checkout
-    - node/run:
-        yarn-run: build
+    - run:
+        command: yarn build
     - run:
         environment:
           GENERATE_SOURCEMAP: "false"
@@ -309,34 +309,7 @@ jobs:
         command: make coverage-report
 
     - store_artifacts:
-        path: coverage/coverage.html
-
-  lint-webui:
-    parallelism: 1
-    working_directory: ~/repo/webui
-    executor: linux-amd64
-    steps:
-      - checkout
-
-      - run:
-          name: Install eslint
-          command: |
-            yarn install
-
-      - run:
-          name: Cache ESLint
-          command: |
-            cp package-lock.json eslint-cache-key.txt
-             yarn list eslint  >> eslint-cache-key.txt
-
-      - restore_cache:
-          name: Restoring eslint cache
-          key: v1-eslint-cache-{{ checksum "eslint-cache-key.txt" }}
-
-      - run:
-          name: Run linter
-          command: |
-            yarn run eslint
+        path: coverage/coverage.html 
 
   release:
     executor: linux-amd64
@@ -579,8 +552,7 @@ workflows:
     - test:
         name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
         executor: << matrix.target_os >>-<< matrix.target_arch >>
-        requires:
-        - build_webui
+        requires: [build_webui]
         matrix:
           parameters:
             target_os: ["linux", "darwin", "windows"]
