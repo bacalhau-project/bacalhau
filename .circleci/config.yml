@@ -249,7 +249,6 @@ jobs:
           path: dist/
 
   build_webui:
-    parallelism: 1
     executor: node/default
     working_directory: ~/repo/bacalhau
     steps:
@@ -257,7 +256,7 @@ jobs:
       - restore_cache:
           name: Restore Yarn Package Cache
           keys:
-            - yarn-packages-{{ checksum "yarn.lock" }}
+            - yarn-packages-{{ checksum "webui/yarn.lock" }}
       - run:
           working_directory: webui
           name: Install Dependencies
@@ -274,7 +273,7 @@ jobs:
             - "webui/.yarn/cache"
       - save_cache:
           name: Save Yarn Package Cache
-          key: yarn-packages-{{ checksum "yarn.lock" }}
+          key: yarn-packages-{{ checksum "webui/yarn.lock" }}
           paths:
             - webui/.yarn/cache
             - webui/.yarn/unplugged
