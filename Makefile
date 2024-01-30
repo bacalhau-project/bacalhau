@@ -172,11 +172,11 @@ webui/build:
 	mkdir -p $@
 
 $(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && npm install
+	cd webui && yarn install
 
 export GENERATE_SOURCEMAP := false
 ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
-	cd webui && npm run build
+	cd webui && yarn run build
 
 ################################################################################
 # Target: build-bacalhau
@@ -286,6 +286,9 @@ clean: clean-plugins
 ################################################################################
 # Target: test
 ################################################################################
+.PHONY: test-all
+test-all: test test-python integration-test test-docs test-webui
+
 .PHONY: test
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
@@ -294,27 +297,16 @@ test:
 .PHONY: test-python
 test-python:
 # sdk tests
-	cd python && make test
+	cd python && poetry install && make test
 
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
 
-.PHONY: grc-test
-grc-test:
-	grc go test ./... -v
-.PHONY: grc-test-short
-grc-test-short:
-	grc go test ./... -test.short -v
-
 .PHONY: test-debug
 test-debug:
 	LOG_LEVEL=debug go test ./... -v
-
-.PHONY: grc-test-debug
-grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
@@ -327,6 +319,14 @@ test-devstack:
 .PHONY: test-commands
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
+
+.PHONY: test-docs
+test-docs:
+	cd docs && yarn run build
+
+.PHONY: test-webui
+test-webui:
+	cd webui && yarn run test
 
 ################################################################################
 # Target: devstack
@@ -376,7 +376,7 @@ lint:
 
 .PHONY: lint-fix
 lint-fix:
-	golangci-lint run --timeout 10m --fix
+	golangci-lint run --timeout 10m
 
 ################################################################################
 # Target: modtidy
