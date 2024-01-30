@@ -34,7 +34,11 @@ jobs:
       - name: Add asdf to PATH
         run: echo "~/.asdf/shims" >> $GITHUB_PATH
 
-      - run: yarn install
+      - name: Install corepack, nodejs, yarn
+        run: |
+          corepack enable
+          asdf reshim nodejs
+          yarn install
         working-directory: docs
       - run: yarn run build
         working-directory: docs
