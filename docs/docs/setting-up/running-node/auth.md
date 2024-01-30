@@ -36,14 +36,18 @@ Restricting the list of keys that can authenticate to only a known set requires
 specifying a new **authentication policy**. You can download a policy that
 restricts key-based access and install it by using:
 
+```
     curl -sL https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/pkg/authn/challenge/challenge_ns_no_anon.rego -o ~/.bacalhau/challenge_ns_no_anon.rego
     bacalhau config set Node.Auth.Methods.ClientKey.Type challenge
     bacalhau config set Node.Auth.Methods.ClientKey.PolicyPath ~/.bacalhau/challenge_ns_no_anon.rego
+```
 
 Then, modify the `allowed_clients` variable in `challange_ns_no_anon.rego` to
 include acceptable client IDs, found by running `bacalhau id`.
 
+```
     bacalhau id | jq -rc .ClientID
+```
 
 Once the node is restarted, only keys in the allowed list will be able to access
 any API.
