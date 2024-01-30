@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -515,7 +515,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)
 
-	ch := logger.NewExecutionLogReader(reader)
+	ch := logstream.NewStream(context.Background(), logstream.StreamParams{
+		Reader: reader,
+	}).LogChannel
 	executionLog, ok := <-ch
 	require.True(s.T(), ok)
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
