@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - run: echo "GO_VER=$(cat .tool-versions | grep go | cut -d' ' -f2 )" >> $GITHUB_ENV
+      - run: echo "GO_VER=$(cat .tool-versions | grep go | cut -d' ' -f2)" >> $GITHUB_ENV
       - run: echo "NODE_VER=$(cat .tool-versions | grep nodejs | cut -d' ' -f2)" >> $GITHUB_ENV
 
       - name: Install asdf & tools
