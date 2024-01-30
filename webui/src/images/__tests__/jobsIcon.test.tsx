@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import { SVGImage } from "../svg-image"
 
 export const AppTest = () => (
-  <SVGImage src="./jobs-icon.svg" alt="jobs icon alt" />
+  <SVGImage src="/images/jobs-icon.svg" alt="jobs icon alt" />
 )
 
 test("renders JobsIcon", () => {

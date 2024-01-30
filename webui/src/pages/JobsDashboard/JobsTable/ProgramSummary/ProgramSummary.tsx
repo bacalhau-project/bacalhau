@@ -13,7 +13,7 @@ const getImageSource = (type: string) => {
     case "docker":
       return (
         <SVGImage
-          src="../../images/docker.svg"
+          src="/images/docker.svg"
           alt="Docker"
           svgClassName={styles.icon}
         />
@@ -21,7 +21,7 @@ const getImageSource = (type: string) => {
     default:
       return (
         <SVGImage
-          src="../../images/cogwheel.svg"
+          src="/images/cogwheel.svg"
           alt="Settings"
           svgClassName={styles.icon}
         />

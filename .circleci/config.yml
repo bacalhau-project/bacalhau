@@ -27,7 +27,7 @@ parameters:
     type: boolean
 
 orbs:
-  node: circleci/node@5.1.0
+  node: circleci/node@5.2.0
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
@@ -133,7 +133,7 @@ commands:
 
 jobs:
   test:
-    parallelism: 1
+    parallelism: 2
     environment:
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
@@ -206,7 +206,7 @@ jobs:
             - "*.coverage"
 
   test-python-sdk:
-    parallelism: 1
+    parallelism: 2
     executor: linux-amd64
     steps:
       - checkout
@@ -216,7 +216,7 @@ jobs:
           command: make setup test
 
   test-python-airflow:
-    parallelism: 1
+    parallelism: 2
     executor: linux-amd64
     steps:
       - checkout
@@ -226,7 +226,7 @@ jobs:
           command: make setup test-all
 
   test-python-flyte:
-    parallelism: 1
+    parallelism: 2
     executor: linux-amd64
     steps:
       - checkout
@@ -236,7 +236,7 @@ jobs:
           command: make setup test
 
   build:
-    parallelism: 1
+    parallelism: 2
     executor: linux-amd64
     steps:
       - checkout
@@ -657,7 +657,7 @@ workflows:
               ignore: /.*/ # don't run on any branches - only tags
             !!merge <<: *build_on_branch_and_tag_push
 
-  build:
+  build_workflow:
     jobs:
       - build_webui:
           filters: *build_on_branch_and_tag_push
