@@ -28,6 +28,8 @@ jobs:
         run: |
           npm install
           npm run lint
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Run pre-commit
         run: |
           pre-commit run --show-diff-on-failure --color=always --all-files
