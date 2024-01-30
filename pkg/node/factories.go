@@ -5,15 +5,18 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"go.uber.org/multierr"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -70,7 +73,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
+					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},
 			)
 			if err != nil {
@@ -118,7 +121,7 @@ func NewStandardPublishersFactory() PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			pr, err := publisher_util.NewIPFSPublishers(
+			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
@@ -133,21 +136,46 @@ func NewStandardPublishersFactory() PublishersFactory {
 func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
-			privKey, err := config.GetClientPrivateKey()
-			if err != nil {
-				return nil, err
+			var allErr error
+			privKey, allErr := config.GetClientPrivateKey()
+			if allErr != nil {
+				return nil, allErr
 			}
 
-			return provider.NewMappedProvider(
-				map[string]authn.Authenticator{
-					"ClientKey": challenge.NewAuthenticator(
-						challenge.AnonymousModePolicy,
-						nodeConfig.Host.ID(),
+			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
+			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
+				switch authnConfig.Type {
+				case authn.MethodTypeChallenge:
+					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
+					if err != nil {
+						allErr = multierr.Append(allErr, err)
+						continue
+					}
+
+					authns[name] = challenge.NewAuthenticator(
+						methodPolicy,
+						challenge.NewStringMarshaller(nodeConfig.NodeID),
 						privKey,
-						nodeConfig.Host.ID().String(),
-					),
-				},
-			), nil
+						nodeConfig.NodeID,
+					)
+				case authn.MethodTypeAsk:
+					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
+					if err != nil {
+						allErr = multierr.Append(allErr, err)
+						continue
+					}
+
+					authns[name] = ask.NewAuthenticator(
+						methodPolicy,
+						privKey,
+						nodeConfig.NodeID,
+					)
+				default:
+					allErr = multierr.Append(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
+				}
+			}
+
+			return provider.NewMappedProvider(authns), allErr
 		},
 	)
 }

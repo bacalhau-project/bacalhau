@@ -9,11 +9,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	shellescape "gopkg.in/alessio/shellescape.v1"
+	"gopkg.in/alessio/shellescape.v1"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
@@ -65,8 +66,8 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		Long:               getLong,
 		Example:            getExample,
 		Args:               cobra.MinimumNArgs(1),
-		PreRunE:            util.ClientPreRunHooks,
-		PostRunE:           util.ClientPostRunHooks,
+		PreRunE:            hook.RemoteCmdPreRunHooks,
+		PostRunE:           hook.RemoteCmdPostRunHooks,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			// Find the unknown arguments from the original args.  We only want to find the
@@ -99,8 +100,8 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	client := util.GetAPIClientV2(cmd.Context())
-	resp, err := client.Jobs().Put(&apimodels.PutJobRequest{
+	client := util.GetAPIClientV2()
+	resp, err := client.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
 		Job: job,
 	})
 	if err != nil {

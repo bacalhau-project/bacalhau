@@ -66,12 +66,13 @@ func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false
 	devstackFlags := map[string][]configflags.Definition{
-		"requester-tls":    configflags.RequesterTLSFlags,
-		"job-selection":    configflags.JobSelectionFlags,
-		"disable-features": configflags.DisabledFeatureFlags,
-		"capacity":         configflags.CapacityFlags,
-		"job-timeouts":     configflags.ComputeTimeoutFlags,
-		"translations":     configflags.JobTranslationFlags,
+		"requester-tls":         configflags.RequesterTLSFlags,
+		"job-selection":         configflags.JobSelectionFlags,
+		"disable-features":      configflags.DisabledFeatureFlags,
+		"capacity":              configflags.CapacityFlags,
+		"job-timeouts":          configflags.ComputeTimeoutFlags,
+		"translations":          configflags.JobTranslationFlags,
+		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 
 	devstackCmd := &cobra.Command{
@@ -147,7 +148,9 @@ func NewCmd() *cobra.Command {
 		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
 		"Folder to act as the devstack configuration repo",
 	)
-
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.NetworkType, "network", ODs.NetworkType,
+		"Type of inter-node network layer. e.g. nats and libp2p")
 	return devstackCmd
 }
 

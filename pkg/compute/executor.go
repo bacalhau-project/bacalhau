@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -298,11 +299,14 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
+	stopwatch := telemetry.NewTimer(jobDurationMilliseconds)
+	stopwatch.Start()
 	operation := "Running"
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, state, err, operation)
 		}
+		stopwatch.Stop(ctx, state.Execution.Job.MetricAttributes()...)
 	}()
 
 	res := e.Start(ctx, execution)

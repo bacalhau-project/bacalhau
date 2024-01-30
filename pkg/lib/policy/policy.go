@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"strings"
 
 	"github.com/open-policy-agent/opa/loader"
@@ -38,6 +39,22 @@ func FromFS(source fs.FS, path string) (*Policy, error) {
 	return &Policy{modules: modules}, nil
 }
 
+// Load a policy from the host filesystem at path. Path can either be a single
+// file, or a directory. In the latter case, all of the files in the directory
+// will be loaded as policy documents and will be in scope for prepared queries.
+func FromPath(path string) (*Policy, error) {
+	return FromFS(os.DirFS("/"), strings.TrimLeft(path, "/."))
+}
+
+// Like FromPath, but returns a default if the path is empty.
+func FromPathOrDefault(path string, def *Policy) (*Policy, error) {
+	if path == "" {
+		return def, nil
+	} else {
+		return FromPath(path)
+	}
+}
+
 type regoOpt = func(*rego.Rego)
 
 var ErrNoResult error = errors.New("the query did not return a result")
@@ -50,7 +67,7 @@ type Query[Input, Output any] func(ctx context.Context, input Input) (Output, er
 // certain input type and returns a function that will execute the query when
 // given input of that type.
 func AddQuery[Input, Output any](runner *Policy, rule string) Query[Input, Output] {
-	opts := append(runner.modules, rego.Query("data."+rule))
+	opts := append(runner.modules, rego.Query("data."+rule), scryptFn)
 	query := lo.Must(rego.New(opts...).PrepareForEval(context.Background()))
 
 	return func(ctx context.Context, t Input) (Output, error) {
@@ -60,7 +77,7 @@ func AddQuery[Input, Output any](runner *Policy, rule string) Query[Input, Outpu
 		defer func() {
 			// Output tracing information, but only if the log level is appropriate
 			// So we avoid going into a long loop of no-ops
-			const logAt zerolog.Level = zerolog.WarnLevel
+			const logAt zerolog.Level = zerolog.TraceLevel
 			if logger := log.Ctx(ctx); logger.GetLevel() <= logAt {
 				buf := strings.Builder{}
 				topdown.PrettyTraceWithLocation(&buf, *tracer)

@@ -32,8 +32,6 @@ type NodeConfig struct {
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	Type []string `yaml:"Type"`
-	// Deprecated: TODO(forrest) remove.
-	EstuaryAPIKey string `yaml:"EstuaryAPIKey"`
 	// Local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed
@@ -43,6 +41,8 @@ type NodeConfig struct {
 
 	// Configuration for the web UI
 	WebUI WebUIConfig `yaml:"WebUI"`
+
+	Network NetworkConfig `yaml:"Network"`
 
 	StrictVersionMatch bool `yaml:"StrictVersionMatch"`
 }
@@ -139,4 +139,25 @@ type FeatureConfig struct {
 	Engines    []string `yaml:"Engines"`
 	Publishers []string `yaml:"Publishers"`
 	Storages   []string `yaml:"Storages"`
+}
+
+type DockerCacheConfig struct {
+	Size      uint64   `yaml:"Size"`
+	Duration  Duration `yaml:"Duration"`
+	Frequency Duration `yaml:"Frequency"`
+}
+
+type NetworkConfig struct {
+	Type              string               `yaml:"Type"`
+	Port              int                  `yaml:"Port"`
+	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
+	Orchestrators     []string             `yaml:"Orchestrators"`
+	Cluster           NetworkClusterConfig `yaml:"Cluster"`
+}
+
+type NetworkClusterConfig struct {
+	Name              string   `yaml:"Name"`
+	Port              int      `yaml:"Port"`
+	AdvertisedAddress string   `yaml:"AdvertisedAddress"`
+	Peers             []string `yaml:"Peers"`
 }

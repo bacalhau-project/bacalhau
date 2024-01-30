@@ -35,9 +35,7 @@ func (s *ValidateSuite) TestValidate() {
 		s.Run(name, func() {
 			util.Fatal = util.FakeFatalErrorHandler
 
-			_, out, err := cmdtesting.ExecuteTestCobraCommand("validate",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
+			_, out, err := s.ExecuteTestCobraCommand("validate",
 				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
 			)
 			require.NoError(s.T(), err)

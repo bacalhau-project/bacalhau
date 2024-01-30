@@ -69,18 +69,11 @@ func (s *DescribeSuite) TestDescribeJob() {
 				returnedJobDescription := &model.JobWithInfo{}
 
 				// No job id (should error)
-				_, _, err := cmdtesting.ExecuteTestCobraCommand("describe",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port),
-				)
+				_, _, err := s.ExecuteTestCobraCommand("describe")
 				s.Require().Error(err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
-				_, out, err := cmdtesting.ExecuteTestCobraCommand("describe",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port),
-					submittedJob.Metadata.ID,
-				)
+				_, out, err := s.ExecuteTestCobraCommand("describe", submittedJob.Metadata.ID)
 				s.Require().NoError(err, "Error in describing job: %+v", err)
 
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
@@ -99,7 +92,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 						submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec))
 
 				// Job Id in the middle
-				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
+				_, out, err = s.ExecuteTestCobraCommand("describe",
 					"--api-host", s.Host,
 					submittedJob.Metadata.ID,
 					"--api-port", fmt.Sprint(s.Port),
@@ -118,7 +111,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
-				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
+				_, out, err = s.ExecuteTestCobraCommand("describe",
 					"--api-host", s.Host,
 					idgen.ShortID(submittedJob.Metadata.ID),
 					"--api-port", fmt.Sprint(s.Port),
@@ -164,13 +157,13 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", s.Host, "--api-port", fmt.Sprint(s.Port), submittedJob.Metadata.ID)
+			args = append(args, "describe", submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
 
 			// Job Id at the end
-			_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
+			_, out, err := s.ExecuteTestCobraCommand(args...)
 			s.Require().NoError(err, "Error in describing job: %+v", err)
 
 			err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
@@ -237,11 +230,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					jobID = tc.describeIDEdgecase
 				}
 
-				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port),
-					jobID,
-				)
+				_, out, err = s.ExecuteTestCobraCommand("describe", jobID)
 				if tc.describeIDEdgecase == "" {
 					s.Require().NoError(err, "Error in describing job: %+v", err)
 

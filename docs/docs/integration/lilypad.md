@@ -146,7 +146,7 @@ Here's an example JSON job specification for the Stable Diffusion job:
 {
   "Engine": "docker",
   "Verifier": "noop",
-  "PublisherSpec": { "Type": "estuary" },
+  "PublisherSpec": { "Type": "ipfs" },
   "Docker": {
     "Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
     "Entrypoint": ["python"],
@@ -172,7 +172,7 @@ Note that since we need to be able to add the user prompt input to the spec, it'
 string constant specStart = '{'
     '"Engine": "docker",'
     '"Verifier": "noop",'
-    '"PublisherSpec": {"Type": "estuary"},'
+    '"PublisherSpec": {"Type": "ipfs"},'
     '"Docker": {'
     '"Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",'
     '"Entrypoint": ["python"],
@@ -264,7 +264,7 @@ contract MyContract is LilypadCallerInterface {
   string constant specStart = '{'
       '"Engine": "docker",'
       '"Verifier": "noop",'
-      '"PublisherSpec": {"Type": "estuary"},'
+      '"PublisherSpec": {"Type": "ipfs"},'
       '"Docker": {'
       '"Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",'
       '"Entrypoint": ["python"],

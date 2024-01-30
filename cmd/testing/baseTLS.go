@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -20,12 +18,7 @@ import (
 )
 
 type BaseTLSSuite struct {
-	suite.Suite
-	Node     *node.Node
-	Client   *client.APIClient
-	ClientV2 *clientv2.Client
-	Host     string
-	Port     uint16
+	BaseSuite
 }
 
 // before each test
@@ -61,10 +54,7 @@ func (s *BaseTLSSuite) SetupTest() {
 	s.Host = "127.0.0.1" //0.0.0.0 will not work because we're testing TLS validation
 	s.Port = s.Node.APIServer.Port
 	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, s.Host, s.Port)
-	s.ClientV2 = clientv2.New(clientv2.Options{
-		Address: fmt.Sprintf("http://%s:%d", s.Host, s.Port),
-		TLS:     clientv2.TLSConfig{UseTLS: true, Insecure: false},
-	})
+	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port), clientv2.WithTLS(true))
 }
 
 // After each test

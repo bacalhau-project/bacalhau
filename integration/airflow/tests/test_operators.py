@@ -32,7 +32,7 @@ class TestBacalhauAirflowOperator(unittest.TestCase):
             api_version="V1beta1",
             job_spec=dict(
                 engine="Docker",
-                publisher="Estuary",
+                publisher="IPFS",
                 docker=dict(
                     image="ubuntu",
                     entrypoint=["echo", "TestBacalhauSubmitJobOperator"],

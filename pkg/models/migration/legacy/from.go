@@ -28,7 +28,6 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 
 	metadata := make(map[string]string)
 	metadata[models.MetaRequesterID] = legacy.Metadata.Requester.RequesterNodeID
-	metadata[models.MetaRequesterPublicKey] = legacy.Metadata.Requester.RequesterPublicKey.String()
 	metadata[models.MetaClientID] = legacy.Metadata.ClientID
 
 	labels := make(map[string]string)

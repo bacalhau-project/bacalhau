@@ -33,6 +33,10 @@ func (m *FakeCache[T]) Get(key string) (T, bool) {
 	return *new(T), ok
 }
 
+func (m *FakeCache[T]) SetWithDefaultTTL(key string, value T, cost uint64) error {
+	return m.Set(key, value, cost, 10) //nolint:gomnd
+}
+
 func (m *FakeCache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64) error {
 	m.SetCalls += 1
 	m.inner[key] = FakeCacheItem[T]{

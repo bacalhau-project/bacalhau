@@ -2,11 +2,16 @@ package test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -35,8 +40,21 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 
 	privKey, err := config.GetLibp2pPrivKey()
 	require.NoError(t, err)
-	libp2pHost, err := libp2p.NewHost(libp2pPort, privKey)
+
+	peerID, err := peer.IDFromPrivateKey(privKey)
 	require.NoError(t, err)
+	nodeID := peerID.String()
+
+	var libp2pHost host.Host
+	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
+	if !ok {
+		networkType = models.NetworkTypeLibp2p
+	}
+
+	if networkType == models.NetworkTypeLibp2p {
+		libp2pHost, err = libp2p.NewHost(libp2pPort, privKey)
+		require.NoError(t, err)
+	}
 
 	computeConfig, err := node.NewComputeConfigWithDefaults()
 	require.NoError(t, err)
@@ -44,8 +62,8 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
+		NodeID:                    nodeID,
 		CleanupManager:            cm,
-		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
 		ComputeConfig:             computeConfig,
@@ -57,6 +75,10 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
 		FsRepo:                    fsRepo,
 		NodeInfoStoreTTL:          10 * time.Minute,
+		NetworkConfig: node.NetworkConfig{
+			Type:       networkType,
+			Libp2pHost: libp2pHost,
+		},
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)
@@ -65,9 +87,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	apiClient := client.New(client.Options{
-		Address: n.APIServer.GetURI().String(),
-	})
+	apiClient := client.New(n.APIServer.GetURI().String())
 	require.NoError(t, WaitForNodes(ctx, apiClient))
 	return n, apiClient
 }

@@ -52,6 +52,25 @@ func (s *BasicCacheSuite) createTestCache(
 	return c, nil
 }
 
+func (s *BasicCacheSuite) createTestCacheWithDefaultTTL(
+	name string, maxCost uint64, freq time.Duration, ttl time.Duration, f basic.EvictItemFunc,
+) (cache.Cache[string], error) {
+	options := []basic.Option{
+		basic.WithMaxCost(maxCost),
+		basic.WithCleanupFrequency(freq),
+		basic.WithTTL(ttl),
+	}
+	if f != nil {
+		options = append(options, basic.WithEvictionFunction(f))
+	}
+	c, err := basic.NewCache[string](options...)
+
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 func (s *BasicCacheSuite) TestBasicCache() {
 	k := "test"
 
@@ -95,7 +114,35 @@ func (s *BasicCacheSuite) TestExpiry() {
 	require.NoError(s.T(), err)
 	defer c.Close()
 
-	err = c.Set(k, "value", 1, int64(oneHour.Seconds()))
+	err = c.Set(k, "value", 1, 1)
+	require.NoError(s.T(), err)
+
+	runtime.Gosched()
+
+	<-evictionComplete
+	_, found := c.Get(k)
+	require.Equal(s.T(), false, found)
+}
+
+func (s *BasicCacheSuite) TestExpiryDefaultTTL() {
+	k := "test"
+
+	evictionComplete := make(chan struct{}, 1)
+	f := func(key string, cost uint64, expiresAt int64, now int64) bool {
+		// We want to test the expiry time of the found item
+		if key == k {
+			require.Equal(s.T(), now+1, expiresAt)
+			evictionComplete <- struct{}{}
+			return true
+		}
+		return false
+	}
+
+	c, err := s.createTestCacheWithDefaultTTL("TestExpiry", 1, 1, 1*time.Second, f)
+	require.NoError(s.T(), err)
+	defer c.Close()
+
+	err = c.SetWithDefaultTTL(k, "value", 1)
 	require.NoError(s.T(), err)
 
 	runtime.Gosched()

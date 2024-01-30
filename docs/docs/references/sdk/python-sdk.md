@@ -78,7 +78,7 @@ data = dict(
     Spec=Spec(
         engine="Docker",
         verifier="Noop",
-        publisher_spec=PublisherSpec(type="Estuary"),
+        publisher_spec=PublisherSpec(type="IPFS"),
         docker=JobSpecDocker(
             image="ubuntu",
             entrypoint=["echo", "Hello World!"],
@@ -121,7 +121,7 @@ The script above prints the following object, the `job.metadata.id` value is our
                   'ExecutionPlan': {'ShardsTotal': 1},
                   'Language': {'JobContext': {}},
                   'Network': {'Type': 'None'},
-                  'Publisher': 'Estuary',
+                  'Publisher': 'IPFS',
                   'Resources': {'GPU': ''},
                   'Sharding': {'BatchSize': 1,
                                'GlobPatternBasePath': '/inputs'},
