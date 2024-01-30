@@ -7,7 +7,7 @@ import (
 // BaseRequest is the base request used for all requests
 type BaseRequest struct {
 	Namespace string            `query:"namespace"`
-	Headers   map[string]string `query:"-"`
+	Headers   map[string]string `query:"-" json:"-"`
 
 	// A good place to define other fields that are common to all requests,
 	// such as auth tokens
