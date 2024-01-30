@@ -150,24 +150,27 @@ func matchDomain(left, right string) (diff int) {
 	lcur, rcur := len(lefts)-1, len(rights)-1
 	for lcur >= 0 && rcur >= 0 {
 		// If neither is a blank, these components need to match.
-		if lefts[lcur] != wildcard && rights[rcur] != wildcard {
-			if diff = strings.Compare(lefts[lcur], rights[rcur]); diff != 0 {
+		l := lefts[lcur]
+		r := rights[rcur]
+
+		if l != wildcard && r != wildcard {
+			if diff = strings.Compare(l, r); diff != 0 {
 				return diff
 			}
 		}
 
 		// If both are blanks, they match.
-		if lefts[lcur] == wildcard || rights[rcur] == wildcard {
+		if l == wildcard || r == wildcard {
 			break
 		}
 
 		// Blank means we are matching any subdomains, so only the rest of
 		// the domain needs to match for this to work.
-		if lefts[lcur] != wildcard {
+		if l != wildcard {
 			lcur -= 1
 		}
 
-		if rights[rcur] != wildcard {
+		if r != wildcard {
 			rcur -= 1
 		}
 	}

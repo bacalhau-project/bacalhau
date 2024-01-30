@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -24,7 +25,7 @@ func DownloadResultsHandler(
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
-	response, err := GetAPIClientV2(ctx).Jobs().Results(&apimodels.ListJobResultsRequest{
+	response, err := GetAPIClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: jobID,
 	})
 	if err != nil {
