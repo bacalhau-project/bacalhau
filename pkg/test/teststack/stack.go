@@ -77,7 +77,7 @@ func Setup(
 	require.Eventually(t,
 		func() bool {
 			return allNodesDiscovered(t, stack)
-		}, 100*time.Second, 100*time.Millisecond, "failed to discover all nodes") //olgibbons change time back to 10
+		}, 100*time.Second, 100*time.Millisecond, "failed to discover all nodes")
 
 	return stack
 }

@@ -38,7 +38,6 @@ func (s *BaseTLSSuite) SetupTest() {
 			Locality: semantic.Anywhere,
 		},
 	})
-	fmt.Printf("OLGIBBONS DEBUG: computeconfig: %#v\n", computeConfig)
 	s.Require().NoError(err)
 	ctx := context.Background()
 	requesterConfig, err := node.NewRequesterConfigWith(
@@ -46,24 +45,25 @@ func (s *BaseTLSSuite) SetupTest() {
 			HousekeepingBackgroundTaskInterval: 1 * time.Second,
 		},
 	)
-	fmt.Printf("OLGIBBONS DEBUG: requesterconfig: %#v\n", requesterConfig)
 	s.Require().NoError(err)
+
+	const serverCertPath = "../../testdata/certs/dev-server.crt"
+	const serverKeyPath = "../../testdata/certs/dev-server.key"
 
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
-		//devstack.WithSelfSignedCertificate("/home/gibbons/Bacalhau/bacalhau/testdata/certs/dev-server.crt", "/home/gibbons/Bacalhau/bacalhau/testdata/certs/dev-server.key"), //olgibbons change this
+		devstack.WithSelfSignedCertificate(serverCertPath, serverKeyPath),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 	s.Node = stack.Nodes[0]
-	s.Host = s.Node.APIServer.Address
+	s.Host = "127.0.0.1" //0.0.0.0 will not work because we're testing TLS validation
 	s.Port = s.Node.APIServer.Port
-	fmt.Printf("OLGIBBONS DEBUG: host: %#v, port: %#v\n", s.Host, fmt.Sprint(s.Port))
-	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: false, Insecure: false}, s.Host, s.Port)
+	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, s.Host, s.Port)
 	s.ClientV2 = clientv2.New(clientv2.Options{
 		Address: fmt.Sprintf("http://%s:%d", s.Host, s.Port),
-		TLS:     clientv2.TLSConfig{UseTLS: false, Insecure: false},
+		TLS:     clientv2.TLSConfig{UseTLS: true, Insecure: false},
 	})
 }
 
