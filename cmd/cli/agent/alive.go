@@ -3,10 +3,11 @@ package agent
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/spf13/cobra"
 )
 
 // AliveOptions is a struct to support alive command
@@ -36,7 +37,7 @@ func NewAliveCmd() *cobra.Command {
 // Run executes alive command
 func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
-	response, err := util.GetAPIClientV2(ctx).Agent().Alive()
+	response, err := util.GetAPIClientV2().Agent().Alive(ctx)
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("could not get server alive: %w", err), 1)
 	}

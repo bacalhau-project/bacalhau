@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // This test submits a job that uses the Docker executor with an IPFS input.
@@ -45,7 +46,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("waiting until completed: %s", err)
 	}
 
-	results, err := getClientV2().Jobs().Results(&apimodels.ListJobResultsRequest{
+	results, err := getClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: submittedJob.Metadata.ID,
 	})
 	if err != nil {

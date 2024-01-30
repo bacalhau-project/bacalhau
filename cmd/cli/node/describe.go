@@ -3,11 +3,12 @@ package node
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
 )
 
 // DescribeOptions is a struct to support node command
@@ -38,7 +39,7 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	nodeID := args[0]
-	response, err := util.GetAPIClientV2(ctx).Nodes().Get(&apimodels.GetNodeRequest{
+	response, err := util.GetAPIClientV2().Nodes().Get(ctx, &apimodels.GetNodeRequest{
 		NodeID: nodeID,
 	})
 	if err != nil {

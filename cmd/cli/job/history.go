@@ -5,6 +5,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -12,10 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var (
@@ -125,7 +126,7 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2(ctx).Jobs().History(&apimodels.ListJobHistoryRequest{
+	response, err := util.GetAPIClientV2().Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,
