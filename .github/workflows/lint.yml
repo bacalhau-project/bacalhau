@@ -22,7 +22,6 @@ jobs:
         run: echo "~/.asdf/shims" >> $GITHUB_PATH
 
       - run: go mod tidy
-      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
       - name: Run webui linter
         working-directory: webui
         run: |
