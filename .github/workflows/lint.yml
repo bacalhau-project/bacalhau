@@ -23,4 +23,9 @@ jobs:
 
       - run: go mod tidy
       - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
-      - uses: pre-commit/action@v3.0.0
+      - run: |
+          webui/yarn install --immutable
+          webui/yarn run lint
+      - name: Run pre-commit
+        run: |
+          pre-commit run --show-diff-on-failure --color=always --all-files
