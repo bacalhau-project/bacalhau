@@ -54,5 +54,6 @@ coverage.out
 docker/.images
 docker/.pulled
 clients/pyproject.toml
-webui/.yarn/install-state.gz
+install-state.gz
+install-state.gz
 !webui/config/env.js
