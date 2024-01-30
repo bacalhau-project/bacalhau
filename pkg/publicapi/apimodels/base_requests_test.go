@@ -38,5 +38,6 @@ func (s *BaseRequestTestCase) TestBaseRequest() {
 
 	// Should not contain any headers from the TestBaseRequest
 	s.Require().Empty(result.Headers, "headers were not excluded from json marshalling")
-
+	s.Require().Equal(initial.Namespace, result.Namespace, "namespace was not marshalled correctly")
+	s.Require().Equal(initial.IdempotencyToken, result.IdempotencyToken, "idempotency token was not marshalled correctly")
 }
