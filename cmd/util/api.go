@@ -3,12 +3,13 @@ package util
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/rs/zerolog/log"
 )
 
 func GetAPIClient(ctx context.Context) *client.APIClient {
@@ -16,7 +17,7 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 	return client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort())
 }
 
-func GetAPIClientV2(ctx context.Context) *clientv2.Client {
+func GetAPIClientV2() *clientv2.Client {
 	base := config.ClientAPIBase()
 	tlsConfig := config.ClientTLSConfig()
 
@@ -38,7 +39,7 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 
 	token, err := ReadToken(base)
 	if err != nil {
-		log.Ctx(ctx).Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
 	}
 
 	if token != "" {
@@ -48,5 +49,5 @@ func GetAPIClientV2(ctx context.Context) *clientv2.Client {
 		}))
 	}
 
-	return clientv2.New(clientv2.Options{Context: ctx, Address: base}, opts...)
+	return clientv2.New(base, opts...)
 }
