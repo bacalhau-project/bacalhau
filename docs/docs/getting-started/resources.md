@@ -18,20 +18,22 @@ The following table describes how to specify hardware requirements for the Docke
 
 Flag | Default | Description
 ---------|----------|---------
- `--cpu` | 0.1 ([source](/)) | Job CPU cores (e.g. 500m, 2, 8)
- `--memory` | 100MB ([source](/)) | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
- `--gpu` | 0 ([source](/)) | Job GPU requirement (e.g. 1).
+ `--cpu` | 500m | Job CPU cores (e.g. 500m, 2, 8)
+ `--memory` | 1Gb | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
+ `--gpu` | 0 | Job GPU requirement (e.g. 1).
 
 ## WASM Executor
 
-**TBD - research required**
+Due to the peculiarities of WASM, it cannot be limited by CPU or disk space. Besides, WASM has its own RAM limitation - up to 4 GB and cannot use GPU. Therefore, when configuring the WASM executor, you can only specify the `--memory` flag.
 
-### How it Works
+
+
+## How it Works
 
 When you specify hardware requirements, the job will be offered out to the network to see if there are any nodes that can satisfy the requirements. If there are, the job will be scheduled on the node and the executor will be started.
 
 
-**TBD - research required:** If there are no nodes that can satisfy the requirements, the job will wait for a node to become available, until it times out [after 3 minutes](/).
+If there are no nodes that can satisfy the requirements, the job will fail with an error saying that there are no suitable nodes on the network for the job.
 
 
 
