@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -13,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	"github.com/stretchr/testify/suite"
 )
 
 type ServerSuite struct {
@@ -39,14 +40,10 @@ func (s *ServerSuite) SetupSuite() {
 	)
 
 	s.requesterNode = stack.Nodes[0]
-	s.client = client.New(client.Options{
-		Address: s.requesterNode.APIServer.GetURI().String(),
-	})
+	s.client = client.New(s.requesterNode.APIServer.GetURI().String())
 
 	s.computeNode = stack.Nodes[1]
-	s.computeClient = client.New(client.Options{
-		Address: s.computeNode.APIServer.GetURI().String(),
-	})
+	s.computeClient = client.New(s.computeNode.APIServer.GetURI().String())
 
 	s.Require().NoError(WaitForAlive(ctx, s.client))
 	s.Require().NoError(WaitForAlive(ctx, s.computeClient))

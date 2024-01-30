@@ -6,13 +6,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -150,8 +151,8 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	}
 
 	// Submit the job
-	client := util.GetAPIClientV2(ctx)
-	resp, err := client.Jobs().Put(&apimodels.PutJobRequest{
+	client := util.GetAPIClientV2()
+	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
 	})
 	if err != nil {

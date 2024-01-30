@@ -5,6 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/imdario/mergo"
+	"github.com/labstack/echo/v4"
+	"github.com/libp2p/go-libp2p/core/host"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -14,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
@@ -24,10 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/hashicorp/go-multierror"
-	"github.com/imdario/mergo"
-	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type FeatureConfig struct {
@@ -365,6 +368,15 @@ func NewNode(
 		return errors.ErrorOrNil()
 	})
 
+	metrics.NodeInfo.Add(ctx, 1,
+		attribute.String("node_id", config.NodeID),
+		attribute.String("node_network_transport", config.NetworkConfig.Type),
+		attribute.Bool("node_is_compute", config.IsComputeNode),
+		attribute.Bool("node_is_requester", config.IsRequesterNode),
+		attribute.StringSlice("node_engines", executors.Keys(ctx)),
+		attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
+		attribute.StringSlice("node_storages", storageProviders.Keys(ctx)),
+	)
 	node := &Node{
 		ID:             config.NodeID,
 		CleanupManager: config.CleanupManager,
