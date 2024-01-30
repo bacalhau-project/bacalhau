@@ -188,12 +188,10 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
-	emptyResponse := ReadLogsResponse{}
-
+func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (<-chan *models.ExecutionLog, error) {
 	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
-		return emptyResponse, err
+		return nil, err
 	}
 
 	nodeID := ""
@@ -205,7 +203,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (R
 	}
 
 	if nodeID == "" {
-		return emptyResponse, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
+		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
 	}
 
 	req := compute.ExecutionLogsRequest{
@@ -218,15 +216,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (R
 		Follow:      request.Follow,
 	}
 
-	response, err := e.computeProxy.ExecutionLogs(ctx, req)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	return ReadLogsResponse{
-		Address:           response.Address,
-		ExecutionComplete: response.ExecutionFinished,
-	}, nil
+	return e.computeProxy.ExecutionLogs(ctx, req)
 }
 
 // GetResults returns the results of a job

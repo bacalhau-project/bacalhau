@@ -211,6 +211,6 @@ func (h *executionHandler) kill(ctx context.Context) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow bool) (io.ReadCloser, error) {
-	return h.logManager.GetMuxedReader(follow), nil
+func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+	return h.logManager.GetMuxedReader(request.Follow), nil
 }

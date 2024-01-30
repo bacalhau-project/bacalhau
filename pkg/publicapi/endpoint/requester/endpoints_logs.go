@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -92,50 +90,24 @@ func (s *Endpoint) logs(c echo.Context) error {
 		ExecutionID: payload.ExecutionID,
 		WithHistory: payload.WithHistory,
 		Follow:      payload.Follow}
-	response, err := s.requester.ReadLogs(ctx, logRequest)
+	responseCh, err := s.requester.ReadLogs(ctx, logRequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("read logs failure: %s", err))
-		s.writeErrorMessage(ctx, conn, errorResponse)
-		return nil
-	}
-
-	if response.ExecutionComplete {
-		s.writeTerminatedJobOutput(ctx, conn, job.ID, payload.ExecutionID)
-		return nil
-	}
-
-	client, err := logstream.NewLogStreamClient(ctx, response.Address)
-	if err != nil {
-		s.writeErrorMessage(ctx, conn, bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err)))
-		return nil
-	}
-	defer client.Close()
-
-	err = client.Connect(ctx, payload.ExecutionID, payload.WithHistory, payload.Follow)
-	if err != nil {
-		s.writeErrorMessage(ctx, conn, bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err)))
+		s.writeErrorMsg(ctx, conn, errorResponse)
 		return nil
 	}
 
 	for {
-		frame, err := client.ReadDataFrame(ctx)
-		if err == io.EOF {
-			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		response, ok := <-responseCh
+		if !ok {
 			break
 		}
+		err = s.writeMsg(ctx, conn, response)
 		if err != nil {
-			log.Ctx(ctx).
-				Error().
-				Err(err).
-				Str("Job", payload.JobID).
-				Str("Execution", payload.ExecutionID).
-				Msgf("Stream read failure. May be reset?: %s", err)
+			log.Ctx(ctx).Error().Err(err).Msgf("websocket write failure")
 			break
 		}
-
-		err = s.writeDataFrame(ctx, conn, frame)
-		if err != nil {
-			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if response.EOF {
 			break
 		}
 	}
@@ -155,51 +127,16 @@ func (s *Endpoint) writeErrorMessage(ctx context.Context, conn *websocket.Conn, 
 	}
 }
 
-func (s *Endpoint) writeDataFrame(ctx context.Context, conn *websocket.Conn, frame logger.DataFrame) error {
-	msg := Msg{
-		Tag:  uint8(frame.Tag),
-		Data: string(frame.Data),
-	}
+func (s *Endpoint) writeErrorMsg(ctx context.Context, conn *websocket.Conn, errorMsg string) {
+	_ = s.writeMsg(ctx, conn, models.ExecutionLog{
+		Error: errorMsg,
+	})
+}
 
+func (s *Endpoint) writeMsg(ctx context.Context, conn *websocket.Conn, msg any) error {
 	err := conn.WriteJSON(msg)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("websocket write failure: %s", err)
 	}
 	return err
-}
-
-func (s *Endpoint) writeTerminatedJobOutput(
-	ctx context.Context,
-	conn *websocket.Conn,
-	jobID string,
-	executionID string) {
-	executions, err := s.jobStore.GetExecutions(ctx, jobID)
-	if err != nil {
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
-		return
-	}
-
-	for _, exec := range executions {
-		if exec.ID == executionID {
-			if exec.RunOutput.STDOUT != "" {
-				df := logger.DataFrame{
-					Tag:  logger.StdoutStreamTag,
-					Size: len(exec.RunOutput.STDOUT),
-					Data: []byte(exec.RunOutput.STDOUT),
-				}
-				_ = s.writeDataFrame(ctx, conn, df)
-			}
-
-			if exec.RunOutput.STDERR != "" {
-				df := logger.DataFrame{
-					Tag:  logger.StderrStreamTag,
-					Size: len(exec.RunOutput.STDERR),
-					Data: []byte(exec.RunOutput.STDERR),
-				}
-				_ = s.writeDataFrame(ctx, conn, df)
-			}
-		}
-	}
-
-	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 }

@@ -27,6 +27,8 @@ type ComputeHandler struct {
 
 type handlerWithResponse[Request, Response any] func(context.Context, Request) (Response, error)
 
+type handlerWithStreamingResponse[Request, Response any] func(context.Context, Request) (<-chan Response, error)
+
 func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	handler := &ComputeHandler{
 		host:            params.Host,
@@ -38,7 +40,7 @@ func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	host.SetStreamHandler(BidAcceptedProtocolID, handleWith(host, handler.computeEndpoint.BidAccepted))
 	host.SetStreamHandler(BidRejectedProtocolID, handleWith(host, handler.computeEndpoint.BidRejected))
 	host.SetStreamHandler(CancelProtocolID, handleWith(host, handler.computeEndpoint.CancelExecution))
-	host.SetStreamHandler(ExecutionLogsID, handleWith(host, handler.computeEndpoint.ExecutionLogs))
+	host.SetStreamHandler(ExecutionLogsID, handleStreamingResponse(host, handler.computeEndpoint.ExecutionLogs))
 	log.Debug().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
 	return handler
 }
@@ -86,5 +88,48 @@ func handleStream[Request, Response any](ctx context.Context, stream network.Str
 		log.Ctx(ctx).Error().Msgf("error encoding %s: %s", reflect.TypeOf(response), err)
 		_ = stream.Reset()
 		return
+	}
+}
+
+func handleStreamingResponse[Request, Response any](
+	host host.Host, f handlerWithStreamingResponse[Request, Response]) func(stream network.Stream) {
+	return func(stream network.Stream) {
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), host.ID().String())
+		if err := stream.Scope().SetService(ComputeServiceName); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("error attaching stream to compute service")
+			_ = stream.Reset()
+			return
+		}
+
+		request := new(Request)
+		err := json.NewDecoder(stream).Decode(request)
+		if err != nil {
+			log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+			_ = stream.Reset()
+			return
+		}
+		defer closer.CloseWithLogOnError("stream", stream)
+
+		ch, err := f(ctx, *request)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("error getting log stream")
+			_ = stream.Reset()
+			return
+		}
+
+		// loop over the reader, and send each entry to the channel
+		for {
+			entry, ok := <-ch
+			if !ok {
+				return
+			}
+
+			err := json.NewEncoder(stream).Encode(entry)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("error encoding log")
+				_ = stream.Reset()
+				return
+			}
+		}
 	}
 }

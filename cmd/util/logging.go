@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
 
@@ -75,12 +76,6 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	return nil
 }
 
-type Msg struct {
-	Tag          uint8
-	Data         string
-	ErrorMessage string
-}
-
 func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn) error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -93,7 +88,7 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 
 	go func() {
 		var fd *os.File
-		var msg Msg
+		var msg models.ExecutionLog
 
 		defer close(done)
 		for !exiting {
@@ -108,9 +103,9 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 				continue
 			}
 
-			if msg.ErrorMessage != "" {
+			if msg.Error != "" {
 				var errResponse bacerrors.ErrorResponse
-				err := json.Unmarshal([]byte(msg.ErrorMessage), &errResponse)
+				err := json.Unmarshal([]byte(msg.Error), &errResponse)
 				if err != nil {
 					Fatal(cmd, fmt.Errorf("failed decoding error message from server: %s", err), 1)
 				}
@@ -124,22 +119,18 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 				return
 			}
 
-			if msg.Tag == 1 {
-				fd = os.Stdout
-			} else if msg.Tag == 2 {
-				fd = os.Stderr
-			}
-			n, err := fd.WriteString(msg.Data)
+			fd = os.Stdout
+			n, err := fd.WriteString(msg.Line)
 			if err != nil {
 				if !exiting {
 					cmd.PrintErrf("failed to write: %s", err)
 				}
 				break
 			}
-			if n != len(msg.Data) {
+			if n != len(msg.Line) {
 				cmd.PrintErrf(
 					"failed to write to fd, tried to write %d bytes but only managed %d",
-					len(msg.Data),
+					len(msg.Line),
 					n,
 				)
 			}
