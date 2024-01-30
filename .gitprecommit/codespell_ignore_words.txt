@@ -52,6 +52,7 @@ deflt
 deleteme
 devstack
 devstask
+direnv
 doclines
 Doesnt
 Dont

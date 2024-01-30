@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "env": "^0.0.2"
+    "typescript": "github:wesbos/typescript",
+    "wesbos": "^1.0.1"
   }
 }
