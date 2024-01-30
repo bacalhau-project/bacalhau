@@ -171,7 +171,7 @@ build-webui: ${WEB_BUILD_FILES}
 webui/build:
 	mkdir -p $@
 
-$(WEB_INSTALL_GUARD): webui/package.json webui/yarn-lock.json
+$(WEB_INSTALL_GUARD): webui/package.json
 	cd webui && yarn install
 
 export GENERATE_SOURCEMAP := false
