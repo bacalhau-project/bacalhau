@@ -1,0 +1,45 @@
+extensions:
+  basicauth/prometheus:
+    client_auth:
+      username: ${grafana_prometheus_username}
+      password: ${grafana_prometheus_password}
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+
+exporters:
+  logging:
+    loglevel: debug
+  prometheusremotewrite:
+    endpoint: https://prometheus-us-central1.grafana.net/api/prom/push
+    auth:
+      authenticator: basicauth/prometheus
+    resource_to_telemetry_conversion:
+      enabled: true
+
+processors:
+  batch:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 4000
+    spike_limit_mib: 500
+  resource:
+    attributes:
+      - key: service.collector
+        value: bacalhau-otel-collector
+        action: insert
+  attributes/metrics:
+    actions:
+      - pattern: net\.sock.+
+        action: delete
+
+service:
+  extensions: [basicauth/prometheus]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes/metrics, batch]
+      exporters: [prometheusremotewrite, logging]

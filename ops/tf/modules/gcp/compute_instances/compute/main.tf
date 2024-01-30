@@ -108,6 +108,7 @@ locals {
   // templating otel config file
   //
   otel_config_content = templatefile("${path.module}/../../../instance_files/otel-collector.yaml", {
+    bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
     // add more arguments as needed
   })
 

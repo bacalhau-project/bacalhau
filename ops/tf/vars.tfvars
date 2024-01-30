@@ -17,3 +17,5 @@ aws_access_key_id = ""
 aws_secret_access_key = ""
 
 bacalhau_accept_networked_jobs = true
+
+bacalhau_otel_collector_endpoint = ""

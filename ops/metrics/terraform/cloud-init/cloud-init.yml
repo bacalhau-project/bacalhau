@@ -1,0 +1,18 @@
+#cloud-config
+
+write_files:
+  # otel config file
+  - path: /etc/otel-collector.yaml
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${otel_config_file}
+
+  # otel service file
+  - path: /etc/systemd/system/otel.service
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${otel_service_file}
