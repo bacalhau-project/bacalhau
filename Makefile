@@ -376,7 +376,7 @@ lint:
 
 .PHONY: lint-fix
 lint-fix:
-	golangci-lint run --timeout 10m --fix
+	golangci-lint run --timeout 10m
 
 ################################################################################
 # Target: modtidy
