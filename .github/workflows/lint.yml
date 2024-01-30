@@ -26,6 +26,7 @@ jobs:
       - name: Run webui linter
         working-directory: webui
         run: |
+          npm install
           npm run lint
       - name: Run pre-commit
         run: |
