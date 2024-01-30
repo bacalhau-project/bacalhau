@@ -25,6 +25,7 @@ module "requester_instance" {
   aws_secret_access_key = var.aws_secret_access_key
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
+  bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
 }
 
 module "compute_instance" {
@@ -51,4 +52,5 @@ module "compute_instance" {
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
   bacalhau_local_disk_size = var.bacalhau_local_disk_size
+  bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
 }

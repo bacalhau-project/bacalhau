@@ -48,14 +48,19 @@ processors:
 exporters:
   logging:
     loglevel: debug
+  otlphttp:
+    endpoint: ${bacalhau_otel_collector_endpoint}
+    tls:
+      insecure: true
+      insecure_skip_verify: true
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
-      exporters: [logging]
+      exporters: [logging, otlphttp]
     metrics:
       receivers: [otlp, hostmetrics]
       processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
-      exporters: [logging]
+      exporters: [logging, otlphttp]

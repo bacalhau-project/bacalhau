@@ -60,3 +60,8 @@ variable "bacalhau_local_disk_size" {
   type        = number
   default = 50
 }
+
+variable "bacalhau_otel_collector_endpoint" {
+  description = "The opentelemetry collector endpoint to send metrics to"
+  type = string
+}

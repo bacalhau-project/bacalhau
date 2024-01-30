@@ -69,3 +69,9 @@ variable "bacalhau_local_disk_size" {
   description = "The size of the disk in GB bacalhau will to store local data"
   type        = number
 }
+
+
+variable "bacalhau_otel_collector_endpoint" {
+  description = "The opentelemetry collector endpoint to send metrics to"
+  type = string
+}
