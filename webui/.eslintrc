@@ -7,7 +7,7 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "extends": ["wesbos/typescript"],
+  "extends": ["wesbos/typescript", "plugin:storybook/recommended"],
   "plugins": ["prettier", "import"],
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off",
@@ -71,7 +71,10 @@
     "jest.setup.js",
     "build/",
     "public/mockServiceWorker.js",
+    "config/",
+    "scripts/",
+    "src/react-app-env.d.ts",
     "config/env.js",
-    "src/stories/",
+    "src/stories/"
   ]
 }
