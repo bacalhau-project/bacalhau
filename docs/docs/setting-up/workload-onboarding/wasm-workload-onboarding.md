@@ -136,8 +136,7 @@ $ bacalhau wasm run prog.wasm -e HELLO=world
 
 ## Examples
 
-See [the Rust example](../../examples/workload-onboarding/rust-wasm/index.md) for a workload that leverages WebAssembly support.
-docs/docs/examples/workload-onboarding/rust-wasm/index.md
+See [the Rust example](../../setting-up/workload-onboarding/rust-wasm/index.md) for a workload that leverages WebAssembly support.
 ## Support
 
 
