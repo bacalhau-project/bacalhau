@@ -8,6 +8,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install asdf & tools
+        uses: asdf-vm/actions/install@v3
+
+      - name: Add asdf to PATH
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
+
       - name: Codespell - Docs
         run: |
           yarn global add cspell@latest
@@ -20,10 +27,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          cache: yarn
-          cache-dependency-path: docs
+
+      - name: Install asdf & tools
+        uses: asdf-vm/actions/install@v3
+
+      - name: Add asdf to PATH
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
+
       - run: yarn install
         working-directory: docs
       - run: yarn run build

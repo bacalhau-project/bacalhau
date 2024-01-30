@@ -15,6 +15,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Install asdf & tools
+        uses: asdf-vm/actions/install@v3
+
+      - name: Add asdf to PATH
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
+
       - name: Codespell
         run: |
           yarn global add cspell@latest
