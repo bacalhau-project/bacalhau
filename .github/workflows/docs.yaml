@@ -42,7 +42,7 @@ jobs:
         working-directory: docs
       - run: yarn run build
         working-directory: docs
-      - uses: actions/upload-pages-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           path: docs/build/
 
