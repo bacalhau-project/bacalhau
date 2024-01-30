@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "typescript": "github:wesbos/typescript",
+    "wesbos": "^1.0.1"
+  }
+}
