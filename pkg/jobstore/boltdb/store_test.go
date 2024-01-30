@@ -399,7 +399,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 4, len(response.Jobs))
-		require.Equal(t, 1, response.Offset)
+		require.Equal(t, uint32(1), response.Offset)
 	})
 
 	s.T().Run("everything limit", func(t *testing.T) {

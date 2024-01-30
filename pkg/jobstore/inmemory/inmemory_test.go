@@ -306,9 +306,8 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 
 		require.NoError(t, err)
 		jobs = response.Jobs
-		require.Equal(t, 2, len(jobs))
+		require.Equal(t, 1, len(jobs))
 		require.Equal(t, s.ids[4], jobs[0].ID)
-		require.Empty(t, jobs[1].ID) // Empty job
 	})
 
 	s.T().Run("everything sorted by id", func(t *testing.T) {
