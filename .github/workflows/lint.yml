@@ -18,6 +18,9 @@ jobs:
       - name: Install asdf & tools
         uses: asdf-vm/actions/install@v3
 
+      - name: Add asdf to PATH
+        run: echo "::add-path::$(asdf where asdf)/bin"
+
       - run: go mod tidy
       - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
       - uses: pre-commit/action@v3.0.0
