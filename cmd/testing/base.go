@@ -62,9 +62,7 @@ func (s *BaseSuite) SetupTest() {
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
 	s.Client = client.NewAPIClient(client.NoTLS, s.Host, s.Port)
-	s.ClientV2 = clientv2.New(clientv2.Options{
-		Address: fmt.Sprintf("http://%s:%d", s.Host, s.Port),
-	})
+	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 }
 
 // After each test

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/spf13/cobra"
 )
 
 // VersionOptions is a struct to support version command
@@ -37,7 +38,7 @@ func NewVersionCmd() *cobra.Command {
 // Run executes version command
 func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
-	serverVersionResponse, err := util.GetAPIClientV2(ctx).Agent().Version()
+	serverVersionResponse, err := util.GetAPIClientV2().Agent().Version(ctx)
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("could not get server version via API Client: %w", err), 1)
 	}

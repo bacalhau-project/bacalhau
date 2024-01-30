@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/samber/lo"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/choose"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/samber/lo"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 type responder = func(request *json.RawMessage) (response []byte, err error)
@@ -25,8 +26,8 @@ func RunAuthenticationFlow(cmd *cobra.Command) (string, error) {
 		authn.MethodTypeAsk:       askResponder(cmd),
 	}
 
-	client := util.GetAPIClientV2(cmd.Context())
-	methods, err := client.Auth().Methods(&apimodels.ListAuthnMethodsRequest{})
+	client := util.GetAPIClientV2()
+	methods, err := client.Auth().Methods(cmd.Context(), &apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +62,7 @@ func RunAuthenticationFlow(cmd *cobra.Command) (string, error) {
 			return "", err
 		}
 
-		authnResponse, err := client.Auth().Authenticate(&apimodels.AuthnRequest{
+		authnResponse, err := client.Auth().Authenticate(cmd.Context(), &apimodels.AuthnRequest{
 			Name:       chosenMethodName,
 			MethodData: response,
 		})

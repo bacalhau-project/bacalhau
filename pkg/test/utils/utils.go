@@ -6,12 +6,13 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -23,7 +24,7 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *clientv2.Client,
 	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 	require.Regexp(t, uuidRegex, jobID, "Job ID should be a UUID")
 
-	j, err := c.Jobs().Get(&apimodels.GetJobRequest{
+	j, err := c.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID: jobID,
 	})
 	require.NoError(t, err)
