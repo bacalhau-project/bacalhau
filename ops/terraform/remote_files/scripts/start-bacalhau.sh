@@ -49,6 +49,7 @@ else
     echo -n "/ip4/${1}/tcp/${BACALHAU_PORT}/p2p/${2}"
   }
 
+  export CONNECT_PEER=none
   # use the BACALHAU_CONNECT_PEER env var if it is set
   if [[ -n "${BACALHAU_CONNECT_PEER}" ]]; then
     export CONNECT_PEER=$BACALHAU_CONNECT_PEER
