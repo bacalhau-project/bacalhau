@@ -26,9 +26,7 @@ jobs:
       - name: Run webui linter
         working-directory: webui
         run: |
-          npm install --global yarn
-          yarn install --immutable
-          yarn run lint
+          npm run lint
       - name: Run pre-commit
         run: |
           pre-commit run --show-diff-on-failure --color=always --all-files
