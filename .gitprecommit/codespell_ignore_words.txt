@@ -247,6 +247,7 @@ quic
 quickstart
 rabbitmq
 rawoutput
+rcur
 rdbms
 reenqueuing
 rego
