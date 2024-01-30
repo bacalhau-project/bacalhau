@@ -19,7 +19,7 @@ jobs:
         uses: asdf-vm/actions/install@v3
 
       - name: Add asdf to PATH
-        run: echo "::add-path::$(asdf where asdf)/bin"
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
 
       - run: go mod tidy
       - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
