@@ -64,7 +64,7 @@ func (s *Endpoint) list(c echo.Context) error {
 }
 
 func (s *Endpoint) getJobsList(ctx context.Context, listReq legacymodels.ListRequest) ([]model.Job, error) {
-	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
+	response, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
 		Namespace:   listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
@@ -77,9 +77,9 @@ func (s *Endpoint) getJobsList(ctx context.Context, listReq legacymodels.ListReq
 	if err != nil {
 		return nil, err
 	}
-	res := make([]model.Job, len(list))
-	for i := range list {
-		legacyJob, err := legacy.ToLegacyJob(&list[i])
+	res := make([]model.Job, len(response.Jobs))
+	for i := range response.Jobs {
+		legacyJob, err := legacy.ToLegacyJob(&response.Jobs[i])
 		if err != nil {
 			return nil, err
 		}

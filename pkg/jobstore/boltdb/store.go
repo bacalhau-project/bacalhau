@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -290,19 +291,28 @@ func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
 }
 
 // GetJobs returns all Jobs that match the provided query
-func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]models.Job, error) {
-	var jobs []models.Job
+func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
+	var response *jobstore.JobQueryResponse
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		jobs, err = b.getJobs(tx, query)
+		response, err = b.getJobs(tx, query)
 		return
 	})
-	return jobs, err
+	return response, err
 }
 
-func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]models.Job, error) {
+func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
 	if query.ID != "" {
 		job, err := b.getJob(tx, query.ID)
-		return []models.Job{job}, err
+
+		if query.Selector != nil {
+			// If we have a selector and it doesn't match, then it isn't an error
+			// just a non-match.
+			if !query.Selector.Matches(labels.Set(job.Labels)) {
+				return &jobstore.JobQueryResponse{}, nil
+			}
+		}
+
+		return &jobstore.JobQueryResponse{Jobs: []models.Job{job}}, err
 	}
 
 	jobSet, err := b.getJobsInitialSet(tx, query)
@@ -325,7 +335,55 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]models.J
 		return nil, err
 	}
 
-	return b.getJobsWithinLimit(result, query), nil
+	// Sort the jobs according to the query.SortBy and query.SortOrder
+	listSorter := func(i, j int) bool {
+		switch query.SortBy {
+		case "id":
+			if query.SortReverse {
+				// what does it mean to sort by ID? (rj) it's mostly meaningless and just
+				// gives us a lexicographic sort of the UUIDs.
+				return result[i].ID > result[j].ID
+			} else {
+				return result[i].ID < result[j].ID
+			}
+		case "created_at":
+			if query.SortReverse {
+				return result[i].CreateTime > result[j].CreateTime
+			} else {
+				return result[i].CreateTime < result[j].CreateTime
+			}
+		default:
+			// We apply modifytime as a default sort so that we can use it for pagination.
+			// Without a known default we won't have a stable sort that makes sense for
+			// offsets/limits.
+			if query.SortReverse {
+				return result[i].ModifyTime > result[j].ModifyTime
+			} else {
+				return result[i].ModifyTime < result[j].ModifyTime
+			}
+		}
+	}
+	sort.Slice(result, listSorter)
+
+	// If we have a selector, filter the results to only those that match
+	if query.Selector != nil {
+		var filtered []models.Job
+		for _, job := range result {
+			if query.Selector.Matches(labels.Set(job.Labels)) {
+				filtered = append(filtered, job)
+			}
+		}
+		result = filtered
+	}
+
+	jobs := b.getJobsWithinLimit(result, query)
+
+	return &jobstore.JobQueryResponse{
+		Jobs:       jobs,
+		Offset:     query.Offset,
+		Limit:      query.Limit,
+		NextOffset: query.Offset + query.Limit,
+	}, nil
 }
 
 // getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
@@ -431,12 +489,22 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 }
 
 func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) []models.Job {
+	offset := query.Offset
+	if offset != 0 {
+		offset = math.Min(uint32(len(jobs)), offset)
+		if offset == uint32(len(jobs)) {
+			return []models.Job{}
+		}
+	}
+
 	limit := query.Limit
 	if limit == 0 {
 		limit = uint32(len(jobs))
 	} else {
 		limit = math.Min(uint32(len(jobs)), limit+query.Offset)
 	}
+
+	fmt.Printf("%v : %v\n", query.Offset, limit)
 
 	return jobs[query.Offset:limit]
 }
@@ -1100,3 +1168,6 @@ func (b *BoltJobStore) Close(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msg("closing bolt-backed job store")
 	return b.database.Close()
 }
+
+// Static check to ensure that InMemoryJobStore implements jobstore.Store
+var _ jobstore.Store = (*BoltJobStore)(nil)

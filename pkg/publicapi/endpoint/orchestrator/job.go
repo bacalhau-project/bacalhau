@@ -8,8 +8,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -114,7 +114,6 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		}
 	}
 
-	// TODO: #3178 implement label selectors in jobstore instead of filtering here
 	selector, err := parseLabels(c)
 	if err != nil {
 		return err
@@ -126,6 +125,7 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		Offset:      uint32(offset),
 		SortBy:      args.OrderBy,
 		SortReverse: args.Reverse,
+		Selector:    selector,
 	}
 
 	if args.Namespace == apimodels.AllNamespacesNamespace {
@@ -133,19 +133,20 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		query.ReturnAll = true
 	}
 
-	jobs, err := e.store.GetJobs(ctx, query)
+	response, err := e.store.GetJobs(ctx, query)
 	if err != nil {
 		return err
 	}
 
 	res := &apimodels.ListJobsResponse{
-		Jobs: make([]*models.Job, 0),
+		Jobs: lo.Map[models.Job, *models.Job](response.Jobs, func(item models.Job, _ int) *models.Job {
+			return &item
+		}),
+		BaseListResponse: apimodels.BaseListResponse{
+			NextToken: strconv.FormatUint(uint64(response.NextOffset), 10),
+		},
 	}
-	for i := range jobs {
-		if selector.Matches(labels.Set(jobs[i].Labels)) {
-			res.Jobs = append(res.Jobs, &jobs[i])
-		}
-	}
+
 	return c.JSON(http.StatusOK, res)
 }
 
