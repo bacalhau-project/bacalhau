@@ -1,15 +1,13 @@
 package apimodels
 
 import (
-	"context"
 	"strconv"
 )
 
 // BaseRequest is the base request used for all requests
 type BaseRequest struct {
 	Namespace string            `query:"namespace"`
-	Headers   map[string]string `query:"-"`
-	Context   context.Context   `query:"-"`
+	Headers   map[string]string `query:"-" json:"-"`
 
 	// A good place to define other fields that are common to all requests,
 	// such as auth tokens
@@ -21,9 +19,6 @@ func (o *BaseRequest) ToHTTPRequest() *HTTPRequest {
 
 	if o.Namespace != "" {
 		r.Params.Set("namespace", o.Namespace)
-	}
-	if o.Context != nil {
-		r.Ctx = o.Context
 	}
 
 	for k, v := range o.Headers {

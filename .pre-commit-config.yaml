@@ -8,6 +8,7 @@ repos:
   - id: detect-aws-credentials
     args: [--allow-missing-credentials]
   - id: detect-private-key
+    exclude: ^testdata/certs
   - id: check-yaml
   - id: check-json
 - repo: local
@@ -21,7 +22,7 @@ repos:
     entry: .gitprecommit/go_fmt.sh
     language: script
   - id: golangci-lint
-    name: golangci-lint --fix
+    name: golangci-lint
     entry: .gitprecommit/golangci-lint.sh
     language: script
   - id: go-mod-tidy-check

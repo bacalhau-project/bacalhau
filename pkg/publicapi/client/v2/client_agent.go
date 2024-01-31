@@ -1,6 +1,8 @@
 package client
 
 import (
+	"context"
+
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -14,22 +16,22 @@ func (c *Client) Agent() *Agent {
 }
 
 // Alive is used to check if the agent is alive.
-func (c *Agent) Alive() (*apimodels.IsAliveResponse, error) {
+func (c *Agent) Alive(ctx context.Context) (*apimodels.IsAliveResponse, error) {
 	var res apimodels.IsAliveResponse
-	err := c.client.get("/api/v1/agent/alive", &apimodels.BaseGetRequest{}, &res)
+	err := c.client.get(ctx, "/api/v1/agent/alive", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }
 
 // Version is used to get the agent version.
-func (c *Agent) Version() (*apimodels.GetVersionResponse, error) {
+func (c *Agent) Version(ctx context.Context) (*apimodels.GetVersionResponse, error) {
 	var res apimodels.GetVersionResponse
-	err := c.client.get("/api/v1/agent/version", &apimodels.BaseGetRequest{}, &res)
+	err := c.client.get(ctx, "/api/v1/agent/version", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }
 
 // Node is used to get the agent node info.
-func (c *Agent) Node(req *apimodels.GetAgentNodeRequest) (*apimodels.GetAgentNodeResponse, error) {
+func (c *Agent) Node(ctx context.Context, req *apimodels.GetAgentNodeRequest) (*apimodels.GetAgentNodeResponse, error) {
 	var res apimodels.GetAgentNodeResponse
-	err := c.client.get("/api/v1/agent/node", req, &res)
+	err := c.client.get(ctx, "/api/v1/agent/node", req, &res)
 	return &res, err
 }

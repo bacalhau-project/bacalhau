@@ -3,13 +3,14 @@ package node
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 var defaultColumnGroups = []string{"labels", "capacity"}
@@ -62,7 +63,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
 		}
 	}
-	response, err := util.GetAPIClientV2(ctx).Nodes().List(&apimodels.ListNodesRequest{
+	response, err := util.GetAPIClientV2().Nodes().List(ctx, &apimodels.ListNodesRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,
