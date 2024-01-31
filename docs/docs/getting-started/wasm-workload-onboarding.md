@@ -35,7 +35,7 @@ Adjust your program to output results to standard output (`stdout`) or standard 
 
 By making these adjustments, you can effectively transition your program to operate within the Bacalhau environment, utilizing filesystem operations instead of traditional network interactions.
 
-:::tip
+:::info
 You can specify additional or different output mounts using the `-o` flag.
 :::
 
@@ -113,7 +113,7 @@ $ bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ hello world
 ```
 
 
-:::tip
+:::info
 
 Write your program to use program arguments to specify input and output paths. This makes your program more flexible in handling different configurations of input and output volumes.
 
