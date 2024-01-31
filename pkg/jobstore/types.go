@@ -9,7 +9,6 @@ import (
 )
 
 type JobQuery struct {
-	ID        string
 	Namespace string
 
 	// IncludeTags and ExcludeTags are used primarily by the requester's list API.
@@ -25,11 +24,10 @@ type JobQuery struct {
 }
 
 type JobQueryResponse struct {
-	Jobs            []models.Job
-	Offset          uint32 // Offset into the filtered results of the first returned record
-	Limit           uint32 // The number of records to return, 0 means all
-	NextOffset      uint32 // Offset + Limit of the next page of results, 0 means no more results
-	RecordsReturned uint32 // The number of jobs actually held in the Jobs field
+	Jobs       []models.Job
+	Offset     uint32 // Offset into the filtered results of the first returned record
+	Limit      uint32 // The number of records to return, 0 means all
+	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
 // A Store will persist jobs and their state to the underlying storage.

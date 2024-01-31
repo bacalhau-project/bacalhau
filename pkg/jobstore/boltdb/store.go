@@ -301,20 +301,6 @@ func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*j
 }
 
 func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
-	if query.ID != "" {
-		job, err := b.getJob(tx, query.ID)
-
-		if query.Selector != nil {
-			// If we have a selector and it doesn't match, then it isn't an error
-			// just a non-match.
-			if !query.Selector.Matches(labels.Set(job.Labels)) {
-				return &jobstore.JobQueryResponse{}, nil
-			}
-		}
-
-		return &jobstore.JobQueryResponse{Jobs: []models.Job{job}}, err
-	}
-
 	jobSet, err := b.getJobsInitialSet(tx, query)
 	if err != nil {
 		return nil, err
@@ -503,8 +489,6 @@ func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQ
 	} else {
 		limit = math.Min(uint32(len(jobs)), limit+query.Offset)
 	}
-
-	fmt.Printf("%v : %v\n", query.Offset, limit)
 
 	return jobs[query.Offset:limit]
 }

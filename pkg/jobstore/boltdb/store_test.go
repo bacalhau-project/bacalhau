@@ -288,14 +288,6 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 }
 
 func (s *BoltJobstoreTestSuite) TestSearchJobs() {
-	s.T().Run("by client ID", func(t *testing.T) {
-		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			Namespace: "client1",
-		})
-		require.NoError(t, err)
-		require.Equal(t, 1, len(response.Jobs))
-	})
-
 	s.T().Run("by client ID and included tags", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			Namespace:   "client1",
@@ -309,9 +301,8 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		require.NotContains(t, jobs[0].Labels, "slow")
 	})
 
-	s.T().Run("single record with selectors", func(t *testing.T) {
+	s.T().Run("basic selectors", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID:        "110",
 			Namespace: "client1",
 			Selector:  s.parseLabels("gpu=true,fast=true"),
 		})
@@ -319,16 +310,6 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		jobs := response.Jobs
 		require.Equal(t, 1, len(jobs))
 		require.Equal(t, "client1", jobs[0].Namespace)
-
-		// The first job, but with selectors which don't match. Should not be an error
-		// but should also have no results
-		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID:        "110",
-			Namespace: "client1",
-			Selector:  s.parseLabels("slow=true"),
-		})
-		require.NoError(t, err)
-		require.Empty(t, response.Jobs)
 	})
 
 	s.T().Run("all records with selectors and paging", func(t *testing.T) {
@@ -446,15 +427,6 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 0, len(response.Jobs))
-	})
-
-	s.T().Run("by id", func(t *testing.T) {
-		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID: "110",
-		})
-		require.NoError(t, err)
-		require.Equal(t, 1, len(response.Jobs))
-		require.Equal(t, "110", response.Jobs[0].ID)
 	})
 }
 

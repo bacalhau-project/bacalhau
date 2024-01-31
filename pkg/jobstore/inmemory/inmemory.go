@@ -108,23 +108,6 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 	defer d.mtx.RUnlock()
 	var result []models.Job
 
-	if query.ID != "" {
-		job, err := d.getJob(query.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		if query.Selector != nil {
-			// If we have a selector and it doesn't match, then it isn't an error
-			// just a non-match.
-			if !query.Selector.Matches(labels.Set(job.Labels)) {
-				return &jobstore.JobQueryResponse{}, nil
-			}
-		}
-
-		return &jobstore.JobQueryResponse{Jobs: []models.Job{job}}, nil
-	}
-
 	for _, j := range maps.Values(d.jobs) {
 		if !query.ReturnAll && query.Namespace != "" && query.Namespace != j.Namespace {
 			// Job is not for the requesting client, so ignore it.
