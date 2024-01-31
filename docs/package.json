@@ -39,5 +39,15 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "yarn.build": {
+    "input": [
+      "src",
+      "tests"
+    ],
+    "output": [
+      "build",
+      "coverage"
+    ]
   }
 }
