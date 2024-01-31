@@ -201,13 +201,20 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
+	evalQueue, err := requester.NewEvaluationQueue(ctx, jobStore, evalBroker)
+	if err != nil {
+		return nil, err
+	}
+	evalQueue.Start(ctx)
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         nodeID,
 		EvaluationBroker:           evalBroker,
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
-		StorageProviders:           storageProvider,
+		EvaluationQueue:            evalQueue,
+		StorageProviders:           storageProviders,
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 	})
 
@@ -289,6 +296,8 @@ func NewRequesterNode(
 		for _, worker := range workers {
 			worker.Stop()
 		}
+
+		evalQueue.Stop()
 		evalBroker.SetEnabled(false)
 
 		cleanupErr := tracerContextProvider.Shutdown()

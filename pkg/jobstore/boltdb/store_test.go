@@ -4,7 +4,6 @@ package boltjobstore
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"

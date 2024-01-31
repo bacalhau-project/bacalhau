@@ -25,6 +25,7 @@ type BaseEndpointParams struct {
 	ID                         string
 	EvaluationBroker           orchestrator.EvaluationBroker
 	Store                      jobstore.Store
+	EvaluationQueue            *EvaluationQueue
 	EventEmitter               orchestrator.EventEmitter
 	ComputeEndpoint            compute.Endpoint
 	StorageProviders           storage.StorageProvider
@@ -37,6 +38,7 @@ type BaseEndpoint struct {
 	id               string
 	evaluationBroker orchestrator.EvaluationBroker
 	store            jobstore.Store
+	evaluationQueue  *EvaluationQueue
 	eventEmitter     orchestrator.EventEmitter
 	computesvc       compute.Endpoint
 	transforms       []jobtransform.Transformer
@@ -63,6 +65,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		evaluationBroker: params.EvaluationBroker,
 		computesvc:       params.ComputeEndpoint,
 		store:            params.Store,
+		evaluationQueue:  params.EvaluationQueue,
 		transforms:       transforms,
 		postTransforms:   postTransforms,
 		eventEmitter:     params.EventEmitter,
@@ -152,10 +155,10 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		return nil, err
 	}
 
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		return nil, err
-	}
+	// err = e.evaluationBroker.Enqueue(eval)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return legacyJob, nil
@@ -211,10 +214,10 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			return CancelJobResult{}, err
 		}
 
-		err = e.evaluationBroker.Enqueue(eval)
-		if err != nil {
-			return CancelJobResult{}, err
-		}
+		// err = e.evaluationBroker.Enqueue(eval)
+		// if err != nil {
+		// 	return CancelJobResult{}, err
+		// }
 	}
 	e.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 		JobID:     request.JobID,
@@ -413,10 +416,10 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 		return
 	}
 
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
-	}
+	// err = e.evaluationBroker.Enqueue(eval)
+	// if err != nil {
+	// 	log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
+	// }
 }
 
 // Compile-time interface check:
