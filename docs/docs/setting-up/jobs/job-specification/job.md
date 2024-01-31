@@ -5,7 +5,7 @@ sidebar_position: 0
 
 # Job Specification
 
-A **Job** represents a discrete unit of work that can be scheduled and executed. It carries all the necessary information to define the nature of the work, how it should be executed, and the resources it requires. Represents a `.yaml` document with a list of fields, for example:
+A **Job** represents a discrete unit of work that can be scheduled and executed. It carries all the necessary information to define the nature of the work, how it should be executed, and the resources it requires. It is represented in a `.yaml` document with a list of fields, for example:
 
 ```yaml
 Name: Sample job
