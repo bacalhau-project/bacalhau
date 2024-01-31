@@ -243,7 +243,7 @@ func Setup(
 			NodeID:              nodeID,
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			HostAddress:         "127.0.0.1", //olgibbons check
+			HostAddress:         "127.0.0.1",
 			APIPort:             apiPort,
 			ComputeConfig:       stackConfig.ComputeConfig,
 			RequesterNodeConfig: stackConfig.RequesterConfig,
