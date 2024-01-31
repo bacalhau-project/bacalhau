@@ -25,7 +25,7 @@ Ideal for intermittent yet intensive data dives, for instance performing computa
 
 Ops jobs are executed on all available nodes that match the requirements of the job. In all other aspects, they behave like Batch jobs.
 
-Ops jobs allow to control the whole fleet, aggregate data from every avaiable node. They are perfect for urgent investigations, granting direct access to logs on host machines, where previously you may have had to wait for the logs to arrive at a central locartion before being able to query them. They can also be used for delivering configuration files for other systems should you wish to deploy an update to many machines at once. 
+Ops jobs allow user to control the whole fleet or or collect and process real-time data from all involved nodes. They are perfect for urgent investigations, granting direct access to logs on host machines, where previously you may have had to wait for the logs to arrive at a central locartion before being able to query them. They can also be used for delivering configuration files for other systems should you wish to deploy an update to many machines at once. 
 
 ## Daemon Jobs
 
