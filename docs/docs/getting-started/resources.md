@@ -24,7 +24,7 @@ Flag | Default | Description
 
 ## WASM Executor
 
-Due to the peculiarities of WASM, it cannot be limited by CPU or disk space. Besides, WASM has its own RAM limitation - up to 4 GB and cannot use GPU. Therefore, when configuring the WASM executor, you can only specify the `--memory` flag.
+WebAssembly is not limited by CPU, or disk space, and is unable to use any installed GPU. It also has a limitation on the amount of RAM available - up to a maximum of 4 GB. Therefore, when configuring the WASM executor, you can only specify the `--memory` flag.
 
 
 
