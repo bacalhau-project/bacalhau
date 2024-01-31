@@ -4,6 +4,7 @@ package requester
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -15,7 +16,7 @@ type Endpoint interface {
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
 	// ReadLogs retrieves the logs for an execution
-	ReadLogs(context.Context, ReadLogsRequest) (<-chan *models.ExecutionLog, error)
+	ReadLogs(context.Context, ReadLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error)
 }
 
 // StartJobRequest triggers the scheduling of a job.

@@ -168,6 +168,7 @@ func NewNode(
 	config.APIServerConfig.SkippedTimeoutPaths = append(config.APIServerConfig.SkippedTimeoutPaths, []string{
 		"/api/v1/requester/websocket/events",
 		"/api/v1/requester/logs",
+		"/ws/*",
 	}...)
 
 	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -28,7 +29,8 @@ func NewServer(params ServerParams) *Server {
 }
 
 // GetLogStream returns a stream of logs for a given execution
-func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (<-chan *models.ExecutionLog, error) {
+func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return nil, err

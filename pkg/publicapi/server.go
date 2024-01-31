@@ -121,13 +121,16 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			echomiddelware.TimeoutConfig{
 				Timeout:      params.Config.RequestHandlerTimeout,
 				ErrorMessage: TimeoutMessage,
-				Skipper:      middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
+				Skipper: middleware.ChainedSkipper(
+					middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
+					middleware.WebsocketSkipper,
+				),
 			}),
 
 		middleware.Otel(),
 		middleware.Authorize(params.Authorizer),
 		// sets headers on the server based on provided config
-		middleware.ServerHeader(params.Headers),
+		middleware.ServerHeader(params.Headers, middleware.WebsocketSkipper),
 		// logs request at appropriate error level based on status code
 		middleware.RequestLogger(*middlewareLogger, logLevel),
 		// logs requests made by clients with different versions than the server

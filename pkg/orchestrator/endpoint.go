@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -188,15 +189,18 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (<-chan *models.ExecutionLog, error) {
+func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeID := ""
+	var nodeID string
+	var executionID string
 	for _, exec := range executions {
-		if exec.ID == request.ExecutionID {
+		if exec.ID == request.ExecutionID || (request.ExecutionID == "" && !exec.IsDiscarded()) {
+			executionID = exec.ID
 			nodeID = exec.NodeID
 			break
 		}
@@ -211,7 +215,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (<
 			SourcePeerID: e.id,
 			TargetPeerID: nodeID,
 		},
-		ExecutionID: request.ExecutionID,
+		ExecutionID: executionID,
 		WithHistory: request.WithHistory,
 		Follow:      request.Follow,
 	}

@@ -518,12 +518,14 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	ch := logstream.NewStream(context.Background(), logstream.StreamParams{
 		Reader: reader,
 	}).LogChannel
-	executionLog, ok := <-ch
+	res, ok := <-ch
+	executionLog := res.Value
 	require.True(s.T(), ok)
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
 	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
 
-	executionLog, ok = <-ch
+	res, ok = <-ch
+	executionLog = res.Value
 	require.False(s.T(), ok)
 }
 

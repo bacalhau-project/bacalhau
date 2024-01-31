@@ -1,9 +1,12 @@
 package orchestrator
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
@@ -343,4 +346,58 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 	return publicapi.UnescapedJSON(c, http.StatusOK, &apimodels.ListJobResultsResponse{
 		Results: resp.Results,
 	})
+}
+
+// logs returns the logs for a job using websockets.
+func (e *Endpoint) logs(c echo.Context) error {
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade websocket connection: %w", err)
+	}
+	defer ws.Close()
+
+	err = e.logsWS(c, ws)
+	if err != nil {
+		err = ws.WriteJSON(concurrency.AsyncResult[models.ExecutionLog]{
+			Err: err,
+		})
+		if err != nil {
+			c.Logger().Errorf("failed to write error to websocket: %s", err)
+		}
+	}
+	_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	return nil
+}
+
+func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
+	jobID := c.Param("id")
+	var args apimodels.GetLogsRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+
+	logstreamCh, err := e.orchestrator.ReadLogs(c.Request().Context(), orchestrator.ReadLogsRequest{
+		JobID:       jobID,
+		ExecutionID: args.ExecutionID,
+		WithHistory: args.WithHistory,
+		Follow:      args.Follow,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open log stream for job %s: %w", jobID, err)
+	}
+
+	for {
+		logMsg, ok := <-logstreamCh
+		if !ok {
+			break
+		}
+		err = ws.WriteJSON(logMsg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

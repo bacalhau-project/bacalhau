@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -22,7 +23,7 @@ type Endpoint interface {
 	// CancelExecution cancels a job for a given executionID.
 	CancelExecution(context.Context, CancelExecutionRequest) (CancelExecutionResponse, error)
 	// ExecutionLogs returns the address of a suitable log server
-	ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (<-chan *models.ExecutionLog, error)
+	ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error)
 }
 
 // Executor Backend service that is responsible for running and publishing executions.

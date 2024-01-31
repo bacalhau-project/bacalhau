@@ -9,8 +9,6 @@ const (
 )
 
 type ExecutionLog struct {
-	Type  ExecutionLogType
-	Line  string
-	EOF   bool
-	Error string
+	Type ExecutionLogType
+	Line string
 }

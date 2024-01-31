@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -85,7 +86,8 @@ func (p *ComputeProxy) CancelExecution(
 		ctx, p.host, request.TargetPeerID, CancelProtocolID, request)
 }
 
-func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (<-chan *models.ExecutionLog, error) {
+func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	if request.TargetPeerID == p.host.ID().String() {
 		if p.localEndpoint == nil {
 			return nil, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
@@ -153,7 +155,7 @@ func proxyStreamingRequest[Request any, Response any](
 	h host.Host,
 	destPeerID string,
 	protocolID protocol.ID,
-	request Request) (<-chan *Response, error) {
+	request Request) (<-chan *concurrency.AsyncResult[Response], error) {
 	// decode the destination peer ID string value
 	peerID, err := peer.Decode(destPeerID)
 	if err != nil {
@@ -184,14 +186,14 @@ func proxyStreamingRequest[Request any, Response any](
 		return nil, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	ch := make(chan *Response)
+	ch := make(chan *concurrency.AsyncResult[Response])
 	go func() {
 		defer close(ch)
 		defer func() {
 			log.Warn().Msgf("closing logging channel for %s", reflect.TypeOf(request))
 		}()
 		for {
-			response := new(Response)
+			response := new(concurrency.AsyncResult[Response])
 			err = json.NewDecoder(stream).Decode(response)
 			if err != nil {
 				_ = stream.Reset()

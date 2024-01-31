@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -142,7 +143,8 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	}, nil
 }
 
-func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (<-chan *models.ExecutionLog, error) {
+func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	return s.logServer.GetLogStream(ctx, executor.LogStreamRequest{
 		ExecutionID: request.ExecutionID,
 		WithHistory: request.WithHistory,

@@ -45,15 +45,16 @@ type Executor interface {
 	Cancel(ctx context.Context, executionID string) error
 
 	// GetLogStream provides a stream of output for an ongoing or completed execution identified by its executionID.
-	//	// The 'withHistory' flag indicates whether to include historical data in the stream.
-	//	// The 'follow' flag indicates whether the stream should continue to send data as it is produced.
-	//	// Returns an io.ReadCloser to read the output stream and an error if the operation fails.
-	//	// Specifically, it will return an error if the execution does not exist.
+	// The 'withHistory' flag indicates whether to include historical data in the stream.
+	// The 'follow' flag indicates whether the stream should continue to send data as it is produced.
+	// Returns an io.ReadCloser to read the output stream and an error if the operation fails.
+	// Specifically, it will return an error if the execution does not exist.
 	GetLogStream(ctx context.Context, request LogStreamRequest) (io.ReadCloser, error)
 }
 
 // LogStreamRequest encapsulates the parameters required to retrieve a log stream.
 type LogStreamRequest struct {
+	JobID       string
 	ExecutionID string
 	WithHistory bool
 	Follow      bool

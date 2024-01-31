@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -14,13 +15,13 @@ type StreamParams struct {
 }
 
 type Stream struct {
-	LogChannel chan *models.ExecutionLog
+	LogChannel chan *concurrency.AsyncResult[models.ExecutionLog]
 	reader     io.Reader
 }
 
 func NewStream(ctx context.Context, params StreamParams) *Stream {
 	s := &Stream{
-		LogChannel: make(chan *models.ExecutionLog, params.Buffer),
+		LogChannel: make(chan *concurrency.AsyncResult[models.ExecutionLog], params.Buffer),
 		reader:     params.Reader,
 	}
 	s.start(ctx)
@@ -41,17 +42,18 @@ func (s *Stream) start(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			default:
+				asyncResult := new(concurrency.AsyncResult[models.ExecutionLog])
 				executionLog, err := s.readExecutionLog()
 				if err != nil {
 					if err != io.EOF {
 						// return one last log entry with the error message before closing the channel
-						s.LogChannel <- &models.ExecutionLog{
-							Error: err.Error(),
-						}
+						asyncResult.Err = err
+						s.LogChannel <- asyncResult
 					}
 					return
 				}
-				s.LogChannel <- executionLog
+				asyncResult.Value = *executionLog
+				s.LogChannel <- asyncResult
 			}
 		}
 	}()

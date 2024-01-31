@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -225,7 +226,8 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 	return CancelJobResult{}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (<-chan *models.ExecutionLog, error) {
+func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
 		return nil, err

@@ -60,7 +60,8 @@ func (suite *LogStreamTestSuite) TestLogStream_MultipleEntries() {
 	})
 
 	for i, expected := range logEntries {
-		log, more := <-logStream.LogChannel
+		result, more := <-logStream.LogChannel
+		log := result.Value
 		suite.True(more, "Stream channel closed unexpectedly after %d entries", i)
 		suite.Equal(expected.Type, log.Type, "Mismatch in log type for entry %d", i)
 		suite.Equal(expected.Line, log.Line, "Mismatch in log line for entry %d", i)

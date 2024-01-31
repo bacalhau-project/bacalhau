@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
@@ -51,7 +52,8 @@ func (p *ComputeProxy) CancelExecution(
 		ctx, p.conn, request.TargetPeerID, CancelExecution, request)
 }
 
-func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (<-chan *models.ExecutionLog, error) {
+func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	//TODO implement me
 	panic("implement me")
 }
