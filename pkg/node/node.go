@@ -164,13 +164,6 @@ func NewNode(
 		return nil, err
 	}
 
-	// timeoutHandler doesn't implement http.Hijacker, so we need to skip it for websocket endpoints
-	config.APIServerConfig.SkippedTimeoutPaths = append(config.APIServerConfig.SkippedTimeoutPaths, []string{
-		"/api/v1/requester/websocket/events",
-		"/api/v1/requester/logs",
-		"/ws/*",
-	}...)
-
 	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err

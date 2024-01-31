@@ -9,28 +9,26 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type StreamParams struct {
+type LiveStreamerParams struct {
 	Reader io.Reader
 	Buffer int
 }
 
-type Stream struct {
-	LogChannel chan *concurrency.AsyncResult[models.ExecutionLog]
-	reader     io.Reader
+type LiveStreamer struct {
+	reader io.Reader
 }
 
-func NewStream(ctx context.Context, params StreamParams) *Stream {
-	s := &Stream{
-		LogChannel: make(chan *concurrency.AsyncResult[models.ExecutionLog], params.Buffer),
-		reader:     params.Reader,
+func NewLiveStreamer(params LiveStreamerParams) *LiveStreamer {
+	return &LiveStreamer{
+		reader: params.Reader,
 	}
-	s.start(ctx)
-	return s
 }
 
-func (s *Stream) start(ctx context.Context) {
+func (s *LiveStreamer) Stream(ctx context.Context) chan *concurrency.AsyncResult[models.ExecutionLog] {
+	ch := make(chan *concurrency.AsyncResult[models.ExecutionLog])
+
 	go func() {
-		defer close(s.LogChannel)
+		defer close(ch)
 		defer func() {
 			// close the reader if it's a ReadCloser
 			if rc, ok := s.reader.(io.ReadCloser); ok {
@@ -48,18 +46,19 @@ func (s *Stream) start(ctx context.Context) {
 					if err != io.EOF {
 						// return one last log entry with the error message before closing the channel
 						asyncResult.Err = err
-						s.LogChannel <- asyncResult
+						ch <- asyncResult
 					}
 					return
 				}
 				asyncResult.Value = *executionLog
-				s.LogChannel <- asyncResult
+				ch <- asyncResult
 			}
 		}
 	}()
+	return ch
 }
 
-func (s *Stream) readExecutionLog() (*models.ExecutionLog, error) {
+func (s *LiveStreamer) readExecutionLog() (*models.ExecutionLog, error) {
 	df, err := logger.NewDataFrameFromReader(s.reader)
 	if err != nil {
 		return nil, err
@@ -73,3 +72,6 @@ func (s *Stream) readExecutionLog() (*models.ExecutionLog, error) {
 		Line: string(df.Data),
 	}, nil
 }
+
+// compile-time check that LiveStreamer implements Streamer
+var _ Streamer = (*LiveStreamer)(nil)

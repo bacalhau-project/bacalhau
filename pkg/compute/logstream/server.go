@@ -40,12 +40,9 @@ func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamReq
 	}
 
 	if localExecutionState.State.IsTerminal() {
-		// TODO: support streaming logs for completed executions
 		return nil, fmt.Errorf("can't stream logs for completed execution: %s", request.ExecutionID)
 	}
-
 	engineType := localExecutionState.Execution.Job.Task().Engine.Type
-
 	exec, err := s.executors.Get(ctx, engineType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find executor for engine: %s. %w", engineType, err)
@@ -55,9 +52,10 @@ func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamReq
 	if err != nil {
 		return nil, fmt.Errorf("failed to get log stream for execution: %s. %w", request.ExecutionID, err)
 	}
-	stream := NewStream(ctx, StreamParams{
+	streamer := NewLiveStreamer(LiveStreamerParams{
 		Reader: reader,
 		Buffer: s.buffer,
 	})
-	return stream.LogChannel, nil
+
+	return streamer.Stream(ctx), nil
 }

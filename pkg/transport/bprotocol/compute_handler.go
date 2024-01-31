@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -27,7 +28,7 @@ type ComputeHandler struct {
 
 type handlerWithResponse[Request, Response any] func(context.Context, Request) (Response, error)
 
-type handlerWithStreamingResponse[Request, Response any] func(context.Context, Request) (<-chan Response, error)
+type handlerWithStreamingResponse[Request, Response any] func(context.Context, Request) (<-chan *concurrency.AsyncResult[Response], error)
 
 func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	handler := &ComputeHandler{
@@ -105,14 +106,20 @@ func handleStreamingResponse[Request, Response any](
 		err := json.NewDecoder(stream).Decode(request)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+			_ = json.NewEncoder(stream).Encode(concurrency.AsyncResult[Response]{
+				Err: err,
+			})
 			_ = stream.Reset()
 			return
 		}
-		defer closer.CloseWithLogOnError("stream", stream)
+		defer stream.Close() //nolint:errcheck
 
 		ch, err := f(ctx, *request)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error getting log stream")
+			_ = json.NewEncoder(stream).Encode(concurrency.AsyncResult[Response]{
+				Err: err,
+			})
 			_ = stream.Reset()
 			return
 		}

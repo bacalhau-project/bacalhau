@@ -515,9 +515,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)
 
-	ch := logstream.NewStream(context.Background(), logstream.StreamParams{
+	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
 		Reader: reader,
-	}).LogChannel
+	}).Stream(context.Background())
 	res, ok := <-ch
 	executionLog := res.Value
 	require.True(s.T(), ok)

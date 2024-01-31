@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -196,26 +197,44 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 		return nil, err
 	}
 
-	var nodeID string
-	var executionID string
-	for _, exec := range executions {
-		if exec.ID == request.ExecutionID || (request.ExecutionID == "" && !exec.IsDiscarded()) {
-			executionID = exec.ID
-			nodeID = exec.NodeID
+	if len(executions) == 0 {
+		return nil, fmt.Errorf("no executions found for job %s", request.JobID)
+	}
+
+	// TODO: support multiplexing logs from multiple executions. Might need a watermark to order the logs
+	var execution *models.Execution
+	var latestModifyTime int64 // zero time initially
+
+	for i, exec := range executions {
+		// If a specific execution ID is requested, select it directly
+		if exec.ID == request.ExecutionID {
+			execution = &executions[i]
 			break
+		}
+
+		// If no specific execution is requested, track the latest non-discarded execution
+		if request.ExecutionID == "" && !exec.IsDiscarded() && exec.ModifyTime > latestModifyTime {
+			latestModifyTime = exec.ModifyTime
+			execution = &executions[i]
 		}
 	}
 
-	if nodeID == "" {
+	if execution == nil {
 		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
 	}
 
+	if execution.IsTerminalState() {
+		streamer := logstream.NewCompletedStreamer(logstream.CompletedStreamerParams{
+			Execution: execution,
+		})
+		return streamer.Stream(ctx), nil
+	}
 	req := compute.ExecutionLogsRequest{
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: e.id,
-			TargetPeerID: nodeID,
+			TargetPeerID: execution.NodeID,
 		},
-		ExecutionID: executionID,
+		ExecutionID: execution.ID,
 		WithHistory: request.WithHistory,
 		Follow:      request.Follow,
 	}

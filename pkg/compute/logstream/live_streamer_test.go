@@ -54,26 +54,27 @@ func (suite *LogStreamTestSuite) TestLogStream_MultipleEntries() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logStream := NewStream(ctx, StreamParams{
+	logStream := NewLiveStreamer(LiveStreamerParams{
 		Reader: r,
 		Buffer: 10,
 	})
 
+	ch := logStream.Stream(ctx)
 	for i, expected := range logEntries {
-		result, more := <-logStream.LogChannel
+		result, more := <-ch
 		log := result.Value
-		suite.True(more, "Stream channel closed unexpectedly after %d entries", i)
+		suite.True(more, "LiveStreamer channel closed unexpectedly after %d entries", i)
 		suite.Equal(expected.Type, log.Type, "Mismatch in log type for entry %d", i)
 		suite.Equal(expected.Line, log.Line, "Mismatch in log line for entry %d", i)
 	}
 
 	select {
-	case _, more := <-logStream.LogChannel:
+	case _, more := <-ch:
 		if more {
-			suite.Fail("Stream channel should be closed after reading all entries")
+			suite.Fail("LiveStreamer channel should be closed after reading all entries")
 		}
 	case <-time.After(time.Second):
-		suite.Fail("Timeout waiting for Stream channel to close")
+		suite.Fail("Timeout waiting for LiveStreamer channel to close")
 	}
 }
 
@@ -82,18 +83,19 @@ func (suite *LogStreamTestSuite) TestLogStream_EmptyStream() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logStream := NewStream(ctx, StreamParams{
+	logStream := NewLiveStreamer(LiveStreamerParams{
 		Reader: r,
 		Buffer: 10,
 	})
+	ch := logStream.Stream(ctx)
 
 	select {
-	case _, more := <-logStream.LogChannel:
+	case _, more := <-ch:
 		if more {
-			suite.Fail("Stream channel should be closed for an empty stream")
+			suite.Fail("LiveStreamer channel should be closed for an empty stream")
 		}
 	case <-time.After(time.Second):
-		suite.Fail("Timeout waiting for Stream channel to close on empty stream")
+		suite.Fail("Timeout waiting for LiveStreamer channel to close on empty stream")
 	}
 }
 
@@ -107,21 +109,22 @@ func (suite *LogStreamTestSuite) TestLogStream_CancelContext() {
 	r := bytes.NewReader(data)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	logStream := NewStream(ctx, StreamParams{
+	logStream := NewLiveStreamer(LiveStreamerParams{
 		Reader: r,
 		Buffer: 10,
 	})
+	ch := logStream.Stream(ctx)
 
 	// Cancel the context
 	cancel()
 
 	// Check if the channel is closed after context cancellation
 	select {
-	case _, more := <-logStream.LogChannel:
+	case _, more := <-ch:
 		if more {
-			suite.Fail("Stream channel should be closed after context cancellation")
+			suite.Fail("LiveStreamer channel should be closed after context cancellation")
 		}
 	case <-time.After(time.Second * 2):
-		suite.Fail("Timeout waiting for Stream channel to close after context cancellation")
+		suite.Fail("Timeout waiting for LiveStreamer channel to close after context cancellation")
 	}
 }

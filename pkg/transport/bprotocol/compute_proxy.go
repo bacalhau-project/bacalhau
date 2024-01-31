@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/rs/zerolog/log"
 )
 
 type ComputeProxyParams struct {
@@ -173,7 +172,6 @@ func proxyStreamingRequest[Request any, Response any](
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
-	defer stream.Close() //nolint:errcheck
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
 		_ = stream.Reset()
 		return nil, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
@@ -188,17 +186,15 @@ func proxyStreamingRequest[Request any, Response any](
 
 	ch := make(chan *concurrency.AsyncResult[Response])
 	go func() {
+		defer stream.Close() //nolint:errcheck
 		defer close(ch)
-		defer func() {
-			log.Warn().Msgf("closing logging channel for %s", reflect.TypeOf(request))
-		}()
 		for {
 			response := new(concurrency.AsyncResult[Response])
 			err = json.NewDecoder(stream).Decode(response)
 			if err != nil {
 				_ = stream.Reset()
 				if err != io.EOF {
-					log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to decode response from peer %s", reflect.TypeOf(request), destPeerID)
+					response.Err = fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 				}
 				break
 			}
