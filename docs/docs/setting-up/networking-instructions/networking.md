@@ -10,6 +10,11 @@ By default, after launch Bacalhau jobs do not have any access to the external ne
 However, there are 2 ways to access your data - before or during the execution of a job:
 - Using Data Volumes to download the input data and upload the results
 - Using `--network` flag to allow job to access the internet 
+
+:::info
+Note that using the `--network` flag reduces the pool of available nodes to those that were started with the `--job-selection-accept-networked` flag specified. If there are no such nodes on the network, the job will not run.
+:::
+
 :::info
 For more details about flags and recent updates see the [CLI Guide](../../dev/cli-reference/all-flags.md) or execute `bacalhau help`. Also feel free to contact us on [Slack](https://bacalhauproject.slack.com).
 :::
