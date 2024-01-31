@@ -348,7 +348,23 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 	})
 }
 
-// logs returns the logs for a job using websockets.
+// godoc for Orchestrator JobLogs
+//
+// @ID				orchestrator/logs
+// @Summary			Displays the logs for a current job/execution
+// @Description		Shows the output from the job specified by `id`
+// @Description		The output will be continuous until either, the client disconnects or the execution completes.
+// @Tags			Orchestrator
+// @Accept			json
+// @Produce			json
+// @Param			id				path	string	true	"ID to get the job logs for"
+// @Param			execution_id	query 	string	false	"Fetch logs for a specific execution"
+// @Param			with_history	query	bool	false	"Fetch historical logs"
+// @Param			follow			query	bool	false	"Follow the logs"
+// @Success		200			{object}	string
+// @Failure		400			{object}	string
+// @Failure		500			{object}	string
+// @Router			/api/v1/orchestrator/jobs/{id}/logs [get]
 func (e *Endpoint) logs(c echo.Context) error {
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
