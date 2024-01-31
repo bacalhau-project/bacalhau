@@ -1,3 +1,3 @@
 #!/bin/bash
 
-golangci-lint run --allow-parallel-runners --timeout 10m --fix
+golangci-lint run --allow-parallel-runners --timeout 10m
