@@ -324,28 +324,20 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	// Sort the jobs according to the query.SortBy and query.SortOrder
 	listSorter := func(i, j int) bool {
 		switch query.SortBy {
-		case "id":
-			if query.SortReverse {
-				// what does it mean to sort by ID? (rj) it's mostly meaningless and just
-				// gives us a lexicographic sort of the UUIDs.
-				return result[i].ID > result[j].ID
-			} else {
-				return result[i].ID < result[j].ID
-			}
-		case "created_at":
-			if query.SortReverse {
-				return result[i].CreateTime > result[j].CreateTime
-			} else {
-				return result[i].CreateTime < result[j].CreateTime
-			}
-		default:
-			// We apply modifytime as a default sort so that we can use it for pagination.
-			// Without a known default we won't have a stable sort that makes sense for
-			// offsets/limits.
+		case "modified_at":
 			if query.SortReverse {
 				return result[i].ModifyTime > result[j].ModifyTime
 			} else {
 				return result[i].ModifyTime < result[j].ModifyTime
+			}
+		default:
+			// We apply created_at as a default sort so that we can use it for pagination.
+			// Without a known default we won't have a stable sort that makes sense for
+			// offsets/limits.
+			if query.SortReverse {
+				return result[i].CreateTime > result[j].CreateTime
+			} else {
+				return result[i].CreateTime < result[j].CreateTime
 			}
 		}
 	}

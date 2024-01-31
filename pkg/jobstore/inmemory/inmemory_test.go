@@ -424,8 +424,13 @@ func (s *InMemoryTestSuite) TestInProgressJobs() {
 	s.NoError(err)
 	s.Equal(3, len(jobs))
 
-	last_id := s.ids[2] // skip the first two non-running jobs
-	s.Equal(last_id, jobs[0].ID)
+	sourceIDs := s.ids[2:]
+	sort.Strings(sourceIDs)
+
+	jobIDs := lo.Map(jobs, func(item models.Job, _ int) string { return item.ID })
+	sort.Strings(jobIDs)
+
+	s.Equal(sourceIDs, jobIDs)
 }
 
 func (s *InMemoryTestSuite) TestEvents() {
