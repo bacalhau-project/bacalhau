@@ -180,6 +180,7 @@ func NewComputeNode(
 	logserver := logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: executionStore,
 		Executors:      executors,
+		Buffer:         config.LogStreamBufferSize,
 	})
 
 	// node info

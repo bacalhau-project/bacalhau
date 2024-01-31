@@ -13,11 +13,13 @@ import (
 type ServerParams struct {
 	ExecutionStore store.ExecutionStore
 	Executors      executor.ExecutorProvider
+	Buffer         int
 }
 
 type Server struct {
 	executionStore store.ExecutionStore
 	executors      executor.ExecutorProvider
+	buffer         int
 }
 
 // NewServer creates a new log stream server
@@ -25,6 +27,7 @@ func NewServer(params ServerParams) *Server {
 	return &Server{
 		executionStore: params.ExecutionStore,
 		executors:      params.Executors,
+		buffer:         params.Buffer,
 	}
 }
 
@@ -54,6 +57,7 @@ func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamReq
 	}
 	stream := NewStream(ctx, StreamParams{
 		Reader: reader,
+		Buffer: s.buffer,
 	})
 	return stream.LogChannel, nil
 }

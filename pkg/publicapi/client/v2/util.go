@@ -118,7 +118,7 @@ func webSocketDialer[T any](ctx context.Context, c *Client, endpoint string, in 
 	defer resp.Body.Close()
 
 	// Read messages from the server, and send them to the conn is closed or the context is cancelled
-	ch := make(chan *concurrency.AsyncResult[T])
+	ch := make(chan *concurrency.AsyncResult[T], c.config.WebsocketChannelBuffer)
 	go func() {
 		defer func() {
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
