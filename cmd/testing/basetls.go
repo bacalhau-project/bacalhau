@@ -3,6 +3,7 @@ package cmdtesting
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -40,8 +41,10 @@ func (s *BaseTLSSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 
-	const serverCertPath = "../../testdata/certs/dev-server.crt" //nolint:all
-	const serverKeyPath = "../../testdata/certs/dev-server.key"  //nolint:all
+	serverCertPath, err := filepath.Abs("../../testdata/certs/dev-server.crt")
+	s.Require().NoError(err)
+	serverKeyPath, err := filepath.Abs("../../testdata/certs/dev-server.key")
+	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
