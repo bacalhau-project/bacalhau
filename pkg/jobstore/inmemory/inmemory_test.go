@@ -49,35 +49,35 @@ func (s *InMemoryTestSuite) SetupTest() {
 		executionStates []models.ExecutionStateType
 	}{
 		{
-			id:              uuid.New().String(),
+			id:              "11111111-1111-1111-1111-111111111111",
 			client:          "client1",
 			tags:            map[string]string{"gpu": "true", "fast": "true"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "22222222-2222-2222-2222-222222222222",
 			client:          "client2",
 			tags:            map[string]string{},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "33333333-3333-3333-3333-333333333333",
 			client:          "client3",
 			tags:            map[string]string{"slow": "true", "max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "44444444-4444-4444-4444-444444444444",
 			client:          "client4",
 			tags:            map[string]string{"max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "55555555-5555-5555-5555-555555555555",
 			client:          "client5",
 			tags:            map[string]string{"max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
@@ -291,19 +291,9 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		require.Equal(t, s.ids[4], jobs[0].ID)
 	})
 
-	s.T().Run("everything sorted by id", func(t *testing.T) {
-		sorted_ids := append([]string(nil), s.ids...)
-		reverse_sorted_ids := append([]string(nil), s.ids...)
-		sort.Slice(sorted_ids, func(i, j int) bool {
-			return sorted_ids[i] < sorted_ids[j]
-		})
-		sort.Slice(reverse_sorted_ids, func(i, j int) bool {
-			return reverse_sorted_ids[i] > reverse_sorted_ids[j]
-		})
-
+	s.T().Run("everything sorted by created_at", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
-			SortBy:    "id",
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
@@ -312,11 +302,11 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, sorted_ids, ids)
+
+		require.EqualValues(t, s.ids, ids)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
-			SortBy:      "id",
 			SortReverse: true,
 		})
 		require.NoError(t, err)
@@ -327,7 +317,10 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 			return item.ID
 		})
 
-		require.EqualValues(t, reverse_sorted_ids, ids)
+		working := append([]string(nil), s.ids...)
+		reversedOriginals := lo.Reverse(working)
+
+		require.EqualValues(t, reversedOriginals, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -359,6 +352,7 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			IncludeTags: []string{"gpu"},
 		})
+
 		require.NoError(t, err)
 		require.Equal(t, 1, len(response.Jobs))
 		require.Equal(t, s.ids[0], response.Jobs[0].ID)

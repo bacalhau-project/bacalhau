@@ -338,10 +338,9 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		require.Equal(t, 1, len(response.Jobs))
 	})
 
-	s.T().Run("everything sorted by id", func(t *testing.T) {
+	s.T().Run("everything sorted by created_at", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
-			SortBy:    "id",
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
@@ -353,7 +352,6 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
-			SortBy:      "id",
 			SortReverse: true,
 		})
 		require.NoError(t, err)
