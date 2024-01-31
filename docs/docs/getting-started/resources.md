@@ -44,8 +44,8 @@ Bacalhau supports GPU workloads. Learn how to run a job using GPU workloads with
 
 ### Prerequisites
 
-* The Bacalhau network must have an executor node with a GPU exposed
-* Your container must include the CUDA runtime (cudart) and must be compatible with the CUDA version running on the node
+1. The Bacalhau network must have an executor node with a GPU exposed
+2. Your container must include the CUDA runtime (cudart) and must be compatible with the CUDA version running on the node
 
 ## Usage
 
@@ -69,9 +69,9 @@ bacalhau docker run --gpu=1 nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
 ### Limitations
 
-The following limitations currently exist within Bacalhau.
+The following limitations currently exist within Bacalhau:
 
-* Maximum CPU and memory limits depend on the participants in the network
-* For GPU:
-    * NVIDIA, Intel or AMD GPUs only
-    * Only the Docker Executor supports GPUs
+1. Maximum CPU and memory limits depend on the participants in the network
+2. For GPU:
+    1. NVIDIA, Intel or AMD GPUs only
+    2. Only the Docker Executor supports GPUs
