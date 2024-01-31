@@ -4,9 +4,7 @@ package requester
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
@@ -15,8 +13,6 @@ type Endpoint interface {
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
-	// ReadLogs retrieves the logs for an execution
-	ReadLogs(context.Context, ReadLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error)
 }
 
 // StartJobRequest triggers the scheduling of a job.

@@ -1,13 +1,12 @@
 //go:build unit || !integration
 
-package logstream
+package logstream_test
 
 import (
 	"context"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
@@ -87,14 +86,15 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 	go func() {
 		// TODO(walid): [correctness] following the recommendation in docker test to wait for module to run
 		time.Sleep(time.Second * 3)
-		reader, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
+		ch, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
 
-		dataframe, err := logger.NewDataFrameFromReader(reader)
-		require.NoError(s.T(), err)
-
-		require.Contains(s.T(), string(dataframe.Data), "logstreamoutput")
+		asyncResult, ok := <-ch
+		require.True(s.T(), ok)
+		require.NoError(s.T(), asyncResult.Err)
+		require.Equal(s.T(), models.ExecutionLogTypeSTDOUT, asyncResult.Value.Type)
+		require.Equal(s.T(), "logstreamoutput", asyncResult.Value.Line)
 
 		success <- true
 	}()

@@ -14,6 +14,7 @@ type LiveStreamerParams struct {
 	Buffer int
 }
 
+// LiveStreamer streams logs from a live execution's log stream to a channel
 type LiveStreamer struct {
 	reader io.Reader
 }

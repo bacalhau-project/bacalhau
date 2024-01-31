@@ -127,7 +127,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		middleware.Otel(),
 		middleware.Authorize(params.Authorizer),
 		// sets headers on the server based on provided config
-		middleware.ServerHeader(params.Headers, middleware.WebsocketSkipper),
+		middleware.ServerHeader(params.Headers),
 		// logs request at appropriate error level based on status code
 		middleware.RequestLogger(*middlewareLogger, logLevel),
 		// logs requests made by clients with different versions than the server

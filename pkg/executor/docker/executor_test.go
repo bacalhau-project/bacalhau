@@ -524,8 +524,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
 	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
 
-	res, ok = <-ch
-	executionLog = res.Value
+	_, ok = <-ch
 	require.False(s.T(), ok)
 }
 

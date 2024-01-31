@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -224,38 +223,6 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 		EventTime: time.Now(),
 	})
 	return CancelJobResult{}, nil
-}
-
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
-	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	executions, err := e.store.GetExecutions(ctx, request.JobID)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeID := ""
-	for _, exec := range executions {
-		if exec.ID == request.ExecutionID {
-			nodeID = exec.NodeID
-			break
-		}
-	}
-
-	if nodeID == "" {
-		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
-	}
-
-	req := compute.ExecutionLogsRequest{
-		RoutingMetadata: compute.RoutingMetadata{
-			SourcePeerID: e.id,
-			TargetPeerID: nodeID,
-		},
-		ExecutionID: request.ExecutionID,
-		WithHistory: request.WithHistory,
-		Follow:      request.Follow,
-	}
-
-	return e.computesvc.ExecutionLogs(ctx, req)
 }
 
 // /////////////////////////////

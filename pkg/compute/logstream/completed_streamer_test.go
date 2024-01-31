@@ -30,7 +30,7 @@ func (suite *CompletedStreamerSuite) TestSTDOUTOnly() {
 	for log := range ch {
 		suite.Nil(log.Err)
 		suite.Equal(models.ExecutionLogTypeSTDOUT, log.Value.Type)
-		suite.Contains([]string{"stdout line 1", "stdout line 2"}, log.Value.Line)
+		suite.Contains([]string{"stdout line 1\n", "stdout line 2\n"}, log.Value.Line)
 		count++
 	}
 	suite.Equal(2, count)
@@ -51,7 +51,7 @@ func (suite *CompletedStreamerSuite) TestSTDERROnly() {
 	for log := range ch {
 		suite.Nil(log.Err)
 		suite.Equal(models.ExecutionLogTypeSTDERR, log.Value.Type)
-		suite.Contains([]string{"stderr line 1", "stderr line 2"}, log.Value.Line)
+		suite.Contains([]string{"stderr line 1\n", "stderr line 2\n"}, log.Value.Line)
 		count++
 	}
 	suite.Equal(2, count)

@@ -14,6 +14,8 @@ type CompletedStreamerParams struct {
 	Execution *models.Execution
 }
 
+// CompletedStreamer is a streamer for completed executions that streams the
+// output from the execution's RunOutput field to the channel.
 type CompletedStreamer struct {
 	execution *models.Execution
 }

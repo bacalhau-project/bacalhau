@@ -1,15 +1,17 @@
 //go:build unit || !integration
 
-package logstream
+package logstream_test
 
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -33,9 +35,13 @@ func (s *LogStreamTestSuite) SetupSuite() {
 	s.stack = testutil.Setup(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
 }
 
-func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {
+func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	for i := 0; i < 10; i++ {
-		reader, err := exec.GetOutputStream(ctx, executionID, withHistory, follow)
+		reader, err := exec.GetLogStream(ctx, executor.LogStreamRequest{
+			ExecutionID: executionID,
+			WithHistory: withHistory,
+			Follow:      follow,
+		})
 		if err != nil {
 			if strings.Contains(err.Error(), "not implemented") {
 				return nil, err
@@ -44,7 +50,11 @@ func waitForOutputStream(ctx context.Context, executionID string, withHistory bo
 			time.Sleep(time.Duration(500) * time.Millisecond)
 		}
 		if reader != nil {
-			return reader, nil
+			streamer := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
+				Reader: reader,
+			})
+			ch := streamer.Stream(ctx)
+			return ch, nil
 		}
 	}
 
