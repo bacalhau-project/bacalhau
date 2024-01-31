@@ -40,8 +40,8 @@ func (s *BaseTLSSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 
-	const serverCertPath = "../../testdata/certs/dev-server.crt"
-	const serverKeyPath = "../../testdata/certs/dev-server.key"
+	const serverCertPath = "../../testdata/certs/dev-server.crt" //nolint:all
+	const serverKeyPath = "../../testdata/certs/dev-server.key"  //nolint:all
 
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
@@ -51,7 +51,7 @@ func (s *BaseTLSSuite) SetupTest() {
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 	s.Node = stack.Nodes[0]
-	s.Host = "127.0.0.1" //0.0.0.0 will not work because we're testing TLS validation
+	s.Host = s.Node.APIServer.Address //NOTE: 0.0.0.0 will not work because we're testing TLS validation
 	s.Port = s.Node.APIServer.Port
 	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, s.Host, s.Port)
 	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port), clientv2.WithTLS(true))

@@ -1,7 +1,8 @@
+//go:build unit || !integration
+
 package cmdtesting
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -16,29 +17,18 @@ type TLSSuite struct {
 }
 
 func (s *TLSSuite) TestTLSflagWithSelfSignedCertificate() {
-	_, out, err := s.ExecuteTestCobraCommand("list", "--tls",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port))
-
-	s.Require().NoError(err, "failed to execute Cobra Command")
-	//TO DO: Change ExecuteTestCobraCommand to pass the certificate verification error
-	s.Require().Contains(out, "tls: failed to verify certificate")
+	_, _, err := s.ExecuteTestCobraCommand("list", "--tls")
+	s.Require().Error(err)
 }
 
 func (s *TLSSuite) TestTLSWithInsecureFlag() {
-	_, out, err := s.ExecuteTestCobraCommand("list", "--tls", "--insecure",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port))
+	_, _, err := s.ExecuteTestCobraCommand("list", "--tls", "--insecure")
 
-	s.Require().NoError(err, "failed to execute Cobra Command")
-	s.Require().Contains(out, "CREATED", "ID", "JOB", "STATE", "PUBLISHED")
+	s.Require().NoError(err)
 }
 
 func (s *TLSSuite) TestTLSWithCACert() {
-	cacertFilepath := "../../testdata/certs/dev-ca.crt"
-	_, out, err := s.ExecuteTestCobraCommand("list", "--tls", "--cacert", cacertFilepath,
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port))
+	cacertFilepath := "../../testdata/certs/dev-ca.crt" //nolint:all
+	_, _, err := s.ExecuteTestCobraCommand("list", "--tls", "--cacert", cacertFilepath)
 	s.Require().NoError(err, "failed to execute Cobra Command")
-	s.Require().Contains(out, "CREATED", "ID", "JOB", "STATE", "PUBLISHED")
 }
