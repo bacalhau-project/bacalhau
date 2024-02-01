@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
 )
 
@@ -50,6 +53,16 @@ func (t *tracingStorage) PrepareStorage(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
 	defer span.End()
 
+	stopwatch := telemetry.Timer(ctx, jobStoragePrepareDurationMilliseconds, spec.Source.MetricAttributes()...)
+	defer func() {
+		dur := stopwatch()
+		log.Ctx(ctx).Debug().
+			Dur("duration", dur).
+			Object("spec", &spec).
+			Str("dir", storageDirectory).
+			Msg("storage prepared")
+	}()
+
 	return t.delegate.PrepareStorage(ctx, storageDirectory, spec)
 }
 
@@ -57,14 +70,31 @@ func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSo
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.CleanupStorage", t.name))
 	defer span.End()
 
+	stopwatch := telemetry.Timer(ctx, jobStorageCleanupDurationMilliseconds, spec.Source.MetricAttributes()...)
+	defer func() {
+		dur := stopwatch()
+		log.Ctx(ctx).Debug().
+			Dur("duration", dur).
+			Object("spec", &spec).
+			Msg("storage cleanup")
+	}()
+
 	return t.delegate.CleanupStorage(ctx, spec, volume)
 }
 
-func (t *tracingStorage) Upload(ctx context.Context, s string) (models.SpecConfig, error) {
+func (t *tracingStorage) Upload(ctx context.Context, path string) (models.SpecConfig, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.Upload", t.name))
 	defer span.End()
 
-	return t.delegate.Upload(ctx, s)
+	stopwatch := telemetry.Timer(ctx, jobStorageUploadDurationMilliseconds)
+	defer func() {
+		dur := stopwatch()
+		log.Ctx(ctx).Debug().
+			Dur("duration", dur).
+			Str("path", path).
+			Msg("storage upload")
+	}()
+	return t.delegate.Upload(ctx, path)
 }
 
 var _ storage.Storage = &tracingStorage{}

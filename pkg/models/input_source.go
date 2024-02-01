@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
+	"github.com/rs/zerolog"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 type InputSource struct {
@@ -19,6 +21,12 @@ type InputSource struct {
 
 	// Target is the path where the artifact should be mounted on
 	Target string `json:"Target"`
+}
+
+func (a *InputSource) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("alias", a.Alias).
+		Str("target", a.Target).
+		Object("source", a.Source)
 }
 
 // Normalize normalizes the artifact's source and target
