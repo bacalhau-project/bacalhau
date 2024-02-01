@@ -22,6 +22,7 @@
         "./docs/docusaurus.config.js",
         "./docs/sidebars.js",
         "./docs/docs/dev/cli-reference/all-flags.md",
+        "./docs/docs/dev/api/jobs.md",
         "**/*.css"
     ],
     "ignoreRegExpList": [
@@ -30,6 +31,8 @@
         "Niels",
         "TKNG",
         "runc",
+        "ating",
+        "ation",
         "Kernighan",
         "Email",
         "RsaCert",
