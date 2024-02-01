@@ -1,6 +1,6 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { ReactComponent as ViewIcon } from "../../images/view-icon.svg"
+import { SVGImage } from "../../images/svg-image"
 import styles from "./ActionButton.module.scss"
 
 interface ActionButtonProps {
@@ -34,7 +34,11 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         onClick={handleClick}
         type="button"
       >
-        <ViewIcon className={styles.viewIcon} />
+        <SVGImage
+          src="/images/view-icon.svg"
+          alt="View More Details"
+          svgClassName={styles.viewIcon}
+        />
         {text}
       </button>
     </div>

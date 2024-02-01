@@ -10,7 +10,11 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
   <header className={styles.header} data-collapsed={collapsed}>
     <div className={styles.left}>
-      <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
+      <SVGImage
+        src="/images/bacalhau.svg"
+        alt="Bacalhau Icon"
+        svgClassName={styles.headerLogo}
+      />
       <h1 aria-label={pageTitle} className={styles.pageTitle}>
         {pageTitle}
       </h1>
@@ -21,9 +25,12 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle, collapsed }) => (
     </div>
     <div className={styles.right}>
       {/* Profile section */}
-      <div className={styles.profile}>
-        <SVGImage src="../../images/bacalhau.svg" alt="Bacalhau Icon" />
-      </div>
+      <SVGImage
+        src="/images/profile.svg"
+        alt="Profile Icon"
+        svgClassName={styles.profile}
+        wrapperClassName={styles.profile}
+      />
     </div>
   </header>
 )
