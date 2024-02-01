@@ -5,7 +5,7 @@
     "dictionaryDefinitions": [
         {
             "name": "custom-words",
-            "path": "./.gitprecommit/codespell_ignore_words.txt",
+            "path": "./.cspell/custom-dictionary.txt",
             "addWords": true
         }
     ]
