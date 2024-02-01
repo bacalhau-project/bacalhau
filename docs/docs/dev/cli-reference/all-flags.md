@@ -49,7 +49,7 @@ Flags:
       --api-port int            The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
   -h, --help                    help for bacalhau
       --log-mode logging-mode   Log format: 'default','station','json','combined','event' (default default)
-      --repo string             path to bacalhau repo (default "/home/ngaranovich/.bacalhau")
+      --repo string             path to bacalhau repo (default "/home/user/.bacalhau")
 
 Use "bacalhau [command] --help" for more information about a command.
 ```

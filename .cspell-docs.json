@@ -21,10 +21,16 @@
         "./docs/swagger.json",
         "./docs/docusaurus.config.js",
         "./docs/sidebars.js",
+        "./docs/docs/dev/cli-reference/all-flags.md",
         "**/*.css"
     ],
     "ignoreRegExpList": [
         "Urls",
+        "saturnia",
+        "Niels",
+        "TKNG",
+        "runc",
+        "Kernighan",
         "Email",
         "RsaCert",
         "SshRsa",
