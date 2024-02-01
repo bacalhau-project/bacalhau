@@ -25,7 +25,7 @@ We're adding examples all the time. Check back soon for more!
 ## Usage
 
 Each example walks you through a specific task and aims at being as self-contained as possible.
-For starters, we recommended starting from examples whose prerequisites include only the Bacalhau client (e.g. [Python Hello World](./workload-onboarding/Prolog-Hello-World/index.md)).
+For starters, we recommended starting from examples whose prerequisites include only the Bacalhau client (e.g. [Python Hello World](../setting-up/workload-onboarding/Prolog-Hello-World/index.md)).
 First read through an example to grasp its objectives and syntax, once you feel confident with those you may want to run it *interactively*.
 
 ### Structure
