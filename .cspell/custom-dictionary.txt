@@ -1,9 +1,8 @@
-abcdefghi
+# Custom Dictionary Words
 Acked
 acks
 Addrs
 alessio
-AMDATI
 apimodels
 armv
 authorised
@@ -43,7 +42,6 @@ Crossentropy
 CUDA
 cyberattacks
 daaronch
-dagpb
 datacatalog
 dbname
 DBPASSWORD
@@ -52,10 +50,7 @@ deflt
 deleteme
 devstack
 devstask
-direnv
 doclines
-Doesnt
-Dont
 dpkg
 dpokidov
 dport
@@ -83,7 +78,6 @@ FLYTEADMIN
 flyteagent
 flytebacalhau
 flyteconsole
-flyteidl
 flytekit
 flyteorg
 flytepropeller
@@ -121,10 +115,8 @@ gosimple
 GOVER
 govet
 gserviceaccount
-HAMT
 healthz
 helloworld
-humanid
 icore
 icoreoptions
 icorepath
@@ -202,7 +194,6 @@ multiaddr
 multierror
 multiformats
 Muxed
-mypy
 nbconvert
 nemt
 nocheck
@@ -259,7 +250,6 @@ repostruct
 reqs
 rerr
 ripath
-Rocm
 rpad
 samber
 Sched
@@ -268,16 +258,15 @@ sdkmetric
 sdktrace
 sharded
 shellescape
+skippable
 softmax
 sparkoperator
 stackdriver
 stretchr
 Strs
 struct
-swarmenv
 swipl
 testdata
-testid
 tfvars
 touchfs
 traceid
@@ -308,6 +297,7 @@ wasmmodels
 wazero
 wdbaruni's
 webui
+whyayen
 winderresearch
 workdir
 Wrapf
@@ -316,3 +306,7 @@ xlarge
 xmap
 xvfz
 zerolog
+flyteidl
+humanid
+isort
+mypy
