@@ -3,7 +3,6 @@ package bprotocol
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -85,21 +84,21 @@ func proxyCallbackRequest(
 		targetPeerID := resultInfo.TargetPeerID
 		peerID, err := peer.Decode(targetPeerID)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to decode peer ID %q", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%T: failed to decode peer ID %q", request, targetPeerID)
 			return
 		}
 
 		// deserialize the request object
 		data, err := json.Marshal(request)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(request))
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%T: failed to marshal request", request)
 			return
 		}
 
 		// opening a stream to the destination peer
 		stream, err := p.host.NewStream(ctx, peerID, protocolID)
 		if err != nil {
-			log.Ctx(ctx).Err(errors.WithStack(err)).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Err(errors.WithStack(err)).Msgf("%T failed to open stream to peer %s", request, targetPeerID)
 			return
 		}
 		defer closer.CloseWithLogOnError("stream", stream)
@@ -113,7 +112,7 @@ func proxyCallbackRequest(
 		_, err = stream.Write(data)
 		if err != nil {
 			_ = stream.Reset() //nolint:errcheck
-			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%T: failed to write request to peer %s", request, targetPeerID)
 			return
 		}
 	}

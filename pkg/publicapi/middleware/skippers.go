@@ -15,3 +15,19 @@ func PathMatchSkipper(paths []string) echomiddelware.Skipper {
 		return ok
 	}
 }
+
+func WebsocketSkipper(c echo.Context) bool {
+	return c.Request().Header.Get("Upgrade") == "websocket"
+}
+
+// ChainedSkipper creates a skipper that skips if any of the provided skippers returns true
+func ChainedSkipper(skippers ...echomiddelware.Skipper) echomiddelware.Skipper {
+	return func(c echo.Context) bool {
+		for _, skipper := range skippers {
+			if skipper(c) {
+				return true
+			}
+		}
+		return false
+	}
+}

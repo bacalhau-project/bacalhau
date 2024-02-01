@@ -153,6 +153,9 @@ var StagingComputeConfig = types.ComputeConfig{
 		Duration:  types.Duration(1 * time.Hour),
 		Frequency: types.Duration(1 * time.Hour),
 	},
+	LogStreamConfig: types.LogStreamConfig{
+		ChannelBufferSize: 10,
+	},
 }
 
 var StagingRequesterConfig = types.RequesterConfig{

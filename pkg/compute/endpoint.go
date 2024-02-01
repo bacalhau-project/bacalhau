@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,7 +22,7 @@ type BaseEndpointParams struct {
 	UsageCalculator capacity.UsageCalculator
 	Bidder          Bidder
 	Executor        Executor
-	LogServer       *logstream.LogStreamServer
+	LogServer       *logstream.Server
 }
 
 // Base implementation of Endpoint
@@ -29,7 +32,7 @@ type BaseEndpoint struct {
 	usageCalculator capacity.UsageCalculator
 	bidder          Bidder
 	executor        Executor
-	logServer       *logstream.LogStreamServer
+	logServer       *logstream.Server
 }
 
 func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
@@ -140,21 +143,13 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	}, nil
 }
 
-func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (ExecutionLogsResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("processing log request for %s", request.ExecutionID)
-	// TODO: remove this once we support log streaming with nats
-	if s.logServer == nil {
-		return ExecutionLogsResponse{}, fmt.Errorf("log server not configured")
-	}
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
-	if err != nil {
-		return ExecutionLogsResponse{}, err
-	}
-
-	return ExecutionLogsResponse{
-		Address:           s.logServer.Address,
-		ExecutionFinished: execution.State.IsTerminal(),
-	}, nil
+func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+	return s.logServer.GetLogStream(ctx, executor.LogStreamRequest{
+		ExecutionID: request.ExecutionID,
+		Tail:        request.Tail,
+		Follow:      request.Follow,
+	})
 }
 
 // Compile-time interface check:

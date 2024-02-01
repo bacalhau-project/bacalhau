@@ -196,10 +196,10 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow bool) (io.ReadCloser, error) {
-	since := strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
-	if withHistory {
-		since = "1"
+func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+	since := "1"
+	if request.Tail {
+		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
 	}
 	select {
 	case <-ctx.Done():
@@ -211,7 +211,7 @@ func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow
 	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
 	// If we want everything, we specify 1, a timestamp which we are confident we don't have
 	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	return h.client.GetOutputStream(ctx, h.containerID, since, follow)
+	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow)
 }
 
 func (h *executionHandler) active() bool {

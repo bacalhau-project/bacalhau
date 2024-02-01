@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -188,45 +190,56 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
-	emptyResponse := ReadLogsResponse{}
-
+func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
-		return emptyResponse, err
+		return nil, err
 	}
 
-	nodeID := ""
-	for _, exec := range executions {
+	if len(executions) == 0 {
+		return nil, fmt.Errorf("no executions found for job %s", request.JobID)
+	}
+
+	// TODO: support multiplexing logs from multiple executions. Might need a watermark to order the logs
+	var execution *models.Execution
+	var latestModifyTime int64 // zero time initially
+
+	for i, exec := range executions {
+		// If a specific execution ID is requested, select it directly
 		if exec.ID == request.ExecutionID {
-			nodeID = exec.NodeID
+			execution = &executions[i]
 			break
+		}
+
+		// If no specific execution is requested, track the latest non-discarded execution
+		if request.ExecutionID == "" && !exec.IsDiscarded() && exec.ModifyTime > latestModifyTime {
+			latestModifyTime = exec.ModifyTime
+			execution = &executions[i]
 		}
 	}
 
-	if nodeID == "" {
-		return emptyResponse, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
+	if execution == nil {
+		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
 	}
 
+	if execution.IsTerminalState() {
+		streamer := logstream.NewCompletedStreamer(logstream.CompletedStreamerParams{
+			Execution: execution,
+		})
+		return streamer.Stream(ctx), nil
+	}
 	req := compute.ExecutionLogsRequest{
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: e.id,
-			TargetPeerID: nodeID,
+			TargetPeerID: execution.NodeID,
 		},
-		ExecutionID: request.ExecutionID,
-		WithHistory: request.WithHistory,
+		ExecutionID: execution.ID,
+		Tail:        request.Tail,
 		Follow:      request.Follow,
 	}
 
-	response, err := e.computeProxy.ExecutionLogs(ctx, req)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	return ReadLogsResponse{
-		Address:           response.Address,
-		ExecutionComplete: response.ExecutionFinished,
-	}, nil
+	return e.computeProxy.ExecutionLogs(ctx, req)
 }
 
 // GetResults returns the results of a job

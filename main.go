@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
-
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 
@@ -83,7 +83,16 @@ func main() {
 
 	// Ensure commands are able to stop cleanly if someone presses ctrl+c
 	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
-	defer cancel()
 
-	cli.Execute(ctx)
+	go func() {
+		cli.Execute(ctx)
+		cancel()
+	}()
+
+	// Wait for the context to be cancelled
+	// either by a signal or by the command completing
+	<-ctx.Done()
+
+	// Print a newline to ensure the next prompt is on a new line
+	fmt.Println()
 }

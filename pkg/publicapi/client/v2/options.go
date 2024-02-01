@@ -39,6 +39,17 @@ type Config struct {
 
 	// TLSConfig provides info on how we want to use TLS
 	TLS TLSConfig
+
+	// WebsocketChannelBuffer is the size of the channel buffer for websocket messages
+	WebsocketChannelBuffer int
+}
+
+// DefaultConfig returns a default configuration for the client.
+func DefaultConfig() Config {
+	return Config{
+		Timeout:                30 * time.Second,
+		WebsocketChannelBuffer: 10,
+	}
 }
 
 type TLSConfig struct {
@@ -117,6 +128,13 @@ func WithTimeout(timeout time.Duration) OptionFn {
 func WithHeaders(headers http.Header) OptionFn {
 	return func(o *Config) {
 		o.Headers = headers
+	}
+}
+
+// WithWebsocketChannelBuffer sets the size of the channel buffer for websocket messages
+func WithWebsocketChannelBuffer(buffer int) OptionFn {
+	return func(o *Config) {
+		o.WebsocketChannelBuffer = buffer
 	}
 }
 

@@ -83,7 +83,10 @@ func PrintJobExecutionLegacy(
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 
-		return util.Logs(cmd, j.Metadata.ID, true, true)
+		return util.Logs(cmd, util.LogOptions{
+			JobID:  j.ID(),
+			Follow: true,
+		})
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",

@@ -53,6 +53,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 			ProbeExec:           cfg.JobSelection.ProbeExec,
 		},
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
+		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
 	})
 }
 

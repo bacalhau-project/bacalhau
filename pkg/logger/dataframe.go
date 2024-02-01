@@ -28,7 +28,7 @@ const (
 	StderrStreamTag
 )
 
-const headerLength = 8
+const HeaderLength = 8
 
 type DataFrame struct {
 	Tag  StreamTag
@@ -36,30 +36,28 @@ type DataFrame struct {
 	Data []byte
 }
 
-var EmptyDataFrame DataFrame
-
-func NewDataFrameFromReader(reader io.Reader) (DataFrame, error) {
-	header := make([]byte, headerLength)
+func NewDataFrameFromReader(reader io.Reader) (*DataFrame, error) {
+	header := make([]byte, HeaderLength)
 
 	n, err := reader.Read(header)
 	if err != nil {
-		return DataFrame{}, err
+		return nil, err
 	}
-	if n != headerLength {
-		return DataFrame{}, fmt.Errorf("unable to read dataframe header")
+	if n != HeaderLength {
+		return nil, fmt.Errorf("unable to read dataframe header")
 	}
 
-	df := DataFrame{}
+	df := &DataFrame{}
 	df.Tag = StreamTag(binary.LittleEndian.Uint32(header))
 	df.Size = int(binary.BigEndian.Uint32(header[4:]))
 	df.Data = make([]byte, df.Size)
 
 	n, err = reader.Read(df.Data)
 	if err != nil {
-		return DataFrame{}, err
+		return nil, err
 	}
 	if n != df.Size {
-		return DataFrame{}, fmt.Errorf("unable to read dataframe data, read %d wanted %d", n, df.Size)
+		return nil, fmt.Errorf("unable to read dataframe data, read %d wanted %d", n, df.Size)
 	}
 
 	return df, nil
@@ -68,8 +66,8 @@ func NewDataFrameFromReader(reader io.Reader) (DataFrame, error) {
 // NewDataFrameFromBytes will compose a new data frame
 // wrapping the provided tag and data with the necessary
 // structure.
-func NewDataFrameFromData(tag StreamTag, data []byte) DataFrame {
-	return DataFrame{
+func NewDataFrameFromData(tag StreamTag, data []byte) *DataFrame {
+	return &DataFrame{
 		Tag:  tag,
 		Size: len(data),
 		Data: append([]byte(nil), data...),
@@ -79,7 +77,7 @@ func NewDataFrameFromData(tag StreamTag, data []byte) DataFrame {
 // ToBytes converts the data frame into a format suitable for
 // transmission across a Writer.
 func (df DataFrame) ToBytes() []byte {
-	output := make([]byte, headerLength+df.Size)
+	output := make([]byte, HeaderLength+df.Size)
 	binary.LittleEndian.PutUint32(output, uint32(df.Tag))
 	binary.BigEndian.PutUint32(output[4:], uint32(df.Size))
 	copy(output[8:], df.Data)

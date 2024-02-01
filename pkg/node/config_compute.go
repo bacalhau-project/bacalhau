@@ -57,6 +57,9 @@ type ComputeConfigParams struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
+	// How many messages to buffer in the log stream channel
+	LogStreamBufferSize int
+
 	FailureInjectionConfig model.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
@@ -93,6 +96,9 @@ type ComputeConfig struct {
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	// How many messages to buffer in the log stream channel
+	LogStreamBufferSize int
 
 	FailureInjectionConfig model.FailureInjectionComputeConfig
 
@@ -170,6 +176,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
+		LogStreamBufferSize:          params.LogStreamBufferSize,
 		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
