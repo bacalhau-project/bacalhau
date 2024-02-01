@@ -8,5 +8,8 @@ export const AppTest = () => (
 test("renders JobsIcon", () => {
   render(<AppTest />)
 
-  expect(screen.findAllByText("JobsIcon")).toBeTruthy()
+  const screenContent = screen
+    .findAllByAltText("JobsIcon")
+    .then((content) => content)
+  expect(screenContent).toBeTruthy()
 })

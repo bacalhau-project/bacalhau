@@ -49,6 +49,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@augment-vir/common@npm:^22.0.0, @augment-vir/common@npm:^22.1.1":
+  version: 22.4.0
+  resolution: "@augment-vir/common@npm:22.4.0"
+  dependencies:
+    browser-or-node: "npm:^2.1.1"
+    run-time-assertions: "npm:^0.3.0"
+    type-fest: "npm:^4.9.0"
+  checksum: 10c0/fe998b19f90ca95f7a63b69bdd954376d67e57665a67947371606df1264ed69825f913b038008ed2a1ddc05008357b0e7f2a232a5cfdd5e9e7b042cb7de0cc64
+  languageName: node
+  linkType: hard
+
 "@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.10.4, @babel/code-frame@npm:^7.12.13, @babel/code-frame@npm:^7.16.0, @babel/code-frame@npm:^7.23.5, @babel/code-frame@npm:^7.8.3":
   version: 7.23.5
   resolution: "@babel/code-frame@npm:7.23.5"
@@ -5654,6 +5665,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"browser-or-node@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "browser-or-node@npm:2.1.1"
+  checksum: 10c0/f727639581182f831b5bf4686b401dcad5cc29b5a6b70059c0aa90990844b8f15f3a1d328cc8e83dd3b4bfa69175f9bdf2f4383faec14d47205bfea532b9964d
+  languageName: node
+  linkType: hard
+
 "browserslist@npm:^4.0.0, browserslist@npm:^4.18.1, browserslist@npm:^4.21.10, browserslist@npm:^4.21.4, browserslist@npm:^4.22.2":
   version: 4.22.3
   resolution: "browserslist@npm:4.22.3"
@@ -8263,6 +8281,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expect-type@npm:~0.15.0":
+  version: 0.15.0
+  resolution: "expect-type@npm:0.15.0"
+  checksum: 10c0/d5ffc86df1937290a6555e763f76a8c27d18d9bfa63e18788a79ff52bba3d2a9a518af1163d437854efca6bd8e03768a2c4b10ea29e861c9d6f57ff53f19c3c4
+  languageName: node
+  linkType: hard
+
 "expect@npm:^29.0.0, expect@npm:^29.7.0":
   version: 29.7.0
   resolution: "expect@npm:29.7.0"
@@ -8833,16 +8858,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@npm:2.3.2":
-  version: 2.3.2
-  resolution: "fsevents@npm:2.3.2"
-  dependencies:
-    node-gyp: "npm:latest"
-  checksum: 10c0/be78a3efa3e181cda3cf7a4637cb527bcebb0bd0ea0440105a3bb45b86f9245b307dc10a2507e8f4498a7d4ec349d1910f4d73e4d4495b16103106e07eee735b
-  conditions: os=darwin
-  languageName: node
-  linkType: hard
-
 "fsevents@npm:^1.0.0":
   version: 1.2.13
   resolution: "fsevents@npm:1.2.13"
@@ -8854,22 +8869,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@npm:^2.3.2, fsevents@npm:~2.3.2":
+"fsevents@npm:^2.3.2, fsevents@npm:^2.3.3, fsevents@npm:~2.3.2":
   version: 2.3.3
   resolution: "fsevents@npm:2.3.3"
   dependencies:
     node-gyp: "npm:latest"
   checksum: 10c0/a1f0c44595123ed717febbc478aa952e47adfc28e2092be66b8ab1635147254ca6cfe1df792a8997f22716d4cbafc73309899ff7bfac2ac3ad8cf2e4ecc3ec60
-  conditions: os=darwin
-  languageName: node
-  linkType: hard
-
-"fsevents@patch:fsevents@npm%3A2.3.2#optional!builtin<compat/fsevents>":
-  version: 2.3.2
-  resolution: "fsevents@patch:fsevents@npm%3A2.3.2#optional!builtin<compat/fsevents>::version=2.3.2&hash=df0bf1"
-  dependencies:
-    node-gyp: "npm:latest"
-  checksum: 10c0/f9fcd7a9f17027137f4c25aafd18a7eb1b5521a673f8e913b93521693409dc67581517a98b0e4b55bfa0ca45beb90d630e0c4532af465cb26d812f96fd98b7e0
   conditions: os=darwin
   languageName: node
   linkType: hard
@@ -8884,11 +8889,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@patch:fsevents@npm%3A^2.3.2#optional!builtin<compat/fsevents>, fsevents@patch:fsevents@npm%3A~2.3.2#optional!builtin<compat/fsevents>":
+"fsevents@patch:fsevents@npm%3A^2.3.2#optional!builtin<compat/fsevents>, fsevents@patch:fsevents@npm%3A^2.3.3#optional!builtin<compat/fsevents>, fsevents@patch:fsevents@npm%3A~2.3.2#optional!builtin<compat/fsevents>":
   version: 2.3.3
   resolution: "fsevents@patch:fsevents@npm%3A2.3.3#optional!builtin<compat/fsevents>::version=2.3.3&hash=df0bf1"
   dependencies:
     node-gyp: "npm:latest"
+  checksum: 10c0/6a4a13116649608f65dfd42d5cb66801b08c48db6d8c359bcc32108b043a7c0010fe21a32b9e9324ee568963c496663857a58480618055f083a74fa325278fa2
   conditions: os=darwin
   languageName: node
   linkType: hard
@@ -13793,6 +13799,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prettier-plugin-multiline-arrays@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "prettier-plugin-multiline-arrays@npm:3.0.1"
+  dependencies:
+    "@augment-vir/common": "npm:^22.0.0"
+    proxy-vir: "npm:^0.0.2"
+  peerDependencies:
+    prettier: ^3.0.0
+  checksum: 10c0/1fc852e4cd2cd5922560bf0757b74dca62f9322e1d9d7642b1cde09ec32ab71e01270c10374a7b41e5719ca64ebdeb0d679e9dbfd425e81c2abaa1c5420252f4
+  languageName: node
+  linkType: hard
+
 "prettier@npm:^3.1.1":
   version: 3.2.4
   resolution: "prettier@npm:3.2.4"
@@ -13923,6 +13941,15 @@ __metadata:
   version: 1.1.0
   resolution: "proxy-from-env@npm:1.1.0"
   checksum: 10c0/fe7dd8b1bdbbbea18d1459107729c3e4a2243ca870d26d34c2c1bcd3e4425b7bcc5112362df2d93cc7fb9746f6142b5e272fd1cc5c86ddf8580175186f6ad42b
+  languageName: node
+  linkType: hard
+
+"proxy-vir@npm:^0.0.2":
+  version: 0.0.2
+  resolution: "proxy-vir@npm:0.0.2"
+  dependencies:
+    "@augment-vir/common": "npm:^22.0.0"
+  checksum: 10c0/90d8005a3d0ea69bab66d7d22dc0943b2563e0706fdd55eafc4ec3b1457ca0b84597675fbf665b29b608498610828d880b11aa68c66e6aeba24836bac80ac8ef
   languageName: node
   linkType: hard
 
@@ -14746,6 +14773,17 @@ __metadata:
   dependencies:
     queue-microtask: "npm:^1.2.2"
   checksum: 10c0/200b5ab25b5b8b7113f9901bfe3afc347e19bb7475b267d55ad0eb86a62a46d77510cb0f232507c9e5d497ebda569a08a9867d0d14f57a82ad5564d991588b39
+  languageName: node
+  linkType: hard
+
+"run-time-assertions@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "run-time-assertions@npm:0.3.0"
+  dependencies:
+    "@augment-vir/common": "npm:^22.1.1"
+    expect-type: "npm:~0.15.0"
+    type-fest: "npm:^4.9.0"
+  checksum: 10c0/b63b393944320e301b88a6879c8f4d23e2eab4fa12a442438350eb3b2479aa1506f36f6bcf2e2861ccef862f2f28733684bae0fe44596eba5b5664a3989978c9
   languageName: node
   linkType: hard
 
@@ -16974,7 +17012,7 @@ __metadata:
     eslint-webpack-plugin: "npm:^3.1.1"
     file-loader: "npm:^6.2.0"
     fs-extra: "npm:^10.0.0"
-    fsevents: "npm:2.3.2"
+    fsevents: "npm:^2.3.3"
     html-webpack-plugin: "npm:^5.5.0"
     identity-obj-proxy: "npm:^3.0.0"
     jest: "npm:^29.7.0"
@@ -16993,6 +17031,7 @@ __metadata:
     postcss-normalize: "npm:^10.0.1"
     postcss-preset-env: "npm:^7.0.1"
     prettier: "npm:^3.1.1"
+    prettier-plugin-multiline-arrays: "npm:^3.0.1"
     prompts: "npm:^2.4.2"
     prop-types: "npm:^15.8.1"
     react: "npm:^18.2.0"

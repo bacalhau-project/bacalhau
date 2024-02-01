@@ -56,3 +56,4 @@ docker/.pulled
 clients/pyproject.toml
 install-state.gz
 !webui/config/env.js
+install-state.gz

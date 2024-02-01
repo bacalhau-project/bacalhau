@@ -5,7 +5,6 @@
 //
 //	mockgen --source interfaces.go --destination mock_eventhandler/mock_handlers.go --package mock_eventhandler
 //
-
 // Package mock_eventhandler is a generated GoMock package.
 package mock_eventhandler
 

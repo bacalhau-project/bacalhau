@@ -46,7 +46,7 @@ jobs:
         working-directory: docs
       - run: yarn run build
         working-directory: docs
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: docs/build/
 
@@ -59,7 +59,6 @@ jobs:
       github.ref == 'refs/heads/main' &&
       !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
       !contains(github.event.pull_request.labels.*.name, 'wip')
-    
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
@@ -73,4 +72,4 @@ jobs:
 
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
