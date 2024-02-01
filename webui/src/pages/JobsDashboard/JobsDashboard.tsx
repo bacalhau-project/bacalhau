@@ -1,35 +1,43 @@
-import React, { useEffect, useState } from "react";
-import styles from "./JobsDashboard.module.scss";
-import JobsTable from "./JobsTable/JobsTable";
-import Layout from "../../layout/Layout";
-import { Job } from "../../helpers/jobInterfaces";
-import { bacalhauAPI } from "../../services/bacalhau";
+import React, { useEffect, useState } from "react"
+import styles from "./JobsDashboard.module.scss"
+import { JobsTable } from "./JobsTable/JobsTable"
+import { Layout } from "../../layout/Layout"
+import { Job } from "../../helpers/jobInterfaces"
+import { bacalhauAPI } from "../../services/bacalhau"
 
-const JobsDashboard: React.FC = () => {
-  const [data, setData] = useState<Job[]>([]);
+interface JobsDashboardProps {
+  pageTitle?: string
+}
 
-  async function getJobsData() {
-    try {
-      const response = await bacalhauAPI.listJobs();
-      if (response.Jobs) {
-        setData(response.Jobs);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }
+export const JobsDashboard: React.FC<JobsDashboardProps> = ({
+  pageTitle = "Jobs Dashboard",
+}) => {
+  const [data, setData] = useState<Job[]>([])
 
   useEffect(() => {
-    getJobsData();
-  }, []);
+    try {
+      bacalhauAPI
+        .listJobs()
+        .then((response) => response.Jobs)
+        .then((jobs) => {
+          if (jobs) {
+            setData(jobs)
+          }
+        })
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
 
   return (
-    <Layout pageTitle="Jobs Dashboard">
-      <div className={styles.jobsDashboard}>
+    <Layout pageTitle={pageTitle}>
+      <div className={styles.jobsDashboard} data-testid="jobsTableContainer">
         <JobsTable data={data} />
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default JobsDashboard;
+JobsDashboard.defaultProps = {
+  pageTitle: "Jobs Dashboard",
+}

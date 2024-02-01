@@ -4,8 +4,8 @@
     "allowCompoundWords": true,
     "dictionaryDefinitions": [
         {
-            "name": "custom-words",
-            "path": ".gitprecommit/codespell_ignore_words.txt",
+            "name": "custom-dictionary",
+            "path": "./.cspell/custom-dictionary.txt",
             "addWords": true
         }
     ],
@@ -14,6 +14,7 @@
         "custom-words"
     ],
     "ignorePaths": [
+        "**/package.json",
         "**/docs/package-lock.json",
         "**/docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md",
         "docs/docs/examples/model-training/Training-Tensorflow-Model/index.md",
