@@ -25,7 +25,9 @@
         "./docs/docs/dev/api/jobs.md",
         "**/*.css",
         "**/cli-reference/**",
-        "**/api/**"
+        "**/api/**",
+        "./docs/docs/dev/databases.md",
+        "./docs/docs/dev/setting_up_development.md"
     ],
     "ignoreRegExpList": [
         "Urls",
