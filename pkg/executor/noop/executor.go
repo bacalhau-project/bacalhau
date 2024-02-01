@@ -229,7 +229,7 @@ func (e *NoopExecutor) Run(
 	return &models.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (e *NoopExecutor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 

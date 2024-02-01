@@ -225,45 +225,6 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 	return CancelJobResult{}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
-	emptyResponse := ReadLogsResponse{}
-
-	executions, err := e.store.GetExecutions(ctx, request.JobID)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	nodeID := ""
-	for _, e := range executions {
-		if e.ID == request.ExecutionID {
-			nodeID = e.NodeID
-			break
-		}
-	}
-
-	if nodeID == "" {
-		return emptyResponse, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
-	}
-
-	req := compute.ExecutionLogsRequest{
-		RoutingMetadata: compute.RoutingMetadata{
-			SourcePeerID: e.id,
-			TargetPeerID: nodeID,
-		},
-		ExecutionID: request.ExecutionID,
-		WithHistory: request.WithHistory,
-		Follow:      request.Follow,
-	}
-
-	newCtx := context.Background()
-	response, err := e.computesvc.ExecutionLogs(newCtx, req)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	return ReadLogsResponse{Address: response.Address, ExecutionComplete: response.ExecutionFinished}, nil
-}
-
 // /////////////////////////////
 // Compute callback handlers //
 // /////////////////////////////

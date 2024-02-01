@@ -1,11 +1,10 @@
 package logs
 
 import (
+	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -24,32 +23,9 @@ var (
 `))
 )
 
-type LogCommandOptions struct {
-	Follow      bool
-	WithHistory bool
-}
-
 func NewCmd() *cobra.Command {
-	options := LogCommandOptions{}
-
-	logsCmd := &cobra.Command{
-		Use:      "logs [id]",
-		Short:    logsShortDesc,
-		Example:  logsExample,
-		Args:     cobra.ExactArgs(1),
-		PreRunE:  hook.RemoteCmdPreRunHooks,
-		PostRunE: hook.RemoteCmdPostRunHooks,
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
-			if err := util.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-		},
-	}
-
-	logsCmd.PersistentFlags().BoolVarP(
-		&options.Follow, "follow", "f", false,
-		`Follow the logs in real-time after retrieving the current logs.`,
-	)
-
-	return logsCmd
+	cmd := job.NewLogCmd()
+	cmd.Short = logsShortDesc
+	cmd.Example = logsExample
+	return cmd
 }

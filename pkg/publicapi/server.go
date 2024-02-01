@@ -121,7 +121,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			echomiddelware.TimeoutConfig{
 				Timeout:      params.Config.RequestHandlerTimeout,
 				ErrorMessage: TimeoutMessage,
-				Skipper:      middleware.PathMatchSkipper(params.Config.SkippedTimeoutPaths),
+				Skipper:      middleware.WebsocketSkipper,
 			}),
 
 		middleware.Otel(),

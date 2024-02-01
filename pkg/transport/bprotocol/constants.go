@@ -6,7 +6,7 @@ const (
 	BidAcceptedProtocolID = "/bacalhau/compute/bid_accepted/1.0.0"
 	BidRejectedProtocolID = "/bacalhau/compute/bid_rejected/1.0.0"
 	CancelProtocolID      = "/bacalhau/compute/cancel/1.0.0"
-	ExecutionLogsID       = "/bacalhau/compute/executionlogs/1.0.0"
+	ExecutionLogsID       = "/bacalhau/compute/execution_logs/1.0.0"
 
 	CallbackServiceName = "bacalhau.callback"
 	OnBidComplete       = "/bacalhau/callback/on_bid_complete/1.0.0"

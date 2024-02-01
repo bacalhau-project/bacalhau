@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -56,8 +58,9 @@ func (t *TestEndpoint) BidRejected(context.Context, compute.BidRejectedRequest) 
 func (t *TestEndpoint) CancelExecution(context.Context, compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
 	return compute.CancelExecutionResponse{}, errors.New("No test implementation")
 }
-func (t *TestEndpoint) ExecutionLogs(context.Context, compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
-	return compute.ExecutionLogsResponse{}, errors.New("No test implementation")
+func (t *TestEndpoint) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+	return nil, errors.New("No test implementation")
 }
 
 func (s *ComputeProxyTestSuite) TeardownSuite() {

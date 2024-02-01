@@ -38,6 +38,7 @@ import (
 type Requester struct {
 	// Visible for testing
 	Endpoint           requester.Endpoint
+	EndpointV2         *orchestrator.BaseEndpoint
 	JobStore           jobstore.Store
 	NodeDiscoverer     orchestrator.NodeDiscoverer
 	localCallback      compute.Callback
@@ -310,6 +311,7 @@ func NewRequesterNode(
 	return &Requester{
 		Endpoint:           endpoint,
 		localCallback:      endpoint,
+		EndpointV2:         endpointV2,
 		NodeDiscoverer:     nodeDiscoveryChain,
 		JobStore:           jobStore,
 		cleanupFunc:        cleanupFunc,

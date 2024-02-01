@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package logstream
+package logstream_test
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -70,14 +69,14 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	go func() {
 		// TODO(forrest): [correctness] we need to wait a little for the container to become active.
 		time.Sleep(time.Second * 3)
-		reader, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
+		ch, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
 		require.NoError(s.T(), err)
-		require.NotNil(s.T(), reader)
+		require.NotNil(s.T(), ch)
 
-		dataframe, err := logger.NewDataFrameFromReader(reader)
-		require.NoError(s.T(), err)
-
-		require.Contains(s.T(), string(dataframe.Data), "logstreamoutput")
+		asyncResult, ok := <-ch
+		require.True(s.T(), ok)
+		require.NoError(s.T(), asyncResult.Err)
+		require.Equal(s.T(), models.ExecutionLogTypeSTDOUT, asyncResult.Value.Type)
 
 		success <- true
 	}()

@@ -297,7 +297,7 @@ func (apiClient *APIClient) Logs(
 		ClientID:    system.GetClientID(),
 		JobID:       jobID,
 		ExecutionID: executionID,
-		WithHistory: withHistory,
+		Tail:        withHistory,
 		Follow:      follow,
 	}
 

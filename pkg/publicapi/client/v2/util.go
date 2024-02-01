@@ -11,10 +11,15 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/gorilla/websocket"
 )
 
 // encodeBody prepares the reader to serve as the request body.
@@ -94,4 +99,50 @@ func autoUnzip(resp *http.Response) error {
 	}
 
 	return nil
+}
+
+func webSocketDialer[T any](ctx context.Context, c *Client, endpoint string, in apimodels.GetRequest) (
+	<-chan *concurrency.AsyncResult[T], error) {
+	r := in.ToHTTPRequest()
+	httpR, err := c.toHTTP(ctx, http.MethodGet, endpoint, r)
+	if err != nil {
+		return nil, err
+	}
+	httpR.URL.Scheme = "ws"
+
+	// Connect to the server
+	conn, resp, err := websocket.DefaultDialer.Dial(httpR.URL.String(), httpR.Header)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read messages from the server, and send them to the conn is closed or the context is cancelled
+	ch := make(chan *concurrency.AsyncResult[T], c.config.WebsocketChannelBuffer)
+	go func() {
+		defer func() {
+			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			conn.Close()
+			close(ch)
+		}()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				result := new(concurrency.AsyncResult[T])
+				err := conn.ReadJSON(result)
+				if err != nil {
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+						result.Err = err
+						ch <- result
+					}
+					return
+				}
+				ch <- result
+			}
+		}
+	}()
+
+	return ch, nil
 }
