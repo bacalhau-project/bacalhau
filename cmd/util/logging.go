@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -18,11 +17,6 @@ import (
 var LoggingMode = logger.LogModeDefault
 
 func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
-	ctx, cancel := context.WithCancel(cmd.Context())
-	defer func() {
-		cancel()
-	}()
-
 	requestedJobID := jobID
 	if requestedJobID == "" {
 		var byteResult []byte
@@ -34,7 +28,7 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	}
 
 	apiClient := GetAPIClientV2()
-	ch, err := apiClient.Jobs().Logs(ctx, &apimodels.GetLogsRequest{
+	ch, err := apiClient.Jobs().Logs(cmd.Context(), &apimodels.GetLogsRequest{
 		JobID:       requestedJobID,
 		Follow:      follow,
 		WithHistory: history,
@@ -46,16 +40,13 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 		return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, err)
 	}
 
-	if err := readLogoutput(ctx, ch); err != nil {
+	if err := readLogoutput(cmd.Context(), ch); err != nil {
 		return fmt.Errorf("error reading log output: %w", err)
 	}
 	return nil
 }
 
 func readLogoutput(ctx context.Context, logsChannel <-chan *concurrency.AsyncResult[models.ExecutionLog]) error {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
 	fd := os.Stdout
 	for {
 		select {
@@ -76,8 +67,6 @@ func readLogoutput(ctx context.Context, logsChannel <-chan *concurrency.AsyncRes
 				return fmt.Errorf("failed to write to fd, tried to write %d bytes but only managed %d", len(msg.Line), n)
 			}
 		case <-ctx.Done():
-			return nil
-		case <-interrupt:
 			return nil
 		}
 	}
