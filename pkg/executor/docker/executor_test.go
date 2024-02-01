@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
@@ -483,7 +483,11 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 		done <- true
 	}()
 	<-done
-	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
+	reader, err := s.executor.GetLogStream(ctx, executor.LogStreamRequest{
+		ExecutionID: id,
+		Tail:        true,
+		Follow:      true,
+	})
 
 	require.Nil(s.T(), reader)
 	require.Error(s.T(), err)
@@ -502,16 +506,26 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	s.startJob(task, id)
 
-	reader, err := s.executor.GetOutputStream(context.Background(), id, true, true)
+	reader, err := s.executor.GetLogStream(context.Background(), executor.LogStreamRequest{
+		ExecutionID: id,
+		Tail:        true,
+		Follow:      true,
+	})
 
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)
 
-	df, err := logger.NewDataFrameFromReader(reader)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), string(df.Data), "hello\n")
-	require.Equal(s.T(), df.Size, 6)
-	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
+	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
+		Reader: reader,
+	}).Stream(context.Background())
+	res, ok := <-ch
+	executionLog := res.Value
+	require.True(s.T(), ok)
+	require.Equal(s.T(), string(executionLog.Line), "hello\n")
+	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
+
+	_, ok = <-ch
+	require.False(s.T(), ok)
 }
 
 func (s *ExecutorTestSuite) TestDockerOOM() {

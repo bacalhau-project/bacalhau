@@ -234,11 +234,11 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	return handler.kill(ctx)
 }
 
-// GetOutputStream provides a stream of output logs for a specific execution.
+// GetLogStream provides a stream of output logs for a specific execution.
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
-func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	// It's possible we've recorded the execution as running, but have not yet added the handler to
 	// the handler map because we're still waiting for the container to start. We will try and wait
 	// for a few seconds to see if the handler is added to the map.
@@ -255,7 +255,7 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 		for {
 			select {
 			case <-ticker.C:
-				h, found := e.handlers.Get(executionID)
+				h, found := e.handlers.Get(request.ExecutionID)
 				if found {
 					ch <- h
 					return
@@ -271,12 +271,12 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 	// or we'll timeout and return an error.
 	select {
 	case handler := <-chHandler:
-		return handler.outputStream(ctx, withHistory, follow)
+		return handler.outputStream(ctx, request)
 	case <-time.After(outputStreamCheckTimeout):
 		chExit <- struct{}{}
 	}
 
-	return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
+	return nil, fmt.Errorf("getting outputs for execution (%s): %w", request.ExecutionID, executor.ErrNotFound)
 }
 
 // Run initiates and waits for the completion of an execution in one call.

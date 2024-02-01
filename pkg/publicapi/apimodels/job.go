@@ -150,3 +150,27 @@ type StopJobResponse struct {
 	BasePutResponse
 	EvaluationID string `json:"EvaluationID"`
 }
+
+type GetLogsRequest struct {
+	BaseGetRequest
+	JobID       string `query:"-"`
+	ExecutionID string `query:"execution_id" validate:"omitempty"`
+	Tail        bool   `query:"tail"`
+	Follow      bool   `query:"follow"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *GetLogsRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseGetRequest.ToHTTPRequest()
+
+	if o.ExecutionID != "" {
+		r.Params.Set("execution_id", o.ExecutionID)
+	}
+	if o.Tail {
+		r.Params.Set("tail", "true")
+	}
+	if o.Follow {
+		r.Params.Set("follow", "true")
+	}
+	return r
+}

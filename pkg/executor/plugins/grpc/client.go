@@ -151,11 +151,11 @@ func (c *GRPCClient) Cancel(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *GRPCClient) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (c *GRPCClient) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	respStream, err := c.client.GetOutputStream(ctx, &proto.OutputStreamRequest{
-		ExecutionID: executionID,
-		History:     withHistory,
-		Follow:      follow,
+		ExecutionID: request.ExecutionID,
+		History:     request.Tail,
+		Follow:      request.Follow,
 	})
 	if err != nil {
 		return nil, err

@@ -36,7 +36,6 @@ type Compute struct {
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecutorProvider
 	Storages           storage.StorageProvider
-	LogServer          *logstream.LogStreamServer
 	Bidder             compute.Bidder
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
@@ -178,22 +177,11 @@ func NewComputeNode(
 	}
 
 	// logging server
-	// TODO: make logging server agnostic to libp2p transport
-	var logserver *logstream.LogStreamServer
-	if host != nil {
-		logserver = logstream.NewLogStreamServer(logstream.LogStreamServerOptions{
-			Ctx:            ctx,
-			Host:           host,
-			ExecutionStore: executionStore,
-			//
-			Executors: executors,
-		})
-		_, loggingCancel := context.WithCancel(ctx)
-		cleanupManager.RegisterCallback(func() error {
-			loggingCancel()
-			return nil
-		})
-	}
+	logserver := logstream.NewServer(logstream.ServerParams{
+		ExecutionStore: executionStore,
+		Executors:      executors,
+		Buffer:         config.LogStreamBufferSize,
+	})
 
 	// node info
 	nodeInfoDecorator := compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
@@ -268,7 +256,6 @@ func NewComputeNode(
 		Executors:          executors,
 		Storages:           storages,
 		Bidder:             bidder,
-		LogServer:          logserver,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
 		autoLabelsProvider: labelsProvider,

@@ -127,7 +127,10 @@ func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	return util.Logs(cmd, jobID, true, true)
+	return util.Logs(cmd, util.LogOptions{
+		JobID:  jobID,
+		Follow: true,
+	})
 }
 
 // waitForJobAndPrintResultsToUser uses new job state  to decide what to output to the terminal

@@ -373,7 +373,7 @@ type LogsPayload struct {
 	ExecutionID string `json:"ExecutionID,omitempty" validate:"required"`
 
 	// whether the logs history is required
-	WithHistory bool `json:"WithHistory,omitempty"`
+	Tail bool `json:"Tail,omitempty"`
 
 	// whether the logs should be followed after the current logs are shown
 	Follow bool `json:"Follow,omitempty"`

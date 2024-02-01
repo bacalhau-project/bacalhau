@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -79,4 +81,9 @@ func (j *Jobs) Stop(ctx context.Context, r *apimodels.StopJobRequest) (*apimodel
 		return nil, err
 	}
 	return &resp, nil
+}
+
+// Logs returns a stream of logs for a given job/execution.
+func (j *Jobs) Logs(ctx context.Context, r *apimodels.GetLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+	return webSocketDialer[models.ExecutionLog](ctx, j.client, jobsPath+"/"+r.JobID+"/logs", r)
 }
