@@ -147,5 +147,15 @@
   "msw": {
     "workerDirectory": "public"
   },
-  "packageManager": "yarn@4.1.0"
+  "packageManager": "yarn@4.1.0",
+  "yarn.build": {
+    "input": [
+      "src",
+      "tests"
+    ],
+    "output": [
+      "dist",
+      "coverage"
+    ]
+  }
 }

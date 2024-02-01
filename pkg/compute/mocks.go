@@ -5,7 +5,6 @@
 //
 //	mockgen --source types.go --destination mocks.go --package compute
 //
-
 // Package compute is a generated GoMock package.
 package compute
 
