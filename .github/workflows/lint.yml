@@ -9,25 +9,27 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - run: echo "GO_VER=$(cat .tool-versions | grep go | cut -d' ' -f2 )" >> $GITHUB_ENV
-    - run: echo "NODE_VER=$(cat .tool-versions | grep nodejs | cut -d' ' -f2)" >> $GITHUB_ENV
+      - run: echo "GO_VER=$(cat .tool-versions | grep 'golang ' | cut -d' ' -f2)" >> $GITHUB_ENV
+      - run: echo "NODE_VER=$(cat .tool-versions | grep nodejs | cut -d' ' -f2)" >> $GITHUB_ENV
 
-    # Setup nodejs and build the webui so that we can 
-    # compile the go code that embeds the webui.
-    - name: Setup node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '${{ env.NODE_VER }}'
-    - run: cd webui && npm install
-    - run: cd webui && npm run build
+      - name: Install asdf & tools
+        uses: asdf-vm/actions/install@v3
 
-    - uses: actions/setup-go@v4
-      with:
-        go-version: '${{ env.GO_VER }}'
-    - run: go mod tidy
-    - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
-    - uses: pre-commit/action@v3.0.0
+      - name: Add asdf to PATH
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
 
+      - run: go mod tidy
+      - name: Run webui linter
+        working-directory: webui
+        run: |
+          npm install
+          npm run lint
+      - name: Build webui
+        working-directory: webui
+        run: npm run build
+      - name: Run pre-commit
+        run: |
+          pre-commit run --show-diff-on-failure --color=always --all-files

@@ -14,6 +14,7 @@
         "custom-words"
     ],
     "ignorePaths": [
+        "**/package.json",
         "**/docs/package-lock.json",
         "**/docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md",
         "docs/docs/examples/model-training/Training-Tensorflow-Model/index.md",
