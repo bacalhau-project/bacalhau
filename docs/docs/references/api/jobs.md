@@ -96,7 +96,7 @@ Retrieve a list of jobs.
 
 **Parameters**:
   - `namespace`: Specify a namespace to filter the jobs. Use `*` to display jobs from all namespaces.
-  - `labels`: Use label-based criteria to filter jobs. See [Label Filtering](../api#label-filtering) for usage details.
+  - `labels`: Use label-based criteria to filter jobs. See [Label Filtering](../api) for usage details.
   - `limit`: Set the maximum number of jobs to return. Default is set to 10.
   - `next_token`: Utilize this parameter for pagination continuation.
   - `order_by`: Determine the ordering of jobs. Choose between `id` or `create_time` (default is `create_time`).

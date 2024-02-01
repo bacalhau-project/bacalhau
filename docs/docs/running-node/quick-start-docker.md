@@ -9,16 +9,16 @@ Good news everyone! You can now run your Bacalhau-IPFS stack in Docker.
 
 This page describes several ways in which to operate Bacalhau. You can choose the method that best suits your needs. The methods are:
 
-* [Connect to and Contribute Resources to the Public Bacalhau Network](#public)
-* [Run a Private Insecure Local Network for Testing And Development](#private)
-* [Run a Private Secure Cluster](#secure)
+* [Connect to and Contribute Resources to the Public Bacalhau Network](#connect-to-the-public-bacalhau-network-using-docker)
+* [Run a Private Insecure Local Network for Testing And Development](#run-a-private-bacalhau-network-using-docker-insecure)
+* [Run a Private Secure Cluster](#run-a-private-bacalhau-network-using-docker-secure)
 
 ### Pre-Prerequisites
 
 * This guide works best on a Linux machine. If you're trying to run this on a Mac, you may encounter issues. Remember that network host mode doesn't work.
 * You need to have Docker installed. If you don't have it, you can [install it here](https://docs.docker.com/get-docker/).
 
-## <a id="public">Connect to the Public Bacalhau Network Using Docker</a>
+## Connect to the Public Bacalhau Network Using Docker
 
 This method is appropriate for those who:
 
@@ -31,7 +31,7 @@ This is not appropriate for:
 
 ### Prerequisites
 
-* [Create a new Docker network](#docker-network)
+* [Create a new Docker network](#create-a-new-docker-network)
 
 ### (Optional) Start a Public IPFS Node
 
@@ -57,7 +57,7 @@ docker run \
     ipfs/kubo:latest
 ```
 
-You can now [test that the IPFS node is working](#test-ipfs).
+You can now [test that the IPFS node is working](#test-that-the-ipfs-node-is-working).
 
 ### Start a Public Bacalhau Node
 
@@ -142,7 +142,7 @@ If instead, your job fails with the following error, it means that the compute n
 Error: failed to submit job: publicapi: after posting request: error starting job: not enough nodes to run job. requested: 1, available: 0
 ```
 
-## <a id="private">Run a Private Bacalhau Network Using Docker (Insecure)</a>
+## Run a Private Bacalhau Network Using Docker (Insecure)
 
 :::warning
 This method is insecure. It does not lock down the IPFS node. Anyone connected to your network can access the IPFS node and read/write data. This is not recommended for production use.
@@ -162,7 +162,7 @@ This method is not appropriate for:
 
 ### Prerequisites
 
-* [Create a new Docker network](#docker-network)
+* [Create a new Docker network](#create-a-new-docker-network)
 
 ### Start a Local IPFS Node (Insecure)
 
@@ -190,9 +190,9 @@ docker run \
     ipfs/kubo:latest
 ```
 
-You can now [test that the IPFS node is working](#test-ipfs).
+You can now [test that the IPFS node is working](#test-that-the-ipfs-node-is-working).
 
-### <a id="start-bacalhau">Start a Private Bacalhau Node</a>
+### Start a Private Bacalhau Node
 
 Bacalhau consists of two parts: a "requester" that is responsible for operating the API and managing jobs, and a "compute" element that is responsible for executing jobs. In a public context, you'd typically just run a compute node, and allow the public requesters to handle the traffic. But in a private context, you'll want to run both.
 
@@ -221,9 +221,9 @@ docker run \
         --node-type requester,compute
 ```
 
-You can now [test that Bacalhau is working](#test-bacalhau).
+You can now [test that Bacalhau is working](#test-that-the-bacalhau-node-is-working).
 
-### <a id="run-job">Run a Job on the Private Network</a>
+### Run a Job on the Private Network
 
 Now it's time to run a job. Recall that you exposed the Bacalhau API on the default ports to the local host only. So you'll need to use the `--api-host` flag to tell Bacalhau where to find the API. Everything else is a standard part of the Bacalhau CLI.
 
@@ -265,7 +265,7 @@ docker run -t --rm --network=bacalhau-network \
     get --api-host=bacalhau --ipfs-swarm-addrs=/dns4/bacalhau/tcp/4001/p2p/$SWARM_ID --output-dir=/results $JOB_ID
 ```
 
-## <a id="secure">Run a Private Bacalhau Network Using Docker (Secure)</a>
+## Run a Private Bacalhau Network Using Docker (Secure)
 
 Running a private secure network is useful in a range of scenarios, including:
 
@@ -275,7 +275,7 @@ You need two things. A private IPFS node to store data and a Bacalhau node to ex
 
 ### Prerequisites
 
-* [Create a new Docker network](#docker-network)
+* [Create a new Docker network](#create-a-new-docker-network)
 
 ### Start a Private IPFS Node (Secure)
 
@@ -313,11 +313,11 @@ docker run \
 
 ### Start a Private Bacalhau Node (Secure)
 
-The instructions to run a secure private Bacalhau network are the same as the insecure version, [please follow those instructions](#start-bacalhau).
+The instructions to run a secure private Bacalhau network are the same as the insecure version, [please follow those instructions](#start-a-private-bacalhau-node-secure).
 
 ### Run a Job on the Private Network (Secure)
 
-The instructions to run a job are the same as the insecure version, [please follow those instructions](#run-job).
+The instructions to run a job are the same as the insecure version, [please follow those instructions](#run-a-job-on-the-private-network).
 
 ### Retrieve the Results on the Private Network (Secure)
 
@@ -343,7 +343,7 @@ docker run -t --rm --network=bacalhau-network \
 
 ## Common Prerequisites
 
-### <a id="docker-network">Create a New Docker Network</a>
+### Create a New Docker Network
 
 Without this, inter-container DNS will not work, and internet access may not work either.
 
@@ -363,7 +363,7 @@ This should be successful. If it is not, then please troubleshoot your docker ne
 
 :::
 
-### <a id="test-ipfs">Test that the IPFS Node is Working</a>
+### Test that the IPFS Node is Working
 
 You can now browse the IPFS web UI at http://127.0.0.1:5001/webui.
 
@@ -373,7 +373,7 @@ Read more about the IPFS docker image [here](https://docs.ipfs.tech/install/run-
 As described in [their documentation](https://docs.ipfs.tech/reference/kubo/rpc/#getting-started), never expose the RPC API port (port 5001) to the public internet.
 :::
 
-### <a id="test-bacalhau">Test that the Bacalhau Node is Working</a>
+### Test that the Bacalhau Node is Working
 
 Ensure that the Bacalhau logs (`docker logs bacalhau`) have no errors.
 
@@ -397,7 +397,7 @@ bacalhau --api-host=localhost list
 
 It should return empty.
 
-### <a id="authenticate-with-dockerhub">Authenticate with docker hub</a>
+### Authenticate with docker hub
 
 If you are retrieving and running images from [docker hub](https://hub.docker.com/) you
 may encounter issues with rate-limiting. Docker provides higher limits when authenticated, the size of the limit is based on the type of your account.

@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 python3 -q -m pip install --upgrade pip
 pip3 install poetry
 poetry install
 poetry run pre-commit install
 
-pushd python
+pushd python || exit
 poetry install
-popd
+popd || exit
 
-pushd webui
+pushd webui || exit
 yarn install
-popd
+popd || exit

@@ -10,14 +10,14 @@ Gain deeper insights into the WebAssembly (Wasm) jobs running on Bacalhau comput
 
 ## Features
 - Extract telemetry data from Wasm workloads. Currently supports tracing, with logs and metrics coming soon.
-- Data can be sent to the [same viewing destinations](/running-node/observability/#viewing) (ie. sinks) that are supported for the host-level data.
+- Data can be sent to the [same viewing destinations](../running-node/observability.md#viewing) (ie. sinks) that are supported for the host-level data.
 - Utilizes the same Trace ID as the host-level data, allowing for seamless visibility into the end-to-end execution of the job.
 
 ## Installing the SDK
 
-- The Observe SDK is integrated with the default WebAssembly [Executor](/getting-started/architecture/#executor) provided by Bacalhau, so node operators are not required to integrate the SDK itself as long as a custom / pluggable Executor is not being used.
+- The Observe SDK is integrated with the default WebAssembly [Executor](/getting-started/architecture.md#executor) provided by Bacalhau, so node operators are not required to integrate the SDK itself as long as a custom / pluggable Executor is not being used.
 - *(Optional)* For node operators using a custom Executer see [here](https://dev.dylibso.com/docs/observe/adapters/golang/opentelemetry) for instructions on how to integrate the Observe SDK.
-- The SDK uses the same environment variables noted [here](/running-node/observability/#viewing) for sending data out to a viewing destination.
+- The SDK uses the same environment variables noted [here](../running-node/observability.md#viewing) for sending data out to a viewing destination.
 
 ## Usage
 
