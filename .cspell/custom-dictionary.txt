@@ -1,10 +1,8 @@
-# Custom Dictionary Words
 Acked
 acks
 Addrs
 alessio
 apimodels
-armv
 authorised
 autofetch
 automagically
@@ -24,9 +22,7 @@ buildx
 cdest
 cdrom
 cerr
-choco
 Cids
-circlerc
 clientid
 clientv
 cliflags
@@ -51,7 +47,6 @@ deleteme
 devstack
 devstask
 doclines
-dpkg
 dpokidov
 dport
 Dreambooth
@@ -78,6 +73,7 @@ FLYTEADMIN
 flyteagent
 flytebacalhau
 flyteconsole
+flyteidl
 flytekit
 flyteorg
 flytepropeller
@@ -91,10 +87,8 @@ gitlfs
 gitprecommit
 GOARCH
 GOBIN
-GOCACHE
 gochecknoinits
 goconst
-gocovmerge
 gocritic
 gocyclo
 godoc
@@ -105,18 +99,17 @@ golangcilint
 GOLANGCILINTVER
 GOLANGVER
 GOLOG
-GOMAXPROCS
 gomnd
 gomock
 GOPATH
 gopls
 gosec
 gosimple
-GOVER
 govet
 gserviceaccount
 healthz
 helloworld
+humanid
 icore
 icoreoptions
 icorepath
@@ -169,7 +162,6 @@ livez
 localdb
 logits
 logresourcename
-ltrimstr
 ltsc
 maddr
 maddrs
@@ -194,6 +186,7 @@ multiaddr
 multierror
 multiformats
 Muxed
+mypy
 nbconvert
 nemt
 nocheck
@@ -258,7 +251,6 @@ sdkmetric
 sdktrace
 sharded
 shellescape
-skippable
 softmax
 sparkoperator
 stackdriver
@@ -297,7 +289,6 @@ wasmmodels
 wazero
 wdbaruni's
 webui
-whyayen
 winderresearch
 workdir
 Wrapf
@@ -306,7 +297,3 @@ xlarge
 xmap
 xvfz
 zerolog
-flyteidl
-humanid
-isort
-mypy
