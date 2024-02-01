@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ghodss/yaml"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 type OutputFormat string

@@ -7,7 +7,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -130,11 +129,13 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 
 	if !OD.JSON {
 		// Convert Json to Yaml
-		y, err := yaml.JSONToYAML(b)
+		y, err := util.JSONToYaml(b)
 		if err != nil {
-			return fmt.Errorf("able to marshal to YAML but not JSON whatttt '%s': %w", j.Job.Metadata.ID, err)
+			return fmt.Errorf("able to marshal to YAML but not JSON '%s': %w", j.Job.Metadata.ID, err)
 		}
-		cmd.Print(string(y))
+		fmt.Println(string(b))
+		fmt.Println(y)
+		cmd.Print(y)
 	} else {
 		// Print as Json
 		cmd.Print(string(b))

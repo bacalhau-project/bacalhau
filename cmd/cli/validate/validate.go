@@ -13,9 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
 	"github.com/xeipuuv/gojsonschema"
 
@@ -138,14 +136,13 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) error {
 
 	// Convert the schema to JSON - this is required for the gojsonschema library
 	// Noop if you pass JSON through
-	fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
+	fileContentsAsJSON, err := util.YamlToJSON(byteResult)
 	if err != nil {
 		return fmt.Errorf("error converting yaml to json: %w", err)
 	}
 
-	// println(str)
 	schemaLoader := gojsonschema.NewStringLoader(string(jsonSchemaData))
-	documentLoader := gojsonschema.NewStringLoader(string(fileContentsAsJSONBytes))
+	documentLoader := gojsonschema.NewStringLoader(fileContentsAsJSON)
 
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	if err != nil {

@@ -16,7 +16,6 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.5.0
@@ -88,7 +87,6 @@ require (
 	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
 	k8s.io/apimachinery v0.29.0
 	k8s.io/kubectl v0.29.0
-	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
@@ -177,6 +175,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/cli-runtime v0.29.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 require (

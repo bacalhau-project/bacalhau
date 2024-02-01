@@ -10,8 +10,8 @@ import (
 
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 

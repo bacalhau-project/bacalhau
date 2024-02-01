@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/c2h5oh/datasize"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/yaml"
 )
 
 type KeyString string

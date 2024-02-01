@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 type BaseEndpointParams struct {

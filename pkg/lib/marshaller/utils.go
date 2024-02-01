@@ -8,7 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/c2h5oh/datasize"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 type KeyString string
