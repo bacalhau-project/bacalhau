@@ -4951,7 +4951,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"available-typed-arrays@npm:^1.0.5, available-typed-arrays@npm:^1.0.6":
+"available-typed-arrays@npm:^1.0.5":
   version: 1.0.6
   resolution: "available-typed-arrays@npm:1.0.6"
   checksum: 10c0/e427360e68ccb19fa0ea48421f393ef3f3d2c9c561f6a8a0704ff472d58024be3e4101f00565445ba453de723a76f4a650defbacaea663c3fb3be8b8f842e955
@@ -5779,7 +5779,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"call-bind@npm:^1.0.0, call-bind@npm:^1.0.2, call-bind@npm:^1.0.5":
+"call-bind@npm:^1.0.0, call-bind@npm:^1.0.2, call-bind@npm:^1.0.4, call-bind@npm:^1.0.5":
   version: 1.0.5
   resolution: "call-bind@npm:1.0.5"
   dependencies:
@@ -9272,7 +9272,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"has-tostringtag@npm:^1.0.0, has-tostringtag@npm:^1.0.1":
+"has-tostringtag@npm:^1.0.0":
   version: 1.0.1
   resolution: "has-tostringtag@npm:1.0.1"
   checksum: 10c0/fa0549fe8fc332f2d56fa9e947a030d34e5b304613b448edf93fbd26c5cd27c2201edd9817dd0ea2072001a67615e9a30a3753c765521a306e7a0bc3241c7650
@@ -17172,15 +17172,15 @@ __metadata:
   linkType: hard
 
 "which-typed-array@npm:^1.1.11, which-typed-array@npm:^1.1.13, which-typed-array@npm:^1.1.2, which-typed-array@npm:^1.1.9":
-  version: 1.1.14
-  resolution: "which-typed-array@npm:1.1.14"
+  version: 1.1.13
+  resolution: "which-typed-array@npm:1.1.13"
   dependencies:
-    available-typed-arrays: "npm:^1.0.6"
-    call-bind: "npm:^1.0.5"
+    available-typed-arrays: "npm:^1.0.5"
+    call-bind: "npm:^1.0.4"
     for-each: "npm:^0.3.3"
     gopd: "npm:^1.0.1"
-    has-tostringtag: "npm:^1.0.1"
-  checksum: 10c0/0960f1e77807058819451b98c51d4cd72031593e8de990b24bd3fc22e176f5eee22921d68d852297c786aec117689f0423ed20aa4fde7ce2704d680677891f56
+    has-tostringtag: "npm:^1.0.0"
+  checksum: 10c0/9f5f1c42918df3d5b91c4315ed0051d5d874370998bf095c9ae0df374f0881f85094e3c384b8fb08ab7b4d4f54ba81c0aff75da6226e7c0589b83dfbec1cd4c9
   languageName: node
   linkType: hard
 
