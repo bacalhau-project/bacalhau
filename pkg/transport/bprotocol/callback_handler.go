@@ -3,7 +3,6 @@ package bprotocol
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -62,7 +61,7 @@ func handleCallbackStream[Request any](
 	request := new(Request)
 	err := json.NewDecoder(stream).Decode(request)
 	if err != nil {
-		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+		log.Ctx(ctx).Error().Msgf("error decoding %T: %s", request, err)
 		_ = stream.Reset()
 		return
 	}

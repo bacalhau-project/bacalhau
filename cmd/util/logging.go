@@ -67,7 +67,7 @@ func readLogoutput(ctx context.Context, logsChannel <-chan *concurrency.AsyncRes
 				return fmt.Errorf("failed to write to fd, tried to write %d bytes but only managed %d", len(msg.Line), n)
 			}
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		}
 	}
 	// unreachable

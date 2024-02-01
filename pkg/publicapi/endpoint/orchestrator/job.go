@@ -405,13 +405,8 @@ func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
 		return fmt.Errorf("failed to open log stream for job %s: %w", jobID, err)
 	}
 
-	for {
-		logMsg, ok := <-logstreamCh
-		if !ok {
-			break
-		}
-		err = ws.WriteJSON(logMsg)
-		if err != nil {
+	for logMsg := range logstreamCh {
+		if err = ws.WriteJSON(logMsg); err != nil {
 			return err
 		}
 	}

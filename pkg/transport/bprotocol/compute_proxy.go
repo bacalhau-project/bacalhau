@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -109,31 +108,31 @@ func proxyRequest[Request any, Response any](
 	// decode the destination peer ID string value
 	peerID, err := peer.Decode(destPeerID)
 	if err != nil {
-		return *response, fmt.Errorf("%s: failed to decode peer ID %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return *response, fmt.Errorf("%T: failed to decode peer ID %s: %w", request, destPeerID, err)
 	}
 
 	// deserialize the request object
 	data, err := json.Marshal(request)
 	if err != nil {
-		return *response, fmt.Errorf("%s: failed to marshal request: %w", reflect.TypeOf(request), err)
+		return *response, fmt.Errorf("%T: failed to marshal request: %w", request, err)
 	}
 
 	// opening a stream to the destination peer
 	stream, err := h.NewStream(ctx, peerID, protocolID)
 	if err != nil {
-		return *response, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return *response, fmt.Errorf("%T: failed to open stream to peer %s: %w", request, destPeerID, err)
 	}
 	defer stream.Close() //nolint:errcheck
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
 		_ = stream.Reset()
-		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
+		return *response, fmt.Errorf("%T: failed to attach stream to compute service: %w", request, scopingErr)
 	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
 		_ = stream.Reset()
-		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return *response, fmt.Errorf("%T: failed to write request to peer %s: %w", request, destPeerID, err)
 	}
 
 	// The handler will have wrapped the response in a Result[T] along with
@@ -143,7 +142,7 @@ func proxyRequest[Request any, Response any](
 	err = json.NewDecoder(stream).Decode(result)
 	if err != nil {
 		_ = stream.Reset()
-		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return *response, fmt.Errorf("%T: failed to decode response from peer %s: %w", request, destPeerID, err)
 	}
 
 	return result.Rehydrate()
@@ -158,30 +157,30 @@ func proxyStreamingRequest[Request any, Response any](
 	// decode the destination peer ID string value
 	peerID, err := peer.Decode(destPeerID)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to decode peer ID %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return nil, fmt.Errorf("%T: failed to decode peer ID %s: %w", request, destPeerID, err)
 	}
 
 	// deserialize the request object
 	data, err := json.Marshal(request)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to marshal request: %w", reflect.TypeOf(request), err)
+		return nil, fmt.Errorf("%T: failed to marshal request: %w", request, err)
 	}
 
 	// opening a stream to the destination peer
 	stream, err := h.NewStream(ctx, peerID, protocolID)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return nil, fmt.Errorf("%T: failed to open stream to peer %s: %w", request, destPeerID, err)
 	}
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
 		_ = stream.Reset()
-		return nil, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
+		return nil, fmt.Errorf("%T: failed to attach stream to compute service: %w", request, scopingErr)
 	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
 		_ = stream.Reset()
-		return nil, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+		return nil, fmt.Errorf("%T: failed to write request to peer %s: %w", request, destPeerID, err)
 	}
 
 	ch := make(chan *concurrency.AsyncResult[Response])
@@ -194,7 +193,7 @@ func proxyStreamingRequest[Request any, Response any](
 			if err != nil {
 				_ = stream.Reset()
 				if err != io.EOF {
-					response.Err = fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
+					response.Err = fmt.Errorf("%T: failed to decode response from peer %s: %w", request, destPeerID, err)
 				}
 				break
 			}

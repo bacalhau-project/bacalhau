@@ -3,7 +3,6 @@ package bprotocol
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -63,7 +62,7 @@ func handleStream[Request, Response any](ctx context.Context, stream network.Str
 	request := new(Request)
 	err := json.NewDecoder(stream).Decode(request)
 	if err != nil {
-		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+		log.Ctx(ctx).Error().Msgf("error decoding %T: %s", request, err)
 		_ = stream.Reset()
 		return
 	}
@@ -81,12 +80,12 @@ func handleStream[Request, Response any](ctx context.Context, stream network.Str
 	// back to the caller.
 	if err != nil {
 		result.Error = err.Error()
-		log.Ctx(ctx).Debug().Err(err).Msgf("error delegating %s", reflect.TypeOf(request))
+		log.Ctx(ctx).Debug().Err(err).Msgf("error delegating %T", request)
 	}
 
 	err = json.NewEncoder(stream).Encode(result)
 	if err != nil {
-		log.Ctx(ctx).Error().Msgf("error encoding %s: %s", reflect.TypeOf(response), err)
+		log.Ctx(ctx).Error().Msgf("error encoding %T: %s", response, err)
 		_ = stream.Reset()
 		return
 	}
@@ -105,7 +104,7 @@ func handleStreamingResponse[Request, Response any](
 		request := new(Request)
 		err := json.NewDecoder(stream).Decode(request)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+			log.Ctx(ctx).Error().Msgf("error decoding %T: %s", request, err)
 			_ = json.NewEncoder(stream).Encode(concurrency.AsyncResult[Response]{
 				Err: err,
 			})
