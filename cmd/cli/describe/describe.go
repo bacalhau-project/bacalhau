@@ -133,8 +133,6 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		if err != nil {
 			return fmt.Errorf("able to marshal to YAML but not JSON '%s': %w", j.Job.Metadata.ID, err)
 		}
-		fmt.Println(string(b))
-		fmt.Println(y)
 		cmd.Print(y)
 	} else {
 		// Print as Json
