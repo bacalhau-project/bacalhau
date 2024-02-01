@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+echo "Running golangci-lint checker..."
+"${GOBIN}"/golangci-lint run
+echo "No linting issues found."
+
+echo "Running go.mod checker..."
+go mod tidy
+git diff --exit-code ./go.mod # check no changes
+git diff --exit-code ./go.sum # check no changes
+echo "No go.mod issues found."

@@ -1,0 +1,41 @@
+version: 0.1
+runtimes:
+  enabled:
+    - go@1.20.2
+    - node@16.14.2
+    - python@3.10.3
+actions:
+  enabled:
+    - trunk-cache-prune
+    - trunk-upgrade-available
+plugins:
+  sources:
+    - id: trunk
+      ref: v0.0.5
+      uri: https://github.com/trunk-io/plugins
+cli:
+  version: 0.18.1-beta
+lint:
+  enabled:
+    - clippy@1.58.1
+    - git-diff-check@SYSTEM
+    - prettier@2.7.1
+    - rustfmt@1.58.1
+    - actionlint@1.6.21
+    - black@22.10.0
+    - flake8@5.0.4
+    - gitleaks@8.15.0
+    - gofmt@1.16.7
+    - golangci-lint@1.50.0
+    - hadolint@2.10.0
+    - isort@5.10.1
+    - markdownlint@0.32.2
+    - shellcheck@0.8.0
+    - shfmt@3.5.0
+    - taplo@release-taplo-cli-0.7.0
+    - tflint@0.41.0
+  ignore:
+    - linters: [ALL]
+      paths:
+        - "*/vendor/*"
+        - "experimental/*"

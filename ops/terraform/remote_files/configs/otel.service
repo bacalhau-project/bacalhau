@@ -1,0 +1,13 @@
+[Unit]
+Description=otel collector
+Documentation=https://opentelemetry.io/docs/collector/
+Wants=network-online.target
+After=network-online.target
+[Service]
+User=otel
+Group=otel
+Type=simple
+ExecStart=/usr/local/bin/otelcol --config=/terraform_node/otel-collector.yml
+
+[Install]
+WantedBy=multi-user.target

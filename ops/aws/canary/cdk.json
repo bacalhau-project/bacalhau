@@ -1,0 +1,80 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/pipeline.ts",
+  "watch": {
+    "include": [
+      "**"
+    ],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "yarn.lock",
+      "node_modules",
+      "test"
+    ]
+  },
+  "context": {
+    "canary": {
+      "prod": {
+        "bacalhauEnvironment": "production",
+        "nodeSelectors": "favour_owner!=bacalhau",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "createOperators": true,
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0="
+      },
+      "prodOwned": {
+        "bacalhauEnvironment": "production",
+        "nodeSelectors": "owner=bacalhau",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "createOperators": false,
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProdOwned&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTo3MWVjMGZjYS0wMDAzLTRkODktYmViMi0zOWZmZDQxZTY1ZDEiLCJNIjoiUHVibGljIn0="
+      },
+      "staging": {
+        "bacalhauEnvironment": "staging",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "createOperators": false,
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryStaging&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTo2Nzk5ODFmZC03ZjZlLTRmYjItOTY3Ny1iNjYxMDA2NjBlZjgiLCJNIjoiUHVibGljIn0="
+      }
+    },
+    "pipeline": {
+      "prod": {
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "suffix": "",
+        "bacalhauSourceConnection": {
+          "owner": "bacalhau-project",
+          "repo": "bacalhau",
+          "branch": "main",
+          "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/da1428c1-439e-4669-8a58-f1898be26f47"
+        }
+      }
+    },
+    "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
+    "@aws-cdk/core:stackRelativeExports": true,
+    "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
+    "@aws-cdk/aws-lambda:recognizeVersionProps": true,
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
+    "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": true,
+    "@aws-cdk/aws-ec2:uniqueImdsv2TemplateName": true,
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/aws-ecs:arnFormatIncludesClusterName": true,
+    "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
+    "@aws-cdk/aws-codepipeline:crossAccountKeyAliasStackSafeResourceName": true,
+    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
+    "@aws-cdk/aws-sns-subscriptions:restrictSqsDescryption": true,
+    "@aws-cdk/aws-apigateway:disableCloudWatchRole": true,
+    "@aws-cdk/core:enablePartitionLiterals": true,
+    "@aws-cdk/core:target-partitions": [
+      "aws",
+      "aws-cn"
+    ]
+  }
+}

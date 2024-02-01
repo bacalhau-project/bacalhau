@@ -1,0 +1,25 @@
+{
+    "APIVersion": "v1beta1",
+    "Spec": {
+        "Engine": "docker",
+        "Publisher": "noop",
+        "Docker": {
+            "Image": "ubuntu:latest",
+            "Entrypoint": [
+                "/bin/bash",
+                "-c",
+                "sleep 1000"
+            ],
+            "EnvironmentVariables": []
+        },
+        "Resources": {
+            "CPU": "",
+            "GPU": "",
+            "Memory": "",
+            "Disk": ""
+        },
+        "Inputs": [],
+        "Outputs": [],
+        "Annotations": []
+    }
+}

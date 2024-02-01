@@ -1,0 +1,16 @@
+**/outputs
+**/data
+**/.cache
+**/.DS_Store
+**/env.*
+**/.env
+**/*.swp
+**/*.swo
+**/*.out
+**/*.tfvars
+**/.vscode
+**/vendor/*
+**/stderr
+**/stdout
+**/unittests.xml
+**/.idea/

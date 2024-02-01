@@ -1,0 +1,5 @@
+# To have some dependencies pre-installed (at docker build time) add them
+# to this requirements file.
+pandas==2.1
+polar
+requests
