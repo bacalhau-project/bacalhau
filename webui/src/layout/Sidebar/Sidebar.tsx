@@ -1,10 +1,7 @@
 // layout/Sidebar/Sidebar.tsx
 import React from "react"
 import { Link } from "react-router-dom"
-import { ReactComponent as BacalhauIcon } from "../../images/bacalhau.svg"
-import { ReactComponent as JobsIcon } from "../../images/jobs-icon.svg"
-import { ReactComponent as NodesIcon } from "../../images/nodes-icon.svg"
-import { ReactComponent as CogwheelIcon } from "../../images/cogwheel.svg"
+import { SVGImage } from "../../images/svg-image"
 import styles from "./Sidebar.module.scss"
 import { Button } from "./Button/Button"
 
@@ -20,17 +17,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const links = [
     {
       path: "/JobsDashboard",
-      icon: <JobsIcon />,
+      icon: (
+        <SVGImage
+          src="/images/jobs-icon.svg"
+          alt="Jobs"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Jobs Dashboard",
     },
     {
       path: "/NodesDashboard",
-      icon: <NodesIcon />,
+      icon: (
+        <SVGImage
+          src="/images/nodes-icon.svg"
+          alt="Nodes"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Nodes Dashboard",
     },
     {
       path: "/Settings",
-      icon: <CogwheelIcon />,
+      icon: (
+        <SVGImage
+          src="/images/cogwheel.svg"
+          alt="Settings"
+          wrapperClassName={styles.buttonIconWrapper}
+          svgClassName={styles.buttonIcon}
+        />
+      ),
       title: "Settings",
     },
   ]
@@ -43,7 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={styles.header}>
         <Button toggleSidebar={toggleSidebar} isCollapsed={isCollapsed} />
-        <BacalhauIcon />
+        <SVGImage
+          src="/images/bacalhau.svg"
+          alt="Bacalhau Icon"
+          svgClassName={styles.sidebarLogo}
+        />
       </div>
       <div className={styles.menu}>
         {links.map((link) => (
