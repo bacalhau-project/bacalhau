@@ -5,7 +5,6 @@
 //
 //	mockgen --source types.go --destination mock_backoff.go --package backoff
 //
-
 // Package backoff is a generated GoMock package.
 package backoff
 

@@ -5,7 +5,6 @@
 //
 //	mockgen --source types.go --destination mocks.go --package jobstore
 //
-
 // Package jobstore is a generated GoMock package.
 package jobstore
 

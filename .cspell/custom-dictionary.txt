@@ -248,7 +248,6 @@ quic
 quickstart
 rabbitmq
 rawoutput
-rcur
 rdbms
 reenqueuing
 rego
@@ -309,7 +308,6 @@ wasmmodels
 wazero
 wdbaruni's
 webui
-wesbos
 winderresearch
 workdir
 Wrapf
