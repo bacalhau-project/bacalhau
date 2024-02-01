@@ -66,7 +66,6 @@
   margin: 10px 20px;
   padding: 10px;
   border-radius: 10px;
-  color: $text-colour-light;
   display: inline-flex;
   align-items: center;
   overflow-x: hidden;
@@ -94,24 +93,30 @@
     box-shadow: inset 0px 5px 10px 5px rgba(0, 0, 0, 0.2);
   }
 
-  svg {
-    height: 20px;
-    min-width: 20px;
-    max-width: 20px;
+}
 
-    path {
-      fill: $text-colour-light !important;
-    }
+div.buttonIconWrapper {
+  height: 20px;
+}
+
+svg.sidebarLogo {
+    width: 214px;
+    height: 24px;
+    display: 2px;
+
+  path {
+    fill: $text-colour-light !important;
   }
 }
 
 .buttonIcon {
   display: inline-block;
-  width: 30px;
-  height: 2px;
-  background-color: $text-colour-light;
+  width: 20px;
+  height: 20px;
   position: relative;
   transition: all 0.3s ease;
+
+  color: inherit;
 
   &::before,
   &::after {
