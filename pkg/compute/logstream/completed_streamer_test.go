@@ -5,6 +5,7 @@ package logstream
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
@@ -95,6 +96,37 @@ func (suite *CompletedStreamerSuite) TestSTDOUTAndSTDERR() {
 	}
 
 	suite.False(stdoutFirst, "STDOUT should be processed first")
+}
+
+// TestContextCancellation tests the streamer's response to a cancelled context
+func (suite *CompletedStreamerSuite) TestContextCancellation() {
+	execution := &models.Execution{
+		RunOutput: &models.RunCommandResult{
+			STDOUT: "stdout line 1\nstdout line 2\nstdout line 3",
+			STDERR: "stderr line 1\nstderr line 2\nstderr line 3",
+		},
+	}
+
+	streamer := NewCompletedStreamer(CompletedStreamerParams{Execution: execution})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ch := streamer.Stream(ctx)
+
+	// Wait for the first line to be enqueued in the channel
+	time.Sleep(100 * time.Millisecond)
+
+	// cancel the context after a single line has been enqueued
+	cancel()
+
+	// Read the first line
+	log, ok := <-ch
+	suite.True(ok)
+	suite.Equal(models.ExecutionLogTypeSTDOUT, log.Value.Type)
+	suite.Equal("stdout line 1\n", log.Value.Line)
+
+	// Read the next line from STDOUT and verify that the channel is closed
+	_, ok = <-ch
+	suite.False(ok)
 }
 
 // TestCompletedStreamerSuite runs the CompletedStreamer test suite
