@@ -56,3 +56,4 @@ docker/.pulled
 clients/pyproject.toml
 !webui/config/env.js
 install-state.gz
+webui/.yarn/yarn.build.json
