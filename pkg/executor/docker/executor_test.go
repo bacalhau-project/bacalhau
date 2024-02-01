@@ -485,7 +485,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	<-done
 	reader, err := s.executor.GetLogStream(ctx, executor.LogStreamRequest{
 		ExecutionID: id,
-		WithHistory: true,
+		Tail:        true,
 		Follow:      true,
 	})
 
@@ -508,7 +508,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	reader, err := s.executor.GetLogStream(context.Background(), executor.LogStreamRequest{
 		ExecutionID: id,
-		WithHistory: true,
+		Tail:        true,
 		Follow:      true,
 	})
 

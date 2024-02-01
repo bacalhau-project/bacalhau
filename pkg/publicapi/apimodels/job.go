@@ -155,7 +155,7 @@ type GetLogsRequest struct {
 	BaseGetRequest
 	JobID       string `query:"-"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
-	WithHistory bool   `query:"with_history"`
+	Tail        bool   `query:"tail"`
 	Follow      bool   `query:"follow"`
 }
 
@@ -166,8 +166,8 @@ func (o *GetLogsRequest) ToHTTPRequest() *HTTPRequest {
 	if o.ExecutionID != "" {
 		r.Params.Set("execution_id", o.ExecutionID)
 	}
-	if o.WithHistory {
-		r.Params.Set("with_history", "true")
+	if o.Tail {
+		r.Params.Set("tail", "true")
 	}
 	if o.Follow {
 		r.Params.Set("follow", "true")

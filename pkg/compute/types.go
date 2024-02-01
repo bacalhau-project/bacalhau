@@ -112,7 +112,7 @@ type CancelExecutionResponse struct {
 type ExecutionLogsRequest struct {
 	RoutingMetadata
 	ExecutionID string
-	WithHistory bool
+	Tail        bool
 	Follow      bool
 }
 

@@ -197,9 +197,9 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 }
 
 func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
-	since := strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
-	if request.WithHistory {
-		since = "1"
+	since := "1"
+	if request.Tail {
+		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
 	}
 	select {
 	case <-ctx.Done():

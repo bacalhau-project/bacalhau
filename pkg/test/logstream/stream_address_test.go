@@ -83,7 +83,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	ch, err := node.RequesterNode.EndpointV2.ReadLogs(s.ctx, orchestrator.ReadLogsRequest{
 		JobID:       job.ID,
 		ExecutionID: execution.ID,
-		WithHistory: true,
+		Tail:        true,
 		Follow:      true,
 	})
 	require.NoError(s.T(), err)

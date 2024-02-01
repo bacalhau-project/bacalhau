@@ -139,7 +139,7 @@ func (s *GRPCServer) GetLogStream(request *proto.OutputStreamRequest, server pro
 	ctx := server.Context()
 	result, err := s.Impl.GetLogStream(ctx, executor.LogStreamRequest{
 		ExecutionID: request.ExecutionID,
-		WithHistory: request.History,
+		Tail:        request.History,
 		Follow:      request.Follow,
 	})
 	if err != nil {

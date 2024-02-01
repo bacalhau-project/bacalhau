@@ -359,7 +359,7 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 // @Produce			json
 // @Param			id				path	string	true	"ID to get the job logs for"
 // @Param			execution_id	query 	string	false	"Fetch logs for a specific execution"
-// @Param			with_history	query	bool	false	"Fetch historical logs"
+// @Param			tail	query	bool	false	"Fetch historical logs"
 // @Param			follow			query	bool	false	"Follow the logs"
 // @Success		200			{object}	string
 // @Failure		400			{object}	string
@@ -398,7 +398,7 @@ func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
 	logstreamCh, err := e.orchestrator.ReadLogs(c.Request().Context(), orchestrator.ReadLogsRequest{
 		JobID:       jobID,
 		ExecutionID: args.ExecutionID,
-		WithHistory: args.WithHistory,
+		Tail:        args.Tail,
 		Follow:      args.Follow,
 	})
 	if err != nil {

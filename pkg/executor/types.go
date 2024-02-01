@@ -56,7 +56,7 @@ type Executor interface {
 type LogStreamRequest struct {
 	JobID       string
 	ExecutionID string
-	WithHistory bool
+	Tail        bool
 	Follow      bool
 }
 

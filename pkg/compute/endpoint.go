@@ -147,7 +147,7 @@ func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRe
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	return s.logServer.GetLogStream(ctx, executor.LogStreamRequest{
 		ExecutionID: request.ExecutionID,
-		WithHistory: request.WithHistory,
+		Tail:        request.Tail,
 		Follow:      request.Follow,
 	})
 }

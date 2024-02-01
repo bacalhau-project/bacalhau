@@ -154,7 +154,7 @@ func (c *GRPCClient) Cancel(ctx context.Context, id string) error {
 func (c *GRPCClient) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	respStream, err := c.client.GetOutputStream(ctx, &proto.OutputStreamRequest{
 		ExecutionID: request.ExecutionID,
-		History:     request.WithHistory,
+		History:     request.Tail,
 		Follow:      request.Follow,
 	})
 	if err != nil {

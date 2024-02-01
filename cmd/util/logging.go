@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -16,8 +17,15 @@ import (
 
 var LoggingMode = logger.LogModeDefault
 
-func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
-	requestedJobID := jobID
+type LogOptions struct {
+	JobID       string
+	ExecutionID string
+	Follow      bool
+	Tail        bool
+}
+
+func Logs(cmd *cobra.Command, options LogOptions) error {
+	requestedJobID := options.JobID
 	if requestedJobID == "" {
 		var byteResult []byte
 		byteResult, err := ReadFromStdinIfAvailable(cmd)
@@ -29,9 +37,10 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 
 	apiClient := GetAPIClientV2()
 	ch, err := apiClient.Jobs().Logs(cmd.Context(), &apimodels.GetLogsRequest{
-		JobID:       requestedJobID,
-		Follow:      follow,
-		WithHistory: history,
+		JobID:       options.JobID,
+		ExecutionID: options.ExecutionID,
+		Follow:      options.Follow,
+		Tail:        options.Tail,
 	})
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
@@ -67,6 +76,9 @@ func readLogoutput(ctx context.Context, logsChannel <-chan *concurrency.AsyncRes
 				return fmt.Errorf("failed to write to fd, tried to write %d bytes but only managed %d", len(msg.Line), n)
 			}
 		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return nil
+			}
 			return ctx.Err()
 		}
 	}

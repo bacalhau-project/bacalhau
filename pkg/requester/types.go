@@ -31,7 +31,7 @@ type CancelJobResult struct{}
 type ReadLogsRequest struct {
 	JobID       string
 	ExecutionID string
-	WithHistory bool
+	Tail        bool
 	Follow      bool
 }
 

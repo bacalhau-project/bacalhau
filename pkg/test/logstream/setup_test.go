@@ -39,7 +39,7 @@ func waitForOutputStream(ctx context.Context, executionID string, withHistory bo
 	for i := 0; i < 10; i++ {
 		reader, err := exec.GetLogStream(ctx, executor.LogStreamRequest{
 			ExecutionID: executionID,
-			WithHistory: withHistory,
+			Tail:        withHistory,
 			Follow:      follow,
 		})
 		if err != nil {
