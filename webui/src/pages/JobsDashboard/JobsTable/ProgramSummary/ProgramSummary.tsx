@@ -2,8 +2,7 @@
 import React from "react"
 import styles from "./ProgramSummary.module.scss"
 import { Task } from "../../../../helpers/jobInterfaces"
-import { ReactComponent as Cogwheel } from "../../../../images/cogwheel.svg"
-import { ReactComponent as DockerLogo } from "../../../../images/docker.svg"
+import { SVGImage } from "../../../../images/svg-image"
 
 interface ProgramSummaryProps {
   data: Task
@@ -12,9 +11,21 @@ interface ProgramSummaryProps {
 const getImageSource = (type: string) => {
   switch (type) {
     case "docker":
-      return <DockerLogo className={styles.icon} />
+      return (
+        <SVGImage
+          src="../../images/docker.svg"
+          alt="Docker"
+          svgClassName={styles.icon}
+        />
+      )
     default:
-      return <Cogwheel className={styles.icon} />
+      return (
+        <SVGImage
+          src="../../images/cogwheel.svg"
+          alt="Settings"
+          svgClassName={styles.icon}
+        />
+      )
   }
 }
 
