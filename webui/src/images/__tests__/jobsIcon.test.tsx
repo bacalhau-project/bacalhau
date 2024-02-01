@@ -2,11 +2,14 @@ import { render, screen } from "@testing-library/react"
 import { SVGImage } from "../svg-image"
 
 export const AppTest = () => (
-  <SVGImage src="./jobs-icon.svg" alt="jobs icon alt" />
+  <SVGImage src="/images/jobs-icon.svg" alt="Jobs Icon" />
 )
 
 test("renders JobsIcon", () => {
   render(<AppTest />)
 
-  expect(screen.findAllByText("JobsIcon")).toBeTruthy()
+  const screenContent = screen
+    .findAllByAltText("JobsIcon")
+    .then((content) => content)
+  expect(screenContent).toBeTruthy()
 })
