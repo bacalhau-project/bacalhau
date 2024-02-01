@@ -55,3 +55,4 @@ docker/.images
 docker/.pulled
 clients/pyproject.toml
 webui/.yarn
+install-state.gz
