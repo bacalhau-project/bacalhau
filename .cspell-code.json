@@ -38,6 +38,8 @@
         "Email",
         "RsaCert",
         "SshRsa",
+        "integr",
+        "verific",
         "Base64MultiLine",
         "Base64SingleLine",
         "CommitHash",

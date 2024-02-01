@@ -23,7 +23,9 @@
         "./docs/sidebars.js",
         "./docs/docs/dev/cli-reference/all-flags.md",
         "./docs/docs/dev/api/jobs.md",
-        "**/*.css"
+        "**/*.css",
+        "**/cli-reference/**",
+        "**/api/**"
     ],
     "ignoreRegExpList": [
         "Urls",
