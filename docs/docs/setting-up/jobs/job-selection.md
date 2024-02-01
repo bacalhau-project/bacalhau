@@ -17,42 +17,35 @@ policy.
 | Node.Compute.JobSelection.RejectStatelessJobs | `--job-selection-reject-stateless` | False | Reject jobs that don't specify any [input data](../data-ingestion/index.md). |
 | Node.Compute.JobSelection.AcceptNetworkedJobs | `--job-selection-accept-networked` | False | Accept jobs that require [network connections](../networking-instructions/networking.md). |
 
-setting-up/networking-instructions/networking.md
 
 ## Job selection probes
 
-If you want more control over making the decision to take on jobs, you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags.
+If you want more control over the decision-making process for accepting or rejecting jobs, you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags when starting a node.
 
 These are external programs that are passed the following data structure so that they can make a decision about whether or not to take on a job:
 
-```json
-{
-  "node_id": "XXX",
-  "job_id": "XXX",
-  "spec": {
-    "engine": "docker",
-    "verifier": "ipfs",
-    "job_spec_vm": {
-      "image": "ubuntu:latest",
-      "entrypoint": ["cat", "/file.txt"]
-    },
-    "inputs": [{
-      "engine": "ipfs",
-      "cid": "XXX",
-      "path": "/file.txt"
-    }]
-  }
+```go
+type BidStrategyRequest struct {
+	NodeID   string
+	Job      models.Job
+	Callback *url.URL
 }
 ```
 
-The `exec` probe is a script to run that will be given the job data on `stdin`, and must exit with status code 0 if the job should be run.
+## Exec probe
+The `exec` probe is a script to run that will be given the job data on `stdin`, and must exit with status code 0 if the job should be run. Make sure that your node has all the necessary dependencies for the script to work, if any. Command example:
+```bash
+bacalhau serve --job-selection-probe-exec my_script.sh
+```
+## HTTP probe
+The `http` probe is a URL where the job data will be sent as a POST request. Make sure your node has the network access needed to access the specified URL. Command example:
+```bash
+bacalhau serve --job-selection-probe-http http://path.to.your.resource
+```
 
-The `http` probe is a URL to POST the job data to. The job will be rejected if
-the HTTP request returns a non-positive status code (e.g. >= 400).
-
-If the HTTP response is a JSON blob, it should match the [following
+The decision to accept or reject a job is made based on the response code and the body of the response. The job will be rejected if the answer code is non-positive (4xx, 5xx). If the answer code is positive, the answer body is checked. It is ignored if it is not a JSON Blob. Otherwise, it should match the [following
 schema](https://github.com/bacalhau-project/bacalhau/blob/885d53e93b01fb343294d7ddbdbffe89918db800/pkg/bidstrategy/type.go#L18-L22)
-and will be used to respond to the bid directly:
+and the decision will be made on the basis of its contents.
 
 ```json
 {
@@ -88,5 +81,3 @@ For example, the following response will reject the job:
   "reason": "The job did not pass this specific validation: ...",
 }
 ```
-
-If the HTTP response is not a JSON blob, the content is ignored and any non-error status code will accept the job.
