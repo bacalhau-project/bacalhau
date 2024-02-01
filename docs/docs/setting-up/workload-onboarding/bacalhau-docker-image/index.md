@@ -127,7 +127,7 @@ a46a9aa9-63ef-486a-a2f8-6457d7bafd2e
 ```
 
 
-## TBD 5. Checking the State of your Jobs
+## 5. Checking the State of your Jobs
 
 **Job status**: You can check the status of the job using `bacalhau list`.
 
