@@ -1,4 +1,4 @@
 module.exports = [
-    { to: '/references/sdk/python-sdk', from: '/sdk/python-sdk' },
-    { to: '/category/sdk', from: '/sdk' },
+    { to: '/integration/python-sdk', from: '/sdk/python-sdk' },
+    { to: '/integration/python-sdk', from: '/sdk' },
 ];
