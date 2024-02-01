@@ -25,11 +25,11 @@ jobs:
       - name: Run webui linter
         working-directory: webui
         run: |
-          npm install
-          npm run lint
+          yarn install
+          yarn run lint
       - name: Build webui
         working-directory: webui
-        run: npm run build
+        run: yarn run build
       - name: Run pre-commit
         run: |
           pre-commit run --show-diff-on-failure --color=always --all-files

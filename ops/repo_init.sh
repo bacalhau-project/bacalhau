@@ -9,5 +9,5 @@ poetry install
 popd
 
 pushd webui
-npm install
+yarn install
 popd
