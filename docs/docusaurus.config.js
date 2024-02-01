@@ -111,7 +111,7 @@ const config = {
               },
               {
                 label: "FAQs",
-                to: "/troubleshooting/faqs",
+                to: "/faqs",
               },
             ],
           },
