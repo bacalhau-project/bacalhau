@@ -28,13 +28,13 @@ Follow these simple example steps to get a local version of the site up and runn
 ```
 git clone https://github.com/bacalhau-project/bacalhau
 cd ./bacalhau/docs
-npm install
+yarn install
 ```
 
 ### Render website
 
 ```
-npm run start
+yarn run start
 ```
 The rendered site will be accessible at http://localhost:3000/
 
