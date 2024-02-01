@@ -17,16 +17,18 @@ type LiveStreamerParams struct {
 // LiveStreamer streams logs from a live execution's log stream to a channel
 type LiveStreamer struct {
 	reader io.Reader
+	buffer int
 }
 
 func NewLiveStreamer(params LiveStreamerParams) *LiveStreamer {
 	return &LiveStreamer{
 		reader: params.Reader,
+		buffer: params.Buffer,
 	}
 }
 
 func (s *LiveStreamer) Stream(ctx context.Context) chan *concurrency.AsyncResult[models.ExecutionLog] {
-	ch := make(chan *concurrency.AsyncResult[models.ExecutionLog])
+	ch := make(chan *concurrency.AsyncResult[models.ExecutionLog], s.buffer)
 
 	go func() {
 		defer close(ch)
