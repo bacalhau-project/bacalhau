@@ -354,14 +354,20 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 		result = filtered
 	}
 
-	jobs := b.getJobsWithinLimit(result, query)
+	jobs, more := b.getJobsWithinLimit(result, query)
 
-	return &jobstore.JobQueryResponse{
-		Jobs:       jobs,
-		Offset:     query.Offset,
-		Limit:      query.Limit,
-		NextOffset: query.Offset + query.Limit,
-	}, nil
+	response := &jobstore.JobQueryResponse{
+		Jobs:   jobs,
+		Offset: query.Offset,
+		Limit:  query.Limit,
+	}
+
+	// If we don't have 'limit' jobs, then there definitely aren't any more
+	if more {
+		response.NextOffset = query.Offset + query.Limit
+	}
+
+	return response, nil
 }
 
 // getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
@@ -466,19 +472,22 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 	return result, nil
 }
 
-func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) []models.Job {
+func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) ([]models.Job, bool) {
 	if query.Offset >= uint32(len(jobs)) {
-		return []models.Job{}
+		return []models.Job{}, false
 	}
 
-	limit := query.Limit
-	if limit == 0 {
-		limit = uint32(len(jobs))
-	} else {
-		limit = math.Min(uint32(len(jobs)), limit+query.Offset)
+	jobsFiltered := jobs[query.Offset:]
+	if query.Limit == 0 {
+		return jobsFiltered, false
 	}
 
-	return jobs[query.Offset:limit]
+	limit := math.Min(uint32(len(jobsFiltered)), query.Limit)
+	filteredLength := uint32(len(jobsFiltered))
+
+	jobsFiltered = jobsFiltered[:limit]
+
+	return jobsFiltered, filteredLength > query.Limit
 }
 
 func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery) func(i, j int) bool {

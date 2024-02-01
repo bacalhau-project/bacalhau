@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
@@ -105,13 +104,23 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
-	var offset uint64
+	var offset uint32
 	var err error
+
+	// If the request contains a paging token then it is decoded and used to replace
+	// any other values provided in the request. This allows for stable sorting to
+	// allow the pagination to work correctly.
 	if args.NextToken != "" {
-		offset, err = strconv.ParseUint(args.NextToken, 10, 32)
+		token, err := models.NewPagingTokenFromString(args.NextToken)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
+
+		// Overwrite any provided values with the ones from the token.
+		args.OrderBy = token.SortBy
+		args.Reverse = token.SortReverse
+		args.Limit = token.Limit
+		offset = token.Offset
 	}
 
 	selector, err := parseLabels(c)
@@ -122,7 +131,7 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 	query := jobstore.JobQuery{
 		Namespace:   args.Namespace,
 		Limit:       args.Limit,
-		Offset:      uint32(offset),
+		Offset:      offset,
 		SortBy:      args.OrderBy,
 		SortReverse: args.Reverse,
 		Selector:    selector,
@@ -138,12 +147,26 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
+	var nextToken string
+	// If the next offset > 0 then it means there are more records to be returned, so
+	// we should give the user a token to use that will return the next page of results.
+	// We encode the current settings into the token to maintain a stable sort across
+	// pages.
+	if response.NextOffset != 0 {
+		nextToken = models.NewPagingToken(&models.PagingTokenParams{
+			SortBy:      args.OrderBy,
+			SortReverse: args.Reverse,
+			Limit:       args.Limit,
+			Offset:      response.NextOffset,
+		}).String()
+	}
+
 	res := &apimodels.ListJobsResponse{
 		Jobs: lo.Map[models.Job, *models.Job](response.Jobs, func(item models.Job, _ int) *models.Job {
 			return &item
 		}),
 		BaseListResponse: apimodels.BaseListResponse{
-			NextToken: strconv.FormatUint(uint64(response.NextOffset), 10),
+			NextToken: nextToken,
 		},
 	}
 
