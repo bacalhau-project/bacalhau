@@ -6,6 +6,8 @@ export const AppTest = () => <JobsIcon />
 test("renders JobsIcon", () => {
   render(<AppTest />)
 
-  const screenContent = screen.findAllByAltText("JobsIcon").then((content) => { return content })
+  const screenContent = screen
+    .findAllByAltText("JobsIcon")
+    .then((content) => content)
   expect(screenContent).toBeTruthy()
 })
