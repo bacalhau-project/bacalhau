@@ -8,33 +8,17 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// Timer measures the duration of an event.
-type Timer struct {
-	startTime        time.Time
-	durationRecorder metric.Int64Histogram
-}
-
-func NewTimer(durationRecorder metric.Int64Histogram) *Timer {
-	return &Timer{
-		durationRecorder: durationRecorder,
+// Timer is a function to record a duration. Calling it starts the timer,
+// calling the returned function will record the duration.
+func Timer(
+	ctx context.Context,
+	durationRecorder metric.Int64Histogram,
+	attrs ...attribute.KeyValue,
+) func() time.Duration {
+	start := time.Now()
+	return func() time.Duration {
+		dur := time.Since(start)
+		durationRecorder.Record(ctx, dur.Milliseconds(), metric.WithAttributes(attrs...))
+		return dur
 	}
-}
-
-// Start begins the timer by recording the current time.
-func (t *Timer) Start() {
-	t.startTime = time.Now()
-}
-
-// Stop ends the timer and records the duration since Start was called.
-// `attrs` are optional attributes that can be added to the duration metric for additional context.
-func (t *Timer) Stop(ctx context.Context, attrs ...attribute.KeyValue) {
-	if t.startTime.IsZero() {
-		// Handle the case where Stop is called without Start being called.
-		return
-	}
-
-	// Calculate the duration and record it using the OpenTelemetry histogram.
-	duration := time.Since(t.startTime).Milliseconds()
-	t.durationRecorder.Record(ctx, duration, metric.WithAttributes(attrs...))
-	t.startTime = time.Time{} // Reset the start time for future use.
 }

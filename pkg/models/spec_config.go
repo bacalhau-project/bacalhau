@@ -4,8 +4,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 type SpecConfig struct {
@@ -14,6 +17,19 @@ type SpecConfig struct {
 
 	// Params is a map of the config params
 	Params map[string]interface{} `json:"Params,omitempty"`
+}
+
+func (s *SpecConfig) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("type", s.Type)
+	for k, v := range s.Params {
+		e.Interface(k, v)
+	}
+}
+
+func (s *SpecConfig) MetricAttributes() []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("type", s.Type),
+	}
 }
 
 // NewSpecConfig returns a new spec config
