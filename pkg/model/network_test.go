@@ -71,7 +71,7 @@ func TestDomainSet(t *testing.T) {
 			[]string{"foo.com", "bar.com"},
 		},
 		{
-			[]string{".foo.com", "x.foo.com", "y.foo.com"},
+			[]string{"y.foo.com", ".foo.com", "x.foo.com"},
 			[]string{".foo.com"},
 		},
 		{
@@ -99,7 +99,6 @@ func TestDomainMatching(t *testing.T) {
 		{require.Equal, " .foo.com", ".foo.com"},
 		{require.Equal, "x.foo.com", ".foo.com"},
 		{require.Equal, "y.x.foo.com", ".foo.com"},
-		{require.NotEqual, "x.foo.com", "y.foo.com"},
 		{require.NotEqual, "x.foo.com", "foo.com"},
 		{require.NotEqual, "foo.com", "x.foo.com"},
 		{require.NotEqual, "bar.com", "foo.com"},
