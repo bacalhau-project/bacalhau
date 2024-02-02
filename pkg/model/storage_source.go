@@ -16,7 +16,6 @@ const (
 	StorageSourceRepoClone
 	StorageSourceRepoCloneLFS
 	StorageSourceURLDownload
-	StorageSourceEstuary
 	StorageSourceInline
 	StorageSourceLocalDirectory
 	StorageSourceS3
@@ -28,7 +27,6 @@ var storageSourceNames = map[StorageSourceType]string{
 	StorageSourceRepoClone:      "repoClone",
 	StorageSourceRepoCloneLFS:   "repoCloneLFS",
 	StorageSourceURLDownload:    "urlDownload",
-	StorageSourceEstuary:        "estuary",
 	StorageSourceInline:         "inline",
 	StorageSourceLocalDirectory: "localDirectory",
 	StorageSourceS3:             "s3",

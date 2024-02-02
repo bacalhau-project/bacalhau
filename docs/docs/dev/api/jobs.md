@@ -16,7 +16,7 @@ Retrieve the specification and current status of a particular job.
   - `:jobID`: Identifier of the job to describe. This can be full ID of the job (e.g. `j-28c08f7f-6fb0-48ed-912d-a2cb6c3a4f3a`) or just the short format (e.g. `j-28c08f7f`) if it's unique.
 
 **Response**:
-- **Job** <code>(<a href="../job-specification/job">Job</a>)</code>: Specification for the requested job.
+- **Job**: Specification for the requested [job](../../setting-up/jobs/job-specification/job.md).
 
 **Example**:
 ```bash
@@ -103,7 +103,7 @@ Retrieve a list of jobs.
   - `reverse`: Opt to reverse the default order of displayed jobs.
 
 **Response**:
-- **Jobs <code>(<a href="../job-specification/job">Job</a>[])</code>**: List of matching jobs.
+- **[Jobs](../../setting-up/jobs/job-specification/job.md)**: List of matching jobs.
 - **NextToken** `(string)`: Pagination token.
 
 **Example**:
@@ -142,7 +142,7 @@ curl --get 127.0.0.1:1234/api/v1/orchestrator/jobs --data-urlencode 'labels=env 
 Submit a new job for execution.
 
 **Request Body**:
-  - **Job** <code>(<a href="../job-specification/job">Job</a>)</code>: JSON definition of the job.
+  - **[Job](../../setting-up/jobs/job-specification/job.md)**: JSON definition of the job.
 
 **Response**:
 - **JobID** `(string)`: Identifier for the new job.
@@ -474,12 +474,12 @@ curl 127.0.0.1:1234/api/v1/orchestrator/jobs/j-412c34b4-da77-4a46-886c-76e03615a
 Fetch results published by all executions for the defined job. Applicable only for `batch` and `ops` jobs.
 
 **Response**:
-- **Results** <code>(<a href="../job-specification/spec-config">SpecConfig</a>)</code>: List of all published results.
+- **[Results](../../setting-up/jobs/job-specification/spec-config.md)**: List of all published results.
 - **NextToken** `(string)`: Pagination token.
 
 **Example**:
 
-Result of a job that used the [S3 Publisher](../other-specifications/publishers/s3):
+Result of a job that used the [S3 Publisher](../../setting-up/other-specifications/publishers/s3):
 ```bash
 curl 127.0.0.1:1234/api/v1/orchestrator/jobs/j-479d160f-f9ab-4e32-aec9-a45554126450/results
 {

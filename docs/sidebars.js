@@ -54,7 +54,7 @@ module.exports = {
       link: {
         type: 'generated-index',
         title: 'Advanced Guides',
-        slug: '/dev',
+        slug: '/advanced-guides',
       },
       collapsed: true,
       items: [
@@ -84,31 +84,6 @@ module.exports = {
           },
           items: [
             'examples/case-studies/duckdb-log-processing/index',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Workload Onboarding',
-          link: {
-            type: 'generated-index',
-            description: "This directory contains examples relating to performing common tasks with Bacalhau.",
-          },
-          items: [
-            'examples/workload-onboarding/bacalhau-docker-image/index',
-            'examples/workload-onboarding/Reading-From-Multiple-S3-Buckets/index',
-            'examples/workload-onboarding/Running-Jupyter-Notebook/index',
-            'examples/workload-onboarding/Prolog-Hello-World/index',
-            'examples/workload-onboarding/Python-Custom-Container/index',
-            'examples/workload-onboarding/python-pandas/index',
-            'examples/workload-onboarding/r-custom-docker-prophet/index',
-            'examples/workload-onboarding/r-hello-world/index',
-            'examples/workload-onboarding/CUDA/index',
-            'examples/workload-onboarding/rust-wasm/index',
-            'examples/workload-onboarding/Sparkov-Data-Generation/index',
-            'examples/workload-onboarding/custom-containers/index',
-            'examples/workload-onboarding/CUDA/index',
-            'examples/workload-onboarding/trivial-python/index',
-            'examples/workload-onboarding/python-script/index',
           ],
         },
         {

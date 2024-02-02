@@ -48,6 +48,11 @@ const (
 )
 
 const (
+	NetworkTypeNATS   = "nats"
+	NetworkTypeLibp2p = "libp2p"
+)
+
+const (
 	DownloadFilenameStdout   = "stdout"
 	DownloadFilenameStderr   = "stderr"
 	DownloadFilenameExitCode = "exitCode"
@@ -57,10 +62,9 @@ const (
 )
 
 const (
-	MetaReservedPrefix     = "bacalhau.org/"
-	MetaRequesterID        = "bacalhau.org/requester.id"
-	MetaRequesterPublicKey = "bacalhau.org/requester.publicKey"
-	MetaClientID           = "bacalhau.org/client.id"
+	MetaReservedPrefix = "bacalhau.org/"
+	MetaRequesterID    = "bacalhau.org/requester.id"
+	MetaClientID       = "bacalhau.org/client.id"
 
 	// Job provenance metadata used to track the origin of a job where
 	// it may have been translated from another job.

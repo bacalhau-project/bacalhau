@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
@@ -108,12 +109,12 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := util.GetAPIClientV2(ctx)
+	apiClient := util.GetAPIClientV2()
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.
 	spinner.NextStep(gettingJobMessage)
-	response, err := apiClient.Jobs().Get(&apimodels.GetJobRequest{
+	response, err := apiClient.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID: requestedJobID,
 	})
 	if err != nil {
@@ -134,7 +135,7 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 	// requester to decide if we are allowed to do that or not.
 	spinner.NextStep(stoppingJobMessage)
 
-	stopResponse, err := apiClient.Jobs().Stop(&apimodels.StopJobRequest{
+	stopResponse, err := apiClient.Jobs().Stop(ctx, &apimodels.StopJobRequest{
 		JobID:  requestedJobID,
 		Reason: "Stopped at user request",
 	})

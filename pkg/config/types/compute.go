@@ -6,12 +6,14 @@ import (
 )
 
 type ComputeConfig struct {
-	Capacity       CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore JobStoreConfig           `yaml:"ExecutionStore"`
-	JobTimeouts    JobTimeoutConfig         `yaml:"JobTimeouts"`
-	JobSelection   model.JobSelectionPolicy `yaml:"JobSelection"`
-	Queue          QueueConfig              `yaml:"Queue"`
-	Logging        LoggingConfig            `yaml:"Logging"`
+	Capacity        CapacityConfig           `yaml:"Capacity"`
+	ExecutionStore  JobStoreConfig           `yaml:"ExecutionStore"`
+	JobTimeouts     JobTimeoutConfig         `yaml:"JobTimeouts"`
+	JobSelection    model.JobSelectionPolicy `yaml:"JobSelection"`
+	Queue           QueueConfig              `yaml:"Queue"`
+	Logging         LoggingConfig            `yaml:"Logging"`
+	ManifestCache   DockerCacheConfig        `yaml:"ManifestCache"`
+	LogStreamConfig LogStreamConfig          `yaml:"LogStream"`
 }
 
 type CapacityConfig struct {
@@ -47,4 +49,9 @@ type QueueConfig struct {
 type LoggingConfig struct {
 	// logging running executions
 	LogRunningExecutionsInterval Duration `yaml:"LogRunningExecutionsInterval"`
+}
+
+type LogStreamConfig struct {
+	// How many messages to buffer in the log stream channel, per stream
+	ChannelBufferSize int `yaml:"ChannelBufferSize"`
 }

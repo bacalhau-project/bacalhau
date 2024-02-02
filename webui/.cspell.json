@@ -1,0 +1,12 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "allowCompoundWords": true,
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-words",
+            "path": "./.cspell/custom-dictionary.txt",
+            "addWords": true
+        }
+    ]
+}

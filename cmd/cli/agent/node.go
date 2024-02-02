@@ -3,11 +3,12 @@ package agent
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
 )
 
 // NodeOptions is a struct to support node command
@@ -37,7 +38,7 @@ func NewNodeCmd() *cobra.Command {
 // Run executes node command
 func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
-	response, err := util.GetAPIClientV2(ctx).Agent().Node(&apimodels.GetAgentNodeRequest{})
+	response, err := util.GetAPIClientV2().Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("could not get server node: %w", err), 1)
 	}

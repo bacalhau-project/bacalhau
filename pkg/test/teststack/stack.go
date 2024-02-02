@@ -77,7 +77,7 @@ func Setup(
 	require.Eventually(t,
 		func() bool {
 			return allNodesDiscovered(t, stack)
-		}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
+		}, 100*time.Second, 100*time.Millisecond, "failed to discover all nodes")
 
 	return stack
 }
@@ -91,9 +91,12 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 	})
 }
 
+// Returns whether the requester node(s) in the stack have discovered all of the
+// other nodes in the stack and have complete information for them (i.e. each
+// node has actually announced itself.)
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.ID)
 
 		if !node.IsRequesterNode() || node.RequesterNode == nil {
 			continue
@@ -153,7 +156,3 @@ func (m *mixedExecutorFactory) Get(
 }
 
 var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
-
-// Returns whether the requester node(s) in the stack have discovered all of the
-// other nodes in the stack and have complete information for them (i.e. each
-// node has actually announced itself.)

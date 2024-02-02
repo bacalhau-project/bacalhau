@@ -13,8 +13,6 @@ type Endpoint interface {
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
-	// ReadLogs retrieves the logs for an execution
-	ReadLogs(context.Context, ReadLogsRequest) (ReadLogsResponse, error)
 }
 
 // StartJobRequest triggers the scheduling of a job.
@@ -33,7 +31,7 @@ type CancelJobResult struct{}
 type ReadLogsRequest struct {
 	JobID       string
 	ExecutionID string
-	WithHistory bool
+	Tail        bool
 	Follow      bool
 }
 

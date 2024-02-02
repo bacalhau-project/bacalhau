@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -150,11 +151,9 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	}
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := client.NewAPIClient(apiServer.Address, apiServer.Port)
-	apiClientV2 := clientv2.New(clientv2.Options{
-		Context: s.Ctx,
-		Address: fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port),
-	})
+	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
+	apiClientV2 := clientv2.New(fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port))
+
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()
@@ -175,7 +174,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	// Check outputs
 	if scenario.ResultsChecker != nil {
 		s.T().Log("Checking output")
-		results, err := apiClientV2.Jobs().Results(&apimodels.ListJobResultsRequest{
+		results, err := apiClientV2.Jobs().Results(s.Ctx, &apimodels.ListJobResultsRequest{
 			JobID: submittedJob.Metadata.ID,
 		})
 		s.Require().NoError(err)

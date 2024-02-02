@@ -37,16 +37,19 @@
 [Bacalhau](https://www.bacalhau.org/) is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks.
 
 ## Table of Contents
-- [Why Bacalhau](#why-bacalhau)
-- [Getting started](#getting-started---bacalhau-in-1-minute)
+- [Table of Contents](#table-of-contents)
+- [Why Bacalhau?](#why-bacalhau)
+- [Getting started - Bacalhau in 1 minute](#getting-started---bacalhau-in-1-minute)
   - [Learn more](#learn-more)
 - [Documentation](#documentation)
 - [Developers guide](#developers-guide)
   - [Running Bacalhau locally](#running-bacalhau-locally)
   - [Notes for Dev contributors](#notes-for-dev-contributors)
-- [Ways to contribute ](#ways-to-contribute)
-- [Current state of Bacalhau](#current-state-of-bacalhau-)
-- [License](#license)
+  - [OpenAPI](#openapi)
+  - [Python Libraries](#python-libraries)
+- [Issues, feature requests, and questions](#issues-feature-requests-and-questions)
+- [Ways to contribute](#ways-to-contribute)
+- [Open Source](#open-source)
 
 ## Why Bacalhau?
 - :zap: **Fast job processing**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
@@ -97,7 +100,7 @@ The Bacalhau docs is the best starting point as it contains all the information 
 
 Developers can spin up bacalhau and run a local demo using the `devstack` command.
 
-Please see [docs/running_locally.md](docs/running_locally.md) for instructions. Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
+Please see [running_locally.md](docs/docs/dev/running-locally.md) for instructions. Also, see [debugging_locally.md](docs/docs/dev/debugging_locally.md) for some useful tricks for debugging.
 
 ### Notes for Dev contributors
 
@@ -161,4 +164,4 @@ Others are allowed to make their own distribution of the software, but they cann
 
 We explicitly grant permission for you to make a build that includes our trademarks while developing Bacalhau software itself. You may not publish or share the build, and you may not use that build to run Bacalhau software for any other purpose.
 
-We have borrowed the above Open Source clause from the excellent [System Initiative](https://github.com/systeminit/si/blob/main/CONTRIBUTING.md)
+We have borrowed the above Open Source clause from the excellent [System Initiative](https://github.com/systeminit/si/blob/main/CONTRIBUTING.md) 

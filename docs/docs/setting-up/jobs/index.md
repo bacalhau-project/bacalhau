@@ -6,6 +6,3 @@ sidebar_position: 2
 
 This directory contains instructions on how to setup the networking in Bacalhau.
 
-
-
-

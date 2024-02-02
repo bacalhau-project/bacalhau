@@ -163,7 +163,7 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/node_modules/.package-lock.json
+WEB_INSTALL_GUARD := webui/node_modules/.cache/tsconfig.tsbuildinfo
 
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
@@ -172,11 +172,11 @@ webui/build:
 	mkdir -p $@
 
 $(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && npm install
+	cd webui && yarn install
 
 export GENERATE_SOURCEMAP := false
 ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
-	cd webui && npm run build
+	cd webui && yarn run build
 
 ################################################################################
 # Target: build-bacalhau
@@ -186,7 +186,7 @@ build-bacalhau: ${BINARY_PATH}
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
-
+ 
 ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
@@ -252,25 +252,6 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
-
-################################################################################
-# Target: swagger-docs
-################################################################################
-.PHONY: swagger-docs
-swagger-docs: docs/swagger.json
-
-docs/swagger.json: ${PKG_FILES} .swaggo
-	@echo "Building swagger docs..."
-	swag init \
-		--outputTypes "json" \
-		--parseDependency \
-		--parseInternal \
-		--parseDepth 1 \
-		-g "pkg/publicapi/server.go" \
-		--overridesFile .swaggo && \
-	echo >> $@
-#   ^ add newline to appease linter
-	@echo "Swagger docs built."
 
 ################################################################################
 # Target: images
@@ -395,7 +376,7 @@ lint:
 
 .PHONY: lint-fix
 lint-fix:
-	golangci-lint run --timeout 10m --fix
+	golangci-lint run --timeout 10m
 
 ################################################################################
 # Target: modtidy
@@ -511,9 +492,16 @@ else
 	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
 endif
 
-.PHONY: spellcheck
-spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell --skip="./docs/build,./.git,node_modules,./vendor,./webui/build" \
-			  --ignore-words="./.gitprecommit/codespell_ignore_words.txt" \
-			  --skip="./integration/flyte/Makefile"
+.PHONY: spellcheck-code
+spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
+	cspell -c .cspell-code.json lint ./pkg/authn/**
 
+.PHONY: spellcheck-docs
+spellcheck-docs:  ## Runs a spellchecker over all documentation - MVP just does one directory
+	cspell -c .cspell-docs.json lint ./docs/docs/dev/**
+
+.PHONY: generate
+generate:
+	@echo "Generating code...."
+	@./scripts/generate.sh
+	@echo "Done."

@@ -173,7 +173,7 @@ type LabelSelectorRequirement struct {
 	Key string `json:"Key"`
 	// operator represents a key's relationship to a set of values.
 	// Valid operators are In, NotIn, Exists and DoesNotExist.
-	Operator selection.Operator `json:"Operator"`
+	Operator selection.Operator `json:"Operator" swaggertype:"primitive,string"`
 	// values is an array of string values. If the operator is In or NotIn,
 	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
 	// the values array must be empty. This array is replaced during a strategic
@@ -373,7 +373,7 @@ type LogsPayload struct {
 	ExecutionID string `json:"ExecutionID,omitempty" validate:"required"`
 
 	// whether the logs history is required
-	WithHistory bool `json:"WithHistory,omitempty"`
+	Tail bool `json:"Tail,omitempty"`
 
 	// whether the logs should be followed after the current logs are shown
 	Follow bool `json:"Follow,omitempty"`

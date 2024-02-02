@@ -28,7 +28,7 @@ type StopJobResponse struct {
 type ReadLogsRequest struct {
 	JobID       string
 	ExecutionID string
-	WithHistory bool
+	Tail        bool
 	Follow      bool
 }
 
@@ -70,7 +70,7 @@ func (r NodeRank) MeetsRequirement() bool {
 }
 
 func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
-	e.Stringer("Node", r.NodeInfo.PeerInfo.ID).
+	e.Str("Node", r.NodeInfo.ID()).
 		Bool("MeetsRequirement", r.MeetsRequirement()).
 		Str("Reason", r.Reason)
 }

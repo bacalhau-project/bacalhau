@@ -37,12 +37,14 @@ func (s *RequesterSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	n, _ := setupNodeForTest(s.T())
 	s.node = n
-	s.client = client.NewAPIClient(n.APIServer.Address, n.APIServer.Port)
+	s.client = client.NewAPIClient(client.NoTLS, n.APIServer.Address, n.APIServer.Port)
 }
 
 // After each test
 func (s *RequesterSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup(context.Background())
+	if s.node != nil {
+		s.node.CleanupManager.Cleanup(context.Background())
+	}
 }
 
 func (s *RequesterSuite) TestList() {

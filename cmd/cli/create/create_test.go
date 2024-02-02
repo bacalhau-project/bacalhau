@@ -4,7 +4,6 @@ package create_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -95,10 +94,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 			}
 
 			ctx := context.Background()
-			_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(tc.Fixture.Data, "create",
-				"--api-host", s.Host,
-				"--api-port", fmt.Sprint(s.Port),
-			)
+			_, out, err := s.ExecuteTestCobraCommandWithStdinBytes(tc.Fixture.Data, "create")
 
 			require.NoError(s.T(), err, "Error submitting job")
 			testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -107,20 +103,13 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 }
 
 func (s *CreateSuite) TestCreateFromStdin() {
-	_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.YamlJobNoop.Data, "create",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
-	)
+	_, out, err := s.ExecuteTestCobraCommandWithStdinBytes(testdata.YamlJobNoop.Data, "create")
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutputLegacy(context.Background(), s.T(), s.Client, out)
-	_, _, err = cmdtesting.ExecuteTestCobraCommand("describe",
-		"--api-host", s.Host,
-		"--api-port", fmt.Sprint(s.Port),
-		job.Metadata.ID,
-	)
+	_, _, err = s.ExecuteTestCobraCommand("describe", job.Metadata.ID)
 
 	require.NoError(s.T(), err, "Error describing job.")
 }
@@ -138,7 +127,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c, out, err := cmdtesting.ExecuteTestCobraCommand("create", "./testdata/empty.yaml")
+		c, out, err := s.ExecuteTestCobraCommand("create", "./testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

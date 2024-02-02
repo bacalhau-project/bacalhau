@@ -7,6 +7,7 @@ type BacalhauConfig struct {
 	User    UserConfig    `yaml:"User"`
 	Metrics MetricsConfig `yaml:"Metrics"`
 	Update  UpdateConfig  `yaml:"UpdateConfig"`
+	Auth    AuthConfig    `yaml:"Auth"`
 }
 
 type UserConfig struct {

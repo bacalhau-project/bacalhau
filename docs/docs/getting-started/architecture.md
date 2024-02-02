@@ -83,7 +83,7 @@ The interfaces handle the distribution, execution, storage and publishing of job
 
 ### Job preparation
 
-You can create jobs in the Bacalhau network using various [job types] introduced in version 1.2. Each job may need specific variables, resource requirements and data details that are described in the [Job Specification].
+You can create jobs in the Bacalhau network using various [job types](../setting-up/jobs/job-types.md) introduced in version 1.2. Each job may need specific variables, resource requirements and data details that are described in the [Job Specification](../setting-up/jobs/job-specification/index.md).
 
 <details>
   <summary>Advanced job preparation</summary>
@@ -94,7 +94,7 @@ You can create jobs in the Bacalhau network using various [job types] introduced
 
         Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker](../getting-started/docker-workload-onboarding.md) and [WebAssembly](../getting-started/wasm-workload-onboarding.md) workloads.
 
-        Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads](../setting-up/gpu.md) section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK](../integration/python-sdk.md).
+        Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads](../getting-started/resources.md#gpu-setup) section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK](../integration/python-sdk.md).
 
         For node operation, refer to the [Running a Node](../setting-up/running-node/quick-start.md) section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster](../setting-up/networking-instructions/private-cluster.md) for performing tasks without connecting to the main Bacalhau network.
     </div>
@@ -337,7 +337,7 @@ values={[
     bacalhau list [flags]
     ```
 
-    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#list) to list jobs on the network in yaml format.
+    You can use the command with [appropriate flags](../dev/cli-reference/all-flags.md#list-2) to list jobs on the network in yaml format.
 
 </TabItem>
 <TabItem value="API">
@@ -447,7 +447,7 @@ values={[
 bacalhau logs [flags] [id]
 ```
 
-You can use this [command](../dev/cli-reference/all-flags.md#logs) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
+You can use this [command](../dev/cli-reference/all-flags.md#logs-1) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
 
 :::info
  To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands](../dev/cli-reference/all-flags.md)

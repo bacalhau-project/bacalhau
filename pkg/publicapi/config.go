@@ -20,9 +20,6 @@ type Config struct {
 	// This represents maximum duration for handlers to complete, or else fail the request with 503 error code.
 	RequestHandlerTimeout time.Duration
 
-	// SkippedTimeoutPaths is a list of paths that should not be subject to the request handler timeout.
-	SkippedTimeoutPaths []string
-
 	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
 	MaxBytesToReadInBody string
 
@@ -42,7 +39,6 @@ var defaultConfig = Config{
 	ReadTimeout:           20 * time.Second,
 	WriteTimeout:          45 * time.Second,
 	RequestHandlerTimeout: 30 * time.Second,
-	SkippedTimeoutPaths:   make([]string, 0),
 	MaxBytesToReadInBody:  "10MB",
 	ThrottleLimit:         1000,
 	Protocol:              "http",
@@ -77,12 +73,6 @@ func WithWriteTimeout(t time.Duration) Option {
 func WithRequestHandlerTimeout(t time.Duration) Option {
 	return func(c *Config) {
 		c.RequestHandlerTimeout = t
-	}
-}
-
-func WithSkipTimeoutPaths(paths []string) Option {
-	return func(c *Config) {
-		c.SkippedTimeoutPaths = paths
 	}
 }
 

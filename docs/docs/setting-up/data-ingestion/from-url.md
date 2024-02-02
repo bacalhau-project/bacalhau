@@ -28,6 +28,7 @@ Let's look closely at the command above:
 
 The `bacalhau docker run` command takes advantage of the `--input` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the /outputs directory.
 
+
 :::tip
 You can find out more about the [helper container in the examples repository](https://github.com/bacalhau-project/examples/tree/main/tools/upload) which is designed to simplify the data uploading process.
 :::
@@ -78,7 +79,9 @@ To get the output CID from a completed job, run the following command:
 ```bash
 bacalhau list $JOB_ID --output=json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
 ```
+
 The job will upload the CID to the public storage via IPFS. We will store the CID in an environment variable so that we can reuse it later on.
+
 
 ## Use the CID in a New Bacalhau Job
 

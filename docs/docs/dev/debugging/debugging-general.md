@@ -145,7 +145,7 @@ Before running a Bacalhau job for real, it's worth taking the time to slowly bab
 * Finally, try and run the actual job.
 * If the job fails, try to tailor a job that tests the specific issue you're facing.
 
-In essence, you should try and derisk the job by intentionally testing all the normal things that can go wrong, like data not being in the right place or in the wrong format.
+In essence, you should try and minimize failure of the job by intentionally testing all the normal things that can go wrong, like data not being in the right place or in the wrong format.
 
 ## Support
 
