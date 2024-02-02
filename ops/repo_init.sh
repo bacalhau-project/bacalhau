@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 python3 -q -m pip install --upgrade pip
 pip3 install poetry
 poetry install
