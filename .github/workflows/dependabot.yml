@@ -16,7 +16,7 @@ jobs:
 
       - name: Detect Go version
         id: runtimes
-        run: echo "::set-output name=golang-version::$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)"
+        run: echo "::set-output name=golang-version::$(grep 'go [[:digit:]].[[:digit:]]*' go.mod | cut -d' ' -f2)"
 
       - name: Install Golang
         uses: actions/setup-go@v4
