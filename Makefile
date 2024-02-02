@@ -184,9 +184,9 @@ ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
 .PHONY: build-bacalhau
 build-bacalhau: ${BINARY_PATH}
 
-CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
-PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
- 
+CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
+PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
+
 ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
