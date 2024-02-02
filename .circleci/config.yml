@@ -71,7 +71,7 @@ commands:
       - run:
           name: Set GOVER
           command: |
-            go_spec=$(golang [[:digit:]].[[:digit:]]*' .tool-versions | cut -d' ' -f2)
+            go_spec=$(golang '[[:digit:]].[[:digit:]]*' .tool-versions | cut -d' ' -f2)
             version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
               jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
             echo "Latest Go version for $go_spec is $version"
