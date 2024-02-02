@@ -10,6 +10,11 @@ module "gcp_network" {
   subnet_cidr = "10.0.0.0/16" // Example CIDR, adjust as needed
 }
 
+resource "random_string" "bacalhau_auth_token" {
+  length  = 32  // Adjust the length as needed
+  special = false  // Set to true if you want special characters
+}
+
 module "requester_instance" {
   source = "./modules/gcp/compute_instances/requester"
 
@@ -26,6 +31,7 @@ module "requester_instance" {
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
   bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
+  bacalhau_auth_token = random_string.bacalhau_auth_token.result
 }
 
 module "compute_instance" {
@@ -53,4 +59,5 @@ module "compute_instance" {
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
   bacalhau_local_disk_size = var.bacalhau_local_disk_size
   bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
+  bacalhau_auth_token = random_string.bacalhau_auth_token.result
 }

@@ -5,13 +5,19 @@ Node:
     Host: ${requester_ip}
     Port: 1234
   BootstrapAddresses:
-  Libp2P:
-    PeerConnect: /ip4/${requester_ip}/tcp/1234/http
+  Network:
+    Type: nats
+    Port: 4222
+    Orchestrators:
+      - ${requester_ip}:4222
+    Cluster:
+      Name: global
+      Port: 6222
   Compute:
     JobSelection:
       Locality: anywhere
       AcceptNetworkedJobs: ${bacalhau_accept_networked_jobs}
   AllowListedLocalPaths:
-    - /local_data
+    - "/local_data/**"
   UpdateConfig:
     SkipChecks: true

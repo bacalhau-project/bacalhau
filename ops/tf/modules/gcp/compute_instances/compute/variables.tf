@@ -75,3 +75,8 @@ variable "bacalhau_otel_collector_endpoint" {
   description = "The opentelemetry collector endpoint to send metrics to"
   type = string
 }
+
+variable "bacalhau_auth_token" {
+  description = "Auth token for bacalhau api"
+  type = string
+}
