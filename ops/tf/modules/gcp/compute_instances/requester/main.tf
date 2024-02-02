@@ -96,6 +96,19 @@ locals {
   otel_service_content = templatefile("${path.module}/../../../instance_files/otel.service", {
     // add more arguments as needed
   })
+
+  //
+  // templating rego
+  //
+
+  // authn
+  bacalhau_authn_policy_content = templatefile("${path.module}/../../../instance_files/authn_policy.rego", {
+    bacalhau_secret_user_access_token = var.bacalhau_auth_token
+  })
+  // authz
+  bacalhau_authz_policy_content = templatefile("${path.module}/../../../instance_files/authz_policy.rego", {
+    // add more arguments as needed
+  })
 }
 
 
@@ -109,10 +122,12 @@ data "cloudinit_config" "requester_cloud_init" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
-      bacalhau_config_file  : base64encode(local.requester_config_content),
-      bacalhau_service_file : base64encode(local.bacalhau_service_content)
-      otel_config_file      : base64encode(local.otel_config_content)
-      otel_service_file     : base64encode(local.otel_service_content),
+      bacalhau_config_file      : base64encode(local.requester_config_content)
+      bacalhau_service_file     : base64encode(local.bacalhau_service_content)
+      bacalhau_authn_policy_file : base64encode(local.bacalhau_authn_policy_content)
+      bacalhau_authz_policy_file : base64encode(local.bacalhau_authz_policy_content)
+      otel_config_file          : base64encode(local.otel_config_content)
+      otel_service_file         : base64encode(local.otel_service_content)
     })
   }
 }

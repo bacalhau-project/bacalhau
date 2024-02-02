@@ -1,4 +1,10 @@
 #cloud-config
+packages:
+  - jq
+
+runcmd:
+  - bash /etc/install-bacalhau.sh release v1.2.1
+  - systemctl restart bacalhau
 
 write_files:
   # bacalhau config
@@ -16,6 +22,22 @@ write_files:
     permissions: "0600"
     content: |
       ${bacalhau_service_file}
+
+  # authn policy file
+  - path: /etc/authn_policy.rego
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_authn_policy_file}
+
+  # authz policy file
+  - path: /etc/authz_policy.rego
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_authz_policy_file}
 
   # otel config file
   - path: /etc/otel-collector.yaml

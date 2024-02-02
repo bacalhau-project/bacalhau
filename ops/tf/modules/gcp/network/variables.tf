@@ -31,9 +31,14 @@ variable "egress_udp_ports" {
   description = "List of UDP ports for egress rules"
   type        = list(string)
   default     = [
-    // Libp2p
-    "4001", // ipfs
-    "1235", // bacalhau
+    // HTTP(s)
+    "80",   // webui & otel (TODO switch to HTTPS)
+    "443",
+    // ipfs daemon
+    "4001",
+    // NATs
+    "6222",
+    "4222"
   ]
 }
 
@@ -52,12 +57,13 @@ variable "ingress_tcp_ports" {
   default     = [
     // SSH
     "22",
-    // HTTP
-    "80", //webui
+    // HTTP(s)
+    "80",   // webui & otel (TODO switch to HTTPS)
     "443",
-    // Libp2p
-    "4001", // ipfs
-    "1235", // bacalhau
+    // ipfs daemon
+    "4001",
+    // bacalhau
+    "1235",
     // API
     "1234",
     // Metrics
@@ -66,6 +72,9 @@ variable "ingress_tcp_ports" {
     // Health
     "44443",
     "44444",
+    // NATs
+    "6222",
+    "4222"
   ]
 }
 
@@ -74,8 +83,10 @@ variable "ingress_udp_ports" {
   type        = list(string)
   default     = [
     // Libp2p
-    "4001", // ipfs
-    "1235", // bacalhau
+    // ipfs daemon
+    "4001",
+    // bacalhau
+    "1235",
   ]
 }
 
