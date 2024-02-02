@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -86,6 +87,25 @@ func GetNetworkAddress(requested AddressType, getAddresses AddressLister) ([]str
 	}
 
 	return result, nil
+}
+
+func AddressTypeFromString(t string) (AddressType, bool) {
+	switch strings.ToLower(t) {
+	case "private":
+		return PrivateAddress, true
+	case "public":
+		return PublicAddress, true
+	case "loopback", "localhost", "local":
+		return LoopbackAddress, true
+	case "linklocal":
+		return LinkLocal, true
+	case "multicast":
+		return Multicast, true
+	case "any":
+		return Any, true
+	default:
+		return Any, false
+	}
 }
 
 func isMulticastAddress(addr net.IP) bool {
