@@ -64,11 +64,11 @@ func GetNetworkAddress(requested AddressType, getAddresses AddressLister) ([]str
 		case Any:
 			result = append(result, addr.String())
 		case PrivateAddress:
-			if addr.IsPrivate() {
+			if addr.IsPrivate() || isCarrierGradeNAT(addr) {
 				result = append(result, addr.String())
 			}
 		case PublicAddress:
-			if !addr.IsPrivate() && addr.IsGlobalUnicast() {
+			if !addr.IsPrivate() && addr.IsGlobalUnicast() && !isCarrierGradeNAT(addr) {
 				result = append(result, addr.String())
 			}
 		case LoopbackAddress:
@@ -106,6 +106,11 @@ func AddressTypeFromString(t string) (AddressType, bool) {
 	default:
 		return Any, false
 	}
+}
+
+func isCarrierGradeNAT(addr net.IP) bool {
+	_, net, _ := net.ParseCIDR("100.64.0.0/10")
+	return net.Contains(addr)
 }
 
 func isMulticastAddress(addr net.IP) bool {
