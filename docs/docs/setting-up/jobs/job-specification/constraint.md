@@ -8,7 +8,7 @@ A `Constraint` represents a condition that must be met for a compute node to be 
 
 By defining constraints, you can ensure that jobs are scheduled on nodes that have the necessary requirements or conditions. 
 
-### `Constraint` Parameters:
+### `Constraint` Parameters
 
 - **Key**: The name of the attribute or property to check on the compute node. This could be anything from a specific hardware feature, operating system version, or any other node property.
 
@@ -25,9 +25,9 @@ By defining constraints, you can ensure that jobs are scheduled on nodes that ha
 
 - **Values (optional)**: A list of values that the node attribute, specified by the `Key`, is compared against using the `Operator`. This is not needed for operators like `exists` or `!`.
 
-### Example:
+### Example
 
-Consider a scenario where a job should only run on nodes with a GPU and an operating system version greater than `2.0`. The constraints for such a requirement might look like:
+Consider a scenario where a job should only run on nodes with a GPU, operating system type - linux and in a certain region. The constraints for such a requirement might look like:
 
 ```yaml
 constraints:
@@ -43,7 +43,7 @@ constraints:
 
 In this example, the first constraint checks if the node has a GPU, the second constraint ensures the OS is linux, and deployed in eu-west-1 or eu-west-2`.
 
-### Notes:
+### Notes
 
 - Constraints are evaluated as a logical AND, meaning all constraints must be satisfied for a node to be eligible.
 

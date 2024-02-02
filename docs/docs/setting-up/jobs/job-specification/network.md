@@ -7,7 +7,7 @@ sidebar_label: Network
 
 The `Network` object offers a method to specify the networking requirements of a `Task`. It defines the scope and constraints of the network connectivity based on the demands of the task.
 
-## `Network` Parameters:
+## `Network` Parameters
 
 - **Type** `(string: "None")`: Indicates the network configuration's nature. There are several network modes available:
     - `None`: This mode implies that the task does not necessitate any networking capabilities.
