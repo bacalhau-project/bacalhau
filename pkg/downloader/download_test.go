@@ -40,7 +40,6 @@ type DownloaderSuite struct {
 	ipfsClient       ipfs.Client
 	downloadSettings *downloader.DownloaderSettings
 	downloadProvider downloader.DownloaderProvider
-	s3downloader     *s3signed.Downloader
 	s3Signer         *s3helper.ResultSigner
 }
 

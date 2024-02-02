@@ -54,8 +54,8 @@ func TestServiceSchedulerTestSuite(t *testing.T) {
 
 func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockServiceJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockServiceJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
@@ -160,8 +160,8 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 func (s *ServiceJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockServiceJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockServiceJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 

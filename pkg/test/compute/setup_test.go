@@ -13,7 +13,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -141,15 +140,4 @@ func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, execution *model
 	result := s.askForBid(ctx, execution)
 	s.True(result.Accepted)
 	return result.ExecutionID
-}
-
-func (s *ComputeSuite) prepareAndRun(ctx context.Context, execution *models.Execution) string {
-	executionID := s.prepareAndAskForBid(ctx, execution)
-
-	// run the job
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
-	s.NoError(err)
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCompleted))
-	s.NoError(err)
-	return executionID
 }
