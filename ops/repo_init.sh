@@ -4,10 +4,11 @@ pip3 install poetry
 poetry install
 poetry run pre-commit install
 
-pushd python
+pushd python || exit
 poetry install
-popd
+popd || exit
 
-pushd webui
+pushd webui || exit
+corepack enable
 yarn install
-popd
+popd || exit
