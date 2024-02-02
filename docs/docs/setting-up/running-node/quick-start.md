@@ -182,7 +182,7 @@ Firewall configuration is very specific to your network and we can't provide gen
 
 ### Install the Bacalhau Binary
 
-[Install the bacalhau binary](/getting-started/installation#install-the-bacalhau-client) to run `bacalhau serve`.
+[Install the bacalhau binary](./../getting-started/installation.md#install-the-bacalhau-cli) to run `bacalhau serve`.
 
 :::info
 
