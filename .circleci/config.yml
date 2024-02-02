@@ -230,11 +230,6 @@ jobs:
           command: make install-plugins
 
       - run:
-          name: Set canary dependency
-          working_directory: ops/aws/canary/lambda
-          command: make update
-
-      - run:
           name: Build
           working_directory: ops/aws/canary/lambda
           command: make build -j
