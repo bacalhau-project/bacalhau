@@ -499,9 +499,3 @@ spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
 .PHONY: spellcheck-docs
 spellcheck-docs:  ## Runs a spellchecker over all documentation - MVP just does one directory
 	cspell -c .cspell-docs.json lint ./docs/docs/dev/**
-
-.PHONY: generate
-generate:
-	@echo "Generating code...."
-	@./scripts/generate.sh
-	@echo "Done."
