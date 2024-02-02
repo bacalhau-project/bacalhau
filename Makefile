@@ -472,24 +472,20 @@ else
     .PHONY: plugins-build $(EXECUTOR_PLUGINS)
 
     plugins-build: $(EXECUTOR_PLUGINS)
-
-    $(EXECUTOR_PLUGINS):
-	    $(MAKE) -C $@
+	@echo "Building executor plugins..."
+	@$(foreach plugin,$(EXECUTOR_PLUGINS),$(MAKE) --no-print-directory -C $(plugin) &&) true
 
     .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
 
     plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
-
-    $(addsuffix .clean,$(EXECUTOR_PLUGINS)):
-	    $(MAKE) -C $(basename $@) clean
+	@echo "Cleaning executor plugins..."
+	@$(foreach plugin,$(addsuffix .clean,$(EXECUTOR_PLUGINS)),$(MAKE) --no-print-directory -C $(basename $(plugin)) clean &&) true
 
     .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
 
     plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
-
-    $(addsuffix .install,$(EXECUTOR_PLUGINS)):
-	    mkdir -p $(INSTALL_PLUGINS_DEST)
-	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+	@echo "Installing executor plugins..."
+	@$(foreach plugin,$(addsuffix .install,$(EXECUTOR_PLUGINS)),mkdir -p $(INSTALL_PLUGINS_DEST) && cp $(basename $(plugin))/bin/* $(INSTALL_PLUGINS_DEST) &&) true
 endif
 
 .PHONY: spellcheck-code
