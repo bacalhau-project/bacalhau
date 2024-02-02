@@ -27,14 +27,25 @@ import (
 )
 
 var (
-	getLong = templates.LongDesc(i18n.T(`
-		Execute a specific job type.
-`))
+	getLong = templates.LongDesc(i18n.T(
+		fmt.Sprintf(`Execute a specific job type.
+
+Allows for the execution of a job type with the given code,
+without the need to create a container, or webassembly module.
+By specifying the code with the '--code' flag you can ship the code
+to the cluster for execution, specified by the remainder of the
+command line.  See examples below.
+
+Supported job types:
+
+%s
+		`, supportedJobTypes()),
+	))
 
 	//nolint:lll // Documentation
 	getExample = templates.Examples(i18n.T(`
 		# Execute the app.py script with Python
-		bacalhau exec python app.py
+		bacalhau exec --code app.py python app.py
 
 		# Run a duckdb query against a CSV file
 		bacalhau exec -i src=...,dst=/inputs/data.csv duckdb "select * from /inputs/data.csv"
@@ -113,6 +124,16 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 	}
 
 	return nil
+}
+
+// Provides a string to diplay the currently available job types
+func supportedJobTypes() string {
+	tpl, _ := NewTemplateMap(embeddedFiles, "templates")
+	var sb strings.Builder
+	for _, s := range tpl.AllTemplates() {
+		sb.WriteString(fmt.Sprintf("  * %s\n", s))
+	}
+	return sb.String()
 }
 
 //nolint:funlen
