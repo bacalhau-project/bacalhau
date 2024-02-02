@@ -148,7 +148,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: build-bacalhau build-plugins build-canary
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -189,6 +189,25 @@ PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --
  
 ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
+
+
+################################################################################
+# Target: build-canary
+################################################################################
+
+.PHONY: build-canary
+build-canary:
+	@echo "Building canary release"
+	@echo "Tag: $(TAG)"
+	@echo "Commit: $(COMMIT)"
+	cd ops/aws/canary/lambda $(MAKE) build
+
+.PHONY: clean-canary
+clean-canary:
+	@echo "Clearing canary release"
+	@echo "Tag: $(TAG)"
+	@echo "Commit: $(COMMIT)"
+	cd ops/aws/canary/lambda $(MAKE) clean
 
 ################################################################################
 # Target: build-docker-images
