@@ -18,20 +18,22 @@ The following table describes how to specify hardware requirements for the Docke
 
 Flag | Default | Description
 ---------|----------|---------
- `--cpu` | 0.1 ([source](/)) | Job CPU cores (e.g. 500m, 2, 8)
- `--memory` | 100MB ([source](/)) | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
- `--gpu` | 0 ([source](/)) | Job GPU requirement (e.g. 1).
+ `--cpu` | 500m | Job CPU cores (e.g. 500m, 2, 8)
+ `--memory` | 1Gb | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
+ `--gpu` | 0 | Job GPU requirement (e.g. 1).
 
 ## WASM Executor
 
-**TBD - research required**
+WebAssembly is not limited by CPU, or disk space, and is unable to use any installed GPU. It also has a limitation on the amount of RAM available - up to a maximum of 4 GB. Therefore, when configuring the WASM executor, you can only specify the `--memory` flag.
 
-### How it Works
+
+
+## How it Works
 
 When you specify hardware requirements, the job will be offered out to the network to see if there are any nodes that can satisfy the requirements. If there are, the job will be scheduled on the node and the executor will be started.
 
 
-**TBD - research required:** If there are no nodes that can satisfy the requirements, the job will wait for a node to become available, until it times out [after 3 minutes](/).
+If there are no nodes that can satisfy the requirements, the job will fail with an error saying that there are no suitable nodes on the network for the job.
 
 
 
@@ -42,8 +44,8 @@ Bacalhau supports GPU workloads. Learn how to run a job using GPU workloads with
 
 ### Prerequisites
 
-* The Bacalhau network must have an executor node with a GPU exposed
-* Your container must include the CUDA runtime (cudart) and must be compatible with the CUDA version running on the node
+1. The Bacalhau network must have an executor node with a GPU exposed
+2. Your container must include the CUDA runtime (cudart) and must be compatible with the CUDA version running on the node
 
 ## Usage
 
@@ -67,9 +69,9 @@ bacalhau docker run --gpu=1 nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
 ### Limitations
 
-The following limitations currently exist within Bacalhau.
+The following limitations currently exist within Bacalhau:
 
-* Maximum CPU and memory limits depend on the participants in the network
-* For GPU:
-    * NVIDIA, Intel or AMD GPUs only
-    * Only the Docker Executor supports GPUs
+1. Maximum CPU and memory limits depend on the participants in the network
+2. For GPU:
+    1. NVIDIA, Intel or AMD GPUs only
+    2. Only the Docker Executor supports GPUs
