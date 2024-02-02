@@ -6,7 +6,7 @@ sidebar_label: exec
 ## Description
 
 The `bacalhau exec` command allows for the specification of jobs to be executed from the command line,
-without the need for a job specification file (see [job run](../job/run/)). 
+without the need for a job specification file (see [job run](../job/run/)).
 
 ## Usage
 
@@ -19,7 +19,7 @@ bacalhau exec [flags] [job-type] arguments
 - `-h`, `--help`:
     - Description: Displays help information for the `exec` sub-command.
 
-- `--code`: 
+- `--code`:
     - Includes the specified code in the job. This can be a single file, or a directory containing many files.  There is a limit of 10Mb on the size of the uploaded code.
 
 - `-f`, `--follow`:
@@ -39,6 +39,14 @@ bacalhau exec [flags] [job-type] arguments
 
 - `-p`, `--publisher`
 	- Description: Where to publish the result of the job.
+	   ### Examples:
+	   **Publish to IPFS**
+
+         `-p ipfs`
+
+       **Publish to S3**
+
+        `-p s3://bucket/key`
 
 - `-i`, `--input`
     - Description: Mount URIs as inputs to the job. Can be specified multiple times. Format: src=URI,dst=PATH[,opt=key=value]
@@ -120,7 +128,7 @@ bacalhau exec [flags] [job-type] arguments
    → bacalhau exec --code=app.py python app.py
    ```
 
-   where app.py is 
+   where app.py is
    ```python
    """
    pip install colorama
@@ -131,7 +139,7 @@ bacalhau exec [flags] [job-type] arguments
    ```
 
    **Output**:
- 
+
    As red text
 
    ```shell
@@ -163,4 +171,3 @@ bacalhau exec [flags] [job-type] arguments
         │ geonameid   │ BIGINT      │ YES     │         │         │         │
         └─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘
    ```
-
