@@ -132,6 +132,223 @@ commands:
       - run: echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
 
 jobs:
+  build_cli:
+    executor: linux-amd64
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: .
+
+      - install_go:
+          executor: linux-amd64
+
+      - run:
+          name: Build tarball
+          command: |
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            # Prevent rebuilding web ui, we should have already attached it
+            find webui -exec touch -c '{}' +
+            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
+            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
+            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
+            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+            GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
+            GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
+            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
+
+      - persist_to_workspace:
+          root: dist/
+          paths:
+            - "*.tar.gz"
+            - "*.sha256"
+
+      - attach_workspace:
+          at: .
+
+      - install_go:
+          executor: linux-amd64
+
+      - run:
+          name: Build tarball
+          command: |
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            # Prevent rebuilding web ui, we should have already attached it
+            find webui -exec touch -c '{}' +
+            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
+            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
+            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
+            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+            GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
+            GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
+            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
+
+      - persist_to_workspace:
+          root: dist/
+          paths:
+            - "*.tar.gz"
+            - "*.sha256"
+
+      - store_artifacts:
+          path: dist/
+
+  build_webui:
+    executor: node/default
+    steps:
+      - checkout
+      - run:
+          working_directory: webui
+          environment:
+            GENERATE_SOURCEMAP: "false"
+          command: |
+            yarn install
+            yarn run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - "webui/build/*"
+            - "webui/node_modules/*"
+
+  build_canary:
+    environment:
+      GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    executor: linux-amd64
+    steps:
+      - checkout
+
+      - install_go:
+          executor: linux-amd64
+
+      - run:
+          name: Install Executor Plugins
+          command: make install-plugins
+
+      - run:
+          name: Set canary dependency
+          working_directory: ops/aws/canary/lambda
+          command: make update
+
+      - run:
+          name: Build
+          working_directory: ops/aws/canary/lambda
+          command: make build -j
+
+      - run:
+          name: Run tests
+          working_directory: ops/aws/canary/lambda
+          command: |
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install gotest.tools/gotestsum@v1.8.2
+            make test
+
+      - store_test_results:
+          path: ops/aws/canary/lambda/tests.xml
+
+  build_docker:
+    executor: linux-amd64
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist/
+      - run:
+          command: |
+            mkdir -p bin/linux/amd64 && tar -xvf dist/bacalhau_*_linux_amd64.tar.gz -C bin/linux/amd64
+            mkdir -p bin/linux/arm64 && tar -xvf dist/bacalhau_*_linux_arm64.tar.gz -C bin/linux/arm64
+      - run:
+          command: |
+            docker context create buildx-build
+            docker buildx create --use buildx-build
+            make build-bacalhau-image
+      - when:
+          condition:
+            matches:
+              value: << pipeline.git.tag >>
+              pattern: "^v([0-9]+).([0-9]+).([0-9]+).*$"
+          steps:
+            - run:
+                name: Login to Github Container Registry
+                command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+            - run: make push-bacalhau-image
+
+  build_python_packages:
+    executor: linux-amd64
+    environment:
+      TARGET_COMMIT: << pipeline.git.revision >>
+      # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/swagger_spec/
+      - run:
+          name: Copy swagger.json from workspace
+          command: |
+            cp   /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
+      - run:
+          name: Install Python API client pre-requisites
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
+      - run:
+          name: Build Python API client
+          command: |
+            make build-python-apiclient
+      - persist_to_workspace:
+          root: clients/python/dist
+          paths:
+            - bacalhau_apiclient-*.tar.gz
+            - bacalhau_apiclient-*.whl
+      - run:
+          name: Install Python SDK pre-requisites
+          command: |
+            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+            cd python
+            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
+      - run:
+          name: Build Python SDK
+          command: |
+            make build-python-sdk
+      - persist_to_workspace:
+          root: python/dist
+          paths:
+            - bacalhau_sdk-*.tar.gz
+            - bacalhau_sdk-*.whl
+      - run:
+          name: Install bacalhau-airflow pre-requisites
+          command: |
+            cd integration/airflow
+            pip3 install -r dev-requirements.txt
+      - run:
+          name: Build Python Bacalhau Airflow
+          command: |
+            make build-bacalhau-airflow
+      - run:
+          name: Install Flyte plugin pre-requisites
+          command: |
+            cd integration/flyte
+            # installs flytekit, flyteidl and deps.
+            make setup
+      - run:
+          name: Build Python Bacalhau Flyte plugin
+          command: |
+            cd integration/flyte/plugins/
+            make build_all_plugins
+      - persist_to_workspace:
+          root: integration/airflow/dist
+          paths:
+            - bacalhau_airflow-*.tar.gz
+            - bacalhau_airflow-*.whl
+
   test_cli:
     environment:
       GOPROXY: https://proxy.golang.org
@@ -204,6 +421,15 @@ jobs:
           paths:
             - "*.coverage"
 
+  build_python_sdk:
+    executor: linux-amd64
+    steps:
+      - checkout
+      - install_python
+      - run:
+          working_directory: python
+          command: make setup test
+
   test_python_sdk:
     executor: linux-amd64
     steps:
@@ -230,99 +456,6 @@ jobs:
       - run:
           working_directory: integration/flyte
           command: make setup test
-
-  build_cli:
-    parallelism: 1
-    executor: linux-amd64
-    steps:
-      - checkout
-
-      - attach_workspace:
-          at: .
-
-      - install_go:
-          executor: linux-amd64
-
-      - run:
-          name: Build tarball
-          command: |
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            # Prevent rebuilding web ui, we should have already attached it
-            find webui -exec touch -c '{}' +
-            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
-            GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
-            GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
-            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
-
-      - persist_to_workspace:
-          root: dist/
-          paths:
-            - "*.tar.gz"
-            - "*.sha256"
-
-      - store_artifacts:
-          path: dist/
-
-  build_webui:
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          app-dir: webui
-      - run:
-          working_directory: webui
-          environment:
-            GENERATE_SOURCEMAP: "false"
-          command: npm run build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - "webui/build/*"
-            - "webui/node_modules/*"
-
-  build_canary:
-    parallelism: 1
-    environment:
-      GOPROXY: https://proxy.golang.org
-      TARGET_COMMIT: << pipeline.git.revision >>
-    working_directory: ~/repo
-    executor: linux-amd64
-    steps:
-      - checkout
-
-      - install_go:
-          executor: linux-amd64
-
-      - run:
-          name: Install Executor Plugins
-          command: make install-plugins
-
-      - run:
-          name: Set canary dependency
-          working_directory: ops/aws/canary/lambda
-          command: make update
-
-      - run:
-          name: Build
-          working_directory: ops/aws/canary/lambda
-          command: make build -j
-
-      - run:
-          name: Run tests
-          working_directory: ops/aws/canary/lambda
-          command: |
-            export GOBIN=${HOME}/bin
-            export PATH=$GOBIN:$PATH
-            go install gotest.tools/gotestsum@v1.8.2
-            make test
-
-      - store_test_results:
-          path: ops/aws/canary/lambda/tests.xml
 
   coverage:
     executor: linux-amd64
@@ -469,104 +602,6 @@ jobs:
                     sleep 3
                     gh pr merge --auto --delete-branch -r $PR_URL
                   fi
-
-  build_docker:
-    executor: linux-amd64
-    steps:
-      - checkout
-      - attach_workspace:
-          at: dist/
-      - run:
-          command: |
-            mkdir -p bin/linux/amd64 && tar -xvf dist/bacalhau_*_linux_amd64.tar.gz -C bin/linux/amd64
-            mkdir -p bin/linux/arm64 && tar -xvf dist/bacalhau_*_linux_arm64.tar.gz -C bin/linux/arm64
-      - run:
-          command: |
-            docker context create buildx-build
-            docker buildx create --use buildx-build
-            make build-bacalhau-image
-      - when:
-          condition:
-            matches:
-              value: << pipeline.git.tag >>
-              pattern: "^v([0-9]+).([0-9]+).([0-9]+).*$"
-          steps:
-            - run:
-                name: Login to Github Container Registry
-                command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
-            - run: make push-bacalhau-image
-
-  build_python_packages:
-    executor: linux-amd64
-    environment:
-      TARGET_COMMIT: << pipeline.git.revision >>
-      # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/swagger_spec/
-      - run:
-          name: Copy swagger.json from workspace
-          command: |
-            cp   /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
-      - run:
-          name: Install Python API client pre-requisites
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
-          name: Build Python API client
-          command: |
-            make build-python-apiclient
-      - persist_to_workspace:
-          root: clients/python/dist
-          paths:
-            - bacalhau_apiclient-*.tar.gz
-            - bacalhau_apiclient-*.whl
-      - run:
-          name: Install Python SDK pre-requisites
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-            cd python
-            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
-      - run:
-          name: Build Python SDK
-          command: |
-            make build-python-sdk
-      - persist_to_workspace:
-          root: python/dist
-          paths:
-            - bacalhau_sdk-*.tar.gz
-            - bacalhau_sdk-*.whl
-      - run:
-          name: Install bacalhau-airflow pre-requisites
-          command: |
-            cd integration/airflow
-            pip3 install -r dev-requirements.txt
-      - run:
-          name: Build Python Bacalhau Airflow
-          command: |
-            make build-bacalhau-airflow
-      - run:
-          name: Install Flyte plugin pre-requisites
-          command: |
-            cd integration/flyte
-            # installs flytekit, flyteidl and deps.
-            make setup
-      - run:
-          name: Build Python Bacalhau Flyte plugin
-          command: |
-            cd integration/flyte/plugins/
-            make build_all_plugins
-      - persist_to_workspace:
-          root: integration/airflow/dist
-          paths:
-            - bacalhau_airflow-*.tar.gz
-            - bacalhau_airflow-*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
