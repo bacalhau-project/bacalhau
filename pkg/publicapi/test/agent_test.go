@@ -6,21 +6,24 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *ServerSuite) TestAlive() {
-	resp, err := s.client.Agent().Alive()
+	ctx := context.Background()
+	resp, err := s.client.Agent().Alive(ctx)
 	s.Require().NoError(err)
 	s.Require().Equal("OK", resp.Status)
 	s.Require().True(resp.IsReady())
 }
 
 func (s *ServerSuite) TestAgentVersion() {
-	resp, err := s.client.Agent().Version()
+	ctx := context.Background()
+	resp, err := s.client.Agent().Version(ctx)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.BuildVersionInfo)
@@ -29,32 +32,29 @@ func (s *ServerSuite) TestAgentVersion() {
 }
 
 func (s *ServerSuite) TestAgentNode() {
-	resp, err := s.client.Agent().Node(&apimodels.GetAgentNodeRequest{})
+	ctx := context.Background()
+	resp, err := s.client.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.Host.ID().String())
+	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
 
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
 }
 
 func (s *ServerSuite) TestAgentNodeCompute() {
-	resp, err := s.computeClient.Agent().Node(&apimodels.GetAgentNodeRequest{})
+	ctx := context.Background()
+	resp, err := s.computeClient.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
-
-	expectedNode, err := s.computeNode.NodeInfoStore.Get(context.Background(), s.computeNode.Host.ID().String())
-	s.Require().NoError(err)
-
-	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
 }
 
 func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
 	require.Equal(t, a.BacalhauVersion, b.BacalhauVersion)
-	require.Equal(t, a.PeerInfo, b.PeerInfo)
+	require.Equal(t, a.ID(), b.ID())
 	require.Equal(t, a.NodeType, b.NodeType)
 	require.Equal(t, a.Labels, b.Labels)
 

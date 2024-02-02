@@ -3,13 +3,14 @@ package job
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var (
@@ -58,7 +59,7 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2(ctx).Jobs().Get(&apimodels.GetJobRequest{
+	response, err := util.GetAPIClientV2().Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID: jobID,
 	})
 	if err != nil {

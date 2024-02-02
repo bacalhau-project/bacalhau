@@ -9,18 +9,16 @@ sidebar_position: 11
 
 Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
 
-## TD;LR
-Running Custom Containers in Bacalhau
+### Prerequisite
 
-## Prerequisite
-
-- To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
-- This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
+1. To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
+2. This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
 
 
-##  Running Containers in Bacalhau
+##  1. Running Containers
 
-You're probably used to running docker commands to run a container.
+### Docker Command
+You're likely familiar with executing Docker commands to start a container:
 
 
 ```bash
@@ -28,23 +26,50 @@ You're probably used to running docker commands to run a container.
 docker run docker/whalesay cowsay sup old fashioned container run
 ```
 
-Bacalhau uses a syntax that is similar to docker and you can use the same containers. The main difference is that input and output data is passed to the container via IPFS, to enable planetary scale. In this example, it doesn't make too much difference except that we need to download the stdout.
+This command runs a container from the `docker/whalesay` image.
+The container executes the `cowsay sup old fashioned container run` command:
 
-The `--wait` flag tells Bacalhau to wait for the job to finish before returning. This is useful in interactive sessions like this, but you would normally allow jobs to complete in the background and use the `list` command to check on their status.
+```shell
+Expected output:
+_________________________________
+< sup old fashioned container run >
+ ---------------------------------
+    \
+     \
+      \
+                    ##        .
+              ## ## ##       ==
+           ## ## ## ##      ===
+       /""""""""""""""""___/ ===
+  ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~
+       \______ o          __/
+        \    \        __/
+          \____\______/
+```
 
-Another difference is that by default Bacalhau overwrites the default entry point for the container so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
-
-### Running a Bacalhau Job
-
+### Bacalhau Command
 
 ```bash
 %%bash --out job_id
 bacalhau docker run --wait --id-only docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+This command also runs a container from the `docker/whalesay` image, using Bacalhau. We use the `bacalhau docker run` command to start a job in a Docker container.
+It contains additional flags such as `--wait` to wait for job completion and `--id-only` to return only the job identifier.
+Inside the container, the `bash -c 'cowsay hello web3 uber-run'` command is executed.
 
-You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+When a job is submitted, Bacalhau prints out the related `job_id` (`7e41b9b9-a9e2-4866-9fce-17020d8ec9e0`):
+
+```shell
+7e41b9b9-a9e2-4866-9fce-17020d8ec9e0
+```
+We store that in an environment variable so that we can reuse it later on.
+
+```python
+%env JOB_ID={job_id}
+```
+
+You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -59,13 +84,42 @@ Viewing your job output
 ```bash
 %%bash
 cat ./results/stdout
+
+Expected output:
+
+ _____________________
+< hello web3 uber-run >
+ ---------------------
+    \
+     \
+      \
+                    ##        .
+              ## ## ##       ==
+           ## ## ## ##      ===
+       /""""""""""""""""___/ ===
+  ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~
+       \______ o          __/
+        \    \        __/
+          \____\______/
 ```
 
-## Building Your Own Custom Container For Bacalhau
+Both commands execute cowsay in the `docker/whalesay` container, but Bacalhau provides additional features for working with jobs at scale.
+
+### Bacalhau Syntax
+Bacalhau uses a syntax that is similar to Docker, and you can use the same containers. The main difference is that input and output data is passed to the container via IPFS, to enable planetary scale. In the example above, it doesn't make too much difference except that we need to download the stdout.
+
+The `--wait` flag tells Bacalhau to wait for the job to finish before returning. This is useful in interactive sessions like this, but you would normally allow jobs to complete in the background and use the `bacalhau list` command to check on their status.
+
+Another difference is that by default Bacalhau overwrites the default entry point for the container, so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
+
+
+
+
+## 2. Building Your Own Custom Container For Bacalhau
 
 To use your own custom container, you must publish the container to a container registry that is accessible from the Bacalhau network. At this time, only public container registries are supported.
 
-To demonstrate this, you will develop and build a simple custom container that comes from an old docker example. I remember seeing cowsay at a Docker conference about a decade ago. I think it's about time we brought it back to life and distribute it across the Bacalhau network.
+To demonstrate this, you will develop and build a simple custom container that comes from an old Docker example. I remember seeing cowsay at a Docker conference about a decade ago. I think it's about time we brought it back to life and distribute it across the Bacalhau network.
 
 
 ```python
@@ -118,7 +172,7 @@ docker build -t ghcr.io/bacalhau-project/examples/codsay:latest . 2> /dev/null
 docker run --rm ghcr.io/bacalhau-project/examples/codsay:latest codsay I like swimming in data
 ```
 
-Once your container is working as expected then you should push it to a public container registry. In this example, I'm pushing to Github's container registry, but we'll skip the step below because you probably don't have permission.Remember that the Bacalhau nodes expect your container to have a `linux/amd64` architecture.
+Once your container is working as expected then you should push it to a public container registry. In this example, I'm pushing to Github's container registry, but we'll skip the step below because you probably don't have permission. Remember that the Bacalhau nodes expect your container to have a `linux/amd64` architecture.
 
 
 ```bash
@@ -126,7 +180,7 @@ Once your container is working as expected then you should push it to a public c
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/codsay:latest .
 ```
 
-##  Running Your Custom Container on Bacalhau
+## 3. Running Your Custom Container on Bacalhau
 
 Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results, and prints the stdout.
 
@@ -161,4 +215,29 @@ View your job output
 ```bash
 %%bash
 cat ./results/stdout
+
+Expected output:
+
+_______________________
+< Look at all this data >
+ -----------------------
+   \
+    \
+                               ,,,,_
+                            ┌Φ▓╬▓╬▓▓▓W      @▓▓▒,
+                           ╠▓╬▓╬╣╬╬▓╬▓▓   ╔╣╬╬▓╬╣▓,
+                    __,┌╓═╠╬╠╬╬╬Ñ╬╬╬Ñ╬╬¼,╣╬╬▓╬╬▓╬▓▓▓┐        ╔W_             ,φ▓▓
+               ,«@▒╠╠╠╠╩╚╙╙╩Ü╚╚╚╚╩╙╙╚╠╩╚╚╟▓▒╠╠╫╣╬╬╫╬╣▓,   _φ╬▓╬╬▓,        ,φ╣▓▓╬╬
+          _,φÆ╩╬╩╙╚╩░╙╙░░╩`=░╙╚»»╦░=╓╙Ü1R░│░╚Ü░╙╙╚╠╠╠╣╣╬≡Φ╬▀╬╣╬╬▓▓▓_   ╓▄▓▓▓▓▓▓╬▌
+      _,φ╬Ñ╩▌▐█[▒░░░░R░░▀░`,_`!R`````╙`-'╚Ü░░Ü░░░░░░░│││░╚╚╙╚╩╩╩╣Ñ╩╠▒▒╩╩▀▓▓╣▓▓╬╠▌
+     '╚╩Ü╙│░░╙Ö▒Ü░░░H░░R ▒¥╣╣@@@▓▓▓  := '`   `░``````````````````````````]▓▓▓╬╬╠H
+       '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
+             '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
+                 ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
+                        %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
+                         `╣▓▓▓              ╠╬▓╬▓╬▀`
+                           ╚▓▌               '╨▀╜
 ```
+
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

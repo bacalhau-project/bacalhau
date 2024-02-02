@@ -84,6 +84,8 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			switch v := def.DefaultValue.(type) {
 			case int:
 				fset.Int(def.FlagName, v, def.Description)
+			case uint64:
+				fset.Uint64(def.FlagName, v, def.Description)
 			case bool:
 				fset.Bool(def.FlagName, v, def.Description)
 			case string:

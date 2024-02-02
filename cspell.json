@@ -1,0 +1,8 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "ignoreWords": [],
+    "import": [".cspell-docs.json", ".cspell-code.json"]
+}

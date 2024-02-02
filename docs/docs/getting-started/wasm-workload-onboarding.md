@@ -35,7 +35,7 @@ Adjust your program to output results to standard output (`stdout`) or standard 
 
 By making these adjustments, you can effectively transition your program to operate within the Bacalhau environment, utilizing filesystem operations instead of traditional network interactions.
 
-:::tip
+:::info
 You can specify additional or different output mounts using the `-o` flag.
 :::
 
@@ -43,7 +43,7 @@ You can specify additional or different output mounts using the `-o` flag.
 
 You will need to compile your program to WebAssembly that expects WASI. Check the instructions for your compiler to see how to do this.
 
-For example, Rust users can specify the `wasm32-wasi` target to `rustup` and `cargo` to get programs compiled for WASI WebAssembly. See [the Rust example](../examples/workload-onboarding/rust-wasm/index.md) for more information on this.
+For example, Rust users can specify the `wasm32-wasi` target to `rustup` and `cargo` to get programs compiled for WASI WebAssembly. See [the Rust example](../setting-up/workload-onboarding/rust-wasm/index.md) for more information on this.
 
 ### Step 3: Upload the input data
 
@@ -113,7 +113,7 @@ $ bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ hello world
 ```
 
 
-:::tip
+:::info
 
 Write your program to use program arguments to specify input and output paths. This makes your program more flexible in handling different configurations of input and output volumes.
 
@@ -136,7 +136,7 @@ $ bacalhau wasm run prog.wasm -e HELLO=world
 
 ## Examples
 
-See [the Rust example](../examples/workload-onboarding/rust-wasm/index.md) for a workload that leverages WebAssembly support.
+See [the Rust example](../setting-up/workload-onboarding/rust-wasm/index.md) for a workload that leverages WebAssembly support.
 
 ## Support
 

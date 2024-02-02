@@ -28,7 +28,9 @@ Here are a few hypothetical examples to demonstrate how you might define `SpecCo
   }
 }
 ```
+
 Full Docker spec can be found [here](../../other-specifications/engines/docker.md).
+
 
 ### S3 Publisher
 
@@ -41,6 +43,7 @@ Full Docker spec can be found [here](../../other-specifications/engines/docker.m
   }
 }
 ```
+
 Full S3 Publisher can be found [here](../../other-specifications/publishers/s3.md).
 
 ### Local Directory Input Source

@@ -2,17 +2,22 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"sigs.k8s.io/yaml"
 )
 
 type BaseEndpointParams struct {
@@ -60,10 +65,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	if err := e.store.CreateJob(ctx, *job); err != nil {
-		return nil, err
-	}
-
 	// We will only perform task translation in the orchestrator if we were provided with a provider
 	// that can give translators to perform the translation.
 	if e.taskTranslator != nil {
@@ -72,23 +73,25 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		// then we will perform the translation and create the evaluation for the new job instead.
 		translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to translate job type: %s", job.Task().Engine.Type))
 		}
 
-		// If we have translated the job (i.e. at least one task was translated) then we will switch
-		// to using the translated job after we have saved it in the jobstore. This results in us
-		// sending the translated job ID to the user for tracking their job, although it will contain
-		// a reference to the job they submitted.  This may cause confusion and we may in future want
-		// to move to versioning of jobs so that we can present both to the user should they request
-		// it.
+		// If we have translated the job (i.e. at least one task was translated) then we will record the original
+		// job that was used to create the translated job. This will allow us to track the provenance of the job
+		// when using `describe` and will ensure only the original job is returned when using `list`.
 		if translatedJob != nil {
-			translatedJob.Meta[models.MetaDerivedFrom] = job.ID
+			if b, err := yaml.Marshal(translatedJob); err != nil {
+				return nil, errors.Wrap(err, "failure converting job to JSON")
+			} else {
+				translatedJob.Meta[models.MetaDerivedFrom] = base64.StdEncoding.EncodeToString(b)
+			}
 
 			job = translatedJob
-			if err := e.store.CreateJob(ctx, *job); err != nil {
-				return nil, err
-			}
 		}
+	}
+
+	if err := e.store.CreateJob(ctx, *job); err != nil {
+		return nil, err
 	}
 
 	eval := &models.Evaluation{
@@ -187,45 +190,56 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
-func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
-	emptyResponse := ReadLogsResponse{}
-
+func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	executions, err := e.store.GetExecutions(ctx, request.JobID)
 	if err != nil {
-		return emptyResponse, err
+		return nil, err
 	}
 
-	nodeID := ""
-	for _, exec := range executions {
+	if len(executions) == 0 {
+		return nil, fmt.Errorf("no executions found for job %s", request.JobID)
+	}
+
+	// TODO: support multiplexing logs from multiple executions. Might need a watermark to order the logs
+	var execution *models.Execution
+	var latestModifyTime int64 // zero time initially
+
+	for i, exec := range executions {
+		// If a specific execution ID is requested, select it directly
 		if exec.ID == request.ExecutionID {
-			nodeID = exec.NodeID
+			execution = &executions[i]
 			break
+		}
+
+		// If no specific execution is requested, track the latest non-discarded execution
+		if request.ExecutionID == "" && !exec.IsDiscarded() && exec.ModifyTime > latestModifyTime {
+			latestModifyTime = exec.ModifyTime
+			execution = &executions[i]
 		}
 	}
 
-	if nodeID == "" {
-		return emptyResponse, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
+	if execution == nil {
+		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
 	}
 
+	if execution.IsTerminalState() {
+		streamer := logstream.NewCompletedStreamer(logstream.CompletedStreamerParams{
+			Execution: execution,
+		})
+		return streamer.Stream(ctx), nil
+	}
 	req := compute.ExecutionLogsRequest{
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: e.id,
-			TargetPeerID: nodeID,
+			TargetPeerID: execution.NodeID,
 		},
-		ExecutionID: request.ExecutionID,
-		WithHistory: request.WithHistory,
+		ExecutionID: execution.ID,
+		Tail:        request.Tail,
 		Follow:      request.Follow,
 	}
 
-	response, err := e.computeProxy.ExecutionLogs(ctx, req)
-	if err != nil {
-		return emptyResponse, err
-	}
-
-	return ReadLogsResponse{
-		Address:           response.Address,
-		ExecutionComplete: response.ExecutionFinished,
-	}, nil
+	return e.computeProxy.ExecutionLogs(ctx, req)
 }
 
 // GetResults returns the results of a job

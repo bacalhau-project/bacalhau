@@ -16,7 +16,7 @@ set -o pipefail
 # This is a pre-commit hook, so it only checks staged files.
 # It is not a pre-push hook, so it does not check untracked files.
 # It is not a pre-receive hook, so it does not check pushed files.
-files_without_header=$(grep --exclude-dir=./vendor --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* | xargs grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' --)
+files_without_header=$(grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* | xargs grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' --)
 
 if [[ -n "${files_without_header}"  ]]; then
   printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"

@@ -83,7 +83,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = client.NewAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
@@ -189,7 +189,7 @@ func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	for _, executionState := range completedExecutionStates {
 		nodeFound := false
 		for _, n := range s.computeNodes {
-			if n.Host.ID().String() == executionState.NodeID {
+			if n.ID == executionState.NodeID {
 				nodes = append(nodes, n)
 				nodeFound = true
 				break
@@ -206,10 +206,10 @@ func (s *NodeSelectionSuite) assertNodesMatch(expected, selected []*node.Node) {
 	expectedNodeNames := make([]string, 0, len(expected))
 	selectedNodeNames := make([]string, 0, len(selected))
 	for _, n := range expected {
-		expectedNodeNames = append(expectedNodeNames, n.Host.ID().String())
+		expectedNodeNames = append(expectedNodeNames, n.ID)
 	}
 	for _, n := range selected {
-		selectedNodeNames = append(selectedNodeNames, n.Host.ID().String())
+		selectedNodeNames = append(selectedNodeNames, n.ID)
 	}
 	s.ElementsMatch(expectedNodeNames, selectedNodeNames)
 }

@@ -1,24 +1,17 @@
 # Scripting Bacalhau with Python
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 Bacalhau allows you to easily execute batch jobs via the CLI. But sometimes you need to do more than that. You might need to execute a script that requires user input, or you might need to execute a script that requires a lot of parameters. In any case, you probably want to execute your jobs in a repeatable manner.
 
 This example demonstrates a simple Python script that is able to orchestrate the execution of lots of jobs in a repeatable manner.
 
-## TD;LR
-Running Python script in Bacalhau
+### Prerequisite
 
-## Prerequisite
-
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
 
 ## Executing Bacalhau Jobs with Python Scripts
 
-To demonstrate this example, I will use the data generated from the [ethereum analysis example](../../data-engineering/blockchain-etl/index.md). This produced a list of hashes that I will iterate over and execute a job for each one.
-
+To demonstrate this example, I will use the data generated from an Ethereum example. This produced a list of hashes that I will iterate over and execute a job for each one.
 
 ```python
 %%writefile hashes.txt
@@ -30,8 +23,7 @@ bafybeih6te26iwf5kzzby2wqp67m7a5pmwilwzaciii3zipvhy64utikre
 bafybeicjd4545xph6rcyoc74wvzxyaz2vftapap64iqsp5ky6nz3f5yndm
 ```
 
-Now let's run the following script. You can execute this script anywhere with `python bacalhau.py`.
-
+Now let's create a file called `bacalhau.py`. The script below automates the submission, monitoring, and retrieval of results for multiple Bacalhau jobs in parallel. It is designed to be used in a scenario where there are multiple hash files, each representing a job, and the script manages the execution of these jobs using Bacalhau commands.
 
 ```python
 %%writefile bacalhau.py
@@ -165,9 +157,9 @@ if __name__ == "__main__":
 ```
 
 This code has a few interesting features:
-* Change the value in the `main` call to change the number of jobs to execute
-* Because all jobs are complete at different times, there's a loop to check that all jobs have been completed before downloading the results -- if you don't do this you'll likely see an error when trying to download the results
-* When downloading the results, the IPFS get often times out, so I wrapped that in a loop
+1. Change the value in the `main` call (`main("hashes.txt", 10)`) to change the number of jobs to execute.
+2. Because all jobs are complete at different times, there's a loop to check that all jobs have been completed before downloading the results. If you don't do this, you'll likely see an error when trying to download the results. The `while True` loop is used to monitor the status of jobs and wait for them to complete.
+3. When downloading the results, the IPFS get often times out, so I wrapped that in a loop. The `for i in range(0, 5)` loop in the `getResultsFromJob` function involves retrying the `bacalhau get` operation if it fails to complete successfully.
 
 Let's run it!
 
@@ -177,18 +169,28 @@ Let's run it!
 python bacalhau.py
 ```
 
-Hopefully, the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see CSV files:
+Hopefully, the `results` directory contains all the combined results from the jobs we just executed. Here's we're expecting to see CSV files:
 
 
 ```bash
 %%bash
-ls -l results
+ls results
+
+Expected Output:
+transactions_00000000_00049999.csv  transactions_00150000_00199999.csv
+transactions_00050000_00099999.csv  transactions_00200000_00249999.csv
+transactions_00100000_00149999.csv  transactions_00250000_00299999.csv
+
 ```
 
 Success! We've now executed a bunch of jobs in parallel using Python. This is a great way to execute lots of jobs in a repeatable manner. You can alter the file above for your purposes.
 
-### Next Steps
+## Next Steps
 
 You might also be interested in the following examples:
 
-* [Analysing Ethereum Data with Python](../../data-engineering/blockchain-etl/index.md)
+[Analysing Data with Python Pandas](../python-pandas/index.md)
+
+
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

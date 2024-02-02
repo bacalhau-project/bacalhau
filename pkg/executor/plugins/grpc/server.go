@@ -135,9 +135,13 @@ func (s *GRPCServer) ShouldBidBasedOnUsage(
 	return &proto.ShouldBidResponse{BidResponse: b}, nil
 }
 
-func (s *GRPCServer) GetOutputStream(request *proto.OutputStreamRequest, server proto.Executor_GetOutputStreamServer) error {
+func (s *GRPCServer) GetLogStream(request *proto.OutputStreamRequest, server proto.Executor_GetOutputStreamServer) error {
 	ctx := server.Context()
-	result, err := s.Impl.GetOutputStream(ctx, request.ExecutionID, request.History, request.Follow)
+	result, err := s.Impl.GetLogStream(ctx, executor.LogStreamRequest{
+		ExecutionID: request.ExecutionID,
+		Tail:        request.History,
+		Follow:      request.Follow,
+	})
 	if err != nil {
 		return err
 	}

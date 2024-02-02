@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const DevelopmentGitVersion = "v0.0.0-xxxxxxx"

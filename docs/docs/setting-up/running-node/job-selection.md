@@ -15,7 +15,7 @@ policy.
 | Node.Compute.JobSelection.ProbeExec | `--job-selection-probe-exec` | unused | Use the result of an external program to decide if we should take on the job. |
 | Node.Compute.JobSelection.ProbeHttp | `--job-selection-probe-http` | unused | Use the result of a HTTP POST to decide if we should take on the job. |
 | Node.Compute.JobSelection.RejectStatelessJobs | `--job-selection-reject-stateless` | False | Reject jobs that don't specify any [input data](../data-ingestion/index.md). |
-| Node.Compute.JobSelection.AcceptNetworkedJobs | `--job-selection-accept-networked` | False | Accept jobs that require [network connections](../next-steps/networking.md). |
+| Node.Compute.JobSelection.AcceptNetworkedJobs | `--job-selection-accept-networked` | False | Accept jobs that require [network connections](../networking-instructions/networking.md). |
 
 ## Job selection probes
 

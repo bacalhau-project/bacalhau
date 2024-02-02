@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -50,7 +51,9 @@ type executionHandler struct {
 	result *models.RunCommandResult
 }
 
+//nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
+	ActiveExecutions.Inc(ctx, attribute.String("executor_id", h.ID))
 	h.running.Store(true)
 	defer func() {
 		destroyTimeout := time.Second * 10
@@ -59,6 +62,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		}
 		h.running.Store(false)
 		close(h.waitCh)
+		ActiveExecutions.Dec(ctx, attribute.String("executor_id", h.ID))
 	}()
 	// start the container
 	h.logger.Info().Msg("starting container execution")
@@ -101,6 +105,23 @@ func (h *executionHandler) run(ctx context.Context) {
 	case exitStatus := <-statusCh:
 		// success case, the container completed its execution, but may have experienced an error, we will attempt to collect logs.
 		containerExitStatusCode = exitStatus.StatusCode
+		containerJSON, err := h.client.ContainerInspect(ctx, h.containerID)
+		if err != nil {
+			h.logger.Warn().Err(err).Msg("failed to inspect docker container")
+			h.result = &models.RunCommandResult{
+				ExitCode: int(containerExitStatusCode),
+				ErrorMsg: err.Error(),
+			}
+			return
+		}
+		if containerJSON.ContainerJSONBase.State.OOMKilled {
+			containerError = errors.New(`memory limit exceeded. Please refer to https://docs.bacalhau.org/getting-started/resources/#docker-executor for more information`) //nolint:lll
+			h.result = &models.RunCommandResult{
+				ExitCode: int(containerExitStatusCode),
+				ErrorMsg: containerError.Error(),
+			}
+			return
+		}
 		if exitStatus.Error != nil {
 			h.logger.Warn().
 				Str("error", exitStatus.Error.Message).
@@ -175,10 +196,10 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow bool) (io.ReadCloser, error) {
-	since := strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
-	if withHistory {
-		since = "1"
+func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+	since := "1"
+	if request.Tail {
+		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
 	}
 	select {
 	case <-ctx.Done():
@@ -190,7 +211,7 @@ func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow
 	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
 	// If we want everything, we specify 1, a timestamp which we are confident we don't have
 	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	return h.client.GetOutputStream(ctx, h.containerID, since, follow)
+	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow)
 }
 
 func (h *executionHandler) active() bool {

@@ -10,16 +10,14 @@ const (
 	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
 	PublisherIpfs
-	PublisherEstuary
 	PublisherS3
 	publisherDone // must be last
 )
 
 var publisherNames = map[Publisher]string{
-	PublisherNoop:    "noop",
-	PublisherIpfs:    "ipfs",
-	PublisherEstuary: "estuary",
-	PublisherS3:      "s3",
+	PublisherNoop: "noop",
+	PublisherIpfs: "ipfs",
+	PublisherS3:   "s3",
 }
 
 func ParsePublisher(str string) (Publisher, error) {

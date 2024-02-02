@@ -1,18 +1,17 @@
 //go:build unit || !integration
 
-package logstream
+package logstream_test
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -20,6 +19,10 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	docker.MustHaveDocker(s.T())
 
+	if s.stack.Nodes[0].Libp2pHost == nil {
+		// TODO: un-skip once we add log stream support for nats transport layer
+		s.T().Skip("skipping log stream tests for non-libp2p transports")
+	}
 	node := s.stack.Nodes[0]
 
 	task := mock.TaskBuilder().
@@ -31,7 +34,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	job.Tasks[0] = task
 
 	execution := mock.ExecutionForJob(job)
-	execution.NodeID = node.Host.ID().Pretty()
+	execution.NodeID = node.ID
 	execution.AllocateResources(task.Name, models.Resources{})
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
@@ -77,23 +80,17 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution)
 	require.NoError(s.T(), err)
 
-	logRequest := requester.ReadLogsRequest{
+	ch, err := node.RequesterNode.EndpointV2.ReadLogs(s.ctx, orchestrator.ReadLogsRequest{
 		JobID:       job.ID,
 		ExecutionID: execution.ID,
-		WithHistory: true,
-		Follow:      true}
-	response, err := node.RequesterNode.Endpoint.ReadLogs(s.ctx, logRequest)
+		Tail:        true,
+		Follow:      true,
+	})
 	require.NoError(s.T(), err)
 
-	client, err := logstream.NewLogStreamClient(s.ctx, response.Address)
-	require.NoError(s.T(), err)
-	defer client.Close()
-
-	client.Connect(s.ctx, execution.ID, true, true)
-
-	frame, err := client.ReadDataFrame(s.ctx)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), frame)
-
-	require.Equal(s.T(), string(frame.Data), "logstreamoutput\n")
+	asyncResult, ok := <-ch
+	require.True(s.T(), ok)
+	require.NoError(s.T(), asyncResult.Err)
+	require.Equal(s.T(), models.ExecutionLogTypeSTDOUT, asyncResult.Value.Type)
+	require.Equal(s.T(), "logstreamoutput\n", asyncResult.Value.Line)
 }

@@ -53,7 +53,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.POST("/submit", e.submit)
 	g.POST("/cancel", e.cancel)
 	g.POST("/debug", e.debug)
-	g.GET("/logs", e.logs)
 	g.GET("/websocket/events", e.websocketJobEvents)
 
 	return e

@@ -19,7 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
-	models "github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -62,6 +62,7 @@ type executionHandler struct {
 
 //nolint:funlen
 func (h *executionHandler) run(ctx context.Context) {
+	ActiveExecutions.Inc(ctx)
 	defer func() {
 		if r := recover(); r != nil {
 			h.logger.Error().
@@ -70,6 +71,7 @@ func (h *executionHandler) run(ctx context.Context) {
 			// TODO don't do this.
 			h.result = &models.RunCommandResult{}
 		}
+		ActiveExecutions.Dec(ctx)
 	}()
 
 	var wasmCtx context.Context
@@ -209,6 +211,6 @@ func (h *executionHandler) kill(ctx context.Context) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, withHistory, follow bool) (io.ReadCloser, error) {
-	return h.logManager.GetMuxedReader(follow), nil
+func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+	return h.logManager.GetMuxedReader(request.Follow), nil
 }

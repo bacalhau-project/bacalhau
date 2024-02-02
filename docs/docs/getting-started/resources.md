@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Hardware setup'
+sidebar_label: 'Hardware/GPU setup'
 sidebar_position: 4
 ---
 

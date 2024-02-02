@@ -17,3 +17,4 @@ A `Task` signifies a distinct unit of work within the broader context of a `Job`
 - **Resources** <code>(<a href="./resources">Resources</a>: \<optional>\)</code>: Details the resources that this task requires.
 - **Network** <code>(<a href="./network">Network</a>: \<optional>\)</code>: Configurations related to the networking aspects of the task.
 - **Timeouts** <code>(<a href="./timeouts">Timeouts</a>: \<optional>\)</code>: Configurations concerning any timeouts associated with the task.
+

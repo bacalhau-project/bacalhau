@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 func SubmitAndGet(ctx context.Context) error {
@@ -35,7 +36,7 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	results, err := getClientV2().Jobs().Results(&apimodels.ListJobResultsRequest{
+	results, err := getClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: submittedJob.Metadata.ID,
 	})
 	if err != nil {

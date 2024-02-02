@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
@@ -213,7 +213,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 
 	task := mock.TaskBuilder().
-		Engine(dockermodels.NewDockerEngineBuilder("ubuntu").
+		Engine(dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
 			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
 			Build()).
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
@@ -223,6 +223,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	require.NoError(s.T(), err)
 
 	values := strings.Fields(result)
+	s.Require().Len(values, 2, "the container reported CPU (%s) does not match the expected format", result)
 
 	numerator, err := strconv.Atoi(values[0])
 	require.NoError(s.T(), err)
@@ -255,7 +256,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	for _, p := range tests {
 		task := mock.TaskBuilder().
 			Engine(
-				dockermodels.NewDockerEngineBuilder("ubuntu").
+				dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
 					WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
 					Build()).
 			ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(p.in).BuildOrDie()).
@@ -263,6 +264,8 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 
 		result, err := s.runJobGetStdout(task, uuid.New().String())
 		require.NoError(s.T(), err)
+
+		s.Require().NotEmpty(result, "the container reported memory returned an empty string")
 
 		intVar, err := strconv.Atoi(strings.TrimSpace(result))
 		require.NoError(s.T(), err)
@@ -480,7 +483,11 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 		done <- true
 	}()
 	<-done
-	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
+	reader, err := s.executor.GetLogStream(ctx, executor.LogStreamRequest{
+		ExecutionID: id,
+		Tail:        true,
+		Follow:      true,
+	})
 
 	require.Nil(s.T(), reader)
 	require.Error(s.T(), err)
@@ -499,14 +506,36 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	s.startJob(task, id)
 
-	reader, err := s.executor.GetOutputStream(context.Background(), id, true, true)
+	reader, err := s.executor.GetLogStream(context.Background(), executor.LogStreamRequest{
+		ExecutionID: id,
+		Tail:        true,
+		Follow:      true,
+	})
 
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)
 
-	df, err := logger.NewDataFrameFromReader(reader)
+	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
+		Reader: reader,
+	}).Stream(context.Background())
+	res, ok := <-ch
+	executionLog := res.Value
+	require.True(s.T(), ok)
+	require.Equal(s.T(), string(executionLog.Line), "hello\n")
+	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
+
+	_, ok = <-ch
+	require.False(s.T(), ok)
+}
+
+func (s *ExecutorTestSuite) TestDockerOOM() {
+	task := mock.TaskBuilder().
+		Engine(
+			dockermodels.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("tail", "/dev/zero").
+				Build()).BuildOrDie()
+
+	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), string(df.Data), "hello\n")
-	require.Equal(s.T(), df.Size, 6)
-	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
+	require.Contains(s.T(), result.ErrorMsg, "memory limit exceeded")
 }

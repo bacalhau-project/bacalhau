@@ -23,6 +23,10 @@ func SignForClient(msg []byte) (string, error) {
 		return "", err
 	}
 
+	return Sign(msg, privKey)
+}
+
+func Sign(msg []byte, privKey *rsa.PrivateKey) (string, error) {
 	hash := sigHash.New()
 	hash.Write(msg)
 	hashBytes := hash.Sum(nil)
@@ -59,7 +63,7 @@ func VerifyForClient(msg []byte, sig string) (bool, error) {
 // Verify verifies a signed message with the given encoding of a public key.
 // Returns non nil if the key is invalid.
 func Verify(msg []byte, sig, publicKey string) error {
-	key, err := decodePublicKey(publicKey)
+	key, err := DecodePublicKey(publicKey)
 	if err != nil {
 		return fmt.Errorf("failed to decode public key: %w", err)
 	}
@@ -101,16 +105,16 @@ func GetClientPublicKey() string {
 // PublicKeyMatchesID returns true if the given base64-encoded public key and
 // the given client ID correspond to each other:
 func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
-	pkey, err := decodePublicKey(publicKey)
+	pkey, err := DecodePublicKey(publicKey)
 	if err != nil {
 		return false, fmt.Errorf("failed to decode public key: %w", err)
 	}
 
-	return clientID == convertToClientID(pkey), nil
+	return clientID == ConvertToClientID(pkey), nil
 }
 
-// convertToClientID converts a public key to a client ID:
-func convertToClientID(key *rsa.PublicKey) string {
+// ConvertToClientID converts a public key to a client ID:
+func ConvertToClientID(key *rsa.PublicKey) string {
 	hash := sigHash.New()
 	hash.Write(key.N.Bytes())
 	hashBytes := hash.Sum(nil)
@@ -118,8 +122,8 @@ func convertToClientID(key *rsa.PublicKey) string {
 	return fmt.Sprintf("%x", hashBytes)
 }
 
-// decodePublicKey decodes a public key from a string:
-func decodePublicKey(key string) (*rsa.PublicKey, error) {
+// DecodePublicKey decodes a public key from a string:
+func DecodePublicKey(key string) (*rsa.PublicKey, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode public key: %w", err)

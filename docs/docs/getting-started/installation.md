@@ -15,7 +15,7 @@ In this tutorial, you'll learn how to install and run a job with the Bacalhau cl
 The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau.  The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
 
 :::info
-By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../next-steps/private-cluster).
+By default, you will submit to the Bacalhau public network, but the same CLI can be configured to submit to a private Bacalhau network. For more information, please read Running [Bacalhau on a Private Network](../setting-up/networking-instructions/private-cluster).
 :::
 
 ### Step 1.1 - Install the Bacalhau CLI
@@ -48,7 +48,7 @@ values={[
     docker pull ghcr.io/bacalhau-project/bacalhau:latest
     ```
     
-    To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
+    To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../setting-up/workload-onboarding/bacalhau-docker-image/index.md).
 </TabItem>
 </Tabs>
 
@@ -257,7 +257,9 @@ $ cat job-9d20bbad/stdout
 
 That should print out the string `Hello World`.
 
-![image](../../static/img/Installation/cat-jobid1.png 'cat-jobid')
+```shell
+Hello world
+```
 
 With that, you have just successfully run a job on Bacalhau! :fish:
 

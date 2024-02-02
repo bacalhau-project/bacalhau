@@ -195,12 +195,12 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
-func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	handler, found := e.handlers.Get(executionID)
+func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+	handler, found := e.handlers.Get(request.ExecutionID)
 	if !found {
-		return nil, fmt.Errorf("getting outputs for execution (%s): %w", executionID, executor.ErrNotFound)
+		return nil, fmt.Errorf("getting outputs for execution (%s): %w", request.ExecutionID, executor.ErrNotFound)
 	}
-	return handler.outputStream(ctx, withHistory, follow)
+	return handler.outputStream(ctx, request)
 }
 
 // Run initiates and waits for the completion of an execution in one call.

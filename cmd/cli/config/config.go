@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
@@ -13,8 +13,8 @@ func NewCmd() *cobra.Command {
 	configCmd := &cobra.Command{
 		Use:      "config",
 		Short:    "Interact with the bacalhau configuration system.",
-		PreRunE:  util.ClientPreRunHooks,
-		PostRunE: util.ClientPostRunHooks,
+		PreRunE:  hook.ClientPreRunHooks,
+		PostRunE: hook.ClientPostRunHooks,
 	}
 	configCmd.AddCommand(newDefaultCmd())
 	configCmd.AddCommand(newListCmd())

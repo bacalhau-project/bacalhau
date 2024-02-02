@@ -4,6 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -12,11 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var orderByFields = []string{"id", "created_at"}
@@ -123,7 +124,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
 		}
 	}
-	response, err := util.GetAPIClientV2(ctx).Jobs().List(&apimodels.ListJobsRequest{
+	response, err := util.GetAPIClientV2().Jobs().List(ctx, &apimodels.ListJobsRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

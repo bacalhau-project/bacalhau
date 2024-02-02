@@ -12,7 +12,7 @@ hide_title: true
 
 # What is Bacalhau?
 
-Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_.
+Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_.
 
 Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals is to create an open, collaborative compute ecosystem that enables unparalleled collaboration. We ([Expanso.io](https://expanso.io)) offer a demo network so you can try out jobs without even installing. Give it a shot!
 
@@ -36,50 +36,15 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ## How it works
 
-Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:  
+Bacalhau concists of a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:  
 
   **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
 
   **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
 
-## Quick Start ⏱️
-
-> Understand Bacalhau in 1 minute
-
-Install the bacalhau client:
-
-- Option 1: Official installer for Windows, Linux & Mac OS
-
-```bash
-curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-- Option 2: Install with Go 1.20
-
-```bash
-go install github.com/bacalhau-project/bacalhau@latest
-```
-
-Submit a "Hello World" job:
-
-```bash
-bacalhau docker run ubuntu echo Hello World
-```
-
-The job runs on the demo Bacalhau network.
-
-Download your result:
-
-```bash
-bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
-```
-
 :::info
 For a more detailed tutorial, check out our [Getting Started Tutorial](https://docs.bacalhau.org/getting-started/installation).
 :::
-
-
-## How it works
 
 The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data.
 

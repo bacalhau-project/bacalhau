@@ -83,7 +83,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 		starting:     sync.WaitGroup{},
 		stateCounter: NewStateCounter(),
 	}
-	log.Ctx(ctx).Info().Msg("creating new bbolt database")
+	log.Ctx(ctx).Info().Msgf("creating new bbolt database at %s", dbPath)
 
 	database, err := GetDatabase(dbPath)
 	if err != nil {

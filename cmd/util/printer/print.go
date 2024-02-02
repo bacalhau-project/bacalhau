@@ -9,6 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -17,9 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 )
 
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
@@ -77,7 +78,7 @@ func PrintJobExecution(
 	}
 
 	if runtimeSettings.PrintNodeDetails || jobErr != nil {
-		executions, err := client.Jobs().Executions(&apimodels.ListJobExecutionsRequest{
+		executions, err := client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 			JobID: jobID,
 		})
 		if err != nil {
@@ -113,7 +114,7 @@ func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error
 	// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
 	// the execution to appear.
 	for i := 0; i < 10; i++ {
-		resp, err := client.Jobs().Get(&apimodels.GetJobRequest{
+		resp, err := client.Jobs().Get(cmd.Context(), &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
 		if err != nil {
@@ -126,7 +127,10 @@ func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	return util.Logs(cmd, jobID, true, true)
+	return util.Logs(cmd, util.LogOptions{
+		JobID:  jobID,
+		Follow: true,
+	})
 }
 
 // waitForJobAndPrintResultsToUser uses new job state  to decide what to output to the terminal
@@ -221,7 +225,7 @@ To cancel the job, run:
 
 	var lastEventState models.JobStateType
 	for !cmdShuttingDown {
-		resp, err := client.Jobs().Get(&apimodels.GetJobRequest{
+		resp, err := client.Jobs().Get(ctx, &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
 		if err != nil {

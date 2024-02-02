@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -20,6 +21,13 @@ var Development = types.BacalhauConfig{
 	Update: types.UpdateConfig{
 		SkipChecks: true,
 	},
+	Auth: types.AuthConfig{
+		Methods: map[string]types.AuthenticatorConfig{
+			"ClientKey": {
+				Type: authn.MethodTypeChallenge,
+			},
+		},
+	},
 	Node: types.NodeConfig{
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",
@@ -29,6 +37,14 @@ var Development = types.BacalhauConfig{
 			Host: "0.0.0.0",
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
+		},
+		Network: types.NetworkConfig{
+			Type: models.NetworkTypeLibp2p,
+			Port: 4222,
+			Cluster: types.NetworkClusterConfig{
+				Name: "global",
+				Port: 6222,
+			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.86.177.175/tcp/1235/p2p/QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu",
@@ -40,7 +56,6 @@ var Development = types.BacalhauConfig{
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
-		EstuaryAPIKey:             "",
 		AllowListedLocalPaths:     []string{},
 		Labels:                    map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
@@ -126,6 +141,14 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
+	},
+	ManifestCache: types.DockerCacheConfig{
+		Size:      1000,
+		Duration:  types.Duration(1 * time.Hour),
+		Frequency: types.Duration(1 * time.Hour),
+	},
+	LogStreamConfig: types.LogStreamConfig{
+		ChannelBufferSize: 10,
 	},
 }
 

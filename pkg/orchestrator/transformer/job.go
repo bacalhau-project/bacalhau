@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -37,11 +36,10 @@ func DefaultsApplier(defaults JobDefaults) JobTransformer {
 	return JobFn(f)
 }
 
-// RequesterInfo is a transformer that sets the requester ID and public key in the job meta.
-func RequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) JobTransformer {
+// RequesterInfo is a transformer that sets the requester ID in the job meta.
+func RequesterInfo(requesterNodeID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		job.Meta[models.MetaRequesterID] = requesterNodeID
-		job.Meta[models.MetaRequesterPublicKey] = requesterPubKey.String()
 		return nil
 	}
 	return JobFn(f)

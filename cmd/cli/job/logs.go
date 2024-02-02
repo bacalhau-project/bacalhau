@@ -14,17 +14,21 @@ var (
 `))
 
 	logsExample = templates.Examples(i18n.T(`
-		# Follow logs for a previously submitted job
-		bacalhau logs j-51225160-807e-48b8-88c9-28311c7899e1
+		# Read logs for a previously submitted job
+		bacalhau job logs j-51225160-807e-48b8-88c9-28311c7899e1
 
-		# Follow output with a short ID
-		bacalhau logs j-ebd9bf2f
+		# Follow logs for a previously submitted job
+		bacalhau job logs j-51225160-807e-48b8-88c9-28311c7899e1 --follow
+
+		# Tail logs for a previously submitted job
+		bacalhau job logs j-51225160-807e-48b8-88c9-28311c7899e1 --tail
 `))
 )
 
 type LogCommandOptions struct {
+	ExecutionID string
 	Follow      bool
-	WithHistory bool
+	Tail        bool
 }
 
 func NewLogCmd() *cobra.Command {
@@ -36,16 +40,31 @@ func NewLogCmd() *cobra.Command {
 		Example: logsExample,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
-			if err := util.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
+			opts := util.LogOptions{
+				JobID:       cmdArgs[0],
+				ExecutionID: options.ExecutionID,
+				Follow:      options.Follow,
+				Tail:        options.Tail,
+			}
+			if err := util.Logs(cmd, opts); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
+
+	logsCmd.PersistentFlags().StringVarP(
+		&options.ExecutionID, "execution-id", "e", "",
+		"Retrieve logs from a specific execution of the job.",
+	)
 
 	logsCmd.PersistentFlags().BoolVarP(
 		&options.Follow, "follow", "f", false,
 		`Follow the logs in real-time after retrieving the current logs.`,
 	)
 
+	logsCmd.PersistentFlags().BoolVarP(
+		&options.Tail, "tail", "t", false,
+		"Tail the logs from the end of the log stream.",
+	)
 	return logsCmd
 }

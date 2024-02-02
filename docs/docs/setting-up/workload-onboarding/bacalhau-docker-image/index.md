@@ -5,16 +5,13 @@ description: How to use the Bacalhau Docker image
 ---
 # Bacalhau Docker Image
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 This documentation explains how to use the Bacalhau Docker image to run tasks and manage them using the Bacalhau client.
 
 ## Prerequisites
 
 To get started, you need to install the Bacalhau client (see more information [here](../../../getting-started/installation.md)) and Docker.
 
-## 1. Pull the Docker image
+## 1. Pull the Bacalhau Docker image
 
 The first step is to pull the Bacalhau Docker image from the [Github container registry](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau).
 
@@ -55,26 +52,31 @@ v1.2.0  v1.2.0
 
 ## 3. Running a Bacalhau Job
 
-To submit a job to Bacalhau, we use the `bacalhau docker run` command:
+In the example below, an Ubuntu-based job runs to print the message 'Hello from Docker Bacalhau: 
 
 ```shell
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     docker run \
         --id-only \
         --wait \
-        ubuntu:latest -- \
-            sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
+        ubuntu:latest \
+        -- sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
-In this example, an Ubuntu-based job runs, prints the `Hello from Docker Bacalhau` message, then exits. 
 
 ### Structure of the command
 
 `ghcr.io/bacalhau-project/bacalhau:latest `: Name of the Bacalhau Docker image
 
-`--id-only......`: Output only the job id
+`--id-only`: Output only the job id
+
+`--wait`: Wait for the job to finish
 
 `ubuntu:latest.` Ubuntu container
+
+ `--`: Separate Bacalhau parameters from the command to be executed inside the container
+
+ `sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'`: The command executed inside the container 
 
 Let's have a look at the command execution in the terminal:
 
@@ -125,7 +127,7 @@ a46a9aa9-63ef-486a-a2f8-6457d7bafd2e
 ```
 
 
-## TBD 5. Checking the State of your Jobs
+## 5. Checking the State of your Jobs
 
 **Job status**: You can check the status of the job using `bacalhau list`.
 
