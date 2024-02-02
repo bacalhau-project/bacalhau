@@ -38,3 +38,8 @@ Engine:
 ```
 
 In this example, the task will be executed inside an Ubuntu 20.04 Docker container. The entrypoint is overridden to execute a bash shell that runs an echo command. An environment variable MY_ENV_VAR is set with the value myvalue, and the working directory inside the container is set to /app.
+
+## Notes
+
+- Currently, only images published to public registries are supported. Make sure your image is available in one of them, for example DockerHub or ghcr. Private images can be retrieved from docker hub by [specifying your credentials](../../running-node/quick-start-docker.md#authenticate-with-docker-hub).
+- Make sure that the architecture of your image matches the architecture of the nodes in your cluster. Also consider the possibility of using [multi-platform](https://docs.docker.com/build/building/multi-platform/) images.
