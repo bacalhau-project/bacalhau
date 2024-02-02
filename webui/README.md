@@ -7,19 +7,19 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 First, install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
 Next, run the development server. The page will reload if you make edits:
 
 ```bash
-npm start
+yarn start
 ```
 
 Before committing new code, you will need to lint it by running:
 
 ```bash
-npm run lint
+yarn run lint
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -27,7 +27,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
 
 ```bash
-npm run build
+yarn run build
 ```
 
 Builds the app for production to the `build` folder.\
@@ -39,7 +39,7 @@ Your app is ready to be deployed!
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
 ```bash
-npm run eject
+yarn run eject
 ```
 
 **Note: this is a one-way operation. Once you `eject`, you can’t go back!**
@@ -57,7 +57,7 @@ For spinning up & testing the dashboard with the API connection to the bacalhau 
 ```bash
 cd webui
 
-npm run build
+yarn run build
 
 cd..
 
