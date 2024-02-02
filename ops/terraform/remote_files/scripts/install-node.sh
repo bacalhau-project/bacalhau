@@ -122,7 +122,7 @@ function install-bacalhau-from-source() {
   sudo apt-get -y install --no-install-recommends jq nodejs make
   git clone --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
   pushd bacalhau
-  pushd webui && yarn install && popd
+  pushd webui && corepack enable && yarn set version stable && yarn install && popd
   make build-bacalhau
   sudo mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
   popd
