@@ -1,13 +1,8 @@
 .PHONY: all
-all: update build
+all: build
 
 TARGET_COMMIT ?= $(shell git describe --tags --abbrev=0)
 TEST_BUILD_TAGS ?= unit,integration
-
-.PHONY: update
-update:
-	go get github.com/bacalhau-project/bacalhau@${TARGET_COMMIT} && go mod tidy
-
 
 CMD_TARGETS := $(wildcard ./cmd/*)
 BIN_TARGETS := $(patsubst ./cmd/%,./bin/%,${CMD_TARGETS})
