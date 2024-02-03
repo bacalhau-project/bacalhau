@@ -1,5 +1,5 @@
 import React, { useContext } from "react"
-import Moment from "react-moment"
+import moment from 'moment';
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -12,6 +12,7 @@ import {
 } from "../../../helpers/helperFunctions"
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces"
 import TableSettingsContext from "../../../context/TableSettingsContext"
+import { Task } from "../../../models/task"
 
 interface TableProps {
   data: Job[]
@@ -29,11 +30,12 @@ const labelColorMap: { [key: string]: string } = {
 }
 
 function parseData(jobs: Job[]): ParsedJobData[] {
-  return jobs.map((job) => {
+  const ParsedJobData = jobs.map((job) => {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
-    const firstTask = job.Tasks[0]
+    // If there are no tasks, return an empty task
+    const firstTask = job.Tasks[0] ?? new Task("--")
     const jobType = job.Type ?? "batch"
     const jobShortID = getShortenedJobID(job.ID)
     const jobName = job.Name
@@ -54,6 +56,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       action: "Action",
     }
   })
+  return ParsedJobData
 }
 
 export const JobsTable: React.FC<TableProps> = ({ data }) => {
@@ -83,9 +86,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showCreated && (
                 <td className={styles.dateCreated}>
-                  <Moment fromNow withTitle>
-                    {jobData.createdAt}
-                  </Moment>
+                  {moment(jobData.createdAt.toISOString()).fromNow()}
                 </td>
               )}
               {settings.showProgram && (

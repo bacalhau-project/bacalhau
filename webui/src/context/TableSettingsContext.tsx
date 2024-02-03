@@ -55,7 +55,7 @@ const TableSettingsContext = createContext<TableSettingsContextType>({
   },
 })
 
-export const TableSettingsProvider: React.FC<{ children: ReactNode }> = ({
+export const TableSettingsContextProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [settings, setSettings] = useState<TableSettings>(defaultState)

@@ -30,6 +30,9 @@
       "react-dom"
     ]
   },
+  "files": [
+    "src/index.ts"
+  ],
   "include": [
     "./src",
     "./src/**/*.tsx",
