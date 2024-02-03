@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
 )
 
@@ -35,9 +39,21 @@ func (t *tracingPublisher) ValidateJob(ctx context.Context, j models.Job) error 
 
 func (t *tracingPublisher) PublishResult(
 	ctx context.Context, execution *models.Execution, resultPath string,
-) (models.SpecConfig, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
+) (spec models.SpecConfig, err error) {
+	attributes := execution.Job.MetricAttributes()
+
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name),
+		trace.WithAttributes(attributes...))
 	defer span.End()
+
+	stopwatch := telemetry.Timer(ctx, jobPublishDurationMilliseconds, attributes...)
+	defer func() {
+		dur := stopwatch()
+		log.Ctx(ctx).Debug().
+			Dur("duration", dur).
+			Object("spec", &spec).
+			Msg("published result")
+	}()
 
 	return t.delegate.PublishResult(ctx, execution, resultPath)
 }

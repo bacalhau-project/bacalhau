@@ -299,14 +299,18 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
-	stopwatch := telemetry.NewTimer(jobDurationMilliseconds)
-	stopwatch.Start()
+	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
 	operation := "Running"
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, state, err, operation)
 		}
-		stopwatch.Stop(ctx, state.Execution.Job.MetricAttributes()...)
+		dur := stopwatch()
+		log.Ctx(ctx).Debug().
+			Dur("duration", dur).
+			Str("jobID", execution.JobID).
+			Str("executionID", execution.ID).
+			Msg("run complete")
 	}()
 
 	res := e.Start(ctx, execution)
