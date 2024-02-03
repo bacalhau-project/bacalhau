@@ -184,9 +184,9 @@ ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
 .PHONY: build-bacalhau
 build-bacalhau: ${BINARY_PATH}
 
-CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
-PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
- 
+CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
+PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
+
 ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
@@ -472,24 +472,20 @@ else
     .PHONY: plugins-build $(EXECUTOR_PLUGINS)
 
     plugins-build: $(EXECUTOR_PLUGINS)
-
-    $(EXECUTOR_PLUGINS):
-	    $(MAKE) -C $@
+	@echo "Building executor plugins..."
+	@$(foreach plugin,$(EXECUTOR_PLUGINS),$(MAKE) --no-print-directory -C $(plugin) &&) true
 
     .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
 
     plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
-
-    $(addsuffix .clean,$(EXECUTOR_PLUGINS)):
-	    $(MAKE) -C $(basename $@) clean
+	@echo "Cleaning executor plugins..."
+	@$(foreach plugin,$(addsuffix .clean,$(EXECUTOR_PLUGINS)),$(MAKE) --no-print-directory -C $(basename $(plugin)) clean &&) true
 
     .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
 
     plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
-
-    $(addsuffix .install,$(EXECUTOR_PLUGINS)):
-	    mkdir -p $(INSTALL_PLUGINS_DEST)
-	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+	@echo "Installing executor plugins..."
+	@$(foreach plugin,$(addsuffix .install,$(EXECUTOR_PLUGINS)),mkdir -p $(INSTALL_PLUGINS_DEST) && cp $(basename $(plugin))/bin/* $(INSTALL_PLUGINS_DEST) &&) true
 endif
 
 .PHONY: spellcheck-code
@@ -499,9 +495,3 @@ spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
 .PHONY: spellcheck-docs
 spellcheck-docs:  ## Runs a spellchecker over all documentation - MVP just does one directory
 	cspell -c .cspell-docs.json lint ./docs/docs/dev/**
-
-.PHONY: generate
-generate:
-	@echo "Generating code...."
-	@./scripts/generate.sh
-	@echo "Done."
