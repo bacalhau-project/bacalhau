@@ -14,6 +14,7 @@
     "isolatedModules": true,
     "jsx": "react",
     "noEmit": false,
+    "outDir": "./compiled",
     "typeRoots": ["node_modules/@types", "src/types"],
     "types": ["node", "jest", "react", "react-dom"]
   },

@@ -160,10 +160,11 @@ build-dev: build-ci
 ################################################################################
 # Target: build-webui
 ################################################################################
-WEB_GO_FILES := $(shell find webui -name '*.go')
+EB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/node_modules/.cache/tsconfig.tsbuildinfo
+WEB_INSTALL_GUARD := webui/yarn.lock
+WEB_BUILD_GUARD := .web-build-guard
 
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
@@ -173,10 +174,14 @@ webui/build:
 
 $(WEB_INSTALL_GUARD): webui/package.json
 	cd webui && yarn install
+	touch $(WEB_INSTALL_GUARD)
 
 export GENERATE_SOURCEMAP := false
-${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
+${WEB_BUILD_GUARD}: $(WEB_INSTALL_GUARD) $(WEB_SRC_FILES)
 	cd webui && yarn run build
+	touch $(WEB_BUILD_GUARD)
+
+${WEB_BUILD_FILES}: ${WEB_BUILD_GUARD}
 
 ################################################################################
 # Target: build-bacalhau

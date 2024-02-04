@@ -1,5 +1,6 @@
 // Generated using webpack-cli https://github.com/webpack/webpack-cli
 
+import CopyPlugin from 'copy-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
@@ -36,6 +37,19 @@ const customConfig: Configuration = {
       'process.env': {
         PUBLIC_URL: JSON.stringify(''),
       },
+    }),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "public",
+          to: "static",
+          globOptions: {
+            dot: true,
+            gitignore: true,
+            ignore: ["**/index.html", "**/mockServiceWorker.js"],
+          },
+        }
+      ],
     }),
   ],
   module: {
