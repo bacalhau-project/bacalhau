@@ -1,11 +1,11 @@
-import { JobsDashboard } from '../pages/JobsDashboard/JobsDashboard';
+import { JobsDashboard } from "../pages/JobsDashboard/JobsDashboard"
 
 export default {
-    component: JobsDashboard,
-    title: 'JobsDashboard',
-    tags: ['autodocs'],
-};
+  component: JobsDashboard,
+  title: "JobsDashboard",
+  tags: ["autodocs"],
+}
 
 export const Default = {
-    args: {},
-};
+  args: {},
+}

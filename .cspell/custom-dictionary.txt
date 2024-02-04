@@ -155,6 +155,7 @@ jobspec
 jobstore
 jobtype
 jobutils
+jridgewell
 jsonbs
 Keras
 kthnx
@@ -280,6 +281,7 @@ uncompiled
 uncompress
 unconfigured
 unconvert
+undici
 ungzip
 unixfs
 unixfsnode
@@ -301,6 +303,7 @@ wasmmodels
 wazero
 wdbaruni's
 webui
+wesbos
 winderresearch
 workdir
 Wrapf

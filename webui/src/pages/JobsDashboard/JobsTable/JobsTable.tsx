@@ -1,5 +1,5 @@
 import React, { useContext } from "react"
-import moment from 'moment';
+import moment from "moment"
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -30,7 +30,7 @@ const labelColorMap: { [key: string]: string } = {
 }
 
 function parseData(jobs: Job[]): ParsedJobData[] {
-  const ParsedJobData = jobs.map((job) => {
+  const ParsedJobDataReturn = jobs.map((job) => {
     if (!job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
@@ -56,7 +56,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       action: "Action",
     }
   })
-  return ParsedJobData
+  return ParsedJobDataReturn
 }
 
 export const JobsTable: React.FC<TableProps> = ({ data }) => {

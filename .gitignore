@@ -57,3 +57,4 @@ clients/pyproject.toml
 webui/.yarn
 install-state.gz
 webui/.yarn/yarn.build.json
+dist/

@@ -16,8 +16,7 @@
     "@typescript-eslint/interface-name-prefix": "off",
     "@typescript-eslint/no-unused-vars": [
       "warn",
-      { "argsIgnorePattern": "^_" }
-    ],
+      { "argsIgnorePattern": "^_" }],
     "prettier/prettier": [
       "error",
       {
@@ -67,11 +66,14 @@
     "node_modules/",
     "src/serviceWorker.ts",
     "*.config.js",
+    "*.config.ts",
     "jest.polyfills.js",
     "jest.setup.js",
     "build/",
     "public/mockServiceWorker.js",
     "config/",
-    "scripts/"
+    "scripts/",
+    "src/index.js",
+    "dist/"
   ]
 }
