@@ -301,20 +301,9 @@ integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
 
-.PHONY: grc-test
-grc-test:
-	grc go test ./... -v
-.PHONY: grc-test-short
-grc-test-short:
-	grc go test ./... -test.short -v
-
 .PHONY: test-debug
 test-debug:
 	LOG_LEVEL=debug go test ./... -v
-
-.PHONY: grc-test-debug
-grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
@@ -327,6 +316,10 @@ test-devstack:
 .PHONY: test-commands
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
+
+.PHONY: test-all
+test-all: test test-python
+	cd webui && yarn run build && yarn run lint && yarn run test
 
 ################################################################################
 # Target: devstack
