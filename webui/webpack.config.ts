@@ -3,7 +3,7 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
-import { Configuration } from "webpack";
+import { Configuration, DefinePlugin } from "webpack";
 import 'webpack-dev-server';
 import { merge } from "webpack-merge";
 import WorkboxWebpackPlugin from 'workbox-webpack-plugin';
@@ -21,17 +21,22 @@ const customConfig: Configuration = {
   devServer: {
     open: true,
     host: 'localhost',
-    static: path.join(__dirname, "dist"),
+    static: path.join(__dirname, "public"),
     compress: true,
+    port: 8080
   },
   mode: 'development',
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'index.html',
+      template: 'public/index.html',
     }),
 
     new MiniCssExtractPlugin(),
-
+    new DefinePlugin({
+      'process.env': {
+        PUBLIC_URL: JSON.stringify(''),
+      },
+    }),
   ],
   module: {
     rules: [

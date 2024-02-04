@@ -261,6 +261,7 @@ sdkmetric
 sdktrace
 sharded
 shellescape
+sockjs
 softmax
 sparkoperator
 stackdriver

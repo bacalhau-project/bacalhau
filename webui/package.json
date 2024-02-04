@@ -102,10 +102,11 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "build": "yarn build:dev",
     "build:dev": "NODE_ENV=development webpack --mode=development",
     "build:prod": "webpack --mode=production --node-env=production",
     "watch": "webpack --watch",
-    "serve": "webpack serve --mode=development --node-env=development "
+    "serve": "webpack serve --mode=development --node-env=development"
   },
   "eslintConfig": {
     "include": [
@@ -183,5 +184,6 @@
     ]
   },
   "description": "WebUI for Bacalhau",
-  "main": "./src/index.tsx"
+  "main": "./src/index.tsx",
+  "homepage": "."
 }
