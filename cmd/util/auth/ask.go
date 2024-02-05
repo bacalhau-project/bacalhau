@@ -50,7 +50,7 @@ func askResponder(cmd *cobra.Command) responder {
 
 			// If the property is marked as write only, assume it is a sensitive
 			// value and make sure we don't display it in the terminal
-			if subschema.WriteOnly {
+			if subschema.WriteOnly && term.IsTerminal(int(os.Stdin.Fd())) {
 				input, err = term.ReadPassword(int(os.Stdin.Fd()))
 				fmt.Fprintln(cmd.ErrOrStderr())
 			} else {
