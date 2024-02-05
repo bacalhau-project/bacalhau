@@ -3,8 +3,8 @@ import { http, HttpResponse } from "msw"
 import { Job } from "../../src/helpers/jobInterfaces"
 import { Node } from "../../src/helpers/nodeInterfaces"
 
-export const JOBS_RETURN_LIMIT = 10
-export const NODES_RETURN_LIMIT = 10
+// export const JOBS_RETURN_LIMIT = 10
+// export const NODES_RETURN_LIMIT = 10
 // const BASE_URL = "https://localhost:1234"
 
 let internalJobs: Job[] = []
