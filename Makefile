@@ -148,7 +148,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: build-bacalhau build-plugins build-canary
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -177,6 +177,24 @@ $(WEB_INSTALL_GUARD): webui/package.json
 export GENERATE_SOURCEMAP := false
 ${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
 	cd webui && yarn run build
+
+################################################################################
+# Target: build-canary
+################################################################################
+
+.PHONY: build-canary
+build-canary:
+	@echo "Building canary release"
+	@echo "Tag: $(TAG)"
+	@echo "Commit: $(COMMIT)"
+	cd ops/aws/canary/lambda $(MAKE) build
+
+.PHONY: clean-canary
+clean-canary:
+	@echo "Clearing canary release"
+	@echo "Tag: $(TAG)"
+	@echo "Commit: $(COMMIT)"
+	cd ops/aws/canary/lambda $(MAKE) clean
 
 ################################################################################
 # Target: build-bacalhau
@@ -273,7 +291,7 @@ images: docker/.pulled
 # Target: clean
 ################################################################################
 .PHONY: clean
-clean: clean-plugins
+clean: clean-plugins clean-canary
 	${GO} clean
 	${RM} -r bin/*
 	${RM} -r webui/build/*
@@ -301,20 +319,9 @@ integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
 
-.PHONY: grc-test
-grc-test:
-	grc go test ./... -v
-.PHONY: grc-test-short
-grc-test-short:
-	grc go test ./... -test.short -v
-
 .PHONY: test-debug
 test-debug:
 	LOG_LEVEL=debug go test ./... -v
-
-.PHONY: grc-test-debug
-grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
