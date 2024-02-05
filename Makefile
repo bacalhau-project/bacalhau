@@ -160,7 +160,7 @@ build-dev: build-ci
 ################################################################################
 # Target: build-webui
 ################################################################################
-EB_GO_FILES := $(shell find webui -name '*.go')
+WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 WEB_INSTALL_GUARD := webui/yarn.lock
@@ -292,7 +292,9 @@ clean: clean-plugins
 # Target: test
 ################################################################################
 .PHONY: test
-test:
+test: unit-test bash-test
+
+.PHONY: unit-test
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
@@ -305,6 +307,10 @@ test-python:
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
+
+.PHONY: bash-test
+bash-test: ${BINARY_PATH}
+	cd test && bin/bashtub *.sh
 
 .PHONY: test-debug
 test-debug:
