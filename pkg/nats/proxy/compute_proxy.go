@@ -140,17 +140,14 @@ func proxyStreamingRequest[Request any, Response any](
 		return nil, fmt.Errorf("%T: failed to send request to node %s: %w", request.Body, request.TargetNodeID, err)
 	}
 
-	return concurrency.AsyncChannelTransform[*concurrency.AsyncResult[[]byte], Response](ctx, res, asyncRequestChanLen,
-		func(r *concurrency.AsyncResult[[]byte]) (*concurrency.AsyncResult[Response], error) {
-			if r.Err != nil {
-				return concurrency.NewAsyncError[Response](r.Err), nil
-			}
-			response := new(concurrency.AsyncResult[Response])
-			err = json.Unmarshal(r.Value, response)
+	return concurrency.AsyncChannelTransform[[]byte, Response](ctx, res, asyncRequestChanLen,
+		func(r []byte) (Response, error) {
+			response := new(Response)
+			err = json.Unmarshal(r, response)
 			if err != nil {
-				return nil, fmt.Errorf("%T: failed to decode response from node %s: %w", request.Body, request.TargetNodeID, err)
+				err = fmt.Errorf("%T: failed to decode response from node %s: %w", request.Body, request.TargetNodeID, err)
 			}
-			return response, nil
+			return *response, err
 		}), nil
 }
 

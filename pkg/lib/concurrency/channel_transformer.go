@@ -1,13 +1,15 @@
 package concurrency
 
-import "context"
+import (
+	"context"
+)
 
 // AsyncChannelTransform copies messages from an input channel, transforms them, and sends them to an output channel.
 func AsyncChannelTransform[In any, Out any](
 	ctx context.Context,
-	input <-chan In,
+	input <-chan *AsyncResult[In],
 	bufferCapacity int,
-	transform func(In) (*AsyncResult[Out], error)) <-chan *AsyncResult[Out] {
+	transform func(In) (Out, error)) <-chan *AsyncResult[Out] {
 	output := make(chan *AsyncResult[Out], bufferCapacity)
 
 	go func() {
@@ -18,8 +20,12 @@ func AsyncChannelTransform[In any, Out any](
 				if !ok {
 					return // Input channel closed
 				}
-				result := NewAsyncResult[Out](transform(msg))
-
+				result := &AsyncResult[Out]{}
+				if msg.Err != nil {
+					result.Err = msg.Err
+				} else {
+					result.Value, result.Err = transform(msg.Value)
+				}
 				select {
 				case output <- result:
 				case <-ctx.Done():
