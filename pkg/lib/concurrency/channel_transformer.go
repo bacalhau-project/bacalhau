@@ -18,13 +18,7 @@ func AsyncChannelTransform[In any, Out any](
 				if !ok {
 					return // Input channel closed
 				}
-				result := new(AsyncResult[Out])
-				transformedValue, err := transform(msg)
-				if err != nil {
-					result.Err = err
-				} else {
-					result = transformedValue
-				}
+				result := NewAsyncResult[Out](transform(msg))
 
 				select {
 				case output <- result:
