@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
@@ -43,7 +44,7 @@ func currentValue(key string) (interface{}, error) {
 		return nil, fmt.Errorf("invalid configuration key %q: not found", key)
 	}
 
-	//calling `Get` on this instance will return a default value from the config structure that we can type assert on.
+	// calling `Get` on this instance will return a default value from the config structure that we can type assert on.
 	return viperSchema.Get(key), nil
 }
 
@@ -97,6 +98,16 @@ func setConfig(key string, values ...string) error {
 			return err
 		}
 		viperWriter.Set(key, sts)
+	case map[string]types.AuthenticatorConfig:
+		cfg := struct {
+			Method string                    `yaml:"Method"`
+			Policy types.AuthenticatorConfig `yaml:"Policy"`
+		}{}
+		if err := yaml.Unmarshal([]byte(values[0]), &cfg); err != nil {
+			return err
+		}
+		methodNamePath := fmt.Sprintf("%s.%s", types.AuthMethods, cfg.Method)
+		viperWriter.Set(methodNamePath, cfg.Policy)
 	}
 
 	parser, err := getParser(curValue, key)

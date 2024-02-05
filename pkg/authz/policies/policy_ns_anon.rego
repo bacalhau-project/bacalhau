@@ -39,9 +39,21 @@ allow if {
 
 
 # The permissions the access token grants on the job namespace
-job_namespace_perms := token_namespaces[job_namespace]
+job_namespace_perms := bits.or(token_namespaces[job_namespace], token_namespaces["*"]) if {
+    token_namespaces[job_namespace]
+    token_namespaces["*"]
+}
+
+job_namespace_perms := token_namespaces[job_namespace] if {
+    token_namespaces[job_namespace]
+}
+
+job_namespace_perms := token_namespaces["*"] if {
+    token_namespaces["*"]
+}
 
 # The namespace that the submitted job is going into
+default job_namespace := ""
 job_namespace := ns if {
     jobRequest := yaml.unmarshal(input.http.body)
     ns := jobRequest["namespace"]
