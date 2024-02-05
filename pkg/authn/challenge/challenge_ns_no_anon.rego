@@ -46,5 +46,5 @@ namespace_write    := 2
 namespace_download := 4
 namespace_cancel   := 8
 
-read_only := bits.and(namespace_read, namespace_download)
-full_access := bits.and(bits.and(namespace_write, namespace_cancel), read_only)
+read_only := bits.or(namespace_read, namespace_download)
+full_access := bits.or(bits.or(namespace_write, namespace_cancel), read_only)

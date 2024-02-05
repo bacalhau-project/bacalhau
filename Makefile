@@ -287,7 +287,9 @@ clean: clean-plugins
 # Target: test
 ################################################################################
 .PHONY: test
-test:
+test: unit-test bash-test
+
+.PHONY: unit-test
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
@@ -300,6 +302,10 @@ test-python:
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
+
+.PHONY: bash-test
+bash-test: ${BINARY_PATH}
+	cd test && bin/bashtub *.sh
 
 .PHONY: grc-test
 grc-test:
