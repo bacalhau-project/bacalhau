@@ -7,11 +7,38 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 )
 
+type EvaluationStateType string
+
 const (
-	EvalStatusBlocked   = "blocked"
-	EvalStatusPending   = "pending"
-	EvalStatusComplete  = "complete"
-	EvalStatusFailed    = "failed"
+	// Evaluations can be in one of several states, with only two of them `pending`
+	// and `ready` being active states, the rest being considered terminal. The
+	// evaluation can move from `pending` to any other state, but may _only_ move
+	// back to pending if it is in the `blocked` state
+
+	// The evaluation's initial state, it will stay in pending until it has been
+	// processed by the Evaluation Broker.
+	EvalStatusPending = "pending"
+
+	// When an evaluation is being considered for evaluation, its state will be
+	// moved to ready.
+	EvalStatusReady = "ready"
+
+	// When an evaluation the output from an evaluation is currently 'running'
+	// then it will be in the inflight state
+	EvalStatusInflight = "inflight"
+
+	// If an evaluation is unable to be completed, possibly due to a temporal
+	// constraint, it will be left in the blocked state.
+	EvalStatusBlocked = "blocked"
+
+	// When fully evaluated, the evaluation will be in the completed state.
+	EvalStatusComplete = "complete"
+
+	// This status applies when an evaluation fails during procesing
+	EvalStatusFailed = "failed"
+
+	// As a result of processing, the evaluation may be determined to now be
+	// unnecessary and cancelled as a result, which will leave it in this state.
 	EvalStatusCancelled = "canceled"
 )
 
@@ -56,6 +83,10 @@ type Evaluation struct {
 	// WaitUntil is the time until which the evaluation should be ignored, such as to implement backoff when
 	// repeatedly failing to assess a job.
 	WaitUntil time.Time `json:"WaitUntil"`
+
+	// Revision is a per-evaluation monotonically increasing revision number that is incremented
+	// on each update to the job's state or specification
+	Revision uint64 `json:"Revision"`
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`
@@ -110,3 +141,7 @@ type EvaluationReceipt struct {
 	// ReceiptHandle is a unique identifier when dequeue an Evaluation from a broker.
 	ReceiptHandle string `json:"ReceiptHandle"`
 }
+
+// EvaluationStateChanged is used as a callback mechanism in cases where
+// a component is interested in state changes within an evaluation.
+type EvaluationStateChanged func(e *Evaluation)

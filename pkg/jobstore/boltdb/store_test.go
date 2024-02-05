@@ -567,8 +567,9 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
 
 	eval := models.Evaluation{
-		ID:    "e1",
-		JobID: "10",
+		ID:     "e1",
+		JobID:  "10",
+		Status: models.EvalStatusPending,
 	}
 
 	// Wrong job ID means JobNotFound
@@ -585,9 +586,77 @@ func (s *BoltJobstoreTestSuite) TestEvaluations() {
 
 	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
 	s.Require().NoError(err)
-	s.Require().Equal(e, eval)
+	s.Require().Equal(eval, e)
 
 	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestUpdateGetEvaluations() {
+	eval := models.Evaluation{
+		ID:     "e1",
+		JobID:  "1",
+		Status: models.EvalStatusPending,
+	}
+
+	err := s.store.CreateEvaluation(s.ctx, eval)
+	s.Require().NoError(err)
+
+	update := jobstore.UpdateEvaluationRequest{
+		JobID:        eval.JobID,
+		EvaluationID: eval.ID,
+		NewStatus:    models.EvalStatusFailed,
+	}
+
+	err = s.store.UpdateEvaluation(s.ctx, update)
+	s.Require().NoError(err)
+
+	evals, err := s.store.GetEvaluationsByState(s.ctx, models.EvalStatusFailed)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(evals))
+	s.Require().Equal("e1", evals[0].ID)
+
+	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(models.EvalStatusFailed, e.Status)
+
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestEvaluationsByState() {
+	evaluations := []models.Evaluation{
+		{
+			ID:         "e1",
+			JobID:      "1",
+			Status:     models.EvalStatusPending,
+			CreateTime: 2,
+		},
+		{
+			ID:         "e2",
+			JobID:      "1",
+			Status:     models.EvalStatusPending,
+			CreateTime: 1,
+		},
+	}
+
+	for _, e := range evaluations {
+		err := s.store.CreateEvaluation(s.ctx, e)
+		s.Require().NoError(err)
+	}
+
+	evals, err := s.store.GetEvaluationsByState(s.ctx, models.EvalStatusPending)
+	s.Require().NoError(err)
+
+	// We want these in the order they were created, which is by CreateTime so
+	// we should get e2, followed by e1
+	s.Require().Equal("e2", evals[0].ID)
+	s.Require().Equal("e1", evals[1].ID)
+
+	err = s.store.DeleteEvaluation(s.ctx, evals[1].ID)
+	s.Require().NoError(err)
+
+	err = s.store.DeleteEvaluation(s.ctx, evals[0].ID)
 	s.Require().NoError(err)
 }
 
