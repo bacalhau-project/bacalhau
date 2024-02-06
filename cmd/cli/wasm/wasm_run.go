@@ -224,10 +224,10 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 	}
 
 	// Publisher is now optional
-	if opts.SpecSettings.Publisher != nil {
-		p := opts.SpecSettings.Publisher.Value()
+	p := opts.SpecSettings.Publisher.Value()
+	if p != nil {
 		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = p
+		spec.PublisherSpec = *p
 	}
 
 	return &model.Job{

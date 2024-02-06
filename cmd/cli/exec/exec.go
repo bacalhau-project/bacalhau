@@ -216,8 +216,8 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		}
 	}
 
-	if options.SpecSettings.Publisher != nil {
-		publisherSpec := options.SpecSettings.Publisher.Value()
+	publisherSpec := options.SpecSettings.Publisher.Value()
+	if publisherSpec != nil {
 		job.Tasks[0].Publisher = &models.SpecConfig{
 			Type:   publisherSpec.Type.String(),
 			Params: publisherSpec.Params,

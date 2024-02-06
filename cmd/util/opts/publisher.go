@@ -14,11 +14,11 @@ import (
 var _ flag.Value = &PublisherOpt{}
 
 type PublisherOpt struct {
-	value model.PublisherSpec
+	value *model.PublisherSpec
 }
 
-func NewPublisherOptFromSpec(spec model.PublisherSpec) PublisherOpt {
-	return PublisherOpt{value: spec}
+func NewPublisherOpt() PublisherOpt {
+	return PublisherOpt{value: nil}
 }
 
 func (o *PublisherOpt) Set(value string) error {
@@ -57,7 +57,8 @@ func (o *PublisherOpt) Set(value string) error {
 			return fmt.Errorf("invalid publisher option: %s", field)
 		}
 	}
-	o.value, err = job.ParsePublisherString(destinationURI, options)
+	v, err := job.ParsePublisherString(destinationURI, options)
+	o.value = &v
 	return err
 }
 
@@ -66,15 +67,15 @@ func (o *PublisherOpt) Type() string {
 }
 
 func (o *PublisherOpt) String() string {
-	if o == nil {
+	if o.value == nil {
 		return ""
 	}
 	return o.value.Type.String()
 }
 
-func (o *PublisherOpt) Value() model.PublisherSpec {
-	if o == nil {
-		return model.PublisherSpec{}
+func (o *PublisherOpt) Value() *model.PublisherSpec {
+	if o.value == nil {
+		return nil
 	}
 	return o.value
 }

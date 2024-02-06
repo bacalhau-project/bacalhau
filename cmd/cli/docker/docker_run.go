@@ -222,10 +222,10 @@ func CreateJob(ctx context.Context, image string, parameters []string, opts *Doc
 	)
 
 	// Publisher is optional and we won't provide it if not specified
-	if opts.SpecSettings.Publisher != nil {
-		p := opts.SpecSettings.Publisher.Value()
+	p := opts.SpecSettings.Publisher.Value()
+	if p != nil {
 		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = p
+		spec.PublisherSpec = *p
 	}
 
 	if err != nil {

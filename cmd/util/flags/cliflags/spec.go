@@ -21,7 +21,7 @@ Examples:
 
 func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 	return &SpecFlagSettings{
-		Publisher:     nil,
+		Publisher:     opts.NewPublisherOpt(),
 		Inputs:        opts.StorageOpt{},
 		OutputVolumes: []string{"outputs:/outputs"},
 		EnvVar:        []string{},
@@ -33,20 +33,20 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 }
 
 type SpecFlagSettings struct {
-	Publisher     *opts.PublisherOpt // Publisher - publisher.Publisher
-	Inputs        opts.StorageOpt    // Array of inputs
-	OutputVolumes []string           // Array of output volumes in 'name:mount point' form
-	EnvVar        []string           // Array of environment variables
-	Timeout       int64              // Job execution timeout in seconds
-	Labels        []string           // Labels for the job on the Bacalhau network (for searching)
-	Selector      string             // Selector (label query) to filter nodes on which this job can be executed
+	Publisher     opts.PublisherOpt // Publisher - publisher.Publisher
+	Inputs        opts.StorageOpt   // Array of inputs
+	OutputVolumes []string          // Array of output volumes in 'name:mount point' form
+	EnvVar        []string          // Array of environment variables
+	Timeout       int64             // Job execution timeout in seconds
+	Labels        []string          // Labels for the job on the Bacalhau network (for searching)
+	Selector      string            // Selector (label query) to filter nodes on which this job can be executed
 	DoNotTrack    bool
 }
 
 func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Spec settings", pflag.ContinueOnError)
 	flags.VarP(
-		settings.Publisher,
+		&settings.Publisher,
 		"publisher",
 		"p",
 		"Where to publish the result of the job",
