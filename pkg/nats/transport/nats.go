@@ -141,9 +141,12 @@ func NewNATSTransport(ctx context.Context,
 	}
 
 	// compute proxy
-	computeProxy := proxy.NewComputeProxy(proxy.ComputeProxyParams{
+	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
 		Conn: nc.Client,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Callback to send compute events (i.e. requester endpoint)
 	computeCallback := proxy.NewCallbackProxy(proxy.CallbackProxyParams{

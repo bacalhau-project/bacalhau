@@ -15,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/benbjohnson/clock"
 
@@ -48,23 +49,37 @@ func (s *InMemoryTestSuite) SetupTest() {
 		executionStates []models.ExecutionStateType
 	}{
 		{
-			id:              uuid.New().String(),
+			id:              "11111111-1111-1111-1111-111111111111",
 			client:          "client1",
 			tags:            map[string]string{"gpu": "true", "fast": "true"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "22222222-2222-2222-2222-222222222222",
 			client:          "client2",
 			tags:            map[string]string{},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "33333333-3333-3333-3333-333333333333",
 			client:          "client3",
-			tags:            map[string]string{"slow": "true"},
+			tags:            map[string]string{"slow": "true", "max": "10"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+		},
+		{
+			id:              "44444444-4444-4444-4444-444444444444",
+			client:          "client4",
+			tags:            map[string]string{"max": "10"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+		},
+		{
+			id:              "55555555-5555-5555-5555-555555555555",
+			client:          "client5",
+			tags:            map[string]string{"max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
@@ -214,69 +229,106 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 }
 
 func (s *InMemoryTestSuite) TestSearchJobs() {
-	s.T().Run("by client ID", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			Namespace: "client1",
-		})
-		require.NoError(t, err)
-		require.Equal(t, 1, len(jobs))
-	})
-
 	s.T().Run("by client ID and included tags", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			Namespace:   "client1",
 			IncludeTags: []string{"fast", "slow"},
 		})
 		require.NoError(t, err)
+		jobs := response.Jobs
 		require.Equal(t, 1, len(jobs))
 		require.Equal(t, "client1", jobs[0].Namespace)
 		require.Contains(t, jobs[0].Labels, "fast")
 		require.NotContains(t, jobs[0].Labels, "slow")
 	})
 
-	s.T().Run("everything sorted by id", func(t *testing.T) {
-		sorted_ids := append([]string(nil), s.ids...)
-		reverse_sorted_ids := append([]string(nil), s.ids...)
-		sort.Slice(sorted_ids, func(i, j int) bool {
-			return sorted_ids[i] < sorted_ids[j]
-		})
-		sort.Slice(reverse_sorted_ids, func(i, j int) bool {
-			return reverse_sorted_ids[i] > reverse_sorted_ids[j]
-		})
-
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ReturnAll: true,
-			SortBy:    "id",
+	s.T().Run("simple selectors", func(t *testing.T) {
+		// Get the first job, which we expect to have the selector succeed with
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			Namespace: "client1",
+			Selector:  s.parseLabels("gpu=true,fast=true"),
 		})
 		require.NoError(t, err)
-		require.Equal(t, 3, len(jobs))
+		jobs := response.Jobs
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, "client1", jobs[0].Namespace)
+	})
+
+	s.T().Run("all records with selectors", func(t *testing.T) {
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			Selector: s.parseLabels("max>1"),
+			Limit:    2,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, len(response.Jobs))
+	})
+
+	s.T().Run("all records with selectors and paging", func(t *testing.T) {
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			SortBy:   "created_at",
+			Selector: s.parseLabels("max>1"),
+			Limit:    2,
+		})
+		require.NoError(t, err)
+		jobs := response.Jobs
+		require.Equal(t, 2, len(jobs))
+
+		// Having skipped the first two s.ids because of non-matching selectors,
+		// we expect the next two to match
+		require.Equal(t, s.ids[2], jobs[0].ID)
+		require.Equal(t, s.ids[3], jobs[1].ID)
+
+		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			SortBy:   "created_at",
+			Selector: s.parseLabels("max>1"),
+			Limit:    2,
+			Offset:   2,
+		})
+
+		require.NoError(t, err)
+		jobs = response.Jobs
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, s.ids[4], jobs[0].ID)
+	})
+
+	s.T().Run("everything sorted by created_at", func(t *testing.T) {
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+		})
+		require.NoError(t, err)
+		jobs := response.Jobs
+		require.Equal(t, 5, len(jobs))
 
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, sorted_ids, ids)
 
-		jobs, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		require.EqualValues(t, s.ids, ids)
+
+		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
-			SortBy:      "id",
 			SortReverse: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 3, len(jobs))
+		jobs = response.Jobs
+		require.Equal(t, 5, len(jobs))
 
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
 
-		require.EqualValues(t, reverse_sorted_ids, ids)
+		working := append([]string(nil), s.ids...)
+		reversedOriginals := lo.Reverse(working)
+
+		require.EqualValues(t, reversedOriginals, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 3, len(jobs))
+		require.Equal(t, 5, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
@@ -284,12 +336,12 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 	})
 
 	s.T().Run("everything limit", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
 			Limit:     2,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 2, len(jobs))
+		require.Equal(t, 2, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset/limit", func(t *testing.T) {
@@ -297,39 +349,31 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 	})
 
 	s.T().Run("include tags", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			IncludeTags: []string{"gpu"},
 		})
+
 		require.NoError(t, err)
-		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID)
+		require.Equal(t, 1, len(response.Jobs))
+		require.Equal(t, s.ids[0], response.Jobs[0].ID)
 	})
 
 	s.T().Run("all but exclude tags", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 2, len(jobs))
+		require.Equal(t, 4, len(response.Jobs))
 	})
 
 	s.T().Run("include-exclude same tag", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			IncludeTags: []string{"gpu"},
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 0, len(jobs))
-	})
-
-	s.T().Run("by id", func(t *testing.T) {
-		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID: s.ids[0],
-		})
-		require.NoError(t, err)
-		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID)
+		require.Equal(t, 0, len(response.Jobs))
 	})
 }
 
@@ -372,9 +416,15 @@ func (s *InMemoryTestSuite) TestGetExecutions() {
 func (s *InMemoryTestSuite) TestInProgressJobs() {
 	jobs, err := s.store.GetInProgressJobs(s.ctx)
 	s.NoError(err)
-	s.Equal(1, len(jobs))
-	last_id := s.ids[2]
-	s.Equal(last_id, jobs[0].ID)
+	s.Equal(3, len(jobs))
+
+	sourceIDs := s.ids[2:]
+	sort.Strings(sourceIDs)
+
+	jobIDs := lo.Map(jobs, func(item models.Job, _ int) string { return item.ID })
+	sort.Strings(jobIDs)
+
+	s.Equal(sourceIDs, jobIDs)
 }
 
 func (s *InMemoryTestSuite) TestEvents() {
@@ -491,6 +541,13 @@ func (s *InMemoryTestSuite) TestEvaluations() {
 
 	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
 	s.NoError(err)
+}
+
+func (s *InMemoryTestSuite) parseLabels(selector string) labels.Selector {
+	req, err := labels.ParseToRequirements(selector)
+	s.NoError(err)
+
+	return labels.NewSelector().Add(req...)
 }
 
 func makeDockerEngineJob(entrypointArray []string) *models.Job {

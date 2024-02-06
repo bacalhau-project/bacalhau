@@ -5,18 +5,29 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type JobQuery struct {
-	ID          string   `json:"id"`
-	Namespace   string   `json:"namespace"`
-	IncludeTags []string `json:"include_tags"`
-	ExcludeTags []string `json:"exclude_tags"`
-	Limit       uint32   `json:"limit"`
-	Offset      uint32   `json:"offset"`
-	ReturnAll   bool     `json:"return_all"`
-	SortBy      string   `json:"sort_by"`
-	SortReverse bool     `json:"sort_reverse"`
+	Namespace string
+
+	// IncludeTags and ExcludeTags are used primarily by the requester's list API.
+	// In the orchestrator API, we insted use the Selector field to filter jobs.
+	IncludeTags []string
+	ExcludeTags []string
+	Limit       uint32
+	Offset      uint32
+	ReturnAll   bool
+	SortBy      string
+	SortReverse bool
+	Selector    labels.Selector
+}
+
+type JobQueryResponse struct {
+	Jobs       []models.Job
+	Offset     uint32 // Offset into the filtered results of the first returned record
+	Limit      uint32 // The number of records to return, 0 means all
+	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
 // A Store will persist jobs and their state to the underlying storage.
@@ -42,7 +53,7 @@ type Store interface {
 
 	// GetJobs retrieves a slice of jobs defined by the contents of the
 	// [JobQuery]. If it fails, it will return an error
-	GetJobs(ctx context.Context, query JobQuery) ([]models.Job, error)
+	GetJobs(ctx context.Context, query JobQuery) (*JobQueryResponse, error)
 
 	// GetInProgressJobs retrieves all jobs that have a state that can be
 	// considered, 'in progress'. Failure generates an error.

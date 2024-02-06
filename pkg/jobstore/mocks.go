@@ -5,6 +5,7 @@
 //
 //	mockgen --source types.go --destination mocks.go --package jobstore
 //
+
 // Package jobstore is a generated GoMock package.
 package jobstore
 
@@ -199,10 +200,10 @@ func (mr *MockStoreMockRecorder) GetJobHistory(ctx, jobID, options any) *gomock.
 }
 
 // GetJobs mocks base method.
-func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) ([]models.Job, error) {
+func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) (*JobQueryResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJobs", ctx, query)
-	ret0, _ := ret[0].([]models.Job)
+	ret0, _ := ret[0].(*JobQueryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
