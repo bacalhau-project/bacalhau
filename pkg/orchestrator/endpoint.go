@@ -266,7 +266,11 @@ func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsReques
 			if err != nil {
 				return GetResultsResponse{}, err
 			}
-			results = append(results, result)
+
+			// Only add valid results
+			if result.Type != "" {
+				results = append(results, result)
+			}
 		}
 	}
 

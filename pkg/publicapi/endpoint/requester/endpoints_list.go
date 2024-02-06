@@ -30,12 +30,19 @@ import (
 //nolint:lll
 func (s *Endpoint) list(c echo.Context) error {
 	var listReq legacymodels.ListRequest
+	var err error
+	var jobList []model.Job
 
 	if err := c.Bind(&listReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	jobList, err := s.getJobsList(c.Request().Context(), listReq)
+	if listReq.JobID != "" {
+		jobList, err = s.getSingleJob(c.Request().Context(), listReq.JobID)
+	} else {
+		jobList, err = s.getJobsList(c.Request().Context(), listReq)
+	}
+
 	if err != nil {
 		_, ok := err.(*bacerrors.JobNotFound)
 		if ok {
@@ -63,10 +70,23 @@ func (s *Endpoint) list(c echo.Context) error {
 	})
 }
 
+func (s *Endpoint) getSingleJob(ctx context.Context, jobID string) ([]model.Job, error) {
+	job, err := s.jobStore.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	convertedJob, err := legacy.ToLegacyJob(&job)
+	if err != nil {
+		return nil, err
+	}
+
+	return []model.Job{*convertedJob}, nil
+}
+
 func (s *Endpoint) getJobsList(ctx context.Context, listReq legacymodels.ListRequest) ([]model.Job, error) {
-	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
+	response, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
 		Namespace:   listReq.ClientID,
-		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
 		IncludeTags: listReq.IncludeTags,
 		ExcludeTags: listReq.ExcludeTags,
@@ -77,9 +97,9 @@ func (s *Endpoint) getJobsList(ctx context.Context, listReq legacymodels.ListReq
 	if err != nil {
 		return nil, err
 	}
-	res := make([]model.Job, len(list))
-	for i := range list {
-		legacyJob, err := legacy.ToLegacyJob(&list[i])
+	res := make([]model.Job, len(response.Jobs))
+	for i := range response.Jobs {
+		legacyJob, err := legacy.ToLegacyJob(&response.Jobs[i])
 		if err != nil {
 			return nil, err
 		}

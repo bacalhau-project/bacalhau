@@ -106,6 +106,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
+		"--publisher", "ipfs",
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"-o", "data:/data",
 		"--wait",
@@ -133,6 +134,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	})
 	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
+
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
 	hostID := s.Node.ID
 	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))

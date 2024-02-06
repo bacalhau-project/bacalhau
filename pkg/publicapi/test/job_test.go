@@ -75,7 +75,7 @@ func (s *ServerSuite) TestJobOperations() {
 	resultsResponse, err := s.client.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{JobID: putResponse.JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(resultsResponse)
-	s.Require().NotEmpty(resultsResponse.Results)
+	s.Require().Empty(resultsResponse.Results, "expected no results as we did not specify a publisher")
 
 	// stop the job should fail as it is already complete
 	_, err = s.client.Jobs().Stop(ctx, &apimodels.StopJobRequest{JobID: putResponse.JobID})

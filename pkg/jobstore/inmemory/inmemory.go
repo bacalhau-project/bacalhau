@@ -13,6 +13,7 @@ import (
 	"github.com/imdario/mergo"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -101,24 +102,13 @@ func (d *InMemoryJobStore) GetJob(_ context.Context, id string) (models.Job, err
 	return d.getJob(id)
 }
 
-func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]models.Job, error) {
+//nolint:gocyclo,funlen
+func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	var result []models.Job
 
-	if query.ID != "" {
-		j, err := d.getJob(query.ID)
-		if err != nil {
-			return nil, err
-		}
-		return []models.Job{j}, nil
-	}
-
 	for _, j := range maps.Values(d.jobs) {
-		if query.Limit > 0 && uint32(len(result)) == query.Limit {
-			break
-		}
-
 		if !query.ReturnAll && query.Namespace != "" && query.Namespace != j.Namespace {
 			// Job is not for the requesting client, so ignore it.
 			continue
@@ -146,25 +136,54 @@ func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery)
 
 	listSorter := func(i, j int) bool {
 		switch query.SortBy {
-		case "id":
+		case "modified_at":
 			if query.SortReverse {
-				// what does it mean to sort by ID?
-				return result[i].ID > result[j].ID
+				return result[i].ModifyTime > result[j].ModifyTime
 			} else {
-				return result[i].ID < result[j].ID
+				return result[i].ModifyTime < result[j].ModifyTime
 			}
-		case "created_at":
+		default:
+			// We apply createdat as a default sort so that we can use it for pagination.
+			// Without a known default we won't have a stable sort that makes sense for
+			// offsets/limits.
 			if query.SortReverse {
 				return result[i].CreateTime > result[j].CreateTime
 			} else {
 				return result[i].CreateTime < result[j].CreateTime
 			}
-		default:
-			return false
 		}
 	}
 	sort.Slice(result, listSorter)
-	return result, nil
+
+	if query.Selector != nil {
+		var filtered []models.Job
+		for _, j := range result {
+			if query.Selector.Matches(labels.Set(j.Labels)) {
+				filtered = append(filtered, j)
+			}
+		}
+		result = filtered
+	}
+
+	// To be able to extract based on offset and limit, we need the records to be sorted in
+	// the same order for each query.  This is why we sort the list above and why the offset
+	// and limit are applied so late.
+	if query.Offset > 0 && query.Offset <= uint32(len(result)) {
+		result = result[query.Offset:]
+	}
+
+	if query.Limit > 0 && query.Limit <= uint32(len(result)) {
+		result = result[:query.Limit+query.Offset]
+	}
+
+	response := &jobstore.JobQueryResponse{
+		Jobs:       result,
+		Offset:     query.Offset,
+		Limit:      query.Limit,
+		NextOffset: query.Limit + query.Offset,
+	}
+
+	return response, nil
 }
 
 func (d *InMemoryJobStore) GetExecutions(_ context.Context, jobID string) ([]models.Execution, error) {
@@ -517,5 +536,5 @@ func (d *InMemoryJobStore) appendExecutionHistory(updatedExecution models.Execut
 	d.history[updatedExecution.JobID] = append(d.history[updatedExecution.JobID], historyEntry)
 }
 
-// Static check to ensure that Transport implements Transport:
+// Static check to ensure that InMemoryJobStore implements jobstore.Store
 var _ jobstore.Store = (*InMemoryJobStore)(nil)

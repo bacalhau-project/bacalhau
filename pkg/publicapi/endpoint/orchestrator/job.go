@@ -3,13 +3,12 @@ package orchestrator
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -37,6 +36,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
@@ -105,16 +105,25 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
-	var offset uint64
+	var offset uint32
 	var err error
+
+	// If the request contains a paging token then it is decoded and used to replace
+	// any other values provided in the request. This allows for stable sorting to
+	// allow the pagination to work correctly.
 	if args.NextToken != "" {
-		offset, err = strconv.ParseUint(args.NextToken, 10, 32)
+		token, err := models.NewPagingTokenFromString(args.NextToken)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
+
+		// Overwrite any provided values with the ones from the token.
+		args.OrderBy = token.SortBy
+		args.Reverse = token.SortReverse
+		args.Limit = token.Limit
+		offset = token.Offset
 	}
 
-	// TODO: #3178 implement label selectors in jobstore instead of filtering here
 	selector, err := parseLabels(c)
 	if err != nil {
 		return err
@@ -123,9 +132,10 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 	query := jobstore.JobQuery{
 		Namespace:   args.Namespace,
 		Limit:       args.Limit,
-		Offset:      uint32(offset),
+		Offset:      offset,
 		SortBy:      args.OrderBy,
 		SortReverse: args.Reverse,
+		Selector:    selector,
 	}
 
 	if args.Namespace == apimodels.AllNamespacesNamespace {
@@ -133,19 +143,34 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		query.ReturnAll = true
 	}
 
-	jobs, err := e.store.GetJobs(ctx, query)
+	response, err := e.store.GetJobs(ctx, query)
 	if err != nil {
 		return err
 	}
 
+	var nextToken string
+	// If the next offset > 0 then it means there are more records to be returned, so
+	// we should give the user a token to use that will return the next page of results.
+	// We encode the current settings into the token to maintain a stable sort across
+	// pages.
+	if response.NextOffset != 0 {
+		nextToken = models.NewPagingToken(&models.PagingTokenParams{
+			SortBy:      args.OrderBy,
+			SortReverse: args.Reverse,
+			Limit:       args.Limit,
+			Offset:      response.NextOffset,
+		}).String()
+	}
+
 	res := &apimodels.ListJobsResponse{
-		Jobs: make([]*models.Job, 0),
+		Jobs: lo.Map[models.Job, *models.Job](response.Jobs, func(item models.Job, _ int) *models.Job {
+			return &item
+		}),
+		BaseListResponse: apimodels.BaseListResponse{
+			NextToken: nextToken,
+		},
 	}
-	for i := range jobs {
-		if selector.Matches(labels.Set(jobs[i].Labels)) {
-			res.Jobs = append(res.Jobs, &jobs[i])
-		}
-	}
+
 	return c.JSON(http.StatusOK, res)
 }
 
@@ -343,6 +368,7 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
 	return publicapi.UnescapedJSON(c, http.StatusOK, &apimodels.ListJobResultsResponse{
 		Results: resp.Results,
 	})

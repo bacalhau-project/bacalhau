@@ -1,30 +1,17 @@
 package proxy
 
-import "errors"
-
-type Result[T any] struct {
-	Response T
-	Error    string
+type BaseRequest[T any] struct {
+	TargetNodeID string
+	Method       string
+	Body         T
 }
 
-func newResult[T any](response *T, err error) Result[T] {
-	if err != nil {
-		return Result[T]{
-			Error: err.Error(),
-		}
-	}
-
-	return Result[T]{
-		Response: *response,
-	}
+// ComputeEndpoint return the compute endpoint for the base request.
+func (r *BaseRequest[T]) ComputeEndpoint() string {
+	return computeEndpointPublishSubject(r.TargetNodeID, r.Method)
 }
 
-func (r *Result[T]) Rehydrate() (T, error) {
-	var e error = nil
-
-	if r.Error != "" {
-		e = errors.New(r.Error)
-	}
-
-	return r.Response, e
+// OrchestratorEndpoint return the orchestrator endpoint for the base request.
+func (r *BaseRequest[T]) OrchestratorEndpoint() string {
+	return callbackPublishSubject(r.TargetNodeID, r.Method)
 }
