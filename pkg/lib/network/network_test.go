@@ -14,7 +14,7 @@ type NetworkTestSuite struct {
 	suite.Suite
 }
 
-func TestEnvTestSuite(t *testing.T) {
+func TestNetworkSuite(t *testing.T) {
 	suite.Run(t, new(NetworkTestSuite))
 }
 
