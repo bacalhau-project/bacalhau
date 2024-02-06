@@ -127,12 +127,10 @@ commands:
 
   install_python:
     steps:
-      - run: sudo apt install python3.10 -y
+      - run: pyenv install 3.10
+      - run: pyenv global 3.10
       - run: curl -sSL https://install.python-poetry.org | python3 -
       - run: echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
-      # Find Python 3.10 executable path and set it for Poetry
-      - run: PYTHON_PATH=$(which python3.10) && poetry env use $PYTHON_PATH
-
 jobs:
   build_cli:
     executor: linux-amd64
@@ -287,6 +285,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - install_python
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:
@@ -312,10 +311,8 @@ jobs:
       - run:
           name: Install Python SDK pre-requisites
           command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
             cd python
-            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
+            poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
       - run:
           name: Build Python SDK
           command: |
@@ -505,6 +502,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - install_python
       - attach_workspace:
           at: /tmp/py_dist
       - run:
@@ -520,11 +518,6 @@ jobs:
           name: Release python apiclient
           command: |
             make release-python-apiclient
-      - run:
-          name: Install Python SDK pre-requisites
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
       - run:
           name: Release python sdk
           command: |
