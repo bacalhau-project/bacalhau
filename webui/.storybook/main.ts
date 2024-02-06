@@ -1,11 +1,11 @@
 import type { StorybookConfig } from "@storybook/react-webpack5";
 
-import { config as baseConfig } from '../webpack.config';
+const baseConfig = require("../webpack.config");
 
 const config: StorybookConfig = {
   stories: [
     "../src/**/*.mdx",
-    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../src/**/*.stories.ts",
   ],
   addons: [
     "@storybook/addon-links",
@@ -18,16 +18,9 @@ const config: StorybookConfig = {
     '@storybook/addon-viewport',
     '@storybook/addon-a11y',
     '@storybook/react',
-    {
-      name: '@storybook/addon-coverage',
-      options: {
-        istanbul: {
-          exclude: ['**/components/**/index.ts'],
-        },
-      },
-    },
     'storybook-addon-module-mock',
     'storybook-addon-react-router-v6',
+    '@storybook/addon-mdx-gfm'
   ],
   framework: {
     name: "@storybook/react-webpack5",
@@ -44,12 +37,12 @@ const config: StorybookConfig = {
     reactDocgen: 'react-docgen',
   },
   webpackFinal: async (config) => {
-    const webpackConfig = config;
+    const storybookWebpackConfig = config;
     return {
-      ...webpackConfig,
+      ...storybookWebpackConfig,
       module: {
-        ...webpackConfig.module,
-        rules: [...(webpackConfig.module?.rules ?? []), ...(baseConfig.module?.rules ?? [])]
+        ...storybookWebpackConfig.module,
+        rules: [...(storybookWebpackConfig.module?.rules ?? []), ...(baseConfig.module?.rules ?? [])]
       },
     };
   },

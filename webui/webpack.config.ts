@@ -6,7 +6,7 @@ import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
 import { Configuration, DefinePlugin } from "webpack";
 import 'webpack-dev-server';
-import { merge } from "webpack-merge";
+import { merge } from 'webpack-merge';
 import WorkboxWebpackPlugin from 'workbox-webpack-plugin';
 const base = require("./config/webpack.config.js");
 
@@ -96,4 +96,3 @@ const c = () => {
 }
 
 module.exports = merge(base, c());
-
