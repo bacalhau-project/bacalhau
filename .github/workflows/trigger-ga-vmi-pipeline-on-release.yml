@@ -1,0 +1,33 @@
+name: Release Event Workflow
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  handle-release:
+    runs-on: ubuntu-latest
+    environment: secrets  # The name of the environment to use
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Check if Personal Access Token is set
+        run: |
+          if [ -z "${{ secrets.PERSONAL_ACCESS_TOKEN }}" ]; then
+            echo "PERSONAL_ACCESS_TOKEN is not set. Exiting..."
+            exit 1
+          else
+            echo "PERSONAL_ACCESS_TOKEN is set. Continuing..."
+          fi
+
+      - name: Trigger Workflow in Another Repo
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          REPO: bacalhau-project/bacalhau-vmi
+        run: |
+          curl -X POST \
+          -H "Authorization: token $TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/$REPO/dispatches" \
+          -d '{"event_type": "new-version-release", "client_payload": {"release_tag": "${{ github.ref_name }}"} }'
