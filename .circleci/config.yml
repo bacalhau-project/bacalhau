@@ -130,6 +130,8 @@ commands:
       - run: sudo apt install python3.10 -y
       - run: curl -sSL https://install.python-poetry.org | python3 -
       - run: echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+      # Find Python 3.10 executable path and set it for Poetry
+      - run: PYTHON_PATH=$(which python3.10) && poetry env use $PYTHON_PATH
 
 jobs:
   build_cli:
