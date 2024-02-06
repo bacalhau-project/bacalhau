@@ -129,8 +129,8 @@ commands:
     steps:
       - run: which python3
       - run: python3 --version
-      - run: pyenv install 3.10.0
-      - run: pyenv global 3.10.0
+      - run: pyenv install 3.10
+      - run: pyenv global 3.10
       - run: which python3
       - run: python3 --version
       - run: curl -sSL https://install.python-poetry.org | python3 -
