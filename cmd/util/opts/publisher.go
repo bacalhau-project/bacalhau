@@ -73,5 +73,8 @@ func (o *PublisherOpt) String() string {
 }
 
 func (o *PublisherOpt) Value() model.PublisherSpec {
+	if o == nil {
+		return model.PublisherSpec{}
+	}
 	return o.value
 }

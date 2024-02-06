@@ -216,11 +216,12 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		}
 	}
 
-	// Add the default publisher (which is currently IPFS)
-	publisherSpec := options.SpecSettings.Publisher.Value()
-	job.Tasks[0].Publisher = &models.SpecConfig{
-		Type:   publisherSpec.Type.String(),
-		Params: publisherSpec.Params,
+	if options.SpecSettings.Publisher != nil {
+		publisherSpec := options.SpecSettings.Publisher.Value()
+		job.Tasks[0].Publisher = &models.SpecConfig{
+			Type:   publisherSpec.Type.String(),
+			Params: publisherSpec.Params,
+		}
 	}
 
 	// Handle ResultPaths by using the legacy parser and converting.
