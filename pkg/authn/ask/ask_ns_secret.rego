@@ -30,28 +30,31 @@ valid_secret if {
 	expected_secret == input.ask.token
 }
 
-token := io.jwt.encode_sign(
-	{
-		"typ": "JWT",
-		"alg": "RS256",
-	},
-	{
-		"iss": input.nodeId,
-		"aud": [input.nodeId],
-		"iat": now,
-		"exp": one_month,
-		"ns": {
-			# Full access to all namespaces
-			"*": full_access,
+token := t if {
+	valid_secret
+	t := io.jwt.encode_sign(
+		{
+			"typ": "JWT",
+			"alg": "RS256",
 		},
-	},
-	input.signingKey,
-)
+		{
+			"iss": input.nodeId,
+			"aud": [input.nodeId],
+			"iat": now,
+			"exp": one_month,
+			"ns": {
+				# Full access to all namespaces
+				"*": full_access,
+			},
+		},
+		input.signingKey,
+	)
+}
 
 namespace_read := 1
 namespace_write := 2
 namespace_download := 4
 namespace_cancel := 8
 
-read_only := bits.and(namespace_read, namespace_download)
-full_access := bits.and(bits.and(namespace_write, namespace_cancel), read_only)
+read_only := bits.or(namespace_read, namespace_download)
+full_access := bits.or(bits.or(namespace_write, namespace_cancel), read_only)

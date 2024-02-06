@@ -107,11 +107,7 @@ func setConfig(key string, values ...string) error {
 			return err
 		}
 		methodNamePath := fmt.Sprintf("%s.%s", types.AuthMethods, cfg.Method)
-		methodNameTypePath := fmt.Sprintf("%s.type", methodNamePath)
-		methodNamePolicyPath := fmt.Sprintf("%s.policypath", methodNamePath)
-		viperWriter.Set(methodNamePath, cfg.Method)
-		viperWriter.Set(methodNameTypePath, cfg.Policy.Type)
-		viperWriter.Set(methodNamePolicyPath, cfg.Policy.PolicyPath)
+		viperWriter.Set(methodNamePath, cfg.Policy)
 	}
 
 	parser, err := getParser(curValue, key)
