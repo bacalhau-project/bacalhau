@@ -11,6 +11,28 @@ type AsyncResult[T any] struct {
 	Err   error `json:"error,omitempty"`
 }
 
+// NewAsyncValue creates a new AsyncResult with a value
+func NewAsyncValue[T any](value T) *AsyncResult[T] {
+	return &AsyncResult[T]{
+		Value: value,
+	}
+}
+
+// NewAsyncError creates a new AsyncResult with an error
+func NewAsyncError[T any](err error) *AsyncResult[T] {
+	return &AsyncResult[T]{
+		Err: err,
+	}
+}
+
+// NewAsyncResult creates a new AsyncResult with a value and an error
+func NewAsyncResult[T any](value T, err error) *AsyncResult[T] {
+	return &AsyncResult[T]{
+		Value: value,
+		Err:   err,
+	}
+}
+
 // MarshalJSON customizes the JSON representation of AsyncResult
 func (ar AsyncResult[T]) MarshalJSON() ([]byte, error) {
 	type Alias AsyncResult[T]
@@ -41,6 +63,10 @@ func (ar *AsyncResult[T]) UnmarshalJSON(data []byte) error {
 		ar.Err = fmt.Errorf(aux.Error)
 	}
 	return nil
+}
+
+func (ar *AsyncResult[T]) ValueOrError() (T, error) {
+	return ar.Value, ar.Err
 }
 
 func errorToString(err error) string {
