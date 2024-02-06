@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -290,21 +291,16 @@ func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
 }
 
 // GetJobs returns all Jobs that match the provided query
-func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]models.Job, error) {
-	var jobs []models.Job
+func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
+	var response *jobstore.JobQueryResponse
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		jobs, err = b.getJobs(tx, query)
+		response, err = b.getJobs(tx, query)
 		return
 	})
-	return jobs, err
+	return response, err
 }
 
-func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]models.Job, error) {
-	if query.ID != "" {
-		job, err := b.getJob(tx, query.ID)
-		return []models.Job{job}, err
-	}
-
+func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
 	jobSet, err := b.getJobsInitialSet(tx, query)
 	if err != nil {
 		return nil, err
@@ -325,7 +321,53 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]models.J
 		return nil, err
 	}
 
-	return b.getJobsWithinLimit(result, query), nil
+	// Sort the jobs according to the query.SortBy and query.SortOrder
+	listSorter := func(i, j int) bool {
+		switch query.SortBy {
+		case "modified_at":
+			if query.SortReverse {
+				return result[i].ModifyTime > result[j].ModifyTime
+			} else {
+				return result[i].ModifyTime < result[j].ModifyTime
+			}
+		default:
+			// We apply created_at as a default sort so that we can use it for pagination.
+			// Without a known default we won't have a stable sort that makes sense for
+			// offsets/limits.
+			if query.SortReverse {
+				return result[i].CreateTime > result[j].CreateTime
+			} else {
+				return result[i].CreateTime < result[j].CreateTime
+			}
+		}
+	}
+	sort.Slice(result, listSorter)
+
+	// If we have a selector, filter the results to only those that match
+	if query.Selector != nil {
+		var filtered []models.Job
+		for _, job := range result {
+			if query.Selector.Matches(labels.Set(job.Labels)) {
+				filtered = append(filtered, job)
+			}
+		}
+		result = filtered
+	}
+
+	jobs, more := b.getJobsWithinLimit(result, query)
+
+	response := &jobstore.JobQueryResponse{
+		Jobs:   jobs,
+		Offset: query.Offset,
+		Limit:  query.Limit,
+	}
+
+	// If we don't have 'limit' jobs, then there definitely aren't any more
+	if more {
+		response.NextOffset = query.Offset + query.Limit
+	}
+
+	return response, nil
 }
 
 // getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
@@ -430,15 +472,22 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 	return result, nil
 }
 
-func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) []models.Job {
-	limit := query.Limit
-	if limit == 0 {
-		limit = uint32(len(jobs))
-	} else {
-		limit = math.Min(uint32(len(jobs)), limit+query.Offset)
+func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) ([]models.Job, bool) {
+	if query.Offset >= uint32(len(jobs)) {
+		return []models.Job{}, false
 	}
 
-	return jobs[query.Offset:limit]
+	jobsFiltered := jobs[query.Offset:]
+	if query.Limit == 0 {
+		return jobsFiltered, false
+	}
+
+	limit := math.Min(uint32(len(jobsFiltered)), query.Limit)
+	filteredLength := uint32(len(jobsFiltered))
+
+	jobsFiltered = jobsFiltered[:limit]
+
+	return jobsFiltered, filteredLength > query.Limit
 }
 
 func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery) func(i, j int) bool {
@@ -1100,3 +1149,6 @@ func (b *BoltJobStore) Close(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msg("closing bolt-backed job store")
 	return b.database.Close()
 }
+
+// Static check to ensure that InMemoryJobStore implements jobstore.Store
+var _ jobstore.Store = (*BoltJobStore)(nil)
