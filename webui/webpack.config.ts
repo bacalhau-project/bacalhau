@@ -16,7 +16,7 @@ const stylesHandler = MiniCssExtractPlugin.loader;
 const customConfig: Configuration = {
   entry: './src/index.tsx',
   output: {
-    filename: 'bundle.js',
+    filename: "build/[name].js",
     path: path.resolve(__dirname, 'build'),
   },
   devServer: {
