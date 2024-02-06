@@ -36,6 +36,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
@@ -367,6 +368,7 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
 	return publicapi.UnescapedJSON(c, http.StatusOK, &apimodels.ListJobResultsResponse{
 		Results: resp.Results,
 	})
