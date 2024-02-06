@@ -199,7 +199,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 
 	spec, err := job.MakeWasmSpec(
 		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		job.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		job.WithResources(
 			opts.ResourceSettings.CPU,
 			opts.ResourceSettings.Memory,
@@ -222,6 +221,13 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Publisher is now optional
+	if opts.SpecSettings.Publisher != nil {
+		p := opts.SpecSettings.Publisher.Value()
+		spec.Publisher = p.Type //nolint:staticcheck
+		spec.PublisherSpec = p
 	}
 
 	return &model.Job{

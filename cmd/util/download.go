@@ -33,7 +33,9 @@ func DownloadResultsHandler(
 	}
 
 	if len(response.Results) == 0 {
-		return fmt.Errorf("no results found")
+		// No results doesn't mean error, so we should print out a message and return nil
+		cmd.Println("no results found")
+		return nil
 	}
 
 	downloaderProvider := util.NewStandardDownloaders(cm)

@@ -200,7 +200,6 @@ func CreateJob(ctx context.Context, image string, parameters []string, opts *Doc
 
 	spec, err := jobutils.MakeDockerSpec(
 		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
-		jobutils.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		jobutils.WithResources(
 			opts.ResourceSettings.CPU,
 			opts.ResourceSettings.Memory,
@@ -221,6 +220,14 @@ func CreateJob(ctx context.Context, image string, parameters []string, opts *Doc
 			opts.DealSettings.Concurrency,
 		),
 	)
+
+	// Publisher is optional and we won't provide it if not specified
+	if opts.SpecSettings.Publisher != nil {
+		p := opts.SpecSettings.Publisher.Value()
+		spec.Publisher = p.Type //nolint:staticcheck
+		spec.PublisherSpec = p
+	}
+
 	if err != nil {
 		return nil, err
 	}

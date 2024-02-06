@@ -66,6 +66,9 @@ func (o *PublisherOpt) Type() string {
 }
 
 func (o *PublisherOpt) String() string {
+	if o == nil {
+		return ""
+	}
 	return o.value.Type.String()
 }
 
