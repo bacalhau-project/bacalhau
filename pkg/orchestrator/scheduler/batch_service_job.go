@@ -100,36 +100,37 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	for _, execution := range jobExecutions {
 		if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 			// This execution was rejected by its compute node
-			rejectedExecutions = rejectedExecutions + 1
+			rejectedExecutions++
 		}
 	}
 
+	// If we have rejected executions, we need to retry in case the nodes accept
+	// them in future (eg, due to transient capacity issues). b.handleRetry()
+	// will do this for us, but it results in this same scheduler code being
+	// re-executed after the delay. Therefore, we must check
+	// evaluation.TriggeredBy to see if we are being triggered by a deferred
+	// retry; and if so, we do NOT just defer a retry into the future, as
+	// otherwise we'd loop forever.
 	if (rejectedExecutions > 0) && evaluation.TriggeredBy != models.EvalTriggerDefer {
-		// If we had failed executions due to bid rejections in the
-		// past, then we should retry. This causes the scheduler to be
-		// nivoked again after the retry delay; when that happens,
-		// evaluation.TriggeredBy will equal models.EvalTriggerDefer so
-		// the test above checks for that to make us not retry *again*
-		// after we've retried.
 		b.handleRetry(plan, &job, rejectedExecutions)
 		return b.planner.Process(ctx, plan)
-	} else {
-		// create new executions if needed
-		remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
-		if remainingExecutionCount > 0 {
-			allFailed := existingExecs.filterFailed().union(lost)
-			var placementErr error
-			if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job}) {
-				placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
-				b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
-				return b.planner.Process(ctx, plan)
-			} else {
-				_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
-			}
-			if placementErr != nil {
-				b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
-				return b.planner.Process(ctx, plan)
-			}
+	}
+
+	// create new executions if needed
+	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
+	if remainingExecutionCount > 0 {
+		allFailed := existingExecs.filterFailed().union(lost)
+		var placementErr error
+		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job}) {
+			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
+			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
+			return b.planner.Process(ctx, plan)
+		} else {
+			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
+		}
+		if placementErr != nil {
+			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
+			return b.planner.Process(ctx, plan)
 		}
 	}
 
@@ -195,13 +196,17 @@ func (b *BatchServiceJobScheduler) handleRetry(plan *models.Plan, job *models.Jo
 	// delay = RetryDelay * RetryDelayGrowthFactor ^ failures
 	// ...but never more than MaximumRetryDelay
 	delay := gomath.Min(
-		float64(job.RetryDelay)*gomath.Pow(job.RetryDelayGrowthFactor, float64(failures)),
-		float64(job.MaximumRetryDelay))
+		float64(job.ReschedulingPolicy.BaseRetryDelay)*
+			gomath.Pow(job.ReschedulingPolicy.RetryDelayGrowthFactor,
+				float64(failures)),
+		float64(job.ReschedulingPolicy.MaximumRetryDelay))
 
 	log.Debug().Msgf("Deferring job execution for %f seconds (%d * %f ^ %d max %d)",
 		delay,
-		job.RetryDelay, job.RetryDelayGrowthFactor, failures,
-		job.MaximumRetryDelay)
+		job.ReschedulingPolicy.BaseRetryDelay,
+		job.ReschedulingPolicy.RetryDelayGrowthFactor,
+		failures,
+		job.ReschedulingPolicy.MaximumRetryDelay)
 
 	// Schedule a new evaluation
 	plan.DeferEvaluation(time.Duration(delay * float64(time.Second)))
