@@ -69,3 +69,15 @@ variable "bacalhau_auth_token" {
   description = "Auth token for bacalhau api"
   type = string
 }
+
+variable "bacalhau_install_version" {
+  description = "The version or branch of bacalhau to install. If empty https://get.bacalhau.org/install.sh will be used to install"
+  type = string
+  default = ""
+}
+
+variable "bacalhau_install_branch" {
+  description = "The branch of bacalhau to install. If empty default to https://get.bacalhau.org/install.sh"
+  type = string
+  default = ""
+}

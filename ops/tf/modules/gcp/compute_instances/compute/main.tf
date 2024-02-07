@@ -6,9 +6,10 @@ resource "google_compute_instance" "compute" {
   zone         = var.zone
 
   metadata = {
-    startup-script = local.bacalhau_start_script
     user-data = data.cloudinit_config.compute_cloud_init.rendered
   }
+
+  metadata_startup_script = local.bacalhau_start_script
 
   boot_disk {
     initialize_params {
@@ -99,8 +100,12 @@ locals {
   //
   // templating the bacalhau start script
   //
+
+  // inject custom bacalhau install based on variables.
+  bacalhau_install_cmd_content = var.bacalhau_install_version != "" ? "release ${var.bacalhau_install_version}" : var.bacalhau_install_branch != "" ? "branch ${var.bacalhau_install_branch}" : ""
   bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
     node_type = "compute"
+    bacalhau_version_cmd = local.bacalhau_install_cmd_content
     // Add more arguments as needed
   })
 
@@ -144,13 +149,13 @@ data "cloudinit_config" "compute_cloud_init" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
-      bacalhau_config_file  : base64encode(local.compute_config_content),
-      bacalhau_service_file : base64encode(local.bacalhau_service_content),
-      bacalhau_authn_policy_file : base64encode(local.bacalhau_authn_policy_content)
-      bacalhau_authz_policy_file : base64encode(local.bacalhau_authz_policy_content)
-      otel_config_file      : base64encode(local.otel_config_content)
-      otel_service_file     : base64encode(local.otel_service_content),
-      requester_ip          : var.requester_ip,
+      bacalhau_config_file        : base64encode(local.compute_config_content)
+      bacalhau_service_file       : base64encode(local.bacalhau_service_content)
+      bacalhau_authn_policy_file  : base64encode(local.bacalhau_authn_policy_content)
+      bacalhau_authz_policy_file  : base64encode(local.bacalhau_authz_policy_content)
+      otel_config_file            : base64encode(local.otel_config_content)
+      otel_service_file           : base64encode(local.otel_service_content)
+      requester_ip                : var.requester_ip
     })
   }
 }
