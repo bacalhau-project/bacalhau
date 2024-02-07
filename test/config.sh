@@ -7,7 +7,7 @@ testcase_config_file_remains_empty_after_list() {
     assert_equal 0 $status
 
     subject ls $BACALHAU_DIR/config.yaml
-    assert_equal 1 $status
+    assert_not_equal 0 $status
 }
 
 testcase_config_set_is_persistent() {

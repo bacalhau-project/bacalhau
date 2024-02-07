@@ -2,6 +2,8 @@ package serve
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -167,16 +169,29 @@ func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }
 
-func getNetworkConfig() (node.NetworkConfig, error) {
+func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 	var networkCfg types.NetworkConfig
 	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
 		return node.NetworkConfig{}, err
 	}
+
+	// Generate an auth token using the user's client key. It should not be
+	// possible to compute this value by anyone other than the NATS server, and
+	// should be stable across restarts of the node.
+	var keySig string
+	keySig, err := system.SignForClient([]byte(nodeID))
+	if err != nil {
+		return node.NetworkConfig{}, err
+	}
+	hash := sha256.Sum256([]byte(keySig))
+	token := base64.RawURLEncoding.EncodeToString(hash[:])
+
 	return node.NetworkConfig{
 		Type:                     networkCfg.Type,
 		Port:                     networkCfg.Port,
 		AdvertisedAddress:        networkCfg.AdvertisedAddress,
 		Orchestrators:            networkCfg.Orchestrators,
+		AuthSecret:               token,
 		ClusterName:              networkCfg.Cluster.Name,
 		ClusterPort:              networkCfg.Cluster.Port,
 		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,
