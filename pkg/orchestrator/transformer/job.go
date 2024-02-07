@@ -8,6 +8,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
+const (
+	// Default scheduling timeout for jobs, in seconds
+	DefaultSchedulingTimeout int64 = 60
+
+	DefaultBaseRetryDelay int64 = 1
+
+	DefaultMaximumRetryDelay int64 = 60
+
+	DefaultRetryDelayGrowthFactor float64 = 2.0
+)
+
 // IDGenerator is a transformer that generates a new ID for the job if it is empty.
 func IDGenerator(_ context.Context, job *models.Job) error {
 	if job.ID == "" {
@@ -31,6 +42,23 @@ func DefaultsApplier(defaults JobDefaults) JobTransformer {
 				}
 			}
 		}
+
+		if job.ReschedulingPolicy.SchedulingTimeout == 0 {
+			job.ReschedulingPolicy.SchedulingTimeout = DefaultSchedulingTimeout
+		}
+
+		if job.ReschedulingPolicy.BaseRetryDelay == 0 {
+			job.ReschedulingPolicy.BaseRetryDelay = DefaultBaseRetryDelay
+		}
+
+		if job.ReschedulingPolicy.MaximumRetryDelay == 0 {
+			job.ReschedulingPolicy.MaximumRetryDelay = DefaultMaximumRetryDelay
+		}
+
+		if job.ReschedulingPolicy.RetryDelayGrowthFactor < 1.0 {
+			job.ReschedulingPolicy.RetryDelayGrowthFactor = DefaultRetryDelayGrowthFactor
+		}
+
 		return nil
 	}
 	return JobFn(f)

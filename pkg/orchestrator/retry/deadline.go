@@ -17,8 +17,10 @@ func NewDeadlineStrategy(params DeadlineStrategyParams) *DeadlineStrategy {
 }
 
 func (s *DeadlineStrategy) ShouldRetry(ctx context.Context, request orchestrator.RetryRequest) bool {
+	policy := request.Job.ReschedulingPolicy
+
 	// Retry if the job's scheduling deadline is in the future
-	timeoutAsDuration := request.Job.SchedulingTimeout * int64(time.Second)
+	timeoutAsDuration := policy.SchedulingTimeout * int64(time.Second)
 	deadline := request.Job.CreateTime + timeoutAsDuration
 	now := time.Now().UTC().UnixNano()
 	return deadline > now
