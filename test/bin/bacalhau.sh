@@ -26,8 +26,12 @@ create_node() {
             fi
         done
     } 1>/dev/null
+
+    # Ensure subsequent nodes automatically connect to this requester, and pick
+    # a random port for the HTTP API to avoid collisions
     if test "$TYPE" = "requester"; then
         source $BACALHAU_DIR/bacalhau.run
+        export BACALHAU_NODE_SERVERAPI_PORT=0
     fi
 }
 
