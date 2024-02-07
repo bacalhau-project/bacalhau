@@ -4,6 +4,7 @@ package compute_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
@@ -31,8 +32,12 @@ func (s *StartupTestSuite) SetupTest() {
 
 func (s *StartupTestSuite) TestLongRunning() {
 
-	database := inmemory.NewStore()
-	defer database.Close(s.ctx)
+	ctx := context.Background()
+	database, err := boltdb.NewStore(ctx, filepath.Join(s.T().TempDir(), "bidder-test.db"))
+	s.Require().NoError(err)
+	defer func() {
+		database.Close(ctx)
+	}()
 
 	type testcase struct {
 		ID       string
