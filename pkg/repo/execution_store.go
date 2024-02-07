@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
@@ -32,10 +31,7 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 	if err := config.ForKey(types.NodeComputeExecutionStore, &storeCfg); err != nil {
 		return nil, err
 	}
-	var (
-		store store.ExecutionStore
-		err   error
-	)
+
 	switch storeCfg.Type {
 	case types.BoltDB:
 		path := storeCfg.Path
@@ -43,15 +39,8 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 			path = filepath.Join(stateRootDir, "executions.db")
 		}
 
-		store, err = boltdb.NewStore(ctx, path)
-		if err != nil {
-			return nil, err
-		}
+		return boltdb.NewStore(ctx, path)
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}
-	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   store,
-		RootDir: stateRootDir,
-	})
 }
