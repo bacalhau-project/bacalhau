@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -74,10 +74,18 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 	evalBroker := orchestrator.NewMockEvaluationBroker(ctrl)
 	evalBroker.EXPECT().Enqueue(gomock.Any()).Return(nil)
 
+	tmpFile := filepath.Join(s.T().TempDir(), "test.db")
+	jobstore, err := boltjobstore.NewBoltJobStore(tmpFile)
+	defer func() {
+		jobstore.Close(s.ctx)
+		os.Remove(tmpFile)
+	}()
+	s.Require().NoError(err)
+
 	endpoint := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:               "test_endpoint",
 		EvaluationBroker: evalBroker,
-		Store:            inmemory.NewInMemoryJobStore(),
+		Store:            jobstore,
 		EventEmitter:     eventEmitter,
 		JobTransformer: transformer.ChainedTransformer[*models.Job]{
 			transformer.JobFn(transformer.IDGenerator),

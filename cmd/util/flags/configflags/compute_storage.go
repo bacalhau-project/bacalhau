@@ -7,7 +7,7 @@ var ComputeStorageFlags = []Definition{
 		FlagName:             "compute-execution-store-type",
 		ConfigPath:           types.NodeComputeExecutionStoreType,
 		DefaultValue:         Default.Node.Compute.ExecutionStore.Type,
-		Description:          "The type of store used by the compute node (BoltDB or InMemory)",
+		Description:          "The type of store used by the compute node (BoltDB)",
 		EnvironmentVariables: []string{"BACALHAU_COMPUTE_STORE_TYPE"},
 	},
 	{

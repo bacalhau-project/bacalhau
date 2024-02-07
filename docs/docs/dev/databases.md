@@ -2,7 +2,7 @@
 
 ## Requester node database (job store)
 
-Requester nodes store job state and history in an in-memory store (pkg/jobstore/inmemory), but can be configured to persist this information in a boltdb database on disk by setting the `BACALHAU_JOB_STORE_TYPE` environment variable to `boltdb`. To explicitly set to inmemory, the value should be `inmemory`.
+Requester nodes store job state and history in a boltdb-backed store (pkg/jobstore/boltdb).
 
 The location of the database file can be specified using the `BACALHAU_JOB_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-requester.db`.
 
