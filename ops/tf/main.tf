@@ -32,6 +32,9 @@ module "requester_instance" {
   bacalhau_repo_disk_size = var.bacalhau_repo_disk_size
   bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
   bacalhau_auth_token = random_string.bacalhau_auth_token.result
+
+  bacalhau_install_version = var.bacalhau_install_version
+  bacalhau_install_branch = var.bacalhau_install_branch
 }
 
 module "compute_instance" {
@@ -60,4 +63,7 @@ module "compute_instance" {
   bacalhau_local_disk_size = var.bacalhau_local_disk_size
   bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
   bacalhau_auth_token = random_string.bacalhau_auth_token.result
+
+  bacalhau_install_version = var.bacalhau_install_version
+  bacalhau_install_branch = var.bacalhau_install_branch
 }

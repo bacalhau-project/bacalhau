@@ -1,11 +1,3 @@
-#cloud-config
-packages:
-  - jq
-
-runcmd:
-  - bash /etc/install-bacalhau.sh release v1.2.1
-  - systemctl restart bacalhau
-
 write_files:
   # bacalhau config
   - path: /etc/config.yaml

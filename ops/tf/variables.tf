@@ -65,3 +65,16 @@ variable "bacalhau_otel_collector_endpoint" {
   description = "The opentelemetry collector endpoint to send metrics to"
   type = string
 }
+
+
+variable "bacalhau_install_version" {
+  description = "The version of bacalhau to install. If empty default to https://get.bacalhau.org/install.sh"
+  type = string
+  default = ""
+}
+
+variable "bacalhau_install_branch" {
+  description = "The branch of bacalhau to install. If empty default to https://get.bacalhau.org/install.sh"
+  type = string
+  default = ""
+}

@@ -1,6 +1,9 @@
 #!/bin/bash
 
+set -x
+
 NODE_TYPE="${node_type}"
+BACALHAU_VERSION_CMD="${bacalhau_version_cmd}"
 
 # mount or format repo disk
 function setup-bacalhau-repo-disk() {
@@ -49,6 +52,11 @@ function install-otel-collector() {
     sudo mv otelcol-contrib /usr/local/bin/otelcol
 }
 
+function install-bacalhau() {
+    echo "Installing bacalhau"
+    bash /etc/install-bacalhau.sh $BACALHAU_VERSION_CMD
+}
+
 # reload service files and enable services
 function setup-services() {
   echo "Loading systemctl services..."
@@ -74,6 +82,10 @@ function start() {
 
   if [ "$NODE_TYPE" == "compute" ]; then
     setup-bacalhau-local-disk
+  fi
+
+  if [ "$BACALHAU_VERSION_CMD" != "" ]; then
+    install-bacalhau
   fi
 
   # TODO move this into the VMI, maybe?
