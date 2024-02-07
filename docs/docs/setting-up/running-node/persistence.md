@@ -22,7 +22,6 @@ In some cases, it may be preferable to maintain the state in memory, with the ca
 |--|--|--|--|
 |BACALHAU_COMPUTE_STORE_TYPE|--compute-execution-store-type|boltdb|Uses the bolt db execution store (default)|
 |BACALHAU_COMPUTE_STORE_PATH|--compute-execution-store-path|A path (inc. filename)|Specifies where the boltdb database should be stored. Default is `~/.bacalhau/{NODE-ID}-compute/executions.db` if not set|
-|BACALHAU_COMPUTE_STORE_TYPE|--compute-execution-store-type|inmemory|Uses the inmemory execution store|
 
 ## Requester node persistence
 

@@ -9,7 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
-	memcomputestore "github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
@@ -48,8 +47,6 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 		if err != nil {
 			return nil, err
 		}
-	case types.InMemory:
-		store = memcomputestore.NewStore()
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}

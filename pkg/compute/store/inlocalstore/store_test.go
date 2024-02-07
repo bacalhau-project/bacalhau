@@ -4,10 +4,11 @@ package inlocalstore
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,8 +20,17 @@ type Suite struct {
 
 func (s *Suite) SetupTest() {
 	var err error
+
+	ctx := context.Background()
+	f := filepath.Join(s.T().TempDir(), "test.db")
+	store, err := boltdb.NewStore(ctx, f)
+	s.Require().NoError(err)
+	s.T().Cleanup(func() {
+		store.Close(ctx)
+	})
+
 	s.proxy, err = NewPersistentExecutionStore(PersistentJobStoreParams{
-		Store:   inmemory.NewStore(),
+		Store:   store,
 		RootDir: s.T().TempDir(),
 	})
 	s.Require().NoError(err)

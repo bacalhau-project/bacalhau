@@ -16,8 +16,8 @@ type JobStoreConfig struct {
 type StorageType int64
 
 const (
-	InMemory StorageType = 0
-	BoltDB   StorageType = 1
+	UnknownStorage StorageType = 0
+	BoltDB         StorageType = 1
 )
 
 func (j *StorageType) UnmarshalText(text []byte) error {
@@ -43,13 +43,13 @@ func (j *StorageType) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func ParseStorageType(s string) (ret StorageType, err error) {
-	for typ := InMemory; typ <= BoltDB; typ++ {
+	for typ := UnknownStorage; typ <= BoltDB; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil
 		}
 	}
 
-	return InMemory, fmt.Errorf("StorageType: unknown type '%s' (valid types: %q)", s, []StorageType{InMemory, BoltDB})
+	return UnknownStorage, fmt.Errorf("StorageType: unknown type '%s' (valid types: %q)", s, []StorageType{BoltDB})
 }
 
 func equal(a, b string) bool {
