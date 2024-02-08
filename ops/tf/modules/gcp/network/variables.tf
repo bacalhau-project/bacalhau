@@ -24,6 +24,7 @@ variable "egress_tcp_ports" {
     // Libp2p
     "4001", // ipfs
     "1235", // bacalhau
+    "4318", // otel
   ]
 }
 
