@@ -1,5 +1,6 @@
+import React from "react"
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom"
-import { TableSettingsProvider } from "./context/TableSettingsContext"
+import { TableSettingsContextProvider } from "./context/TableSettingsContext"
 import { Home } from "./pages/Home/Home"
 import { JobsDashboard } from "./pages/JobsDashboard/JobsDashboard"
 import { NodesDashboard } from "./pages/NodesDashboard/NodesDashboard"
@@ -7,7 +8,7 @@ import { Settings } from "./pages/Settings/Settings"
 import { JobDetail } from "./pages/JobDetail/JobDetail"
 
 const App = () => (
-  <TableSettingsProvider>
+  <TableSettingsContextProvider>
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
@@ -17,7 +18,7 @@ const App = () => (
         <Route path="/JobDetail/:jobId" element={<JobDetail />} />
       </Routes>
     </Router>
-  </TableSettingsProvider>
+  </TableSettingsContextProvider>
 )
 
 export default App

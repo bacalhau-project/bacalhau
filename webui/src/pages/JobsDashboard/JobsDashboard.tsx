@@ -4,6 +4,7 @@ import { JobsTable } from "./JobsTable/JobsTable"
 import { Layout } from "../../layout/Layout"
 import { Job } from "../../helpers/jobInterfaces"
 import { bacalhauAPI } from "../../services/bacalhau"
+import { TableSettingsContextProvider } from "../../context/TableSettingsContext"
 
 interface JobsDashboardProps {
   pageTitle?: string
@@ -32,7 +33,9 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({
   return (
     <Layout pageTitle={pageTitle}>
       <div className={styles.jobsDashboard} data-testid="jobsTableContainer">
-        <JobsTable data={data} />
+        <TableSettingsContextProvider>
+          <JobsTable data={data} />
+        </TableSettingsContextProvider>
       </div>
     </Layout>
   )

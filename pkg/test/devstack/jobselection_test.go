@@ -1,5 +1,7 @@
 //go:build integration || !unit
 
+// cspell:ignore Dont
+
 package devstack
 
 import (

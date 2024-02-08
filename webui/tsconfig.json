@@ -12,13 +12,13 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "commonjs",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
+    "jsx": "react",
+    "noEmit": false,
+    "outDir": "./compiled",
     "typeRoots": [
       "node_modules/@types",
       "src/types"
@@ -30,14 +30,20 @@
       "react-dom"
     ]
   },
+  "files": [
+    "src/index.tsx"
+  ],
   "include": [
-    "./src",
-    "./src/**/*.tsx",
-    "./src/**/*.ts",
-    "./babel.config.js",
-    "./tests/**/*.ts",
-    "./tests/**/*.tsx",
+    "src/**/*.tsx",
+    "src/**/*.ts",
+    "babel.config.js",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     "tests/mocks/svgMock.js",
-    "src/setupTests.ts"
+    "src/setupTests.ts",
+    "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

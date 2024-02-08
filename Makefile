@@ -163,7 +163,13 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/node_modules/.cache/tsconfig.tsbuildinfo
+WEB_INSTALL_GUARD := webui/yarn.lock
+WEB_BUILD_GUARD := .web-build-guard
+
+
+webui/node_modules:
+	@echo "Installing webui dependencies"
+	@cd webui && yarn install
 
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
@@ -171,12 +177,17 @@ build-webui: ${WEB_BUILD_FILES}
 webui/build:
 	mkdir -p $@
 
-$(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && yarn install
+$(WEB_INSTALL_GUARD): webui/node_modules webui/package.json
+	@echo "Updating webui dependencies"
+	@cd webui && yarn install
+	touch $(WEB_INSTALL_GUARD)
 
 export GENERATE_SOURCEMAP := false
-${WEB_BUILD_FILES} &: $(WEB_SRC_FILES) $(WEB_INSTALL_GUARD)
+${WEB_BUILD_GUARD}: $(WEB_INSTALL_GUARD) $(WEB_SRC_FILES)
 	cd webui && yarn run build
+	touch $(WEB_BUILD_GUARD)
+
+${WEB_BUILD_FILES}: ${WEB_BUILD_GUARD}
 
 ################################################################################
 # Target: build-bacalhau
@@ -307,20 +318,9 @@ integration-test:
 bash-test: ${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
-.PHONY: grc-test
-grc-test:
-	grc go test ./... -v
-.PHONY: grc-test-short
-grc-test-short:
-	grc go test ./... -test.short -v
-
 .PHONY: test-debug
 test-debug:
 	LOG_LEVEL=debug go test ./... -v
-
-.PHONY: grc-test-debug
-grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
@@ -333,6 +333,10 @@ test-devstack:
 .PHONY: test-commands
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
+
+.PHONY: test-all
+test-all: test test-python
+	cd webui && yarn run build && yarn run lint && yarn run test
 
 ################################################################################
 # Target: devstack

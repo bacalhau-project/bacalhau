@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { render, screen, act, waitFor } from "@testing-library/react"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { server } from "../server"
 import { mockTestDataArray } from "../handlers"
 import {

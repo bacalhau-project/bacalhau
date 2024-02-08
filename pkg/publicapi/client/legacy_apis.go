@@ -53,8 +53,7 @@ func (apiClient *APIClient) List(
 
 	var res legacymodels.ListResponse
 	if err := apiClient.DoPost(ctx, "/api/v1/requester/list", req, &res); err != nil {
-		e := err
-		return nil, e
+		return nil, err
 	}
 
 	return res.Jobs, nil

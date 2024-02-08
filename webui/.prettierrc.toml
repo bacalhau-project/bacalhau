@@ -1,6 +1,15 @@
 # prettierrc.toml
-trailingComma = "es5"
 tabWidth = 2
 semi = false
 singleQuote = false
+
+# Trailing Commas
+trailingComma = "es5"
+
+# Plugins
 plugins = ["prettier-plugin-multiline-arrays"]
+
+[[overrides]]
+files = "*.json"
+[overrides.options]
+parser = "json"
