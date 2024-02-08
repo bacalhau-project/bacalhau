@@ -54,6 +54,9 @@ function install-otel-collector() {
 
 function install-bacalhau() {
     echo "Installing bacalhau"
+    export HOME=/root
+    export GOCACHE="$HOME/.cache/go-build"
+    export GOPATH="/root/go"
     bash /etc/install-bacalhau.sh $BACALHAU_VERSION_CMD
 }
 

@@ -17,6 +17,11 @@ resource "google_compute_instance" "requester" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [attached_disk]
+  }
+  allow_stopping_for_update = true
+
   network_interface {
     network = var.network
     subnetwork = var.subnetwork
