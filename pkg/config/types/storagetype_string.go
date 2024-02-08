@@ -8,13 +8,13 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[InMemory-0]
+	_ = x[UnknownStorage-0]
 	_ = x[BoltDB-1]
 }
 
-const _StorageType_name = "InMemoryBoltDB"
+const _StorageType_name = "UnknownStorageBoltDB"
 
-var _StorageType_index = [...]uint8{0, 8, 14}
+var _StorageType_index = [...]uint8{0, 14, 20}
 
 func (i StorageType) String() string {
 	if i < 0 || i >= StorageType(len(_StorageType_index)-1) {

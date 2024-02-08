@@ -7,7 +7,7 @@ var RequesterJobStorageFlags = []Definition{
 		FlagName:             "requester-job-store-type",
 		ConfigPath:           types.NodeRequesterJobStoreType,
 		DefaultValue:         Default.Node.Requester.JobStore.Type,
-		Description:          "The type of job store used by the requester node (BoltDB or InMemory)",
+		Description:          "The type of job store used by the requester node (BoltDB)",
 		EnvironmentVariables: []string{"BACALHAU_JOB_STORE_TYPE"},
 	},
 	{
