@@ -17,14 +17,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -171,11 +170,8 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	fsRepo, err := repo.NewFS(repoDir)
+	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
-		return err
-	}
-	if err := fsRepo.Open(); err != nil {
 		return err
 	}
 

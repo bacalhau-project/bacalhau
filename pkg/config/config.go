@@ -2,18 +2,13 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config/migrations"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -27,10 +22,12 @@ const (
 
 	// compute paths
 	ComputeStoragesPath = "executor_storages"
+	ComputeStorePath    = "compute_store"
 	PluginsPath         = "plugins"
 
-	// requester paths
-	AutoCertCachePath = "autocert-cache"
+	// orchestrator paths
+	OrchestratorStorePath = "orchestrator_store"
+	AutoCertCachePath     = "autocert-cache"
 
 	// update check paths
 	UpdateCheckStatePath = "update.json"
@@ -40,33 +37,36 @@ const (
 )
 
 var (
+	ComputeExecutionsStorePath = filepath.Join(ComputeStorePath, "executions.db")
+	OrchestratorJobStorePath   = filepath.Join(OrchestratorStorePath, "jobs.db")
+)
+
+var (
 	environmentVariableReplace = strings.NewReplacer(".", "_")
-	configDecoderHook          = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
+	DecoderHook                = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
 const (
-	configType     = "yaml"
-	configName     = "config"
-	configFileMode = 0666
+	ConfigFileName = "config.yaml"
+	ConfigFileMode = 0666
 )
 
 func Init(path string) (types.BacalhauConfig, error) {
-	// derive the default config for the specified environment.
-	defaultConfig := ForEnvironment()
-
-	// set default values for path dependent config.
-	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
-	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
-	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
-	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
-	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
-
 	// initialize the configuration with default values.
-	return initConfig(path, WithDefaultConfig(defaultConfig))
+	return initConfig(path,
+		WithDefaultConfig(getDefaultConfig(path)),
+		WithPostConfigHandler(WritePersistedConfigs),
+	)
 }
 
 func Load(path string) (types.BacalhauConfig, error) {
+	return initConfig(path,
+		WithDefaultConfig(getDefaultConfig(path)),
+		WithFileHandler(ReadConfigHandler),
+	)
+}
+
+func getDefaultConfig(path string) types.BacalhauConfig {
 	// derive the default config for the specified environment.
 	defaultConfig := ForEnvironment()
 
@@ -75,105 +75,35 @@ func Load(path string) (types.BacalhauConfig, error) {
 	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
 	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
 	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
+	defaultConfig.Node.Compute.ExecutionStore.Path = filepath.Join(path, ComputeExecutionsStorePath)
+	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
 
-	return initConfig(path, WithDefaultConfig(defaultConfig), WithFileHandler(ReadConfigHandler))
-}
-
-func Migrate(path string) error {
-	// check if the config file exists, if one is not found we don't need to migrate it
-	configPath := filepath.Join(path, "config.yaml")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("failed to stat config file for migration: %w", err)
-	}
-
-	// open the config file
-	f, err := os.Open(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to open config file at %q: %w", configPath, err)
-	}
-
-	// read it all and unmarshal into yaml
-	b, err := io.ReadAll(f)
-	if err != nil {
-		if err := f.Close(); err != nil {
-			log.Error().Err(err).Msg("failed to close config file after failing to read it.")
-		}
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-	// we can close the file now that we read everything.
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("failed to close config file: %w", err)
-	}
-
-	var cfg types.BacalhauConfig
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
-		return fmt.Errorf("failed to unmarshal config file: %w", err)
-	}
-
-	// get all the migrations we need to apply to it.
-	migs, err := migrations.GetMigrations()
-	if err != nil {
-		return fmt.Errorf("failed to load migration list: %w", err)
-	}
-
-	// apply the migrations
-	currentCfg := cfg
-	for _, m := range migs {
-		log.Info().Msgf("applying migration sequence %d", m.Sequence())
-		currentCfg, err = m.Migrate(currentCfg)
-		if err != nil {
-			return err
-		}
-	}
-	log.Info().Msgf("config migration complete")
-
-	// marshal the migrated config back to yaml
-	marshaledCfg, err := yaml.Marshal(currentCfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal migrated config: %w", err)
-	}
-
-	// open the file for writing and truncate it.
-	fw, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, configFileMode)
-	if err != nil {
-		return fmt.Errorf("failed to open config file for writing at %q: %w", configPath, err)
-	}
-	defer fw.Close()
-
-	// write the marshaled data back to the file
-	if _, err := fw.Write(marshaledCfg); err != nil {
-		return fmt.Errorf("failed to write migrated config to file: %w", err)
-	}
-
-	return nil
+	return defaultConfig
 }
 
 type Params struct {
-	FileName      string
-	FileType      string
-	FileHandler   func(fileName string) error
-	DefaultConfig types.BacalhauConfig
+	FileName          string
+	FileHandler       func(fileName string) error
+	PostConfigHandler func(fileName string, cfg types.BacalhauConfig) error
+	DefaultConfig     types.BacalhauConfig
 }
 
 func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 	params := &Params{
-		FileName:      configName,
-		FileType:      configType,
-		FileHandler:   NoopConfigHandler,
-		DefaultConfig: ForEnvironment(),
+		FileName:          ConfigFileName,
+		FileHandler:       NoopConfigHandler,
+		PostConfigHandler: NoopPostConfigHandler,
+		DefaultConfig:     ForEnvironment(),
 	}
 
 	for _, opt := range opts {
 		opt(params)
 	}
 
-	viper.AddConfigPath(path)
-	viper.SetConfigName(params.FileName)
-	viper.SetConfigType(params.FileType)
+	configFile := filepath.Join(path, params.FileName)
+	viper.SetConfigFile(configFile)
 	viper.SetEnvPrefix(environmentVariablePrefix)
 	viper.SetTypeByDefaultValue(inferConfigTypes)
 	viper.SetEnvKeyReplacer(environmentVariableReplace)
@@ -181,7 +111,7 @@ func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 		return types.BacalhauConfig{}, nil
 	}
 
-	if err := params.FileHandler(filepath.Join(path, fmt.Sprintf("%s.%s", params.FileName, params.FileType))); err != nil {
+	if err := params.FileHandler(configFile); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 
@@ -190,7 +120,11 @@ func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 	}
 
 	var out types.BacalhauConfig
-	if err := viper.Unmarshal(&out, configDecoderHook); err != nil {
+	if err := viper.Unmarshal(&out, DecoderHook); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+
+	if err := params.PostConfigHandler(configFile, out); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 

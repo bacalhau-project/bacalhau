@@ -14,6 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -21,11 +24,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
@@ -48,21 +49,19 @@ func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	cleanupManager *system.CleanupManager,
-	host host.Host,
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
-	fsRepo *repo.FsRepo,
 	computeCallback compute.Callback,
 ) (*Compute, error) {
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = fsRepo.InitExecutionStore(ctx, nodeID)
+		executionStore, err = initExecutionStore(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -265,4 +264,18 @@ func NewComputeNode(
 
 func (c *Compute) cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
+}
+
+func initExecutionStore(ctx context.Context) (store.ExecutionStore, error) {
+	// load the compute nodes execution store config
+	var storeCfg types.JobStoreConfig
+	if err := config.ForKey(types.NodeComputeExecutionStore, &storeCfg); err != nil {
+		return nil, err
+	}
+	switch storeCfg.Type {
+	case types.BoltDB:
+		return boltdb.NewStore(ctx, storeCfg.Path)
+	default:
+		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
+	}
 }

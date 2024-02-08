@@ -2,8 +2,12 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -66,7 +70,7 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(ctx, nodeID)
+	jobStore, err := initJobStore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -321,4 +325,19 @@ func NewRequesterNode(
 
 func (r *Requester) cleanup(ctx context.Context) {
 	r.cleanupFunc(ctx)
+}
+
+func initJobStore(ctx context.Context) (jobstore.Store, error) {
+	// load the compute nodes execution store config
+	var storeCfg types.JobStoreConfig
+	if err := config.ForKey(types.NodeRequesterJobStore, &storeCfg); err != nil {
+		return nil, err
+	}
+	switch storeCfg.Type {
+	case types.BoltDB:
+		log.Ctx(ctx).Debug().Str("Path", storeCfg.Path).Msg("creating boltdb backed jobstore")
+		return boltjobstore.NewBoltJobStore(storeCfg.Path)
+	default:
+		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
+	}
 }

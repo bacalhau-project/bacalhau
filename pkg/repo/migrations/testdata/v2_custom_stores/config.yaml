@@ -1,0 +1,11 @@
+node:
+  compute:
+    executionstore:
+      Type: BoltDB
+      Path: ./QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV-compute/executions.db
+  requester:
+    jobstore:
+      Type: BoltDB
+      Path: ./QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV-requester/jobs.db
+  network:
+    port: 123456789 # to verify that the migration is not changing the network port

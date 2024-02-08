@@ -69,7 +69,7 @@ func (s *ComputeSuite) SetupTest() {
 }
 
 func (s *ComputeSuite) setupNode() {
-	repo := repo2.SetupBacalhauRepoForTesting(s.T())
+	repo2.SetupBacalhauRepoForTesting(s.T())
 	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
@@ -107,14 +107,12 @@ func (s *ComputeSuite) setupNode() {
 		context.Background(),
 		host.ID().String(),
 		s.cm,
-		host,
 		apiServer,
 		s.config,
 		storagePath,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
-		repo,
 		callback,
 	)
 	s.NoError(err)

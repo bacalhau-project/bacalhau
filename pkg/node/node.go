@@ -271,14 +271,12 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			config.CleanupManager,
-			config.NetworkConfig.Libp2pHost,
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
 			storageProviders,
 			executors,
 			publishers,
-			config.FsRepo,
 			transportLayer.CallbackProxy(),
 		)
 		if err != nil {

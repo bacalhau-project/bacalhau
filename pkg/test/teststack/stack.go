@@ -53,7 +53,9 @@ func Setup(
 	var fsRepo *repo.FsRepo
 	if repoPath != "" {
 		var err error
-		fsRepo, err = repo.NewFS(repoPath)
+		fsRepo, err = repo.NewFS(repo.FsRepoParams{
+			Path: repoPath,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
