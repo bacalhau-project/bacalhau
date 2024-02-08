@@ -4,6 +4,8 @@ package compute
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -46,7 +48,10 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupSuite() {
-	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
+	storePath := filepath.Join(s.T().TempDir(), fmt.Sprint(time.Now().UnixNano()))
+	s.Require().NoError(os.MkdirAll(storePath, 0755))
+
+	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(storePath, "executions.db"))
 	s.Require().NoError(err)
 
 	cfg, err := node.NewComputeConfigWith(node.ComputeConfigParams{
