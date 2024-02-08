@@ -59,7 +59,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
-      exporters: [logging, otlphttp]
+      exporters: [logging]
     metrics:
       receivers: [otlp, hostmetrics]
       processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
