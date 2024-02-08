@@ -414,7 +414,7 @@ jobs:
             python -m pip install poetry
             python -m poetry install
       - run_make_under_specific_shell:
-          directory_to_change_to: python
+          directory_to_change_to: $HOME/repo/python
           makefile_directory: $HOME/repo
           make_command: build-python-sdk
       - persist_to_workspace:
@@ -429,7 +429,7 @@ jobs:
             source "$BASH_ENV"
             python -m poetry run pip install -r dev-requirements.txt
       - run_make_under_specific_shell:
-          directory_to_change_to: python
+          directory_to_change_to: $HOME/repo/python
           makefile_directory: $HOME/repo/python
           make_command: build-bacalhau-airflow
       - run_make_under_specific_shell:
@@ -535,8 +535,8 @@ jobs:
             cd webui
             yarn install && yarn run build
       - run_make_under_specific_shell:
-          directory_to_change_to: python
-          makefile_directory: python
+          directory_to_change_to: $HOME/repo/python
+          makefile_directory: $HOME/repo/python
           make_command: setup test
 
   test_python_airflow:
