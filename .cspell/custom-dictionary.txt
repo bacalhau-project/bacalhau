@@ -228,12 +228,14 @@ pbnode
 pflag
 phayes
 PKCS
+popd
 projectcontour
 proto
 protobuf
 protoc
 protoimpl
 publicapi
+pushd
 pyenv
 pyflyte
 Pylance
