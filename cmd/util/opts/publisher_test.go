@@ -14,20 +14,20 @@ func TestParsePublisher(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		input    string
-		expected model.PublisherSpec
+		expected *model.PublisherSpec
 		error    bool
 	}{
 		{
 			name:  "ipfs",
 			input: "ipfs",
-			expected: model.PublisherSpec{
+			expected: &model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
 		},
 		{
 			name:  "s3",
 			input: "s3://myBucket/dir/file-001.txt",
-			expected: model.PublisherSpec{
+			expected: &model.PublisherSpec{
 				Type: model.PublisherS3,
 				Params: map[string]interface{}{
 					"bucket": "myBucket",
@@ -38,7 +38,7 @@ func TestParsePublisher(t *testing.T) {
 		{
 			name:  "s3 with endpoint and region",
 			input: "s3://myBucket/dir/file-001.txt,opt=endpoint=http://127.0.0.1:9000,opt=region=us-east-1,opt=compress=true",
-			expected: model.PublisherSpec{
+			expected: &model.PublisherSpec{
 				Type: model.PublisherS3,
 				Params: map[string]interface{}{
 					"bucket":   "myBucket",
@@ -52,7 +52,7 @@ func TestParsePublisher(t *testing.T) {
 		{
 			name:  "s3 non URI",
 			input: "s3,opt=bucket=myBucket,opt=key=dir/file-001.txt,opt=region=us-east-1",
-			expected: model.PublisherSpec{
+			expected: &model.PublisherSpec{
 				Type: model.PublisherS3,
 				Params: map[string]interface{}{
 					"bucket": "myBucket",

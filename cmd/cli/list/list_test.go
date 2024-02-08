@@ -242,8 +242,6 @@ func (suite *ListSuite) TestList_SortFlags() {
 		reverseFlag bool
 		badSortFlag bool
 	}{
-		{sortFlag: string(list.ColumnID), reverseFlag: false},
-		{sortFlag: string(list.ColumnID), reverseFlag: true},
 		{sortFlag: createdAtSortFlag, reverseFlag: false},
 		{sortFlag: createdAtSortFlag, reverseFlag: true},
 		{sortFlag: badSortFlag, reverseFlag: false, badSortFlag: true},

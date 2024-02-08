@@ -2,16 +2,19 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -53,8 +56,38 @@ func ServerAPIPort() uint16 {
 	return uint16(viper.GetInt(types.NodeServerAPIPort))
 }
 
+func configError(e error) {
+	msg := fmt.Sprintf("config error: %s", e)
+	fmt.Fprintln(os.Stderr, msg)
+	os.Exit(1)
+}
+
 func ServerAPIHost() string {
-	return viper.GetString(types.NodeServerAPIHost)
+	host := viper.GetString(types.NodeServerAPIHost)
+
+	if net.ParseIP(host) == nil {
+		// We should check that the value gives us an address type
+		// we can use to get our IP address. If it doesn't, we should
+		// panic.
+		atype, ok := network.AddressTypeFromString(host)
+		if !ok {
+			configError(fmt.Errorf("invalid address type in Server API Host config: %s", host))
+		}
+
+		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
+		if err != nil {
+			configError(errors.Wrap(err, fmt.Sprintf("failed to get network address for Server API Host: %s", host)))
+		}
+
+		if len(addr) == 0 {
+			configError(fmt.Errorf("no %s addresses found for Server API Host", host))
+		}
+
+		// Use the first address
+		host = addr[0]
+	}
+
+	return host
 }
 
 func ServerAutoCertDomain() string {

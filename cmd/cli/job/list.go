@@ -140,4 +140,9 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 	if err = output.Output(cmd, listColumns, o.OutputOptions, response.Jobs); err != nil {
 		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
 	}
+
+	if response.NextToken != "" {
+		msg := fmt.Sprintf("To fetch more records use `--next-token %s`", response.NextToken)
+		cmd.Printf("\n%s\n", msg)
+	}
 }

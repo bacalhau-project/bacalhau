@@ -33,7 +33,11 @@ func DownloadResultsHandler(
 	}
 
 	if len(response.Results) == 0 {
-		return fmt.Errorf("no results found")
+		// No results doesn't mean error, so we should print out a message and return nil
+		cmd.Println("No results found")
+		cmd.Println("You can check the logged output of the job using the logs command.")
+		cmd.Printf("\n  bacalhau logs %s\n", jobID)
+		return nil
 	}
 
 	downloaderProvider := util.NewStandardDownloaders(cm)

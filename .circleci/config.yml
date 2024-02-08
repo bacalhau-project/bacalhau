@@ -33,12 +33,12 @@ executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
-      image: default
-      resource_class: xlarge
+      image: ubuntu-2204:2024.01.1
+    resource_class: xlarge
   linux-arm64:
     machine:
-      image: default
-      resource_class: arm.xlarge
+      image: ubuntu-2204:2024.01.1
+    resource_class: arm.xlarge
   darwin-amd64:
     macos:
       xcode: "14.2.0"
@@ -49,9 +49,12 @@ executors:
     resource_class: macos.m1.medium.gen1
   windows-amd64:
     machine:
-      image: windows-server-2022-gui:current
-      resource_class: windows.xlarge
-      shell: bash.exe
+      image: "windows-server-2022-gui:current"
+    resource_class: windows.xlarge
+  docker-linux:
+    docker:
+      - image: cimg/base:2022.01
+    resource_class: xlarge
 
 commands:
   install_go:
@@ -83,6 +86,7 @@ commands:
           steps:
             - run:
                 name: Install Go
+                shell: bash.exe
                 command: |
                   rm -rf /c/Program\ Files/Go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
@@ -125,11 +129,106 @@ commands:
             - ~/.cache/go-build
             - ~/go/pkg/mod
 
-  install_python:
+  install_asdf:
+    parameters:
+      cache_version:
+        type: string
+        default: v1-1
+      asdf_version:
+        type: string
+        default: v0.14.0
+    description: Install asdf and dependencies.
     steps:
-      - run: sudo apt install python3.10 -y
-      - run: curl -sSL https://install.python-poetry.org | python3 -
-      - run: echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+      - restore_cache:
+          keys:
+            - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+            - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}
+            - asdf-<< parameters.cache_version >>-
+      - run:
+          name: Install asdf
+          command: |
+            if [ ! -d $HOME/.asdf ]; then
+              git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf
+              cd $HOME/.asdf
+            else
+              cd $HOME/.asdf
+              git fetch origin
+              git pull
+            fi
+            git checkout tags/<< parameters.asdf_version >>
+            cd -
+      - save_cache:
+          key: asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+          paths:
+            - $HOME/.asdf
+      - run:
+          name: Set PATH
+          command: |
+            echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
+            source "${BASH_ENV}"
+
+  install_python:
+    description: Install Python and dependencies.
+    parameters:
+      cache_version:
+        type: string
+        default: v1-1
+    steps:
+      - install_asdf:
+          cache_version: << parameters.cache_version >>
+      - restore_cache:
+          keys:
+            - python-deps-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+            - python-deps-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}
+            - python-deps-<< parameters.cache_version >>-
+      - run:
+          name: Install toolchain from .tool-versions
+          command: |
+            asdf plugin-add python
+            asdf install python $(awk '/^python/ {print $2}' .tool-versions)
+            pip3 install --upgrade pip
+            pip3 install poetry
+            python -m poetry install
+      - run:
+          name: Install Python API client pre-requisites
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.52/swagger-codegen-cli-3.0.52.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
+      - save_cache:
+          key: python-deps-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+          paths:
+            - $HOME/.asdf
+            - $HOME/.cache/pip
+            - $HOME/.cache/pypoetry
+            - $HOME/.local
+      - run:
+          name: Set PATH
+          command: echo 'export PATH="${PATH}":$HOME/.asdf/bin:$HOME/.asdf/shims:$HOME/.brew/bin' >> "${BASH_ENV}"
+
+  run_make_under_specific_shell:
+    parameters:
+      directory_to_change_to:
+        type: string
+      makefile_directory:
+        type: string
+      make_command:
+        type: string
+    steps:
+      - run:
+          name: Run make for << parameters.make_command >> in << parameters.directory_to_change_to >> against make file in << parameters.makefile_directory >>
+          command: |
+            source $BASH_ENV
+            pushd << parameters.directory_to_change_to >>
+            python -m poetry install
+            source $(python -m poetry env info --path)/bin/activate # Doing this so it doesn't create a new shell
+            pip install poetry # Installing inside the virtual env
+            poetry install # Installing all the dependencies
+            make << parameters.make_command >> -C << parameters.makefile_directory >>
+            exit
+            # Return to the original directory
+            popd
 
 jobs:
   build_cli:
@@ -285,23 +384,21 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - install_python
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:
           name: Copy swagger.json from workspace
           command: |
-            cp   /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
+            cp /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
       - run:
-          name: Install Python API client pre-requisites
+          name: Export Poetry into PATH
           command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
+            export POETRY_VERSION=$(poetry --version | awk '{print $NF}' | sed 's/v//')
+            echo 'export PATH="$HOME/.asdf/installs/poetry/${POETRY_VERSION}/bin:${PATH}"' >> "${BASH_ENV}"
       - run:
           name: Build Python API client
-          command: |
-            make build-python-apiclient
+          command: make build-python-apiclient
       - persist_to_workspace:
           root: clients/python/dist
           paths:
@@ -310,14 +407,16 @@ jobs:
       - run:
           name: Install Python SDK pre-requisites
           command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
             cd python
-            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
-      - run:
-          name: Build Python SDK
-          command: |
-            make build-python-sdk
+            source "$BASH_ENV"
+            python --version
+            python -m pip install --upgrade pip
+            python -m pip install poetry
+            python -m poetry install
+      - run_make_under_specific_shell:
+          directory_to_change_to: python
+          makefile_directory: $HOME/repo
+          make_command: build-python-sdk
       - persist_to_workspace:
           root: python/dist
           paths:
@@ -325,29 +424,32 @@ jobs:
             - bacalhau_sdk-*.whl
       - run:
           name: Install bacalhau-airflow pre-requisites
+          working_directory: integration/airflow
           command: |
-            cd integration/airflow
-            pip3 install -r dev-requirements.txt
-      - run:
-          name: Build Python Bacalhau Airflow
-          command: |
-            make build-bacalhau-airflow
-      - run:
-          name: Install Flyte plugin pre-requisites
-          command: |
-            cd integration/flyte
-            # installs flytekit, flyteidl and deps.
-            make setup
-      - run:
-          name: Build Python Bacalhau Flyte plugin
-          command: |
-            cd integration/flyte/plugins/
-            make build_all_plugins
+            source "$BASH_ENV"
+            python -m poetry run pip install -r dev-requirements.txt
+      - run_make_under_specific_shell:
+          directory_to_change_to: python
+          makefile_directory: $HOME/repo/python
+          make_command: build-bacalhau-airflow
+      - run_make_under_specific_shell:
+          directory_to_change_to: integration/flyte
+          makefile_directory: $HOME/repo/integration/flyte
+          make_command: setup
+      - run_make_under_specific_shell:
+          directory_to_change_to: integration/flyte/plugins
+          makefile_directory: $HOME/repo/integration/flyte/plugins
+          make_command: build_all_plugins
       - persist_to_workspace:
           root: integration/airflow/dist
           paths:
             - bacalhau_airflow-*.tar.gz
             - bacalhau_airflow-*.whl
+      - persist_to_workspace:
+          root: integration/flyte/dist
+          paths:
+            - bacalhau_flyte-*.tar.gz
+            - bacalhau_flyte-*.whl
 
   test_cli:
     environment:
@@ -421,23 +523,21 @@ jobs:
           paths:
             - "*.coverage"
 
-  build_python_sdk:
+  build_and_test_python_sdk:
+    # executor: docker-linux
     executor: linux-amd64
+    working_directory: ~/repo
     steps:
       - checkout
       - install_python
       - run:
-          working_directory: python
-          command: make setup test
-
-  test_python_sdk:
-    executor: linux-amd64
-    steps:
-      - checkout
-      - install_python
-      - run:
-          working_directory: python
-          command: make setup test
+          command: |
+            cd webui
+            yarn install && yarn run build
+      - run_make_under_specific_shell:
+          directory_to_change_to: python
+          makefile_directory: python
+          make_command: setup test
 
   test_python_airflow:
     executor: linux-amd64
@@ -446,7 +546,7 @@ jobs:
       - install_python
       - run:
           working_directory: integration/airflow
-          command: make setup test-all
+          command: python -m poetry run make setup test-all
 
   test_python_flyte:
     executor: linux-amd64
@@ -455,7 +555,7 @@ jobs:
       - install_python
       - run:
           working_directory: integration/flyte
-          command: make setup test
+          command: python -m poetry run make setup test
 
   coverage:
     executor: linux-amd64
@@ -503,6 +603,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - install_python
       - attach_workspace:
           at: /tmp/py_dist
       - run:
@@ -514,29 +615,26 @@ jobs:
             cp /tmp/py_dist/bacalhau_sdk* python/dist
             mkdir -p integration/airflow/dist
             cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
+            mkdir -p integration/airflow/dist
+            cp /tmp/py_dist/bacalhau_flyte* integration/flyte/dist
       - run:
           name: Release python apiclient
           command: |
-            make release-python-apiclient
-      - run:
-          name: Install Python SDK pre-requisites
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+            python -m poetry run make release-python-apiclient
       - run:
           name: Release python sdk
           command: |
-            make release-python-sdk
+            python -m poetry run make release-python-sdk
       - run:
           name: Release python Airflow integration
           command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-airflow
+            python -m poetry run pip install twine==4.0.2
+            python -m poetry run make release-bacalhau-airflow
       - run:
           name: Release python Flyte integration
           command: |
-            pip3 install twine==4.0.2
-            make release-bacalhau-flyte
+            python -m poetry run pip install twine==4.0.2
+            python -m poetry run make release-bacalhau-flyte
 
   build_swagger:
     executor: linux-amd64
@@ -635,7 +733,7 @@ workflows:
               - target_os: windows
                 target_arch: arm64
                 build_tags: integration
-      - test_python_sdk
+      - build_and_test_python_sdk
       - test_python_airflow
       - test_python_flyte
       - coverage:
@@ -667,7 +765,7 @@ workflows:
           filters: &build_on_release_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
-            !!merge <<: *build_on_branch_and_tag_push
+            <<: *build_on_branch_and_tag_push
 
   build_workflow:
     when: << pipeline.parameters.GHA_Action >>

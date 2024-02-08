@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/nats/stream"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 )
@@ -25,6 +27,7 @@ type ComputeHandler struct {
 	conn            *nats.Conn
 	computeEndpoint compute.Endpoint
 	subscription    *nats.Subscription
+	streamingClient *stream.Client
 }
 
 // handlerWithResponse represents a function that processes a request and returns a response.
@@ -32,10 +35,15 @@ type handlerWithResponse[Request, Response any] func(context.Context, Request) (
 
 // NewComputeHandler creates a new ComputeHandler.
 func NewComputeHandler(params ComputeHandlerParams) (*ComputeHandler, error) {
+	streamingClient, err := stream.NewClient(stream.ClientParams{Conn: params.Conn})
+	if err != nil {
+		return nil, err
+	}
 	handler := &ComputeHandler{
 		name:            params.Name,
 		conn:            params.Conn,
 		computeEndpoint: params.ComputeEndpoint,
+		streamingClient: streamingClient,
 	}
 
 	subject := computeEndpointSubscribeSubject(handler.name)
@@ -59,15 +67,15 @@ func handleRequest(msg *nats.Msg, handler *ComputeHandler) {
 
 	switch method {
 	case AskForBid:
-		processAndRespond(ctx, msg, handler.computeEndpoint.AskForBid)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.AskForBid)
 	case BidAccepted:
-		processAndRespond(ctx, msg, handler.computeEndpoint.BidAccepted)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidAccepted)
 	case BidRejected:
-		processAndRespond(ctx, msg, handler.computeEndpoint.BidRejected)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidRejected)
 	case CancelExecution:
-		processAndRespond(ctx, msg, handler.computeEndpoint.CancelExecution)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.CancelExecution)
 	case ExecutionLogs:
-		processAndRespond(ctx, msg, handler.computeEndpoint.ExecutionLogs)
+		processAndStream(ctx, handler.streamingClient, msg, handler.computeEndpoint.ExecutionLogs)
 	default:
 		// Noop, not subscribed to this method
 		return
@@ -75,16 +83,17 @@ func handleRequest(msg *nats.Msg, handler *ComputeHandler) {
 }
 
 // processAndRespond processes the request and sends a response.
-func processAndRespond[Request, Response any](ctx context.Context, msg *nats.Msg, f handlerWithResponse[Request, Response]) {
+func processAndRespond[Request, Response any](
+	ctx context.Context, conn *nats.Conn, msg *nats.Msg, f handlerWithResponse[Request, Response]) {
 	response, err := processRequest(ctx, msg, f)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err)
 	}
 
 	// We will wrap up the response/error in a Result type which can be decoded by the proxy itself.
-	result := newResult(response, err)
+	result := concurrency.NewAsyncResult(response, err)
 
-	err = sendResponse(result, msg)
+	err = sendResponse(conn, msg.Reply, result)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error sending response: %s", err)
 	}
@@ -108,11 +117,42 @@ func processRequest[Request, Response any](
 }
 
 // sendResponse marshals the response and sends it back to the requester.
-func sendResponse[Response any](result Result[Response], msg *nats.Msg) error {
+func sendResponse[Response any](conn *nats.Conn, reply string, result *concurrency.AsyncResult[Response]) error {
 	resultData, err := json.Marshal(result)
 	if err != nil {
-		return fmt.Errorf("error encoding %s: %s", reflect.TypeOf(result.Response).Name(), err)
+		return fmt.Errorf("error encoding %T: %s", result.Value, err)
 	}
 
-	return msg.Respond(resultData)
+	return conn.Publish(reply, resultData)
+}
+
+func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.Client, msg *nats.Msg,
+	f handlerWithResponse[Request, <-chan *concurrency.AsyncResult[Response]]) {
+	if msg.Reply == "" {
+		log.Ctx(ctx).Error().Msgf("streaming request on %s has no reply subject", msg.Subject)
+		return
+	}
+	writer := streamingClient.NewWriter(msg.Reply)
+	request := new(Request)
+	err := json.Unmarshal(msg.Data, request)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseBadRequest,
+			fmt.Sprintf("error decoding %s: %s", reflect.TypeOf(request).Name(), err))
+		return
+	}
+
+	ch, err := f(ctx, *request)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
+			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
+		return
+	}
+
+	for res := range ch {
+		_, err = writer.WriteObject(res)
+		if err != nil {
+			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
+		}
+	}
+	_ = writer.Close()
 }
