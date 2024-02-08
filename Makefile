@@ -166,14 +166,20 @@ WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' 
 WEB_INSTALL_GUARD := webui/yarn.lock
 WEB_BUILD_GUARD := .web-build-guard
 
+
+webui/node_modules:
+	@echo "Installing webui dependencies"
+	@cd webui && yarn install
+
 .PHONY: build-webui
 build-webui: ${WEB_BUILD_FILES}
 
 webui/build:
 	mkdir -p $@
 
-$(WEB_INSTALL_GUARD): webui/package.json
-	cd webui && yarn install
+$(WEB_INSTALL_GUARD): webui/node_modules webui/package.json
+	@echo "Updating webui dependencies"
+	@cd webui && yarn install
 	touch $(WEB_INSTALL_GUARD)
 
 export GENERATE_SOURCEMAP := false
