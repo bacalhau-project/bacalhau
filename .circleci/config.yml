@@ -441,7 +441,7 @@ jobs:
       - run_make_under_specific_shell:
           # Build the flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte/plugins
-          makefile_directory: $HOME/repo
+          makefile_directory: $HOME/repo/integration/flyte/plugins
           make_command: build_all_plugins
       - persist_to_workspace:
           root: integration/airflow/dist
