@@ -4,6 +4,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -109,6 +110,7 @@ func TestConfig(t *testing.T) {
 				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
 				expected := configenv.Testing
 				configPath := t.TempDir()
+				expected.Node.Requester.JobStore.Path = filepath.Join(configPath, OrchestratorJobStorePath)
 
 				_, err := Init(configPath)
 				require.NoError(t, err)
