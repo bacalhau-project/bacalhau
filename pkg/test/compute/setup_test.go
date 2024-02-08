@@ -11,24 +11,20 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/labstack/echo/v4"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
-	repo2 "github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -47,7 +43,13 @@ type ComputeSuite struct {
 	completedChannel chan compute.RunResult
 }
 
-func (s *ComputeSuite) SetupSuite() {
+func (s *ComputeSuite) SetupTest() {
+	s.setupConfig()
+	s.setupNode()
+}
+
+// setupConfig creates a new config for testing
+func (s *ComputeSuite) setupConfig() {
 	storePath := filepath.Join(s.T().TempDir(), fmt.Sprint(time.Now().UnixNano()))
 	s.Require().NoError(os.MkdirAll(storePath, 0755))
 
@@ -64,31 +66,16 @@ func (s *ComputeSuite) SetupSuite() {
 	s.config = cfg
 }
 
-func (s *ComputeSuite) SetupTest() {
-	var err error
+func (s *ComputeSuite) setupNode() {
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
 	s.executor = noop_executor.NewNoopExecutor()
-	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.bidChannel = make(chan compute.BidResult)
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
-	s.setupNode()
-}
-
-func (s *ComputeSuite) setupNode() {
-	repo2.SetupBacalhauRepoForTesting(s.T())
-	libp2pPort, err := freeport.GetFreePort()
-	s.NoError(err)
-
-	privKey, err := config.GetLibp2pPrivKey()
-	s.Require().NoError(err)
-	host, err := libp2p.NewHost(libp2pPort, privKey)
-	s.NoError(err)
-	s.T().Cleanup(func() { _ = host.Close })
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -116,7 +103,7 @@ func (s *ComputeSuite) setupNode() {
 
 	s.node, err = node.NewComputeNode(
 		context.Background(),
-		host.ID().String(),
+		"test",
 		s.cm,
 		apiServer,
 		s.config,

@@ -33,9 +33,9 @@ func TestAsyncBidSuite(t *testing.T) {
 	suite.Run(t, new(AsyncBidSuite))
 }
 
-func (s *AsyncBidSuite) SetupSuite() {
+func (s *AsyncBidSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.ComputeSuite.SetupSuite()
+	s.setupConfig()
 	s.strategy = bidstrategy.NewFixedBidStrategy(true, true)
 	s.config.BidSemanticStrategy = s.strategy
 	s.config.BidResourceStrategy = s.strategy
@@ -55,6 +55,7 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
 	s.callbackStore.CloseFn = s.store.Close
 	s.config.ExecutionStore = s.callbackStore
+	s.setupNode()
 }
 
 func (s *AsyncBidSuite) TearDownSuite() {
