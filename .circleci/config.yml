@@ -226,7 +226,7 @@ commands:
             pip install poetry # Installing inside the virtual env
             poetry install # Installing all the dependencies
             make << parameters.make_command >> -C << parameters.makefile_directory >>
-            exit
+            deactivate
             # Return to the original directory
             popd
 
@@ -429,16 +429,19 @@ jobs:
             source "$BASH_ENV"
             python -m poetry run pip install -r dev-requirements.txt
       - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo/python
+          # Build the airflow integration
+          directory_to_change_to: $HOME/repo/integration/airflow
+          makefile_directory: $HOME/repo
           make_command: build-bacalhau-airflow
       - run_make_under_specific_shell:
-          directory_to_change_to: integration/flyte
+          # Setup flyte integration
+          directory_to_change_to: $HOME/repo/integration/flyte
           makefile_directory: $HOME/repo/integration/flyte
           make_command: setup
       - run_make_under_specific_shell:
-          directory_to_change_to: integration/flyte/plugins
-          makefile_directory: $HOME/repo/integration/flyte/plugins
+          # Build the flyte integration
+          directory_to_change_to: $HOME/repo/integration/flyte/plugins
+          makefile_directory: $HOME/repo
           make_command: build_all_plugins
       - persist_to_workspace:
           root: integration/airflow/dist
