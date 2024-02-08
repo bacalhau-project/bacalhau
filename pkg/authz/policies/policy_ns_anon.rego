@@ -10,6 +10,10 @@ http_safe_methods := ["GET", "HEAD", "OPTIONS"]
 http_unsafe_methods := ["PUT", "DELETE", "POST"]
 
 
+is_legacy_api if {
+    input.http.path[2] == "requester"
+}
+
 # Allow writing jobs if the access token has namespace write access
 allow if {
     input.http.path == job_endpoint
@@ -29,7 +33,22 @@ allow if {
 # Allow reading all other endpoints, inclduing by users who don't have a token
 allow if {
     input.http.path != job_endpoint
+    not is_legacy_api
     input.http.method in http_safe_methods
+}
+
+# Allow access to legacy job APIs which will do authz internally
+allow if {
+    is_legacy_api
+    input.http.path[3] in ["submit", "cancel"]
+
+    token_namespaces
+}
+
+# Allow reading other non-job V1 APIs without a token
+allow if {
+    is_legacy_api
+    not input.http.path[3] in ["submit", "cancel"]
 }
 
 # Allow posting to auth endpoints, neccessary to get a token in the first place

@@ -183,9 +183,11 @@ func (apiClient *APIClient) do(ctx context.Context, req *http.Request, resData a
 				string(responseBody)))
 		}
 
-		if !reflect.DeepEqual(serverError, bacerrors.BacalhauErrorInterface(nil)) {
+		if !reflect.DeepEqual(serverError, &bacerrors.ErrorResponse{}) {
 			return serverError
 		}
+
+		return errors.New(string(responseBody))
 	}
 
 	err = json.NewDecoder(res.Body).Decode(resData)
