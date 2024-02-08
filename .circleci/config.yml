@@ -448,11 +448,6 @@ jobs:
           paths:
             - bacalhau_airflow-*.tar.gz
             - bacalhau_airflow-*.whl
-      - persist_to_workspace:
-          root: integration/flyte/dist
-          paths:
-            - bacalhau_flyte-*.tar.gz
-            - bacalhau_flyte-*.whl
 
   test_cli:
     environment:
