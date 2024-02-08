@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -175,23 +176,40 @@ func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 		return node.NetworkConfig{}, err
 	}
 
-	// Generate an auth token using the user's client key. It should not be
-	// possible to compute this value by anyone other than the NATS server, and
-	// should be stable across restarts of the node.
-	var keySig string
-	keySig, err := system.SignForClient([]byte(nodeID))
-	if err != nil {
-		return node.NetworkConfig{}, err
+	if networkCfg.AuthSecret == "" {
+		// Generate an auth token using the user's client key. It should not be
+		// possible to compute this value by anyone other than the NATS server, and
+		// should be stable across restarts of the node.
+		var keySig string
+		keySig, err := system.SignForClient([]byte(nodeID))
+		if err != nil {
+			return node.NetworkConfig{}, err
+		}
+		hash := sha256.Sum256([]byte(keySig))
+		networkCfg.AuthSecret = base64.RawURLEncoding.EncodeToString(hash[:])
+	} else {
+		// If the user supplied an auth secret and some orchestrator(s), assume
+		// they are passing a auth secret to be used as a client. Attach the
+		// secret to the orchestrator urls, ignoring any which have one already.
+		for index, orchestrator := range networkCfg.Orchestrators {
+			orchestratorURL, err := url.Parse(orchestrator)
+			if err != nil {
+				return node.NetworkConfig{}, err
+			}
+
+			if orchestratorURL.User == nil {
+				orchestratorURL.User = url.User(networkCfg.AuthSecret)
+			}
+			networkCfg.Orchestrators[index] = orchestratorURL.String()
+		}
 	}
-	hash := sha256.Sum256([]byte(keySig))
-	token := base64.RawURLEncoding.EncodeToString(hash[:])
 
 	return node.NetworkConfig{
 		Type:                     networkCfg.Type,
 		Port:                     networkCfg.Port,
 		AdvertisedAddress:        networkCfg.AdvertisedAddress,
 		Orchestrators:            networkCfg.Orchestrators,
-		AuthSecret:               token,
+		AuthSecret:               networkCfg.AuthSecret,
 		ClusterName:              networkCfg.Cluster.Name,
 		ClusterPort:              networkCfg.Cluster.Port,
 		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,

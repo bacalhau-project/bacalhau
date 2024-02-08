@@ -151,6 +151,7 @@ type NetworkConfig struct {
 	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
 	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
+	AuthSecret        string               `yaml:"AuthSecret"`
 	Orchestrators     []string             `yaml:"Orchestrators"`
 	Cluster           NetworkClusterConfig `yaml:"Cluster"`
 }

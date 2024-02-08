@@ -16,6 +16,19 @@ testcase_node_can_connect_with_correct_token() {
     # If this returns successfully, the node started and authenticated.
 }
 
+testcase_node_connects_with_preconfigured_token() {
+    subject bacalhau config set node.network.authsecret kerfuffle
+    assert_match 0 $status
+    create_node requester
+
+    # Remove auth token from orchestrator URL
+    export BACALHAU_NODE_NETWORK_ORCHESTRATORS=$(echo $BACALHAU_NODE_NETWORK_ORCHESTRATORS | sed "s:[^\/]*@::")
+    new_repo
+    subject bacalhau config set node.network.authsecret kerfuffle
+    create_node compute
+    # If this returns successfully, the node started and authenticated.
+}
+
 testcase_node_cannot_connect_without_token() {
     subject bacalhau config set node.network.type nats
     create_node requester
