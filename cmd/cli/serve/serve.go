@@ -212,12 +212,12 @@ func serve(cmd *cobra.Command) error {
 		networkConfig.ClusterPeers = peers
 	}
 
-	computeConfig, err := GetComputeConfig()
+	computeConfig, err := GetComputeConfig(ctx)
 	if err != nil {
 		return err
 	}
 
-	requesterConfig, err := GetRequesterConfig()
+	requesterConfig, err := GetRequesterConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -254,7 +254,6 @@ func serve(cmd *cobra.Command) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
-		FsRepo:                fsRepo,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}

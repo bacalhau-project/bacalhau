@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
@@ -20,7 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetComputeConfig() (node.ComputeConfig, error) {
+func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 	var cfg types.ComputeConfig
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
@@ -34,6 +38,10 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		return node.ComputeConfig{}, err
 	}
 
+	executionStore, err := getExecutionStore(ctx, cfg.ExecutionStore)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,
@@ -54,15 +62,20 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		},
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
+		ExecutionStore:               executionStore,
 	})
 }
 
-func GetRequesterConfig() (node.RequesterConfig, error) {
+func GetRequesterConfig(ctx context.Context) (node.RequesterConfig, error) {
 	var cfg types.RequesterConfig
 	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
 		return node.RequesterConfig{}, err
 	}
 
+	jobStore, err := getJobStore(ctx, cfg.JobStore)
+	if err != nil {
+		return node.RequesterConfig{}, err
+	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
@@ -89,6 +102,7 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 		TranslationEnabled:             cfg.TranslationEnabled,
+		JobStore:                       jobStore,
 	})
 }
 
@@ -182,4 +196,23 @@ func getNetworkConfig() (node.NetworkConfig, error) {
 		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,
 		ClusterPeers:             networkCfg.Cluster.Peers,
 	}, nil
+}
+
+func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig) (store.ExecutionStore, error) {
+	switch storeCfg.Type {
+	case types.BoltDB:
+		return boltdb.NewStore(ctx, storeCfg.Path)
+	default:
+		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
+	}
+}
+
+func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig) (jobstore.Store, error) {
+	switch storeCfg.Type {
+	case types.BoltDB:
+		log.Ctx(ctx).Debug().Str("Path", storeCfg.Path).Msg("creating boltdb backed jobstore")
+		return boltjobstore.NewBoltJobStore(storeCfg.Path)
+	default:
+		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
+	}
 }

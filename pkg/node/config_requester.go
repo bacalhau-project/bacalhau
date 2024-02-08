@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
@@ -46,6 +47,8 @@ type RequesterConfigParams struct {
 
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
+
+	JobStore jobstore.Store
 }
 
 type RequesterConfig struct {

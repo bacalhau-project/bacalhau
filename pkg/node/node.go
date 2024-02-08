@@ -25,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -63,7 +62,6 @@ type NodeConfig struct {
 	AllowListedLocalPaths       []string
 	NodeInfoStoreTTL            time.Duration
 
-	FsRepo        *repo.FsRepo
 	NetworkConfig NetworkConfig
 }
 
@@ -250,7 +248,6 @@ func NewNode(
 			storageProviders,
 			authenticators,
 			nodeInfoStore,
-			config.FsRepo,
 			transportLayer.ComputeProxy(),
 		)
 		if err != nil {

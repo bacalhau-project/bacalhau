@@ -4,8 +4,10 @@ package compute
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/labstack/echo/v4"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
@@ -44,10 +46,14 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupSuite() {
+	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
+	s.Require().NoError(err)
+
 	cfg, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU: 2,
 		},
+		ExecutionStore: executionStore,
 	})
 	s.Require().NoError(err)
 	s.config = cfg

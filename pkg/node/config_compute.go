@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -65,6 +65,8 @@ type ComputeConfigParams struct {
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
+
+	ExecutionStore store.ExecutionStore
 }
 
 type ComputeConfig struct {
@@ -180,6 +182,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
+		ExecutionStore:               params.ExecutionStore,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {
