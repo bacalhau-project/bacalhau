@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid"
+import { randomUUID } from "crypto"
 import { TaskStatus } from "./taskstatus"
 
 export class Task {
@@ -13,7 +13,7 @@ export class Task {
   status: TaskStatus
 
   constructor(taskName: string) {
-    this.id = uuidv4()
+    this.id = randomUUID()
     this.name = taskName
     this.createdOn = Date.now()
     this.status = TaskStatus.INCOMPLETE

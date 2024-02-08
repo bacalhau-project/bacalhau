@@ -1,3 +1,4 @@
+import React from "react"
 import { render, screen, act } from "@testing-library/react"
 import { server as mswServer } from "../tests/msw/server"
 import App from "./App"

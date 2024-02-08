@@ -114,6 +114,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error describing job.")
 }
 
+// cspell:ignore Dont
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	type commandReturn struct {
 		c   *cobra.Command
