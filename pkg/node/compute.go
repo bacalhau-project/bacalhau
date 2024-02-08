@@ -21,11 +21,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type Compute struct {
@@ -183,6 +186,21 @@ func NewComputeNode(
 		Buffer:         config.LogStreamBufferSize,
 	})
 
+	var localPublisherServer *local.LocalPublisherServer
+	if pub, err := publishers.Get(ctx, models.PublisherLocal); err == nil {
+		ok, err := pub.IsInstalled(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to check if local publisher is installed")
+		}
+		if ok {
+			log.Ctx(ctx).Info().Msg("**** local publisher is installed and server being started")
+			localPublisherServer = local.NewLocalPublisherServer(ctx, config.LocalPublisher)
+			go localPublisherServer.Start(ctx)
+		}
+	} else {
+		log.Ctx(ctx).Error().Err(err).Msg("local publisher not installed")
+	}
+
 	// node info
 	nodeInfoDecorator := compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
 		Executors:          executors,
@@ -237,6 +255,10 @@ func NewComputeNode(
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if localPublisherServer != nil {
+			localPublisherServer.Stop()
+		}
+
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}

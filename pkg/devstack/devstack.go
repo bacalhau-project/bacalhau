@@ -239,6 +239,14 @@ func Setup(
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
+		if isComputeNode {
+			// We have multiple process on the same machine, all wanting to listen on a HTTP port
+			// and so we will give each compute node a random open port to listen on. For normal
+			// compute nodes we will use a fixed port.
+			fport, _ := freeport.GetFreePort()
+			stackConfig.ComputeConfig.LocalPublisher.Port = fport
+		}
+
 		nodeConfig := node.NodeConfig{
 			NodeID:              nodeID,
 			IPFSClient:          ipfsNode.Client(),

@@ -125,6 +125,7 @@ func NewStandardPublishersFactory() PublishersFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
+				&nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {
 				return nil, err

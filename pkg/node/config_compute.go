@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -63,8 +64,9 @@ type ComputeConfigParams struct {
 	FailureInjectionConfig model.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
-
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
+
+	LocalPublisher types.LocalPublisherConfig
 }
 
 type ComputeConfig struct {
@@ -107,6 +109,8 @@ type ComputeConfig struct {
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
 
 	ExecutionStore store.ExecutionStore
+
+	LocalPublisher types.LocalPublisherConfig
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -128,6 +132,13 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	}
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
+	}
+
+	if params.LocalPublisher.Address == "" {
+		params.LocalPublisher.Address = DefaultComputeConfig.LocalPublisher.Address
+	}
+	if params.LocalPublisher.Directory == "" {
+		params.LocalPublisher.Directory = DefaultComputeConfig.LocalPublisher.Directory
 	}
 
 	// Get available physical resources in the host
@@ -180,6 +191,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
+		LocalPublisher:               params.LocalPublisher,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {
