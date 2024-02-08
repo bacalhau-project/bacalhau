@@ -1,5 +1,5 @@
-import { randomBytes, randomUUID } from "crypto"
 import { Job, Task } from "../../src/helpers/jobInterfaces"
+import { randomBytes, randomUUID } from "./cryptoFunctions"
 import { selectRandomElements, selectRandomKeyAndValue } from "./mockUtilities"
 
 function createRandomConstraint(): {

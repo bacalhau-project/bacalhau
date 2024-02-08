@@ -63,6 +63,7 @@ func (s *ChainedPublisherSuite) TestPublish_IgnoreErrors() {
 	s.Equal([]string{message}, s.subscriber2.Events())
 }
 
+// cspell:ignore Dont
 func (s *ChainedPublisherSuite) TestPublish_DontIgnoreErrors() {
 	s.ignoreErrors = false
 	s.subscriber1.badSubscriber = true

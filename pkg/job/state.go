@@ -284,6 +284,7 @@ func WaitForUnsuccessfulCompletion() CheckStatesFunction {
 	}
 }
 
+// cspell:ignore Dont
 // if there are > X states then error
 func WaitDontExceedCount(count int) CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {

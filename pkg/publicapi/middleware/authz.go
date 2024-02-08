@@ -15,7 +15,7 @@ func Authorize(authorizer authz.Authorizer) echo.MiddlewareFunc {
 			if result, err := authorizer.Authorize(c.Request()); err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 			} else if !result.Approved {
-				return echo.NewHTTPError(http.StatusForbidden, result.Reason)
+				return echo.NewHTTPError(http.StatusForbidden, "unauthorized. "+result.Reason)
 			} else {
 				return next(c)
 			}
