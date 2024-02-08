@@ -397,6 +397,13 @@ jobs:
             export POETRY_VERSION=$(poetry --version | awk '{print $NF}' | sed 's/v//')
             echo 'export PATH="$HOME/.asdf/installs/poetry/${POETRY_VERSION}/bin:${PATH}"' >> "${BASH_ENV}"
       - run:
+          name: Add swagger
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
+      - run:
           name: Build Python API client
           command: make build-python-apiclient
       - persist_to_workspace:
