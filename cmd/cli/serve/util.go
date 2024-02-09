@@ -92,6 +92,8 @@ func GetRequesterConfig() (node.RequesterConfig, error) {
 		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 		TranslationEnabled:             cfg.TranslationEnabled,
+
+		DefaultPublisher: cfg.DefaultPublisher,
 	})
 }
 

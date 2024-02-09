@@ -57,7 +57,7 @@ func (o *PublisherOpt) Set(value string) error {
 			return fmt.Errorf("invalid publisher option: %s", field)
 		}
 	}
-	v, err := job.ParsePublisherString(destinationURI, options)
+	v, err := job.PublisherStringToPublisherSpec(destinationURI, options)
 	o.value = &v
 	return err
 }

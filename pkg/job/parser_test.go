@@ -162,7 +162,7 @@ func TestParsePublisherString(t *testing.T) {
 			if test.options == nil {
 				test.options = map[string]interface{}{}
 			}
-			spec, err := ParsePublisherString(test.publisherURI, test.options)
+			spec, err := PublisherStringToPublisherSpec(test.publisherURI, test.options)
 			if test.error {
 				require.Error(t, err)
 			} else {
