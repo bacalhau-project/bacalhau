@@ -1,4 +1,12 @@
 write_files:
+  # bacalhau install-script
+  - path: /etc/install-bacalhau.sh
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_install_script_file}
+
   # bacalhau config
   - path: /etc/config.yaml
     encoding: b64
