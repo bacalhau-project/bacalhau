@@ -7,9 +7,9 @@ output "compute_public_ip" {
 }
 
 output "bacalhau_requester_api_token" {
-  value = local.bacalhau_requester_api_auth_token
+  value = local.token_config.requester_api_token
 }
 
 output "bacalhau_compute_api_token" {
-  value = local.bacalhau_compute_api_auth_token
+  value = local.token_config.compute_api_token
 }

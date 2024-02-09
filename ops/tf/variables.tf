@@ -49,6 +49,12 @@ variable "bacalhau_accept_networked_jobs" {
   default = false
 }
 
+variable "bacalhau_boot_disk_size" {
+  description = "The size of the boot disk in GB."
+  type        = number
+  default = 50
+}
+
 variable "bacalhau_repo_disk_size" {
   description = "The size of the disk in GB bacalhau will to store its repo"
   type        = number
