@@ -46,6 +46,8 @@ type RequesterConfigParams struct {
 
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
+
+	DefaultPublisher string
 }
 
 type RequesterConfig struct {

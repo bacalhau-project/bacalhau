@@ -23,7 +23,8 @@ type RequesterConfig struct {
 	Worker           WorkerConfig           `yaml:"Worker"`
 	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`
 
-	TagCache DockerCacheConfig `yaml:"TagCache"`
+	TagCache         DockerCacheConfig `yaml:"TagCache"`
+	DefaultPublisher string            `yaml:"DefaultPublisher"`
 }
 
 type EvaluationBrokerConfig struct {
