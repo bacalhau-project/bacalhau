@@ -75,8 +75,13 @@ variable "bacalhau_otel_collector_endpoint" {
   type = string
 }
 
-variable "bacalhau_auth_token" {
-  description = "Auth token for bacalhau api"
+variable "bacalhau_requester_api_token" {
+  description = "Auth token for bacalhau requester api"
+  type = string
+}
+
+variable "bacalhau_compute_api_token" {
+  description = "Auth token for bacalhau compute api"
   type = string
 }
 

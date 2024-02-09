@@ -84,3 +84,21 @@ variable "bacalhau_install_commit" {
   type = string
   default = ""
 }
+
+variable "bacalhau_requester_api_token" {
+  description = <<EOF
+  (Optional) Provide a token used for clients to connect to the requester. If blank one will be generated as part of
+  the deployment and displayed in the output.
+  EOF
+  type = string
+  default = ""
+}
+
+variable "bacalhau_compute_api_token" {
+  description = <<EOF
+  (Optional) Provide a token used for compute nodes to connect to the requester. If blank one will be generated as
+part of the deployment and displayed in the output.
+  EOF
+  type = string
+  default = ""
+}

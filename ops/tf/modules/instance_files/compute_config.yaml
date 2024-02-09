@@ -9,7 +9,7 @@ Node:
     Type: nats
     Port: 4222
     Orchestrators:
-      - ${requester_ip}:4222
+      - nats://${compute_api_token}@${requester_ip}:4222
     Cluster:
       Name: global
       Port: 6222

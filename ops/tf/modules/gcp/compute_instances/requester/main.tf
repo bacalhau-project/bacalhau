@@ -117,7 +117,7 @@ locals {
 
   // authn
   bacalhau_authn_policy_content = templatefile("${path.module}/../../../instance_files/authn_policy.rego", {
-    bacalhau_secret_user_access_token = var.bacalhau_auth_token
+    bacalhau_secret_user_access_token = var.bacalhau_requester_api_token
   })
   // authz
   bacalhau_authz_policy_content = templatefile("${path.module}/../../../instance_files/authz_policy.rego", {
