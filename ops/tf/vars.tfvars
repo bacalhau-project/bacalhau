@@ -18,7 +18,7 @@ aws_secret_access_key = ""
 
 bacalhau_accept_networked_jobs = true
 
-bacalhau_otel_collector_endpoint = ""
+bacalhau_otel_collector_endpoint = "http://analytics.bacalhau.tech:4318"
 
 bacalhau_install_branch = "main"
 bacalhau_install_version = ""
