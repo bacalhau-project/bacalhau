@@ -6,6 +6,10 @@ output "compute_public_ip" {
   value = module.compute_instance.compute_public_ips
 }
 
-output "bacalhau_secret_auth_token" {
-  value = random_string.bacalhau_auth_token.result
+output "bacalhau_requester_api_token" {
+  value = local.bacalhau_requester_api_auth_token
+}
+
+output "bacalhau_compute_api_token" {
+  value = local.bacalhau_compute_api_auth_token
 }
