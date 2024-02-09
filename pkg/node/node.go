@@ -212,6 +212,7 @@ func NewNode(
 			NodeID:                   config.NodeID,
 			Port:                     config.NetworkConfig.Port,
 			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
+			AuthSecret:               config.NetworkConfig.AuthSecret,
 			Orchestrators:            config.NetworkConfig.Orchestrators,
 			ClusterName:              config.NetworkConfig.ClusterName,
 			ClusterPort:              config.NetworkConfig.ClusterPort,
