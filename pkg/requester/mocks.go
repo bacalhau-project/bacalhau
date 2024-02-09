@@ -5,6 +5,7 @@
 //
 //	mockgen --source types.go --destination mocks.go --package requester
 //
+
 // Package requester is a generated GoMock package.
 package requester
 
@@ -52,21 +53,6 @@ func (m *MockEndpoint) CancelJob(arg0 context.Context, arg1 CancelJobRequest) (C
 func (mr *MockEndpointMockRecorder) CancelJob(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelJob", reflect.TypeOf((*MockEndpoint)(nil).CancelJob), arg0, arg1)
-}
-
-// ReadLogs mocks base method.
-func (m *MockEndpoint) ReadLogs(arg0 context.Context, arg1 ReadLogsRequest) (ReadLogsResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadLogs", arg0, arg1)
-	ret0, _ := ret[0].(ReadLogsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ReadLogs indicates an expected call of ReadLogs.
-func (mr *MockEndpointMockRecorder) ReadLogs(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadLogs", reflect.TypeOf((*MockEndpoint)(nil).ReadLogs), arg0, arg1)
 }
 
 // SubmitJob mocks base method.
