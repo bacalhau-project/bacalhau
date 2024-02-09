@@ -264,36 +264,24 @@ jobs:
             - "*.tar.gz"
             - "*.sha256"
 
+      - store_artifacts:
+          path: dist/
+
+  test_cli_bash:
+    executor: linux-amd64
+    steps:
+      - checkout
       - attach_workspace:
           at: .
 
-      - install_go:
-          executor: linux-amd64
-
       - run:
-          name: Build tarball
           command: |
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            # Prevent rebuilding web ui, we should have already attached it
-            find webui -exec touch -c '{}' +
-            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
-            GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
-            GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
-            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
+            mkdir -p bin/linux/amd64
+            pushd bin/linux/amd64
+            tar -xvf ../../../bacalhau_*_linux_amd64.tar.gz
+            popd
 
-      - persist_to_workspace:
-          root: dist/
-          paths:
-            - "*.tar.gz"
-            - "*.sha256"
-
-      - store_artifacts:
-          path: dist/
+      - run: cd test && bin/bashtub *.sh
 
   build_webui:
     executor: node/default
@@ -779,6 +767,9 @@ workflows:
           filters: *build_on_branch_and_tag_push
       - build_cli:
           requires: [build_webui]
+          filters: *build_on_branch_and_tag_push
+      - test_cli_bash:
+          requires: [build_cli]
           filters: *build_on_branch_and_tag_push
       - build_docker:
           requires: [build_cli]
