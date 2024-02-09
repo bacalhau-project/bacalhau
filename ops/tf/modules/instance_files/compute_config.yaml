@@ -8,6 +8,7 @@ Node:
   Network:
     Type: nats
     Port: 4222
+    AuthSecret: ${compute_api_token}
     Orchestrators:
       - nats://${compute_api_token}@${requester_ip}:4222
     Cluster:

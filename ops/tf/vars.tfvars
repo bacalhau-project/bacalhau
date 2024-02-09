@@ -25,4 +25,4 @@ bacalhau_compute_api_token = "token_for_compute_api"
 
 bacalhau_install_branch = ""
 bacalhau_install_version = ""
-bacalhau_install_commit = "292663a6a23fe9a88dabb2b3bdf797dfa825bbe5"
+bacalhau_install_commit = "baa71cff57819fd2ec3fb5a2880e2a1f25a9f74e"
