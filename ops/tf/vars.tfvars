@@ -20,5 +20,6 @@ bacalhau_accept_networked_jobs = true
 
 bacalhau_otel_collector_endpoint = "http://analytics.bacalhau.tech:4318"
 
-bacalhau_install_branch = "main"
+bacalhau_install_branch = ""
 bacalhau_install_version = ""
+bacalhau_install_commit = "292663a6a23fe9a88dabb2b3bdf797dfa825bbe5"

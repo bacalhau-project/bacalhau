@@ -35,6 +35,7 @@ module "requester_instance" {
 
   bacalhau_install_version = var.bacalhau_install_version
   bacalhau_install_branch = var.bacalhau_install_branch
+  bacalhau_install_commit = var.bacalhau_install_commit
 }
 
 module "compute_instance" {
@@ -66,4 +67,5 @@ module "compute_instance" {
 
   bacalhau_install_version = var.bacalhau_install_version
   bacalhau_install_branch = var.bacalhau_install_branch
+  bacalhau_install_commit = var.bacalhau_install_commit
 }

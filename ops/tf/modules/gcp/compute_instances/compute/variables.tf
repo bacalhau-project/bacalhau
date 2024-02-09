@@ -91,3 +91,9 @@ variable "bacalhau_install_branch" {
   type = string
   default = ""
 }
+
+variable "bacalhau_install_commit" {
+  description = "The commit sha of bacalhau to install. If empty default to https://get.bacalhau.org/install.sh"
+  type = string
+  default = ""
+}
