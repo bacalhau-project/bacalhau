@@ -18,7 +18,9 @@ Automatic Certificate Management Environment (ACME) is a protocol that allows fo
 
 Using the `--autocert [hostname]` parameter to the CLI (in the `serve` and `devstack` commands), a certificate is obtained automatically from Lets Encrypt. The provided hostname should be a comma-separated list of hostnames, but they should all be publicly resolvable as Lets Encrypt will attempt to connect to the server to verify ownership (using the [ACME HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge). On the very first request this can take a short time whilst the first certificate is issued, but afterwards they are then cached in the bacalhau repository.
 
-Alternatively, you may set these options via the environment variable, `BACALHAU_AUTO_TLS`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.AutoCert` instead.
+Alternatively, you may set these options via the `BACALHAU_AUTO_TLS` **environment variable**.  
+
+If you are using a **configuration file**, you can set the values in `Node.ServerAPI.TLS.AutoCert` instead.
 
 :::info
 As a result of the Lets Encrypt verification step, it is necessary for the server to be able to handle requests on port 443. This typically requires elevated privileges, and rather than obtain these through a privileged account (such as root), you should instead use setcap to grant the executable the right to bind to ports \<1024.
@@ -26,9 +28,18 @@ As a result of the Lets Encrypt verification step, it is necessary for the serve
 ```
 sudo setcap CAP_NET_BIND_SERVICE+ep $(which bacalhau)
 ```
+
+Note that granting the ability to bind to privileged ports means that if the software is compromised, it could potentially impersonate other network services.
 :::
 
 A cache of ACME data is held in the config repository, by default `~/.bacalhau/autocert-cache`, and this will be used to manage renewals to avoid rate limits. 
+
+:::info
+**Managing ACME Data Cache**  
+To clear the ACME data cache in Bacalhau, delete the folder specified in the `AutoCertCachePath` configuration option. By default, this is `~/.bacalhau/autocert-cache`.
+
+You can change the location of the ACME data cache in Bacalhau by using the `AutoCertCachePath` configuration option (`Node.ServerAPI.TLS.AutoCertCachePath`).
+:::
 
 
 ## Getting a certificate from a Certificate Authority 
@@ -36,6 +47,10 @@ A cache of ACME data is held in the config repository, by default `~/.bacalhau/a
 Obtaining a TLS certificate from a Certificate Authority (CA) without using the Automated Certificate Management Environment (ACME) protocol involves a manual process that typically requires the following steps:
 
 1. Choose a Certificate Authority: First, you need to select a trusted Certificate Authority that issues TLS certificates. Popular CAs include DigiCert, GlobalSign, Comodo (now Sectigo), and others. You may also consider whether you want a free or paid certificate, as CAs offer different pricing models.
+
+:::info
+The CA must be trusted by the clients that will be connecting to the server. Ensure that the chosen CA is recognized and accepted by your clients to establish secure connections.
+:::
 
 2. Generate a Certificate Signing Request (CSR): A CSR is a text file containing information about your organization and the domain for which you need the certificate. You can generate a CSR using various tools or directly on your web server. Typically, this involves providing details such as your organization's name, common name (your domain name), location, and other relevant information.
 
@@ -47,34 +62,48 @@ Obtaining a TLS certificate from a Certificate Authority (CA) without using the 
 
 6. Payment and Processing: If you're obtaining a paid certificate, you'll need to make the payment at this stage. Once the CA has received your payment and completed the verification process, they will issue the TLS certificate.
 
-Once you have obtained your certificates, you will need to put two files in a location that bacalhau can read them.  You need the server certificate, often called something like `server.cert` or `server.cert.pem`, and the server key which is often called something like `server.key` or `server.key.pem`.
+Once you have obtained your certificates, you will need to put two files in a location that bacalhau can read them.  You need the **server certificate**, often called something like `server.cert` or `server.cert.pem`, and the **server key** which is often called something like `server.key` or `server.key.pem`.
 
-Once you have these two files available, you must start `bacalhau serve` which two new flags.  These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file.  An example of how it is used is:
+Once you have these two files available, you need to start the `bacalhau serve` with two new flags: `tlscert` and `tlskey`. These flags require arguments that should point to the corresponding certificate and key files:
 
 ```
-bacalhau server --node-type=requester --tlscert=server.cert --tlskey=server.key
+bacalhau serve --node-type=requester --tlscert=server.cert --tlskey=server.key
 ```
 
-Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerTLSKey` instead.
+
+Alternatively, you can configure these settings using the **environment variables** `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`.  
+
+If you are using a **configuration file**, you can set the values in `Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerKey` instead.
 
 
 ## Self-signed certificates 
 
 If you wish, it is possible to use Bacalhau with a self-signed certificate which does not rely on an external Certificate Authority. This is an involved process and so is not described in detail here although there is [a helpful script in the Bacalhau github repository](https://github.com/bacalhau-project/bacalhau/blob/main/scripts/make-certs.sh) which should provide a good starting point.
 
-Once you have generated the necessary files, the steps are much like above, you must start `bacalhau serve` which two new flags.  These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file.  An example of how it is used is:
+After generating the necessary files, the process is similar to the steps described above. You will need to start `bacalhau serve` with two new flags: `tlscert` and `tlskey`. These flags require arguments that should point to the relevant certificate and key files:
 
 ```
-bacalhau server --node-type=requester --tlscert=server.cert --tlskey=server.key
+bacalhau serve --node-type=requester --tlscert=server.cert --tlskey=server.key
 ```
 
-Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerTLSKey` instead.
+Alternatively, you can configure these settings using the **environment variables** `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`.  
 
-If you use self-signed certificates, it is unlikely that any clients will be able to verify the certificate when connecting to the Bacalhau APIs. There are three options available to work around this problem:
+If you are using a **configuration file**, you can set the values in `Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerKey` instead.
 
-1. Provide a CA certificate file of trusted certificate authorities, which many software libraries support in addition to system authorities.
+### Certificate Verification Issues 
 
-2. Install the CA certificate file in the system keychain of each machine that needs access to the Bacalhau APIs.
+If you use self-signed certificates, it is unlikely that any clients will be able to verify the certificate when connecting to the Bacalhau APIs. There are some options available to work around this problem:
 
-3. Instruct the software librarary you are using not to verify HTTPS requests.
+1. Use the `--insecure` flag with the `bacalhau serve` command to ignore certificate verification.
 
+2. Use the `--cacert string` flag with the `bacalhau serve` command to specify a custom CA certificate to use for verification.
+
+3. Provide a CA certificate file of trusted certificate authorities, which many software libraries support in addition to system authorities.
+
+4. Install the CA certificate file in the system keychain of each machine that needs access to the Bacalhau APIs.
+
+5. Instruct the software library you are using not to verify HTTPS requests.
+
+:::info
+Self-signing is mostly suitable for local development, testing, or scenarios where external validation is not required. Self-signed certificates are not suitable for production use, as they are not trusted by default by clients. There's also a potential for someone to impersonate the server, as the certificate was not generated by a trusted authority (Certificate Authority). This means that TLS will allow us to communicate over an encrypted channel, but we can't be sure that the server we're talking to is the one we think it is.
+:::
