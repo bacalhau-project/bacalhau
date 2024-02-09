@@ -41,9 +41,9 @@ func (s *BaseTLSSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 
-	serverCertPath, err := filepath.Abs("../../testdata/certs/dev-server.crt")
+	serverCertPath, err := filepath.Abs("../../pkg/util/cert.pem")
 	s.Require().NoError(err)
-	serverKeyPath, err := filepath.Abs("../../testdata/certs/dev-server.key")
+	serverKeyPath, err := filepath.Abs("../../pkg/util/key.pem")
 	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
