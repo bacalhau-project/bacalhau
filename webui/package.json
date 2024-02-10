@@ -116,7 +116,9 @@
     "serve": "yarn start"
   },
   "eslintConfig": {
-    "include": [".eslintrc.json"]
+    "include": [
+      ".eslintrc.json"
+    ]
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
@@ -173,7 +175,9 @@
     "wesbos": "^1.0.1"
   },
   "msw": {
-    "workerDirectory": ["public"]
+    "workerDirectory": [
+      "public"
+    ]
   },
   "description": "WebUI for Bacalhau",
   "main": "./src/index.tsx",
