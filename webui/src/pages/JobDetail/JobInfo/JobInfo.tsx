@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { Execution, Job } from "../../../helpers/jobInterfaces"
-import {
-  fromTimestamp,
-  capitalizeFirstLetter,
-} from "../../../helpers/helperFunctions"
+import { capitalizeFirstLetter } from "../../../helpers/helperFunctions"
 import styles from "./JobInfo.module.scss"
 
 interface JobInfoProps {

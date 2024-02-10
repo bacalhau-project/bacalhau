@@ -1,4 +1,6 @@
 import React, { useContext } from "react"
+import { formatDistanceToNow } from "date-fns"
+import { enUS } from "date-fns/locale"
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -12,15 +14,6 @@ import {
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces"
 import TableSettingsContext from "../../../context/TableSettingsContext"
 import { Task } from "../../../models/task"
-import {
-  format,
-  formatDistance,
-  formatDistanceToNow,
-  formatDistanceStrict,
-  formatRelative,
-  addDays,
-} from "date-fns"
-import { enUS } from "date-fns/locale"
 
 interface TableProps {
   data: Job[]

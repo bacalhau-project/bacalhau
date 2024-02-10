@@ -28,5 +28,9 @@
     "src/setupTests.ts",
     "vite-env.d.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "<tsconfigRootDir>/vite/client.d.ts",
+    "compiled/**"
+  ]
 }
