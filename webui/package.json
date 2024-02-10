@@ -2,6 +2,7 @@
   "name": "webui",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@babel/core": "^7.23.9",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
@@ -52,7 +53,6 @@
     "fsevents": "^2.3.3",
     "html-webpack-plugin": "^5.6.0",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^29.7.0",
     "jest-resolve": "^29.7.0",
     "jest-watch-typeahead": "^2.2.2",
     "mini-css-extract-plugin": "^2.8.0",
@@ -87,7 +87,7 @@
     "terser-webpack-plugin": "^5.3.10",
     "typescript": "^5.3.3",
     "undici": "^5.28.2",
-    "uuid": "^9.0.1",
+    "uuidv4": "^6.2.13",
     "vite": "^5.0.12",
     "vite-plugin-svgr": "^4.2.0",
     "vite-tsconfig-paths": "^4.3.1",
@@ -99,9 +99,7 @@
     "workbox-webpack-plugin": "^7.0.0"
   },
   "scripts": {
-    "start": "node scripts/start.js",
-    "build-bacalhau": "cd .. && make build && cd -",
-    "start-bacalhau": "cd .. && ./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --web-ui --web-ui-port 3000 && cd -",
+    "start": "vite",
     "test": "cross-env NODE_ENV=test jest 'test.+(js|jsx|ts|tsx)' --no-deprecation",
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
@@ -109,10 +107,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "build": "yarn build:dev",
-    "build:dev": "NODE_ENV=development webpack --mode=development",
-    "build:prod": "webpack --mode=production --node-env=production",
-    "watch": "webpack --watch",
-    "serve": "webpack serve --mode=development --node-env=development"
+    "build:dev": "tsc && NODE_ENV=development vite build",
+    "build:prod": "tsc && NODE_ENV=production vite build",
+    "serve": "yarn start"
   },
   "eslintConfig": {
     "include": [
