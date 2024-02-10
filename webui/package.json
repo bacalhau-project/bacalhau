@@ -4,13 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@babel/core": "^7.23.9",
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@babel/plugin-transform-class-properties": "^7.23.3",
-    "@babel/plugin-transform-nullish-coalescing-operator": "^7.23.4",
-    "@babel/plugin-transform-numeric-separator": "^7.23.4",
-    "@babel/plugin-transform-optional-chaining": "^7.23.4",
-    "@babel/plugin-transform-private-property-in-object": "^7.23.4",
     "@faker-js/faker": "^8.4.0",
     "@fontsource/open-sans": "^5.0.22",
     "@jest/globals": "^29.7.0",
