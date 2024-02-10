@@ -85,14 +85,16 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config = &StackConfig{}
 	}
 
+	defaultPublisher := config.RequesterConfig.DefaultPublisher
+
 	if config.DevStackOptions == nil {
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
 	}
 
 	if config.RequesterConfig.JobDefaults.ExecutionTimeout == 0 {
-		// TODO(forrest) [correctness] don't override the config wholesale if a field is missing
 		cfg, err := node.NewRequesterConfigWithDefaults()
 		s.Require().NoError(err)
+
 		config.RequesterConfig = cfg
 	}
 
@@ -103,6 +105,9 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		s.Require().NoError(err)
 		config.ComputeConfig = cfg
 	}
+
+	config.RequesterConfig.DefaultPublisher = defaultPublisher
+
 	stack := testutils.Setup(s.Ctx, s.T(),
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
