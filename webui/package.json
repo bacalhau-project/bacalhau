@@ -34,6 +34,7 @@
     "babel-preset-react-app": "^10.0.1",
     "bfj": "^8.0.0",
     "browserslist": "^4.22.3",
+    "browserslist-to-esbuild": "^2.1.1",
     "camelcase": "^8.0.0",
     "case-sensitive-paths-webpack-plugin": "^2.4.0",
     "core-js": "^3.35.1",
@@ -116,14 +117,6 @@
   },
   "eslintConfig": {
     "include": [".eslintrc.json"]
-  },
-  "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
