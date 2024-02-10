@@ -1150,5 +1150,5 @@ func (b *BoltJobStore) Close(ctx context.Context) error {
 	return b.database.Close()
 }
 
-// Static check to ensure that InMemoryJobStore implements jobstore.Store
+// Static check to ensure that BoltJobStore implements jobstore.Store
 var _ jobstore.Store = (*BoltJobStore)(nil)

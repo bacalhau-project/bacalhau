@@ -27,6 +27,11 @@ type NetworkConfig struct {
 	AdvertisedAddress string
 	Orchestrators     []string
 
+	// AuthSecret is a secret string that clients must use to connect. It is
+	// only used by NATS servers; clients should supply the auth secret as the
+	// user part of their Orchestrator URL.
+	AuthSecret string
+
 	// NATS config for requester nodes to connect with each other
 	ClusterName              string
 	ClusterPort              int

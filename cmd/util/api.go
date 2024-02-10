@@ -14,7 +14,15 @@ import (
 
 func GetAPIClient(ctx context.Context) *client.APIClient {
 	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
-	return client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort())
+	apiClient := client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort())
+
+	if token, err := getAuthToken(config.ClientAPIBase()); err != nil {
+		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+	} else if token != nil {
+		apiClient.DefaultHeaders["Authorization"] = token.String()
+	}
+
+	return apiClient
 }
 
 func GetAPIClientV2() *clientv2.Client {
@@ -37,17 +45,23 @@ func GetAPIClientV2() *clientv2.Client {
 		clientv2.WithHeaders(headers),
 	}
 
-	token, err := ReadToken(base)
-	if err != nil {
+	if token, err := getAuthToken(base); err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
-	}
-
-	if token != "" {
-		opts = append(opts, clientv2.WithHTTPAuth(&apimodels.HTTPCredential{
-			Scheme: "Bearer",
-			Value:  token,
-		}))
+	} else if token != nil {
+		opts = append(opts, clientv2.WithHTTPAuth(token))
 	}
 
 	return clientv2.New(base, opts...)
+}
+
+func getAuthToken(baseURL string) (*apimodels.HTTPCredential, error) {
+	token, err := ReadToken(baseURL)
+	if token != "" {
+		return &apimodels.HTTPCredential{
+			Scheme: "Bearer",
+			Value:  token,
+		}, err
+	}
+
+	return nil, err
 }

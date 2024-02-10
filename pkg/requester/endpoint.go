@@ -30,6 +30,7 @@ type BaseEndpointParams struct {
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
+	DefaultPublisher           string
 }
 
 // BaseEndpoint base implementation of requester Endpoint
@@ -48,7 +49,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
-		jobtransform.NewPublisherMigrator(),
+		jobtransform.NewPublisherMigrator(params.DefaultPublisher),
 		jobtransform.NewEngineMigrator(),
 		// jobtransform.DockerImageDigest(),
 	}

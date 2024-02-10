@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -16,11 +16,17 @@ var printMessage *string = nil
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
 func StartUpdateCheck(cmd *cobra.Command, args []string) {
-	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
-
 	version.RunUpdateChecker(
 		cmd.Context(),
-		client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version,
+		func(ctx context.Context) (*models.BuildVersionInfo, error) {
+			if response, err := util.GetAPIClientV2().Agent().Version(ctx); err != nil {
+				return nil, err
+			} else if response != nil {
+				return response.BuildVersionInfo, nil
+			} else {
+				return nil, nil
+			}
+		},
 		func(_ context.Context, ucr *version.UpdateCheckResponse) { printMessage = &ucr.Message },
 	)
 }

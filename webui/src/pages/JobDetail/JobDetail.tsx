@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
-import Moment from "react-moment"
 import { bacalhauAPI } from "../../services/bacalhau"
 import { Job, Execution } from "../../helpers/jobInterfaces"
 import styles from "./JobDetail.module.scss"
 import { Layout } from "../../layout/Layout"
+import { formatDistanceToNow } from "date-fns"
 import {
   getShortenedJobID,
   fromTimestamp,
@@ -61,16 +61,8 @@ export const JobDetail: React.FC = () => {
     ],
     rows: jobExData.map((item) => ({
       "Execution ID": item.ID,
-      Created: (
-        <Moment fromNow withTitle>
-          {fromTimestamp(item.CreateTime)}
-        </Moment>
-      ),
-      Modified: (
-        <Moment fromNow withTitle>
-          {fromTimestamp(item.ModifyTime)}
-        </Moment>
-      ),
+      Created: formatDistanceToNow(item.CreateTime),
+      Modified: formatDistanceToNow(item.ModifyTime),
       "Node ID": item.NodeID.slice(0, 7),
       Status: capitalizeFirstLetter(item.DesiredState.Message),
       Action: (

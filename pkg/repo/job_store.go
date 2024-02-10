@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	memjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/rs/zerolog/log"
 )
 
@@ -44,9 +43,6 @@ func (fsr *FsRepo) InitJobStore(ctx context.Context, prefix string) (jobstore.St
 
 		log.Ctx(ctx).Debug().Str("Path", path).Msg("creating boltdb backed jobstore")
 		return boltjobstore.NewBoltJobStore(path)
-	case types.InMemory:
-		log.Ctx(ctx).Debug().Msg("creating inmemory backed jobstore")
-		return memjobstore.NewInMemoryJobStore(), nil
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}

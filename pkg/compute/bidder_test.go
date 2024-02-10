@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
@@ -37,10 +38,18 @@ func TestBidderSuite(t *testing.T) {
 }
 
 func (s *BidderSuite) SetupTest() {
+	ctx := context.Background()
+	execStore, err := boltdb.NewStore(ctx,
+		filepath.Join(s.T().TempDir(), "bidder-test.db"))
+	s.Require().NoError(err)
+	s.T().Cleanup(func() {
+		execStore.Close(ctx)
+	})
+
 	s.ctrl = gomock.NewController(s.T())
 	s.mockSemanticStrategy = bidstrategy.NewMockSemanticBidStrategy(s.ctrl)
 	s.mockResourceStrategy = bidstrategy.NewMockResourceBidStrategy(s.ctrl)
-	s.mockExecutionStore = inmemory.NewStore()
+	s.mockExecutionStore = execStore
 	s.mockCallback = compute.NewMockCallback(s.ctrl)
 	s.mockExecutor = compute.NewMockExecutor(s.ctrl)
 	s.bidder = compute.NewBidder(compute.BidderParams{
