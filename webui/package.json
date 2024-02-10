@@ -99,8 +99,10 @@
     "workbox-webpack-plugin": "^7.0.0"
   },
   "scripts": {
-    "start": "vite",
-    "test": "cross-env NODE_ENV=test jest 'test.+(js|jsx|ts|tsx)' --no-deprecation",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage .",
+    "test:debug": "jest --inspect-brk --runInBand --no-cache",
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
@@ -109,19 +111,14 @@
     "build": "yarn build:dev",
     "build:dev": "tsc && NODE_ENV=development vite build",
     "build:prod": "tsc && NODE_ENV=production vite build",
+    "start": "vite",
     "serve": "yarn start"
   },
   "eslintConfig": {
-    "include": [
-      ".eslintrc.json"
-    ]
+    "include": [".eslintrc.json"]
   },
   "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
+    "production": [">0.2%", "not dead", "not op_mini all"],
     "development": [
       "last 1 chrome version",
       "last 1 firefox version",
@@ -183,9 +180,7 @@
     "wesbos": "^1.0.1"
   },
   "msw": {
-    "workerDirectory": [
-      "public"
-    ]
+    "workerDirectory": ["public"]
   },
   "description": "WebUI for Bacalhau",
   "main": "./src/index.tsx",
