@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import Moment from "react-moment"
+import { formatDistanceToNow } from "date-fns"
 import { Execution, Job } from "../../../helpers/jobInterfaces"
 import {
   fromTimestamp,
@@ -35,19 +35,11 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
           { label: "Job Type", value: capitalizeFirstLetter(job.Type) },
           {
             label: "Created",
-            value: (
-              <Moment fromNow withTitle>
-                {fromTimestamp(job.CreateTime)}
-              </Moment>
-            ),
+            value: formatDistanceToNow(job.CreateTime),
           },
           {
             label: "Modified",
-            value: (
-              <Moment fromNow withTitle>
-                {fromTimestamp(job.ModifyTime)}
-              </Moment>
-            ),
+            value: formatDistanceToNow(job.ModifyTime),
           },
           { label: "Status", value: job.State.StateType },
           {
@@ -84,19 +76,11 @@ const JobInfo: React.FC<JobInfoProps> = ({ job, execution, section }) => {
             { label: "Node ID", value: execution.NodeID },
             {
               label: "Initiation Time",
-              value: (
-                <Moment fromNow withTitle>
-                  {fromTimestamp(execution.CreateTime)}
-                </Moment>
-              ),
+              value: formatDistanceToNow(execution.CreateTime),
             },
             {
               label: "Completion Time",
-              value: (
-                <Moment fromNow withTitle>
-                  {fromTimestamp(execution.ModifyTime)}
-                </Moment>
-              ),
+              value: formatDistanceToNow(execution.ModifyTime),
             },
             {
               label: "Exit Code",
