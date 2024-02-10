@@ -42,6 +42,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@augment-vir/common@npm:^22.0.0, @augment-vir/common@npm:^22.1.1":
+  version: 22.4.0
+  resolution: "@augment-vir/common@npm:22.4.0"
+  dependencies:
+    browser-or-node: "npm:^2.1.1"
+    run-time-assertions: "npm:^0.3.0"
+    type-fest: "npm:^4.9.0"
+  checksum: 10c0/fe998b19f90ca95f7a63b69bdd954376d67e57665a67947371606df1264ed69825f913b038008ed2a1ddc05008357b0e7f2a232a5cfdd5e9e7b042cb7de0cc64
+  languageName: node
+  linkType: hard
+
 "@aw-web-design/x-default-browser@npm:1.4.126":
   version: 1.4.126
   resolution: "@aw-web-design/x-default-browser@npm:1.4.126"
@@ -6610,6 +6621,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"browser-or-node@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "browser-or-node@npm:2.1.1"
+  checksum: 10c0/f727639581182f831b5bf4686b401dcad5cc29b5a6b70059c0aa90990844b8f15f3a1d328cc8e83dd3b4bfa69175f9bdf2f4383faec14d47205bfea532b9964d
+  languageName: node
+  linkType: hard
+
 "browserify-aes@npm:^1.0.0, browserify-aes@npm:^1.0.4":
   version: 1.2.0
   resolution: "browserify-aes@npm:1.2.0"
@@ -9367,6 +9385,13 @@ __metadata:
   version: 0.1.2
   resolution: "exit@npm:0.1.2"
   checksum: 10c0/71d2ad9b36bc25bb8b104b17e830b40a08989be7f7d100b13269aaae7c3784c3e6e1e88a797e9e87523993a25ba27c8958959a554535370672cfb4d824af8989
+  languageName: node
+  linkType: hard
+
+"expect-type@npm:~0.15.0":
+  version: 0.15.0
+  resolution: "expect-type@npm:0.15.0"
+  checksum: 10c0/d5ffc86df1937290a6555e763f76a8c27d18d9bfa63e18788a79ff52bba3d2a9a518af1163d437854efca6bd8e03768a2c4b10ea29e861c9d6f57ff53f19c3c4
   languageName: node
   linkType: hard
 
@@ -14165,6 +14190,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prettier-plugin-multiline-arrays@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "prettier-plugin-multiline-arrays@npm:3.0.3"
+  dependencies:
+    "@augment-vir/common": "npm:^22.0.0"
+    proxy-vir: "npm:^0.0.2"
+  peerDependencies:
+    prettier: ^3.0.0
+  checksum: 10c0/b976e2d1d059c4e5c9c448a5727127aea8f1acacaecedfc46e1bd07b5ae9f20160aa5deabb5e854da5fc3b1cee4bab6b9589626fff224423bdbd4a1e064da7b0
+  languageName: node
+  linkType: hard
+
 "prettier@npm:^2.8.0":
   version: 2.8.8
   resolution: "prettier@npm:2.8.8"
@@ -14302,6 +14339,15 @@ __metadata:
   version: 1.1.0
   resolution: "proxy-from-env@npm:1.1.0"
   checksum: 10c0/fe7dd8b1bdbbbea18d1459107729c3e4a2243ca870d26d34c2c1bcd3e4425b7bcc5112362df2d93cc7fb9746f6142b5e272fd1cc5c86ddf8580175186f6ad42b
+  languageName: node
+  linkType: hard
+
+"proxy-vir@npm:^0.0.2":
+  version: 0.0.2
+  resolution: "proxy-vir@npm:0.0.2"
+  dependencies:
+    "@augment-vir/common": "npm:^22.0.0"
+  checksum: 10c0/90d8005a3d0ea69bab66d7d22dc0943b2563e0706fdd55eafc4ec3b1457ca0b84597675fbf665b29b608498610828d880b11aa68c66e6aeba24836bac80ac8ef
   languageName: node
   linkType: hard
 
@@ -15211,6 +15257,17 @@ __metadata:
   dependencies:
     queue-microtask: "npm:^1.2.2"
   checksum: 10c0/200b5ab25b5b8b7113f9901bfe3afc347e19bb7475b267d55ad0eb86a62a46d77510cb0f232507c9e5d497ebda569a08a9867d0d14f57a82ad5564d991588b39
+  languageName: node
+  linkType: hard
+
+"run-time-assertions@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "run-time-assertions@npm:0.3.0"
+  dependencies:
+    "@augment-vir/common": "npm:^22.1.1"
+    expect-type: "npm:~0.15.0"
+    type-fest: "npm:^4.9.0"
+  checksum: 10c0/b63b393944320e301b88a6879c8f4d23e2eab4fa12a442438350eb3b2479aa1506f36f6bcf2e2861ccef862f2f28733684bae0fe44596eba5b5664a3989978c9
   languageName: node
   linkType: hard
 
@@ -17494,6 +17551,7 @@ __metadata:
     postcss: "npm:^8.4.33"
     postcss-loader: "npm:^8.1.0"
     prettier: "npm:^3.2.5"
+    prettier-plugin-multiline-arrays: "npm:^3.0.3"
     prop-types: "npm:^15.8.1"
     react: "npm:^18.2.0"
     react-dev-utils: "npm:^12.0.1"

@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react"
 import viteTsconfigPaths from "vite-tsconfig-paths"
 import browserslistToEsbuild from "browserslist-to-esbuild"
 import dotenv from "dotenv"
+import path from "path"
 
 export default defineConfig(({ mode }) => {
   dotenv.config() // load env vars from .env
@@ -31,5 +32,9 @@ export default defineConfig(({ mode }) => {
       },
       mainFields: ["browser"],
     },
+    build: {
+      outDir: path.resolve(__dirname, "build"),
+    },
+    publicDir: "./public",
   }
 })
