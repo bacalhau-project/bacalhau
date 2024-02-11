@@ -3,6 +3,7 @@
 package types
 
 const Node = "Node"
+const NodeName = "Node.Name"
 const NodeClientAPI = "Node.ClientAPI"
 const NodeClientAPIHost = "Node.ClientAPI.Host"
 const NodeClientAPIPort = "Node.ClientAPI.Port"

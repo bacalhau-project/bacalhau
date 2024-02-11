@@ -6,12 +6,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
@@ -249,4 +251,47 @@ func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig) (jobstore.S
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}
+}
+
+func getNodeID(ctx context.Context) (string, error) {
+	nodeName, err := config.Get[string](types.NodeName)
+	if err != nil {
+		return "", err
+	}
+
+	if nodeName != "" {
+		return nodeName, nil
+	}
+
+	// If no nodeName is defined, then use libp2p peer ID
+	privKey, err := config.GetLibp2pPrivKey()
+	if err != nil {
+		return "", fmt.Errorf("getNodeID: error getting libp2p private key: %w", err)
+	}
+
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		return "", err
+	}
+	nodeName = peerID.String()
+
+	// set the new name in the config, so it can be used and persisted later.
+	config.SetValue(types.NodeName, nodeName)
+	return nodeName, nil
+}
+
+// persistConfigs writes the resolved config to the persisted config file.
+// this will only write values that must not change between invocations,
+// such as the job store path and node name,
+// and only if they are not already set in the config file.
+func persistConfigs(repoPath string) error {
+	resolvedConfig, err := config.GetConfig()
+	if err != nil {
+		return fmt.Errorf("error getting config: %w", err)
+	}
+	err = config.WritePersistedConfigs(filepath.Join(repoPath, config.ConfigFileName), *resolvedConfig)
+	if err != nil {
+		return fmt.Errorf("error writing persisted config: %w", err)
+	}
+	return nil
 }

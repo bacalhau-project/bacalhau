@@ -55,7 +55,6 @@ func Init(path string) (types.BacalhauConfig, error) {
 	// initialize the configuration with default values.
 	return initConfig(path,
 		WithDefaultConfig(getDefaultConfig(path)),
-		WithPostConfigHandler(WritePersistedConfigs),
 	)
 }
 
@@ -84,18 +83,16 @@ func getDefaultConfig(path string) types.BacalhauConfig {
 }
 
 type Params struct {
-	FileName          string
-	FileHandler       func(fileName string) error
-	PostConfigHandler func(fileName string, cfg types.BacalhauConfig) error
-	DefaultConfig     types.BacalhauConfig
+	FileName      string
+	FileHandler   func(fileName string) error
+	DefaultConfig types.BacalhauConfig
 }
 
 func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 	params := &Params{
-		FileName:          ConfigFileName,
-		FileHandler:       NoopConfigHandler,
-		PostConfigHandler: NoopPostConfigHandler,
-		DefaultConfig:     ForEnvironment(),
+		FileName:      ConfigFileName,
+		FileHandler:   NoopConfigHandler,
+		DefaultConfig: ForEnvironment(),
 	}
 
 	for _, opt := range opts {
@@ -121,10 +118,6 @@ func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 
 	var out types.BacalhauConfig
 	if err := viper.Unmarshal(&out, DecoderHook); err != nil {
-		return types.BacalhauConfig{}, err
-	}
-
-	if err := params.PostConfigHandler(configFile, out); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 

@@ -9,6 +9,7 @@ import (
 )
 
 type NodeConfig struct {
+	Name      string       `yaml:"Name"`
 	ClientAPI APIConfig    `yaml:"ClientAPI"`
 	ServerAPI APIConfig    `yaml:"ServerAPI"`
 	Libp2p    Libp2pConfig `yaml:"Libp2P"`

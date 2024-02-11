@@ -34,14 +34,14 @@ func TestV2MigrationsTestSuite(t *testing.T) {
 }
 
 func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
-	nodeID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
+	libp2pPeerID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
 
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v2_defaults")
 	suite.copyRepo(testDataPath)
 
 	// verify the repo's current state
-	suite.verifyInitialState(nodeID)
+	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
 	suite.Require().NoError(suite.repo.Open())
@@ -55,23 +55,24 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 	suite.Require().NoError(err)
 	suite.Equal(filepath.Join(suite.TempDir, config.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
 	suite.Equal(filepath.Join(suite.TempDir, config.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
+	suite.Equal(libp2pPeerID, cfg.Node.Name)
 
 	// verify the old directories were renamed
-	suite.NoDirExists(filepath.Join(suite.TempDir, nodeID+"-compute"))
-	suite.NoDirExists(filepath.Join(suite.TempDir, nodeID+"-requester"))
+	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-compute"))
+	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-requester"))
 }
 
 // TestV2MigrationWitCustomConfig test that migration with custom configs exist will not be modified
 // and only execution and job store paths will be added
 func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
-	nodeID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
+	libp2pPeerID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
 
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v2_custom_configs")
 	suite.copyRepo(testDataPath)
 
 	// verify the repo's current state
-	suite.verifyInitialState(nodeID)
+	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
 	suite.Require().NoError(suite.repo.Open())
@@ -86,23 +87,25 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	suite.Require().NoError(err)
 	suite.Equal(filepath.Join(suite.TempDir, config.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
 	suite.Equal(filepath.Join(suite.TempDir, config.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
+	suite.Equal(libp2pPeerID, cfg.Node.Name)
 	suite.Equal(123456789, cfg.Node.Network.Port)
 
 	// verify the old directories were renamed
-	suite.NoDirExists(filepath.Join(suite.TempDir, nodeID+"-compute"))
-	suite.NoDirExists(filepath.Join(suite.TempDir, nodeID+"-requester"))
+	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-compute"))
+	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-requester"))
 }
 
 // TestV2MigrationWitCustomStores test that migration with custom stores will not be modified
 func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
-	nodeID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
+	nodeName := "foo"
+	libp2pPeerID := "QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV"
 
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v2_custom_stores")
 	suite.copyRepo(testDataPath)
 
 	// verify the repo's current state
-	suite.verifyInitialState(nodeID)
+	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
 	suite.Require().NoError(suite.repo.Open())
@@ -117,11 +120,12 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
 	suite.Require().NoError(err)
 	suite.Equal("./QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV-compute/executions.db", cfg.Node.Compute.ExecutionStore.Path)
 	suite.Equal("./QmUBgU7xHKK44RuTHgrvnJfoSdZJS4fddT197iyTF5qjEV-requester/jobs.db", cfg.Node.Requester.JobStore.Path)
+	suite.Equal(nodeName, cfg.Node.Name)
 	suite.Equal(123456789, cfg.Node.Network.Port)
 
 	// verify the old directories were NOT renamed
-	suite.DirExists(filepath.Join(suite.TempDir, nodeID+"-compute"))
-	suite.DirExists(filepath.Join(suite.TempDir, nodeID+"-requester"))
+	suite.DirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-compute"))
+	suite.DirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-requester"))
 }
 
 func (suite *V2MigrationsTestSuite) verifyInitialState(nodeID string) {
