@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -19,16 +15,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "typeRoots": [
-      "node_modules/@types",
-      "src/types"
-    ],
-    "types": [
-      "node",
-      "jest",
-      "react",
-      "react-dom"
-    ]
+    "typeRoots": ["node_modules/@types", "src/types"],
+    "types": ["node", "jest", "react", "react-dom"]
   },
   "files": ["src/index.tsx"],
   "include": [
@@ -38,6 +26,12 @@
     "tests/**/*.ts",
     "tests/**/*.tsx",
     "tests/mocks/svgMock.js",
-    "src/setupTests.ts"
+    "src/setupTests.ts",
+    "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "<tsconfigRootDir>/vite/client.d.ts",
+    "compiled/**"
   ]
 }

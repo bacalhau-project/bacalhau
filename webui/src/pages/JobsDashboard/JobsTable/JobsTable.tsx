@@ -1,5 +1,5 @@
 import React, { useContext } from "react"
-import Moment from "react-moment"
+import { formatDistanceToNow } from "date-fns"
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -12,6 +12,7 @@ import {
 } from "../../../helpers/helperFunctions"
 import { Job, ParsedJobData } from "../../../helpers/jobInterfaces"
 import TableSettingsContext from "../../../context/TableSettingsContext"
+import { Task } from "../../../models/task"
 
 interface TableProps {
   data: Job[]
@@ -85,9 +86,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showCreated && (
                 <td className={styles.dateCreated}>
-                  <Moment fromNow withTitle>
-                    {jobData.createdAt}
-                  </Moment>
+                  {formatDistanceToNow(jobData.createdAt)}
                 </td>
               )}
               {settings.showProgram && (

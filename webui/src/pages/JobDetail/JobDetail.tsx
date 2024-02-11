@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import { bacalhauAPI } from "../../services/bacalhau"
 import { Job, Execution } from "../../helpers/jobInterfaces"
 import styles from "./JobDetail.module.scss"
 import { Layout } from "../../layout/Layout"
-import { formatDistanceToNow } from "date-fns"
 import {
   getShortenedJobID,
-  fromTimestamp,
   capitalizeFirstLetter,
 } from "../../helpers/helperFunctions"
 import Container from "../../components/Container/Container"
