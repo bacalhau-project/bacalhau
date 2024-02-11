@@ -13,8 +13,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
 
@@ -262,18 +263,27 @@ func getNodeID(ctx context.Context) (string, error) {
 	if nodeName != "" {
 		return nodeName, nil
 	}
-
-	// If no nodeName is defined, then use libp2p peer ID
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return "", fmt.Errorf("getNodeID: error getting libp2p private key: %w", err)
-	}
-
-	peerID, err := peer.IDFromPrivateKey(privKey)
+	nodeNameProviderType, err := config.Get[string](types.NodeNameProvider)
 	if err != nil {
 		return "", err
 	}
-	nodeName = peerID.String()
+
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err = nodeNameProvider.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
 
 	// set the new name in the config, so it can be used and persisted later.
 	config.SetValue(types.NodeName, nodeName)

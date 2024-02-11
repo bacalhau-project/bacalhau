@@ -29,6 +29,7 @@ var Testing = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "hostname",
 		ClientAPI: types.APIConfig{
 			Host: "test",
 			Port: 9999,

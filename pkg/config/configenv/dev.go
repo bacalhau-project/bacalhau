@@ -29,6 +29,7 @@ var Development = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "hostname",
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",
 			Port: 1234,

@@ -110,6 +110,7 @@ func NewCmd() *cobra.Command {
 		"requester-store":       configflags.RequesterJobStorageFlags,
 		"web-ui":                configflags.WebUIFlags,
 		"node-info-store":       configflags.NodeInfoStoreFlags,
+		"node-name":             configflags.NodeNameFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}

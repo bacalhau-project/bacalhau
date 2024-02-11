@@ -30,6 +30,7 @@ var Production = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "hostname",
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.production.bacalhau.org",
 			Port: 1234,
