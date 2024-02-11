@@ -3,6 +3,7 @@ package serve
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -93,6 +94,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"publishing":            configflags.PublishingFlags,
 		"requester-tls":         configflags.RequesterTLSFlags,
 		"server-api":            configflags.ServerAPIFlags,
 		"network":               configflags.NetworkFlags,
@@ -198,7 +200,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig()
+	networkConfig, err := getNetworkConfig(nodeID)
 	if err != nil {
 		return err
 	}
@@ -477,15 +479,20 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 
 		switch nodeConfig.NetworkConfig.Type {
 		case models.NetworkTypeNATS:
-			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
-			if advertisedAddr == "" {
-				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
+			orchestrator := &url.URL{
+				Scheme: "nats",
+				Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
+				User:   url.User(nodeConfig.NetworkConfig.AuthSecret),
+			}
+
+			if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
+				orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
 			}
 
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-				advertisedAddr,
+				orchestrator.String(),
 			))
 		case models.NetworkTypeLibp2p:
 			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodeConfig.NetworkConfig.Libp2pHost.ID().String())

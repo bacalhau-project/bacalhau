@@ -68,6 +68,8 @@ import (
 //// 	@scope.admin							Grants read and write access to administrative information
 
 func main() {
+	localCtx, localCancel := context.WithCancel(context.Background())
+
 	defer func() {
 		// Make sure any buffered logs are written if something failed before logging was configured.
 		logger.LogBufferedLogs(nil)
@@ -87,11 +89,13 @@ func main() {
 	go func() {
 		cli.Execute(ctx)
 		cancel()
+
+		localCancel()
 	}()
 
 	// Wait for the context to be cancelled
 	// either by a signal or by the command completing
-	<-ctx.Done()
+	<-localCtx.Done()
 
 	// Print a newline to ensure the next prompt is on a new line
 	fmt.Println()

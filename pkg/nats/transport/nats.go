@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -29,6 +30,11 @@ type NATSTransportConfig struct {
 	AdvertisedAddress string
 	Orchestrators     []string
 	IsRequesterNode   bool
+
+	// AuthSecret is a secret string that clients must use to connect. It is
+	// only used by NATS servers; clients should supply the auth secret as the
+	// user part of their Orchestrator URL.
+	AuthSecret string
 
 	// Cluster config for requester nodes to connect with each other
 	ClusterName              string
@@ -92,6 +98,7 @@ func NewNATSTransport(ctx context.Context,
 			Port:            config.Port,
 			ClientAdvertise: config.AdvertisedAddress,
 			Routes:          routes,
+			Authorization:   config.AuthSecret,
 			Debug:           true, // will only be used if log level is debug
 			Cluster: server.ClusterOpts{
 				Name:      config.ClusterName,
@@ -107,7 +114,15 @@ func NewNATSTransport(ctx context.Context,
 			return nil, err
 		}
 
-		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
+		// Make sure the orchestrator URL contains the auth token so that the
+		// NATS client below can connect
+		serverURL, err := url.Parse(sm.Server.ClientURL())
+		if err != nil {
+			return nil, err
+		}
+		serverURL.User = url.User(config.AuthSecret)
+
+		config.Orchestrators = append(config.Orchestrators, serverURL.String())
 	}
 
 	// create nats client

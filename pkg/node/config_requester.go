@@ -49,6 +49,8 @@ type RequesterConfigParams struct {
 	S3PreSignedURLExpiration time.Duration
 
 	JobStore jobstore.Store
+
+	DefaultPublisher string
 }
 
 type RequesterConfig struct {

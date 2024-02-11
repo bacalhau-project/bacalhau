@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -205,6 +206,7 @@ func NewRequesterNode(
 		Store:                      jobStore,
 		StorageProviders:           storageProvider,
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
+		DefaultPublisher:           requesterConfig.DefaultPublisher,
 	})
 
 	var translationProvider translation.TranslatorProvider
@@ -212,19 +214,30 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
+	jobTransformers := transformer.ChainedTransformer[*models.Job]{
+		transformer.JobFn(transformer.IDGenerator),
+		transformer.NameOptional(),
+		transformer.DefaultsApplier(requesterConfig.JobDefaults),
+		transformer.RequesterInfo(nodeID),
+		transformer.NewInlineStoragePinner(storageProvider),
+	}
+
+	if requesterConfig.DefaultPublisher != "" {
+		// parse the publisher to generate a models.SpecConfig and add it to each job
+		// which is without a publisher
+		config, err := job.ParsePublisherString(requesterConfig.DefaultPublisher)
+		if err == nil {
+			jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
+		}
+	}
+
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
-		ID:               nodeID,
-		EvaluationBroker: evalBroker,
-		Store:            jobStore,
-		EventEmitter:     eventEmitter,
-		ComputeProxy:     computeProxy,
-		JobTransformer: transformer.ChainedTransformer[*models.Job]{
-			transformer.JobFn(transformer.IDGenerator),
-			transformer.NameOptional(),
-			transformer.DefaultsApplier(requesterConfig.JobDefaults),
-			transformer.RequesterInfo(nodeID),
-			transformer.NewInlineStoragePinner(storageProvider),
-		},
+		ID:                nodeID,
+		EvaluationBroker:  evalBroker,
+		Store:             jobStore,
+		EventEmitter:      eventEmitter,
+		ComputeProxy:      computeProxy,
+		JobTransformer:    jobTransformers,
 		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
