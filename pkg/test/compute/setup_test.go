@@ -4,8 +4,6 @@ package compute
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -50,10 +48,7 @@ func (s *ComputeSuite) SetupTest() {
 
 // setupConfig creates a new config for testing
 func (s *ComputeSuite) setupConfig() {
-	storePath := filepath.Join(s.T().TempDir(), fmt.Sprint(time.Now().UnixNano()))
-	s.Require().NoError(os.MkdirAll(storePath, 0755))
-
-	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(storePath, "executions.db"))
+	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
 	s.Require().NoError(err)
 
 	cfg, err := node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -102,7 +97,7 @@ func (s *ComputeSuite) setupNode() {
 	}
 
 	s.node, err = node.NewComputeNode(
-		context.Background(),
+		ctx,
 		"test",
 		s.cm,
 		apiServer,
@@ -119,6 +114,7 @@ func (s *ComputeSuite) setupNode() {
 	})
 
 	s.T().Cleanup(func() { close(s.bidChannel) })
+	s.T().Cleanup(func() { s.node.Cleanup(ctx) })
 }
 
 func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) compute.BidResult {

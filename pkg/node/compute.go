@@ -221,7 +221,7 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// A single cleanup function to make sure the order of closing dependencies is correct
+	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		executionStore.Close(ctx)
 		resultsPath.Close()
@@ -249,6 +249,6 @@ func NewComputeNode(
 	}, nil
 }
 
-func (c *Compute) cleanup(ctx context.Context) {
+func (c *Compute) Cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
 }

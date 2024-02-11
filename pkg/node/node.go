@@ -340,10 +340,10 @@ func NewNode(
 		return nil
 	})
 
-	// cleanup libp2p resources in the desired order
+	// Cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(ctx)
+			computeNode.Cleanup(ctx)
 		}
 		if requesterNode != nil {
 			requesterNode.cleanup(ctx)
