@@ -3,17 +3,20 @@
 package config
 
 import (
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/require"
 )
 
 // TestAdditiveSet calls sets on the config system sequentially with different values
@@ -28,53 +31,121 @@ func TestAdditiveSet(t *testing.T) {
 	require.NoError(t, err)
 	viper.Set("repo", repoPath)
 
-	current := unmarshalConfigFile(t, repoPath)
-
 	err = setConfig("node.loggingmode", "json")
 	require.NoError(t, err)
 
-	expected := current
-	expected.Node.LoggingMode = logger.LogModeJSON
+	expected := types.BacalhauConfig{Node: types.NodeConfig{LoggingMode: logger.LogModeJSON}}
 	actual := unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.compute.jobselection.probehttp", "example.com")
+	err = setConfig("node.compute.executionstore.type", "boltdb")
 	require.NoError(t, err)
 
-	expected.Node.Compute.JobSelection.ProbeHTTP = "example.com"
+	expected = types.BacalhauConfig{Node: types.NodeConfig{
+		LoggingMode: logger.LogModeJSON,
+		Compute: types.ComputeConfig{
+			ExecutionStore: types.JobStoreConfig{
+				Type: types.BoltDB,
+			},
+		},
+	}}
 	actual = unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
 	err = setConfig("node.compute.jobselection.locality", "anywhere")
 	require.NoError(t, err)
 
-	expected.Node.Compute.JobSelection.Locality = model.Anywhere
+	expected = types.BacalhauConfig{Node: types.NodeConfig{
+		LoggingMode: logger.LogModeJSON,
+		Compute: types.ComputeConfig{
+			ExecutionStore: types.JobStoreConfig{
+				Type: types.BoltDB,
+			},
+			JobSelection: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
+			},
+		},
+	}}
 	actual = unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
 	err = setConfig("node.compute.jobtimeouts.jobnegotiationtimeout", "120s")
 	require.NoError(t, err)
 
-	expected.Node.Compute.JobTimeouts.JobNegotiationTimeout = types.Duration(time.Second * 120)
+	expected = types.BacalhauConfig{Node: types.NodeConfig{
+		LoggingMode: logger.LogModeJSON,
+		Compute: types.ComputeConfig{
+			ExecutionStore: types.JobStoreConfig{
+				Type: types.BoltDB,
+			},
+			JobSelection: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
+			},
+			JobTimeouts: types.JobTimeoutConfig{
+				JobNegotiationTimeout: types.Duration(time.Second * 120),
+			},
+		},
+	}}
 	actual = unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
 	err = setConfig("node.labels", "foo=bar", "bar=buz", "buz=baz")
 	require.NoError(t, err)
 
-	expected.Node.Labels = map[string]string{
-		"foo": "bar",
-		"bar": "buz",
-		"buz": "baz",
-	}
+	expected = types.BacalhauConfig{Node: types.NodeConfig{
+		LoggingMode: logger.LogModeJSON,
+		Compute: types.ComputeConfig{
+			ExecutionStore: types.JobStoreConfig{
+				Type: types.BoltDB,
+			},
+			JobSelection: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
+			},
+			JobTimeouts: types.JobTimeoutConfig{
+				JobNegotiationTimeout: types.Duration(time.Second * 120),
+			},
+		},
+		Labels: map[string]string{
+			"foo": "bar",
+			"bar": "buz",
+			"buz": "baz",
+		},
+	}}
 	actual = unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.clientapi.host", "1.2.3.4")
+	err = setConfig("node.clientapi.host", "0.0.0.0")
 	require.NoError(t, err)
 
-	expected.Node.ClientAPI.Host = "1.2.3.4"
+	expected = types.BacalhauConfig{Node: types.NodeConfig{
+		ClientAPI: types.APIConfig{
+			Host: "0.0.0.0",
+		},
+		LoggingMode: logger.LogModeJSON,
+		Compute: types.ComputeConfig{
+			ExecutionStore: types.JobStoreConfig{
+				Type: types.BoltDB,
+			},
+			JobSelection: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
+			},
+			JobTimeouts: types.JobTimeoutConfig{
+				JobNegotiationTimeout: types.Duration(time.Second * 120),
+			},
+		},
+		Labels: map[string]string{
+			"foo": "bar",
+			"bar": "buz",
+			"buz": "baz",
+		},
+	}}
 	actual = unmarshalConfigFile(t, repoPath)
+
 	require.Equal(t, expected, actual)
 
 }
@@ -100,14 +171,17 @@ func TestSetFailure(t *testing.T) {
 }
 
 func unmarshalConfigFile(t testing.TB, repoPath string) types.BacalhauConfig {
-	configFile := filepath.Join(repoPath, config.ConfigFileName)
-	v := viper.New()
-	v.SetTypeByDefaultValue(true)
-	v.SetConfigFile(configFile)
 
-	require.NoError(t, v.ReadInConfig())
-
-	var fileCfg types.BacalhauConfig
-	require.NoError(t, v.Unmarshal(&fileCfg, config.DecoderHook))
-	return fileCfg
+	configPath := filepath.Join(repoPath, "config.yaml")
+	configFile, err := os.Open(configPath)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		configFile.Close()
+	})
+	configData, err := io.ReadAll(configFile)
+	require.NoError(t, err)
+	var cfg types.BacalhauConfig
+	err = yaml.Unmarshal(configData, &cfg)
+	require.NoError(t, err)
+	return cfg
 }
