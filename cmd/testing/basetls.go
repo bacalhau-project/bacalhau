@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/util/certificates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -20,6 +21,7 @@ import (
 
 type BaseTLSSuite struct {
 	BaseSuite
+	TempCACertFilePath string
 }
 
 // before each test
@@ -40,10 +42,16 @@ func (s *BaseTLSSuite) SetupTest() {
 		},
 	)
 	s.Require().NoError(err)
+	tempDir := s.T().TempDir()
+	caCertPath := filepath.Join(tempDir, "ca_certificate.pem")
+	caKeyPath := filepath.Join(tempDir, "ca_private_key.pem")
+	serverCertPath := filepath.Join(tempDir, "server_certificate.pem")
+	serverKeyPath := filepath.Join(tempDir, "server_private_key.pem")
 
-	serverCertPath, err := filepath.Abs("../../pkg/util/cert.pem")
-	s.Require().NoError(err)
-	serverKeyPath, err := filepath.Abs("../../pkg/util/key.pem")
+	s.TempCACertFilePath = caCertPath
+
+	//generate certificates
+	err = certificates.CreateCertificates(caCertPath, caKeyPath, serverCertPath, serverKeyPath)
 	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
