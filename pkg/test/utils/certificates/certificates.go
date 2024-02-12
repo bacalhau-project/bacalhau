@@ -13,6 +13,17 @@ import (
 	"time"
 )
 
+const (
+	permissions           = 0600
+	rsaKeySize            = 4096
+	serialNumberLimitBits = 128
+)
+
+var (
+	ipv4Loopback = net.IPv4(127, 0, 0, 1) //nolint:gomnd
+	ipv6Loopback = net.IPv6loopback
+)
+
 type Certificate struct {
 	certFile     string
 	keyFile      string
@@ -25,8 +36,13 @@ type CACertificate struct {
 }
 
 func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLimitBits)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return nil, err
+	}
 	ca := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{"Company, INC."},
 		},
@@ -37,7 +53,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +69,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(caCertPath, caPEM.Bytes(), 0644)
+	err = os.WriteFile(caCertPath, caPEM.Bytes(), permissions)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +81,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(caKeyPath, caPrivateKeyPEM.Bytes(), 0600)
+	err = os.WriteFile(caKeyPath, caPrivateKeyPEM.Bytes(), permissions)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +96,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 }
 
 func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*Certificate, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLimitBits)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		return nil, err
@@ -90,18 +106,17 @@ func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*
 		Subject: pkix.Name{
 			Organization: []string{"Test Server"},
 		},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		IPAddresses: []net.IP{ipv4Loopback, ipv6Loopback},
 		NotBefore:   time.Now(),
 		NotAfter:    time.Now().AddDate(0, 0, 1),
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 	}
 
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		return nil, err
 	}
-	//Sign the certificate with the CA
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, c.certTemplate, &certPrivKey.PublicKey, c.certPrivKey)
 	if err != nil {
 		return nil, err
@@ -114,7 +129,7 @@ func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(certPath, certPEM.Bytes(), 0644)
+	err = os.WriteFile(certPath, certPEM.Bytes(), permissions)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +142,7 @@ func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(keyPath, certPrivKeyPEM.Bytes(), 0600)
+	err = os.WriteFile(keyPath, certPrivKeyPEM.Bytes(), permissions)
 	if err != nil {
 		return nil, err
 	}
