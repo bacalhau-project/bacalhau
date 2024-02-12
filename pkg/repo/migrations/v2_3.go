@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V2Migration updates the repo so that nodeID is no longer part of the execution and job store paths.
@@ -55,10 +56,13 @@ var V2Migration = repo.NewMigration(
 
 			// if execution store already exist with nodeID, then rename it to the new name
 			legacyStoreName := filepath.Join(repoPath, libp2pNodeID+"-compute")
+			newStorePath := filepath.Dir(executionStore.Path)
 			if _, err := os.Stat(legacyStoreName); err == nil {
-				if err := os.Rename(legacyStoreName, filepath.Dir(executionStore.Path)); err != nil {
+				if err := os.Rename(legacyStoreName, newStorePath); err != nil {
 					return err
 				}
+			} else if err = os.MkdirAll(newStorePath, util.OS_USER_RWX); err != nil {
+				return err
 			}
 			set(types.NodeComputeExecutionStore, executionStore)
 		}
@@ -69,10 +73,13 @@ var V2Migration = repo.NewMigration(
 
 			// if job store already exist with nodeID, then rename it to the new name
 			legacyStoreName := filepath.Join(repoPath, libp2pNodeID+"-requester")
+			newStorePath := filepath.Dir(jobStore.Path)
 			if _, err := os.Stat(legacyStoreName); err == nil {
-				if err := os.Rename(legacyStoreName, filepath.Dir(jobStore.Path)); err != nil {
+				if err := os.Rename(legacyStoreName, newStorePath); err != nil {
 					return err
 				}
+			} else if err = os.MkdirAll(newStorePath, util.OS_USER_RWX); err != nil {
+				return err
 			}
 			set(types.NodeRequesterJobStore, jobStore)
 		}
