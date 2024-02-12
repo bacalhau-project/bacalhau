@@ -1,0 +1,35 @@
+name: Commit Event Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - '*-rc[0-9]+'
+jobs:
+  handle-commit:
+    runs-on: ubuntu-latest
+    environment: secrets  # The name of the environment to use
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Check if Personal Access Token is set
+        run: |
+          if [ -z "${{ secrets.PERSONAL_ACCESS_TOKEN }}" ]; then
+            echo "PERSONAL_ACCESS_TOKEN is not set. Exiting..."
+            exit 1
+          else
+            echo "PERSONAL_ACCESS_TOKEN is set. Continuing..."
+          fi
+
+      - name: Trigger Workflow in Another Repo
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          REPO: bacalhau-project/bacalhau-vmi
+          WORKFLOW_ID: deploy-commit.yaml
+        run: |
+          curl -X POST \
+          -H "Authorization: token $TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW_ID/dispatches" \
+          -d '{"ref":"main", "inputs": {"commit_reference": "${{ github.sha }}", "redeploy": "true"}}'
