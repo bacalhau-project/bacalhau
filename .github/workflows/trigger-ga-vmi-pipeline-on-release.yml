@@ -1,4 +1,4 @@
-name: Release Event Workflow
+name: Build VMI on Bacalhau Release
 
 on:
   release:
