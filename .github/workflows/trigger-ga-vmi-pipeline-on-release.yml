@@ -14,7 +14,7 @@ jobs:
 
       - name: Check if Personal Access Token is set
         run: |
-          if [ -z "${{ secrets.PERSONAL_ACCESS_TOKEN }}" ]; then
+          if [ -z "${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}" ]; then
             echo "PERSONAL_ACCESS_TOKEN is not set. Exiting..."
             exit 1
           else
@@ -23,7 +23,7 @@ jobs:
 
       - name: Trigger Workflow in Another Repo
         env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          TOKEN: ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}
           REPO: bacalhau-project/bacalhau-vmi
         run: |
           curl -X POST \
