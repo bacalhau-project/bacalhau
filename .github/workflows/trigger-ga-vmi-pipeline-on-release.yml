@@ -22,8 +22,6 @@ jobs:
 
       - name: Trigger VMI Build
         env:
-          TOKEN: ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}
-          REPO: bacalhau-project/bacalhau-vmi
         run: |
           curl -X POST \
           -H "Authorization: token ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}" \
