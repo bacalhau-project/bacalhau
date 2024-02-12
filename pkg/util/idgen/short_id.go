@@ -1,39 +1,58 @@
 package idgen
 
-import "strings"
+import (
+	"regexp"
+)
 
 const ShortIDLength = 8
 const ShortIDLengthWithPrefix = ShortIDLength + len(JobIDPrefix)
 
-// ShortID takes a string in the format of "prefix-UUID" or just "UUID"
+// Regular expressions for UUID and hostname matching.
+var (
+	// Regular expression for "prefix-UUID" pattern, where "prefix" is a single character.
+	prefixUUIDPattern = regexp.MustCompile(`^([a-zA-Z])-(\w{8})-\w{4}-\w{4}-\w{4}-\w{12}$`)
+	// Regular expression for UUID pattern.
+	uuidPattern = regexp.MustCompile(`^(\w{8})-\w{4}-\w{4}-\w{4}-\w{12}$`)
+	// Regular expression for libp2p peer ID pattern.
+	libp2pPattern = regexp.MustCompile(`^Qm[a-zA-Z0-9]{44}$`) // Basic pattern for libp2p peer IDs
+)
+
+// ShortUUID takes a string in the format of "prefix-UUID" or just "UUID"
 // and returns the prefix along with the first segment of the UUID.
 // For example:
 // - For "e-78faf114-6a45-457e-825c-40fd2fad768f", it returns "e-78faf114".
 // - For "j-78faf114-6a45-457e-825c-40fd2fad768f", it returns "j-78faf114".
 // - For "78faf114-6a45-457e-825c-40fd2fad768f", it returns "78faf114".
-func ShortID(input string) string {
-	// trying to extract the prefix from the input id
-	var prefix, id string
-	parts := strings.SplitN(input, "-", 2)
-	if len(parts) < 2 {
-		id = input  // use the original string if it has less than 2 parts
-		prefix = "" // no prefix
-	} else if len(parts[0]) > 1 {
-		id = input  // use the original string if it has less than 2 parts
-		prefix = "" // no prefix
-	} else {
-		id = parts[1] // use the second part if it is a prefix
-		prefix = parts[0]
+func ShortUUID(input string) string {
+	// Check for "prefix-UUID" pattern.
+	if matches := prefixUUIDPattern.FindStringSubmatch(input); matches != nil {
+		return matches[1] + "-" + matches[2]
 	}
 
-	// truncate the id to the short id length
-	if len(id) > ShortIDLength {
-		id = id[:ShortIDLength]
+	// Check for UUID pattern.
+	if matches := uuidPattern.FindStringSubmatch(input); matches != nil {
+		return matches[1]
 	}
 
-	// append back the prefix if it exists
-	if prefix != "" {
-		id = prefix + "-" + id
+	// Return input as is for any other format.
+	return input
+}
+
+// ShortNodeID takes a string in the format of a libp2p peer ID or UUID,
+// and returns a shortened version of the input, or the input as is if it doesn't match.
+func ShortNodeID(input string) string {
+	// Shorten the input if it's a UUID.
+	res := ShortUUID(input)
+	if len(res) < len(input) {
+		return res
 	}
-	return id
+
+	// Check for libp2p peer ID pattern.
+	if libp2pPattern.MatchString(input) {
+		// Assuming you want the full libp2p ID returned, or you could return a shortened version.
+		return input[:ShortIDLength]
+	}
+
+	// Return input as is for any other format.
+	return input
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -17,8 +18,9 @@ func TestHostnameProvider(t *testing.T) {
 	provider := HostnameProvider{}
 	name, err := provider.GenerateNodeName(context.Background())
 	assert.NoError(t, err)
+	assert.NotEmpty(t, name)
 	hostname, _ := os.Hostname()
-	assert.Equal(t, hostname, name)
+	assert.Equal(t, hostnameStringReplacer.Replace(hostname), name)
 }
 
 func TestAWSNodeNameProvider(t *testing.T) {
@@ -54,6 +56,15 @@ func TestUUIDNodeNameProvider(t *testing.T) {
 	name, err := provider.GenerateNodeName(context.Background())
 	assert.NoError(t, err)
 	_, err = uuid.Parse(name)
+	assert.NoError(t, err)
+}
+
+func TestPUUIDNodeNameProvider(t *testing.T) {
+	provider := PUUIDNodeNameProvider{}
+	name, err := provider.GenerateNodeName(context.Background())
+	assert.NoError(t, err)
+	assert.Truef(t, strings.HasPrefix(name, NodeIDPrefix), "expected %s to start with %s", name, NodeIDPrefix)
+	_, err = uuid.Parse(name[2:])
 	assert.NoError(t, err)
 }
 

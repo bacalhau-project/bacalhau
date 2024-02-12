@@ -192,7 +192,7 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 // reifyJobID ensures the provided job ID is a full-length ID. This is either through
 // returning the ID, or resolving the short ID to a single job id.
 func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
-	if idgen.ShortID(jobID) == jobID {
+	if idgen.ShortUUID(jobID) == jobID {
 		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
 			return "", err

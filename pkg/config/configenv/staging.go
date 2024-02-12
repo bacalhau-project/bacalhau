@@ -30,7 +30,7 @@ var Staging = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
-		NameProvider: "hostname",
+		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.staging.bacalhau.org",
 			Port: 1234,

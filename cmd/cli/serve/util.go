@@ -273,6 +273,7 @@ func getNodeID(ctx context.Context) (string, error) {
 		"aws":      idgen.NewAWSNodeNameProvider(),
 		"gcp":      idgen.NewGCPNodeNameProvider(),
 		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
 	}
 	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
 	if !ok {

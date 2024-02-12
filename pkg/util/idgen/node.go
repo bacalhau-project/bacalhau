@@ -6,9 +6,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 )
+
+// hostnameStringReplacer replaces dots with dashes in the hostname to make the node name valid for NATS subjects.
+var hostnameStringReplacer = strings.NewReplacer(".", "-")
 
 // NodeNameProvider defines an interface for generating node names.
 type NodeNameProvider interface {
@@ -27,7 +31,11 @@ func (f NodeNameProviderFunc) GenerateNodeName(ctx context.Context) (string, err
 type HostnameProvider struct{}
 
 func (HostnameProvider) GenerateNodeName(_ context.Context) (string, error) {
-	return os.Hostname()
+	h, err := os.Hostname()
+	if err != nil {
+		return "", fmt.Errorf("retrieving hostname: %w", err)
+	}
+	return hostnameStringReplacer.Replace(h), nil
 }
 
 // AWSNodeNameProvider retrieves the node name from AWS instance metadata.
@@ -55,7 +63,7 @@ type GCPNodeNameProvider struct {
 func NewGCPNodeNameProvider() GCPNodeNameProvider {
 	return GCPNodeNameProvider{
 		httpProvider: &HTTPNodeNameProvider{
-			URL:    "http://metadata.google.internal/computeMetadata/v1/instance/name",
+			URL:    "http://metadata.google.internal/computeMetadata/v1/instance/id",
 			Header: map[string]string{"Metadata-Flavor": "Google"},
 		},
 	}
@@ -103,6 +111,17 @@ func (UUIDNodeNameProvider) GenerateNodeName(_ context.Context) (string, error) 
 		return "", fmt.Errorf("generating UUID: %w", err)
 	}
 	return r.String(), nil
+}
+
+// PUUIDNodeNameProvider generates a random UUID as the node name, with "n-" prefix.
+type PUUIDNodeNameProvider struct{}
+
+func (PUUIDNodeNameProvider) GenerateNodeName(ctx context.Context) (string, error) {
+	res, err := UUIDNodeNameProvider{}.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
+	return NodeIDPrefix + res, nil
 }
 
 // CachedNodeNameProvider caches the node name for subsequent calls.

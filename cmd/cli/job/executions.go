@@ -78,11 +78,11 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(e *models.Execution) string { return idgen.ShortID(e.ID) },
+		Value:        func(e *models.Execution) string { return idgen.ShortUUID(e.ID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(e *models.Execution) string { return idgen.ShortID(e.NodeID) },
+		Value:        func(e *models.Execution) string { return idgen.ShortNodeID(e.NodeID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
