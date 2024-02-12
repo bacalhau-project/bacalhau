@@ -240,10 +240,6 @@ func serve(cmd *cobra.Command) error {
 
 	allowedListLocalPaths := getAllowListedLocalPathsConfig()
 
-	if err = persistConfigs(repoDir); err != nil {
-		return fmt.Errorf("error persisting configs: %w", err)
-	}
-
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		NodeID:                nodeName,
@@ -278,6 +274,11 @@ func serve(cmd *cobra.Command) error {
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
+	}
+
+	// Persist the node config after the node is created and its config is valid.
+	if err = persistConfigs(repoDir); err != nil {
+		return fmt.Errorf("error persisting configs: %w", err)
 	}
 
 	// Start node
