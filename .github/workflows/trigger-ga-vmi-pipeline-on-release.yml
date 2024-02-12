@@ -20,7 +20,7 @@ jobs:
             echo "PERSONAL_ACCESS_TOKEN is set. Continuing..."
           fi
 
-      - name: Trigger Workflow in Another Repo
+      - name: Trigger VMI Build
         env:
           TOKEN: ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}
           REPO: bacalhau-project/bacalhau-vmi
