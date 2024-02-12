@@ -5,6 +5,8 @@ import viteTsconfigPaths from "vite-tsconfig-paths"
 import browserslistToEsbuild from "browserslist-to-esbuild"
 import dotenv from "dotenv"
 import path from "path"
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
 export default defineConfig(({ mode }) => {
   dotenv.config() // load env vars from .env
@@ -29,6 +31,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
+        'msw/native': require.resolve(path.resolve(__dirname, './node_modules/msw/lib/native/index.mjs')),
       },
       mainFields: ["browser"],
     },

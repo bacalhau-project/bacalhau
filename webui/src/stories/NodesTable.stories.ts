@@ -3,24 +3,24 @@ import { Node } from "../helpers/nodeInterfaces"
 import { NodesTable } from "../pages/NodesDashboard/NodesTable/NodesTable"
 
 export default {
-    component: NodesTable,
-    title: "NodesTable",
-    tags: ["autodocs"],
+  component: NodesTable,
+  title: "NodesTable",
+  tags: ["autodocs"],
 }
 
-const fullData = (): Node[] => {
-    // Create a list of 10 jobs
-    const nodes: Node[] = []
-    for (let i = 0; i < 10; i += 1) {
-        nodes.push(generateMockNode())
-    }
-    return nodes
+export const fullDataGenerator = (numNodes: number = 10): Node[] => {
+  // Create a list of 10 jobs
+  const nodes: Node[] = []
+  for (let i = 0; i < numNodes; i += 1) {
+    nodes.push(generateMockNode())
+  }
+  return nodes
 }
 
 export const Default = {
-    args: { data: [] },
+  args: { data: [] },
 }
 
 export const FullData = {
-    args: { data: fullData() },
+  args: { data: fullDataGenerator() },
 }
