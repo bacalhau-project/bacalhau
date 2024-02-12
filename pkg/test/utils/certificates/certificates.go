@@ -24,7 +24,7 @@ type CACertificate struct {
 	Certificate
 }
 
-func NewCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
+func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -46,19 +46,25 @@ func NewCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
 		return nil, err
 	}
 	caPEM := new(bytes.Buffer)
-	pem.Encode(caPEM, &pem.Block{
+	err = pem.Encode(caPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
+	if err != nil {
+		return nil, err
+	}
 	err = os.WriteFile(caCertPath, caPEM.Bytes(), 0644)
 	if err != nil {
 		return nil, err
 	}
 	caPrivateKeyPEM := new(bytes.Buffer)
-	pem.Encode(caPrivateKeyPEM, &pem.Block{
+	err = pem.Encode(caPrivateKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
 	})
+	if err != nil {
+		return nil, err
+	}
 	err = os.WriteFile(caKeyPath, caPrivateKeyPEM.Bytes(), 0600)
 	if err != nil {
 		return nil, err
@@ -73,7 +79,7 @@ func NewCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
 	}, nil
 }
 
-func (c *CACertificate) CreateSignedCertificate(CertPath, KeyPath string) (*Certificate, error) {
+func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*Certificate, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
@@ -101,27 +107,33 @@ func (c *CACertificate) CreateSignedCertificate(CertPath, KeyPath string) (*Cert
 		return nil, err
 	}
 	certPEM := new(bytes.Buffer)
-	pem.Encode(certPEM, &pem.Block{
+	err = pem.Encode(certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
-	err = os.WriteFile(CertPath, certPEM.Bytes(), 0644)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(certPath, certPEM.Bytes(), 0644)
 	if err != nil {
 		return nil, err
 	}
 
 	certPrivKeyPEM := new(bytes.Buffer)
-	pem.Encode(certPrivKeyPEM, &pem.Block{
+	err = pem.Encode(certPrivKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
-	err = os.WriteFile(KeyPath, certPrivKeyPEM.Bytes(), 0600)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(keyPath, certPrivKeyPEM.Bytes(), 0600)
 	if err != nil {
 		return nil, err
 	}
 	return &Certificate{
-		certFile:     CertPath,
-		keyFile:      KeyPath,
+		certFile:     certPath,
+		keyFile:      keyPath,
 		certTemplate: cert,
 	}, nil
 }

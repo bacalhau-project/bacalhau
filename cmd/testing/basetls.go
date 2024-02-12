@@ -6,17 +6,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/util/certificates"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
+	"github.com/bacalhau-project/bacalhau/pkg/test/utils/certificates"
 )
 
 type BaseTLSSuite struct {
@@ -51,9 +50,9 @@ func (s *BaseTLSSuite) SetupTest() {
 	s.TempCACertFilePath = caCertPath
 
 	//generate certificates
-	caCert, err := certificates.NewCACertificate(caCertPath, caKeyPath)
+	caCert, err := certificates.NewTestCACertificate(caCertPath, caKeyPath)
 	s.Require().NoError(err)
-	_, err = caCert.CreateSignedCertificate(serverCertPath, serverKeyPath)
+	_, err = caCert.CreateTestSignedCertificate(serverCertPath, serverKeyPath)
 	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
