@@ -7,7 +7,6 @@ on:
 jobs:
   handle-release:
     runs-on: ubuntu-latest
-    environment: secrets  # The name of the environment to use
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
