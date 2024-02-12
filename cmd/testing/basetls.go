@@ -51,7 +51,9 @@ func (s *BaseTLSSuite) SetupTest() {
 	s.TempCACertFilePath = caCertPath
 
 	//generate certificates
-	err = certificates.CreateCertificates(caCertPath, caKeyPath, serverCertPath, serverKeyPath)
+	caCert, err := certificates.NewCACertificate(caCertPath, caKeyPath)
+	s.Require().NoError(err)
+	_, err = caCert.CreateSignedCertificate(serverCertPath, serverKeyPath)
 	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
