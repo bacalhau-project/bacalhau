@@ -3,16 +3,16 @@ package local
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/util/filecopy"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
+	"github.com/pkg/errors"
 )
 
 type Publisher struct {
@@ -48,15 +48,23 @@ func (p *Publisher) ValidateJob(ctx context.Context, j models.Job) error {
 
 func (p *Publisher) PublishResult(
 	ctx context.Context, execution *models.Execution, resultPath string) (models.SpecConfig, error) {
-	pathPrefix := path.Join(execution.JobID, execution.ID)
-	targetDirectory := filepath.Join(p.baseDirectory, pathPrefix)
+	filename := execution.ID + ".tgz"
+	targetFile := path.Join(p.baseDirectory, filename)
 
-	err := filecopy.CopyDir(resultPath, targetDirectory)
+	file, err := os.Create(targetFile)
 	if err != nil {
-		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to publish results")
+		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to create output file")
+	}
+	defer file.Close()
+
+	writer := io.WriteCloser(file)
+	defer closer.CloseWithLogOnError(targetFile, writer)
+
+	if err = targzip.CompressWithoutPath(ctx, resultPath, writer); err != nil {
+		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to compress output file")
 	}
 
-	downloadURL, err := url.JoinPath(p.urlPrefix, pathPrefix)
+	downloadURL, err := url.JoinPath(p.urlPrefix, filename)
 	if err != nil {
 		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to generate download URL")
 	}

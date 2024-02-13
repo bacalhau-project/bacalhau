@@ -37,10 +37,7 @@ func NewPublisherProvider(
 		return nil, err
 	}
 
-	localPublisher, err := configureLocalPublisher(ctx, localConfig)
-	if err != nil {
-		return nil, err
-	}
+	localPublisher := local.NewLocalPublisher(ctx, localConfig.Directory, localConfig.Address, localConfig.Port)
 
 	return provider.NewMappedProvider(map[string]publisher.Publisher{
 		models.PublisherNoop:  tracing.Wrap(noopPublisher),
@@ -48,25 +45,6 @@ func NewPublisherProvider(
 		models.PublisherS3:    tracing.Wrap(s3Publisher),
 		models.PublisherLocal: tracing.Wrap(localPublisher),
 	}), nil
-}
-
-// configureLocalPublisher determines where to store the published results
-// and creates a new local publisher with that directory.
-func configureLocalPublisher(ctx context.Context, localConfig *types.LocalPublisherConfig) (*local.Publisher, error) {
-	var err error
-
-	if localConfig.Directory != "" {
-		localConfig.Directory, err = os.MkdirTemp(config.GetStoragePath(), "bacalhau-local-publisher")
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if localConfig.Address == "" {
-		localConfig.Address = "local"
-	}
-
-	return local.NewLocalPublisher(ctx, localConfig.Directory, localConfig.Address, localConfig.Port), nil
 }
 
 func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {

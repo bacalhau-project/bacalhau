@@ -3,9 +3,11 @@ package node
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -15,6 +17,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
+
+const (
+	localPublishFolderPerm = 0755
 )
 
 // JobSelectionPolicy describe the rules for how a compute node selects an incoming job
@@ -139,6 +145,9 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	}
 	if params.LocalPublisher.Directory == "" {
 		params.LocalPublisher.Directory = DefaultComputeConfig.LocalPublisher.Directory
+		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {
+			return ComputeConfig{}, errors.Wrap(err, "creating default local publisher directory")
+		}
 	}
 
 	// Get available physical resources in the host

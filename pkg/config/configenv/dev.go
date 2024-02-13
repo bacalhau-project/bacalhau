@@ -151,7 +151,7 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 		ChannelBufferSize: 10,
 	},
 	LocalPublisher: types.LocalPublisherConfig{
-		Address: "localhost",
+		Address: "127.0.0.1",
 		Port:    6001,
 	},
 }
