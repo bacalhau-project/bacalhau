@@ -17,7 +17,7 @@ func TestAllowsWhenPolicySaysAllow(t *testing.T) {
 	policy, err := policy.FromFS(policies, "policies/policy_test_allow.rego")
 	require.NoError(t, err)
 
-	authorizer := NewPolicyAuthorizer(policy)
+	authorizer := NewPolicyAuthorizer(policy, nil, "")
 	require.NotNil(t, authorizer)
 
 	result, err := authorizer.Authorize(request)
@@ -32,7 +32,7 @@ func TestDeniesWhenPolicySaysDeny(t *testing.T) {
 	policy, err := policy.FromFS(policies, "policies/policy_test_deny.rego")
 	require.NoError(t, err)
 
-	authorizer := NewPolicyAuthorizer(policy)
+	authorizer := NewPolicyAuthorizer(policy, nil, "")
 	require.NotNil(t, authorizer)
 
 	result, err := authorizer.Authorize(request)
@@ -44,7 +44,7 @@ func TestPolicyEvaluatedAgainstHTTPRequest(t *testing.T) {
 	policy, err := policy.FromFS(policies, "policies/policy_test_http.rego")
 	require.NoError(t, err)
 
-	authorizer := NewPolicyAuthorizer(policy)
+	authorizer := NewPolicyAuthorizer(policy, nil, "")
 	require.NotNil(t, authorizer)
 
 	goodRequest, err := http.NewRequest(http.MethodGet, "/api/v1/hello", nil)
