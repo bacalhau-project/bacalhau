@@ -34,7 +34,7 @@ func (s *PublisherTestSuite) SetupTest() {
 	s.pub = local.NewLocalPublisher(s.ctx, s.baseDir, defaultHost, defaultPort)
 }
 
-func (s *PublisherTestSuite) TestCopyFolder() {
+func (s *PublisherTestSuite) TestPublishFolder() {
 	source := s.T().TempDir()
 
 	err := os.WriteFile(filepath.Join(source, "file.txt"), []byte("test"), 0644)
@@ -55,9 +55,6 @@ func (s *PublisherTestSuite) TestCopyFolder() {
 	s.Require().NoError(err)
 	s.NotNil(cfg)
 
-	expected := fmt.Sprintf("http://%s:%d/jid/eid", defaultHost, defaultPort)
+	expected := fmt.Sprintf("http://%s:%d/eid.tgz", defaultHost, defaultPort)
 	s.Require().Equal(expected, cfg.Params["URL"])
-
-	s.Require().FileExists(filepath.Join(s.baseDir, "jid", "eid", "file.txt"))
-	s.Require().FileExists(filepath.Join(s.baseDir, "jid", "eid", "subdir", "file.txt"))
 }
