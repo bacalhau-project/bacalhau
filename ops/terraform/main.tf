@@ -295,6 +295,7 @@ resource "google_compute_firewall" "bacalhau_ingress_firewall" {
       "4001",  // ipfs swarm
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
+      "6001",  // local publisher download
       "13133", // otel collector health_check extension
       "55679", // otel collector zpages extension
       "44443", // nginx is healthy - for running health check scripts
