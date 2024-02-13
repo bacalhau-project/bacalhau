@@ -1,6 +1,8 @@
 # Use the latest 2.1 version of CircleCI pipeline process engine.
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
+# In order to call CircleCI with webhook, you need to set the parameters
+# and leave the default values empty.
 parameters:
   GHA_Actor:
     type: string
@@ -129,6 +131,7 @@ commands:
             - ~/.cache/go-build
             - ~/go/pkg/mod
 
+  # Installs asdf, a version manager for golang, python, nodejs, etc. Installs from .tool-versions
   install_asdf:
     parameters:
       cache_version:
@@ -167,6 +170,8 @@ commands:
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
 
+  # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
+  # which is a file that asdf uses to install the correct version of python.
   install_python:
     description: Install Python and dependencies.
     parameters:
@@ -187,7 +192,7 @@ commands:
             asdf plugin-add python
             asdf install python $(awk '/^python/ {print $2}' .tool-versions)
             pip3 install --upgrade pip
-            pip3 install poetry
+            pip3 install poetry # Install poetry in the newly created virtual environment
             python -m poetry install
       - run:
           name: Install Python API client pre-requisites
@@ -205,8 +210,12 @@ commands:
             - $HOME/.local
       - run:
           name: Set PATH
+          # Sources PATH after installing asdf and python, from $BASH_ENV, which CircleCI uses to set the PATH
           command: echo 'export PATH="${PATH}":$HOME/.asdf/bin:$HOME/.asdf/shims:$HOME/.brew/bin' >> "${BASH_ENV}"
 
+  # When running the makefile, we need to ensure that we are using the correct shell
+  # so that the right shims are used. We cannot use global versions of tools because
+  # the makefile is not aware of the asdf environment.
   run_make_under_specific_shell:
     parameters:
       directory_to_change_to:
@@ -380,18 +389,6 @@ jobs:
           command: |
             cp /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
       - run:
-          name: Export Poetry into PATH
-          command: |
-            export POETRY_VERSION=$(poetry --version | awk '{print $NF}' | sed 's/v//')
-            echo 'export PATH="$HOME/.asdf/installs/poetry/${POETRY_VERSION}/bin:${PATH}"' >> "${BASH_ENV}"
-      - run:
-          name: Add swagger
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
           name: Build Python API client
           command: make build-python-apiclient
       - persist_to_workspace:
@@ -399,15 +396,6 @@ jobs:
           paths:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
-      - run:
-          name: Install Python SDK pre-requisites
-          command: |
-            cd python
-            source "$BASH_ENV"
-            python --version
-            python -m pip install --upgrade pip
-            python -m pip install poetry
-            python -m poetry install
       - run_make_under_specific_shell:
           directory_to_change_to: $HOME/repo/python
           makefile_directory: $HOME/repo
