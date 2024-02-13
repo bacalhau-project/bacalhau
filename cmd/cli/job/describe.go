@@ -2,7 +2,11 @@ package job
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -38,7 +42,7 @@ type DescribeOptions struct {
 // NewDescribeOptions returns initialized Options
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{
-		OutputOpts: output.NonTabularOutputOptions{Format: output.YAMLFormat},
+		OutputOpts: output.NonTabularOutputOptions{},
 	}
 }
 
@@ -60,13 +64,124 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := util.GetAPIClientV2().Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID: jobID,
+		JobID:   jobID,
+		Include: "executions",
 	})
+
 	if err != nil {
 		util.Fatal(cmd, fmt.Errorf("could not get job %s: %w", jobID, err), 1)
 	}
 
-	if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response.Job); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
+	job := response.Job
+	var executions []*models.Execution
+	if response.Executions != nil {
+		executions = response.Executions.Executions
+	}
+	if o.OutputOpts.Format != "" {
+		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, job); err != nil {
+			util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
+		}
+	}
+
+	o.printHeaderData(cmd, job)
+	o.printExecutionsSummary(cmd, executions, jobID)
+	o.printExecutions(cmd, executions, jobID)
+	o.printOutputs(cmd, executions)
+}
+
+func (o *DescribeOptions) printHeaderData(cmd *cobra.Command, job *models.Job) {
+	var headerData = []collections.Pair[string, any]{
+		{Left: "ID", Right: job.ID},
+		{Left: "Name", Right: job.Name},
+		{Left: "Namespace", Right: job.Namespace},
+		{Left: "Type", Right: job.Type},
+		{Left: "State", Right: job.State.StateType},
+		{Left: "Message", Right: job.State.Message},
+	} // Job type specific data
+	if job.Type == models.JobTypeBatch || job.Type == models.JobTypeService {
+		headerData = append(headerData, collections.NewPair[string, any]("Count", job.Count))
+	}
+
+	// Additional data
+	headerData = append(headerData, []collections.Pair[string, any]{
+		{Left: "Created Time", Right: job.GetCreateTime().Format(time.DateTime)},
+		{Left: "Modified Time", Right: job.GetModifyTime().Format(time.DateTime)},
+		{Left: "Version", Right: job.Version},
+	}...)
+
+	if err := output.KeyValue(cmd, headerData); err != nil {
+		util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", job.ID, err), 1)
+	}
+}
+
+func (o *DescribeOptions) printExecutionsSummary(cmd *cobra.Command, executions []*models.Execution, jobID string) {
+	// Summary of executions
+	var summaryPairs []collections.Pair[string, any]
+	summaryMap := map[models.ExecutionStateType]uint{}
+	for _, e := range executions {
+		summaryMap[e.ComputeState.StateType]++
+	}
+
+	for typ := models.ExecutionStateNew; typ < models.ExecutionStateCancelled; typ++ {
+		if summaryMap[typ] > 0 {
+			summaryPairs = append(summaryPairs, collections.NewPair[string, any](typ.String(), summaryMap[typ]))
+		}
+	}
+	output.Bold(cmd, "\nSummary\n")
+	if err := output.KeyValue(cmd, summaryPairs); err != nil {
+		util.Fatal(cmd, fmt.Errorf("failed to write job summary %s: %w", jobID, err), 1)
+	}
+}
+
+func (o *DescribeOptions) printExecutions(cmd *cobra.Command, executions []*models.Execution, jobID string) {
+	// Executions table
+	tableOptions := output.OutputOptions{
+		Format:  output.TableFormat,
+		NoStyle: true,
+	}
+	executionCols := []output.TableColumn[*models.Execution]{
+		executionColumnID,
+		executionColumnNodeID,
+		executionColumnState,
+		executionColumnDesired,
+		executionColumnRev,
+		executionColumnCreatedSince,
+		executionColumnModifiedSince,
+		executionColumnComment,
+	}
+	output.Bold(cmd, "\nExecutions\n")
+	if err := output.Output(cmd, executionCols, tableOptions, executions); err != nil {
+		util.Fatal(cmd, fmt.Errorf("failed to write job executions %s: %w", jobID, err), 1)
+	}
+}
+
+func (o *DescribeOptions) printOutputs(cmd *cobra.Command, executions []*models.Execution) {
+	outputs := make(map[string]string)
+	for _, e := range executions {
+		if e.RunOutput != nil {
+			separator := ""
+			if e.RunOutput.STDOUT != "" {
+				outputs[e.ID] = e.RunOutput.STDOUT
+				separator = "\n"
+			}
+			if e.RunOutput.STDERR != "" {
+				outputs[e.ID] += separator + e.RunOutput.STDERR
+			}
+			if e.RunOutput.StdoutTruncated || e.RunOutput.StderrTruncated {
+				outputs[e.ID] += "\n...\nOutput truncated"
+			}
+		}
+	}
+	if len(outputs) > 0 {
+		output.Bold(cmd, "\nStandard Output\n")
+		separator := ""
+		for id, out := range outputs {
+			if len(outputs) == 1 {
+				cmd.Print(out)
+			} else {
+				cmd.Printf("%sExecution %s:\n%s", separator, idgen.ShortID(id), out)
+			}
+			separator = "\n"
+		}
 	}
 }

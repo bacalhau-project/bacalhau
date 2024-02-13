@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/ghodss/yaml"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
@@ -17,6 +18,11 @@ const (
 	CSVFormat   OutputFormat = "csv"
 	JSONFormat  OutputFormat = "json"
 	YAMLFormat  OutputFormat = "yaml"
+)
+
+const (
+	bold  = "\033[1m"
+	reset = "\033[0m"
 )
 
 var AllFormats = append([]OutputFormat{TableFormat, CSVFormat}, NonTabularFormats...)
@@ -103,6 +109,43 @@ func OutputOne[T any](cmd *cobra.Command, columns []TableColumn[T], options Outp
 	default:
 		return OutputOneNonTabular(cmd, options.toNonTabularOptions(), item)
 	}
+}
+
+// KeyValue prints a list of key-value pairs in a human-readable format
+// with the keys aligned.
+// Example:
+//
+//	KeyValue(cmd, []collections.Pair[string, any]{
+//	  collections.NewPair("Name", "John"),
+//	  collections.NewPair("Age", 30),
+//	})
+//
+// Output:
+//
+//	Name = John
+//	Age  = 30
+func KeyValue(cmd *cobra.Command, data []collections.Pair[string, any]) error {
+	// Find the longest key to align values nicely
+	maxKeyLength := 0
+	for _, pair := range data {
+		if len(pair.Left) > maxKeyLength {
+			maxKeyLength = len(pair.Left)
+		}
+	}
+
+	// Print the key-value pairs with alignment
+	for _, pair := range data {
+		if fmt.Sprintf("%v", pair.Right) == "" {
+			continue
+		}
+		cmd.Printf("%-*s = %v\n", maxKeyLength, pair.Left, pair.Right)
+	}
+	return nil
+}
+
+// Bold prints the given string in bold
+func Bold(cmd *cobra.Command, s string) {
+	cmd.Print(bold + s + reset)
 }
 
 func OutputOneNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOptions, item T) error {
