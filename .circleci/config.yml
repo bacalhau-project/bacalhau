@@ -148,7 +148,7 @@ commands:
           name: Install asdf
           command: |
             if [ ! -d $HOME/.asdf ]; then
-              git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf
+              git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
             else
               cd $HOME/.asdf
@@ -517,7 +517,6 @@ jobs:
             - "*.coverage"
 
   build_and_test_python_sdk:
-    # executor: docker-linux
     executor: linux-amd64
     working_directory: ~/repo
     steps:
