@@ -68,7 +68,7 @@ type Store interface {
 	CreateJob(ctx context.Context, j models.Job) error
 
 	// GetExecutions retrieves all executions for the specified job.
-	GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error)
+	GetExecutions(ctx context.Context, options GetExecutionsOptions) ([]models.Execution, error)
 
 	// UpdateJobState updates the state for the job identified in the
 	// [UpdateJobStateRequest].
@@ -176,4 +176,9 @@ type JobHistoryFilterOptions struct {
 	ExcludeJobLevel       bool   `json:"exclude_job_level"`
 	ExecutionID           string `json:"execution_id"`
 	NodeID                string `json:"node_id"`
+}
+
+type GetExecutionsOptions struct {
+	JobID      string `json:"job_id"`
+	IncludeJob bool   `json:"include_job"`
 }
