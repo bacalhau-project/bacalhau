@@ -16,7 +16,10 @@
     "@typescript-eslint/interface-name-prefix": "off",
     "@typescript-eslint/no-unused-vars": [
       "warn",
-      { "argsIgnorePattern": "^_" }],
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
     "prettier/prettier": [
       "error",
       {
@@ -74,6 +77,8 @@
     "config/",
     "scripts/",
     "src/index.js",
-    "dist/"
+    "dist/",
+    "compiled/",
+    "vite/client.d.ts"
   ]
 }
