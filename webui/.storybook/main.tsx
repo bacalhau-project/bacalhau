@@ -5,6 +5,7 @@ import path from "path"
 
 const config: StorybookConfig = {
   stories: [
+    "../src/stories/*.mdx",
     "../src/**/*.mdx",
     "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
   ],
@@ -13,12 +14,13 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
+  staticDirs: ['../public'],
 
   addons: [
     "@storybook/addon-links",
   ],
   core: {
-    builder: "@storybook/builder-vite", // 👈 The builder enabled here.
+    builder: "@storybook/builder-vite",
   },
   docs: {
     autodocs: true,
@@ -35,6 +37,7 @@ const config: StorybookConfig = {
         __dirname,
         "../tests/mocks/__mocks__/cryptoFunctions.ts"
       )
+
     }
     if (configType === "PRODUCTION") {
       // Prodcution Specific Config

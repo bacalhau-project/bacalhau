@@ -1,13 +1,53 @@
-import type { Preview } from "@storybook/react";
-import { reactRouterParameters, withRouter } from 'storybook-addon-react-router-v6';
-import '../src/index.scss';
-import { initialize, mswLoader } from 'msw-storybook-addon';
+import type { Preview } from "@storybook/react"
+import {
+  reactRouterParameters,
+  withRouter,
+} from "storybook-addon-react-router-v6"
+import "../src/index.scss"
+import { passthrough } from "msw"
+// import { setupWorker } from "msw/browser"
+import { initialize, mswDecorator } from 'msw-storybook-addon';
+import { handlers as storyBookHandlers } from "../.storybook/storybookHandlers"
 
-// Initialize MSW
-initialize();
+// const handlers = []
 
-// Provide the MSW addon loader globally. A loader runs before a story renders, avoiding potential race conditions.
-export const loaders = [mswLoader];
+const MSW_FILE = "mockServiceWorker.js"
+// const worker = setupWorker(...handlers)
+// await worker.start(
+//   {
+//     serviceWorker: {
+//       url: MSW_FILE,
+//       options: {
+//         scope: '/',
+//       },
+//     },
+//     onUnhandledRequest: ({ method, url }) => {
+//       console.info(`Full: ${method} ${url}`)
+//       if (!url.includes("/api")) {
+//         console.info(`Passthrough: ${method} ${url}`)
+//         return passthrough();
+//       }
+//     },
+//   },
+// )
+
+initialize({
+  onUnhandledRequest: ({ method, url }) => {
+    console.info(`Full: ${method} ${url}`)
+    if (!url.includes("/api")) {
+      console.info(`Passthrough: ${method} ${url}`)
+      return passthrough();
+    }
+  },
+  serviceWorker: {
+    url: MSW_FILE,
+    options: {
+      scope: '/',
+    },
+  },
+},
+  storyBookHandlers,
+)
 
 export const preview: Preview = {
   // decorators: [(storyFn, context) => withConsole()(storyFn)(context)],
@@ -20,16 +60,17 @@ export const preview: Preview = {
       },
     },
   },
+  decorators: [mswDecorator],
 }
 
-if (typeof global.process === 'undefined') {
-  const { worker } = require('../tests/mocks/browser')
-  worker.start()
-}
+// if (typeof global.process === "undefined") {
+//   const { worker } = require("../tests/mocks/browser")
+//   worker.start()
+// }
 
 export default {
   decorators: [withRouter],
   parameters: {
     reactRouter: reactRouterParameters({}),
-  }
-} satisfies Preview;
+  },
+} satisfies Preview

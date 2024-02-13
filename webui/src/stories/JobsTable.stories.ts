@@ -3,7 +3,6 @@ import { Job } from "../helpers/jobInterfaces"
 import { JobsTable } from "../pages/JobsDashboard/JobsTable/JobsTable"
 
 import TenJobsData from "./storyData/jobsTable/10-jobs.json"
-
 import HundredJobsData from "./storyData/jobsTable/100-jobs.json"
 
 export default {

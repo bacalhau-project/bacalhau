@@ -26,6 +26,14 @@ export default defineConfig(({ mode }) => {
       open: true,
       // this sets a default port to 3000
       port: 3000,
+      middleware: [
+        (req, res, next) => {
+          if (req.url === "/mockServiceWorker.js") {
+            res.setHeader('Service-Worker-Allowed', '/')
+            res.setHeader('Content-Type', 'application/javascript')
+          }
+        },
+      ],
     },
     target: browserslistToEsbuild([">0.2%", "not dead", "not op_mini all"]),
     resolve: {
@@ -39,5 +47,6 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(__dirname, "build"),
     },
     publicDir: "./public",
+
   }
 })
