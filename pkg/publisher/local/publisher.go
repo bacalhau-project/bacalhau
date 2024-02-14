@@ -34,21 +34,6 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.host, p.port)
 	go p.server.Start(ctx)
 
-	// var localPublisherServer *local.LocalPublisherServer
-	// if pub, err := publishers.Get(ctx, models.PublisherLocal); err == nil {
-	// 	ok, err := pub.IsInstalled(ctx)
-	// 	if err != nil {
-	// 		return nil, errors.Wrap(err, "failed to check if local publisher is installed")
-	// 	}
-	// 	if ok {
-	// 		log.Ctx(ctx).Info().Msg("**** local publisher is installed and server being started")
-	// 		localPublisherServer = local.NewLocalPublisherServer(ctx, config.LocalPublisher)
-	// 		go localPublisherServer.Start(ctx)
-	// 	}
-	// } else {
-	// 	log.Ctx(ctx).Error().Err(err).Msg("local publisher not installed")
-	// }
-
 	return p
 }
 
