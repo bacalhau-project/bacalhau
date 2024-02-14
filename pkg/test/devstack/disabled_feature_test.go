@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
@@ -31,8 +31,8 @@ func disabledTestSpec(t testing.TB) scenario.Scenario {
 			},
 		},
 		Spec: scenario.WasmHelloWorld(t).Spec,
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForUnsuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForUnsuccessfulCompletion(),
 		},
 	}
 }

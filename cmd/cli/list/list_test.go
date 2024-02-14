@@ -19,7 +19,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -173,7 +173,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			suite.setupRun()
 
 			testJob := testutils.MakeJobWithOpts(suite.T(),
-				jobutils.WithAnnotations(tc.JobLabels...),
+				legacy_job.WithAnnotations(tc.JobLabels...),
 			)
 			j, err := suite.Client.Submit(ctx, &testJob)
 			require.NoError(suite.T(), err)

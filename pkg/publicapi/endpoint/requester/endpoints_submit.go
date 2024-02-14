@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -40,7 +40,7 @@ func (s *Endpoint) submit(c echo.Context) error {
 		return nil
 	}
 
-	if err := job.VerifyJobCreatePayload(ctx, &jobCreatePayload); err != nil {
+	if err := legacy_job.VerifyJobCreatePayload(ctx, &jobCreatePayload); err != nil {
 		publicapi.HTTPError(c, err, http.StatusBadRequest)
 		return nil
 	}

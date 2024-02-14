@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -23,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -141,12 +141,12 @@ func newRunCmd() *cobra.Command {
 func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
-	j, err := CreateJob(ctx, args, opts)
+	j, err := CreateJobV1(ctx, args, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	if err := job.VerifyJob(ctx, j); err != nil {
+	if err := legacy_job.VerifyJob(ctx, j); err != nil {
 		return fmt.Errorf("verifying job: %w", err)
 	}
 
@@ -169,10 +169,10 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
-func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
+func CreateJobV1(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
 	parameters := cmdArgs[1:]
 
-	entryModule, err := parseWasmEntryModule(ctx, cmdArgs[0])
+	entryModule, err := parseWasmEntryModuleV1(ctx, cmdArgs[0])
 	if err != nil {
 		return nil, err
 	}
@@ -197,24 +197,24 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
 
-	spec, err := job.MakeWasmSpec(
+	spec, err := legacy_job.MakeWasmSpec(
 		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		job.WithResources(
+		legacy_job.WithResources(
 			opts.ResourceSettings.CPU,
 			opts.ResourceSettings.Memory,
 			opts.ResourceSettings.Disk,
 			opts.ResourceSettings.GPU,
 		),
-		job.WithNetwork(
+		legacy_job.WithNetwork(
 			opts.NetworkingSettings.Network,
 			opts.NetworkingSettings.Domains,
 		),
-		job.WithTimeout(opts.SpecSettings.Timeout),
-		job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		job.WithOutputs(outputs...),
-		job.WithAnnotations(labels...),
-		job.WithNodeSelector(nodeSelectorRequirements),
-		job.WithDeal(
+		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
+		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
+		legacy_job.WithOutputs(outputs...),
+		legacy_job.WithAnnotations(labels...),
+		legacy_job.WithNodeSelector(nodeSelectorRequirements),
+		legacy_job.WithDeal(
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 		),
@@ -236,7 +236,111 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 	}, nil
 }
 
-func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {
+// func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*models.Job, error) {
+// 	parameters := cmdArgs[1:]
+
+// 	entryModule, err := parseWasmEntryModule(ctx, cmdArgs[0])
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	// nodeSelectorRequirements, err := parse.NodeSelector(opts.SpecSettings.Selector)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	// labels, err := parse.Labels(ctx, opts.SpecSettings.Labels)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	wasmEnvvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
+// 	}
+
+// 	spec, err := legacy_job.MakeWasmSpec(
+// 		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
+// 		legacy_job.WithResources(
+// 			opts.ResourceSettings.CPU,
+// 			opts.ResourceSettings.Memory,
+// 			opts.ResourceSettings.Disk,
+// 			opts.ResourceSettings.GPU,
+// 		),
+// 		legacy_job.WithNetwork(
+// 			opts.NetworkingSettings.Network,
+// 			opts.NetworkingSettings.Domains,
+// 		),
+// 		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
+// 		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
+// 		legacy_job.WithOutputs(outputs...),
+// 		legacy_job.WithAnnotations(labels...),
+// 		legacy_job.WithNodeSelector(nodeSelectorRequirements),
+// 		legacy_job.WithDeal(
+// 			opts.DealSettings.TargetingMode,
+// 			opts.DealSettings.Concurrency,
+// 		),
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Publisher is now optional
+// 	p := opts.SpecSettings.Publisher.Value()
+// 	if p != nil {
+// 		spec.Publisher = p.Type //nolint:staticcheck
+// 		spec.PublisherSpec = *p
+// 	}
+
+// 	return &models.Job{}, nil
+// }
+
+// func parseWasmEntryModule(ctx context.Context, in string) (*models.SpecConfig, error) {
+// 	// Try interpreting this as a CID.
+// 	wasmCid, err := cid.Parse(in)
+// 	if err == nil {
+// 		// It is a valid CID – proceed to create IPFS context.
+// 		// TODO(forrest): doesn't this require a name?
+// 		return &models.SpecConfig{
+// 			Type: models.StorageSourceIPFS,
+// 			Params: map[string]interface{}{
+// 				"CID": wasmCid.String(),
+// 			},
+// 		}, nil
+// 	}
+// 	// Try interpreting this as a path.
+// 	info, err := os.Stat(in)
+// 	if err != nil {
+// 		if os.IsNotExist(err) {
+// 			return nil, errors.Wrapf(err, "%q is not a valid CID or local file", in)
+// 		} else {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if !info.Mode().IsRegular() {
+// 		return nil, fmt.Errorf("%q should point to a single file", in)
+// 	}
+
+// 	if err := os.Chdir(filepath.Dir(in)); err != nil {
+// 		return nil, err
+// 	}
+
+// 	storage := inline.NewStorage()
+// 	inlineData, err := storage.Upload(ctx, info.Name())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return &inlineData, nil
+// }
+
+func parseWasmEntryModuleV1(ctx context.Context, in string) (*model.StorageSpec, error) {
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(in)
 	if err == nil {

@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -58,12 +58,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,
 			Spec:    scenario.WasmCsvTransform(suite.T()).Spec,
 			Deal:    model.Deal{Concurrency: testCase.nodeCount},
-			JobCheckers: []job.CheckStatesFunction{
-				job.WaitDontExceedCount(testCase.expectedAccepts),
-				job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+			JobCheckers: []legacy_job.CheckStatesFunction{
+				legacy_job.WaitDontExceedCount(testCase.expectedAccepts),
+				legacy_job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
 					model.ExecutionStateFailed,
 				}),
-				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted: testCase.expectedAccepts,
 				}),
 			},
