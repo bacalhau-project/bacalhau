@@ -66,7 +66,6 @@ func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false
 	devstackFlags := map[string][]configflags.Definition{
-		"local_publisher":       configflags.LocalPublisherFlags,
 		"publishing":            configflags.PublishingFlags,
 		"requester-tls":         configflags.RequesterTLSFlags,
 		"job-selection":         configflags.JobSelectionFlags,

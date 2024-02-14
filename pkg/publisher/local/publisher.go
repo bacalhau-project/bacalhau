@@ -20,22 +20,47 @@ type Publisher struct {
 	urlPrefix     string
 	baseDirectory string
 	port          int
+	server        *LocalPublisherServer
 }
 
 func NewLocalPublisher(ctx context.Context, directory string, host string, port int) *Publisher {
-	return &Publisher{
+	p := &Publisher{
 		baseDirectory: directory,
 		host:          host,
 		port:          port,
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
+
+	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.host, p.port)
+	go p.server.Start(ctx)
+
+	// var localPublisherServer *local.LocalPublisherServer
+	// if pub, err := publishers.Get(ctx, models.PublisherLocal); err == nil {
+	// 	ok, err := pub.IsInstalled(ctx)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "failed to check if local publisher is installed")
+	// 	}
+	// 	if ok {
+	// 		log.Ctx(ctx).Info().Msg("**** local publisher is installed and server being started")
+	// 		localPublisherServer = local.NewLocalPublisherServer(ctx, config.LocalPublisher)
+	// 		go localPublisherServer.Start(ctx)
+	// 	}
+	// } else {
+	// 	log.Ctx(ctx).Error().Err(err).Msg("local publisher not installed")
+	// }
+
+	return p
 }
 
 // IsInstalled checks if the publisher is installed and it determines
-// this based on the presence of the base directory.
+// this based on the presence of the base directory and a local server.
 func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
+		return false, nil
+	}
+
+	if p.server == nil {
 		return false, nil
 	}
 

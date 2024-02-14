@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/rs/zerolog/log"
 )
@@ -15,7 +14,6 @@ type LocalPublisherServer struct {
 	rootDirectory string
 	address       string
 	port          int
-	stopChan      chan struct{}
 }
 
 const (
@@ -23,12 +21,11 @@ const (
 	readTimeout       = 3 * time.Second
 )
 
-func NewLocalPublisherServer(ctx context.Context, config types.LocalPublisherConfig) *LocalPublisherServer {
+func NewLocalPublisherServer(ctx context.Context, directory, address string, port int) *LocalPublisherServer {
 	return &LocalPublisherServer{
-		rootDirectory: config.Directory,
-		address:       resolveAddress(ctx, config.Address),
-		port:          config.Port,
-		stopChan:      make(chan struct{}),
+		rootDirectory: directory,
+		address:       resolveAddress(ctx, address),
+		port:          port,
 	}
 }
 
@@ -73,15 +70,12 @@ func (s *LocalPublisherServer) Start(ctx context.Context) {
 
 	log.Ctx(ctx).Info().Msgf("Running local publishing server on %s", listenTo)
 
-	<-s.stopChan
+	// Wait for cancellation
+	<-ctx.Done()
 
 	log.Ctx(ctx).Info().Msgf("Stopping local publishing server on %s", listenTo)
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("error calling shutdown on local publishing server")
 	}
-}
-
-func (s *LocalPublisherServer) Stop() {
-	s.stopChan <- struct{}{}
 }
