@@ -3,6 +3,7 @@ acks
 Addrs
 alessio
 apimodels
+armv
 authorised
 autofetch
 automagically
@@ -24,6 +25,7 @@ cdrom
 cerr
 choco
 Cids
+cimg
 circlerc
 clientid
 clientv
@@ -49,6 +51,7 @@ deleteme
 devstack
 devstask
 doclines
+dpkg
 dpokidov
 dport
 Dreambooth
@@ -90,6 +93,7 @@ gitlfs
 gitprecommit
 GOARCH
 GOBIN
+GOCACHE
 gochecknoinits
 goconst
 gocovmerge
@@ -166,11 +170,13 @@ lcur
 ldflags
 letsencrypt
 lexographical
+libbz
 libp
 livez
 localdb
 logits
 logresourcename
+ltrimstr
 ltsc
 maddr
 maddrs
@@ -226,6 +232,7 @@ pbnode
 pflag
 phayes
 PKCS
+popd
 pmmmwh
 projectcontour
 proto
@@ -233,10 +240,12 @@ protobuf
 protoc
 protoimpl
 publicapi
+pushd
 pyenv
 pyflyte
 Pylance
 pypi
+pypoetry
 PYTHONVER
 quic
 quickstart

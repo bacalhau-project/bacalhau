@@ -46,7 +46,9 @@ func (p Publisher) HandleJobEvent(ctx context.Context, event model.JobEvent) err
 			return err
 		}
 
-		executions, err := p.jobStore.GetExecutions(ctx, event.JobID)
+		executions, err := p.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+			JobID: event.JobID,
+		})
 		if err != nil {
 			return err
 		}
