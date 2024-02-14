@@ -1,0 +1,30 @@
+VERSION 0.8
+FROM node:21.5.0
+
+WORKDIR /code
+
+install-yarn:
+    RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+
+install-deps:
+    FROM +install-yarn
+    COPY . .
+    RUN yarn set version berry
+    RUN yarn config set nodeLinker node-modules
+    RUN yarn install
+
+run-linter:
+    FROM +install-deps
+    RUN yarn eslint
+
+build-artifacts:
+    FROM +run-linter
+    RUN yarn build
+
+run-tests:
+    FROM +build-artifacts
+    RUN yarn test
+
+all:
+    FROM +run-tests
+    SAVE ARTIFACT /code/build AS LOCAL ./build
