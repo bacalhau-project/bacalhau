@@ -847,6 +847,8 @@ func (s *DockerRunSuite) TestRun_NoPublisher() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
+	s.Require().Len(info.State.Executions, 1)
+
 	exec := info.State.Executions[0]
 	result := exec.PublishedResult
 	s.Require().Equal("unknown", result.StorageSource.String())
@@ -868,6 +870,8 @@ func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
 	s.Require().NoError(err)
 	s.T().Log(info)
+
+	s.Require().Len(info.State.Executions, 1)
 
 	exec := info.State.Executions[0]
 	result := exec.PublishedResult

@@ -58,6 +58,8 @@ func (s *WasmRunSuite) TestNoPublisher() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
+	s.Require().Len(info.State.Executions, 1)
+
 	exec := info.State.Executions[0]
 	result := exec.PublishedResult
 
@@ -83,10 +85,11 @@ func (s *WasmRunSuite) TestLocalPublisher() {
 
 	s.Require().Equal(model.PublisherLocal, job.Spec.PublisherSpec.Type, "Expected a local publisher")
 
+	s.Require().Len(info.State.Executions, 1)
+
 	exec := info.State.Executions[0]
 	result := exec.PublishedResult
 	s.Require().Equal(model.StorageSourceURLDownload, result.StorageSource)
 	s.Require().Contains(result.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
 	s.Require().Contains(result.URL, fmt.Sprintf("%s.tgz", exec.ID().ExecutionID), "URL does not contain expected file")
-
 }
