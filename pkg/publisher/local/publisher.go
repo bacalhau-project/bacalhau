@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type Publisher struct {
@@ -42,10 +44,22 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
+		log.Ctx(ctx).Debug().Msg("local publisher not installed because the base directory does not exist")
 		return false, nil
 	}
 
-	if p.server == nil {
+	// Check that the HTTP server is running by making a HEAD request to the root route. If the
+	// server is not running, or not responding to the HEAD, then we won't be able to serve results
+	// and we should not consider the publisher installed.
+	resp, err := http.Head(fmt.Sprintf("http://%s:%d/", p.host, p.port)) //nolint:noctx
+	if err != nil {
+		log.Ctx(ctx).Debug().Msg("local publisher not installed because the server is not running")
+		return false, nil
+	}
+	defer resp.Body.Close() // Required to keep the linter happy even when there is no body.
+
+	if resp.StatusCode != http.StatusOK {
+		log.Ctx(ctx).Debug().Msg("local publisher not installed because the server failed to respond")
 		return false, nil
 	}
 
