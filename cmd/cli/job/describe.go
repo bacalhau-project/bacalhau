@@ -72,15 +72,18 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 		util.Fatal(cmd, fmt.Errorf("could not get job %s: %w", jobID, err), 1)
 	}
 
+	if o.OutputOpts.Format != "" {
+		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response); err != nil {
+			util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
+		}
+		return
+	}
+
 	job := response.Job
 	var executions []*models.Execution
 	if response.Executions != nil {
+		// TODO: #520 rename Executions.Executions to Executions.Items
 		executions = response.Executions.Executions
-	}
-	if o.OutputOpts.Format != "" {
-		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, job); err != nil {
-			util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
-		}
 	}
 
 	o.printHeaderData(cmd, job)
