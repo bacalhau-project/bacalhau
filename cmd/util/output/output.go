@@ -124,7 +124,7 @@ func OutputOne[T any](cmd *cobra.Command, columns []TableColumn[T], options Outp
 //
 //	Name = John
 //	Age  = 30
-func KeyValue(cmd *cobra.Command, data []collections.Pair[string, any]) error {
+func KeyValue(cmd *cobra.Command, data []collections.Pair[string, any]) {
 	// Find the longest key to align values nicely
 	maxKeyLength := 0
 	for _, pair := range data {
@@ -140,7 +140,6 @@ func KeyValue(cmd *cobra.Command, data []collections.Pair[string, any]) error {
 		}
 		cmd.Printf("%-*s = %v\n", maxKeyLength, pair.Left, pair.Right)
 	}
-	return nil
 }
 
 // Bold prints the given string in bold

@@ -87,8 +87,10 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	}
 
 	o.printHeaderData(cmd, job)
-	o.printExecutionsSummary(cmd, executions, jobID)
-	o.printExecutions(cmd, executions, jobID)
+	o.printExecutionsSummary(cmd, executions)
+	if err = o.printExecutions(cmd, executions); err != nil {
+		util.Fatal(cmd, fmt.Errorf("failed to write job executions %s: %w", jobID, err), 1)
+	}
 	o.printOutputs(cmd, executions)
 }
 
@@ -112,12 +114,10 @@ func (o *DescribeOptions) printHeaderData(cmd *cobra.Command, job *models.Job) {
 		{Left: "Version", Right: job.Version},
 	}...)
 
-	if err := output.KeyValue(cmd, headerData); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", job.ID, err), 1)
-	}
+	output.KeyValue(cmd, headerData)
 }
 
-func (o *DescribeOptions) printExecutionsSummary(cmd *cobra.Command, executions []*models.Execution, jobID string) {
+func (o *DescribeOptions) printExecutionsSummary(cmd *cobra.Command, executions []*models.Execution) {
 	// Summary of executions
 	var summaryPairs []collections.Pair[string, any]
 	summaryMap := map[models.ExecutionStateType]uint{}
@@ -131,12 +131,10 @@ func (o *DescribeOptions) printExecutionsSummary(cmd *cobra.Command, executions 
 		}
 	}
 	output.Bold(cmd, "\nSummary\n")
-	if err := output.KeyValue(cmd, summaryPairs); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write job summary %s: %w", jobID, err), 1)
-	}
+	output.KeyValue(cmd, summaryPairs)
 }
 
-func (o *DescribeOptions) printExecutions(cmd *cobra.Command, executions []*models.Execution, jobID string) {
+func (o *DescribeOptions) printExecutions(cmd *cobra.Command, executions []*models.Execution) error {
 	// Executions table
 	tableOptions := output.OutputOptions{
 		Format:  output.TableFormat,
@@ -153,9 +151,7 @@ func (o *DescribeOptions) printExecutions(cmd *cobra.Command, executions []*mode
 		executionColumnComment,
 	}
 	output.Bold(cmd, "\nExecutions\n")
-	if err := output.Output(cmd, executionCols, tableOptions, executions); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write job executions %s: %w", jobID, err), 1)
-	}
+	return output.Output(cmd, executionCols, tableOptions, executions)
 }
 
 func (o *DescribeOptions) printOutputs(cmd *cobra.Command, executions []*models.Execution) {
