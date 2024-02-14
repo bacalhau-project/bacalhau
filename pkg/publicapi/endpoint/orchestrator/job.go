@@ -310,7 +310,9 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 	}
 
 	// query executions
-	executions, err := e.store.GetExecutions(ctx, jobID)
+	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: jobID,
+	})
 	if err != nil {
 		return err
 	}
