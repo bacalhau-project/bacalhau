@@ -1,8 +1,8 @@
 ---
-sidebar_label: "S3-Model-Inference"
+sidebar_label: "Run Inference on a S3-stored Model"
 sidebar_position: 3
 ---
-# Running Inference on a Model stored on S3
+# Run Inference on a S3-stored Model
 
 
 
@@ -21,20 +21,24 @@ In this example, we will demonstrate how to run inference on a model stored on A
 
 ### Downloading the Datasets
 
+Use the following commands to download the model and test image:
 
 ```bash
-%%bash
 wget https://sagemaker-sample-files.s3.amazonaws.com/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz
 wget https://raw.githubusercontent.com/js-ts/mnist-test/main/digit.png
 ```
 
 ### Creating the Inference Script
 
-This script is designed to load a pretrained PyTorch model for MNIST digit classification from a tar.gz file, extract it, and use the model to perform inference on a given input image.
+This script is designed to load a pretrained PyTorch model for MNIST digit classification from a `tar.gz` file, extract it, and use the model to perform inference on a given input image. Ensure you have all required dependencies installed:
+
+```bash
+pip install Pillow torch torchvision
+```
 
 
 ```python
-%%writefile inference.py
+# content of the inference.py file
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
@@ -111,24 +115,35 @@ print(f"Predicted class: {predicted_class}")
 
 ### Running the inference script
 
-To use this script, you need to provide the paths to the tar.gz file containing the pre-trained model, the output directory where the model will be extracted, and the input image file for which you want to perform inference. The script will output the predicted digit (class) for the given input image.
+To use this script, you need to provide the paths to the `tar.gz` file containing the pre-trained model, the output directory where the model will be extracted, and the input image file for which you want to perform inference. The script will output the predicted digit (class) for the given input image.
 
 
 ```bash
-%%bash
-python inference.py --tar_gz_file_path ./model.tar.gz --output_directory ./model --image_path ./digit.png
+python3 inference.py --tar_gz_file_path ./model.tar.gz --output_directory ./model --image_path ./digit.png
 ```
 
 ## Running inference on Bacalhau
 
 ### Prerequisite
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
+
+### Structure of the command
+
+1. `export JOB_ID=$( ... )`: Export results of a command execution as environment variable
+2. `-w /inputs` Set the current working directory at `/inputs` in the container
+3. `-i src=s3://sagemaker-sample-files/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz,dst=/model/,opt=region=us-east-1`: Mount the s3 bucket at the destination path provided - `/model/` and specifying the region where the bucket is located `opt=region=us-east-1`
+4. `-i git://github.com/js-ts/mnist-test.git`: Flag to mount the source code repo from GitHub. It would mount the repo at `/inputs/js-ts/mnist-test` in this case it also contains the test image
+5. `pytorch/pytorch`: The name of the Docker image
+6. `-- python3 /inputs/js-ts/mnist-test/inference.py --tar_gz_file_path /model/model.tar.gz --output_directory /model-pth --image_path /inputs/js-ts/mnist-test/image.png`: The command to run inference on the model. It consists of:
+    1. `/model/model.tar.gz` is the path to the model file
+    2. `/model-pth` is the output directory for the model
+    3. `/inputs/js-ts/mnist-test/image.png` is the path to the input image
+
 
 
 ```bash
-%%bash --out job_id
-bacalhau docker run \
+export JOB_ID=$(bacalhau docker run \
 --wait \
 --id-only \
 --timeout 3600 \
@@ -137,37 +152,23 @@ bacalhau docker run \
 -i src=s3://sagemaker-sample-files/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz,dst=/model/,opt=region=us-east-1 \
 -i git://github.com/js-ts/mnist-test.git \
 pytorch/pytorch \
- -- python /inputs/js-ts/mnist-test/inference.py --tar_gz_file_path /model/model.tar.gz --output_directory /model-pth --image_path /inputs/js-ts/mnist-test/image.png
+ -- python3 /inputs/js-ts/mnist-test/inference.py --tar_gz_file_path /model/model.tar.gz --output_directory /model-pth --image_path /inputs/js-ts/mnist-test/image.png)
 ```
+When the job is submitted Bacalhau prints out the related job id. We store that in an environment variable `JOB_ID` so that we can reuse it later on.
 
-### Structure of the command
-
----
-
-* `-w /inputs` Setting the current working directory at /inputs in the container
-
-* `-i src=s3://sagemaker-sample-files/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz,dst=/model/,opt=region=us-east-1`: Mounting the s3 bucket at the destination path provided
-  `/model/` and specifying the region where the bucket is located `opt=region=us-east-1`
-
-* `-i git://github.com/js-ts/mnist-test.git`: Flag to mount the source code repo from GitHub. It would mount the repo at `/inputs/js-ts/mnist-test`
-  in this case it also contains the test image.
-
-* `pytorch/pytorch`: The name of the Docker image.
-
-* `-- python /inputs/js-ts/mnist-test/inference.py --tar_gz_file_path /model/model.tar.gz --output_directory /model-pth --image_path /inputs/js-ts/mnist-test/image.png`: The command to run inference on the model.
-
-  - `/model/model.tar.gz` is the path to the model file.
-
-  - `/model-pth` is the output directory for the model.
-
-  - `/inputs/js-ts/mnist-test/image.png` is the path to the input image.
-
-The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
 
 ### Viewing the output
 
+Use the `bacalhau logs` command to view the job output, since the script prints the result of execution to the stdout:
 
 ```bash
-%%bash
 bacalhau logs ${JOB_ID}
+
+Predicted class: 0
+```
+
+You can also use `bacalhau get` to download job results:
+
+```bash
+bacalhau get ${JOB_ID}
 ```
