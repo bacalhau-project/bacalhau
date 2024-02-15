@@ -57,6 +57,7 @@ func GetComputeConfig() (node.ComputeConfig, error) {
 		},
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
+		LocalPublisher:               cfg.LocalPublisher,
 	})
 }
 

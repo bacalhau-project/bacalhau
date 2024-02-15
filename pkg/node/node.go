@@ -149,21 +149,6 @@ func NewNode(
 		return nil, err
 	}
 
-	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
 	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err
@@ -248,6 +233,15 @@ func NewNode(
 
 	// setup requester node
 	if config.IsRequesterNode {
+		authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics.NodeInfo.Add(ctx, 1,
+			attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
+		)
+
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.NodeID,
@@ -271,6 +265,21 @@ func NewNode(
 
 	if config.IsComputeNode {
 		storagePath := pkgconfig.GetStoragePath()
+
+		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics.NodeInfo.Add(ctx, 1,
+			attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
+			attribute.StringSlice("node_engines", executors.Keys(ctx)),
+		)
 
 		// setup compute node
 		computeNode, err = NewComputeNode(
@@ -373,8 +382,6 @@ func NewNode(
 		attribute.String("node_network_transport", config.NetworkConfig.Type),
 		attribute.Bool("node_is_compute", config.IsComputeNode),
 		attribute.Bool("node_is_requester", config.IsRequesterNode),
-		attribute.StringSlice("node_engines", executors.Keys(ctx)),
-		attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
 		attribute.StringSlice("node_storages", storageProviders.Keys(ctx)),
 	)
 	node := &Node{

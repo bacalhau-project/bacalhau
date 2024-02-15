@@ -14,6 +14,7 @@ type ComputeConfig struct {
 	Logging         LoggingConfig            `yaml:"Logging"`
 	ManifestCache   DockerCacheConfig        `yaml:"ManifestCache"`
 	LogStreamConfig LogStreamConfig          `yaml:"LogStream"`
+	LocalPublisher  LocalPublisherConfig     `yaml:"LocalPublisher"`
 }
 
 type CapacityConfig struct {
@@ -54,4 +55,10 @@ type LoggingConfig struct {
 type LogStreamConfig struct {
 	// How many messages to buffer in the log stream channel, per stream
 	ChannelBufferSize int `yaml:"ChannelBufferSize"`
+}
+
+type LocalPublisherConfig struct {
+	Address   string `yaml:"Address"`
+	Port      int    `yaml:"Port"`
+	Directory string `yaml:"Directory"`
 }
