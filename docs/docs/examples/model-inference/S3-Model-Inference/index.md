@@ -10,14 +10,17 @@ sidebar_position: 3
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=model-inference/S3-Model-Inference/index.ipynb)
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
+## Introduction
 In this example, we will demonstrate how to run inference on a model stored on Amazon S3. We will use a PyTorch model trained on the MNIST dataset.
 
 ## Running Locally
 
 ### Prerequisites
 
-- Python
-- PyTorch
+Consider using the latest versions or use the docker method listed below in the article.
+
+1. Python
+2. PyTorch
 
 ### Downloading the Datasets
 
@@ -113,7 +116,7 @@ print(f"Predicted class: {predicted_class}")
 
 ```
 
-### Running the inference script
+### Running the Inference Script
 
 To use this script, you need to provide the paths to the `tar.gz` file containing the pre-trained model, the output directory where the model will be extracted, and the input image file for which you want to perform inference. The script will output the predicted digit (class) for the given input image.
 
@@ -122,13 +125,13 @@ To use this script, you need to provide the paths to the `tar.gz` file containin
 python3 inference.py --tar_gz_file_path ./model.tar.gz --output_directory ./model --image_path ./digit.png
 ```
 
-## Running inference on Bacalhau
+## Running Inference on Bacalhau
 
 ### Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
-### Structure of the command
+### Structure of the Command
 
 1. `export JOB_ID=$( ... )`: Export results of a command execution as environment variable
 2. `-w /inputs` Set the current working directory at `/inputs` in the container
@@ -157,7 +160,7 @@ pytorch/pytorch \
 When the job is submitted Bacalhau prints out the related job id. We store that in an environment variable `JOB_ID` so that we can reuse it later on.
 
 
-### Viewing the output
+### Viewing the Output
 
 Use the `bacalhau logs` command to view the job output, since the script prints the result of execution to the stdout:
 
