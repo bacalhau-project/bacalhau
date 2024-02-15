@@ -7,7 +7,7 @@ import (
 	*/
 	"github.com/glebarez/sqlite"
 	// _ "gorm.io/driver/sqlite"
-	"github.com/raulk/clock"
+	"github.com/benbjohnson/clock"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

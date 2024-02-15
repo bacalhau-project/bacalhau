@@ -280,7 +280,9 @@ type RunCommandResult struct {
 }
 
 type Evaluation struct {
+	gorm.Model
 	EvaluationID string
+	Namespace    string
 	JobID        string
 	TriggeredBy  string
 	Priority     int
@@ -293,5 +295,17 @@ type Evaluation struct {
 }
 
 func (e Evaluation) AsEvaluation() models.Evaluation {
-	panic("TODO")
+	return models.Evaluation{
+		ID:          e.EvaluationID,
+		Namespace:   e.Namespace,
+		JobID:       e.JobID,
+		TriggeredBy: e.TriggeredBy,
+		Priority:    e.Priority,
+		Type:        e.Type,
+		Status:      e.Status,
+		Comment:     e.Comment,
+		WaitUntil:   e.WaitUntil,
+		CreateTime:  e.CreatedTime,
+		ModifyTime:  e.ModifiedTime,
+	}
 }

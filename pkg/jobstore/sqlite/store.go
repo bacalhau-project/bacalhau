@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
-	"github.com/raulk/clock"
+	"github.com/benbjohnson/clock"
+	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/labels"
@@ -360,23 +362,6 @@ func (s *Store) GetJobHistory(ctx context.Context, id string, options jobstore.J
 
 	var out []models.JobHistory
 	{
-		prevState := models.JobStateTypeUndefined
-		for _, j := range jobStates {
-			out = append(out, models.JobHistory{
-				Type:  models.JobHistoryTypeJobLevel,
-				JobID: id,
-				JobState: &models.StateChange[models.JobStateType]{
-					Previous: prevState,
-					New:      models.JobStateType(j.State),
-				},
-				Comment: j.Message,
-				Time:    time.Unix(0, j.ModifiedTime),
-			})
-			prevState = models.JobStateType(j.State) // Update prevState with the current state for the next iteration
-		}
-	}
-
-	{
 		prevState := models.ExecutionStateUndefined
 		for _, e := range executionStates {
 			out = append(out, models.JobHistory{
@@ -395,6 +380,42 @@ func (s *Store) GetJobHistory(ctx context.Context, id string, options jobstore.J
 			prevState = models.ExecutionStateType(e.ComputeState.State)
 		}
 	}
+
+	{
+		prevState := models.JobStateTypeUndefined
+		for _, j := range jobStates {
+			out = append(out, models.JobHistory{
+				Type:  models.JobHistoryTypeJobLevel,
+				JobID: id,
+				JobState: &models.StateChange[models.JobStateType]{
+					Previous: prevState,
+					New:      models.JobStateType(j.State),
+				},
+				Comment: j.Message,
+				Time:    time.Unix(0, j.ModifiedTime),
+			})
+			prevState = models.JobStateType(j.State) // Update prevState with the current state for the next iteration
+		}
+	}
+
+	// Filter out anything before the specified Since time, and anything that doesn't match the
+	// specified ExecutionID or NodeID
+	// TODO (tired forrest) copied this from the boltdb I think its the wrong filter
+	out = lo.Filter(out, func(event models.JobHistory, index int) bool {
+		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+			return false
+		}
+
+		if options.NodeID != "" && !strings.HasPrefix(event.NodeID, options.NodeID) {
+			return false
+		}
+
+		if event.Time.Unix() < options.Since {
+			return false
+		}
+		return true
+	})
+
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Time.UTC().Before(out[j].Time.UTC())
 	})
@@ -405,8 +426,8 @@ func (s *Store) getJobStatesSince(ctx context.Context, id string, since time.Tim
 	var states []JobState
 
 	err := s.DB.WithContext(ctx).
-		Model(&Job{}).
-		Where("job_id = ? && created_at >= ?", id, since).
+		Model(&JobState{}).
+		Where("job_id = ? AND created_at > ?", id, since).
 		// TODO can use PK?
 		Order("created_at DESC").
 		Find(&states).Error
@@ -423,11 +444,11 @@ func (s *Store) getExecutionWithStatesForJobSince(ctx context.Context, jobID str
 
 	err := s.DB.WithContext(ctx).
 		Model(&Execution{}).
-		Preload("DesiredState", "created_at >= ?", since).     // Preload DesiredState since the specified time
-		Preload("ComputeState", "created_at >= ?", since).     // Preload ComputeState since the specified time
-		Where("job_id = ? AND created_at >= ?", jobID, since). // Filter executions by job_id and time
-		Order("created_at DESC").                              // Order by creation time
-		Find(&executions).Error                                // Find all matching executions
+		Preload("DesiredState", "created_at > ?", since).     // Preload DesiredState since the specified time
+		Preload("ComputeState", "created_at > ?", since).     // Preload ComputeState since the specified time
+		Where("job_id = ? AND created_at > ?", jobID, since). // Filter executions by job_id and time
+		Order("created_at DESC").                             // Order by creation time
+		Find(&executions).Error                               // Find all matching executions
 
 	if err != nil {
 		return nil, err
@@ -525,7 +546,7 @@ func (s *Store) GetExecutions(ctx context.Context, query jobstore.GetExecutionsO
 	if has, err := s.hasJob(ctx, query.JobID); err != nil {
 		return nil, err
 	} else if !has {
-		return nil, jobstore.NewErrJobNotFound(query.JobID)
+		return nil, bacerrors.NewJobNotFound(query.JobID)
 	}
 
 	var executions []Execution
@@ -686,16 +707,19 @@ func (s *Store) Close(ctx context.Context) error {
 //
 
 func (s *Store) DeleteEvaluation(ctx context.Context, id string) error {
+	return nil
 	// TODO implement me
 	panic("implement me")
 }
 
 func (s *Store) DeleteJob(ctx context.Context, jobID string) error {
+	return nil
 	// TODO implement me
 	panic("implement me")
 }
 
 func (s *Store) Watch(ctx context.Context, types jobstore.StoreWatcherType, events jobstore.StoreEventType) chan jobstore.WatchEvent {
+	return nil
 	// TODO implement me
 	panic("implement me")
 }

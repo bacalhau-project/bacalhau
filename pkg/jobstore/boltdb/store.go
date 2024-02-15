@@ -633,8 +633,10 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
+	_ = options
 	// Filter out anything before the specified Since time, and anything that doesn't match the
 	// specified ExecutionID or NodeID
+	// TODO (tired forrest) I think this is filtering our job events because their executionID isn't set.
 	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
 		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
 			return false
