@@ -28,6 +28,10 @@ parameters:
     default: true
     type: boolean
 
+  earthly_satellite:
+    default: "general-build"
+    type: string
+
 orbs:
   node: circleci/node@5.2.0
 
@@ -170,6 +174,13 @@ commands:
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
 
+  select_earthly_satellite:
+    description: Select Earthly satellite
+    steps:
+      - run:
+          name: Select Earthly satellite
+          command: earthly sat select << pipeline.parameters.earthly_satellite >>
+
   # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
   # which is a file that asdf uses to install the correct version of python.
   install_python:
@@ -238,6 +249,16 @@ commands:
             deactivate
             # Return to the original directory
             popd
+  install_earthly:
+    description: Install Earthly and dependencies.
+    steps:
+      - run:
+          name: Install Earthly
+          command: |
+            sudo /bin/sh -c "wget 'https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64' -O /usr/local/bin/earthly"
+            sudo chmod +x /usr/local/bin/earthly
+            /usr/local/bin/earthly bootstrap
+            earthly --version
 
 jobs:
   build_cli:
@@ -293,16 +314,16 @@ jobs:
       - run: cd test && bin/bashtub *.sh
 
   build_webui:
-    executor: node/default
+    executor: docker-linux
     steps:
       - checkout
+      - install_earthly
+      - select_earthly_satellite
       - run:
-          working_directory: webui
-          environment:
-            GENERATE_SOURCEMAP: "false"
+          name: Build webui
           command: |
-            yarn install
-            yarn run build
+            cd webui
+            earthly --push +all
       - persist_to_workspace:
           root: .
           paths:
