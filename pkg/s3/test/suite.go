@@ -148,7 +148,6 @@ func (s *HelperSuite) PreparePublisherSpec(compressed bool) s3helper.PublisherSp
 	return s3helper.PublisherSpec{
 		Bucket:   s.Bucket,
 		Key:      prefix,
-		Compress: compressed,
 		Region:   s.Region,
 		Endpoint: s.Endpoint,
 	}
