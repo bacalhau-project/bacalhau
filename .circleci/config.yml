@@ -29,11 +29,8 @@ parameters:
     type: boolean
 
   earthly_satellite:
-    default: "general-build"
+    default: "build-vm-linux-amd64"
     type: string
-
-orbs:
-  node: circleci/node@5.2.0
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
@@ -537,10 +534,6 @@ jobs:
     steps:
       - checkout
       - install_python
-      - run:
-          command: |
-            cd webui
-            yarn install && yarn run build
       - run_make_under_specific_shell:
           directory_to_change_to: $HOME/repo/python
           makefile_directory: $HOME/repo/python
