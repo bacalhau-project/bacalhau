@@ -1,5 +1,6 @@
 import React, { useContext } from "react"
-import moment from "moment"
+import { formatDistanceToNow } from "date-fns"
+import { enUS } from "date-fns/locale"
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -86,7 +87,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showCreated && (
                 <td className={styles.dateCreated}>
-                  {moment(jobData.createdAt.toISOString()).fromNow()}
+                  {formatDistanceToNow(jobData.createdAt, { locale: enUS })}
                 </td>
               )}
               {settings.showProgram && (

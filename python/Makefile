@@ -10,8 +10,6 @@ all: format lint pre-commit build
 setup:
 	$(POETRY) lock --no-update --no-interaction
 	$(POETRY) install --no-root --no-interaction --no-ansi --with test
-## workaround for https://github.com/bacalhau-project/bacalhau/issues/2683:
-	mkdir ~/.bacalhau
 
 .PHONY: test
 test: unittest coverage
@@ -52,6 +50,7 @@ clean:
 
 .PHONY: build
 build:
+	# Test to see if python version is the same as the one in pyproject.toml
 	$(POETRY) version -- ${VERSION}
 	$(POETRY) build
 

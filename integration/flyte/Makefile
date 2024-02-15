@@ -6,8 +6,6 @@ install-piptools:
 .PHONY: setup
 setup: install-piptools ## Install requirements
 	python3 -m pip install -r dev-requirements.in
-## workaround for https://github.com/bacalhau-project/bacalhau/issues/2683:
-	mkdir ~/.bacalhau
 
 .PHONY: test
 test: ## Run tests
@@ -32,3 +30,6 @@ lint: ## Run linters
 spellcheck:  ## Runs a spellchecker over all code and documentation
 	codespell -L "te,raison,fo" --skip="./docs/build,./.git" --ignore-words="./.cspell/custom-dictionary.txt"
 
+.SILENT: release
+release: ## upload a release
+	twine upload --verbose dist/* -u __token__ -p ${PYPI_TOKEN}
