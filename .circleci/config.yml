@@ -778,6 +778,8 @@ workflows:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_webui:
+          context:
+            - CREDENTIALS
           filters: *build_on_branch_and_tag_push
       - build_cli:
           requires: [build_webui]
