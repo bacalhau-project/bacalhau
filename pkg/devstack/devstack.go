@@ -247,6 +247,7 @@ func Setup(
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
 			// and so we will give each compute node a random open port to listen on.
 			stackConfig.ComputeConfig.LocalPublisher.Port, freePorts = freePorts[0], freePorts[1:]
+			stackConfig.ComputeConfig.LocalPublisher.Address = "127.0.0.1" //nolint:gomnd
 		}
 
 		nodeConfig := node.NodeConfig{
