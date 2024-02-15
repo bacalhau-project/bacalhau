@@ -169,6 +169,11 @@ func NewNode(
 		return nil, err
 	}
 
+	signingKey, err := pkgconfig.GetClientPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
@@ -177,7 +182,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy),
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, config.NodeID),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
