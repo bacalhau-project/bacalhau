@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -101,11 +102,22 @@ func DownloadResults( //nolint:funlen,gocyclo
 				Msg("Copying downloaded data to target")
 
 			// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)
-			if strings.HasSuffix(resultPath, ".tar.gz") {
+			// TODO: We could also do this using the content-type for the download (for _some_ downloaders).
+			if strings.HasSuffix(resultPath, ".tar.gz") || strings.HasSuffix(resultPath, ".tgz") {
 				newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
+				newResultPath = strings.TrimSuffix(newResultPath, ".tgz")
+
+				if _, err := os.Stat(newResultPath); os.IsNotExist(err) {
+					err = os.MkdirAll(newResultPath, DownloadFolderPerm)
+					if err != nil {
+						return errors.Wrap(err, "failed to create folder for uncompressed result")
+					}
+				}
+
 				if err = gzip.Decompress(resultPath, newResultPath); err != nil {
 					return err
 				}
+
 				resultPath = newResultPath
 			}
 
