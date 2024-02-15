@@ -16,14 +16,14 @@ import (
 func CopyFile(src, dst string) error {
 	var err error
 
-	var sourceFile *os.File
-	if sourceFile, err = os.Open(src); err != nil {
+	sourceFile, err := os.Open(src)
+	if err != nil {
 		return errors.Wrap(err, "failed to open source file")
 	}
 	defer sourceFile.Close()
 
-	var destinationFile *os.File
-	if destinationFile, err = os.Create(dst); err != nil {
+	destinationFile, err := os.Create(dst)
+	if err != nil {
 		return errors.Wrap(err, "failed to open target file")
 	}
 	defer destinationFile.Close()
