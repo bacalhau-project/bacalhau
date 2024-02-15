@@ -239,7 +239,7 @@ func NewNode(
 		}
 
 		metrics.NodeInfo.Add(ctx, 1,
-			attribute.StringSlice("authenticators", authenticators.Keys(ctx)),
+			attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
 		)
 
 		requesterNode, err = NewRequesterNode(
