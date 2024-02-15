@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Huggingface-Model-Inference"
+sidebar_label: "Inference on Dolly 2.0 Model with Hugging Face"
 sidebar_position: 1
 ---
 # Running Inference on Dolly 2.0 Model with Hugging Face
@@ -15,25 +15,22 @@ Dolly 2.0 package is open source, including the training code, dataset, and mode
 
 ## Running locally
 ### Prerequisites
-- A NVIDIA GPU
-- Python
+1. A NVIDIA GPU
+1. Python
 
 ### Installing dependencies
 
 
 
 ```bash
-%%bash
 pip -q install git+https://github.com/huggingface/transformers # need to install from github
-pip -q install accelerate>=0.12.0
+pip -q install accelerate # ensure you are using version higher than 0.12.0
 ```
 
-Creating the inference script
-
-
+Create an `inference.py` file with following code:
 
 ```python
-%%writefile inference.py
+# content of the inference.py file
 import argparse
 import torch
 from transformers import pipeline
@@ -59,83 +56,67 @@ if __name__ == "__main__":
 
 ## Building the container (optional)
 
-### Prerequisite
-- Install Docker on your local machine.
-- Sign up for a DockerHub account if you don't already have one.
-Steps
+You may want to create your own container for this kind of task. In that case, use the instructions for [creating](https://docs.docker.com/get-started/02_our_app/) and [publishing](https://docs.docker.com/get-started/04_sharing_app/) your own image in the docker hub. Use ` huggingface/transformers-pytorch-deepspeed-nightly-gpu` as base image, install dependencies listed above and copy the `inference.py` into it.
 
-Step 1: Create a Dockerfile
-Create a new file named Dockerfile in your project directory with the following content:
-```Dockerfile
-FROM huggingface/transformers-pytorch-deepspeed-nightly-gpu
-
-RUN apt-get update -y
-
-RUN pip -q install git+https://github.com/huggingface/transformers
-
-RUN pip -q install accelerate>=0.12.0 
-
-WORKDIR /
-
-# COPY ./dolly_inference.py .
-```
-This Dockerfile sets up a container with the necessary dependencies and installs the Segment Anything Model from its GitHub repository.
-
-Step 2: Build the Docker Image
-In your terminal, navigate to the directory containing the Dockerfile and run the following command to build the Docker image:
-
-```bash
-docker build -t your-dockerhub-username/sam:lite .
-```
-Replace your-dockerhub-username with your actual DockerHub username. This command will build the Docker image and tag it with your DockerHub username and the name "sam".
-
-Step 3: Push the Docker Image to DockerHub
-Once the build process is complete, Next, push the Docker image to DockerHub using the following command:
-```bash
-docker push your-dockerhub-username/sam:lite
-```
-
-Again, replace your-dockerhub-username with your actual DockerHub username. This command will push the Docker image to your DockerHub repository.
 
 ## Running Inference on Bacalhau
 
 ### Prerequisite
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
 ### Structure of the command
 
+1. `export JOB_ID=$( ... )`: Export results of a command execution as environment variable
+1. `bacalhau docker run`: Run a job using docker executor.
+1. `--gpu 1`: Flag to specify the number of GPUs to use for the execution. In this case, 1 GPU will be used.
+1. `-w /inputs`: Flag to set the working directory inside the container to `/inputs`.
+1. `-i gitlfs://huggingface.co/databricks/dolly-v2-3b.git`: Flag to clone the Dolly V2-3B model from Hugging Face's repository using Git LFS. The files will be mounted to `/inputs/databricks/dolly-v2-3b`.
+1. `-i https://gist.githubusercontent.com/js-ts/d35e2caa98b1c9a8f176b0b877e0c892/raw/3f020a6e789ceef0274c28fc522ebf91059a09a9/inference.py`: Flag to download the `inference.py` script from the provided URL. The file will be mounted to `/inputs/inference.py`.
+1. `jsacex/dolly_inference:latest`: The name and the tag of the Docker image.
+1. The command to run inference on the model: `python inference.py --prompt "Where is Earth located ?" --model_version "./databricks/dolly-v2-3b"`. It consists of:
+    1. `inference.py`: The Python script that runs the inference process using the Dolly V2-3B model.
+    1. `--prompt "Where is Earth located ?"`: Specifies the text prompt to be used for the inference.
+    1. `--model_version "./databricks/dolly-v2-3b"`: Specifies the path to the Dolly V2-3B model. In this case, the model files are mounted to `/inputs/databricks/dolly-v2-3b`.
 
-```
-bacalhau docker run \
---gpu 1 \
--w /inputs \
--i gitlfs://huggingface.co/databricks/dolly-v2-3b.git \
--i https://gist.githubusercontent.com/js-ts/d35e2caa98b1c9a8f176b0b877e0c892/raw/3f020a6e789ceef0274c28fc522ebf91059a09a9/inference.py \
-jsacex/dolly_inference:latest \
- -- python inference.py --prompt "Where is Earth located ?" --model_version "./databricks/dolly-v2-3b"
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+```bash
+export JOB_ID=$(bacalhau docker run \
+    --gpu 1 \
+    --id-only \
+    -w /inputs \
+    -i gitlfs://huggingface.co/databricks/dolly-v2-3b.git \
+    -i https://gist.githubusercontent.com/js-ts/d35e2caa98b1c9a8f176b0b877e0c892/raw/3f020a6e789ceef0274c28fc522ebf91059a09a9/inference.py \
+    jsacex/dolly_inference:latest \
+    -- python inference.py --prompt "Where is Earth located ?" --model_version "./databricks/dolly-v2-3b")
  ```
 
+ ### Checking the State of your Jobs
+
+1. **Job status**: You can check the status of the job using `bacalhau list`:
 
 
+```bash
+bacalhau list --id-filter ${JOB_ID}
+```
 
-* `docker run`: Docker command to run a container from a specified image.
+When it says `Completed`, that means the job is done, and we can get the results.
 
-* `--gpu 1`: Flag to specify the number of GPUs to use for the execution. In this case, 1 GPU will be used.
+2. **Job information**: You can find out more information about your job by using `bacalhau describe`:
 
-* `-w /inputs`: Flag to set the working directory inside the container to `/inputs`.
+```bash
+bacalhau describe ${JOB_ID}
+```
 
-* `-i gitlfs://huggingface.co/databricks/dolly-v2-3b.git`: Flag to clone the Dolly V2-3B model from Hugging Face's repository using Git LFS. The files will be mounted to `/inputs/databricks/dolly-v2-3b`.
+3. **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
-* `-i https://gist.githubusercontent.com/js-ts/d35e2caa98b1c9a8f176b0b877e0c892/raw/3f020a6e789ceef0274c28fc522ebf91059a09a9/inference.py`: Flag to download the `inference.py` script from the provided URL. The file will be mounted to `/inputs/inference.py`.
 
-* `jsacex/dolly_inference:latest`: The name and the tag of the Docker image.
+```bash
+rm -rf results && mkdir results
+bacalhau get ${JOB_ID} --output-dir results
+```
 
-* The command to run inference on the model: `python inference.py --prompt "Where is Earth located ?" --model_version "./databricks/dolly-v2-3b"`.
+### Viewing your Job Output
 
-  * `inference.py`: The Python script that runs the inference process using the Dolly V2-3B model.
-
-  * `--prompt "Where is Earth located ?"`: Specifies the text prompt to be used for the inference.
-
-  * `--model_version "./databricks/dolly-v2-3b"`: Specifies the path to the Dolly V2-3B model. In this case, the model files are mounted to `/inputs/databricks/dolly-v2-3b`.
-
+After the download has finished we can see the results in the `results/outputs` folder.
