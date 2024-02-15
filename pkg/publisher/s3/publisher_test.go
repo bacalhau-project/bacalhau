@@ -143,54 +143,29 @@ func (s *PublisherTestSuite) TestPublish() {
 		name        string
 		key         string
 		expectedKey string
-		archived    bool
 		region      string
 		endpoint    string
 		shouldFail  bool
 	}{
 		{
-			name:        "uncompressed",
-			key:         s.Prefix + "simple_uncompressed",
-			expectedKey: s.Prefix + "simple_uncompressed/",
-		},
-		{
-			name:        "uncompressed with trailing slash",
-			key:         s.Prefix + "simple_uncompressed-with-trailing-slash/",
-			expectedKey: s.Prefix + "simple_uncompressed-with-trailing-slash/",
-		},
-		{
-			name:        "uncompressed with nested path",
-			key:         s.Prefix + "nested_uncompressed/with/nested/path/",
-			expectedKey: s.Prefix + "nested_uncompressed/with/nested/path/",
-		},
-		{
-			name:        "uncompressed with naming pattern",
-			key:         s.Prefix + "pattern_uncompressed/{jobID}/{executionID}/",
-			expectedKey: s.Prefix + "pattern_uncompressed/" + s.JobID + "/" + s.ExecutionID + "/",
-		},
-		{
 			name:        "compressed",
 			key:         s.Prefix + "simple_compressed",
 			expectedKey: s.Prefix + "simple_compressed.tar.gz",
-			archived:    true,
 		},
 		{
 			name:        "compressed with extension",
 			key:         s.Prefix + "simple_compressed.tar.gz",
 			expectedKey: s.Prefix + "simple_compressed.tar.gz",
-			archived:    true,
 		},
 		{
 			name:        "compressed with nested path",
 			key:         s.Prefix + "nested_compressed/with/nested/path",
 			expectedKey: s.Prefix + "nested_compressed/with/nested/path.tar.gz",
-			archived:    true,
 		},
 		{
 			name:        "compressed with naming pattern",
 			key:         s.Prefix + "pattern_compressed/{jobID}/{executionID}",
 			expectedKey: s.Prefix + "pattern_compressed/" + s.JobID + "/" + s.ExecutionID + ".tar.gz",
-			archived:    true,
 		},
 		{
 			name:        "explicit endpoint and region",
@@ -198,13 +173,11 @@ func (s *PublisherTestSuite) TestPublish() {
 			expectedKey: s.Prefix + "simple_compressed_endpoint_and_region.tar.gz",
 			endpoint:    s.Endpoint,
 			region:      s.Region,
-			archived:    true,
 		},
 		{
 			name:       "explicit wrong region",
 			key:        s.Prefix + "simple_compressed_wrong_region.tar.gz",
 			region:     "us-east-1",
-			archived:   true,
 			shouldFail: true,
 		},
 	} {
@@ -213,9 +186,8 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.T().Skip(skipMessage)
 			}
 			params := s3helper.PublisherSpec{
-				Bucket:   s.Bucket,
-				Key:      tc.key,
-				Compress: tc.archived,
+				Bucket: s.Bucket,
+				Key:    tc.key,
 			}
 			if tc.region == "" && tc.endpoint == "" {
 				params.Region = s.Region
@@ -247,21 +219,14 @@ func (s *PublisherTestSuite) TestPublish() {
 			s.Equal(params.Region, sourceSpec.Region)
 			s.Equal(params.Endpoint, sourceSpec.Endpoint)
 
-			if tc.archived {
-				s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
-				s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
-			} else {
-				s.Empty(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should be empty")
-				s.Empty(sourceSpec.VersionID, "VersionID should be empty")
-			}
+			s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
+			s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
 
 			fetchedResults := s.GetResult(&storageSpec)
-			if tc.archived {
-				uncompressedResults, err := os.MkdirTemp(s.TempDir, "")
-				s.Require().NoError(err)
-				s.Require().NoError(gzip.Decompress(fetchedResults, uncompressedResults))
-				fetchedResults = uncompressedResults
-			}
+			uncompressedResults, err := os.MkdirTemp(s.TempDir, "")
+			s.Require().NoError(err)
+			s.Require().NoError(gzip.Decompress(fetchedResults, uncompressedResults))
+			fetchedResults = uncompressedResults
 
 			s3test.AssertEqualDirectories(s.T(), resultPath, fetchedResults)
 		})
