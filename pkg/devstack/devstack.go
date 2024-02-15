@@ -28,6 +28,7 @@ import (
 
 const (
 	DefaultLibp2pKeySize = 2048
+	portsPerNode         = 3 // 1 for libp2p, 1 for IPFS, 1 for local publisher
 )
 
 type DevStackOptions struct {
@@ -117,6 +118,15 @@ func Setup(
 		stackConfig.NetworkType = networkType
 	}
 
+	// We will pre-allocate the potential maximum number of free ports we will need during setup
+	// to ensure that we can allocate them well before use and avoid any potential port clashes.
+	// Before this change it was possible to get the same port back from freeport.GetFreePort()
+	// if a previously allocated one was not used immediately
+	freePorts, err := freeport.GetFreePorts(totalNodeCount * portsPerNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get free ports: %w", err)
+	}
+
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
 		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
@@ -154,10 +164,7 @@ func Setup(
 			const startSwarmPort = 4222 // 4222 is the default NATS port
 			swarmPort = startSwarmPort + i
 		} else {
-			swarmPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
-			}
+			swarmPort, freePorts = freePorts[0], freePorts[1:]
 		}
 		clusterConfig := node.NetworkConfig{
 			Type:          stackConfig.NetworkType,
@@ -172,10 +179,7 @@ func Setup(
 				const startClusterPort = 6222
 				clusterPort = startClusterPort + i
 			} else {
-				clusterPort, err = freeport.GetFreePort()
-				if err != nil {
-					return nil, err
-				}
+				clusterPort, freePorts = freePorts[0], freePorts[1:]
 			}
 
 			if isRequesterNode {
@@ -241,10 +245,8 @@ func Setup(
 
 		if isComputeNode {
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
-			// and so we will give each compute node a random open port to listen on. For normal
-			// compute nodes we will use a fixed port.
-			fport, _ := freeport.GetFreePort()
-			stackConfig.ComputeConfig.LocalPublisher.Port = fport
+			// and so we will give each compute node a random open port to listen on.
+			stackConfig.ComputeConfig.LocalPublisher.Port, freePorts = freePorts[0], freePorts[1:]
 		}
 
 		nodeConfig := node.NodeConfig{
