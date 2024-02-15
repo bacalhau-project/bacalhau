@@ -33,7 +33,7 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 	}
 
 	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.host, p.port)
-	go p.server.Start(ctx)
+	go p.server.Run(ctx)
 
 	return p
 }

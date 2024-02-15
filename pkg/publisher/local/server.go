@@ -46,7 +46,7 @@ func resolveAddress(ctx context.Context, address string) string {
 	return "127.0.0.1"
 }
 
-func (s *LocalPublisherServer) Start(ctx context.Context) {
+func (s *LocalPublisherServer) Run(ctx context.Context) {
 	fs := http.FileServer(http.Dir(s.rootDirectory))
 	mux := http.NewServeMux()
 	mux.Handle("/", fs)
