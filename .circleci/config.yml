@@ -183,7 +183,7 @@ commands:
       - run:
           name: Select Earthly satellite
           command: |
-            earthly account login --token $EARTHLY_TOKEN
+            earthly account login
             earthly sat select << pipeline.parameters.earthly_satellite >>
 
   # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
