@@ -24,6 +24,11 @@ import (
 
 const NodeInfoSubjectPrefix = "node.info."
 
+// reservedChars are the characters that are not allowed in node IDs as nodes
+// subscribe to subjects with their node IDs, and these are wildcards
+// in NATS subjects that could cause a node to subscribe to unintended subjects.
+const reservedChars = ".*>"
+
 type NATSTransportConfig struct {
 	NodeID            string
 	Port              int
@@ -51,8 +56,8 @@ func (c *NATSTransportConfig) Validate() error {
 		mErr = multierror.Append(mErr, errors.New("node ID contains a space"))
 	} else if validate.ContainsNull(c.NodeID) {
 		mErr = multierror.Append(mErr, errors.New("node ID contains a null character"))
-	} else if strings.ContainsAny(c.NodeID, ".*>") {
-		mErr = multierror.Append(mErr, errors.New("node ID contains a reserved character"))
+	} else if strings.ContainsAny(c.NodeID, reservedChars) {
+		mErr = multierror.Append(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
 	}
 
 	if c.IsRequesterNode {

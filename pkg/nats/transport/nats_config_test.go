@@ -57,7 +57,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				NodeID:        "node>ID",
 				Orchestrators: []string{"orch1", "orch2"},
 			},
-			expectedErrors: []string{"node ID contains a reserved character"},
+			expectedErrors: []string{"contains one or more reserved character"},
 		},
 		{
 			name: "NodeID Contains . Character",
@@ -65,7 +65,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				NodeID:        "node.ID",
 				Orchestrators: []string{"orch1", "orch2"},
 			},
-			expectedErrors: []string{"node ID contains a reserved character"},
+			expectedErrors: []string{"contains one or more reserved character"},
 		},
 		{
 			name: "NodeID Contains * Character",
@@ -73,7 +73,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				NodeID:        "node*ID",
 				Orchestrators: []string{"orch1", "orch2"},
 			},
-			expectedErrors: []string{"node ID contains a reserved character"},
+			expectedErrors: []string{"contains one or more reserved character"},
 		},
 		{
 			name: "Missing Orchestrators in Non-Requester Node",
