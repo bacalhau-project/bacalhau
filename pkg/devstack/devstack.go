@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -28,7 +29,6 @@ import (
 
 const (
 	DefaultLibp2pKeySize = 2048
-	portsPerNode         = 3 // 1 for libp2p, 1 for IPFS, 1 for local publisher
 )
 
 type DevStackOptions struct {
@@ -118,15 +118,6 @@ func Setup(
 		stackConfig.NetworkType = networkType
 	}
 
-	// We will pre-allocate the potential maximum number of free ports we will need during setup
-	// to ensure that we can allocate them well before use and avoid any potential port clashes.
-	// Before this change it was possible to get the same port back from freeport.GetFreePort()
-	// if a previously allocated one was not used immediately
-	freePorts, err := freeport.GetFreePorts(totalNodeCount * portsPerNode)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get free ports: %w", err)
-	}
-
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
 		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
@@ -164,7 +155,9 @@ func Setup(
 			const startSwarmPort = 4222 // 4222 is the default NATS port
 			swarmPort = startSwarmPort + i
 		} else {
-			swarmPort, freePorts = freePorts[0], freePorts[1:]
+			if swarmPort, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for swarm port")
+			}
 		}
 		clusterConfig := node.NetworkConfig{
 			Type:          stackConfig.NetworkType,
@@ -179,7 +172,9 @@ func Setup(
 				const startClusterPort = 6222
 				clusterPort = startClusterPort + i
 			} else {
-				clusterPort, freePorts = freePorts[0], freePorts[1:]
+				if clusterPort, err = network.GetFreePort(); err != nil {
+					return nil, errors.Wrap(err, "failed to get free port for cluster port")
+				}
 			}
 
 			if isRequesterNode {
@@ -246,7 +241,12 @@ func Setup(
 		if isComputeNode {
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
 			// and so we will give each compute node a random open port to listen on.
-			stackConfig.ComputeConfig.LocalPublisher.Port, freePorts = freePorts[0], freePorts[1:]
+			fport, err := network.GetFreePort()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for local publisher")
+			}
+
+			stackConfig.ComputeConfig.LocalPublisher.Port = fport
 			stackConfig.ComputeConfig.LocalPublisher.Address = "127.0.0.1" //nolint:gomnd
 		}
 

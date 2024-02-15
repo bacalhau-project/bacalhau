@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
@@ -17,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -70,7 +70,7 @@ func (s *ComputeSuite) SetupTest() {
 
 func (s *ComputeSuite) setupNode() {
 	repo := repo2.SetupBacalhauRepoForTesting(s.T())
-	libp2pPort, err := freeport.GetFreePort()
+	libp2pPort, err := network.GetFreePort()
 	s.NoError(err)
 
 	privKey, err := config.GetLibp2pPrivKey()
