@@ -43,7 +43,12 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
-		log.Ctx(ctx).Debug().Msg("local publisher not installed because the base directory does not exist")
+		if os.IsNotExist(err) {
+			log.Ctx(ctx).Debug().Msg("local publisher not installed because the base directory does not exist")
+		} else {
+			log.Ctx(ctx).Error().Err(err).Msg("local publisher failed to check if the base directory exists")
+		}
+
 		return false, nil
 	}
 
