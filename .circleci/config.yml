@@ -59,7 +59,10 @@ executors:
     resource_class: windows.xlarge
   docker-linux:
     docker:
-      - image: cimg/base:2022.01
+      - image: cimg/base:2022.09
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: xlarge
 
 commands:
@@ -317,6 +320,7 @@ jobs:
     executor: docker-linux
     steps:
       - checkout
+      - setup_remote_docker
       - install_earthly
       - select_earthly_satellite
       - run:
