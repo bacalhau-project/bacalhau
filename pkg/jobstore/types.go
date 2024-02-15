@@ -4,8 +4,9 @@ package jobstore
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
@@ -24,9 +25,10 @@ type JobQuery struct {
 }
 
 type JobQueryResponse struct {
-	Jobs       []models.Job
-	Offset     uint32 // Offset into the filtered results of the first returned record
-	Limit      uint32 // The number of records to return, 0 means all
+	Jobs   []models.Job
+	Offset uint32 // Offset into the filtered results of the first returned record
+	Limit  uint32 // The number of records to return, 0 means all
+	// TODO isn't this is a value we can derive?
 	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
