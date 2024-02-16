@@ -57,8 +57,8 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 				// ExecutionStateAskForBidRejected; this might be a transient error
 				// (the node lacked capacity at the time) so we can try again. When
 				// we have a way to distinguish transient from permanent errors,
-				// this logic should be revised to rejected nodes that permanently
-				// refused the job and retry nodes that transiently refused it
+				// this logic should be revised to rejected nodes that *permanently*
+				// refused the job and retry nodes that *temporarily* refused it
 				// (while still preferring nodes that haven't tried the job before,
 				// of course)
 				rank = orchestrator.RankPossible

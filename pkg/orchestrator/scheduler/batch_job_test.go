@@ -5,6 +5,7 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -46,7 +47,7 @@ func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
-	s.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true})
+	s.retryStrategy = retry.NewDeadlineStrategy(retry.DeadlineStrategyParams{})
 
 	s.scheduler = NewBatchServiceJobScheduler(BatchServiceJobSchedulerParams{
 		JobStore:      s.jobStore,
@@ -314,6 +315,8 @@ func mockJob() (*models.Job, []models.Execution, *models.Evaluation) {
 	job := mock.Job()
 	job.Type = models.JobTypeBatch
 	job.Count = 3
+	job.ReschedulingPolicy.SchedulingTimeout = 1000
+	job.CreateTime = time.Now().UTC().UnixNano()
 
 	executionCount := 5
 	executions := make([]models.Execution, executionCount)
