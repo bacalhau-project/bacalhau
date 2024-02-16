@@ -24,7 +24,7 @@ Dolly 2.0 package is open source, including the training code, dataset, and mode
 
 ```bash
 pip -q install git+https://github.com/huggingface/transformers # need to install from github
-pip -q install accelerate # ensure you are using version higher than 0.12.0
+pip -q --upgrade install accelerate # ensure you are using version higher than 0.12.0
 ```
 
 Create an `inference.py` file with following code:
@@ -56,7 +56,14 @@ if __name__ == "__main__":
 
 ## Building the container (optional)
 
-You may want to create your own container for this kind of task. In that case, use the instructions for [creating](https://docs.docker.com/get-started/02_our_app/) and [publishing](https://docs.docker.com/get-started/04_sharing_app/) your own image in the docker hub. Use ` huggingface/transformers-pytorch-deepspeed-nightly-gpu` as base image, install dependencies listed above and copy the `inference.py` into it.
+You may want to create your own container for this kind of task. In that case, use the instructions for [creating](https://docs.docker.com/get-started/02_our_app/) and [publishing](https://docs.docker.com/get-started/04_sharing_app/) your own image in the docker hub. Use `huggingface/transformers-pytorch-deepspeed-nightly-gpu` as base image, install dependencies listed above and copy the `inference.py` into it. So your Dockerfile will look like this:
+```Dockerfile
+FROM huggingface/transformers-pytorch-deepspeed-nightly-gpu
+RUN apt-get update -y
+RUN pip -q install git+https://github.com/huggingface/transformers
+RUN pip -q install accelerate>=0.12.0 
+COPY ./inference.py .
+```
 
 
 ## Running Inference on Bacalhau
