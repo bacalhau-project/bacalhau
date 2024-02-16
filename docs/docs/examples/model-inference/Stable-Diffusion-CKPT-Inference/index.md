@@ -123,7 +123,7 @@ python3 convert_diffusers_to_original_stable_diffusion.py \
 
 ## Running a Bacalhau Job
 
-To do inference on your own checkpoint on Bacalhau you need to first upload it to your public storage, which can be mounted anywhere on your machine. In this case, we will be using [NFT.Storage](https://nft.storage/) (Recommended Option). To upload your dataset using [NFTup](https://nft.storage/docs/how-to/nftup/) just drag and drop your directory it will upload it to IPFS.
+To do inference on your own checkpoint on Bacalhau you need to first upload it to your public storage, which can be mounted anywhere on your machine. In this case, we will be using [NFT.Storage](https://nft.storage/) (Recommended Option). To upload your dataset using [NFTup](https://nft.storage/docs/how-to/nftup/) drag and drop your directory and it will upload it to IPFS.
 
 After the checkpoint file has been uploaded copy its CID.
 
