@@ -69,7 +69,7 @@ After the repo image has been pushed to Docker Hub, we can now use the container
 %%bash --out job_id
 bacalhau docker run \
 --id-only \
---wait \ 
+--wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 jsacex/kipoi-veff2:py37 \
@@ -122,6 +122,6 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-ls results/ # list the contents of the current directory 
-cat results/outputs/output.tsv | head -n 10 # display the contents of the current directory 
+ls results/ # list the contents of the current directory
+cat results/outputs/output.tsv | head -n 10 # display the contents of the current directory
 ```

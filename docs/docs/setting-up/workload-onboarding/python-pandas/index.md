@@ -9,7 +9,7 @@ sidebar_position: 6
 
 ## Introduction
 
-Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open-source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.  
+Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open-source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
 In this tutorial example, we will run Pandas script on Bacalhau.
 
@@ -21,7 +21,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## 1. Running Pandas Locally
 
-To run the Pandas script on Bacalhau for analysis, first, we will place the Pandas script in a container and then run it at scale on Bacalhau.  
+To run the Pandas script on Bacalhau for analysis, first, we will place the Pandas script in a container and then run it at scale on Bacalhau.
 
 To get started, you need to install the Pandas library from pip:
 
@@ -44,7 +44,7 @@ import pandas as pd
 print(pd.read_csv("transactions.csv"))
 ```
 
-The overall purpose of the command above is to read data from a CSV file (`transactions.csv`) using Pandas and print the resulting DataFrame.  
+The overall purpose of the command above is to read data from a CSV file (`transactions.csv`) using Pandas and print the resulting DataFrame.
 
 To download the `transactions.csv` file, run:
 
@@ -147,7 +147,7 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-cat results/stdout 
+cat results/stdout
 ```
 
 ## Support

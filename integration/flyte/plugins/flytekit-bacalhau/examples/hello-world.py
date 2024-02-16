@@ -5,10 +5,8 @@ As simple as that!
 https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/basics/basic_workflow.html#how-does-a-flyte-workflow-work
 """
 
-from flytekit import workflow, task, kwtypes
-
+from flytekit import kwtypes, workflow
 from flytekitplugins.bacalhau import BacalhauTask
-
 
 bacalhau_task = BacalhauTask(
     name="hello_world",
@@ -21,7 +19,7 @@ bacalhau_task = BacalhauTask(
 
 @workflow
 def wf():
-    bac_task = bacalhau_task(
+    bac_task = bacalhau_task(  # noqa: F841
         api_version="V1beta1",
         spec=dict(
             engine="Docker",

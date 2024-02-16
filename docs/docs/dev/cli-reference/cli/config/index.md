@@ -14,7 +14,7 @@ bacalhau config [command]
 
 1. **[list](./list)**:
 
-   - Description: Lists the configuration keys and values of the bacalhau node. This command is useful for understanding how configuration keys map to their respective values, aiding in the use of the `bacalhau config set` command. 
+   - Description: Lists the configuration keys and values of the bacalhau node. This command is useful for understanding how configuration keys map to their respective values, aiding in the use of the `bacalhau config set` command.
 
    - Usage:
      ```bash
@@ -32,7 +32,7 @@ bacalhau config [command]
 
 3. **[default](./default)**:
 
-   - Description: Prints the default configuration of a bacalhau node to the standard output (stdout). This command is beneficial for viewing the baseline settings a bacalhau node will use before any user-defined configuration changes are applied. 
+   - Description: Prints the default configuration of a bacalhau node to the standard output (stdout). This command is beneficial for viewing the baseline settings a bacalhau node will use before any user-defined configuration changes are applied.
 
    - Usage:
      ```bash
@@ -41,11 +41,9 @@ bacalhau config [command]
 
 4. **[auto-resources](./auto-resources)**:
 
-   - Description: Automatically sets compute resource values in the bacalhau node's configuration file based on the hardware resources of the user's machine. This command simplifies the process of allocating resources for jobs by dynamically adjusting the settings to match the machine's capabilities. 
+   - Description: Automatically sets compute resource values in the bacalhau node's configuration file based on the hardware resources of the user's machine. This command simplifies the process of allocating resources for jobs by dynamically adjusting the settings to match the machine's capabilities.
 
    - Usage:
      ```bash
      bacalhau config auto-resources
      ```
-
-   

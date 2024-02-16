@@ -34,10 +34,10 @@ func TestExamples(t *testing.T) {
 
 	assert.Equal(t, `  # Describe a job with the full ID
   bacalhau describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
-  
+
   # Describe a job with the a shortened ID
   bacalhau describe j-47805f5c
-  
+
   # Describe a job and include all server and local events
   bacalhau describe --include-events j-b6ad164a`, actual)
 }

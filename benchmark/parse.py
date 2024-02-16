@@ -17,7 +17,6 @@ for f in files:
 # print(runs)
 
 for run in sorted(runs):
-
     exitCodes = defaultdict(int)
     means = []
 

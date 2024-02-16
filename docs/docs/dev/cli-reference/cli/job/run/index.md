@@ -26,7 +26,7 @@ bacalhau job run [flags]
 
 - `--no-template`:
     - Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements
-  
+
 - `--node-details`:
     - Description: Displays details of all nodes. Note that this flag is overridden if `--id-only` is provided.
 
@@ -237,4 +237,3 @@ This configuration describes a batch job that runs a Docker task. It utilizes th
 
 ## Templating
 `bacalhau job run` providing users with the ability to dynamically inject variables into their job specifications. This feature is particularly useful when running multiple jobs with varying parameters such as S3 buckets, prefixes, and time ranges without the need to edit each job specification file manually. You can find more information about templating [here](/setting-up/jobs/job-templating.md).
-

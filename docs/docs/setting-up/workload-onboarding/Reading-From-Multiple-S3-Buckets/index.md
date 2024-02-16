@@ -26,17 +26,17 @@ There are several advantages to converting images from TIFF to JPEG format:
 
 We will use the S3 mount feature to mount bucket objects from s3 buckets. Let’s have a look at the example below:
 
-**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`** It defines S3 object as input to the job:  
+**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`** It defines S3 object as input to the job:
 
-`sentinel-s1-rtc-indigo`: bucket’s name  
+`sentinel-s1-rtc-indigo`: bucket’s name
 
-`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`: represents the key of the object in that bucket. The object to be processed is called `Gamma0_VH.tif` and is located in the subdirectory with the specified path.  
+`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`: represents the key of the object in that bucket. The object to be processed is called `Gamma0_VH.tif` and is located in the subdirectory with the specified path.
 
-But if you want to specify the entire objects located in the path, you can simply add `*` to the end of the path (`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/*`)  
+But if you want to specify the entire objects located in the path, you can simply add `*` to the end of the path (`tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/*`)
 
-`dst=/sentinel-s1-rtc-indigo`: the destination to which to mount the s3 bucket object  
+`dst=/sentinel-s1-rtc-indigo`: the destination to which to mount the s3 bucket object
 
-`opt=region=us-west-2` : specifying the region in which the bucket is located 
+`opt=region=us-west-2` : specifying the region in which the bucket is located
 
 ### Prerequisite
 
@@ -124,15 +124,15 @@ for imageName in glob.glob('results/outputs/*.jpg'):
         # Calculate the new dimensions based on the reduction factor
         new_width = img.width // factor
         new_height = img.height // factor
-        
+
         # Resize the image to the new dimensions
         img = img.resize((new_width, new_height))
-        
+
         # Display the image
         display(img)
 
 ```
-The code processes and displays all images in the specified directory by applying cropping and resizing with a specified reduction factor. 
+The code processes and displays all images in the specified directory by applying cropping and resizing with a specified reduction factor.
 
     results/outputs/S2-16D_V1_075086_20180218_B04_TCI.jpg
 
@@ -149,7 +149,7 @@ The code processes and displays all images in the specified directory by applyin
 
 
 ![png](index_files/index_19_3.png)
-    
+
 
 ## Support
 If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

@@ -8,7 +8,7 @@ description: "How to process images stored in IPFS with Bacalhau"
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). 
+In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/).
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
@@ -28,7 +28,7 @@ path=!echo $PATH
 
 ## Running a Bacalhau Job
 
-To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
@@ -54,11 +54,11 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 
 The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
-Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
+Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -66,8 +66,8 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     00:26:44  bf785b4d  Docker dpokidov/imag...  Completed            ipfs://QmQnern37ueHr... 
+     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
+     00:26:44  bf785b4d  Docker dpokidov/imag...  Completed            ipfs://QmQnern37ueHr...
 
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
@@ -103,7 +103,7 @@ ls -lah results/outputs
 
 ### Display the image
 
-To view the images, we will use **glob** to return all file paths that match a specific pattern. 
+To view the images, we will use **glob** to return all file paths that match a specific pattern.
 
 
 ```python
@@ -114,57 +114,57 @@ for imageName in glob.glob('results/outputs/*.jpg'):
 ```
 
 
-    
+
 ![jpeg](index_files/index_21_0.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_1.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_2.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_3.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_4.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_5.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_6.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_7.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_21_8.jpg)
-    
+
 
 
 ## Need Support?
