@@ -34,4 +34,5 @@ run-tests:
 
 all:
     FROM +run-tests
+    COPY +build-artifacts /code/build /code/build
     SAVE ARTIFACT /code/build AS LOCAL build
