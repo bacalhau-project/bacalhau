@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 import ast
-from glob import glob
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tarfile
+from glob import glob
 
 IGNORE = (
     "*.pyc",
@@ -64,8 +62,8 @@ def main():
         if a == "--":
             past = True
 
-    cmd = " ".join(args)
-    proc = subprocess.run(cmd, capture_output=False, shell=True, cwd=working_dir)
+    # cmd = " ".join(args)
+    # proc = subprocess.run(cmd, capture_output=False, shell=True, cwd=working_dir)
 
 
 def to_requirements_log(stdoutBytes, stderrBytes):
@@ -168,7 +166,7 @@ def setup_py(working_dir):
     pth = os.path.join(working_dir, "setup.py")
     if os.path.exists(pth):
         proc = subprocess.run(
-            f"python -m pip install -e .",
+            "python -m pip install -e .",
             capture_output=True,
             shell=True,
             cwd=working_dir,

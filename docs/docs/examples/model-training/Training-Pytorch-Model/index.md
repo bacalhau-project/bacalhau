@@ -143,7 +143,7 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-ls results/ # list the contents of the current directory 
+ls results/ # list the contents of the current directory
 cat results/stdout # displays the contents of the file given to it as a parameter.
 ls results/outputs/ # list the successfully trained model
 ```

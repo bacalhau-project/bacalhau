@@ -72,8 +72,8 @@ func (d *PostgresDatastore) InsertJobInfo(ctx context.Context, envelope jobinfo.
 
 	// Perform the insert or update using the ON CONFLICT DO UPDATE clause
 	_, err = d.db.Exec(`
-INSERT INTO job_info (id, apiversion, info) 
-VALUES ($1, $2, $3) 
+INSERT INTO job_info (id, apiversion, info)
+VALUES ($1, $2, $3)
 ON CONFLICT (id) DO UPDATE SET apiversion = $2, info = $3
 `, envelope.ID, envelope.APIVersion, infoJSON)
 	if err != nil {

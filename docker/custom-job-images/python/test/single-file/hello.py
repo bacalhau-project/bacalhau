@@ -1,5 +1,5 @@
 """
-pip install colorama 
+pip install colorama
 """
 from colorama import Fore
 

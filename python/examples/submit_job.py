@@ -8,7 +8,6 @@ from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
 from bacalhau_apiclient.models.publisher_spec import PublisherSpec
 from bacalhau_apiclient.models.spec import Spec
 from bacalhau_apiclient.models.storage_spec import StorageSpec
-
 from bacalhau_sdk.api import submit
 from bacalhau_sdk.config import get_client_id
 
