@@ -140,7 +140,7 @@ Let's look closely at the command above:
 1. `-i ipfs://QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/model.ckpt`:  Path to mount the checkpoint
 2. `-- conda run --no-capture-output -n ldm`: since we are using conda we need to specify the name of the environment which we are going to use, in this case it is `ldm`
 3. `scripts/txt2img.py`: running the python script
-4. `--prompt "a photo of a person drinking coffee"`: the prompt you need to specify the session name in the prompt. For the session name here is aronchick
+4. `--prompt "a photo of a person drinking coffee"`: the prompt you need to specify the session name in the prompt.
 5. `--plms`: the sampler you want to use. In this case we will use the `plms` sampler
 6. `--ckpt ../model.ckpt`: here we specify the path to our checkpoint
 7. `--n_samples 1`: no of samples we want to produce
