@@ -4,21 +4,17 @@ sidebar_position: 1
 ---
 # Ethereum Blockchain Analysis with Ethereum-ETL and Bacalhau
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 Mature blockchains are difficult to analyze because of their size. Ethereum-ETL is a tool that makes it easy to extract information from an Ethereum node, but it's not easy to get working in a batch manner. It takes approximately 1 week for an Ethereum node to download the entire chain (even more in my experience) and importing and exporting data from the Ethereum node is slow.
 
 For this example, we ran an Ethereum node for a week and allowed it to synchronize. We then ran ethereum-etl to extract the information and pinned it on Filecoin. This means that we can both now access the data without having to run another Ethereum node.
 
 But there's still a lot of data and these types of analyses typically need repeating or refining. So it makes absolute sense to use a decentralized network like Bacalhau to process the data in a scalable way.
 
-## TD;LR
-Running Ethereum-etl tool on Bacalhau to extract Ethereum node.
+In this tutorial example, we will run Ethereum-ETL tool on Bacalhau to extract data from an Ethereum node.
 
 ### Prerequisite
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
 
 ```python
@@ -29,7 +25,7 @@ path=!echo $PATH
 
 ## Analysing Ethereum Data Locally
 
-First let's download one of the IPFS files and inspect it locally. You can see the full list of IPFS CIDs in the appendix.
+First let's download one of the IPFS files and inspect it locally:
 
 
 ```bash
@@ -38,6 +34,11 @@ wget -q -O file.tar.gz https://w3s.link/ipfs/bafybeifgqjvmzbtz427bne7af5tbndmvni
 tar -xvf file.tar.gz
 ```
 
+:::tip
+You can see the full list of IPFS CIDs in the appendix at the bottom of the page.
+:::
+
+If you don't already have the Pandas library, let's install it:
 
 ```bash
 %%bash
@@ -60,18 +61,14 @@ df['hash'] = df['hash'].astype('string')
 df['block_hash'] = df['block_hash'].astype('string')
 df['block_datetime'] = pd.to_datetime(df['block_timestamp'], unit='s')
 df.info()
+
+# Total volume per day
+df[['block_datetime', 'value']].groupby(pd.Grouper(key='block_datetime', freq='1D')).sum().plot()
 ```
 
 The following code inspects the daily trading volume of Ethereum for a single chunk (100,000 blocks) of data.
 
 This is all good, but we can do better. We can use the Bacalhau client to download the data from IPFS and then run the analysis on the data in the cloud. This means that we can analyze the entire Ethereum blockchain without having to download it locally.
-
-
-```python
-# Total volume per day
-df[['block_datetime', 'value']].groupby(pd.Grouper(key='block_datetime', freq='1D')).sum().plot()
-
-```
 
 ##  Analysing Ethereum Data With Bacalhau
 
@@ -170,13 +167,13 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows passing input data volume with `--input` or `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -186,7 +183,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -194,16 +191,14 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
 %%bash
-rm -rf ./results && mkdir -p ./results # Temporary directory to store the results
-bacalhau get --output-dir ./results ${JOB_ID} # Download the results
+rm -rf results && mkdir -p results # Temporary directory to store the results
+bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
-
-After the download has finished you should see the following contents in the results directory.
 
 ## Viewing your Job Output
 
@@ -230,6 +225,8 @@ df = pd.read_csv(csv_files[0], index_col='block_datetime')
 df.plot()
 ```
 
+![image](../../../../static/img/examples/Ethereum-Blockchain1.png 'Ethereum-Blockchain1')
+
 ### Massive Scale Ethereum Analysis
 
 Ok, so that works. Let's scale this up! We can run the same analysis on the entire Ethereum blockchain (up to the point where I have uploaded the Ethereum data). To do this, we need to run the analysis on each of the chunks of data that we have stored on IPFS. We can do this by running the same job on each of the chunks.
@@ -249,23 +246,39 @@ for h in $(cat hashes.txt); do \
 done
 ```
 
-Now take a look at the job id's. You can use these to check the status of the jobs and download the results. You might want to double-check that the jobs ran ok by doing a `bacalhau list`.
+Now take a look at the job id's. You can use these to check the status of the jobs and download the results:
 
 
 ```bash
 %%bash
 cat job_ids.txt
+
+Expected Output:
+d840df7b-9318-4e5b-ab06-adb72dd95394
+09d01f9c-9409-42b9-829d-92e22fcdd062
+0072758f-3575-44d7-b193-da4a22f6bc86
+2043dee4-fc82-4768-92cb-4d23dd2514b1
+36ef8e9e-9eae-4218-81e6-15883d0a5b8d
+932aa406-cd29-4933-b09f-c8cea4d77164
+1f3e5273-bdd4-4ef0-b7ed-b83591fab64e
+8bfabe96-54e3-4fee-b344-a0517c683268
+1cd588a1-5c76-4f91-ba90-af7931bca596
+b9c29531-e1b4-4520-b03d-7406a22bbdb3
+8665b8be-24a9-4c78-9913-803d3e3c9a65
+06115147-bc83-49e8-bb71-7b447c8ad1bc
+84afed3e-831c-462b-a3e3-9a23bc7d6fb8
+ed6e55e6-98d3-4bde-8ece-1f05838d489e
+...
 ```
 
-Wait until all of these jobs have been completed:
-
+ You might want to double-check that the jobs ran ok by doing a `bacalhau list`. 
 
 ```bash
 %%bash
 bacalhau list -n 50
 ```
 
-And then download all the results and merge them into a single directory. This might take a while, so this is a good time to treat yourself to a nice Dark Mild. There's also been some issues in the past communicating with IPFS, so if you get an error, try again.
+Wait until all of these jobs have been completed. And then download all the results and merge them into a single directory. This might take a while, so this is a good time to treat yourself to a nice Dark Mild. There's also been some issues in the past communicating with IPFS, so if you get an error, try again.
 
 
 ```bash
@@ -303,6 +316,9 @@ df = df_unsorted.groupby(level=0).sum()
 df.plot(figsize=(16,9))
 ```
 
+![image](../../../../static/img/examples/Ethereum-Blockchain2.png 'Ethereum-Blockchain2')
+
+
 That's it! There are several years of Ethereum transaction volume data.
 
 
@@ -311,7 +327,7 @@ That's it! There are several years of Ethereum transaction volume data.
 rm -rf results_* output_* outputs results temp # Remove temporary results
 ```
 
-## Appendix 1: List Ethereum Data CIDs
+## Appendix: List Ethereum Data CIDs
 
 The following list is a list of IPFS CID's for the Ethereum data that we used in this tutorial. You can use these CID's to download the rest of the chain if you so desire. The CIDs are ordered by block number and they increase 50,000 blocks at a time. Here's a list of ordered CIDs:
 
@@ -374,143 +390,5 @@ bafybeicjzoypdmmdt6k54wzotr5xhpzwbgd3c4oqg6mj4qukgvxvdrvzye
 bafybeien55egngdpfvrsxr2jmkewdyha72ju7qaaeiydz2f5rny7drgzta
 ```
 
-## Appendix 2: Setting up an Ethereum Node
-
-In the course of writing this example, I had to set up an Ethereum node. It was a slow and painful process so I thought I would share the steps I took to make it easier for others.
-
-### Geth setup and sync
-
-Geth supports Ubuntu by default, so use that when creating a VM. Use Ubuntu 22.04 LTS.
-
-```bash
-gcloud compute instances create phil-ethereum-node \
-    --project=bacalhau-development --zone=europe-west2-c \
-    --machine-type=c2-standard-4 --tags=geth \
-    --create-disk=auto-delete=yes,boot=yes,device-name=phil-ethereum-node,image=projects/ubuntu-os-cloud/global/images/ubuntu-2204-jammy-v20221101a,mode=rw,size=50,type=projects/bacalhau-development/zones/europe-west2-c/diskTypes/pd-balanced \
-    --create-disk=auto-delete=yes,device-name=phil-ethereum-disk,mode=rw,name=phil-ethereum-disk,size=3000,type=projects/bacalhau-development/zones/europe-west2-c/diskTypes/pd-standard
-```
-
-Mount the disk:
-
-```bash
-sudo mkfs.ext4 -m 0 -E lazy_itable_init=0,lazy_journal_init=0,discard /dev/sdb
-sudo mkdir -p /mnt/disks/ethereum
-sudo mount -o discard,defaults /dev/sdb /mnt/disks/ethereum
-sudo chmod a+w /mnt/disks/ethereum
-```
-
-```bash
-sudo add-apt-repository -y ppa:ethereum/ethereum
-sudo apt-get update
-sudo apt-get install -y ethereum
-sudo mkdir /prysm && cd /prysm
-sudo curl https://raw.githubusercontent.com/prysmaticlabs/prysm/master/prysm.sh --output prysm.sh && sudo chmod +x prysm.sh
-```
-
-Run as a new user:
-
-```bash
-sudo useradd -d /home/ethuser -m --uid 10000 ethuser
-sudo chown -R ethuser /prysm
-```
-
-```
-sudo tee "/etc/systemd/system/geth.service" > /dev/null <<'EOF'
-[Unit]
-Description=Geth
-
-[Service]
-Type=simple
-User=ethuser
-Restart=always
-RestartSec=12
-ExecStart=/bin/geth --syncmode "full" --datadir /mnt/disks/ethereum
-
-[Install]
-WantedBy=default.target
-EOF
-
-sudo tee "/etc/systemd/system/prysm.service" > /dev/null <<'EOF'
-[Unit]
-Description=Prysm
-
-[Service]
-Type=simple
-User=ethuser
-Restart=always
-RestartSec=12
-ExecStart=/prysm/prysm.sh beacon-chain --execution-endpoint=/mnt/disks/ethereum/geth.ipc --suggested-fee-recipient=0x7f68cb1cdE000AF82291A0D0c21E0f88FD7dB440 --checkpoint-sync-url=https://beaconstate.info
---genesis-beacon-api-url=https://beaconstate.info --accept-terms-of-use --datadir /mnt/disks/ethereum/prysm
-
-[Install]
-WantedBy=default.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable prysm.service
-sudo systemctl enable geth.service
-sudo systemctl daemon-reload
-sudo service prysm start 
-sudo service geth start 
-```
-
-Check they are running:
-
-```bash
-service prysm status
-service geth status
-```
-
-Watch the logs:
-
-```bash
-journalctl -u prysm -f
-```
-
-Prysm will need to finish synchronizing before geth will start synchronizing.
-
-In Prysm you will see lots of log messages saying: `Synced new block`, and in Geth you will see: `Syncing beacon headers    downloaded=11,920,384 left=4,054,753  eta=2m25.903s`. This tells you how long it will take to sync the beacons. Once that's done, get will start synchronizing the blocks.
-
-Bring up the Ethereum javascript console with:
-
-```
-sudo geth --datadir /mnt/disks/ethereum/ attach
-```
-
-Once the block sync has started, `eth.syncing` will return values. Before it starts, this value will be `false`.
-
-Note that by default, geth will perform a fast sync, without downloading the full blocks. The `syncmode=flull` flag forces geth to do a full sync. If we didn't do this, then we wouldn't be able to back up the data properly.
-
-### Extracting the Data
-
-```bash
-# Install pip and ethereum-etl
-sudo apt-get install -y python3-pip
-sudo pip3 install ethereum-etl
-cd
-mkdir ethereum-etl
-cd ethereum-etl
-
-# Export data with one 50000-item batch in a directory. Up to this point we've processed about 3m.
-# The full chain is about 16m blocks
-for i in $(seq 0 50000 16000000); do sudo ethereumetl export_all --partition-batch-size 50000 --start $i --end $(expr $i + 50000 - 1)  --provider-uri file:///mnt/disks/ethereum/geth.ipc -o output_$i; done
-```
-
-### Upload the data
-
-Tar and compress the directories to make them easier to upload:
-
-```bash
-sudo apt-get install -y jq # Install jq to parse the cid
-cd
-cd ethereum-etl
-for i in $(seq 0 50000 16000000); do tar cfz output_$i.tar.gz output_$i; done
-```
-
-Export your Web3.storage JWT API key as an environment variable called `TOKEN`:
-
-```bash
-printf "" > hashes.txt
-for i in $(seq 0 50000 16000000); do curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}" -H 'accept: application/json' -H 'Content-Type: text/plain' -H "X-NAME: ethereum-etl-block-$i" --data-binary "@output_$i.tar.gz" >> raw.json; done
-```
-
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
