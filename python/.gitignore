@@ -112,3 +112,5 @@ ENV/
 
 # mkdocs build dir
 site/
+
+.ruff_cache

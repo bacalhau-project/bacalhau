@@ -406,6 +406,7 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:
@@ -420,10 +421,10 @@ jobs:
           paths:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo
-          make_command: build-python-sdk
+      - run:
+          name: Build Python SDK
+          command: |
+            earthly --push --ci +dist --PYPI_VERSION=<< pipeline.git.branch >>
       - persist_to_workspace:
           root: python/dist
           paths:
@@ -604,6 +605,7 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
       - attach_workspace:
           at: /tmp/py_dist
       - run:
@@ -624,7 +626,7 @@ jobs:
       - run:
           name: Release python sdk
           command: |
-            python -m poetry run make release-python-sdk
+            make release-python-sdk
       - run:
           name: Release python Airflow integration
           command: |

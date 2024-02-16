@@ -1,0 +1,104 @@
+VERSION 0.8
+FROM python:3.10
+
+ENV SOURCES bacalhau_sdk
+
+WORKDIR /code
+
+# All files to be copied are in the .earthlyignore file - with ! in front of them
+
+install-deps:
+    RUN pip install --upgrade pip
+    RUN pip3 install poetry==1.7.1
+    COPY pyproject.toml poetry.lock ./
+    RUN poetry lock --no-update --no-interaction
+    RUN poetry install --no-root --no-interaction --no-ansi --with test
+
+install-precommit:
+    FROM +install-deps
+    RUN poetry run pre-commit install
+
+check-python-version-is-same-as-in-pyproject:
+    FROM +install-deps
+    RUN poetry version --check
+
+copy-code:
+    FROM +install-deps
+    COPY --dir $SOURCES tests examples README.md ./
+
+run-linter:
+    FROM +copy-code
+    RUN poetry run ruff $SOURCES tests examples
+
+run-unittest:
+    FROM +run-linter
+    RUN poetry run pytest --capture=no --log-cli-level=DEBUG
+
+run-coverage:
+    FROM +run-unittest
+    RUN poetry run pytest --cov=$SOURCES --cov-branch --cov-report=term-missing tests
+    SAVE ARTIFACT /code/.coverage AS LOCAL ./.coverage
+
+build:
+    FROM +copy-code
+    ARG PYPI_VERSION
+    # Exit with error if PYPI_VERSION environment variable is not set
+    RUN test $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
+    # Test to see if poetry version is same as the one in pyproject.toml
+    RUN poetry version -- $PYPI_VERSION
+    RUN poetry build
+
+dist:
+    FROM +build
+    RUN echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
+    SAVE ARTIFACT /code/dist AS LOCAL ./dist
+
+publish:
+    COPY dist ./
+    ARG PYPI_TOKEN
+    # Exit with error if PYPI_TOKEN environment variable is not set
+    RUN test $PYPI_TOKEN || (echo "PYPI_TOKEN environment variable not set" && exit 1)
+    RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
+
+# install-deps:
+#     FROM +install-yarn
+#     COPY package.json yarn.lock tsconfig.json ./
+#     RUN yarn set version berry
+#     RUN yarn config set nodeLinker node-modules
+#     RUN yarn install
+
+# copy-code:
+#     FROM +install-deps
+#     COPY --dir src tests vite public config ./ # Copy in important directories
+#     COPY index.html *.ts *.mjs jest.* ./ # Copy in files at the root level only
+
+# run-linter:
+#     FROM +copy-code
+#     RUN yarn eslint
+
+# build-artifacts:
+#     FROM +run-linter
+#     RUN yarn build
+
+# run-tests:
+#     FROM +build-artifacts
+#     RUN yarn test
+
+# all:
+#     FROM +run-tests
+#     SAVE ARTIFACT /code/build AS LOCAL ./build
+
+# .PHONY: build
+# build:
+# 	# Test to see if python version is the same as the one in pyproject.toml
+# 	$(POETRY) version -- ${VERSION}
+# 	$(POETRY) build
+
+# .SILENT: publish
+# .PHONY: publish
+# publish:
+# 	$(POETRY) version -- ${VERSION}
+# 	$(POETRY) publish --no-interaction --skip-existing -u __token__ -p ${PYPI_TOKEN}
+
+# # .PHONY: bumpversion
+# # 	bump2version --new-version minor src/VERSION

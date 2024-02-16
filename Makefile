@@ -96,7 +96,7 @@ build-python-apiclient:
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
-	cd python && ${MAKE} clean all
+	cd python && ${EARTHLY} --push --ci +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
 ################################################################################
@@ -126,8 +126,8 @@ release-python-apiclient:
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk:
-	cd python && ${MAKE} build && ${MAKE} publish
+release-python-sdk: build-python-sdk
+	cd python && ${EARTHLY} --push --ci +publish --PYPI_TOKEN=${PYPI_TOKEN}
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
