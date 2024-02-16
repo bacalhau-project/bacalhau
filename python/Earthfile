@@ -46,11 +46,8 @@ build:
     RUN test $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
     # Test to see if poetry version is same as the one in pyproject.toml
     RUN poetry version -- $PYPI_VERSION
-    RUN poetry build
-
-dist:
-    FROM +build
     RUN echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
+    RUN poetry build
     SAVE ARTIFACT /code/dist AS LOCAL ./dist
 
 publish:

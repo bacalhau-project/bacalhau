@@ -424,7 +424,7 @@ jobs:
       - run:
           name: Build Python SDK
           command: |
-            earthly --push --ci +dist --PYPI_VERSION=<< pipeline.git.branch >>
+            earthly --push --ci +build --PYPI_VERSION=<< pipeline.git.tag >>
       - persist_to_workspace:
           root: python/dist
           paths:

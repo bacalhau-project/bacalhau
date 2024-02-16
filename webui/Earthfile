@@ -34,4 +34,4 @@ run-tests:
 
 all:
     FROM +run-tests
-    SAVE ARTIFACT /code/build AS LOCAL ./build
+    SAVE ARTIFACT /code/build AS LOCAL build
