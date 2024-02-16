@@ -96,7 +96,7 @@ Next, upload the image to the registry. This can be done by using the Docker hub
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-So in our case, the command will look like this:
+Thus, in this case, the command would look this way:
 
 ```bash
 docker push jsacex/stable-diffusion-ckpt
@@ -123,7 +123,7 @@ python3 convert_diffusers_to_original_stable_diffusion.py \
 
 ## Running a Bacalhau Job
 
-To do inference on your own checkpoint on Bacalhau you need to first upload it to your public storage, which can be mounted anywhere on your machine. In this case, we will be using [NFT.Storage](https://nft.storage/) (Recommended Option). To upload your dataset using [NFTup](https://nft.storage/docs/how-to/nftup/) just drag and drop your directory it will upload it to IPFS.
+To do inference on your own checkpoint on Bacalhau you need to first upload it to your public storage, which can be mounted anywhere on your machine. In this case, we will be using [NFT.Storage](https://nft.storage/) (Recommended Option). To upload your dataset using [NFTup](https://nft.storage/docs/how-to/nftup/) drag and drop your directory and it will upload it to IPFS.
 
 After the checkpoint file has been uploaded copy its CID.
 
@@ -140,7 +140,7 @@ Let's look closely at the command above:
 1. `-i ipfs://QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/model.ckpt`:  Path to mount the checkpoint
 2. `-- conda run --no-capture-output -n ldm`: since we are using conda we need to specify the name of the environment which we are going to use, in this case it is `ldm`
 3. `scripts/txt2img.py`: running the python script
-4. `--prompt "a photo of a person drinking coffee"`: the prompt you need to specify the session name in the prompt. For the session name here is aronchick
+4. `--prompt "a photo of a person drinking coffee"`: the prompt you need to specify the session name in the prompt.
 5. `--plms`: the sampler you want to use. In this case we will use the `plms` sampler
 6. `--ckpt ../model.ckpt`: here we specify the path to our checkpoint
 7. `--n_samples 1`: no of samples we want to produce
