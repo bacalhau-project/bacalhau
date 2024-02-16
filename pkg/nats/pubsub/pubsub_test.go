@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/nats-io/nats-server/v2/server"
-	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
@@ -64,7 +64,7 @@ func (s *PubSubSuite) TearDownSuite() {
 // createNatsServer creates a new nats server
 func (s *PubSubSuite) createNatsServer() *server.Server {
 	ctx := context.Background()
-	port, err := freeport.GetFreePort()
+	port, err := network.GetFreePort()
 	s.Require().NoError(err)
 
 	serverOpts := server.Options{

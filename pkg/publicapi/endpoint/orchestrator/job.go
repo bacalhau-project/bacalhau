@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
@@ -69,13 +70,56 @@ func (e *Endpoint) putJob(c echo.Context) error {
 func (e *Endpoint) getJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
+	var args apimodels.GetJobRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	job, err := e.store.GetJob(ctx, jobID)
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, apimodels.GetJobResponse{
+	response := apimodels.GetJobResponse{
 		Job: &job,
-	})
+	}
+
+	for _, include := range strings.Split(args.Include, ",") {
+		include = strings.TrimSpace(include)
+		switch include {
+		case "history":
+			// ignore if user requested history twice
+			if response.History != nil {
+				continue
+			}
+			history, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryFilterOptions{})
+			if err != nil {
+				return err
+			}
+			response.History = &apimodels.ListJobHistoryResponse{
+				History: make([]*models.JobHistory, len(history)),
+			}
+			for i := range history {
+				response.History.History[i] = &history[i]
+			}
+		case "executions":
+			// ignore if user requested executions twice
+			if response.Executions != nil {
+				continue
+			}
+			executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+				JobID: jobID,
+			})
+			if err != nil {
+				return err
+			}
+			response.Executions = &apimodels.ListJobExecutionsResponse{
+				Executions: make([]*models.Execution, len(executions)),
+			}
+			for i := range executions {
+				response.Executions.Executions[i] = &executions[i]
+			}
+		}
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 // godoc for Orchestrator ListJobs
