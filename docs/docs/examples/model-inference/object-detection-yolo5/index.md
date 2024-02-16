@@ -103,7 +103,7 @@ After the download has finished we can see the results in the `results/outputs/e
 
 ## Using Custom Images as an Input
 
-Now let's use some custom images. First, you will need to ingest your images onto IPFS/S3 storage. For more information about how to do that see the [data ingestion](../../../setting-up/data-ingestion/) section.
+Now let's use some custom images. First, you will need to ingest your images onto IPFS or S3 storage. For more information about how to do that see the [data ingestion](../../../setting-up/data-ingestion/) section.
 
 This example will use the [Cyclist Dataset for Object Detection | Kaggle](https://www.kaggle.com/datasets/f445f341fc5e3ab58757efa983a38d6dc709de82abd1444c8817785ecd42a1ac) dataset.
 
@@ -125,30 +125,6 @@ ultralytics/yolov5:v6.2 \
 -- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source /datasets --project /outputs')
 ```
 
-Just as in the example above, this should output a UUID, which will be stored in the environment variable `JOB_ID`. You can check the status of the job using the commands below.
+Just as in the example above, this should output a UUID, which will be stored in the environment variable `JOB_ID`. You can check the status of the job using the commands below. 
 
-### Checking the State of your Jobs
-
-1. **Job status**: You can check the status of the job using `bacalhau list`.
-
-```bash
-bacalhau list --id-filter ${JOB_ID}
-```
-
-2. **Job information**: You can find out more information about your job by using `bacalhau describe`:
-
-```bash
-bacalhau describe ${JOB_ID}
-```
-
-3. **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
-
-
-```bash
-rm -rf custom-results && mkdir custom-results
-bacalhau get ${JOB_ID} --output-dir custom-results
-```
-
-### Viewing Output
-
-After the download has finished we can see the results in the `custom-results/outputs/exp` folder.
+To check the state of the job and view job output refer to the [instructions above](#checking-the-state-of-your-jobs).
