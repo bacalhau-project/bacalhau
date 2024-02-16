@@ -1,0 +1,37 @@
+VERSION 0.8
+FROM node:21.5.0
+
+WORKDIR /code
+
+# All files to be copied are in the .earthlyignore file - with ! in front of them
+
+install-yarn:
+    RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+
+install-deps:
+    FROM +install-yarn
+    COPY package.json yarn.lock tsconfig.json ./
+    RUN yarn set version berry
+    RUN yarn config set nodeLinker node-modules
+    RUN yarn install
+
+copy-code:
+    FROM +install-deps
+    COPY --dir src tests vite public config ./ # Copy in important directories
+    COPY index.html *.ts *.mjs jest.* ./ # Copy in files at the root level only
+
+run-linter:
+    FROM +copy-code
+    RUN yarn eslint
+
+build-artifacts:
+    FROM +run-linter
+    RUN yarn build
+
+run-tests:
+    FROM +build-artifacts
+    RUN yarn test
+
+all:
+    FROM +run-tests
+    SAVE ARTIFACT /code/build AS LOCAL build
