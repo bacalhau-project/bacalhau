@@ -33,6 +33,5 @@ run-tests:
     RUN yarn test
 
 all:
-    BUILD +run-tests
-    COPY +build-artifacts /code/build /code/build
+    FROM +run-tests
     SAVE ARTIFACT /code/build AS LOCAL build
