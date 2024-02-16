@@ -22,7 +22,11 @@ const (
 )
 
 func Compress(ctx context.Context, src string, buf io.Writer) error {
-	return compress(ctx, src, buf, MaximumContextSize)
+	return compress(ctx, src, buf, MaximumContextSize, false)
+}
+
+func CompressWithoutPath(ctx context.Context, src string, buf io.Writer) error {
+	return compress(ctx, src, buf, MaximumContextSize, true)
 }
 
 func Decompress(src io.Reader, dst string) error {
@@ -49,8 +53,8 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 //
-//nolint:gocyclo
-func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize) error {
+//nolint:gocyclo,funlen
+func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize, stripPath bool) error {
 	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()
 
@@ -100,7 +104,15 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 
 			// must provide real name
 			// (see https://golang.org/src/archive/tar/common.go?#L626)
-			header.Name = filepath.ToSlash(file)
+			header.Name = file
+			if stripPath {
+				header.Name = filepath.ToSlash(strings.TrimPrefix(file, src))
+				if header.Name == "" {
+					return nil
+				}
+				header.Name = strings.TrimPrefix(header.Name, "/")
+			}
+			header.Name = filepath.ToSlash(header.Name)
 
 			// write header
 			if err = tw.WriteHeader(header); err != nil { //nolint:gocritic

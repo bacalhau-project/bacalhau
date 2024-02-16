@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -154,9 +155,8 @@ func Setup(
 			const startSwarmPort = 4222 // 4222 is the default NATS port
 			swarmPort = startSwarmPort + i
 		} else {
-			swarmPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
+			if swarmPort, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for swarm port")
 			}
 		}
 		clusterConfig := node.NetworkConfig{
@@ -172,9 +172,8 @@ func Setup(
 				const startClusterPort = 6222
 				clusterPort = startClusterPort + i
 			} else {
-				clusterPort, err = freeport.GetFreePort()
-				if err != nil {
-					return nil, err
+				if clusterPort, err = network.GetFreePort(); err != nil {
+					return nil, errors.Wrap(err, "failed to get free port for cluster port")
 				}
 			}
 
@@ -237,6 +236,18 @@ func Setup(
 		nodeInfoPublisherInterval := stackConfig.NodeInfoPublisherInterval
 		if nodeInfoPublisherInterval.IsZero() {
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
+		}
+
+		if isComputeNode {
+			// We have multiple process on the same machine, all wanting to listen on a HTTP port
+			// and so we will give each compute node a random open port to listen on.
+			fport, err := network.GetFreePort()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for local publisher")
+			}
+
+			stackConfig.ComputeConfig.LocalPublisher.Port = fport
+			stackConfig.ComputeConfig.LocalPublisher.Address = "127.0.0.1" //nolint:gomnd
 		}
 
 		nodeConfig := node.NodeConfig{

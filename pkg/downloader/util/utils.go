@@ -20,5 +20,6 @@ func NewStandardDownloaders(
 	return provider.NewMappedProvider(map[string]downloader.Downloader{
 		models.StorageSourceIPFS:        ipfsDownloader,
 		models.StorageSourceS3PreSigned: s3PreSignedDownloader,
+		models.StorageSourceURL:         http.NewHTTPDownloader(),
 	})
 }
