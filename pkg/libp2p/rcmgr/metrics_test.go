@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	netwk "github.com/bacalhau-project/bacalhau/pkg/lib/network"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -39,12 +40,12 @@ func TestMetricsReporter(t *testing.T) {
 		sdkmetric.WithReader(reader),
 	)
 
-	port1, err := freeport.GetFreePort()
+	port1, err := netwk.GetFreePort()
 	require.NoError(t, err)
 
 	host1 := startListener(t, port1, meterProvider)
 
-	port2, err := freeport.GetFreePort()
+	port2, err := netwk.GetFreePort()
 	require.NoError(t, err)
 
 	host2 := startListener(t, port2, meterProvider)

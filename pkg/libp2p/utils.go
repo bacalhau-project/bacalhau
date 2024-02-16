@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
 
@@ -33,7 +34,7 @@ func encapsulateP2pAddrs(peerInfo peer.AddrInfo) ([]multiaddr.Multiaddr, error) 
 }
 
 func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) {
-	port, err := freeport.GetFreePort()
+	port, err := network.GetFreePort()
 	if err != nil {
 		return nil, err
 	}
