@@ -326,7 +326,7 @@ jobs:
           name: Build webui
           command: |
             cd webui
-            earthly --push +all
+            earthly --push --no-sat +all
       - persist_to_workspace:
           root: .
           paths:
