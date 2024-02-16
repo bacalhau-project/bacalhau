@@ -48,7 +48,7 @@ build:
     RUN poetry version -- $PYPI_VERSION
     RUN echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
     RUN poetry build
-    SAVE ARTIFACT /code/dist AS LOCAL ./dist
+    SAVE ARTIFACT /code/dist AS LOCAL dist
 
 publish:
     COPY dist ./
