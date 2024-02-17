@@ -4,16 +4,18 @@ FROM node:21.5.0
 WORKDIR /code
 
 # All files to be copied are in the .earthlyignore file - with ! in front of them
-
+# 19f48dbd5049613c1a285ec9d92d716879965456cd7ff60169e14503b588f40e - calculated on 2024-02-18
 install-yarn:
-    RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+    RUN curl -fsSL https://yarnpkg.com/install.sh -o install.sh \
+    && echo "19f48dbd5049613c1a285ec9d92d716879965456cd7ff60169e14503b588f40e install.sh" | sha256sum -c - \
+    && bash install.sh
 
 install-deps:
     FROM +install-yarn
     COPY package.json yarn.lock tsconfig.json ./
-    RUN yarn set version berry
-    RUN yarn config set nodeLinker node-modules
-    RUN yarn install
+    RUN yarn set version berry && \
+    yarn config set nodeLinker node-modules && \
+    yarn install
 
 copy-code:
     FROM +install-deps
