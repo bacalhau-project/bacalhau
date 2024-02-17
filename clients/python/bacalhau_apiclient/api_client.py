@@ -256,7 +256,7 @@ class ApiClient(object):
         if data is None:
             return None
 
-        if type(klass) == str:
+        if isinstance(klass, str):
             if klass.startswith("list["):
                 sub_kls = re.match(r"list\[(.*)\]", klass).group(1)
                 return [self.__deserialize(sub_data, sub_kls) for sub_data in data]
@@ -507,7 +507,7 @@ class ApiClient(object):
             for k, v in six.iteritems(files):
                 if not v:
                     continue
-                file_names = v if type(v) is list else [v]
+                file_names = v if isinstance(v, list) else [v]
                 for n in file_names:
                     with open(n, "rb") as f:
                         filename = os.path.basename(f.name)

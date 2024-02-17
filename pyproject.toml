@@ -9,6 +9,7 @@ python = "^3.10.5"
 pre-commit = "^2.20.0"
 sgqlc = "^16.0"
 semver = "^2.13.0"
+ruff = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 
