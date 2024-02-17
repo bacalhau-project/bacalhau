@@ -15,11 +15,14 @@ func TestLongDesc(t *testing.T) {
 		Create a job from a file or from stdin.
 
 		JSON and YAML formats are accepted.
-	`))
 
-	assert.Equal(t, pus.CrossPlatformNormalizeLineEndings(`Create a job from a file or from stdin.
+`))
 
- JSON and YAML formats are accepted.`), actual)
+	want := pus.CrossPlatformNormalizeLineEndings(`Create a job from a file or from stdin.
+
+ JSON and YAML formats are accepted.`)
+
+	assert.Equal(t, want, actual)
 }
 
 func TestExamples(t *testing.T) {
