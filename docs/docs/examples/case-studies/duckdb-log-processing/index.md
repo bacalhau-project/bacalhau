@@ -118,4 +118,3 @@ compress
 #### **Step 3f:**
 
 - Delete the raw log file
-

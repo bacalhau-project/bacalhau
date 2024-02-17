@@ -22,14 +22,6 @@ jobs:
         run: echo "~/.asdf/shims" >> $GITHUB_PATH
 
       - run: go mod tidy
-      - name: Run webui linter
-        working-directory: webui
-        run: |
-          yarn install
-          yarn run lint
-      - name: Build webui
-        working-directory: webui
-        run: yarn run build
       - name: Run pre-commit
         run: |
           pre-commit run --show-diff-on-failure --color=always --all-files

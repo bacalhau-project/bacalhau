@@ -24,7 +24,7 @@ if __name__ == "__main__":
     # If there is no server running, this will fail
     try:
         sock.connect(server_address)
-    except Exception:
+    except ConnectionRefusedError:
         print("No server running on port %s" % port, file=sys.stderr)
         sys.exit(1)
 
@@ -49,8 +49,8 @@ if __name__ == "__main__":
                 # Print timeout message to stderr and exit with error code 1
                 print("No response received - timeout.", file=sys.stderr)
                 sys.exit(1)
-            except Exception as e:
-                print("Unexpected error: %s" % str(e), file=sys.stderr)
+            except Exception:
+                print("Unexpected error: %s" % sys.exc_info()[0], file=sys.stderr)
                 sys.exit(1)
 
     finally:

@@ -7,14 +7,14 @@ description: How to configure TLS for the requester node APIs
 
 By default, the requester node APIs used by the Bacalhau CLI are accessible over HTTP, but it is possible to configure it to use Transport Level Security (TLS) so that they are accessible over HTTPS instead. There are several ways to obtain the necessary certificates and keys, and Bacalhau supports obtaining them via ACME and Certificate Authorities or even self-signing them.
 
-:::info 
+:::info
 Once configured, you must ensure that instead of using __http__://IP:PORT you use __https__://IP:PORT
 to access the Bacalhau API
 :::
 
 ## Getting a certificate from Let's Encrypt with ACME
 
-Automatic Certificate Management Environment (ACME) is a protocol that allows for automating the deployment of Public Key Infrastructure, and is the protocol used to obtain a free certificate from the [Let's Encrypt](https://letsencrypt.org/) Certificate Authority. 
+Automatic Certificate Management Environment (ACME) is a protocol that allows for automating the deployment of Public Key Infrastructure, and is the protocol used to obtain a free certificate from the [Let's Encrypt](https://letsencrypt.org/) Certificate Authority.
 
 Using the `--autocert [hostname]` parameter to the CLI (in the `serve` and `devstack` commands), a certificate is obtained automatically from Lets Encrypt. The provided hostname should be a comma-separated list of hostnames, but they should all be publicly resolvable as Lets Encrypt will attempt to connect to the server to verify ownership (using the [ACME HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge). On the very first request this can take a short time whilst the first certificate is issued, but afterwards they are then cached in the bacalhau repository.
 
@@ -28,10 +28,10 @@ sudo setcap CAP_NET_BIND_SERVICE+ep $(which bacalhau)
 ```
 :::
 
-A cache of ACME data is held in the config repository, by default `~/.bacalhau/autocert-cache`, and this will be used to manage renewals to avoid rate limits. 
+A cache of ACME data is held in the config repository, by default `~/.bacalhau/autocert-cache`, and this will be used to manage renewals to avoid rate limits.
 
 
-## Getting a certificate from a Certificate Authority 
+## Getting a certificate from a Certificate Authority
 
 Obtaining a TLS certificate from a Certificate Authority (CA) without using the Automated Certificate Management Environment (ACME) protocol involves a manual process that typically requires the following steps:
 
@@ -58,7 +58,7 @@ bacalhau server --node-type=requester --tlscert=server.cert --tlskey=server.key
 Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerTLSKey` instead.
 
 
-## Self-signed certificates 
+## Self-signed certificates
 
 If you wish, it is possible to use Bacalhau with a self-signed certificate which does not rely on an external Certificate Authority. This is an involved process and so is not described in detail here although there is [a helpful script in the Bacalhau github repository](https://github.com/bacalhau-project/bacalhau/blob/main/scripts/make-certs.sh) which should provide a good starting point.
 
@@ -77,4 +77,3 @@ If you use self-signed certificates, it is unlikely that any clients will be abl
 2. Install the CA certificate file in the system keychain of each machine that needs access to the Bacalhau APIs.
 
 3. Instruct the software librarary you are using not to verify HTTPS requests.
-

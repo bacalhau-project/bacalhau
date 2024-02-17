@@ -65,7 +65,7 @@ This example represents a standard C++ program that inefficiently utilizes GPU r
 # View the contents of the CUDA program with vector addition
 !cat inputs/02-cuda-hello-world-faster.cu
 
-# Remove any previous output 
+# Remove any previous output
 !rm -rf outputs/hello
 
 # Measure the time for compilation and execution
@@ -105,10 +105,10 @@ bacalhau docker run \
 `nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu`: Compilation using the nvcc compiler and save it to the outputs directory as hello
 
 Note that there is `;` between the commands:
-  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line. 
+  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line.
 
 `./outputs/hello`: Execution hello binary:
-You can combine compilation and execution commands. 
+You can combine compilation and execution commands.
 
 :::info
 Note that the CUDA version will need to be compatible with the graphics card on the host machine.
@@ -157,7 +157,7 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-cat results/stdout 
+cat results/stdout
 ```
 
 ## Support

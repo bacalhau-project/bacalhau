@@ -14,14 +14,14 @@ The primary objective of the Bacalhau documentation style guide is to help autho
 
 Our goal is to use conversational tone that is natural, and friendly towards the reader and also ensure that the document's content is simple and easy to follow.
 
-### Friendly and Open 
+### Friendly and Open
 
 As we write for a large global audience, we aim for a universally accessible voice.
 
 - Maintain a friendly, informal tone, but focus on being clear and concise in a knowledgeable manner.
 - Avoid the use of slangs and colloquial language.
 - Avoid offensive language in all forms, and toward all identities and cultures.
-- Write in the second person (e.g. **You can…**), present tense to guide the reader to their intended outcome. 
+- Write in the second person (e.g. **You can…**), present tense to guide the reader to their intended outcome.
 - When writing consider that many users are not native English speakers.
 - Use languages that encourages readers and walk them through the steps to achieve the outcome they’re looking for.
 
@@ -38,15 +38,15 @@ Our documentation should reflect our purpose, giving the appropriate amount of t
 - In non CLI-based references, capitalize **Bacalhau**, **Docker**, **Compute** and other program/project names.
 - Test each code snippet and example, walking through each step to ensure accuracy as it's written.
 
-With these guidelines, we can provide a comprehensive set of documentation that is clear, actionable, and helpful. 
+With these guidelines, we can provide a comprehensive set of documentation that is clear, actionable, and helpful.
 
 ## Structure
 
-The Bacalhau documentation set should include articles and tutorials that have a consistent structure, which includes an introduction and the procedural steps necessary for a reader to get to their expected outcome. 
+The Bacalhau documentation set should include articles and tutorials that have a consistent structure, which includes an introduction and the procedural steps necessary for a reader to get to their expected outcome.
 
 ### Structure Guidelines
 
-The specific structure depends on the type of documentation you are writing. On general note, the documentation should include: an introduction, a conclusion, and any prerequisites necessary for a reader to get started. 
+The specific structure depends on the type of documentation you are writing. On general note, the documentation should include: an introduction, a conclusion, and any prerequisites necessary for a reader to get started.
 
 Most of the tutorials and examples we publish are procedural, which walk the reader through accomplishing a task step-by-step. The structure for a procedural documentation should be:
 
@@ -62,7 +62,7 @@ Need Support? (H2)
 Contributing (H2)
 ```
 
-If the documentation is conceptual: 
+If the documentation is conceptual:
 
 ```
 Title (H1)
@@ -80,12 +80,12 @@ In this way, readers can learn and hop to pertinent information as they need eff
 
 ## Formatting
 
-Our documentation is written in [Markdown markup language](https://www.markdownguide.org/basic-syntax/).The following rules explain how we organize and structure our writing. 
+Our documentation is written in [Markdown markup language](https://www.markdownguide.org/basic-syntax/).The following rules explain how we organize and structure our writing.
 .
 
 ### Titles
 
-All titles should follow [title case capitalization structure](https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case). 
+All titles should follow [title case capitalization structure](https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case).
 
 ```
 ❌ Get started with bacalhau

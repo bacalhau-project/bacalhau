@@ -60,7 +60,7 @@ When you run this code for the first time, it will download the pre-trained weig
 from stable_diffusion_tf.stable_diffusion import Text2Image
 from PIL import Image
 
-generator = Text2Image( 
+generator = Text2Image(
     img_height=512,
     img_width=512,
     jit_compile=False,  # You can try True as well (different performance profile)
@@ -90,8 +90,8 @@ pip install numba
 
 
 ```python
-# clearing the GPU memory 
-from numba import cuda 
+# clearing the GPU memory
+from numba import cuda
 device = cuda.get_current_device()
 device.reset()
 ```
@@ -348,6 +348,3 @@ display.Image("results/outputs/image0.png")
 
 
 ![png](index_files/index_35_0.png)
-    
-
-

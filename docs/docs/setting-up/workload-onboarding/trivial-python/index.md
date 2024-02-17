@@ -14,7 +14,7 @@ This tutorial serves as an introduction to Bacalhau. In this example, you'll be 
 
 To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
-## 1. Running Python Locally 
+## 1. Running Python Locally
 
 We'll be using a very simple Python script that displays the [traditional first greeting](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program). Create a file called `hello-world.py`:
 

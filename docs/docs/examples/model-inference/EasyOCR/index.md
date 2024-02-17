@@ -203,6 +203,6 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-ls results/ # list the contents of the current directory 
-cat results/stdout # displays the contents of the current directory 
+ls results/ # list the contents of the current directory
+cat results/stdout # displays the contents of the current directory
 ```

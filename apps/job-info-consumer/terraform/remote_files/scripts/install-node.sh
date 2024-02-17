@@ -20,7 +20,7 @@ function install-docker() {
   sudo chmod +x /usr/local/bin/docker-compose
 }
 
-function mount-disk() { 
+function mount-disk() {
   # wait for /dev/sdb to exist
   while [[ ! -e /dev/sdb ]]; do
     sleep 1
@@ -28,7 +28,7 @@ function mount-disk() {
   done
   # mount /dev/sdb at /data
   sudo mkdir -p /data
-  sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data) 
+  sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data)
 }
 
 function install() {

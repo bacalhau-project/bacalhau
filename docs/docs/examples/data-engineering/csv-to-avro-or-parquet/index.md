@@ -236,7 +236,7 @@ Replace the `{JOB_ID}` with your generated ID.
 
 ```bash
 %%bash
-bacalhau list --id-filter={JOB_ID} 
+bacalhau list --id-filter={JOB_ID}
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m

@@ -113,4 +113,3 @@ This API provides detailed information about the node, including its peer ID and
   }
 }
 ```
-

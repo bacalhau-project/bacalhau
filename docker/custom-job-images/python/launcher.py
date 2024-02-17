@@ -62,6 +62,7 @@ def main():
         if a == "--":
             past = True
 
+
     cmd = " ".join(args)
     _ = subprocess.run(cmd, capture_output=False, shell=True, cwd=working_dir)
 
