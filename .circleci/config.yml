@@ -254,12 +254,13 @@ commands:
   install_earthly:
     description: Install Earthly and dependencies.
     steps:
+      - install_asdf:
+          cache_version: v1-1
       - run:
           name: Install Earthly
           command: |
-            sudo /bin/sh -c "wget 'https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64' -O /usr/local/bin/earthly"
-            sudo chmod +x /usr/local/bin/earthly
-            /usr/local/bin/earthly bootstrap
+            asdf plugin-add earthly
+            asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
             earthly --version
 
 jobs:
