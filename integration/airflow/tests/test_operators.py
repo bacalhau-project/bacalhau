@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime
 
 import pendulum
+
 from airflow.models.dag import DAG
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType

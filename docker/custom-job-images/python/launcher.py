@@ -62,8 +62,9 @@ def main():
         if a == "--":
             past = True
 
-    # cmd = " ".join(args)
-    # proc = subprocess.run(cmd, capture_output=False, shell=True, cwd=working_dir)
+
+    cmd = " ".join(args)
+    _ = subprocess.run(cmd, capture_output=False, shell=True, cwd=working_dir)
 
 
 def to_requirements_log(stdoutBytes, stderrBytes):
