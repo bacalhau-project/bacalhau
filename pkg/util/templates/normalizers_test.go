@@ -3,6 +3,7 @@
 package templates
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/stringutils"
@@ -51,5 +52,5 @@ func TestExamples(t *testing.T) {
 
 	want = stringutils.CrossPlatformNormalizeLineEndings(want)
 
-	assert.Equal(t, want, actual)
+	assert.Equal(t, want, actual, "Examples did not match - GOOS: %s\nGOARCH: %s", runtime.GOOS, runtime.GOARCH)
 }
