@@ -1,6 +1,7 @@
 package string
 
 import (
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -19,8 +20,9 @@ func crossPlatformNormalizeLineEndings(s string, platform string) string {
 		lineEnding = "\r\n"
 	}
 
-	// Use go's built-in splitter to split the string into lines
-	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	regex, _ := regexp.Compile(`\r?\n`)
+	s = regex.ReplaceAllString(s, "\n")
+	lines := strings.Split(s, "\n")
 
 	// Trim all whitespace from empty lines
 	for i, line := range lines {
