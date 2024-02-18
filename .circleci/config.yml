@@ -28,8 +28,9 @@ parameters:
     default: true
     type: boolean
 
-orbs:
-  node: circleci/node@5.2.0
+  earthly_satellite:
+    default: "build-vm-linux-amd64"
+    type: string
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
@@ -55,7 +56,10 @@ executors:
     resource_class: windows.xlarge
   docker-linux:
     docker:
-      - image: cimg/base:2022.01
+      - image: cimg/base:2022.09
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: xlarge
 
 commands:
@@ -170,6 +174,15 @@ commands:
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
 
+  select_earthly_satellite:
+    description: Select Earthly satellite
+    steps:
+      - run:
+          name: Select Earthly satellite
+          command: |
+            earthly account login
+            earthly sat select << pipeline.parameters.earthly_satellite >>
+
   # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
   # which is a file that asdf uses to install the correct version of python.
   install_python:
@@ -238,6 +251,17 @@ commands:
             deactivate
             # Return to the original directory
             popd
+  install_earthly:
+    description: Install Earthly and dependencies.
+    steps:
+      - install_asdf:
+          cache_version: v1-1
+      - run:
+          name: Install Earthly
+          command: |
+            asdf plugin-add earthly
+            asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
+            earthly --version
 
 jobs:
   build_cli:
@@ -293,16 +317,17 @@ jobs:
       - run: cd test && bin/bashtub *.sh
 
   build_webui:
-    executor: node/default
+    executor: docker-linux
     steps:
       - checkout
+      - setup_remote_docker
+      - install_earthly
+      - select_earthly_satellite
       - run:
-          working_directory: webui
-          environment:
-            GENERATE_SOURCEMAP: "false"
+          name: Build webui
           command: |
-            yarn install
-            yarn run build
+            cd webui
+            earthly --push --no-sat +all
       - persist_to_workspace:
           root: .
           paths:
@@ -510,10 +535,6 @@ jobs:
     steps:
       - checkout
       - install_python
-      - run:
-          command: |
-            cd webui
-            yarn install && yarn run build
       - run_make_under_specific_shell:
           directory_to_change_to: $HOME/repo/python
           makefile_directory: $HOME/repo/python
@@ -751,6 +772,8 @@ workflows:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_webui:
+          context:
+            - CREDENTIALS
           filters: *build_on_branch_and_tag_push
       - build_cli:
           requires: [build_webui]

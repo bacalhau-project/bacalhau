@@ -44,8 +44,6 @@
     "vite": "^5.0.12",
     "vite-tsconfig-paths": "^4.3.1",
     "web-vitals": "^3.5.2",
-    "webpack": "^5.64.4",
-    "webpack-dev-server": "^4.15.1",
     "wesbos": "^1.0.1"
   },
   "scripts": {
@@ -59,8 +57,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "build": "yarn build:dev",
-    "build:dev": "tsc && NODE_ENV=development vite build",
-    "build:prod": "tsc && NODE_ENV=production vite build",
+    "build:dev": "npx tsc && NODE_ENV=development vite build",
+    "build:prod": "npx tsc && NODE_ENV=production vite build",
     "start": "vite",
     "serve": "yarn start"
   },
