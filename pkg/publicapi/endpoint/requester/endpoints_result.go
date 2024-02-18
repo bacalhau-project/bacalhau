@@ -3,6 +3,7 @@ package requester
 import (
 	"net/http"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
@@ -35,7 +36,9 @@ func (s *Endpoint) results(c echo.Context) error {
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
-	executions, err := s.jobStore.GetExecutions(ctx, stateReq.JobID)
+	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: stateReq.JobID,
+	})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}

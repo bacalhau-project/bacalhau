@@ -112,7 +112,7 @@ func TestDecompressionSizeLimiting(t *testing.T) {
 				tgzFile, tgzInput := setup(t, size, mode)
 				defer tgzFile.Close()
 
-				err := compress(context.Background(), tgzInput, tgzFile, size*2)
+				err := compress(context.Background(), tgzInput, tgzFile, size*2, false)
 				require.NoError(t, err)
 
 				_, err = tgzFile.Seek(0, 0)
@@ -133,7 +133,7 @@ func TestUncompressedSize(t *testing.T) {
 				tgzFile, tgzInput := setup(t, size, mode)
 				defer tgzFile.Close()
 
-				err := compress(context.Background(), tgzInput, tgzFile, size*2)
+				err := compress(context.Background(), tgzInput, tgzFile, size*2, false)
 				require.NoError(t, err)
 
 				_, err = tgzFile.Seek(0, 0)

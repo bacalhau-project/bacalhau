@@ -25,7 +25,6 @@ func (s *ParamsTestSuite) TestDecodeMap() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
-		Compress: true,
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -41,14 +40,12 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
-		Compress: true,
 	}
 	params := map[string]interface{}{
 		"Bucket":   expected.Bucket,
 		"Key":      expected.Key,
 		"Endpoint": expected.Endpoint,
 		"Region":   expected.Region,
-		"Compress": "true",
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -64,14 +61,12 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
-		Compress: true,
 	}
 	params := map[string]interface{}{
 		"bucket":   expected.Bucket,
 		"key":      expected.Key,
 		"endpoint": expected.Endpoint,
 		"region":   expected.Region,
-		"compress": "true",
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -87,7 +82,6 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
-		Compress: true,
 	}
 	bytes, err := json.Marshal(expected)
 	s.Require().NoError(err)

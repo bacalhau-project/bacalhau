@@ -67,7 +67,7 @@ type Query[Input, Output any] func(ctx context.Context, input Input) (Output, er
 // certain input type and returns a function that will execute the query when
 // given input of that type.
 func AddQuery[Input, Output any](runner *Policy, rule string) Query[Input, Output] {
-	opts := append(runner.modules, rego.Query("data."+rule), scryptFn)
+	opts := append(runner.modules, rego.Query("data."+rule), scryptFn, rego.StrictBuiltinErrors(true))
 	query := lo.Must(rego.New(opts...).PrepareForEval(context.Background()))
 
 	return func(ctx context.Context, t Input) (Output, error) {
