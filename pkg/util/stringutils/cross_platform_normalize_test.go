@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package string
+package stringutils
 
 import "testing"
 
