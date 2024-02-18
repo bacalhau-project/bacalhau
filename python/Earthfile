@@ -54,9 +54,17 @@ publish:
     FROM +build
     BUILD +build
     ARG PYPI_TOKEN
+    ARG RELEASE_PYTHON_PACKAGES
     # Exit with error if PYPI_TOKEN environment variable is not set
     RUN test $PYPI_TOKEN || (echo "PYPI_TOKEN environment variable not set" && exit 1)
-    RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
+    IF [ $RELEASE_PYTHON_PACKAGES == 1 ]
+        RUN echo "Publishing to pypi.org"
+        RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
+    ELSE
+        RUN echo "Publishing to test.pypi.org"
+        RUN poetry config repositories.test-pypi https://test.pypi.org/legacy/
+        RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN  -r test-pypi
+    END
 
 # install-deps:
 #     FROM +install-yarn

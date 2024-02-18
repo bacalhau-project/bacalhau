@@ -627,6 +627,7 @@ jobs:
       - run:
           name: Release python sdk
           command: |
+            export RELEASE_PYTHON_PACKAGES=1
             make release-python-sdk
       - run:
           name: Release python Airflow integration
