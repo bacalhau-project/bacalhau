@@ -114,3 +114,6 @@ ENV/
 site/
 
 .ruff_cache
+
+.arg
+.secret

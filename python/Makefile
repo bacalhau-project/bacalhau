@@ -1,10 +1,11 @@
 export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 export POETRY ?= $(shell command -v poetry 2> /dev/null)
+export PYPI_VERSION ?= $(shell command -v git describe --tags --dirty 2> /dev/null)
 
 sources = bacalhau_sdk
 
 .PHONY: all
-all: ruff pre-commit build
+all: publish
 
 .PHONY: setup
 setup:
@@ -46,6 +47,12 @@ clean:
 
 .PHONY: build
 build:
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(PYPI_VERSION)" > .arg
+
+	# Get PYPI_TOKEN from environment or .env file and push to .secrets file
+	python get_pypi_token.py
+
 	$(EARTHLY) --push +build
 
 .SILENT: publish
