@@ -51,7 +51,8 @@ build:
     SAVE ARTIFACT /code/dist AS LOCAL dist
 
 publish:
-    COPY dist ./
+    FROM +build
+    BUILD +build
     ARG PYPI_TOKEN
     # Exit with error if PYPI_TOKEN environment variable is not set
     RUN test $PYPI_TOKEN || (echo "PYPI_TOKEN environment variable not set" && exit 1)
