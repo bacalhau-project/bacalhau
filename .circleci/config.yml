@@ -160,7 +160,8 @@ commands:
             else
               cd $HOME/.asdf
               git fetch origin
-              git pull
+              git fetch --all
+              git pull --all
             fi
             git checkout tags/<< parameters.asdf_version >>
             cd -
