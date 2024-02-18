@@ -13,7 +13,7 @@ The `Resources` provides a structured way to detail the computational resources 
 - **Memory** `(string: <optional>)`: Highlights the amount of RAM needed for the task. You can specify the memory in various units such as:
     - `Kb` for Kilobytes
     - `Mb` for Megabytes
-    - `Gb` for Gigabytes 
+    - `Gb` for Gigabytes
     - `Tb` for Terabytes
 
 - **Disk** `(string: <optional>)`: States the disk storage space needed for the task. Similarly, the disk space can be expressed in units like `Gb` for Gigabytes, `Mb` for Megabytes, and so on. As an example, `10Gb` indicates 10 Gigabytes of storage space.

@@ -9,7 +9,7 @@ sidebar_position: 4
 
 ## Introduction
 Prolog is intended primarily as a declarative programming language: the program logic is expressed in terms of relations, represented as facts and rules. A computation is initiated by running a query over these relations.
-Prolog is well-suited for specific tasks that benefit from rule-based logical queries such as searching databases, voice control systems, and filling templates.  
+Prolog is well-suited for specific tasks that benefit from rule-based logical queries such as searching databases, voice control systems, and filling templates.
 
 This tutorial is a quick guide on how to run a hello world script on Bacalhau.
 
@@ -21,7 +21,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 ## 1. Running Locally​
 
 
-To get started, install swipl 
+To get started, install swipl
 
 
 
@@ -38,7 +38,7 @@ Create a file called `helloworld.pl`. The following script prints ‘Hello World
 
 ```python
 %%writefile helloworld.pl
-hello_world :- write('Hello World'), nl, 
+hello_world :- write('Hello World'), nl,
                halt.
 ```
 
@@ -51,7 +51,7 @@ Running the script to print out the output:
 swipl -q -s helloworld.pl -g hello_world
 ```
 
-After the script has run successfully locally we can now run it on Bacalhau.  
+After the script has run successfully locally we can now run it on Bacalhau.
 
 Before running it on Bacalhau we need to upload it to IPFS.
 
@@ -83,11 +83,11 @@ Since the data uploaded to IPFS isn’t pinned, we will need to do that manually
 
 
 
-## 2. Running a Bacalhau Job 
+## 2. Running a Bacalhau Job
 
 
-We will mount the script to the container using the `-i` flag:  
- `-i: ipfs://< CID >:/< name-of-the-script >`. 
+We will mount the script to the container using the `-i` flag:
+ `-i: ipfs://< CID >:/< name-of-the-script >`.
 
 To submit a job, run the following Bacalhau command:
 
@@ -123,7 +123,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## 3. Checking the State of your Jobs
 
-**Job status**: You can check the status of the job using `bacalhau list`. 
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

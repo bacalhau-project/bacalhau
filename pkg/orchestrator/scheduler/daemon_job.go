@@ -41,7 +41,9 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 		return fmt.Errorf("failed to retrieve job %s: %w", evaluation.JobID, err)
 	}
 	// Retrieve the job state
-	jobExecutions, err := b.jobStore.GetExecutions(ctx, evaluation.JobID)
+	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: evaluation.JobID,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)

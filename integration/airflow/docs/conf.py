@@ -24,8 +24,6 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import bacalhau_airflow
-
 # -- General configuration ---------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.

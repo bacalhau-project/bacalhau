@@ -11,4 +11,4 @@ else
     echo "Bacalhau binary not detected. Exiting."
     sleep 10
     exit 1
-fi 
+fi

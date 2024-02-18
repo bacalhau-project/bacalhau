@@ -37,7 +37,7 @@ func TestParsePublisher(t *testing.T) {
 		},
 		{
 			name:  "s3 with endpoint and region",
-			input: "s3://myBucket/dir/file-001.txt,opt=endpoint=http://127.0.0.1:9000,opt=region=us-east-1,opt=compress=true",
+			input: "s3://myBucket/dir/file-001.txt,opt=endpoint=http://127.0.0.1:9000,opt=region=us-east-1",
 			expected: &model.PublisherSpec{
 				Type: model.PublisherS3,
 				Params: map[string]interface{}{
@@ -45,7 +45,6 @@ func TestParsePublisher(t *testing.T) {
 					"key":      "dir/file-001.txt",
 					"endpoint": "http://127.0.0.1:9000",
 					"region":   "us-east-1",
-					"compress": "true",
 				},
 			},
 		},

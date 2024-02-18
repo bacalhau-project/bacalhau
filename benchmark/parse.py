@@ -17,7 +17,6 @@ for f in files:
 # print(runs)
 
 for run in sorted(runs):
-
     exitCodes = defaultdict(int)
     means = []
 
@@ -38,7 +37,7 @@ for run in sorted(runs):
                 exitCodes[code] += 1
             means.append(js["results"][0]["mean"])
         # trunk-ignore(flake8/E722)
-        except:
+        except Exception:
             pass
     print(f"    exitCodes: {dict(exitCodes)}")
     if means:

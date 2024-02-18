@@ -84,8 +84,7 @@ token_namespaces := ns if {
     startswith(authHeader, "Bearer ")
     accessToken := trim_prefix(authHeader, "Bearer ")
 
-    # TODO: verify signature
-    [header, claims, sig] := io.jwt.decode(accessToken)
+    [valid, header, claims] := io.jwt.decode_verify(accessToken, input.constraints)
     ns := claims["ns"]
 }
 

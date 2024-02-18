@@ -152,7 +152,7 @@ resource "google_compute_firewall" "dashboard_ssh_firewall" {
 
   allow {
     protocol = "tcp"
-    // Port 22   - Provides ssh access to the bacalhau server, for debugging 
+    // Port 22   - Provides ssh access to the bacalhau server, for debugging
     ports = ["22"]
   }
 

@@ -62,9 +62,8 @@ def test_ensure_user_id_key():
 
 def test_load_user_id_key():
     """Test load_user_id_key()."""
-    from Crypto.PublicKey import RSA
-
     from bacalhau_sdk.config import __load_user_id_key
+    from Crypto.PublicKey import RSA
 
     # test generated key
     with TemporaryDirectory(prefix="bacalhau_sdk_test-") as tmpdirname:
@@ -79,9 +78,8 @@ def test_load_user_id_key():
 
 def test_load_client_id():
     """Test load_client_id()."""
-    from Crypto.PublicKey import RSA
-
     from bacalhau_sdk.config import __load_client_id
+    from Crypto.PublicKey import RSA
 
     with TemporaryDirectory(prefix="bacalhau_sdk_test-") as tmpdirname:
         tmpdir = Path(tmpdirname)
@@ -95,7 +93,6 @@ def test_load_client_id():
 def test_init_config():
     """Test init_config()."""
     from bacalhau_apiclient.configuration import Configuration
-
     from bacalhau_sdk.config import init_config
 
     conf = init_config()
@@ -139,10 +136,14 @@ def test_sign_for_client():
     from bacalhau_apiclient.models.publisher_spec import PublisherSpec
     from bacalhau_apiclient.models.spec import Spec
     from bacalhau_apiclient.models.storage_spec import StorageSpec
+    from bacalhau_sdk.config import (
+        get_client_id,
+        get_user_id_key,
+        init_config,
+        sign_for_client,
+    )
     from Crypto.Hash import SHA256
     from Crypto.Signature import pkcs1_15
-
-    from bacalhau_sdk.config import get_client_id, get_user_id_key, init_config, sign_for_client
 
     _ = init_config()
 

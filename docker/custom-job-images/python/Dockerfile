@@ -21,10 +21,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     tk-dev \
     libffi-dev \
     liblzma-dev \
-    git 
+    git
 
 RUN python -mpip install --upgrade pip
-RUN python -mpip install poetry 
+RUN python -mpip install poetry
 
 COPY base_requirements.txt /build
 RUN python -mpip install -r /build/base_requirements.txt

@@ -6,19 +6,19 @@ sidebar_label: Constraint
 
 A `Constraint` represents a condition that must be met for a compute node to be eligible to run a given job. Operators have the flexibility to manually define node labels when initiating a node using the bacalhau serve command. Additionally, Bacalhau boasts features like automatic resource detection and dynamic labeling, further enhancing its capability.
 
-By defining constraints, you can ensure that jobs are scheduled on nodes that have the necessary requirements or conditions. 
+By defining constraints, you can ensure that jobs are scheduled on nodes that have the necessary requirements or conditions.
 
 ### `Constraint` Parameters:
 
 - **Key**: The name of the attribute or property to check on the compute node. This could be anything from a specific hardware feature, operating system version, or any other node property.
 
 - **Operator**: Determines the kind of comparison to be made against the `Key`'s value, which can be:
-  - `in`: Checks if the Key's value exists within the provided list of values. 
-  - `notin`: Ensures the Key's value doesn't match any in the provided list of values. 
+  - `in`: Checks if the Key's value exists within the provided list of values.
+  - `notin`: Ensures the Key's value doesn't match any in the provided list of values.
   - `exists`: Verifies that a value for the specified Key is present, regardless of its actual value.
-  - `!`: Confirms the absence of the specified Key. i.e DoesNotExist 
-  - `gt`: Assesses if the Key's value is greater than the provided value. 
-  - `lt`: Assesses if the Key's value is less than the provided value. 
+  - `!`: Confirms the absence of the specified Key. i.e DoesNotExist
+  - `gt`: Assesses if the Key's value is greater than the provided value.
+  - `lt`: Assesses if the Key's value is less than the provided value.
   - `=` & `==`: Both are used to compare the Key's value for an exact match with the provided value.
   - `!=`: Ensures the Key's value is not the same as the provided value.
 

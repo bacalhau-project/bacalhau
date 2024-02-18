@@ -36,7 +36,7 @@ class BacalhauSubmitJobOperator(BaseOperator):
         job_spec: dict,
         #  inputs: dict = None,
         input_volumes: list = [],
-        **kwargs
+        **kwargs,
     ) -> None:
         """Constructor of the operator to submit a Bacalhau job.
 
