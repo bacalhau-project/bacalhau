@@ -72,9 +72,7 @@ class RESTClientObject(object):
 
         addition_pool_args = {}
         if configuration.assert_hostname is not None:
-            addition_pool_args[
-                "assert_hostname"
-            ] = configuration.assert_hostname  # noqa: E501
+            addition_pool_args["assert_hostname"] = configuration.assert_hostname  # noqa: E501
 
         if maxsize is None:
             if configuration.connection_pool_maxsize is not None:
@@ -147,9 +145,7 @@ class RESTClientObject(object):
 
         timeout = None
         if _request_timeout:
-            if isinstance(
-                _request_timeout, (int,) if six.PY3 else (int, long)
-            ):  # noqa: E501,F821
+            if isinstance(_request_timeout, (int,) if six.PY3 else (int, long)):  # noqa: E501,F821
                 timeout = urllib3.Timeout(total=_request_timeout)
             elif isinstance(_request_timeout, tuple) and len(_request_timeout) == 2:
                 timeout = urllib3.Timeout(
@@ -176,9 +172,7 @@ class RESTClientObject(object):
                         timeout=timeout,
                         headers=headers,
                     )
-                elif (
-                    headers["Content-Type"] == "application/x-www-form-urlencoded"
-                ):  # noqa: E501
+                elif headers["Content-Type"] == "application/x-www-form-urlencoded":  # noqa: E501
                     r = self.pool_manager.request(
                         method,
                         url,
