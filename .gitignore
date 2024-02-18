@@ -61,3 +61,7 @@ dist/
 .web-build-guard
 
 .ruff_cache
+
+# Auto generated below
+clients/python/bacalhau_apiclient
+clients/python/docs

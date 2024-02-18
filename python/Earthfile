@@ -42,6 +42,7 @@ run-coverage:
 build:
     FROM +copy-code
     ARG PYPI_VERSION
+
     # Exit with error if PYPI_VERSION environment variable is not set
     RUN test $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
     # Test to see if poetry version is same as the one in pyproject.toml
@@ -53,17 +54,14 @@ build:
 publish:
     FROM +build
     BUILD +build
-    ARG PYPI_TOKEN
     ARG RELEASE_PYTHON_PACKAGES
-    # Exit with error if PYPI_TOKEN environment variable is not set
-    RUN test $PYPI_TOKEN || (echo "PYPI_TOKEN environment variable not set" && exit 1)
     IF [ $RELEASE_PYTHON_PACKAGES == 1 ]
         RUN echo "Publishing to pypi.org"
-        RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
+        RUN --secret PYPI_TOKEN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
     ELSE
         RUN echo "Publishing to test.pypi.org"
         RUN poetry config repositories.test-pypi https://test.pypi.org/legacy/
-        RUN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN  -r test-pypi
+        RUN --secret PYPI_TOKEN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN  -r test-pypi
     END
 
 # install-deps:
