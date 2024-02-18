@@ -13,7 +13,7 @@ runRemote() {
   script=$1; shift
 
 # generate eval-safe quoted version of current argument list
-# shellcheck disable=SC2034 
+# shellcheck disable=SC2034
   printf -v args '%q ' "$@"
 
 # pass that through on the command line to bash -s

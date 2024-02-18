@@ -61,5 +61,3 @@ bacalhau agent [command] --help
 - `--repo string`:
     - Description: Defines the path to the bacalhau repository.
     - Default: ``$HOME/.bacalhau`
-
-

@@ -39,7 +39,7 @@ The flow of a submission will look like:
 ipfs job submit -x bafye9d4c615a2d4f7c4413cw5aec9c2f3308a6d32ffa -c bafy2bzacedcdedrghloawlwkntdhqnknqzxgh26ddwix7ld2a5ygagco3ngee
 ```
 
-One could imagine a veneer over the top of this that allows for submitting "linux compatible" things. For ex, the below would be wrapped in a 
+One could imagine a veneer over the top of this that allows for submitting "linux compatible" things. For ex, the below would be wrapped in a
 
 ```bash
 # PSEUDO CODE - returns all log file entries where GPS is within a range of a certain location
@@ -122,7 +122,7 @@ ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrz
 - Need a dataset aggregator - where a single large dataset can describe many CIDs that may span sectors
 
 ## What's with the Name?
-Bacalhau means cod (the fish) in Portuguese (where several folks were brainstorming this topic). 
+Bacalhau means cod (the fish) in Portuguese (where several folks were brainstorming this topic).
 
 Compute-Over-Data == Cod == Bacalhau
 

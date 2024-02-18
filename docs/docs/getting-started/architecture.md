@@ -11,9 +11,9 @@ Bacalhau is a peer-to-peer network of nodes that enables decentralized communica
 
 ![image](../../static/img/architecture/architecture-overview.webp 'Bacalhau Architecture')
 
-The requester and compute nodes together form a p2p network and use gossiping to discover each other, share information about node capabilities, available resources and health status. Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers.  
+The requester and compute nodes together form a p2p network and use gossiping to discover each other, share information about node capabilities, available resources and health status. Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers.
 :::info
-  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
+  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.
 
   **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
 :::
@@ -104,7 +104,7 @@ You can create jobs in the Bacalhau network using various [job types](../setting
 ### Job Submission
 
 You should use the Bacalhau client to send a task to the network.
-The client transmits the job information to the Bacalhau network via established protocols and interfaces. 
+The client transmits the job information to the Bacalhau network via established protocols and interfaces.
 Jobs submitted via the Bacalhau CLI are forwarded to a Bacalhau network node at http://bootstrap.production.bacalhau.org/ via port 1234 by default. This Bacalhau node will act as the requester node for the duration of the job lifecycle.
 
 Bacalhau provides an interface to interact with the server via a REST API. Bacalhau uses 127.0.0.1 as the localhost and 1234 as the port by default.
@@ -258,7 +258,7 @@ You can also use the `bacalhau wasm run` [command](../dev/cli-reference/all-flag
 
 ### Job Acceptance
 
-When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and communicate with them directly. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications. 
+When a job is submitted to a requester node, it selects compute nodes that are capable and suitable to execute the job, and communicate with them directly. The compute node has a collection of named executors, storage sources, and publishers, and it will choose the most appropriate ones based on the job specifications.
 
 ### Job execution
 
@@ -317,7 +317,7 @@ values={[
 
     Endpoint: `GET /api/v1/orchestrator/jobs/:jobID`
 
-    You can use [Describe Job API Documentation](../dev/api/jobs.md#describe-job) to retrieve the specification and current status of a particular job. 
+    You can use [Describe Job API Documentation](../dev/api/jobs.md#describe-job) to retrieve the specification and current status of a particular job.
 
 </TabItem>
 </Tabs>
@@ -349,7 +349,7 @@ values={[
 </TabItem>
 </Tabs>
 
- 
+
 ### Job Executions
 
 <Tabs
@@ -376,11 +376,11 @@ values={[
 </TabItem>
 </Tabs>
 
- 
+
 ## Chapter 4 - Monitoring and Management
 
 The Bacalhau client provides the user with tools to monitor and manage the execution of jobs. You can get information about status, progress and decide on next steps.
-View the  [Bacalhau Agent APIs](../dev/api/agent.md) if you want to know the node's health, capabilities, and deployed Bacalhau version. 
+View the  [Bacalhau Agent APIs](../dev/api/agent.md) if you want to know the node's health, capabilities, and deployed Bacalhau version.
 To get information about the status and characteristics of the nodes in the cluster use [Nodes API Documentation](../dev/api/nodes.md).
 
 
@@ -411,7 +411,7 @@ values={[
 </TabItem>
 </Tabs>
 
- 
+
 ### Job History
 
 
@@ -439,7 +439,7 @@ values={[
 </TabItem>
 </Tabs>
 
- 
+
 ### Job Logs
 
 
@@ -447,7 +447,7 @@ values={[
 bacalhau logs [flags] [id]
 ```
 
-You can use this [command](../dev/cli-reference/all-flags.md#logs-1) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved. 
+You can use this [command](../dev/cli-reference/all-flags.md#logs-1) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
 
 :::info
  To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands](../dev/cli-reference/all-flags.md)

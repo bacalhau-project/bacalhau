@@ -68,7 +68,7 @@ build {
   provisioner "shell" {
     inline = [<<EOM
   sudo cp -R /tmp/services/* /etc/systemd/system
-  sudo cp -R /tmp/scripts /usr/local/bin/ 
+  sudo cp -R /tmp/scripts /usr/local/bin/
   sudo chmod +x /usr/local/bin/scripts/*
   mkdir -p /home/ubuntu/health_check
   touch /home/ubuntu/health_check/peer_token.html

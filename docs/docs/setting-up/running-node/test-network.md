@@ -33,4 +33,3 @@ You can now interact with Bacalhau - all jobs are running by the local devstack 
 bacalhau docker run ubuntu echo hello
 bacalhau list
 ```
-

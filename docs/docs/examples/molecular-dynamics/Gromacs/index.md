@@ -102,7 +102,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 %%bash --out job_id
 bacalhau docker run \
 --id-only \
---wait \ 
+--wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 -i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \

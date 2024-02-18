@@ -18,16 +18,16 @@ bacalhau config auto-resources [flags]
 
 ## Flags
 
-- `--default-job-percentage int`: 
+- `--default-job-percentage int`:
   - Description: Sets the default percentage of resources allocated for each job when specific limits are not defined. Acceptable values range from 1 to 100 (values over 100 are rejected).
   - Default: 75
-- `--job-percentage int`: 
+- `--job-percentage int`:
   - Description: Determines the percentage of resources that can be utilized at one time for a single job. Accept values from 1 to 100 (values over 100 are rejected).
   - Default: 75
 - `--queue-job-percentage int`:
   - Description: Specifies the total percentage of resources that the system can allocate for all jobs queued at one time. Accept values from 1 to 100 (values over 100 are accepted).
   - Default: 150
-- `--total-percentage int`: 
+- `--total-percentage int`:
   - Description: Indicates the total percentage of resources that the system can utilize at one time across all jobs. Accept values from 1 to 100 (values over 100 are rejected).
   - Default: 75
 
@@ -143,5 +143,3 @@ bacalhau config auto-resources [flags]
                    gpu: "0"
                    memory: 17 GB
    ```
-
-   

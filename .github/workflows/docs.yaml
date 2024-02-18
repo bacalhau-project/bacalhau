@@ -45,7 +45,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
       !contains(github.event.pull_request.labels.*.name, 'wip')
-    
+
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:

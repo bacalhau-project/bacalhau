@@ -47,7 +47,7 @@ values={[
     docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest # Remove old image if it exists
     docker pull ghcr.io/bacalhau-project/bacalhau:latest
     ```
-    
+
     To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../setting-up/workload-onboarding/bacalhau-docker-image/index.md).
 </TabItem>
 </Tabs>
@@ -105,7 +105,7 @@ values={[
 
     We will use the command to submit a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu).
 
-    Let's take a look at the results of the command execution in the terminal: 
+    Let's take a look at the results of the command execution in the terminal:
 
     ```shell
     Job successfully submitted. Job ID: f8e7789d-8e76-4e6c-8e71-436e2d76c72e
@@ -129,7 +129,7 @@ Job successfully submitted. Job ID: 9d20bbad-c3fc-48f8-907b-1da61c927fbd
 Checking job status...
 ```
 
-The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `9d20bbad`. 
+The `job_id` above is shown in its full form. For convenience, you can use the shortened version, in this case: `9d20bbad`.
 
 :::info
 While this command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [flags](../dev/cli-reference/all-flags.md#docker-run) to support its computing model.
@@ -138,11 +138,11 @@ While this command is designed to resemble Docker's run command which you may be
 </TabItem>
 <TabItem value="Docker">
 ```shell
-docker run -t ghcr.io/bacalhau-project/bacalhau:latest \ 
-                docker run \  
-                --id-only \  
-                --wait \  
-                ubuntu:latest -- \ 
+docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
+                docker run \
+                --id-only \
+                --wait \
+                ubuntu:latest -- \
                 sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
@@ -159,7 +159,7 @@ Let's take a look at the results of the command execution in the terminal:
 
 ## Step 3 - Checking the State of your Jobs
 After having deployed the job, we now can use the CLI for the interaction with the network. The jobs were sent to the public demo network, where it was processed and we can call the following functions. The `job_id` will differ for every submission.
-### Step 3.1 - Job status: 
+### Step 3.1 - Job status:
 
 You can check the status of the job using `bacalhau list` command adding the `--id-filter` flag and specifying your job id.
 
@@ -167,15 +167,15 @@ You can check the status of the job using `bacalhau list` command adding the `--
 ```shell
 bacalhau list --id-filter 9d20bbad
 ```
-Let's take a look at the results of the command execution in the terminal: 
+Let's take a look at the results of the command execution in the terminal:
 
 ```shell
-CREATED   ID          JOB                                       STATE      PUBLISHED 
-15:24:31  0ed7617d    Type:"docker",Params:"map[Entrypoint:<ni  Completed            
-                       l> EnvironmentVariables:[] Image:ubuntu:                       
-                       latest Parameters:[sh -c uname -a && ech                       
-                       o "Hello from Docker Bacalhau!"] Working                       
-                       Directory:]"                                                   
+CREATED   ID          JOB                                       STATE      PUBLISHED
+15:24:31  0ed7617d    Type:"docker",Params:"map[Entrypoint:<ni  Completed
+                       l> EnvironmentVariables:[] Image:ubuntu:
+                       latest Parameters:[sh -c uname -a && ech
+                       o "Hello from Docker Bacalhau!"] Working
+                       Directory:]"
 ```
 
 When it says `Completed`, that means the job is done, and we can get the results.
@@ -184,14 +184,14 @@ When it says `Completed`, that means the job is done, and we can get the results
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../dev/cli-reference/all-flags.md#list-2).
 :::
 
-### Step 3.2 - Job information: 
+### Step 3.2 - Job information:
 
 You can find out more information about your job by using `bacalhau describe`.
 
 ```shell
 bacalhau describe 9d20bbad
 ```
-Let's take a look at the results of the command execution in the terminal: 
+Let's take a look at the results of the command execution in the terminal:
 
 ```shell
 
@@ -211,15 +211,15 @@ Let's take a look at the results of the command execution in the terminal:
 
 This outputs all information about the job, including stdout, stderr, where the job was scheduled, and so on.
 
-### Step 3.3 - Job download: 
+### Step 3.3 - Job download:
 
-You can download your job results directly by using `bacalhau get`. 
+You can download your job results directly by using `bacalhau get`.
 
 
 ```shell
 bacalhau get 9d20bbad
 ```
-This results in 
+This results in
 
 ```shell
 Fetching results of job '0ed7617d'...
@@ -236,7 +236,7 @@ Results for job '0ed7617d' have been written to...
 ```
 
 :::info
-While executing this command, you may encounter warnings regarding receive and send buffer sizes: `failed to sufficiently increase receive buffer size`. These warnings can arise due to limitations in the UDP buffer used by Bacalhau to process tasks. Additional information can be found in [https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes](https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes). 
+While executing this command, you may encounter warnings regarding receive and send buffer sizes: `failed to sufficiently increase receive buffer size`. These warnings can arise due to limitations in the UDP buffer used by Bacalhau to process tasks. Additional information can be found in [https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes](https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes).
 :::
 
 After the download has finished you should see the following contents in the results directory.
@@ -267,9 +267,9 @@ With that, you have just successfully run a job on Bacalhau! :fish:
 
 Here are few resources that provide a deeper dive into running jobs with Bacalhau:
 
- [How Bacalhau works](../getting-started/architecture.md)  
- [Setting up Bacalhau](../setting-up)  
- [Examples & Use Cases](../examples)  
+ [How Bacalhau works](../getting-started/architecture.md)
+ [Setting up Bacalhau](../setting-up)
+ [Examples & Use Cases](../examples)
 
 
 ## Support

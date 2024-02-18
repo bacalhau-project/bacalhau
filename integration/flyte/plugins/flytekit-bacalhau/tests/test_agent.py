@@ -1,20 +1,18 @@
 import json
 from dataclasses import asdict
 from datetime import timedelta
-
-import grpc
-from google.protobuf import struct_pb2
 from unittest import mock
 from unittest.mock import MagicMock
 
+import flytekit.models.interface as interface_models
+import grpc
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
-from flytekit.models.core.identifier import ResourceType
 from flytekit.models import literals, task, types
+from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import TaskTemplate
-import flytekit.models.interface as interface_models
-
 from flytekitplugins.bacalhau.agent import Metadata
+from google.protobuf import struct_pb2
 
 
 @mock.patch("flytekitplugins.bacalhau.agent.submit")
@@ -42,7 +40,7 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
     class MockResultsData:
         def __init__(self):
             self.data = MockResultsCid()
-            
+
     class MockResultsResponse:
         def __init__(self):
             self.results = [MockResultsData()]
@@ -76,20 +74,30 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
         {},
     )
     s = struct_pb2.Struct()
-    s.update({
-        "key": "value",
-        "deal": {
-            "concurrency": 1.0,
+    s.update(
+        {
+            "key": "value",
+            "deal": {
+                "concurrency": 1.0,
+            },
         }
-    })
+    )
     task_inputs = literals.LiteralMap(
         {
-            "api_version": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-api-version"))),
-            "client_id": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-client-id"))),
+            "api_version": literals.Literal(
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="some-api-version")
+                )
+            ),
+            "client_id": literals.Literal(
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="some-client-id")
+                )
+            ),
             "spec": literals.Literal(scalar=literals.Scalar(generic=s)),
         },
     )
-    
+
     task_metadata = task.TaskMetadata(
         True,
         task.RuntimeMetadata(
@@ -122,7 +130,8 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
     res = agent.get(ctx, metadata_bytes)
 
     assert (
-        res.resource.outputs.literals["results"].scalar.primitive.string_value == "dummy_cid"
+        res.resource.outputs.literals["results"].scalar.primitive.string_value
+        == "dummy_cid"
     )
     agent.delete(ctx, metadata_bytes)
     # mock_instance.cancel_job.assert_called()
