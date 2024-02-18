@@ -1,4 +1,5 @@
 export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
+export POETRY ?= $(shell command -v poetry 2> /dev/null)
 
 sources = bacalhau_sdk
 
