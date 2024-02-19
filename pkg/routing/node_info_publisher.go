@@ -105,8 +105,9 @@ func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval 
 
 				err := n.Publish(ctx)
 				if err != nil {
-					if err != context.Canceled {
-						// We will only log this if it is not a cancellation
+					if err == context.Canceled {
+						log.Ctx(ctx).Debug().Msg("gracefully shutting down ipfs node due to context cancellation")
+					} else {
 						log.Ctx(ctx).Err(err).Msg("failed to publish node info")
 					}
 				}
