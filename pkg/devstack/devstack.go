@@ -136,6 +136,7 @@ func Setup(
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
+
 			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
 			// connecting/joining topics, when using multiple addresses for a single host.
 			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
@@ -372,12 +373,6 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, c
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
 	var devstackPeerAddrs []string
-
-	// TODO remove this it's wrong and never printed, nothing sets the env vars its printing
-	logString += `
------------------------------------------
------------------------------------------
-`
 
 	requesterOnlyNodes := 0
 	computeOnlyNodes := 0
