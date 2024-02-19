@@ -23,7 +23,7 @@ The handler will sleep multiple times until at least "ms" milliseconds of sleepi
 After at least "ms" milliseconds of sleeping, the handler returns 0 which causes sqlite3_step() to return SQLITE_BUSY
 We do this to prevent the error "database is locked" from being returned on parallel reads and writes.
 */
-var DefaultDialect = sqlite.Open("jobstore.db")
+var DefaultDialect = sqlite.Open(":memory:?busy_timeout=5000")
 
 var DefaultClock = clock.New()
 
@@ -53,6 +53,12 @@ type Option func(cfg *Config)
 func WithClock(c clock.Clock) Option {
 	return func(cfg *Config) {
 		cfg.Clock = c
+	}
+}
+
+func WithSqlite(path string) Option {
+	return func(cfg *Config) {
+		cfg.Dialect = sqlite.Open(path)
 	}
 }
 

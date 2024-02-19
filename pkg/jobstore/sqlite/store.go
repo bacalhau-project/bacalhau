@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/imdario/mergo"
 	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -17,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 func New(opts ...Option) (*Store, error) {
@@ -42,6 +44,7 @@ func New(opts ...Option) (*Store, error) {
 
 	if err := db.AutoMigrate(
 		&Job{},
+		&ShortIDMapping{},
 		&JobState{},
 		&Task{},
 		&SpecConfig{},
@@ -65,35 +68,59 @@ type Store struct {
 	clock clock.Clock
 }
 
-func (s *Store) Database() *gorm.DB {
-	return s.DB
-}
-
 //
 // Job Operations
 //
 
 func (s *Store) GetJob(ctx context.Context, id string) (models.Job, error) {
+	id, err := s.resolveJobID(ctx, id)
+	if err != nil {
+		return models.Job{}, err
+	}
 	if has, err := s.hasJob(ctx, id); err != nil {
 		return models.Job{}, err
 	} else if !has {
-		return models.Job{}, jobstore.NewErrJobNotFound(id)
+		return models.Job{}, bacerrors.NewJobNotFound(id)
 	}
+
 	j, err := s.getJob(ctx, id)
 	if err != nil {
 		return models.Job{}, err
 	}
+
 	state, err := s.getLatestJobState(ctx, id)
 	if err != nil {
 		return models.Job{}, err
 	}
-	j.State = *state
-	return j.AsJob(), nil
+
+	return JobAndStateToDt(*j, *state)
+}
+
+func (s *Store) resolveJobID(ctx context.Context, id string) (string, error) {
+	// TODO we should do this but can't because our tests expect different behavior..
+	/*
+		if len(id) < idgen.ShortIDLength {
+			return "", fmt.Errorf("invalid jobID: %s", id)
+		}
+	*/
+	if idgen.ShortID(id) != id {
+		return id, nil
+	}
+	var mapping ShortIDMapping
+
+	// Find the mapping by shortID
+	result := s.DB.WithContext(ctx).Where("short_id = ?", id).First(&mapping)
+	if result.Error != nil {
+		return "", bacerrors.NewJobNotFound(id)
+	}
+
+	return mapping.JobID, nil
 }
 
 func (s *Store) getJob(ctx context.Context, id string) (*Job, error) {
 	var out Job
 	if err := s.DB.WithContext(ctx).
+		Preload("Tasks").
 		Model(&Job{}).
 		Where("job_id = ?", id).
 		Find(&out).Error; err != nil {
@@ -103,7 +130,6 @@ func (s *Store) getJob(ctx context.Context, id string) (*Job, error) {
 }
 
 func (s *Store) hasJob(ctx context.Context, id string) (bool, error) {
-	// if err := if lib.DB.First(&models.User{Email: payload.Email}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 	var exists bool
 	if err := s.DB.Debug().WithContext(ctx).
 		Model(&Job{}).
@@ -155,6 +181,10 @@ func (s *Store) createJob(ctx context.Context, j models.Job) error {
 	if err != nil {
 		return err
 	}
+	tasksModels, err := TasksToDt(j.ID, j.Tasks...)
+	if err != nil {
+		return err
+	}
 	jobModel := Job{
 		JobID:       j.ID,
 		Name:        j.Name,
@@ -166,7 +196,7 @@ func (s *Store) createJob(ctx context.Context, j models.Job) error {
 		Meta:        meta,
 		Labels:      labels,
 		CreatedTime: j.CreateTime,
-		State: JobState{
+		State: []JobState{{
 			JobID:        j.ID,
 			State:        int(j.State.StateType),
 			Message:      j.State.Message,
@@ -174,17 +204,30 @@ func (s *Store) createJob(ctx context.Context, j models.Job) error {
 			ModifiedTime: j.ModifyTime,
 			Revision:     j.Revision,
 			Version:      j.Version,
-		},
-		Tasks: ToTaskModel(j),
+		}},
+		Tasks: tasksModels,
+	}
+	IDMap := ShortIDMapping{
+		JobID:   j.ID,
+		ShortID: idgen.ShortID(j.ID),
 	}
 
-	return s.DB.WithContext(ctx).Create(&jobModel).Error
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.WithContext(ctx).Create(&jobModel).Error; err != nil {
+			return err
+		}
+		if err := tx.WithContext(ctx).Create(&IDMap).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *Store) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) error {
 	// get the latest state for this job
 	curState, err := s.getLatestJobState(ctx, request.JobID)
 	if err != nil {
+		return err
 	}
 
 	// cheating a bit as Validate and IsTerminal only need part of the Job, they are
@@ -236,25 +279,83 @@ func (s *Store) getLatestJobState(ctx context.Context, id string) (*JobState, er
 
 // TODO test the hell out of this method.
 func (s *Store) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
-	var jobs []Job
-	db := s.DB.WithContext(ctx)
+	var filtered []models.Job
+	{
+		// get all jobs in the name space and manually check requirements
+		var allJobs []Job
+		db := s.DB.Debug().WithContext(ctx)
 
-	// Apply namespace filter if specified
-	if query.Namespace != "" {
-		db = db.Where("namespace = ?", query.Namespace)
-	}
+		// Apply namespace filter if specified
+		if query.Namespace != "" {
+			db = db.Where("namespace = ?", query.Namespace)
+		}
 
-	// Apply labels filter if specified
-	// TODO the query query is not made for SQL
-	/*
-		if len(query.Labels) > 0 {
-			for key, value := range query.Labels {
-				// Assuming labels are stored as JSON and you're querying a JSON field
-				db = db.Where(fmt.Sprintf("json_extract(labels, '$.%s') = ?", key), value)
+		if err := db.Find(&allJobs).Error; err != nil {
+			return nil, err
+		}
+
+		// For each job, find the latest state
+		result := make([]models.Job, len(allJobs))
+		for i, job := range allJobs {
+			state, err := s.getLatestJobState(ctx, job.JobID)
+			if err != nil {
+				return nil, err
+			}
+			result[i], err = JobAndStateToDt(job, *state)
+			if err != nil {
+				return nil, err
 			}
 		}
 
-	*/
+		filtered = make([]models.Job, 0, len(allJobs))
+
+		for _, job := range result {
+			// Initialize checks
+			selectorMatch := query.Selector == nil || query.Selector.Matches(labels.Set(job.Labels))
+			includeTagsCheck := len(query.IncludeTags) == 0 // Assume true if no include tags
+			excludeTagsCheck := true                        // Assume true if no exclude tags
+
+			// When ReturnAll is true, only exclude tags check is relevant
+			if query.ReturnAll {
+				selectorMatch = true    // Ignore selector match when ReturnAll is true
+				includeTagsCheck = true // Ignore include tags check when ReturnAll is true
+			} else {
+				// Check for include tags match if include tags are provided
+				if len(query.IncludeTags) > 0 {
+					includeTagsCheck = false // Set to false initially, and only set to true if a match is found
+					for _, tag := range query.IncludeTags {
+						if _, ok := job.Labels[tag]; ok {
+							includeTagsCheck = true
+							break // Found a matching include tag, no need to check further
+						}
+					}
+				}
+			}
+
+			// Check for exclude tags match if exclude tags are provided
+			if len(query.ExcludeTags) > 0 {
+				for _, tag := range query.ExcludeTags {
+					if _, ok := job.Labels[tag]; ok {
+						excludeTagsCheck = false // Found a matching exclude tag, this job should be excluded
+						break                    // No need to check further exclude tags for this job
+					}
+				}
+			}
+
+			// Add the job to the filtered list only if it matches the selector and includes/excludes tags criteria
+			if selectorMatch && includeTagsCheck && excludeTagsCheck {
+				filtered = append(filtered, job)
+			}
+		}
+	}
+
+	jobIDs := make([]string, len(filtered))
+	for i, f := range filtered {
+		jobIDs[i] = f.ID
+	}
+	var jobs []Job
+
+	db := s.DB.Preload("Tasks").Where("job_id IN ?", jobIDs).Where("deleted_at IS NULL")
 
 	// Handle sorting
 	if query.SortBy != "" {
@@ -263,11 +364,29 @@ func (s *Store) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore
 			sortOrder = "DESC"
 		}
 		db = db.Order(fmt.Sprintf("%s %s", query.SortBy, sortOrder))
+	} else {
+		sortBy := "created_at"
+		sortOrder := "ASC"
+		if query.SortReverse {
+			sortOrder = "DESC"
+		}
+		db = db.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
 	}
 
 	// Handle pagination
 	if !query.ReturnAll {
-		db = db.Offset(int(query.Offset)).Limit(int(query.Limit))
+		if query.Limit != 0 {
+			db = db.Offset(int(query.Offset)).Limit(int(query.Limit))
+		} else {
+			db = db.Offset(int(query.Offset))
+		}
+	} else {
+		if query.Limit != 0 {
+			db = db.Limit(int(query.Limit))
+		}
+		if query.Offset != 0 {
+			db = db.Offset(int(query.Offset))
+		}
 	}
 
 	// Execute query for jobs
@@ -275,37 +394,17 @@ func (s *Store) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore
 		return nil, err
 	}
 
-	// TODO we are not leveraging the power of a relational database here, see TODO above.
-	if query.Selector != nil {
-		var filtered []Job
-		for _, job := range jobs {
-			var jl map[string]string
-			if err := json.Unmarshal(job.Labels, &jl); err != nil {
-				return nil, err
-			}
-			if query.Selector.Matches(labels.Set(jl)) {
-				filtered = append(filtered, job)
-			}
-		}
-		jobs = filtered
-	}
-
 	// For each job, find the latest state
+	result := make([]models.Job, len(jobs))
 	for i, job := range jobs {
-		var state JobState
-		if err := s.DB.WithContext(ctx).
-			Where("job_id = ?", job.JobID).
-			Order("id DESC"). // Assuming 'id' is an auto-incrementing primary key
-			First(&state).Error; err != nil {
-			// Handle error or decide to continue with other jobs
+		state, err := s.getLatestJobState(ctx, job.JobID)
+		if err != nil {
 			return nil, err
 		}
-		jobs[i].State = state // Set the latest state
-	}
-
-	result := make([]models.Job, len(jobs))
-	for i, j := range jobs {
-		result[i] = j.AsJob()
+		result[i], err = JobAndStateToDt(job, *state)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Prepare response
@@ -325,43 +424,55 @@ func (s *Store) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore
 }
 
 func (s *Store) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
-	var jobs []Job
+	var inProgress []JobState
 	excludedStates := []int{
 		int(models.JobStateTypeCompleted),
 		int(models.JobStateTypeFailed),
 		int(models.JobStateTypeStopped),
 	}
 
-	err := s.DB.WithContext(ctx).
-		Preload("JobState", "state NOT IN ?", excludedStates). // Preload JobState excluding specific states
-		Joins("JOIN job_states ON job_states.job_id = jobs.job_id AND job_states.state NOT IN ?", excludedStates).
-		Find(&jobs).Error
-
+	err := s.DB.Raw(`
+SELECT js.*
+FROM job_states js
+         INNER JOIN (
+    SELECT job_id, MAX(id) AS MaxID
+    FROM job_states
+    GROUP BY job_id
+) latest_js ON js.job_id = latest_js.job_id AND js.id = latest_js.MaxID
+WHERE js.State NOT IN ?
+`, excludedStates).Scan(&inProgress).Error
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]models.Job, len(jobs))
-	for i, j := range jobs {
-		out[i] = j.AsJob()
+	out := make([]models.Job, len(inProgress))
+	for i, js := range inProgress {
+		j, err := s.getJob(ctx, js.JobID)
+		if err != nil {
+			return nil, err
+		}
+		out[i], err = JobAndStateToDt(*j, js)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }
 
 func (s *Store) GetJobHistory(ctx context.Context, id string, options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	id, err := s.resolveJobID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	since := time.Unix(options.Since, 0)
-	jobStates, err := s.getJobStatesSince(ctx, id, since)
-	if err != nil {
-		return nil, err
-	}
-
-	executionStates, err := s.getExecutionWithStatesForJobSince(ctx, id, since)
-	if err != nil {
-		return nil, err
-	}
 
 	var out []models.JobHistory
-	{
+	if !options.ExcludeExecutionLevel {
+		executionStates, err := s.getExecutionWithStatesForJobSince(ctx, id, since)
+		if err != nil {
+			return nil, err
+		}
+
 		prevState := models.ExecutionStateUndefined
 		for _, e := range executionStates {
 			out = append(out, models.JobHistory{
@@ -381,7 +492,11 @@ func (s *Store) GetJobHistory(ctx context.Context, id string, options jobstore.J
 		}
 	}
 
-	{
+	if !options.ExcludeJobLevel {
+		jobStates, err := s.getJobStatesSince(ctx, id, since)
+		if err != nil {
+			return nil, err
+		}
 		prevState := models.JobStateTypeUndefined
 		for _, j := range jobStates {
 			out = append(out, models.JobHistory{
@@ -444,8 +559,6 @@ func (s *Store) getExecutionWithStatesForJobSince(ctx context.Context, jobID str
 
 	err := s.DB.WithContext(ctx).
 		Model(&Execution{}).
-		Preload("DesiredState", "created_at > ?", since).     // Preload DesiredState since the specified time
-		Preload("ComputeState", "created_at > ?", since).     // Preload ComputeState since the specified time
 		Where("job_id = ? AND created_at > ?", jobID, since). // Filter executions by job_id and time
 		Order("created_at DESC").                             // Order by creation time
 		Find(&executions).Error                               // Find all matching executions
@@ -462,19 +575,14 @@ func (s *Store) getExecutionWithStatesForJobSince(ctx context.Context, jobID str
 //
 
 func (s *Store) CreateExecution(ctx context.Context, e models.Execution) error {
-	/*
-		if has, err := s.hasExecution(ctx, e.ID); err != nil {
-			return err
-		} else if has {
-			return jobstore.NewErrExecutionAlreadyExists(e.ID)
-		}
-
-	*/
-
 	// TODO: don't hand half made stuff to jobstore, plz
 	e.Normalize()
 
 	resources, err := json.Marshal(e.AllocatedResources)
+	if err != nil {
+		return err
+	}
+	publishedResults, err := SpecConfigToDt(e.PublishedResult)
 	if err != nil {
 		return err
 	}
@@ -488,17 +596,15 @@ func (s *Store) CreateExecution(ctx context.Context, e models.Execution) error {
 		AllocatedResources: datatypes.JSON(resources),
 		DesiredState: ExecutionState{
 			ExecutionID: e.ID,
-			// TODO this should happen outside calls to this method
-			State:   int(e.DesiredState.StateType),
-			Message: e.DesiredState.Message,
+			State:       int(e.DesiredState.StateType),
+			Message:     e.DesiredState.Message,
 		},
 		ComputeState: ExecutionState{
 			ExecutionID: e.ID,
-			// TODO this should happen outside calls to this method
-			State:   int(e.ComputeState.StateType),
-			Message: e.ComputeState.Message,
+			State:       int(e.ComputeState.StateType),
+			Message:     e.ComputeState.Message,
 		},
-		PublishedResult:   ToSpecConfigModel(e.PublishedResult),
+		PublishedResult:   publishedResults,
 		PreviousExecution: e.PreviousExecution,
 		NextExecution:     e.NextExecution,
 		FollowupEvalID:    e.FollowupEvalID,
@@ -550,13 +656,18 @@ func (s *Store) GetExecutions(ctx context.Context, query jobstore.GetExecutionsO
 	}
 
 	var executions []Execution
-	err := s.DB.WithContext(ctx).
-		Model(&Execution{}).
-		Where("job_id = ?", query.JobID).
-		Preload("DesiredState").
-		Preload("ComputeState").
-		Order("create_time DESC").
-		Find(&executions).Error
+	err := s.DB.Raw(`
+SELECT e.*
+FROM executions e
+         INNER JOIN (
+    SELECT execution_id, MAX(revision) AS MaxRevision
+    FROM executions
+    WHERE job_id = ?
+    GROUP BY execution_id
+) AS latest_executions ON e.execution_id = latest_executions.execution_id
+    AND e.revision = latest_executions.MaxRevision
+WHERE e.job_id = ?
+`, query.JobID, query.JobID).Scan(&executions).Error
 	if err != nil {
 		return nil, err
 	}
@@ -585,10 +696,8 @@ func (s *Store) getLatestExecution(ctx context.Context, executionID string) (*Ex
 
 	err := s.DB.WithContext(ctx).
 		Where("execution_id = ?", executionID).
-		Preload("DesiredState"). // Eagerly load the DesiredState
-		Preload("ComputeState"). // Eagerly load the ComputeState
-		Order("id DESC").        // Assuming 'id' is an auto-incrementing primary key or a monotonic increasing index
-		First(&execution).Error  // Get the latest execution based on ID
+		Order("id DESC").       // Assuming 'id' is an auto-incrementing primary key or a monotonic increasing index
+		First(&execution).Error // Get the latest execution based on ID
 
 	if err != nil {
 		return nil, err
@@ -621,6 +730,11 @@ func (s *Store) UpdateExecution(ctx context.Context, request jobstore.UpdateExec
 	}
 	if newExecution.Revision == 0 {
 		newExecution.Revision = curExecution.Revision + 1
+	}
+	newExecution.Normalize()
+
+	if err := mergo.Merge(&newExecution, curExecution.AsExecution()); err != nil {
+		return err
 	}
 
 	return s.CreateExecution(ctx, newExecution)
@@ -707,19 +821,13 @@ func (s *Store) Close(ctx context.Context) error {
 //
 
 func (s *Store) DeleteEvaluation(ctx context.Context, id string) error {
-	return nil
-	// TODO implement me
-	panic("implement me")
+	return fmt.Errorf("no implement")
 }
 
 func (s *Store) DeleteJob(ctx context.Context, jobID string) error {
-	return nil
-	// TODO implement me
-	panic("implement me")
+	return fmt.Errorf("no implement")
 }
 
 func (s *Store) Watch(ctx context.Context, types jobstore.StoreWatcherType, events jobstore.StoreEventType) chan jobstore.WatchEvent {
-	return nil
-	// TODO implement me
-	panic("implement me")
+	panic("not implement and not called in code")
 }

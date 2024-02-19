@@ -18,6 +18,7 @@ type StorageType int64
 const (
 	UnknownStorage StorageType = 0
 	BoltDB         StorageType = 1
+	Sqlite         StorageType = 3
 )
 
 func (j *StorageType) UnmarshalText(text []byte) error {
@@ -43,7 +44,7 @@ func (j *StorageType) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func ParseStorageType(s string) (ret StorageType, err error) {
-	for typ := UnknownStorage; typ <= BoltDB; typ++ {
+	for typ := UnknownStorage; typ <= Sqlite; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil
 		}

@@ -4,35 +4,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
-
-func (j *Job) AsJob() models.Job {
-	return models.Job{
-		ID:        j.JobID,
-		Name:      j.Name,
-		Namespace: j.Namespace,
-		Type:      j.Type,
-		Priority:  j.Priority,
-		Count:     j.Count,
-		// Constraints: j.Constraints,
-		// Meta:        j.Meta,
-		// Labels:      j.Labels,
-		// Tasks:       j.Tasks,
-		State: models.State[models.JobStateType]{
-			StateType: models.JobStateType(j.State.State),
-			Message:   j.State.Message,
-		},
-		Version:    j.State.Version,
-		Revision:   j.State.Revision,
-		CreateTime: j.State.CreatedTime,
-		ModifyTime: j.State.ModifiedTime,
-	}
-}
 
 type Job struct {
 	gorm.Model         // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
@@ -47,8 +23,14 @@ type Job struct {
 	Labels      datatypes.JSON
 	CreatedTime int64
 	// Associations
-	State JobState `gorm:"foreignKey:JobID;references:JobID"`
-	Tasks []Task   `gorm:"foreignKey:JobID;references:JobID"` // Associating tasks with jobs
+	State []JobState `gorm:"foreignKey:JobID;references:JobID"`
+	Tasks []Task     `gorm:"foreignKey:JobID;references:JobID"` // Associating tasks with jobs
+}
+
+type ShortIDMapping struct {
+	gorm.Model
+	ShortID string `gorm:"primaryKey"`
+	JobID   string `gorm:"primaryKey"`
 }
 
 type JobState struct {
@@ -63,14 +45,6 @@ type JobState struct {
 	ModifiedTime int64
 }
 
-func ToJobStateModel(j models.Job) JobState {
-	return JobState{
-		JobID:   j.ID,
-		State:   int(j.State.StateType),
-		Message: j.State.Message,
-	}
-}
-
 type Task struct {
 	gorm.Model          // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
 	JobID        string // Foreign key from Job
@@ -81,59 +55,14 @@ type Task struct {
 	Meta         datatypes.JSON
 	InputSources []InputSource  `gorm:"foreignKey:TaskID;references:ID"`
 	ResultPaths  []ResultPath   `gorm:"foreignKey:TaskID;references:ID"`
-	Resources    ResourceConfig `gorm:"embedded"`
-	Network      NetworkConfig  `gorm:"embedded"`
-	Timeouts     TimeoutConfig  `gorm:"embedded"`
-}
-
-func ToTaskModel(j models.Job) []Task {
-	var tasks []Task
-	for _, dt := range j.Tasks {
-		// Convert each domain task to a GORM Task model
-		// This includes converting any nested structures or fields as necessary
-		task := Task{
-			JobID:        j.ID,
-			Name:         dt.Name,
-			Engine:       ToSpecConfigModel(dt.Engine),
-			Publisher:    ToSpecConfigModel(dt.Publisher),
-			Env:          datatypes.JSON(lo.Must(json.Marshal(dt.Env))),
-			Meta:         datatypes.JSON(lo.Must(json.Marshal(dt.Meta))),
-			InputSources: ToInputSourceModel(dt),
-			ResultPaths:  ToResultPathModel(dt),
-			Resources: ResourceConfig{
-				CPU:    dt.ResourcesConfig.CPU,
-				Memory: dt.ResourcesConfig.Memory,
-				Disk:   dt.ResourcesConfig.Disk,
-				GPU:    dt.ResourcesConfig.CPU,
-			},
-			Network: NetworkConfig{
-				Type:    dt.Network.Type.String(),
-				Domains: lo.Must(json.Marshal(dt.Network.Domains)),
-			},
-			Timeouts: TimeoutConfig{ExecutionTimeout: dt.Timeouts.ExecutionTimeout},
-		}
-		tasks = append(tasks, task)
-	}
-	return tasks
+	Resources    ResourceConfig `gorm:"embedded;embeddedPrefix:resources_"`
+	Network      NetworkConfig  `gorm:"embedded;embeddedPrefix:network_"`
+	Timeouts     TimeoutConfig  `gorm:"embedded;embeddedPrefix:timeouts_"`
 }
 
 type SpecConfig struct {
 	Type   string
 	Params datatypes.JSON // Using JSON data type, assuming Params is a JSON object
-}
-
-func ToSpecConfigModel(s *models.SpecConfig) SpecConfig {
-	if s == nil {
-		return SpecConfig{}
-	}
-	out := SpecConfig{
-		Type: s.Type,
-	}
-	if s.Params != nil {
-		pb := lo.Must(json.Marshal(s.Params))
-		out.Params = pb
-	}
-	return out
 }
 
 type InputSource struct {
@@ -144,36 +73,11 @@ type InputSource struct {
 	Source     SpecConfig `gorm:"embedded;embeddedPrefix:source_"`
 }
 
-func ToInputSourceModel(t *models.Task) []InputSource {
-	var inputs []InputSource
-	for _, di := range t.InputSources {
-		i := InputSource{
-			Alias:  di.Alias,
-			Target: di.Target,
-			Source: ToSpecConfigModel(di.Source),
-		}
-		inputs = append(inputs, i)
-	}
-	return inputs
-}
-
 type ResultPath struct {
 	gorm.Model      // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
 	TaskID     uint // Foreign key from Task
 	Name       string
 	Path       string
-}
-
-func ToResultPathModel(t *models.Task) []ResultPath {
-	var results []ResultPath
-	for _, dr := range t.ResultPaths {
-		r := ResultPath{
-			Name: dr.Name,
-			Path: dr.Path,
-		}
-		results = append(results, r)
-	}
-	return results
 }
 
 type ResourceConfig struct {
@@ -201,8 +105,8 @@ type Execution struct {
 	Namespace          string
 	Name               string
 	AllocatedResources datatypes.JSON
-	DesiredState       ExecutionState   `gorm:"foreignKey:ExecutionID;references:ExecutionID"`
-	ComputeState       ExecutionState   `gorm:"foreignKey:ExecutionID;references:ExecutionID"`
+	DesiredState       ExecutionState   `gorm:"embedded;embeddedPrefix:desired_"`
+	ComputeState       ExecutionState   `gorm:"embedded;embeddedPrefix:compute_"`
 	PublishedResult    SpecConfig       `gorm:"embedded;embeddedPrefix:published_"`
 	RunOutput          RunCommandResult `gorm:"embedded;embeddedPrefix:run_"`
 	PreviousExecution  string
@@ -264,7 +168,6 @@ func (e *Execution) AsExecution() models.Execution {
 }
 
 type ExecutionState struct {
-	gorm.Model
 	ExecutionID string
 	State       int
 	Message     string

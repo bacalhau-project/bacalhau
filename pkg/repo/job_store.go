@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/rs/zerolog/log"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/sqlite"
 )
 
 // InitJobStore must be called after Init and uses the configuration to create a
@@ -41,8 +43,21 @@ func (fsr *FsRepo) InitJobStore(ctx context.Context, prefix string) (jobstore.St
 			path = filepath.Join(directory, "jobs.db")
 		}
 
-		log.Ctx(ctx).Debug().Str("Path", path).Msg("creating boltdb backed jobstore")
+		log.Ctx(ctx).Info().Str("Path", path).Msg("creating boltdb backed jobstore")
 		return boltjobstore.NewBoltJobStore(path)
+	case types.Sqlite:
+		path := storeCfg.Path
+		if path == "" {
+			directory := filepath.Join(fsr.path, fmt.Sprintf("%s-requester", prefix))
+			if err := os.MkdirAll(directory, os.ModePerm); err != nil {
+				return nil, err
+			}
+
+			path = filepath.Join(directory, "jobs-sqlite.db")
+		}
+
+		log.Ctx(ctx).Info().Str("Path", path).Msg("creating sqlite backed jobstore")
+		return sqlite.New(sqlite.WithSqlite("JOBSTORE.db"), sqlite.WithMaxIdleConns(100), sqlite.WithMaxOpenConns(100))
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}

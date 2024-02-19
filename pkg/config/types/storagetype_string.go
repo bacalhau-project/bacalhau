@@ -10,15 +10,25 @@ func _() {
 	var x [1]struct{}
 	_ = x[UnknownStorage-0]
 	_ = x[BoltDB-1]
+	_ = x[Sqlite-3]
 }
 
-const _StorageType_name = "UnknownStorageBoltDB"
+const (
+	_StorageType_name_0 = "UnknownStorageBoltDB"
+	_StorageType_name_1 = "Sqlite"
+)
 
-var _StorageType_index = [...]uint8{0, 14, 20}
+var (
+	_StorageType_index_0 = [...]uint8{0, 14, 20}
+)
 
 func (i StorageType) String() string {
-	if i < 0 || i >= StorageType(len(_StorageType_index)-1) {
+	switch {
+	case 0 <= i && i <= 1:
+		return _StorageType_name_0[_StorageType_index_0[i]:_StorageType_index_0[i+1]]
+	case i == 3:
+		return _StorageType_name_1
+	default:
 		return "StorageType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _StorageType_name[_StorageType_index[i]:_StorageType_index[i+1]]
 }
