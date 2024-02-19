@@ -127,7 +127,7 @@ release-python-apiclient:
 ################################################################################
 .PHONY: release-python-sdk
 release-python-sdk: build-python-sdk
-	cd python && ${EARTHLY} --push --ci +publish --PYPI_TOKEN=${PYPI_TOKEN}
+	cd python && ${EARTHLY} --push +publish --PYPI_TOKEN=${PYPI_TOKEN}
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
