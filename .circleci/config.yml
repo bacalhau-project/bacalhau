@@ -154,6 +154,7 @@ commands:
       - run:
           name: Install asdf
           command: |
+            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
@@ -161,8 +162,9 @@ commands:
               cd $HOME/.asdf
               git fetch origin
               git fetch --all
-              git pull --all
             fi
+            git checkout master
+            git pull --all
             git checkout tags/<< parameters.asdf_version >>
             cd -
       - save_cache:
