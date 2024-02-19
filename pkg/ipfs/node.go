@@ -84,7 +84,8 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types
 	// TODO if cfg.PrivateInternal is true do we actually want to connect to peers?
 	if err = connectToPeers(ctx, api, ipfsNode, cfg.GetSwarmAddresses()); err != nil {
 		if err == context.Canceled {
-			return nil, nil // context was canceled, so we should just stop running
+			log.Ctx(ctx).Debug().Msg("gracefully shutting down ipfs node due to context cancellation")
+			return nil, nil
 		}
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
