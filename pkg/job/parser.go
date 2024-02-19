@@ -189,6 +189,10 @@ func PublisherStringToPublisherSpec(destinationURI string, options map[string]in
 			Type:   model.PublisherS3,
 			Params: options,
 		}
+	case "local":
+		res = model.PublisherSpec{
+			Type: model.PublisherLocal,
+		}
 	default:
 		return model.PublisherSpec{}, fmt.Errorf("unknown publisher type: %s", parsedURI.Scheme)
 	}

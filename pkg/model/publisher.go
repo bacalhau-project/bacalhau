@@ -11,13 +11,15 @@ const (
 	PublisherNoop
 	PublisherIpfs
 	PublisherS3
+	PublisherLocal
 	publisherDone // must be last
 )
 
 var publisherNames = map[Publisher]string{
-	PublisherNoop: "noop",
-	PublisherIpfs: "ipfs",
-	PublisherS3:   "s3",
+	PublisherNoop:  "noop",
+	PublisherIpfs:  "ipfs",
+	PublisherS3:    "s3",
+	PublisherLocal: "local",
 }
 
 func ParsePublisher(str string) (Publisher, error) {

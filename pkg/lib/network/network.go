@@ -89,6 +89,25 @@ func GetNetworkAddress(requested AddressType, getAddresses AddressLister) ([]str
 	return result, nil
 }
 
+func (a AddressType) String() string {
+	switch a {
+	case PrivateAddress:
+		return "private"
+	case PublicAddress:
+		return "public"
+	case LoopbackAddress:
+		return "loopback"
+	case LinkLocal:
+		return "linklocal"
+	case Multicast:
+		return "multicast"
+	case Any:
+		return "any"
+	default:
+		return "unknown"
+	}
+}
+
 func AddressTypeFromString(t string) (AddressType, bool) {
 	switch strings.ToLower(t) {
 	case "private":

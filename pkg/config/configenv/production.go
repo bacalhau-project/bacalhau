@@ -158,6 +158,10 @@ var ProductionComputeConfig = types.ComputeConfig{
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
 	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "public",
+		Port:    6001,
+	},
 }
 
 var ProductionRequesterConfig = types.RequesterConfig{
