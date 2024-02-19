@@ -40,6 +40,7 @@ func ShortUUID(input string) string {
 
 // ShortNodeID takes a string in the format of a libp2p peer ID or UUID,
 // and returns a shortened version of the input, or the input as is if it doesn't match.
+// Mainly used for logging and printing the ID in a more human-readable format.
 func ShortNodeID(input string) string {
 	// Shorten the input if it's a UUID.
 	res := ShortUUID(input)
