@@ -77,17 +77,6 @@ module.exports = {
       items: [
         {
           type: 'category',
-          label: 'Case Studies',
-          link: {
-            type: 'generated-index',
-            description: "Case Studies",
-          },
-          items: [
-            'examples/case-studies/duckdb-log-processing/index',
-          ],
-        },
-        {
-          type: 'category',
           label: 'Data Engineering',
           link: {
             type: 'generated-index',
