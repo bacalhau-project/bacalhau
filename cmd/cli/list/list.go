@@ -153,7 +153,7 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 		ColumnConfig: table.ColumnConfig{
 			Name:             "id",
 			WidthMax:         idgen.ShortIDLengthWithPrefix,
-			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortID(col) }},
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(jwi *model.JobWithInfo) string { return jwi.Job.ID() },
 	},
 	{

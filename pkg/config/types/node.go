@@ -9,11 +9,12 @@ import (
 )
 
 type NodeConfig struct {
-	Name      string       `yaml:"Name"`
-	ClientAPI APIConfig    `yaml:"ClientAPI"`
-	ServerAPI APIConfig    `yaml:"ServerAPI"`
-	Libp2p    Libp2pConfig `yaml:"Libp2P"`
-	IPFS      IpfsConfig   `yaml:"IPFS"`
+	Name         string       `yaml:"Name"`
+	NameProvider string       `yaml:"NameProvider"`
+	ClientAPI    APIConfig    `yaml:"ClientAPI"`
+	ServerAPI    APIConfig    `yaml:"ServerAPI"`
+	Libp2p       Libp2pConfig `yaml:"Libp2P"`
+	IPFS         IpfsConfig   `yaml:"IPFS"`
 
 	Compute   ComputeConfig   `yaml:"Compute"`
 	Requester RequesterConfig `yaml:"Requester"`

@@ -311,7 +311,7 @@ func summariseExecutions(executions []*models.Execution) map[string][]string {
 		}
 
 		if message != "" {
-			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
+			results[message] = append(results[message], idgen.ShortNodeID(execution.NodeID))
 		}
 	}
 	return results

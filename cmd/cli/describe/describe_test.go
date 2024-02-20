@@ -113,7 +113,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				// Short job id
 				_, out, err = s.ExecuteTestCobraCommand("describe",
 					"--api-host", s.Host,
-					idgen.ShortID(submittedJob.Metadata.ID),
+					idgen.ShortUUID(submittedJob.Metadata.ID),
 					"--api-port", fmt.Sprint(s.Port),
 				)
 
