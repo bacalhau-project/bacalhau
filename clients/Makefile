@@ -1,10 +1,10 @@
 PACKAGE_NAME := bacalhau-apiclient
 SWAGGER_JSON := ../docs/swagger.json
 VERSION ?= $${PYPI_VERSION}
-export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
-export MAKE := $(shell command -v make 2> /dev/null)
-export CP := $(shell command -v cp 2> /dev/null)
-export RM := $(shell command -v rm 2> /dev/null)
+EARTHLY := $(shell command -v earthly --push 2> /dev/null)
+MAKE := $(shell command -v make 2> /dev/null)
+CP := $(shell command -v cp 2> /dev/null)
+RM := $(shell command -v rm 2> /dev/null)
 
 .PHONY: all
 all:

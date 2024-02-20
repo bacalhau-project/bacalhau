@@ -35,6 +35,7 @@ update-templates:
 
     LET UNDERSCORE_PACKAGE_NAME=$(echo "${PACKAGE_NAME}" | sed 's/-/_/g')
 	RUN cat config.json.template | \
+        sed -e "s/VERSION/${VERSION}/g" | \
 		sed -e "s/PACKAGE-NAME/${UNDERSCORE_PACKAGE_NAME}/g" > python-config.json
     SAVE ARTIFACT python-config.json
 

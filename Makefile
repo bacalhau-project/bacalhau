@@ -89,7 +89,7 @@ endif
 ################################################################################
 .PHONY: build-python-apiclient
 build-python-apiclient:
-	cd python && ${MAKE} clean && ${EARTHLY} --push +all
+	cd clients && ${MAKE} clean all
 	@echo "Python API client built."
 
 ################################################################################

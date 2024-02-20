@@ -13,7 +13,7 @@
 from setuptools import setup, find_packages  # noqa: H301
 
 NAME = "bacalhau_apiclient"
-VERSION = "VERSION"
+VERSION = ""
 # To install the library, run the following
 #
 # python setup.py install
