@@ -65,6 +65,8 @@ dist/
 # Auto generated below
 clients/python/bacalhau_apiclient
 clients/python/docs
+clients/test
+clients/python/test
 
 .arg
 .secret

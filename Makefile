@@ -40,6 +40,7 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
+export MAKE := $(shell command -v make 2> /dev/null)
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
@@ -76,7 +77,7 @@ precommit:
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
-	cd python && make pre-commit
+	cd python && ${MAKE} pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
@@ -88,7 +89,7 @@ endif
 ################################################################################
 .PHONY: build-python-apiclient
 build-python-apiclient:
-	cd clients && ${MAKE} clean all
+	cd python && ${MAKE} clean && ${EARTHLY} --push +all
 	@echo "Python API client built."
 
 ################################################################################
@@ -289,7 +290,7 @@ test: unit-test bash-test
 .PHONY: test-python
 test-python:
 # sdk tests
-	cd python && make test
+	cd python && ${MAKE} test
 
 .PHONY: integration-test
 integration-test:
