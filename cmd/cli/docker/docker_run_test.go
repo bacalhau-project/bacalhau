@@ -833,3 +833,50 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	s.Require().Equal(expectedTimeout, j.Spec.GetTimeout())
 }
+
+func (s *DockerRunSuite) TestRun_NoPublisher() {
+	ctx := context.Background()
+
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "ubuntu", "echo", "'hello world'")
+	s.Require().NoError(err)
+
+	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
+	s.T().Log(job)
+
+	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
+	s.Require().NoError(err)
+	s.T().Log(info)
+
+	s.Require().Len(info.State.Executions, 1)
+
+	exec := info.State.Executions[0]
+	result := exec.PublishedResult
+	s.Require().Equal("unknown", result.StorageSource.String())
+	s.Require().Empty(result.URL, "Did not expect a URL")
+	s.Require().Empty(result.CID, "Did not expect a CID")
+	s.Require().Empty(result.S3, "Did not expect S3 details")
+
+}
+
+func (s *DockerRunSuite) TestRun_LocalPublisher() {
+	ctx := context.Background()
+
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "-p", "local", "ubuntu", "echo", "'hello world'")
+	s.Require().NoError(err)
+
+	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
+	s.T().Log(job)
+
+	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
+	s.Require().NoError(err)
+	s.T().Log(info)
+
+	s.Require().Len(info.State.Executions, 1)
+
+	exec := info.State.Executions[0]
+	result := exec.PublishedResult
+	s.Require().Equal(model.StorageSourceURLDownload, result.StorageSource)
+	s.Require().Contains(result.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
+	s.Require().Contains(result.URL, fmt.Sprintf("%s.tgz", exec.ID().ExecutionID), "URL does not contain expected file")
+
+}

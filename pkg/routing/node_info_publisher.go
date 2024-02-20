@@ -96,6 +96,8 @@ func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval 
 	ticker := time.NewTicker(interval)
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 			func() {
 				ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoPublisher.publishBackgroundTask") //nolint:govet
@@ -103,14 +105,16 @@ func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval 
 
 				err := n.Publish(ctx)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("failed to publish node info")
+					if err == context.Canceled {
+						log.Ctx(ctx).Debug().Msg("gracefully shutting down ipfs node due to context cancellation")
+					} else {
+						log.Ctx(ctx).Err(err).Msg("failed to publish node info")
+					}
 				}
 			}()
 		case <-n.stopChannel:
 			log.Ctx(ctx).Debug().Msg("stopped publishing node info")
 			ticker.Stop()
-			return
-		case <-ctx.Done():
 			return
 		}
 	}

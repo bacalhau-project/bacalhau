@@ -68,6 +68,7 @@ func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
+		LocalPublisher:               cfg.LocalPublisher,
 	})
 }
 

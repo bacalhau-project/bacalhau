@@ -1,11 +1,14 @@
 package node
 
 import (
+	"path"
 	"runtime"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -27,6 +30,9 @@ var DefaultComputeConfig = ComputeConfigParams{
 
 	LogRunningExecutionsInterval: 10 * time.Second,
 	JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
+	LocalPublisher: types.LocalPublisherConfig{
+		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
+	},
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{

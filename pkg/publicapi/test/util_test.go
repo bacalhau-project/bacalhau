@@ -11,9 +11,9 @@ import (
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -41,7 +41,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
-	libp2pPort, err := freeport.GetFreePort()
+	libp2pPort, err := network.GetFreePort()
 	require.NoError(t, err)
 
 	privKey, err := config.GetLibp2pPrivKey()
