@@ -33,14 +33,18 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 }
 
 type SpecFlagSettings struct {
-	Publisher     opts.PublisherOpt // Publisher - publisher.Publisher
-	Inputs        opts.StorageOpt   // Array of inputs
-	OutputVolumes []string          // Array of output volumes in 'name:mount point' form
-	EnvVar        []string          // Array of environment variables
-	Timeout       int64             // Job execution timeout in seconds
-	Labels        []string          // Labels for the job on the Bacalhau network (for searching)
-	Selector      string            // Selector (label query) to filter nodes on which this job can be executed
-	DoNotTrack    bool
+	Publisher              opts.PublisherOpt // Publisher - publisher.Publisher
+	Inputs                 opts.StorageOpt   // Array of inputs
+	OutputVolumes          []string          // Array of output volumes in 'name:mount point' form
+	EnvVar                 []string          // Array of environment variables
+	Timeout                int64             // Job execution timeout in seconds
+	SchedulingTimeout      int64             // Scheduling timeout in seconds
+	RetryDelay             int64             // Initial delay between retries in seconds
+	MaximumRetryDelay      int64             // Maximum delay between retries in seconds
+	RetryDelayGrowthFactor float64           // Factor to multiply the retry delay by after each failure
+	Labels                 []string          // Labels for the job on the Bacalhau network (for searching)
+	Selector               string            // Selector (label query) to filter nodes on which this job can be executed
+	DoNotTrack             bool
 }
 
 func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
@@ -77,6 +81,30 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		"timeout",
 		settings.Timeout,
 		`Job execution timeout in seconds (e.g. 300 for 5 minutes)`,
+	)
+	flags.Int64Var(
+		&settings.SchedulingTimeout,
+		"scheduling-timeout",
+		settings.SchedulingTimeout,
+		`Job scheduling timeout in seconds (e.g. 300 for 5 minutes)`,
+	)
+	flags.Int64Var(
+		&settings.RetryDelay,
+		"retry-delay",
+		settings.RetryDelay,
+		`Initial job scheduling retry delay in seconds`,
+	)
+	flags.Int64Var(
+		&settings.MaximumRetryDelay,
+		"maximum-retry-delay",
+		settings.MaximumRetryDelay,
+		`Maximum job scheduling retry delay in seconds (eg, 60 for 1 minute)`,
+	)
+	flags.Float64Var(
+		&settings.RetryDelayGrowthFactor,
+		"retry-delay-growth-factor",
+		settings.RetryDelayGrowthFactor,
+		`Factor to increase job scheduling retry by after each failure`,
 	)
 	flags.StringSliceVarP(
 		&settings.Labels,
