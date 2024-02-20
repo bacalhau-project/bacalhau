@@ -3,9 +3,12 @@ package test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
@@ -29,8 +32,11 @@ func setupNodeForTest(t *testing.T) (*node.Node, *client.Client) {
 }
 
 func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, *client.Client) {
-	fsRepo := setup.SetupBacalhauRepoForTesting(t)
+	repo := setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
+
+	repoPath, err := repo.Path()
+	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
@@ -56,9 +62,19 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		require.NoError(t, err)
 	}
 
-	computeConfig, err := node.NewComputeConfigWithDefaults()
+	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(repoPath, "jobs.db"))
 	require.NoError(t, err)
-	requesterConfig, err := node.NewRequesterConfigWithDefaults()
+
+	executionStore, err := boltdb.NewStore(ctx, filepath.Join(repoPath, "executions.db"))
+	require.NoError(t, err)
+
+	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		ExecutionStore: executionStore,
+	})
+	require.NoError(t, err)
+	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+		JobStore: jobStore,
+	})
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
@@ -73,7 +89,6 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		IsComputeNode:             true,
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
-		FsRepo:                    fsRepo,
 		NodeInfoStoreTTL:          10 * time.Minute,
 		NetworkConfig: node.NetworkConfig{
 			Type:       networkType,
