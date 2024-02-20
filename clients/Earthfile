@@ -25,13 +25,10 @@ install-codegen:
 
 update-templates:
     FROM +install-codegen
-    ARG PACKAGE_NAME
+    ARG --required PACKAGE_NAME
     RUN echo "PACKAGE_NAME=${PACKAGE_NAME}"
 
     COPY config.json.template .
-
-    # If PACKAGE_NAME is not set, exit 1 and print an error message
-    RUN test -n "${PACKAGE_NAME}" || (echo "PACKAGE_NAME is not set" && exit 1)
 
     LET UNDERSCORE_PACKAGE_NAME=$(echo "${PACKAGE_NAME}" | sed 's/-/_/g')
 	RUN cat config.json.template | \
@@ -53,49 +50,47 @@ fix-swagger-spec:
 
 generate-python-client:
     FROM +fix-swagger-spec
+    ARG --required VERSION
+    COPY ./pyproject.toml.template .
+
 	RUN rm -rf python/ && java -jar ${HOME}/bin/swagger-codegen-cli.jar generate \
             -i ./swagger-edited.json \
             -l python \
             -o python/ \
             -c python-config.json \
             --remove-operation-id-prefix=true
+
+	# patch package version
+	RUN cat pyproject.toml.template | sed -e "s/VERSION/${VERSION}/g" > python/pyproject.toml
+	# patch README
+	RUN cat python/README.md | sed -e "s/Python 2.7 and 3.4+/Python 3.6+/g" | tee python/README.md
+
     SAVE ARTIFACT python/ AS LOCAL python
     SAVE ARTIFACT python-config.json AS LOCAL python-config.json
 
-all:
+pypi-build:
     FROM +generate-python-client
     BUILD +generate-python-client
+    RUN cd python && python3 -m pip install --upgrade build && python3 -m build
+    SAVE ARTIFACT python/dist/* AS LOCAL python/dist
+
+pypi-upload:
+    FROM +pypi-build
+    BUILD +pypi-build
+    ARG --required PYPI_TOKEN
+
+    RUN python3 -m pip install --upgrade twine
+    RUN python3 -m twine upload \
+        --non-interactive \
+        --disable-progress-bar \
+        --skip-existing \
+        -u __token__ -p ${PYPI_TOKEN} \
+        dist/*
+    RUN echo "Package uploaded to PyPI"
+
+all:
+    FROM +pypi-build
+    BUILD +pypi-build
     SAVE ARTIFACT python AS LOCAL python
     SAVE ARTIFACT python-config.json AS LOCAL python-config.json
-
-# .PHONY: all
-# all: python-config.json python/ pypi-build
-
-# 	# patch package version
-# 	cat pyproject.toml.template | sed -e "s/VERSION/${VERSION}/g" > python/pyproject.toml
-# 	# patch README
-# 	cat python/README.md | sed -e "s/Python 2.7 and 3.4+/Python 3.6+/g" | tee python/README.md
-
-# 	# clean up
-# 	rm -rf python/test
-# 	rm ./swagger-edited*.json || true
-# 	rm python/git_push.sh || true
-# 	rm python/.travis.yml || true
-# 	rm pyproject.toml || true
-# 	cp ../LICENSE python/LICENSE
-
-
-# pypi-build: python/
-# 	cd python && python3 -m pip install --upgrade build && python3 -m build
-
-# .SILENT: pypi-upload
-# pypi-upload:
-# 	cd python && \
-# 	python3 -m pip install --upgrade twine && \
-# 	python3 -m twine upload \
-# 		--non-interactive \
-# 		--disable-progress-bar \
-# 		--skip-existing \
-# 		-u __token__ -p ${PYPI_TOKEN} \
-# 		dist/*
-# 	@echo "Package uploaded to PyPI"
+    SAVE ARTIFACT python/dist/* AS LOCAL python/dist/

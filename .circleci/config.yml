@@ -330,7 +330,7 @@ jobs:
           name: Build webui
           command: |
             cd webui
-            earthly --push --no-sat +all
+            earthly --push +all
       - persist_to_workspace:
           root: .
           paths:
@@ -421,7 +421,7 @@ jobs:
           name: Build Python API client
           command: make build-python-apiclient
       - persist_to_workspace:
-          root: clients/python/dist
+          root: clients/python/bacalhau-apiclient/dist
           paths:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
