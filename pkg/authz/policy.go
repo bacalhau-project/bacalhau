@@ -21,14 +21,20 @@ import (
 // permit access. This is typically provided by a policy with package name
 // `bacalhau.authz` and then by defining a rule `allow`. See
 // `policy_test_allow.rego` for a minimal example.
-const AuthzAllowRule = "bacalhau.authz.allow"
+//
+//nolint:gosec  // not hardcoded creds
+const (
+	AuthzAllowRule      = "bacalhau.authz.allow"
+	AuthzTokenValidRule = "bacalhau.authz.token_valid"
+)
 
 type policyAuthorizer struct {
 	policy *policy.Policy
 	keyset string
 	nodeID string
 
-	allowQuery policy.Query[authzData, bool]
+	allowQuery      policy.Query[authzData, bool]
+	tokenValidQuery policy.Query[authzData, bool]
 }
 
 type httpData struct {
@@ -58,9 +64,10 @@ var policies embed.FS
 // policy containing logic to make decisions about who should be authorized.
 func NewPolicyAuthorizer(authzPolicy *policy.Policy, key *rsa.PublicKey, nodeID string) Authorizer {
 	p := &policyAuthorizer{
-		policy:     authzPolicy,
-		nodeID:     nodeID,
-		allowQuery: policy.AddQuery[authzData, bool](authzPolicy, AuthzAllowRule),
+		policy:          authzPolicy,
+		nodeID:          nodeID,
+		allowQuery:      policy.AddQuery[authzData, bool](authzPolicy, AuthzAllowRule),
+		tokenValidQuery: policy.AddQuery[authzData, bool](authzPolicy, AuthzTokenValidRule),
 	}
 
 	if key != nil {
@@ -116,8 +123,13 @@ func (authorizer *policyAuthorizer) Authorize(req *http.Request) (Authorization,
 		},
 	}
 
+	tokenValid := true
 	approved, err := authorizer.allowQuery(req.Context(), in)
-	return Authorization{Approved: approved}, err
+	if !approved && err == nil {
+		tokenValid, err = authorizer.tokenValidQuery(req.Context(), in)
+	}
+
+	return Authorization{Approved: approved, TokenValid: tokenValid || approved}, err
 }
 
 // AlwaysAllowPolicy is a policy that will always permit access, irrespective of
