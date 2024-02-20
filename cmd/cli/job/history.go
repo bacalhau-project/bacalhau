@@ -91,6 +91,10 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
 	},
 	{
+		ColumnConfig: table.ColumnConfig{Name: "Eval. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.EvaluationID) },
+	},
+	{
 		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
 	},
@@ -104,7 +108,10 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 			if j.Type == models.JobHistoryTypeJobLevel {
 				return j.JobState.Previous.String()
 			}
-			return j.ExecutionState.Previous.String()
+			if j.Type == models.JobHistoryTypeExecutionLevel {
+				return j.ExecutionState.Previous.String()
+			}
+			return ""
 		},
 	},
 	{
@@ -113,7 +120,10 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 			if j.Type == models.JobHistoryTypeJobLevel {
 				return j.JobState.New.String()
 			}
-			return j.ExecutionState.New.String()
+			if j.Type == models.JobHistoryTypeExecutionLevel {
+				return j.ExecutionState.New.String()
+			}
+			return j.EvaluationStatus
 		},
 	},
 

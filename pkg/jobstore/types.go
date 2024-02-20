@@ -4,8 +4,9 @@ package jobstore
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
@@ -171,11 +172,12 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 }
 
 type JobHistoryFilterOptions struct {
-	Since                 int64  `json:"since"`
-	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
-	ExcludeJobLevel       bool   `json:"exclude_job_level"`
-	ExecutionID           string `json:"execution_id"`
-	NodeID                string `json:"node_id"`
+	Since                  int64  `json:"since"`
+	ExcludeEvaluationLevel bool   `json:"exclude_evaluation_level"`
+	ExcludeExecutionLevel  bool   `json:"exclude_execution_level"`
+	ExcludeJobLevel        bool   `json:"exclude_job_level"`
+	ExecutionID            string `json:"execution_id"`
+	NodeID                 string `json:"node_id"`
 }
 
 type GetExecutionsOptions struct {

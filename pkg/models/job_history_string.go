@@ -11,11 +11,12 @@ func _() {
 	_ = x[JobHistoryTypeUndefined-0]
 	_ = x[JobHistoryTypeJobLevel-1]
 	_ = x[JobHistoryTypeExecutionLevel-2]
+	_ = x[JobHistoryTypeEvaluationLevel-3]
 }
 
-const _JobHistoryType_name = "UndefinedJobLevelExecutionLevel"
+const _JobHistoryType_name = "UndefinedJobLevelExecutionLevelEvaluationLevel"
 
-var _JobHistoryType_index = [...]uint8{0, 9, 17, 31}
+var _JobHistoryType_index = [...]uint8{0, 9, 17, 31, 46}
 
 func (i JobHistoryType) String() string {
 	if i < 0 || i >= JobHistoryType(len(_JobHistoryType_index)-1) {

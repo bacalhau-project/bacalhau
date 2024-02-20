@@ -10,26 +10,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
-	BucketJobs             = "jobs"
-	BucketJobExecutions    = "executions"
-	BucketJobEvaluations   = "evaluations"
-	BucketJobHistory       = "job_history"
-	BucketExecutionHistory = "execution_history"
+	BucketJobs              = "jobs"
+	BucketJobExecutions     = "executions"
+	BucketJobEvaluations    = "evaluations"
+	BucketJobHistory        = "job_history"
+	BucketExecutionHistory  = "execution_history"
+	BucketEvaluationHistory = "evaluation_history"
 
 	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
@@ -578,6 +580,7 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	return history, err
 }
 
+//nolint:gocyclo
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	var history []models.JobHistory
@@ -612,6 +615,29 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	if !options.ExcludeExecutionLevel {
 		// 	// Get the executions for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketExecutionHistory).Get(tx, false); err != nil {
+			return nil, err
+		} else {
+			err = bkt.ForEach(func(key []byte, data []byte) error {
+				var item models.JobHistory
+
+				err := b.marshaller.Unmarshal(data, &item)
+				if err != nil {
+					return err
+				}
+
+				history = append(history, item)
+				return nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if !options.ExcludeEvaluationLevel {
+		// Get the evaluations for this JobID
+		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketEvaluationHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
 			err = bkt.ForEach(func(key []byte, data []byte) error {
@@ -693,8 +719,10 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobHistory)); err != nil {
 			return err
 		}
-
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketExecutionHistory)); err != nil {
+			return err
+		}
+		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketEvaluationHistory)); err != nil {
 			return err
 		}
 	}
@@ -1028,6 +1056,35 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 	return nil
 }
 
+func (b *BoltJobStore) appendEvaluationHistory(tx *bolt.Tx, eval models.Evaluation) error {
+	historyEntry := models.JobHistory{
+		Type:             models.JobHistoryTypeEvaluationLevel,
+		JobID:            eval.JobID,
+		EvaluationID:     eval.ID,
+		EvaluationStatus: eval.Status,
+		Comment:          eval.Comment,
+		Time:             time.Unix(0, eval.ModifyTime),
+	}
+
+	data, err := b.marshaller.Marshal(historyEntry)
+	if err != nil {
+		return err
+	}
+
+	// Get the history bucket for this job ID, which involves potentially
+	// creating the bucket (evaluation_history.<jobid>)
+	if bkt, err := NewBucketPath(BucketJobs, eval.JobID, BucketEvaluationHistory).Get(tx, true); err != nil {
+		return err
+	} else {
+		seq := BucketSequenceString(tx, bkt)
+		if err = bkt.Put([]byte(seq), data); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // CreateEvaluation creates a new evaluation
 func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
@@ -1068,7 +1125,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 	if err != nil {
 		return err
 	}
-	return nil
+	return b.appendEvaluationHistory(tx, eval)
 }
 
 // GetEvaluation retrieves the specified evaluation

@@ -12,6 +12,7 @@ const (
 	JobHistoryTypeUndefined JobHistoryType = iota
 	JobHistoryTypeJobLevel
 	JobHistoryTypeExecutionLevel
+	JobHistoryTypeEvaluationLevel
 )
 
 func (s JobHistoryType) MarshalText() ([]byte, error) {
@@ -20,7 +21,7 @@ func (s JobHistoryType) MarshalText() ([]byte, error) {
 
 func (s *JobHistoryType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := JobHistoryTypeUndefined; typ <= JobHistoryTypeExecutionLevel; typ++ {
+	for typ := JobHistoryTypeUndefined; typ <= JobHistoryTypeEvaluationLevel; typ++ {
 		if strings.EqualFold(typ.String(), strings.TrimSpace(name)) {
 			*s = typ
 			return
@@ -41,13 +42,15 @@ type StateChange[StateType any] struct {
 // {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
-	Type           JobHistoryType                   `json:"Type"`
-	JobID          string                           `json:"JobID"`
-	NodeID         string                           `json:"NodeID,omitempty"`
-	ExecutionID    string                           `json:"ExecutionID,omitempty"`
-	JobState       *StateChange[JobStateType]       `json:"JobState,omitempty"`
-	ExecutionState *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
-	NewRevision    uint64                           `json:"NewRevision"`
-	Comment        string                           `json:"Comment,omitempty"`
-	Time           time.Time                        `json:"Time"`
+	Type             JobHistoryType                   `json:"Type"`
+	JobID            string                           `json:"JobID"`
+	NodeID           string                           `json:"NodeID,omitempty"`
+	ExecutionID      string                           `json:"ExecutionID,omitempty"`
+	EvaluationID     string                           `json:"EvaluationID,omitempty"`
+	EvaluationStatus string                           `json:"EvaluationStatus,omitempty"`
+	JobState         *StateChange[JobStateType]       `json:"JobState,omitempty"`
+	ExecutionState   *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
+	NewRevision      uint64                           `json:"NewRevision"`
+	Comment          string                           `json:"Comment,omitempty"`
+	Time             time.Time                        `json:"Time"`
 }
