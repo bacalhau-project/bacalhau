@@ -142,12 +142,11 @@ func proxyStreamingRequest[Request any, Response any](
 
 	return concurrency.AsyncChannelTransform[[]byte, Response](ctx, res, asyncRequestChanLen,
 		func(r []byte) (Response, error) {
-			response := new(Response)
-			err = json.Unmarshal(r, response)
-			if err != nil {
-				err = fmt.Errorf("%T: failed to decode response from node %s: %w", request.Body, request.TargetNodeID, err)
+			response := new(concurrency.AsyncResult[Response])
+			if err := json.Unmarshal(r, response); err != nil {
+				return *new(Response), fmt.Errorf("%T: failed to decode response from node %s: %w", request.Body, request.TargetNodeID, err)
 			}
-			return *response, err
+			return response.ValueOrError()
 		}), nil
 }
 

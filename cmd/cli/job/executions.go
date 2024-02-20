@@ -67,39 +67,57 @@ func NewExecutionCmd() *cobra.Command {
 	return nodeCmd
 }
 
-var executionColumns = []output.TableColumn[*models.Execution]{
-	{
+var (
+	executionColumnCreated = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Created", WidthMax: 8, WidthMaxEnforcer: output.ShortenTime},
 		Value:        func(e *models.Execution) string { return e.GetCreateTime().Format(time.DateTime) },
-	},
-	{
+	}
+	executionColumnModified = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Modified", WidthMax: 8, WidthMaxEnforcer: output.ShortenTime},
 		Value:        func(e *models.Execution) string { return e.GetModifyTime().Format(time.DateTime) },
-	},
-	{
+	}
+	executionColumnCreatedSince = output.TableColumn[*models.Execution]{
+		ColumnConfig: table.ColumnConfig{Name: "Created", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(e *models.Execution) string { return output.Elapsed(e.GetCreateTime()) },
+	}
+	executionColumnModifiedSince = output.TableColumn[*models.Execution]{
+		ColumnConfig: table.ColumnConfig{Name: "Modified", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(e *models.Execution) string { return output.Elapsed(e.GetModifyTime()) },
+	}
+	executionColumnID = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return idgen.ShortUUID(e.ID) },
-	},
-	{
+	}
+	executionColumnNodeID = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return idgen.ShortNodeID(e.NodeID) },
-	},
-	{
+	}
+	executionColumnRev = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return strconv.FormatUint(e.Revision, 10) },
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Compute\nState", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+	}
+	executionColumnState = output.TableColumn[*models.Execution]{
+		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return e.ComputeState.StateType.String() },
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Desired\nState", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+	}
+	executionColumnDesired = output.TableColumn[*models.Execution]{
+		ColumnConfig: table.ColumnConfig{Name: "Desired", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return e.DesiredState.StateType.String() },
-	},
-	{
+	}
+	executionColumnComment = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Comment", WidthMax: 40, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return e.ComputeState.Message },
-	},
+	}
+)
+
+var executionColumns = []output.TableColumn[*models.Execution]{
+	executionColumnCreated,
+	executionColumnModified,
+	executionColumnID,
+	executionColumnNodeID,
+	executionColumnRev,
+	executionColumnState,
+	executionColumnDesired,
 }
 
 func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) {

@@ -142,6 +142,10 @@ var LocalComputeConfig = types.ComputeConfig{
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
 	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "127.0.0.1",
+		Port:    6001,
+	},
 }
 
 var LocalRequesterConfig = types.RequesterConfig{

@@ -151,6 +151,10 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
 	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "127.0.0.1",
+		Port:    6001,
+	},
 }
 
 var DevelopmentRequesterConfig = types.RequesterConfig{

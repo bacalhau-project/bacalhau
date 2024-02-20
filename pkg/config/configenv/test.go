@@ -146,6 +146,10 @@ var TestingComputeConfig = types.ComputeConfig{
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
 	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "private",
+		Port:    6001,
+	},
 }
 
 var TestingRequesterConfig = types.RequesterConfig{

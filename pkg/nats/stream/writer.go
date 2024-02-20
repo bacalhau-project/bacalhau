@@ -29,12 +29,12 @@ func (w *Writer) Write(data []byte) (int, error) {
 		Data: data,
 	}
 
-	data, err := json.Marshal(msg)
+	msgData, err := json.Marshal(msg)
 	if err != nil {
 		return 0, fmt.Errorf("error encoding streaming data: %s", err)
 	}
 
-	return len(data), w.client.Conn.Publish(w.subject, data)
+	return len(msgData), w.client.Conn.Publish(w.subject, msgData)
 }
 
 // WriteObject writes an object to the stream.
