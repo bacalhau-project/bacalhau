@@ -15,7 +15,7 @@ all:
 
 .PHONY: clean
 clean:
-	$(RM) -r ./python
+	$(RM) -rf ./python
 	$(RM) -f python-config.json
 	$(RM) -f ./swagger-edited*.json
 	mkdir -p python
