@@ -159,6 +159,10 @@ Furthermore, the container itself is about 15GB, so it might take a while to dow
 :::
 ### Structure of the command
 
+:::warning
+Some of the jobs presented in the Examples section may require more resources than are currently available on the demo network. Consider [starting your own network](../../../setting-up/running-node/) or running less resource-intensive jobs on the demo network
+:::
+
 1. `export JOB_ID=$( ... )`: Export results of a command execution as environment variable
 1. `bacalhau docker run`: Run a job using docker executor.
 1. `--id-only`: Flag to print out only the job id
