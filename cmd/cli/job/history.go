@@ -88,11 +88,11 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortID(j.ExecutionID) },
+		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortID(j.NodeID) },
+		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},

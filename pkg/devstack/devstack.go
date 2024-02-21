@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -270,7 +274,6 @@ func Setup(
 			DisabledFeatures:          stackConfig.DisabledFeatures,
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
-			FsRepo:                    fsRepo,
 			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
 			NetworkConfig:             clusterConfig,
 			AuthConfig: types.AuthConfig{
@@ -299,6 +302,12 @@ func Setup(
 			}
 		}
 
+		// Create dedicated store paths for each node
+		err = setStorePaths(ctx, fsRepo, &nodeConfig)
+		if err != nil {
+			return nil, err
+		}
+
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
@@ -324,6 +333,35 @@ func Setup(
 		Nodes:          nodes,
 		PublicIPFSMode: stackConfig.PublicIPFSMode,
 	}, nil
+}
+
+func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.NodeConfig) error {
+	nodeID := nodeConfig.NodeID
+	repoPath, err := fsRepo.Path()
+	if err != nil {
+		return err
+	}
+	orchestratorStoreRootPath := filepath.Join(repoPath, config.OrchestratorStorePath)
+	computeStoreRootPath := filepath.Join(repoPath, config.ComputeStorePath)
+	if err := os.MkdirAll(orchestratorStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("failed to create orchestrator store root path: %w", err)
+	}
+	if err := os.MkdirAll(computeStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("failed to create compute store root path: %w", err)
+	}
+	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorStoreRootPath, fmt.Sprintf("jobstore-%s.db", nodeID)))
+	if err != nil {
+		return fmt.Errorf("failed to create job store: %w", err)
+	}
+
+	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
+	if err != nil {
+		return fmt.Errorf("failed to create execution store: %w", err)
+	}
+
+	nodeConfig.RequesterNodeConfig.JobStore = jobStore
+	nodeConfig.ComputeConfig.ExecutionStore = executionStore
+	return nil
 }
 
 func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, port int) (host.Host, error) {

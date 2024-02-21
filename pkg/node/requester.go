@@ -30,7 +30,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -56,7 +55,6 @@ func NewRequesterNode(
 	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore,
-	fsRepo *repo.FsRepo,
 	computeProxy compute.Endpoint,
 ) (*Requester, error) {
 	// prepare event handlers
@@ -67,10 +65,7 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(ctx, nodeID)
-	if err != nil {
-		return nil, err
-	}
+	jobStore := requesterConfig.JobStore
 
 	// compute node discoverer
 	nodeDiscoveryChain := discovery.NewChain(true)
@@ -296,7 +291,7 @@ func NewRequesterNode(
 		requesterAPIServer,
 	)
 
-	// A single cleanup function to make sure the order of closing dependencies is correct
+	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
 		housekeeping.Stop()

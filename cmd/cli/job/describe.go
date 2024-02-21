@@ -178,7 +178,7 @@ func (o *DescribeOptions) printOutputs(cmd *cobra.Command, executions []*models.
 			if len(outputs) == 1 {
 				cmd.Print(out)
 			} else {
-				cmd.Printf("%sExecution %s:\n%s", separator, idgen.ShortID(id), out)
+				cmd.Printf("%sExecution %s:\n%s", separator, idgen.ShortUUID(id), out)
 			}
 			separator = "\n"
 		}

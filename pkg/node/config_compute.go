@@ -72,6 +72,8 @@ type ComputeConfigParams struct {
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
 
+	ExecutionStore store.ExecutionStore
+
 	LocalPublisher types.LocalPublisherConfig
 }
 
@@ -200,6 +202,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
+		ExecutionStore:               params.ExecutionStore,
 		LocalPublisher:               params.LocalPublisher,
 	}
 
