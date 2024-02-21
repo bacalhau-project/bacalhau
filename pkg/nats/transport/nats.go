@@ -87,8 +87,7 @@ type NATSTransport struct {
 }
 
 func NewNATSTransport(ctx context.Context,
-	config NATSTransportConfig,
-	nodeInfoStore routing.NodeInfoStore) (*NATSTransport, error) {
+	config NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
@@ -153,16 +152,6 @@ func NewNATSTransport(ctx context.Context,
 		return nil, err
 	}
 
-	if config.IsRequesterNode {
-		// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
-		nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-		nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
-		err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// compute proxy
 	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
 		Conn: nc.Client,
@@ -185,6 +174,17 @@ func NewNATSTransport(ctx context.Context,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
 	}, nil
+}
+
+func (t *NATSTransport) GetConnectionInfo(ctx context.Context) interface{} {
+	return t.natsClient.Client.ConnectedUrl()
+}
+
+func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {
+	// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](infostore.Add))
+	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
 
 // RegisterComputeCallback registers a compute callback with the transport layer.
