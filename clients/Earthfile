@@ -72,7 +72,7 @@ pypi-build:
     FROM +generate-python-client
     BUILD +generate-python-client
     RUN cd python && python3 -m pip install --upgrade build && python3 -m build
-    SAVE ARTIFACT python/dist/* AS LOCAL python/dist
+    SAVE ARTIFACT python/dist/* AS LOCAL python/dist/
 
 pypi-upload:
     FROM +pypi-build
