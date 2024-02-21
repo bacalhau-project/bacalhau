@@ -1,6 +1,6 @@
 PACKAGE_NAME := bacalhau-apiclient
 SWAGGER_JSON := ../docs/swagger.json
-VERSION ?= $${PYPI_VERSION}
+VERSION ?= $${PYPI_VERSION} || $$(git describe --tags --always --dirty)
 EARTHLY := $(shell command -v earthly --push 2> /dev/null)
 MAKE := $(shell command -v make 2> /dev/null)
 CP := $(shell command -v cp 2> /dev/null)

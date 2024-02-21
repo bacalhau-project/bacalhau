@@ -108,6 +108,14 @@ build-bacalhau-airflow:
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
 
+################################################################################
+# Target: build-bacalhau-flyte
+################################################################################
+.PHONY: build-bacalhau-flyte
+build-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} clean all
+	@echo "Python bacalhau-flyte built."
+
 # Builds all python packages
 ################################################################################
 # Target: build-python

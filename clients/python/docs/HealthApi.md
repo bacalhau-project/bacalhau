@@ -4,8 +4,8 @@ All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**api_serverdebug**](HealthApi.md#api_serverdebug) | **GET** /debug | Returns debug information on what the current node is doing.
-[**debug**](HealthApi.md#debug) | **GET** /requester/debug | Returns debug information on what the current node is doing.
+[**api_serverdebug**](HealthApi.md#api_serverdebug) | **GET** /api/v1/compute/debug | Returns debug information on what the current node is doing.
+[**debug**](HealthApi.md#debug) | **GET** /api/v1/requester/debug | Returns debug information on what the current node is doing.
 
 # **api_serverdebug**
 > str api_serverdebug()

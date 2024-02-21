@@ -3,11 +3,11 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**builddate** | **str** |  | [optional]
-**gitcommit** | **str** |  | [optional]
-**gitversion** | **str** |  | [optional]
+**build_date** | **str** |  | [optional]
 **goarch** | **str** |  | [optional]
 **goos** | **str** |  | [optional]
+**git_commit** | **str** |  | [optional]
+**git_version** | **str** |  | [optional]
 **major** | **str** |  | [optional]
 **minor** | **str** |  | [optional]
 
