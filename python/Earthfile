@@ -63,3 +63,9 @@ publish:
         RUN poetry config repositories.test-pypi https://test.pypi.org/legacy/
         RUN --secret PYPI_TOKEN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN  -r test-pypi
     END
+
+all:
+    FROM +publish
+    BUILD +publish
+    SAVE ARTIFACT /code/dist AS LOCAL dist
+```

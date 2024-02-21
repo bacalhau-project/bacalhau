@@ -97,7 +97,7 @@ build-python-apiclient:
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
-	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
+	cd python && ${MAKE} clean all
 	@echo "Python SDK built."
 
 ################################################################################

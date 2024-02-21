@@ -433,8 +433,7 @@ jobs:
             - bacalhau_sdk-*.whl
       - run:
           name: Build the airflow integration
-          command: |
-            make build-bacalhau-airflow
+          command: make build-bacalhau-airflow
       - persist_to_workspace:
           root: integration/airflow/dist
           paths:
