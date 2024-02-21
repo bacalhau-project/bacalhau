@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	// RepoVersion2 is the current repo versioning.
+	// RepoVersion3 is the current repo versioning.
+	RepoVersion3 = 3
+	// RepoVersion2 is the repo versioning up to v1.2.1
 	RepoVersion2 = 2
-	// RepoVersion1 is the current repo versioning for v1-v1.1.4
+	// RepoVersion1 is the repo versioning for v1-v1.1.4
 	RepoVersion1 = 1
 	// RepoVersionFile is the name of the repo file containing the repo version.
 	RepoVersionFile = "repo.version"
@@ -19,7 +21,7 @@ const (
 
 // IsValidVersion returns true if the version is valid.
 func IsValidVersion(version int) bool {
-	return version == RepoVersion1 || version == RepoVersion2
+	return version >= RepoVersion1 && version <= RepoVersion3
 }
 
 type RepoVersion struct {

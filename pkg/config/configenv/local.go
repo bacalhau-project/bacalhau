@@ -29,6 +29,7 @@ var Local = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
 			Host: "0.0.0.0",
 			Port: 1234,

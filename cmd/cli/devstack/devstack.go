@@ -208,11 +208,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig()
+	computeConfig, err := serve.GetComputeConfig(ctx)
 	if err != nil {
 		return err
 	}
-	requesterConfig, err := serve.GetRequesterConfig()
+	requesterConfig, err := serve.GetRequesterConfig(ctx)
 	if err != nil {
 		return err
 	}

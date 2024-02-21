@@ -4,8 +4,6 @@ package compute
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -16,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 )
 
 type AsyncBidSuite struct {
@@ -33,17 +30,14 @@ func TestAsyncBidSuite(t *testing.T) {
 	suite.Run(t, new(AsyncBidSuite))
 }
 
-func (s *AsyncBidSuite) SetupSuite() {
+func (s *AsyncBidSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.ComputeSuite.SetupSuite()
+	s.setupConfig()
 	s.strategy = bidstrategy.NewFixedBidStrategy(true, true)
 	s.config.BidSemanticStrategy = s.strategy
 	s.config.BidResourceStrategy = s.strategy
 
-	dir, _ := os.MkdirTemp("", "bacalhau-test")
-	tempFile := filepath.Join(dir, "test.boltdb")
-
-	s.store, _ = boltdb.NewStore(s.ctx, tempFile)
+	s.store = s.config.ExecutionStore
 	s.callbackStore = &CallbackStore{}
 	s.callbackStore.GetExecutionFn = s.store.GetExecution
 	s.callbackStore.GetExecutionsFn = s.store.GetExecutions
@@ -55,10 +49,7 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
 	s.callbackStore.CloseFn = s.store.Close
 	s.config.ExecutionStore = s.callbackStore
-}
-
-func (s *AsyncBidSuite) TearDownSuite() {
-	s.store.Close(s.ctx)
+	s.setupNode()
 }
 
 func (s *AsyncBidSuite) TestAsyncApproval() {
