@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 // BatchServiceJobScheduler is a scheduler for:
@@ -129,6 +130,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 			JobID:        job.ID,
 			Job:          job,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
+			EvalID:       plan.EvalID,
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
