@@ -216,7 +216,7 @@ func defaultStationLogging() io.Writer {
 }
 
 func loggerWithNodeID(nodeID string) zerolog.Logger {
-	return log.With().Str(nodeIDFieldName, idgen.ShortID(nodeID)).Logger()
+	return log.With().Str(nodeIDFieldName, idgen.ShortNodeID(nodeID)).Logger()
 }
 
 // ContextWithNodeIDLogger will return a context with nodeID is added to the logging context.

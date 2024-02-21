@@ -12,7 +12,7 @@ type JobStoreConfig struct {
 	Path string      `yaml:"Path"`
 }
 
-//go:generate stringer -type=StorageType -linecomment
+//go:generate stringer -type=StorageType
 type StorageType int64
 
 const (

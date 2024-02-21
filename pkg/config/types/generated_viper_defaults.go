@@ -25,6 +25,8 @@ func SetDefaults(cfg BacalhauConfig, opts ...SetOption) {
 	}
 
 	p.Viper.SetDefault(Node, cfg.Node)
+	p.Viper.SetDefault(NodeName, cfg.Node.Name)
+	p.Viper.SetDefault(NodeNameProvider, cfg.Node.NameProvider)
 	p.Viper.SetDefault(NodeClientAPI, cfg.Node.ClientAPI)
 	p.Viper.SetDefault(NodeClientAPIHost, cfg.Node.ClientAPI.Host)
 	p.Viper.SetDefault(NodeClientAPIPort, cfg.Node.ClientAPI.Port)
@@ -208,6 +210,8 @@ func Set(cfg BacalhauConfig, opts ...SetOption) {
 	}
 
 	p.Viper.Set(Node, cfg.Node)
+	p.Viper.Set(NodeName, cfg.Node.Name)
+	p.Viper.Set(NodeNameProvider, cfg.Node.NameProvider)
 	p.Viper.Set(NodeClientAPI, cfg.Node.ClientAPI)
 	p.Viper.Set(NodeClientAPIHost, cfg.Node.ClientAPI.Host)
 	p.Viper.Set(NodeClientAPIPort, cfg.Node.ClientAPI.Port)
