@@ -25,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -63,7 +62,6 @@ type NodeConfig struct {
 	AllowListedLocalPaths       []string
 	NodeInfoStoreTTL            time.Duration
 
-	FsRepo        *repo.FsRepo
 	NetworkConfig NetworkConfig
 }
 
@@ -250,7 +248,6 @@ func NewNode(
 			storageProviders,
 			authenticators,
 			nodeInfoStore,
-			config.FsRepo,
 			transportLayer.ComputeProxy(),
 		)
 		if err != nil {
@@ -286,14 +283,12 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			config.CleanupManager,
-			config.NetworkConfig.Libp2pHost,
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
 			storageProviders,
 			executors,
 			publishers,
-			config.FsRepo,
 			transportLayer.CallbackProxy(),
 		)
 		if err != nil {
@@ -360,10 +355,10 @@ func NewNode(
 		return nil
 	})
 
-	// cleanup libp2p resources in the desired order
+	// Cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(ctx)
+			computeNode.Cleanup(ctx)
 		}
 		if requesterNode != nil {
 			requesterNode.cleanup(ctx)

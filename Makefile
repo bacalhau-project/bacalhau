@@ -168,8 +168,8 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
-build-webui: $(WEB_INSTALL_GUARD) $(WEB_SRC_FILES)
-	cd webui && ${EARTHLY} +all
+build-webui:
+	cd webui && ${EARTHLY} --push +all
 
 
 ################################################################################
@@ -181,7 +181,7 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################

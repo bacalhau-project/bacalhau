@@ -7,14 +7,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
+func SetupMigrationManager() (*repo.MigrationManager, error) {
+	return repo.NewMigrationManager(
+		migrations.V1Migration,
+		migrations.V2Migration,
+	)
+}
+
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
 func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
-	fsRepo, err := repo.NewFS(repoDir)
+	migrationManger, err := SetupMigrationManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create migration manager: %w", err)
+	}
+	fsRepo, err := repo.NewFS(repo.FsRepoParams{
+		Path:       repoDir,
+		Migrations: migrationManger,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}

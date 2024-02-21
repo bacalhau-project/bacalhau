@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewFS(t *testing.T) {
-	repo, err := NewFS(t.TempDir() + t.Name())
+	repo, err := NewFS(FsRepoParams{Path: t.TempDir() + t.Name()})
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 

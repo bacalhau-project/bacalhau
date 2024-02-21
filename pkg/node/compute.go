@@ -21,11 +21,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
@@ -48,27 +46,15 @@ func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	cleanupManager *system.CleanupManager,
-	host host.Host,
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
-	fsRepo *repo.FsRepo,
 	computeCallback compute.Callback,
 ) (*Compute, error) {
-	var executionStore store.ExecutionStore
-	// create the execution store
-	if config.ExecutionStore == nil {
-		var err error
-		executionStore, err = fsRepo.InitExecutionStore(ctx, nodeID)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		executionStore = config.ExecutionStore
-	}
+	executionStore := config.ExecutionStore
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -235,7 +221,7 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// A single cleanup function to make sure the order of closing dependencies is correct
+	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		executionStore.Close(ctx)
 		resultsPath.Close()
@@ -263,6 +249,6 @@ func NewComputeNode(
 	}, nil
 }
 
-func (c *Compute) cleanup(ctx context.Context) {
+func (c *Compute) Cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
 }
