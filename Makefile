@@ -165,7 +165,6 @@ build-dev: build-ci
 ################################################################################
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
 build-webui:
