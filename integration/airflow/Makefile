@@ -1,6 +1,7 @@
 .PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black setup
 .DEFAULT_GOAL := help
 VERSION ?= $${PYPI_VERSION}
+EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -53,12 +54,7 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-lint/flake8: ## check style with flake8
-	flake8 bacalhau_airflow tests
-lint/black: ## check style with black
-	black --check bacalhau_airflow tests
-
-lint: lint/flake8 lint/black ## check style
+lint: ruff --fix ## check style
 
 test: ## run tests quickly with the default Python
 	python3 setup.py test
@@ -75,21 +71,18 @@ coverage: ## check code coverage quickly with the default Python
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/bacalhau_airflow.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ bacalhau_airflow
 	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
+	$(EARTHLY) --push +make-docs
 
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
 .SILENT: release
 release: ## upload a release
-	twine upload --verbose dist/* -u __token__ -p ${PYPI_TOKEN}
+	$(EARTHLY) --push +release
 
 dist: clean ## builds source and wheel package
-	python3 setup.py sdist
-	python3 setup.py bdist_wheel
-	ls -l dist
+	$(EARTHLY) --push +dist
 
 install: clean ## install the package to the active Python's site-packages
 	pip3 install .

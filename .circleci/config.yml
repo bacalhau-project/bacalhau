@@ -635,8 +635,8 @@ jobs:
       - run:
           name: Release python Airflow integration
           command: |
-            python -m poetry run pip install twine==4.0.2
-            python -m poetry run make release-bacalhau-airflow
+            export RELEASE_PYTHON_PACKAGES=1
+            make dist
       - run:
           name: Release python Flyte integration
           command: |
