@@ -271,13 +271,11 @@ jobs:
     executor: linux-amd64
     steps:
       - checkout
-
+      - install_earthly
       - attach_workspace:
           at: .
-
       - install_go:
           executor: linux-amd64
-
       - run:
           name: Build tarball
           command: |
