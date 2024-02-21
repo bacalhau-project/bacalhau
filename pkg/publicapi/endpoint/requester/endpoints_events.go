@@ -3,11 +3,13 @@ package requester
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
-	"github.com/labstack/echo/v4"
 )
 
 // @ID				pkg/requester/publicapi/events
@@ -40,9 +42,13 @@ func (s *Endpoint) events(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	legacyEvents := make([]model.JobHistory, len(events))
-	for i := range events {
-		legacyEvents[i] = *legacy.ToLegacyJobHistory(&events[i])
+	legacyEvents := make([]model.JobHistory, 0, len(events))
+	for _, e := range events {
+		if e.Type != models.JobHistoryTypeJobLevel &&
+			e.Type != models.JobHistoryTypeExecutionLevel {
+			continue
+		}
+		legacyEvents = append(legacyEvents, legacy.ToLegacyJobHistory(e))
 	}
 
 	return c.JSON(http.StatusOK, legacymodels.EventsResponse{

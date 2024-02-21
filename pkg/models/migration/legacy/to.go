@@ -251,8 +251,8 @@ func ToLegacyRunCommandResult(result *models.RunCommandResult) *model.RunCommand
 }
 
 // ToLegacyJobHistory converts a models.JobHistory to a model.JobHistory
-func ToLegacyJobHistory(history *models.JobHistory) *model.JobHistory {
-	return &model.JobHistory{
+func ToLegacyJobHistory(history models.JobHistory) model.JobHistory {
+	return model.JobHistory{
 		Type:             ToLegacyJobHistoryType(history.Type),
 		JobID:            history.JobID,
 		NodeID:           history.NodeID,
