@@ -68,4 +68,3 @@ all:
     FROM +publish
     BUILD +publish
     SAVE ARTIFACT /code/dist AS LOCAL dist
-```
