@@ -5,7 +5,7 @@ sidebar_position: 6
 # Stable Diffusion on a GPU
 
 
-This example tutorial demonstrates how to use stable diffusion on a GPU and run it on the [Bacalhau](https://www.bacalhau.org/) network. [Stable Diffusion](https://github.com/CompVis/stable-diffusion) is a state of the art text-to-image model that generates images from text and was developed as an open-source alternative to [DALL·E 2](https://openai.com/dall-e-2/). It is based on a [Diffusion Probabilistic Model](https://arxiv.org/abs/2102.09672) and uses a [Transformer](https://arxiv.org/abs/1706.03762) to generate images from text.
+This example tutorial demonstrates how to use stable diffusion on a GPU and run it on the [Bacalhau](https://www.bacalhau.org/) demo network. [Stable Diffusion](https://github.com/CompVis/stable-diffusion) is a state of the art text-to-image model that generates images from text and was developed as an open-source alternative to [DALL·E 2](https://openai.com/dall-e-2/). It is based on a [Diffusion Probabilistic Model](https://arxiv.org/abs/2102.09672) and uses a [Transformer](https://arxiv.org/abs/1706.03762) to generate images from text.
 
 ## TL;DR
 
@@ -173,7 +173,7 @@ The following presents additional parameters you can try:
 
 - `python main.py --p "cat with three eyes`  - to set prompt
 
-- `python main.py --p "cat with three eyes --n 100` - to set the number of iterations to 100
+- `python main.py --p "cat with three eyes" --n 100` - to set the number of iterations to 100
 
 -  `python stable-diffusion.py --p "cat with three eyes" --b 2` to set batch size to 2 (No of images to generate)
 
