@@ -536,7 +536,7 @@ jobs:
       - select_earthly_satellite
       - run:
           command: |
-            earthly --push +test-python-sdk
+            earthly --push +run-unittest
 
 
   test_python_airflow:
@@ -546,7 +546,7 @@ jobs:
       - install_python
       - run:
           working_directory: integration/airflow
-          command: python -m poetry run make setup test-all
+          command: earthly --push +run-tests
 
   test_python_flyte:
     executor: linux-amd64
