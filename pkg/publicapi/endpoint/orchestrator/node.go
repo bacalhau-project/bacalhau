@@ -3,11 +3,13 @@ package orchestrator
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 func (e *Endpoint) getNode(c echo.Context) error {
@@ -24,6 +26,7 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	})
 }
 
+//nolint:gocyclo // cyclomatic complexity is high here becomes of the complex sorting logic
 func (e *Endpoint) listNodes(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.ListNodesRequest
@@ -48,26 +51,43 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	}
 
 	// parse order_by
-	var sortFnc func(a, b *models.NodeInfo) bool
+	var sortFnc func(a, b *models.NodeInfo) int
 	switch args.OrderBy {
 	case "id", "":
-		sortFnc = func(a, b *models.NodeInfo) bool { return a.ID() < b.ID() }
+		sortFnc = func(a, b *models.NodeInfo) int { return util.Compare[string]{}.Cmp(a.ID(), b.ID()) }
 	case "type":
-		sortFnc = func(a, b *models.NodeInfo) bool { return a.NodeType < b.NodeType }
+		sortFnc = func(a, b *models.NodeInfo) int { return util.Compare[models.NodeType]{}.Cmp(a.NodeType, b.NodeType) }
 	case "available_cpu":
-		sortFnc = func(a, b *models.NodeInfo) bool { return capacity(a).CPU > capacity(b).CPU }
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[float64]{}.CmpRev(capacity(a).CPU, capacity(b).CPU)
+		}
 	case "available_memory":
-		sortFnc = func(a, b *models.NodeInfo) bool { return capacity(a).Memory > capacity(b).Memory }
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).Memory, capacity(b).Memory)
+		}
 	case "available_disk":
-		sortFnc = func(a, b *models.NodeInfo) bool { return capacity(a).Disk > capacity(b).Disk }
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).Disk, capacity(b).Disk)
+		}
 	case "available_gpu":
-		sortFnc = func(a, b *models.NodeInfo) bool { return capacity(a).GPU > capacity(b).GPU }
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
+		}
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
 	if args.Reverse {
 		baseSortFnc := sortFnc
-		sortFnc = func(a, b *models.NodeInfo) bool { return !baseSortFnc(a, b) }
+		sortFnc = func(a, b *models.NodeInfo) int {
+			x := baseSortFnc(a, b)
+			if x == -1 {
+				return 1
+			}
+			if x == 1 {
+				return -1
+			}
+			return 0
+		}
 	}
 
 	// query nodes
