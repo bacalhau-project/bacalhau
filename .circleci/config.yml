@@ -409,6 +409,7 @@ jobs:
       - checkout
       - install_python
       - install_earthly
+      - select_earthly_satellite
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:

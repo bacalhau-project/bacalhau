@@ -1,6 +1,10 @@
 .PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black setup
 .DEFAULT_GOAL := help
-VERSION ?= $${PYPI_VERSION}
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py))
+ifeq ($(VERSION),)
+	VERSION := 0.0.0+develop
+endif
+
 EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 
 define BROWSER_PYSCRIPT

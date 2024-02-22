@@ -7,8 +7,10 @@ and simply print that out.
 https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/control_flow/dynamics.html
 """
 
-from flytekit import dynamic, kwtypes, task, workflow
+from flytekit import workflow, task, dynamic, kwtypes
+
 from flytekitplugins.bacalhau import BacalhauTask
+
 
 bacalhau_task_1 = BacalhauTask(
     name="upstream_task",
@@ -76,10 +78,7 @@ def chain_jobs() -> str:
             PublisherSpec={"type": "IPFS"},
             docker={
                 "image": "ubuntu",
-                "entrypoint": [
-                    "echo",
-                    "Flyte is awesome and with Bacalhau it's even better!",
-                ],
+                "entrypoint": ["echo", "Flyte is awesome and with Bacalhau it's even better!"],
             },
             language={"job_context": None},
             wasm=None,
@@ -102,7 +101,6 @@ def chain_jobs() -> str:
 @workflow
 def wf():
     chain_jobs()
-
 
 if __name__ == "__main__":
     wf()

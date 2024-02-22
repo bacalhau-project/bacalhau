@@ -1,6 +1,6 @@
-from flytekit import kwtypes
 from flytekit.extend import Interface, PythonTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit import kwtypes
 
 
 class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
@@ -31,7 +31,7 @@ class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
                 spec=dict,
                 api_version=str,
             ),
-            outputs=kwtypes(results=str),
+            outputs=kwtypes(results=str)
         )
         print(f"executing BacalhauTask with name: {name}")
         super(BacalhauTask, self).__init__(

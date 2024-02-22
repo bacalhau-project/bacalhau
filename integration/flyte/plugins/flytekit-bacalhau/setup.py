@@ -1,5 +1,4 @@
 import os
-
 from setuptools import setup
 
 PLUGIN_NAME = "bacalhau"
@@ -29,7 +28,9 @@ setup(
     url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-...",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    namespace_packages=["flytekitplugins"],
+    namespace_packages=[
+        "flytekitplugins"
+    ],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
