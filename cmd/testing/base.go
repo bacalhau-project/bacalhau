@@ -114,7 +114,11 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 
 	s.T().Logf("Command to execute: %v", arguments)
 
+	util.TestError = nil
 	c, err = root.ExecuteC()
+	if err == nil {
+		err = util.TestError
+	}
 	return c, buf.String(), err
 }
 
