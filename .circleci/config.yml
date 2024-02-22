@@ -527,16 +527,17 @@ jobs:
           paths:
             - "*.coverage"
 
-  build_and_test_python_sdk:
+  test_python_sdk:
     executor: linux-amd64
     working_directory: ~/repo
     steps:
       - checkout
-      - install_python
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo/python
-          make_command: setup test
+      - install_earthly
+      - select_earthly_satellite
+      - run:
+          command: |
+            earthly --push +test-python-sdk
+
 
   test_python_airflow:
     executor: linux-amd64
@@ -734,7 +735,7 @@ workflows:
               - target_os: windows
                 target_arch: arm64
                 build_tags: integration
-      - build_and_test_python_sdk
+      - test_python_sdk
       - test_python_airflow
       - test_python_flyte
       - coverage:

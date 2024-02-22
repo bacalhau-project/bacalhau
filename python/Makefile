@@ -63,4 +63,10 @@ build:
 .SILENT: publish
 .PHONY: publish
 publish:
-	$(EARTHLY) --push +publish
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(PYPI_VERSION)" > .arg
+
+	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
+	python get_pypi_token.py
+
+	$(EARTHLY) --push +publish --PYPI_VERSION=$(PYPI_VERSION)

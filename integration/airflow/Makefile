@@ -29,7 +29,9 @@ export PRINT_HELP_PYSCRIPT
 
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
-all: lint dist
+all:
+	$(MAKE) clean && $(EARTHLY) --push +dist
+	@echo "Airflow plugin built."
 
 help:
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
@@ -58,12 +60,21 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-lint: ruff --fix ## check style
+lint:
+	$(EARTHLY) --push +run-lint
 
-test: ## run tests quickly with the default Python
+lint-local: ruff --fix ## check style locally (outside of Earthly)
+
+test:
+	$(EARTHLY) --push +run-tests
+
+test-local: ## run tests quickly with the default Python
 	python3 setup.py test
 
 test-all: ## run tests on every Python version with tox
+	$(EARTHLY) --push +run-tests
+
+test-all-local: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
@@ -75,7 +86,7 @@ coverage: ## check code coverage quickly with the default Python
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/bacalhau_airflow.rst
 	rm -f docs/modules.rst
-	$(MAKE) -C docs clean
+	$(MAKE) -C docs clean # clean the docs
 	$(EARTHLY) --push +make-docs
 
 servedocs: docs ## compile the docs watching for changes

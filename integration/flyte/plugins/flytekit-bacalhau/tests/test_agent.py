@@ -76,16 +76,26 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
         {},
     )
     s = struct_pb2.Struct()
-    s.update({
-        "key": "value",
-        "deal": {
-            "concurrency": 1.0,
+    s.update(
+        {
+            "key": "value",
+            "deal": {
+                "concurrency": 1.0,
+            },
         }
-    })
+    )
     task_inputs = literals.LiteralMap(
         {
-            "api_version": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-api-version"))),
-            "client_id": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-client-id"))),
+            "api_version": literals.Literal(
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="some-api-version")
+                )
+            ),
+            "client_id": literals.Literal(
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="some-client-id")
+                )
+            ),
             "spec": literals.Literal(scalar=literals.Scalar(generic=s)),
         },
     )
@@ -122,7 +132,8 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
     res = agent.get(ctx, metadata_bytes)
 
     assert (
-        res.resource.outputs.literals["results"].scalar.primitive.string_value == "dummy_cid"
+        res.resource.outputs.literals["results"].scalar.primitive.string_value
+        == "dummy_cid"
     )
     agent.delete(ctx, metadata_bytes)
     # mock_instance.cancel_job.assert_called()

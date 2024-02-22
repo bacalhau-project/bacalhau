@@ -294,8 +294,8 @@ test: unit-test bash-test
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
-.PHONY: test-python
-test-python:
+.PHONY: test-python-sdk
+test-python-sdk:
 # sdk tests
 	cd python && ${MAKE} test
 
@@ -325,7 +325,7 @@ test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-all
-test-all: test test-python
+test-all: test test-python-sdk
 	cd webui && yarn run build && yarn run lint && yarn run test
 
 ################################################################################

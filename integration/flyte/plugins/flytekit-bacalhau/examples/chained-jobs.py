@@ -78,7 +78,10 @@ def chain_jobs() -> str:
             PublisherSpec={"type": "IPFS"},
             docker={
                 "image": "ubuntu",
-                "entrypoint": ["echo", "Flyte is awesome and with Bacalhau it's even better!"],
+                "entrypoint": [
+                    "echo",
+                    "Flyte is awesome and with Bacalhau it's even better!",
+                ],
             },
             language={"job_context": None},
             wasm=None,
@@ -101,6 +104,7 @@ def chain_jobs() -> str:
 @workflow
 def wf():
     chain_jobs()
+
 
 if __name__ == "__main__":
     wf()

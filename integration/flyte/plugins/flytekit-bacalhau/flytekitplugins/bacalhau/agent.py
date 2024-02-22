@@ -73,18 +73,24 @@ class BacalhauAgent(AgentBase):
 
         self._logger.debug(f"create inputs.literals: {inputs.literals}")
         inputs_dict = {}
-        inputs_dict["api_version"] = inputs.literals.get("api_version").scalar.primitive.string_value
+        inputs_dict["api_version"] = inputs.literals.get(
+            "api_version"
+        ).scalar.primitive.string_value
         if inputs.literals.get("client_id") is not None:
             inputs_dict["client_id"] = inputs.literals.get("client_id").hash
         else:
             inputs_dict["client_id"] = get_client_id()
 
         # google.protobuf.struct_pb2.Struct
-        inputs_dict["spec"] = json_format.MessageToDict(inputs.literals.get("spec").scalar.generic)
+        inputs_dict["spec"] = json_format.MessageToDict(
+            inputs.literals.get("spec").scalar.generic
+        )
 
         # Patching: cannot unmarshal number 1.0 into Go struct field Deal.Spec.Deal.Concurrency of type int
         # https://stackoverflow.com/questions/74233385/protobuf-json-format-changes-datatype-from-int-to-float
-        inputs_dict["spec"]["deal"]["concurrency"] = int(inputs_dict["spec"]["deal"]["concurrency"])
+        inputs_dict["spec"]["deal"]["concurrency"] = int(
+            inputs_dict["spec"]["deal"]["concurrency"]
+        )
 
         if "annotations" in inputs_dict["spec"].keys():
             inputs_dict["spec"]["annotations"].append("flytekitplugins-bacalhau")
@@ -92,9 +98,9 @@ class BacalhauAgent(AgentBase):
             inputs_dict["spec"]["annotations"] = ["flytekitplugins-bacalhau"]
 
         submit_data = dict(
-                APIVersion=inputs_dict["api_version"],
-                ClientID=inputs_dict["client_id"],
-                Spec=inputs_dict["spec"],
+            APIVersion=inputs_dict["api_version"],
+            ClientID=inputs_dict["client_id"],
+            Spec=inputs_dict["spec"],
         )
         self._logger.debug(f"submit_data: {submit_data}")
         res = submit(submit_data)

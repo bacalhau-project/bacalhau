@@ -31,7 +31,7 @@ class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
                 spec=dict,
                 api_version=str,
             ),
-            outputs=kwtypes(results=str)
+            outputs=kwtypes(results=str),
         )
         print(f"executing BacalhauTask with name: {name}")
         super(BacalhauTask, self).__init__(
