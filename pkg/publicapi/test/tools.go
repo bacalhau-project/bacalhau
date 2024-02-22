@@ -14,7 +14,7 @@ import (
 const TimeToWaitForServerReply = 10 * time.Second
 const TimeToWaitForHealthy = 50 * time.Millisecond
 
-func WaitFor(ctx context.Context, c *client.Client, condition func(context.Context, *client.Client) bool) error {
+func WaitFor(ctx context.Context, c client.API, condition func(context.Context, client.API) bool) error {
 	ch := make(chan bool)
 	go func() {
 		for {
@@ -37,8 +37,8 @@ func WaitFor(ctx context.Context, c *client.Client, condition func(context.Conte
 }
 
 // WaitForAlive waits for the server to be alive
-func WaitForAlive(ctx context.Context, c *client.Client) error {
-	return WaitFor(ctx, c, func(ctx context.Context, apiClient *client.Client) bool {
+func WaitForAlive(ctx context.Context, c client.API) error {
+	return WaitFor(ctx, c, func(ctx context.Context, apiClient client.API) bool {
 		res, err := apiClient.Agent().Alive(ctx)
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to check if server is alive")
@@ -49,8 +49,8 @@ func WaitForAlive(ctx context.Context, c *client.Client) error {
 }
 
 // WaitForNodes waits for the server to be alive and for the node to discover itself
-func WaitForNodes(ctx context.Context, c *client.Client) error {
-	return WaitFor(ctx, c, func(ctx context.Context, apiClient *client.Client) bool {
+func WaitForNodes(ctx context.Context, c client.API) error {
+	return WaitFor(ctx, c, func(ctx context.Context, apiClient client.API) bool {
 		res, err := apiClient.Nodes().List(ctx, &apimodels.ListNodesRequest{})
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to list nodes. retrying...")

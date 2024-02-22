@@ -1,8 +1,12 @@
 package apimodels
 
 import (
+	"errors"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 )
+
+var ErrInvalidToken = errors.New("invalid token")
 
 type ListAuthnMethodsRequest struct {
 	BaseListRequest

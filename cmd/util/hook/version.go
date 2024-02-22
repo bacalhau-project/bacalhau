@@ -19,7 +19,7 @@ func StartUpdateCheck(cmd *cobra.Command, args []string) {
 	version.RunUpdateChecker(
 		cmd.Context(),
 		func(ctx context.Context) (*models.BuildVersionInfo, error) {
-			if response, err := util.GetAPIClientV2().Agent().Version(ctx); err != nil {
+			if response, err := util.GetAPIClientV2(cmd).Agent().Version(ctx); err != nil {
 				return nil, err
 			} else if response != nil {
 				return response.BuildVersionInfo, nil

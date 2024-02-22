@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/samber/lo"
+	"go.uber.org/multierr"
 )
 
 // The name of the rule that must be `true` for the authorization provider to
@@ -123,13 +124,9 @@ func (authorizer *policyAuthorizer) Authorize(req *http.Request) (Authorization,
 		},
 	}
 
-	tokenValid := true
-	approved, err := authorizer.allowQuery(req.Context(), in)
-	if !approved && err == nil {
-		tokenValid, err = authorizer.tokenValidQuery(req.Context(), in)
-	}
-
-	return Authorization{Approved: approved, TokenValid: tokenValid || approved}, err
+	approved, aErr := authorizer.allowQuery(req.Context(), in)
+	tokenValid, tvErr := authorizer.tokenValidQuery(req.Context(), in)
+	return Authorization{Approved: approved, TokenValid: tokenValid}, multierr.Append(aErr, tvErr)
 }
 
 // AlwaysAllowPolicy is a policy that will always permit access, irrespective of
