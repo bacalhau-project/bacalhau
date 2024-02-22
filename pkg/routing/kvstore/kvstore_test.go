@@ -170,28 +170,6 @@ func (s *KVNodeInfoStoreSuite) Test_Replace() {
 	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, allNodeInfos)
 }
 
-func (s *KVNodeInfoStoreSuite) Test_Eviction() {
-	// ttl := 1 * time.Second
-	// var err error
-	// s.store, err = kvstore.NewNodeStore(NodeInfoStoreParams{
-	// 	TTL: ttl,
-	// })
-	// ctx := context.Background()
-	// nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	// s.NoError(s.store.Add(ctx, nodeInfo0))
-
-	// // test Get
-	// res, err := s.store.Get(ctx, nodeInfo0.ID())
-	// s.NoError(err)
-	// s.Equal(nodeInfo0, res)
-
-	// // wait for eviction
-	// time.Sleep(ttl + 100*time.Millisecond)
-	// _, err = s.store.Get(ctx, nodeInfo0.ID())
-	// s.Error(err)
-	// s.IsType(routing.ErrNodeNotFound{}, err)
-}
-
 func generateNodeInfo(t *testing.T, peerID string, engines ...string) models.NodeInfo {
 	return models.NodeInfo{
 		NodeID:   peerID,
