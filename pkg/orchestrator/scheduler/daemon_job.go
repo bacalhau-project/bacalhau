@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 // DaemonJobScheduler is a scheduler for batch jobs that run until completion
@@ -103,6 +104,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
+			EvalID:       plan.EvalID,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),

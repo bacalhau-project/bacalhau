@@ -382,7 +382,7 @@ func NewIntMatch(nums ...int) IntMatch {
 }
 
 func (i IntMatch) Match(v int) bool {
-	return slices.Contains[int](i.numbers, v)
+	return slices.Contains(i.numbers, v)
 }
 
 func (i IntMatch) String() string {
