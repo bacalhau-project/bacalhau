@@ -6,8 +6,10 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/pkg/errors"
 )
 
 type tokens map[string]string
@@ -17,14 +19,14 @@ func readTokens(path string) (tokens, error) {
 	if os.IsNotExist(err) {
 		return map[string]string{}, nil
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error opening file")
 	}
 	defer closer.CloseWithLogOnError(path, file)
 
 	var t tokens
 	err = json.NewDecoder(file).Decode(&t)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error decoding JSON")
 	}
 
 	return t, nil
@@ -40,20 +42,36 @@ func writeTokens(path string, t tokens) error {
 	return json.NewEncoder(file).Encode(t)
 }
 
-func ReadToken(apiURL string) (string, error) {
+// Read the authorization crdential associated with the passed API base URL. If
+// there is no credential currently stored, ReadToken will return nil with no
+// error.
+func ReadToken(apiURL string) (*apimodels.HTTPCredential, error) {
 	path, err := config.Get[string](types.AuthTokensPath)
 	if err != nil {
-		return "", err
+		return nil, errors.Wrap(err, "failed to get token state path")
 	}
 
 	t, err := readTokens(path)
 	if err != nil {
-		return "", err
+		return nil, errors.Wrap(err, "failed to read tokens file")
 	}
-	return t[apiURL], nil
+
+	cred := &apimodels.HTTPCredential{
+		Scheme: "Bearer",
+		Value:  t[apiURL],
+	}
+
+	if cred.Value != "" {
+		return cred, nil
+	} else {
+		return nil, nil
+	}
 }
 
-func WriteToken(apiURL, token string) error {
+// Persistently store the authorization token against the passed API base URL.
+// Callers may pass nil for the credential which will delete any existing stored
+// token.
+func WriteToken(apiURL string, cred *apimodels.HTTPCredential) error {
 	path, err := config.Get[string](types.AuthTokensPath)
 	if err != nil {
 		return err
@@ -64,7 +82,11 @@ func WriteToken(apiURL, token string) error {
 		return err
 	}
 
-	t[apiURL] = token
+	if cred != nil {
+		t[apiURL] = cred.Value
+	} else {
+		delete(t, apiURL)
+	}
 
 	return writeTokens(path, t)
 }

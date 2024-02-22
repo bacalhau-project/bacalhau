@@ -25,7 +25,7 @@ func DownloadResultsHandler(
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
-	response, err := GetAPIClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
+	response, err := GetAPIClientV2(cmd).Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: jobID,
 	})
 	if err != nil {

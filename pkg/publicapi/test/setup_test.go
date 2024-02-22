@@ -20,11 +20,11 @@ import (
 type ServerSuite struct {
 	suite.Suite
 	server        *publicapi.Server
-	client        *client.Client
+	client        client.API
 	requesterNode *node.Node
 
 	computeNode   *node.Node
-	computeClient *client.Client
+	computeClient client.API
 }
 
 func (s *ServerSuite) SetupSuite() {

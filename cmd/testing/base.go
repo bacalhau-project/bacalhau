@@ -29,7 +29,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node     *node.Node
 	Client   *client.APIClient
-	ClientV2 *clientv2.Client
+	ClientV2 clientv2.API
 	Host     string
 	Port     uint16
 }

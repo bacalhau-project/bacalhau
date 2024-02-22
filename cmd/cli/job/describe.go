@@ -63,7 +63,7 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2().Jobs().Get(ctx, &apimodels.GetJobRequest{
+	response, err := util.GetAPIClientV2(cmd).Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
 		Include: "executions",
 	})

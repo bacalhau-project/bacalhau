@@ -6,11 +6,9 @@ import (
 
 // BaseRequest is the base request used for all requests
 type BaseRequest struct {
-	Namespace string            `query:"namespace"`
-	Headers   map[string]string `query:"-" json:"-"`
-
-	// A good place to define other fields that are common to all requests,
-	// such as auth tokens
+	Namespace  string            `query:"namespace"`
+	Headers    map[string]string `query:"-" json:"-"`
+	Credential *HTTPCredential   `header:"Authorization"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -21,11 +19,19 @@ func (o *BaseRequest) ToHTTPRequest() *HTTPRequest {
 		r.Params.Set("namespace", o.Namespace)
 	}
 
+	if o.Credential != nil {
+		r.Header.Set("Authorization", o.Credential.String())
+	}
+
 	for k, v := range o.Headers {
 		r.Header.Set(k, v)
 	}
 
 	return r
+}
+
+func (o *BaseRequest) SetCredential(cred *HTTPCredential) {
+	o.Credential = cred
 }
 
 // BasePutRequest is the base request used for all put requests
