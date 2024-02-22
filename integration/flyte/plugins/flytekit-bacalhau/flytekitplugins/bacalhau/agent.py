@@ -1,9 +1,11 @@
 import json
-import os
+import logging
 from dataclasses import asdict, dataclass
 from typing import Optional
 
 import grpc
+from bacalhau_sdk.api import results, submit
+from bacalhau_sdk.config import get_client_id
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -12,8 +14,6 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
-from google.protobuf import json_format
-
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
@@ -23,12 +23,7 @@ from flytekit.extend.backend.base_agent import (
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-
-
-from bacalhau_sdk.api import submit, results
-from bacalhau_sdk.config import get_client_id
-
-import logging
+from google.protobuf import json_format
 
 
 @dataclass

@@ -8,5 +8,5 @@
    BacalhauTask
 """
 
-from .agent import BacalhauAgent
-from .task import BacalhauTask
+from .agent import BacalhauAgent  # noqa F401
+from .task import BacalhauTask  # noqa F401
