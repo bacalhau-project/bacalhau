@@ -2,6 +2,14 @@ export GO = go
 export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+export SED = gsed
+endif
+ifeq ($(UNAME_S),Linux)
+export SED = sed
+endif
+
 ifeq ($(GOARCH),armv6)
 export GOARCH = arm
 export GOARM = 6
@@ -29,7 +37,7 @@ BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
-REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
+REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | $(SED) 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
@@ -48,7 +56,9 @@ endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
 # versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/([0-9]+)\.([0-9]+)\.([0-9]+)(-rc[0-9]+)(-.*)/\1.\2.\3.\4.dev\5.g\6/'))$(PYPI_VERSION)
+GIT_VERSION := $(shell git describe --tags --dirty)
+PYPI_VERSION ?= $(shell python3 scripts/convert_git_version_to_pep440_compatible.py $(GIT_VERSION))
+
 export PYPI_VERSION
 
 all: build
@@ -97,6 +107,8 @@ build-python-apiclient:
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
+	@echo "GIT_VERSION: $(GIT_VERSION)"
+	@echo "PYPI_VERSION: $(PYPI_VERSION)"
 	cd python && ${MAKE} clean all
 	@echo "Python SDK built."
 

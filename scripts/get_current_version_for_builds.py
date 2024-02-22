@@ -10,7 +10,7 @@
 import os
 
 
-def get_current_version_for_builds():
+def get_current_version_for_builds(for_python=False):
     # Get the current version from the environment variable
     version = os.environ.get("PYPI_VERSION")
     if version:
@@ -29,4 +29,12 @@ def get_current_version_for_builds():
     return "0.0.0-alpha.0"
 
 
-print(get_current_version_for_builds())
+if __name__ == "__main__":
+    # If there is a flag for --pep440, convert the version to PEP440 compatible version
+    # Otherwise, print the version as is. Use the convert_to_pep440 function from the
+    # convert_git_version_to_pep440_compatible.py script
+    v = get_current_version_for_builds()
+    if "--pep440" in os.sys.argv:
+        v = os.popen(f"python3 convert_git_version_to_pep440_compatible.py {v}")
+
+    print(v)

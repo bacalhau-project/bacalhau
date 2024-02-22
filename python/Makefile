@@ -2,9 +2,9 @@ export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 export POETRY ?= $(shell command -v poetry 2> /dev/null)
 
 # Should come from global make file
-PYPI_VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py))
-ifeq ($(VERSION),)
-	VERSION := 0.0.0+develop
+PYPI_VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py --pep440))
+ifeq ($(PYPI_VERSION),)
+	PYPI_VERSION := 0.0.0+develop
 endif
 
 sources = bacalhau_sdk

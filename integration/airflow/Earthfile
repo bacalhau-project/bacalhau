@@ -40,6 +40,10 @@ make-docs:
 
 dist:
     FROM +make-docs
+    ARG --required PYPI_VERSION
+    RUN echo "Building version ${PYPI_VERSION}"
+    ENV PYPI_VERSION=${PYPI_VERSION}
+
     RUN python3 setup.py sdist
 	RUN python3 setup.py bdist_wheel
 	RUN ls -l dist
@@ -54,7 +58,7 @@ release:
 
     ARG RELEASE_PYTHON_PACKAGES
     LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
-    IF [ $RELEASE_PYTHON_PACKAGES == 1 ]
+    IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
         RUN echo "Publishing to pypi.org"
         RUN REPOSITORY_FLAG = "" # Publish to default repository
     ELSE
