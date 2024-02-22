@@ -48,7 +48,7 @@ endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
 # versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$$/.dev0/'))$(PYPI_VERSION)
+PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/([0-9]+)\.([0-9]+)\.([0-9]+)(-rc[0-9]+)(-.*)/\1.\2.\3.\4.dev\5.g\6/'))$(PYPI_VERSION)
 export PYPI_VERSION
 
 all: build
