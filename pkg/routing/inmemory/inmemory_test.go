@@ -90,17 +90,17 @@ func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_NoMatch() {
 
 func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_ExpiredNode() {
 	ctx := context.Background()
+	store := inmemory.NewNodeStore(inmemory.NodeStoreParams{
+		TTL: 10 * time.Millisecond,
+	})
+
 	nodeInfo := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	s.NoError(s.store.Add(ctx, nodeInfo))
+	s.NoError(store.Add(ctx, nodeInfo))
 
-	// simulate expiration by directly manipulating the store's data
-	s.store.mu.Lock()
-	infoWrapper := s.store.nodeInfoMap[nodeInfo.ID()]
-	infoWrapper.evictAt = time.Now().Add(-time.Minute) // set eviction time in the past
-	s.store.nodeInfoMap[nodeInfo.ID()] = infoWrapper
-	s.store.mu.Unlock()
+	// Wait for the item to expire
+	time.Sleep(20 * time.Millisecond)
 
-	_, err := s.store.GetByPrefix(ctx, "QmdZQ7")
+	_, err := store.GetByPrefix(ctx, "QmdZQ7")
 	s.Error(err)
 	s.IsType(routing.ErrNodeNotFound{}, err)
 }
