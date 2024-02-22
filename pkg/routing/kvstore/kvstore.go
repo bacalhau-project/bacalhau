@@ -4,33 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
-type nodeInfoWrapper struct {
-	Node     models.NodeInfo
-	EvictAt  time.Time
-	Revision uint64
-}
-
 type NodeStoreParams struct {
-	TTL            time.Duration
+	BucketName     string
 	ConnectionInfo interface{}
 }
 
 type NodeStore struct {
-	ttl time.Duration
-	js  jetstream.JetStream
-	kv  jetstream.KeyValue
+	js jetstream.JetStream
+	kv jetstream.KeyValue
 }
 
 func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
@@ -40,6 +34,7 @@ func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
 	}
 
 	// The connection we get from NATS is thread-safe (see https://pkg.go.dev/github.com/nats-io/nats.go#Conn)
+	// so no need to wrap everything in a mutex
 	nc, err := nats.Connect(url)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to connect to nats network at %s", url))
@@ -50,17 +45,20 @@ func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
 		return nil, errors.Wrap(err, "failed to connect to jetstream")
 	}
 
+	bucketName := strings.ToLower(params.BucketName)
+	if bucketName == "" {
+		return nil, errors.New("bucket name is required")
+	}
 	kv, err := js.CreateKeyValue(context.Background(), jetstream.KeyValueConfig{
-		Bucket: "nodes",
+		Bucket: bucketName,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create key-value store")
 	}
 
 	return &NodeStore{
-		ttl: params.TTL,
-		js:  js,
-		kv:  kv,
+		js: js,
+		kv: kv,
 	}, nil
 }
 
@@ -70,13 +68,7 @@ func (n *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo
 
 // Add adds a node info to the repo.
 func (n *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
-	wrapper := nodeInfoWrapper{
-		Node:     nodeInfo,
-		EvictAt:  time.Now().Add(n.ttl),
-		Revision: 0,
-	}
-
-	data, err := json.Marshal(wrapper)
+	data, err := json.Marshal(nodeInfo)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal node info adding to node store")
 	}
@@ -96,22 +88,48 @@ func (n *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, er
 		if errors.Is(err, jetstream.ErrKeyNotFound) {
 			return models.NodeInfo{}, routing.NewErrNodeNotFound(nodeID)
 		}
+		fmt.Println(">?", err)
 		return models.NodeInfo{}, errors.Wrap(err, "failed to get node info from node store")
 	}
 
-	var info nodeInfoWrapper
-	err = json.Unmarshal(entry.Value(), &info)
+	var node models.NodeInfo
+	err = json.Unmarshal(entry.Value(), &node)
 	if err != nil {
 		return models.NodeInfo{}, errors.Wrap(err, "failed to unmarshal node info from node store")
 	}
 
-	return info.Node, nil
+	return node, nil
 }
 
 // GetByPrefix returns the node info for the given node ID.
-// Supports both full and short node IDs.
+// Supports both full and short node IDs band currently iterates through all of the
+// keys to find matches, due to NATS KVStore not supporting prefix searches (yet).
 func (n *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error) {
-	return models.NodeInfo{}, nil
+	keys, err := n.kv.Keys(ctx)
+	if err != nil {
+		if errors.Is(err, jetstream.ErrNoKeysFound) {
+			return models.NodeInfo{}, routing.NewErrNodeNotFound(prefix)
+		}
+		return models.NodeInfo{}, errors.Wrap(err, "failed to get by prefix when listing keys")
+	}
+
+	// Filter the list down to just the matching keys
+	keys = lo.Filter(keys, func(item string, index int) bool {
+		return strings.HasPrefix(item, prefix)
+	})
+
+	if len(keys) == 0 {
+		fmt.Println("No keys")
+		return models.NodeInfo{}, routing.NewErrNodeNotFound(prefix)
+	} else if len(keys) > 1 {
+		fmt.Println("Multiple keys")
+
+		return models.NodeInfo{}, routing.NewErrMultipleNodesFound(prefix, keys)
+	}
+
+	fmt.Println("One key")
+
+	return n.Get(ctx, keys[0])
 }
 
 // List returns a list of nodes
@@ -128,13 +146,13 @@ func (n *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	var errors *multierror.Error
 
 	nodes := make([]models.NodeInfo, len(keys))
-	for _, key := range keys {
+	for i, key := range keys {
 		node, err := n.Get(ctx, key)
 		if err != nil {
 			errors = multierror.Append(errors, err)
 		}
 
-		nodes = append(nodes, node)
+		nodes[i] = node
 	}
 
 	return nodes, errors.ErrorOrNil()

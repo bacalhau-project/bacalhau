@@ -5,7 +5,6 @@ package kvstore_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
 	natsserver "github.com/nats-io/nats-server/v2/test"
@@ -31,17 +30,16 @@ type KVNodeInfoStoreSuite struct {
 }
 
 func (s *KVNodeInfoStoreSuite) SetupTest() {
-	var err error
-
 	opts := &natsserver.DefaultTestOptions
 	opts.Port = TEST_PORT
 	opts.JetStream = true
+	opts.StoreDir = s.T().TempDir()
 
 	s.nats = natsserver.RunServer(opts)
 	serverAddress := s.nats.Addr().String()
 
 	s.store, _ = kvstore.NewNodeStore(kvstore.NodeStoreParams{
-		TTL:            1 * time.Hour,
+		BucketName:     "test_nodes",
 		ConnectionInfo: serverAddress,
 	})
 }
@@ -76,7 +74,6 @@ func (s *KVNodeInfoStoreSuite) Test_GetNotFound() {
 	_, err := s.store.Get(ctx, nodeIDs[0])
 	s.Error(err)
 	s.IsType(routing.ErrNodeNotFound{}, err)
-
 }
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_SingleMatch() {
@@ -101,8 +98,19 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_MultipleMatches() {
 	s.IsType(routing.ErrMultipleNodesFound{}, err)
 }
 
-func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch() {
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_Empty() {
 	ctx := context.Background()
+	_, err := s.store.GetByPrefix(ctx, "nonexistent")
+	s.Error(err)
+	s.IsType(routing.ErrNodeNotFound{}, err)
+}
+
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
+	ctx := context.Background()
+
+	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	s.NoError(s.store.Add(ctx, nodeInfo0))
+
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
 	s.IsType(routing.ErrNodeNotFound{}, err)
