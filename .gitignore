@@ -68,3 +68,5 @@ clients/python/docs
 
 .secret
 .arg
+
+.ruff_cache
