@@ -161,7 +161,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	if len(byteResult) == 0 {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad)
+		return fmt.Errorf("%s: job is empty", userstrings.JobSpecBad)
 	}
 
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
@@ -174,7 +174,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	// See if the job spec is empty
 	if j == nil || reflect.DeepEqual(j.Spec, &model.Job{}) {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad)
+		return fmt.Errorf("%s: job is empty", userstrings.JobSpecBad)
 	}
 
 	// Warn on fields with data that will be ignored

@@ -68,8 +68,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "build": "yarn build:dev",
-    "build:dev": "tsc && NODE_ENV=development vite build",
-    "build:prod": "tsc && NODE_ENV=production vite build",
+    "build:dev": "npx tsc && NODE_ENV=development vite build",
+    "build:prod": "npx tsc && NODE_ENV=production vite build",
     "start": "vite",
     "serve": "yarn start"
   },

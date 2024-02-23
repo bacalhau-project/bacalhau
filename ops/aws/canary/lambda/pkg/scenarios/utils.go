@@ -147,7 +147,7 @@ func getClient() *client.APIClient {
 	return client.NewAPIClient(legacyTLS, host, port)
 }
 
-func getClientV2() *clientv2.Client {
+func getClientV2() clientv2.API {
 	host, port := getClientHostAndPort()
 	return clientv2.New(fmt.Sprintf("http://%s:%d", host, port))
 }

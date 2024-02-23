@@ -128,6 +128,10 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
+	if len(multiAddresses) == 0 {
+		return nil, fmt.Errorf("no swarm addresses found")
+	}
+
 	// It's common for callers to this function to use the result to connect to another IPFS node.
 	// This sorts the addresses so IPv4 localhost is first, with the aim of using the localhost connection during tests
 	// and so avoid any unneeded network hops. Other callers to this either sort the list themselves or just output the

@@ -11,6 +11,9 @@ const (
 
 	// EvaluationIDPrefix is the prefix of evaluation ID.
 	EvaluationIDPrefix = "v-"
+
+	// NodeIDPrefix is the prefix of node ID.
+	NodeIDPrefix = "n-"
 )
 
 // newWithPrefix generates a new UUID with the given prefix.

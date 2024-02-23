@@ -18,6 +18,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
+// GetConfig returns the current resolved configuration from viper as a BacalhauConfig.
+// This is the resolved configuration after all configuration sources have been merged,
+// including the default configuration, the configuration file, environment variables, and flags.
+func GetConfig() (*types.BacalhauConfig, error) {
+	out := new(types.BacalhauConfig)
+	if err := viper.Unmarshal(&out, DecoderHook); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func ClientAPIPort() uint16 {
 	return uint16(viper.GetInt(types.NodeClientAPIPort))
 }

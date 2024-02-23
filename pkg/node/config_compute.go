@@ -3,17 +3,24 @@ package node
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
+
+const (
+	localPublishFolderPerm = 0755
 )
 
 // JobSelectionPolicy describe the rules for how a compute node selects an incoming job
@@ -63,8 +70,11 @@ type ComputeConfigParams struct {
 	FailureInjectionConfig model.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
-
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
+
+	ExecutionStore store.ExecutionStore
+
+	LocalPublisher types.LocalPublisherConfig
 }
 
 type ComputeConfig struct {
@@ -107,6 +117,8 @@ type ComputeConfig struct {
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
 
 	ExecutionStore store.ExecutionStore
+
+	LocalPublisher types.LocalPublisherConfig
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -128,6 +140,16 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	}
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
+	}
+
+	if params.LocalPublisher.Address == "" {
+		params.LocalPublisher.Address = DefaultComputeConfig.LocalPublisher.Address
+	}
+	if params.LocalPublisher.Directory == "" {
+		params.LocalPublisher.Directory = DefaultComputeConfig.LocalPublisher.Directory
+		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {
+			return ComputeConfig{}, errors.Wrap(err, "creating default local publisher directory")
+		}
 	}
 
 	// Get available physical resources in the host
@@ -180,6 +202,8 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
+		ExecutionStore:               params.ExecutionStore,
+		LocalPublisher:               params.LocalPublisher,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {

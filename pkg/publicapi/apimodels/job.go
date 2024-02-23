@@ -43,12 +43,29 @@ type PutJobResponse struct {
 
 type GetJobRequest struct {
 	BaseGetRequest
-	JobID string
+	JobID   string
+	Include string `query:"include" validate:"omitempty,oneof=history executions"`
+	Limit   uint32 `query:"limit"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *GetJobRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseGetRequest.ToHTTPRequest()
+
+	if o.Include != "" {
+		r.Params.Set("include", o.Include)
+	}
+	if o.Limit > 0 {
+		r.Params.Set("limit", strconv.FormatUint(uint64(o.Limit), 10))
+	}
+	return r
 }
 
 type GetJobResponse struct {
 	BaseGetResponse
-	Job *models.Job `json:"Job"`
+	Job        *models.Job                `json:"Job"`
+	History    *ListJobHistoryResponse    `json:"History,omitempty"`
+	Executions *ListJobExecutionsResponse `json:"Executions,omitempty"`
 }
 
 // Normalize is used to33 canonicalize fields in the GetJobResponse.
@@ -56,6 +73,12 @@ func (r *GetJobResponse) Normalize() {
 	r.BaseGetResponse.Normalize()
 	if r.Job != nil {
 		r.Job.Normalize()
+	}
+	if r.History != nil {
+		r.History.Normalize()
+	}
+	if r.Executions != nil {
+		r.Executions.Normalize()
 	}
 }
 

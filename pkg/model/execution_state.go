@@ -102,7 +102,7 @@ type ExecutionID struct {
 
 // String returns a string representation of the execution id
 func (e ExecutionID) String() string {
-	return fmt.Sprintf("%s:%s:%s", e.JobID, idgen.ShortID(e.NodeID), e.ExecutionID)
+	return fmt.Sprintf("%s:%s:%s", e.JobID, idgen.ShortNodeID(e.NodeID), e.ExecutionID)
 }
 
 type ExecutionState struct {

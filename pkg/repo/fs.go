@@ -23,18 +23,25 @@ const (
 	UpdateCheckStatePath = "update.json"
 )
 
-type FsRepo struct {
-	path string
+type FsRepoParams struct {
+	Path       string
+	Migrations *MigrationManager
 }
 
-func NewFS(path string) (*FsRepo, error) {
-	expandedPath, err := homedir.Expand(path)
+type FsRepo struct {
+	path       string
+	Migrations *MigrationManager
+}
+
+func NewFS(params FsRepoParams) (*FsRepo, error) {
+	expandedPath, err := homedir.Expand(params.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	return &FsRepo{
-		path: expandedPath,
+		path:       expandedPath,
+		Migrations: params.Migrations,
 	}, nil
 }
 
@@ -71,6 +78,11 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	return true, nil
 }
 
+// Version returns the version of the repo.
+func (fsr *FsRepo) Version() (int, error) {
+	return fsr.readVersion()
+}
+
 func (fsr *FsRepo) Init() error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -96,7 +108,7 @@ func (fsr *FsRepo) Init() error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.writeVersion(RepoVersion2)
+	return fsr.writeVersion(RepoVersion3)
 }
 
 func (fsr *FsRepo) Open() error {
@@ -107,14 +119,9 @@ func (fsr *FsRepo) Open() error {
 		return fmt.Errorf("repo does not exist")
 	}
 
-	if repoVersion, err := fsr.readVersion(); err != nil {
-		return fmt.Errorf("failed to read repo version: %w", err)
-	} else if repoVersion == RepoVersion1 {
-		if err := config.Migrate(fsr.path); err != nil {
-			return fmt.Errorf("failed to migrate config: %w", err)
-		}
-		if err := fsr.writeVersion(RepoVersion2); err != nil {
-			return fmt.Errorf("failed to update repo version: %w", err)
+	if fsr.Migrations != nil {
+		if err := fsr.Migrations.Migrate(*fsr); err != nil {
+			return fmt.Errorf("failed to migrate repo: %w", err)
 		}
 	}
 

@@ -40,14 +40,14 @@ func (e *LocalExecutionState) Normalize() {
 
 // string returns a string representation of the execution
 func (e *LocalExecutionState) String() string {
-	return fmt.Sprintf("{ID: %s, Job: %s}", e.Execution.ID, e.Execution.Job.ID)
+	return fmt.Sprintf("{ID: %s, Job: %s}", e.Execution.ID, e.Execution.JobID)
 }
 
 // ToSummary returns a summary of the execution
 func (e *LocalExecutionState) ToSummary() ExecutionSummary {
 	return ExecutionSummary{
 		ExecutionID:        e.Execution.ID,
-		JobID:              e.Execution.Job.ID,
+		JobID:              e.Execution.JobID,
 		State:              e.State.String(),
 		AllocatedResources: *e.Execution.AllocatedResources,
 	}

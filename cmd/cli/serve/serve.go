@@ -18,14 +18,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -95,6 +93,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"local_publisher":       configflags.LocalPublisherFlags,
 		"publishing":            configflags.PublishingFlags,
 		"requester-tls":         configflags.RequesterTLSFlags,
 		"server-api":            configflags.ServerAPIFlags,
@@ -112,6 +111,7 @@ func NewCmd() *cobra.Command {
 		"requester-store":       configflags.RequesterJobStorageFlags,
 		"web-ui":                configflags.WebUIFlags,
 		"node-info-store":       configflags.NodeInfoStoreFlags,
+		"node-name":             configflags.NodeNameFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
@@ -173,19 +173,16 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	fsRepo, err := repo.NewFS(repoDir)
+	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
-		return err
-	}
-	if err := fsRepo.Open(); err != nil {
 		return err
 	}
 
-	nodeID, err := getNodeID()
+	nodeName, err := getNodeID(ctx)
 	if err != nil {
 		return err
 	}
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
+	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
 	isRequesterNode, isComputeNode, err := getNodeType()
@@ -204,7 +201,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(nodeID)
+	networkConfig, err := getNetworkConfig(nodeName)
 	if err != nil {
 		return err
 	}
@@ -218,12 +215,12 @@ func serve(cmd *cobra.Command) error {
 		networkConfig.ClusterPeers = peers
 	}
 
-	computeConfig, err := GetComputeConfig()
+	computeConfig, err := GetComputeConfig(ctx)
 	if err != nil {
 		return err
 	}
 
-	requesterConfig, err := GetRequesterConfig()
+	requesterConfig, err := GetRequesterConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -247,7 +244,7 @@ func serve(cmd *cobra.Command) error {
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		NodeID:                nodeID,
+		NodeID:                nodeName,
 		CleanupManager:        cm,
 		IPFSClient:            ipfsClient,
 		DisabledFeatures:      featureConfig,
@@ -260,7 +257,6 @@ func serve(cmd *cobra.Command) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
-		FsRepo:                fsRepo,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
@@ -280,6 +276,11 @@ func serve(cmd *cobra.Command) error {
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
+	}
+
+	// Persist the node config after the node is created and its config is valid.
+	if err = persistConfigs(repoDir); err != nil {
+		return fmt.Errorf("error persisting configs: %w", err)
 	}
 
 	// Start node
@@ -381,20 +382,6 @@ func setupLibp2p() (libp2pHost host.Host, peers []string, err error) {
 		peers[i] = p.String()
 	}
 	return
-}
-
-func getNodeID() (string, error) {
-	// for now, use libp2p host ID as node ID, regardless of using NATS or Libp2p
-	// TODO: allow users to specify node ID
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return "", err
-	}
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	if err != nil {
-		return "", err
-	}
-	return peerID.String(), nil
 }
 
 func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {

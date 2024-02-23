@@ -192,7 +192,9 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 
 func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	executions, err := e.store.GetExecutions(ctx, request.JobID)
+	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: request.JobID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +255,9 @@ func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsReques
 		return GetResultsResponse{}, fmt.Errorf("job type %s does not support results", job.Type)
 	}
 
-	executions, err := e.store.GetExecutions(ctx, job.ID)
+	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
 	if err != nil {
 		return GetResultsResponse{}, err
 	}

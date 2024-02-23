@@ -3,7 +3,6 @@ package s3
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
@@ -52,7 +51,6 @@ type PublisherSpec struct {
 	Key      string `json:"Key"`
 	Endpoint string `json:"Endpoint"`
 	Region   string `json:"Region"`
-	Compress bool   `json:"Compress"`
 }
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
@@ -99,14 +97,6 @@ func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	inputParams := spec.Params
 	if inputParams == nil {
 		return PublisherSpec{}, fmt.Errorf("invalid publisher params. cannot be nil")
-	}
-
-	// convert compress to bool
-	if _, ok := inputParams["Compress"]; ok && reflect.TypeOf(inputParams["Compress"]).Kind() == reflect.String {
-		inputParams["Compress"] = inputParams["Compress"] == "true"
-	}
-	if _, ok := inputParams["compress"]; ok && reflect.TypeOf(inputParams["compress"]).Kind() == reflect.String {
-		inputParams["compress"] = inputParams["compress"] == "true"
 	}
 
 	var c PublisherSpec

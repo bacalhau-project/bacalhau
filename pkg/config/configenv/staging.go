@@ -30,6 +30,7 @@ var Staging = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.staging.bacalhau.org",
 			Port: 1234,
@@ -155,6 +156,10 @@ var StagingComputeConfig = types.ComputeConfig{
 	},
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
+	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "public",
+		Port:    6001,
 	},
 }
 

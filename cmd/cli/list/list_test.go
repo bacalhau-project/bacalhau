@@ -89,7 +89,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		var err error
 		j := testutils.MakeNoopJob(suite.T())
 		j, err = suite.Client.Submit(ctx, j)
-		jobIds = append(jobIds, idgen.ShortID(j.Metadata.ID))
+		jobIds = append(jobIds, idgen.ShortUUID(j.Metadata.ID))
 		jobLongIds = append(jobLongIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
@@ -262,7 +262,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					j := testutils.MakeNoopJob(suite.T())
 					j, err = suite.Client.Submit(ctx, j)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, idgen.ShortID(j.Metadata.ID))
+					jobIDs = append(jobIDs, idgen.ShortUUID(j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ
