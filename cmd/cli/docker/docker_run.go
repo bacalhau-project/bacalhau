@@ -212,7 +212,7 @@ func CreateJob(ctx context.Context, image string, parameters []string, opts *Doc
 		),
 		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
 		legacy_job.WithSchedulingTimeout(opts.SpecSettings.SchedulingTimeout),
-		legacy_job.WithRetryDelay(opts.SpecSettings.RetryDelay),
+		legacy_job.WithBaseRetryDelay(opts.SpecSettings.BaseRetryDelay),
 		legacy_job.WithMaximumRetryDelay(opts.SpecSettings.MaximumRetryDelay),
 		legacy_job.WithRetryDelayGrowthFactor(opts.SpecSettings.RetryDelayGrowthFactor),
 		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),

@@ -95,14 +95,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
 
 	// How many executions failed due to compute nodes rejecting bids?
-	rejectedExecutions := 0
-
-	for _, execution := range jobExecutions {
-		if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
-			// This execution was rejected by its compute node
-			rejectedExecutions++
-		}
-	}
+	rejected := existingExecs.filterRejected()
 
 	// If we have rejected executions, we need to retry in case the nodes accept
 	// them in future (eg, due to transient capacity issues). b.handleRetry()
@@ -111,15 +104,15 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// evaluation.TriggeredBy to see if we are being triggered by a deferred
 	// retry; and if so, we do NOT just defer a retry into the future, as
 	// otherwise we'd loop forever.
-	if (rejectedExecutions > 0) && evaluation.TriggeredBy != models.EvalTriggerDefer {
-		b.handleRetry(plan, &job, rejectedExecutions)
+	if (len(rejected) > 0) && evaluation.TriggeredBy != models.EvalTriggerDefer {
+		b.handleRetry(plan, &job, len(rejected))
 		return b.planner.Process(ctx, plan)
 	}
 
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
 	if remainingExecutionCount > 0 {
-		allFailed := existingExecs.filterFailed().union(lost)
+		allFailed := existingExecs.filterFailed().union(lost).union(rejected)
 		var placementErr error
 		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job}) {
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)

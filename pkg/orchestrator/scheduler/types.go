@@ -105,6 +105,11 @@ func (set execSet) filterFailed() execSet {
 	return set.filterByState(models.ExecutionStateFailed)
 }
 
+// filterRejected filters out non-rejected executions.
+func (set execSet) filterRejected() execSet {
+	return set.filterByState(models.ExecutionStateAskForBidRejected)
+}
+
 // filterOverSubscriptions partitions executions based on if they are more than the desired count.
 func (set execSet) filterByOverSubscriptions(desiredCount int) (remaining execSet, overSubscriptions execSet) {
 	remaining = make(execSet)
