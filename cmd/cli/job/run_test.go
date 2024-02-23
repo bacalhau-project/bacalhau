@@ -44,10 +44,11 @@ func (s *RunSuite) TestRun() {
 
 			fmt.Println(tc.Data)
 
-			require.NoError(s.T(), err, "Error submitting job")
 			if tc.Invalid {
+				require.Error(s.T(), err, "Should have seen error submitting job")
 				assert.Contains(s.T(), out, userstrings.JobSpecBad)
 			} else {
+				require.NoError(s.T(), err, "Error submitting job")
 				testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 			}
 		})

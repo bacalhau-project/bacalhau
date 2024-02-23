@@ -26,12 +26,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func setupNodeForTest(t *testing.T) (*node.Node, *client.Client) {
+func setupNodeForTest(t *testing.T) (*node.Node, client.API) {
 	// blank config should result in using defaults in node.Node constructor
 	return setupNodeForTestWithConfig(t, publicapi.Config{})
 }
 
-func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, *client.Client) {
+func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, client.API) {
 	repo := setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 

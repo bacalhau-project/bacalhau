@@ -13,8 +13,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
 type Config struct {
@@ -27,9 +25,6 @@ type Config struct {
 	// HTTPClient is the client to use. Default will be used if not provided.
 	// If set, other configuration options will be ignored, such as Timeout
 	HTTPClient *http.Client
-
-	// HTTPAuth is the auth info to use for http access.
-	HTTPAuth *apimodels.HTTPCredential
 
 	// Timeout is the timeout for requests.
 	Timeout time.Duration
@@ -107,13 +102,6 @@ func WithAppID(appID string) OptionFn {
 func WithHTTPClient(client *http.Client) OptionFn {
 	return func(o *Config) {
 		o.HTTPClient = client
-	}
-}
-
-// WithHTTPAuth sets the auth info to use for http access.
-func WithHTTPAuth(credential *apimodels.HTTPCredential) OptionFn {
-	return func(o *Config) {
-		o.HTTPAuth = credential
 	}
 }
 
