@@ -125,7 +125,7 @@ build-bacalhau-airflow:
 ################################################################################
 .PHONY: build-bacalhau-flyte
 build-bacalhau-flyte:
-	cd integration/flyte && ${MAKE} clean all
+	cd integration/flyte && ${MAKE} all
 	@echo "Python bacalhau-flyte built."
 
 # Builds all python packages
