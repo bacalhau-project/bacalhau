@@ -8,6 +8,7 @@ from airflow.models import BaseOperator
 from airflow.models.baseoperator import BaseOperatorLink
 from airflow.models.taskinstance import TaskInstanceKey
 from airflow.utils.context import Context
+
 from bacalhau_airflow.hooks import BacalhauHook
 
 

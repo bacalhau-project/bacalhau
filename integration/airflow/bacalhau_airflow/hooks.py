@@ -2,7 +2,6 @@
 Airflow hook to interact with the Bacalhau service.
 """
 from airflow.hooks.base import BaseHook
-
 from bacalhau_sdk.api import events, results, submit
 from bacalhau_sdk.config import get_client_id
 
