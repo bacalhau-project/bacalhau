@@ -8,6 +8,7 @@
 # The script should read from the entire codebase
 
 import os
+from pathlib import Path
 
 
 def get_current_version_for_builds(for_python=False):
@@ -35,6 +36,10 @@ if __name__ == "__main__":
     # convert_git_version_to_pep440_compatible.py script
     v = get_current_version_for_builds()
     if "--pep440" in os.sys.argv:
-        v = os.popen(f"python3 convert_git_version_to_pep440_compatible.py {v}")
+        current_directory = os.path.dirname(os.path.realpath(__file__))
+        convertor = (
+            Path(current_directory) / "convert_git_version_to_pep440_compatible.py"
+        )
+        v = os.popen(f"python3 {convertor} {v}").read().strip()
 
     print(v)

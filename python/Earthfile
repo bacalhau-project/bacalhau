@@ -51,18 +51,43 @@ build:
     RUN poetry build
     SAVE ARTIFACT /code/dist AS LOCAL dist
 
-publish:
+install-twine:
     FROM +build
     BUILD +build
+    RUN python3 -m pip install --upgrade twine
+
+publish:
+    FROM +install-twine
+    BUILD +install-twine
     ARG RELEASE_PYTHON_PACKAGES
-    IF [ $RELEASE_PYTHON_PACKAGES == 1 ]
+    LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
+    IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
         RUN echo "Publishing to pypi.org"
-        RUN --secret PYPI_TOKEN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN
+        RUN REPOSITORY_FLAG = "" # Publish to default repository
+        RUN --secret PYPI_TOKEN test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
+        RUN --secret PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${PYPI_TOKEN} \
+            --verbose \
+            dist/* \
+            ${REPOSITORY_FLAG}
     ELSE
         RUN echo "Publishing to test.pypi.org"
-        RUN poetry config repositories.test-pypi https://test.pypi.org/legacy/
-        RUN --secret PYPI_TOKEN poetry publish --no-interaction --skip-existing -u __token__ -p $PYPI_TOKEN  -r test-pypi
+        RUN --secret TEST_PYPI_TOKEN test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
+        RUN --secret TEST_PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${TEST_PYPI_TOKEN} \
+            --verbose \
+            dist/* \
+            ${REPOSITORY_FLAG}
     END
+
+    RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
+
 
 all:
     FROM +publish

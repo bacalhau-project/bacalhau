@@ -74,19 +74,43 @@ pypi-build:
     RUN cd python && python3 -m pip install --upgrade build && python3 -m build
     SAVE ARTIFACT python/dist/* AS LOCAL python/dist/
 
-pypi-upload:
+install-twine:
     FROM +pypi-build
     BUILD +pypi-build
-    ARG --required PYPI_TOKEN
-
     RUN python3 -m pip install --upgrade twine
-    RUN python3 -m twine upload \
-        --non-interactive \
-        --disable-progress-bar \
-        --skip-existing \
-        -u __token__ -p ${PYPI_TOKEN} \
-        dist/*
-    RUN echo "Package uploaded to PyPI"
+
+pypi-upload:
+    FROM +install-twine
+    BUILD +install-twine
+
+    ARG RELEASE_PYTHON_PACKAGES
+    LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
+    IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
+        RUN echo "Publishing to pypi.org"
+        RUN REPOSITORY_FLAG = "" # Publish to default repository
+        RUN --secret PYPI_TOKEN test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
+        RUN --secret PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${PYPI_TOKEN} \
+            --verbose \
+            python/dist/* \
+            ${REPOSITORY_FLAG}
+    ELSE
+        RUN echo "Publishing to test.pypi.org"
+        RUN --secret TEST_PYPI_TOKEN test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
+        RUN --secret TEST_PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${TEST_PYPI_TOKEN} \
+            --verbose \
+            python/dist/* \
+            ${REPOSITORY_FLAG}
+    END
+
+    RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
 
 all:
     FROM +pypi-build

@@ -1,8 +1,8 @@
 .PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black setup
 .DEFAULT_GOAL := help
-PYPI_VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py --pep440))
-ifeq ($(PYPI_VERSION),)
-	PYPI_VERSION := 0.0.0+develop
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../scripts/get_current_version_for_builds.py --pep440))
+ifeq ($(VERSION),)
+	VERSION := 0.0.0+develop
 endif
 
 EARTHLY ?= $(shell command -v earthly 2> /dev/null)
@@ -94,10 +94,10 @@ servedocs: docs ## compile the docs watching for changes
 
 .SILENT: release
 release: ## upload a release
-	$(EARTHLY) --push +release --PYPI_VERSION=${PYPI_VERSION}
+	$(EARTHLY) --push +release --PYPI_VERSION=${VERSION}
 
 dist: clean ## builds source and wheel package
-	$(EARTHLY) --push +dist --PYPI_VERSION=${PYPI_VERSION}
+	$(EARTHLY) --push +dist --PYPI_VERSION=${VERSION}
 
 install: clean ## install the package to the active Python's site-packages
 	pip3 install .
