@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -200,11 +201,23 @@ func NewNode(
 			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
 			AuthSecret:               config.NetworkConfig.AuthSecret,
 			Orchestrators:            config.NetworkConfig.Orchestrators,
+			StoreDir:                 config.NetworkConfig.StoreDir,
 			ClusterName:              config.NetworkConfig.ClusterName,
 			ClusterPort:              config.NetworkConfig.ClusterPort,
 			ClusterPeers:             config.NetworkConfig.ClusterPeers,
 			ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
 			IsRequesterNode:          config.IsRequesterNode,
+		}
+
+		// TODO: Make sure we have a valid default for `bacalhau serve`. Ideally we'd
+		// have a default which	would be easier if we could reference other values in
+		// configenv.
+		if natsConfig.StoreDir == "" {
+			tmpDir, err := os.MkdirTemp("", "nats")
+			if err != nil {
+				return nil, fmt.Errorf("error creating temp dir for nats store: %w", err)
+			}
+			natsConfig.StoreDir = tmpDir
 		}
 
 		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig)

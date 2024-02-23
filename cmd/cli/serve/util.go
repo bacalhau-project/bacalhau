@@ -228,6 +228,7 @@ func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 		Port:                     networkCfg.Port,
 		AdvertisedAddress:        networkCfg.AdvertisedAddress,
 		Orchestrators:            networkCfg.Orchestrators,
+		StoreDir:                 networkCfg.StoreDir,
 		AuthSecret:               networkCfg.AuthSecret,
 		ClusterName:              networkCfg.Cluster.Name,
 		ClusterPort:              networkCfg.Cluster.Port,

@@ -183,6 +183,8 @@ func Setup(
 			}
 
 			if isRequesterNode {
+				repoPath, _ := fsRepo.Path()
+				clusterConfig.StoreDir = filepath.Join(repoPath, "nats-storage")
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
 				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", swarmPort))

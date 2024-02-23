@@ -28,6 +28,7 @@ const (
 	// orchestrator paths
 	OrchestratorStorePath = "orchestrator_store"
 	AutoCertCachePath     = "autocert-cache"
+	NetworkTransportStore = "nats-store"
 
 	// update check paths
 	UpdateCheckStatePath = "update.json"
@@ -78,6 +79,7 @@ func getDefaultConfig(path string) types.BacalhauConfig {
 	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
+	defaultConfig.Node.Network.StoreDir = filepath.Join(path, NetworkTransportStore)
 
 	return defaultConfig
 }
