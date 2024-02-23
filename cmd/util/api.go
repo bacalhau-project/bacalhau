@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
@@ -16,7 +18,7 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
 	apiClient := client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort())
 
-	if token, err := getAuthToken(config.ClientAPIBase()); err != nil {
+	if token, err := ReadToken(config.ClientAPIBase()); err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
 	} else if token != nil {
 		apiClient.DefaultHeaders["Authorization"] = token.String()
@@ -25,7 +27,7 @@ func GetAPIClient(ctx context.Context) *client.APIClient {
 	return apiClient
 }
 
-func GetAPIClientV2() *clientv2.Client {
+func GetAPIClientV2(cmd *cobra.Command) clientv2.API {
 	base := config.ClientAPIBase()
 	tlsConfig := config.ClientTLSConfig()
 
@@ -45,23 +47,21 @@ func GetAPIClientV2() *clientv2.Client {
 		clientv2.WithHeaders(headers),
 	}
 
-	if token, err := getAuthToken(base); err != nil {
+	existingAuthToken, err := ReadToken(base)
+	if err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
-	} else if token != nil {
-		opts = append(opts, clientv2.WithHTTPAuth(token))
 	}
 
-	return clientv2.New(base, opts...)
-}
-
-func getAuthToken(baseURL string) (*apimodels.HTTPCredential, error) {
-	token, err := ReadToken(baseURL)
-	if token != "" {
-		return &apimodels.HTTPCredential{
-			Scheme: "Bearer",
-			Value:  token,
-		}, err
-	}
-
-	return nil, err
+	return clientv2.NewAPI(
+		&clientv2.AuthenticatingClient{
+			Client:     clientv2.NewHTTPClient(base, opts...),
+			Credential: existingAuthToken,
+			PersistCredential: func(cred *apimodels.HTTPCredential) error {
+				return WriteToken(base, cred)
+			},
+			Authenticate: func(a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
+				return auth.RunAuthenticationFlow(cmd, a)
+			},
+		},
+	)
 }

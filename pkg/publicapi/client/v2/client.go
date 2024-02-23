@@ -7,17 +7,22 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 )
 
-type Client struct {
-	address string
-
-	httpClient *http.Client
-	config     Config
+// Client is the object that makes transport-level requests to specified APIs.
+// Users should make use of the `API` object for a higher level interface.
+type Client interface {
+	Get(context.Context, string, apimodels.GetRequest, apimodels.GetResponse) error
+	List(context.Context, string, apimodels.ListRequest, apimodels.ListResponse) error
+	Put(context.Context, string, apimodels.PutRequest, apimodels.PutResponse) error
+	Post(context.Context, string, apimodels.PutRequest, apimodels.PutResponse) error
+	Delete(context.Context, string, apimodels.PutRequest, apimodels.Response) error
 }
 
-// New creates a new client.
-func New(address string, optFns ...OptionFn) *Client {
+// New creates a new transport.
+func NewHTTPClient(address string, optFns ...OptionFn) Client {
 	// define default filed on the config by setting them here, then
 	// modify with options to override.
 	var cfg Config
@@ -26,19 +31,28 @@ func New(address string, optFns ...OptionFn) *Client {
 	}
 
 	resolveHTTPClient(&cfg)
-	return &Client{
+	return &httpClient{
 		address:    address,
 		httpClient: cfg.HTTPClient,
 		config:     cfg,
 	}
 }
 
-// get is used to do a GET request against an endpoint
+type httpClient struct {
+	address string
+
+	httpClient *http.Client
+	config     Config
+}
+
+// Get is used to do a GET request against an endpoint
 // and deserialize the response into a response object
-func (c *Client) get(ctx context.Context, endpoint string, in apimodels.GetRequest, out apimodels.GetResponse) error {
+func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetRequest, out apimodels.GetResponse) error {
 	r := in.ToHTTPRequest()
 	_, resp, err := requireOK(c.doRequest(ctx, http.MethodGet, endpoint, r)) //nolint:bodyclose // this is being closed
-	if err != nil {
+	if err != nil && resp != nil && resp.StatusCode == http.StatusUnauthorized {
+		return apimodels.ErrInvalidToken
+	} else if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
@@ -54,14 +68,16 @@ func (c *Client) get(ctx context.Context, endpoint string, in apimodels.GetReque
 
 // write is used to do a write request against an endpoint
 // You probably want the delete, post, or put methods.
-func (c *Client) write(ctx context.Context, verb, endpoint string, in apimodels.PutRequest,
+func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimodels.PutRequest,
 	out apimodels.Response) error {
 	r := in.ToHTTPRequest()
 	if r.BodyObj == nil && r.Body == nil {
 		r.BodyObj = in
 	}
 	_, resp, err := requireOK(c.doRequest(ctx, verb, endpoint, r)) //nolint:bodyclose // this is being closed
-	if err != nil {
+	if err != nil && resp != nil && resp.StatusCode == http.StatusUnauthorized {
+		return apimodels.ErrInvalidToken
+	} else if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
@@ -75,32 +91,33 @@ func (c *Client) write(ctx context.Context, verb, endpoint string, in apimodels.
 	return nil
 }
 
-// list is used to do a GET request against an endpoint
+// List is used to do a GET request against an endpoint
 // and deserialize the response into a response object
-func (c *Client) list(ctx context.Context, endpoint string, in apimodels.ListRequest,
-	out apimodels.ListResponse) error {
-	return c.get(ctx, endpoint, in, out)
+func (c *httpClient) List(ctx context.Context, endpoint string, in apimodels.ListRequest, out apimodels.ListResponse) error {
+	return c.Get(ctx, endpoint, in, out)
 }
 
-// put is used to do a PUT request against an endpoint
-func (c *Client) put(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.PutResponse) error {
+// Put is used to do a PUT request against an endpoint
+func (c *httpClient) Put(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.PutResponse) error {
 	return c.write(ctx, http.MethodPut, endpoint, in, out)
 }
 
-// post is used to do a POST request against an endpoint
-//
-//nolint:unused
-func (c *Client) post(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.PutResponse) error {
+// Post is used to do a POST request against an endpoint
+func (c *httpClient) Post(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.PutResponse) error {
 	return c.write(ctx, http.MethodPost, endpoint, in, out)
 }
 
-// delete is used to do a DELETE request against an endpoint
-func (c *Client) delete(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.Response) error {
+// Delete is used to do a DELETE request against an endpoint
+func (c *httpClient) Delete(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.Response) error {
 	return c.write(ctx, http.MethodDelete, endpoint, in, out)
 }
 
 // doRequest runs a request with our client
-func (c *Client) doRequest(ctx context.Context, method, endpoint string, r *apimodels.HTTPRequest) (time.Duration, *http.Response, error) {
+func (c *httpClient) doRequest(
+	ctx context.Context,
+	method, endpoint string,
+	r *apimodels.HTTPRequest,
+) (time.Duration, *http.Response, error) {
 	req, err := c.toHTTP(ctx, method, endpoint, r)
 	if err != nil {
 		return 0, nil, err
@@ -119,7 +136,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, r *apim
 }
 
 // toHTTP converts the request to an HTTP request
-func (c *Client) toHTTP(ctx context.Context, method, endpoint string, r *apimodels.HTTPRequest) (*http.Request, error) {
+func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *apimodels.HTTPRequest) (*http.Request, error) {
 	u, err := c.url(endpoint)
 	if err != nil {
 		return nil, err
@@ -165,11 +182,6 @@ func (c *Client) toHTTP(ctx context.Context, method, endpoint string, r *apimode
 		req.Header.Add("User-Agent", c.config.AppID)
 	}
 
-	// Optionally configure HTTP authorization
-	if c.config.HTTPAuth != nil {
-		req.Header.Set("Authorization", c.config.HTTPAuth.String())
-	}
-
 	for key, values := range c.config.Headers {
 		for _, value := range values {
 			req.Header.Add(key, value)
@@ -183,7 +195,7 @@ func (c *Client) toHTTP(ctx context.Context, method, endpoint string, r *apimode
 }
 
 // generate URL for a given endpoint
-func (c *Client) url(endpoint string) (*url.URL, error) {
+func (c *httpClient) url(endpoint string) (*url.URL, error) {
 	base, err := url.Parse(c.address)
 	if err != nil {
 		return nil, err
@@ -200,3 +212,107 @@ func (c *Client) url(endpoint string) (*url.URL, error) {
 		RawPath: u.RawPath,
 	}, nil
 }
+
+// AuthenticatingClient is a client implementation that will automatically run
+// user authentication when a new authorization token is required. This is
+// either when the user does not yet have an authorization token that matches
+// the remote server or if the token is used but the server says it is invalid
+// (e.g. because it has expired).
+//
+// Since authentication is normally an interactive affair, this client requires
+// an authentication callback that will be called to actually authenticate.
+//
+// Authorization tokens can be optionally persisted by supplying a callback.
+// This client will keep track of any authorization tokens it collects.
+type AuthenticatingClient struct {
+	Client Client
+
+	// Credential should be any existing client credential for the user. It is
+	// allowed to be nil, representing no existing client credential.
+	Credential *apimodels.HTTPCredential
+
+	// PersistCredential will be called when the system should remember a new
+	// auth token for a user. The supplied auth token may be nil, in which case
+	// any existing tokens should be deleted.
+	PersistCredential func(*apimodels.HTTPCredential) error
+
+	// Authenticate will be called when the system should run an authentication
+	// flow using the passed Auth API.
+	Authenticate func(*Auth) (*apimodels.HTTPCredential, error)
+}
+
+func (t *AuthenticatingClient) Get(ctx context.Context, path string, in apimodels.GetRequest, out apimodels.GetResponse) error {
+	return doRequest(t, in, func(req apimodels.GetRequest) error {
+		return t.Client.Get(ctx, path, req, out)
+	})
+}
+
+func (t *AuthenticatingClient) List(ctx context.Context, path string, in apimodels.ListRequest, out apimodels.ListResponse) error {
+	return doRequest(t, in, func(req apimodels.ListRequest) error {
+		return t.Client.List(ctx, path, req, out)
+	})
+}
+
+func (t *AuthenticatingClient) Post(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
+	return doRequest(t, in, func(req apimodels.PutRequest) error {
+		return t.Client.Post(ctx, path, req, out)
+	})
+}
+
+func (t *AuthenticatingClient) Put(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
+	return doRequest(t, in, func(req apimodels.PutRequest) error {
+		return t.Client.Post(ctx, path, req, out)
+	})
+}
+
+func (t *AuthenticatingClient) Delete(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.Response) error {
+	return doRequest(t, in, func(req apimodels.PutRequest) error {
+		return t.Client.Post(ctx, path, req, out)
+	})
+}
+
+func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
+	if t.Credential != nil {
+		request.SetCredential(t.Credential)
+		if err = runRequest(request); err == nil {
+			// Initial request with auth token was successful.
+			return nil
+		} else if t.Authenticate == nil {
+			// We don't have an authenticate method so can't try and get a new
+			// token, so we need to stop here.
+			return errors.Wrap(err, "unauthorized and no authentication is available")
+		}
+	}
+
+	// If we don't have a credential yet or the token we had was invalid, run a
+	// new auth flow to get a new token (maybe).
+	if t.Credential == nil || errors.Is(err, apimodels.ErrInvalidToken) {
+		var authErr error
+		auth := NewAPI(t.Client).Auth()
+		if t.Credential, err = t.Authenticate(auth); err != nil {
+			authErr = multierr.Append(authErr, errors.Wrap(err, "failed to authorize user"))
+			t.Credential = nil // Don't assume Authenticate returned nil
+		}
+
+		// We either failed to get a credential or have a new one. Either way,
+		// persist the result of the call to remove the old credential.
+		if err = t.PersistCredential(t.Credential); err != nil {
+			authErr = multierr.Append(authErr, errors.Wrap(err, "unable to persist new client credential"))
+		}
+		err = authErr
+	}
+
+	if err != nil {
+		// Initial request unsuccessful, but not due to invalid/missing token,
+		// or we failed to authenticate/persist. Either way, return the error.
+		return err
+	}
+
+	// Try the initial request again with our possible new credential. It's ok
+	// if we didn't authenticate because this server might accept
+	// unauthenticated requests.
+	request.SetCredential(t.Credential)
+	return runRequest(request)
+}
+
+var _ Client = (*AuthenticatingClient)(nil)
