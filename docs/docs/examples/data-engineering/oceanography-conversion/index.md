@@ -6,32 +6,31 @@ description: "Oceanography data conversion with Bacalhau"
 # Oceanography - Data Conversion
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
+The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO₂ in seawater around the globe. But to calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to the partial pressure of CO₂. We will convert the units by combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
 
-The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO2 in seawater around the globe. But to calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to the partial pressure of CO2. We will convert the units by combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
-
-In this example tutorial, we will investigate the data and convert the workload so that it can be executed on the Bacalhau network, to take advantage of the distributed storage and compute resources.
-
-## TD;LR
-Running oceanography dataset with Bacalhau
+In this example tutorial, our focus will be on running the oceanography dataset with Bacalhau, where we will investigate the data and convert the workload. This will enable the execution on the Bacalhau network, allowing us to leverage its distributed storage and compute resources.
 
 ## Prerequisites
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
-## The Sample Data
+## Running Locally
 
-The raw data is available on the [SOCAT website](https://www.socat.info/). We will use the [SOCATv2021](https://www.socat.info/index.php/version-2021/) dataset in the "Gridded" format to perform this calculation. First, let's take a quick look at some data:
+### Downloading the dataset
+
+For the purposes of this example we will use the [SOCATv2022](https://www.socat.info/index.php/version-2022/) dataset in the "Gridded" format from the [SOCAT website](https://www.socat.info/) and long-term global sea surface temperature data from [NOAA](https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc) - information about that dataset can be found [here](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html).
 
 
 ```bash
 %%bash
 mkdir -p inputs
-curl --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.socat.info/socat_files/v2022/SOCATv2022_tracks_gridded_monthly.nc.zip
+curl -L --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.socat.info/socat_files/v2022/SOCATv2022_tracks_gridded_monthly.nc.zip
 curl --output ./inputs/sst.mnmean.nc https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc
 ```
 
-Next let's write the `requirements.txt` and install the dependencies. This file will also be used by the Dockerfile to install the dependencies.
+### Installing dependencies
+
+Next let's write the `requirements.txt`. This file will also be used by the Dockerfile to install the dependencies.
 
 
 ```python
@@ -49,57 +48,49 @@ xarray==0.20.2
 zarr>=2.0.0
 ```
 
-Installing dependencies
-
 
 ```bash
 %%bash
 pip install -r requirements.txt > /dev/null
 ```
 
-### Writing the Script
+### Reading and Viewing Data
 
 
 ```python
 import fsspec # for reading remote files
 import xarray as xr
+
+# Open the zip archive using fsspec and load the data into xarray.Dataset
 with fsspec.open("./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip", compression='zip') as fp:
     ds = xr.open_dataset(fp)
+
+# Display information about the dataset    
 ds.info()
 ```
 
 
 ```python
 time_slice = slice("2010", "2020") # select a decade
-res = ds['sst_ave_unwtd'].sel(tmnth=time_slice).mean(dim='tmnth') # average over time
+res = ds['sst_ave_unwtd'].sel(tmnth=time_slice).mean(dim='tmnth') # compute the mean for this period
 res.plot() # plot the result
 
 ```
 
-We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have traveled.
+We can see that the dataset contains latitude-longitude coordinates, the date, and a series of seawater measurements. Below is a plot of the average sea surface temperature (SST) between 2010 and 2020, where data have been collected by buoys and vessels.
+
+
+![image](../../../../static/img/examples/Average-SST.png 'Average-SST')
+
 
 ### Data Conversion
 
 To convert the data from fugacity of CO2 (fCO2) to partial pressure of CO2 (pCO2) we will combine the measurements of the surface temperature and fugacity. The conversion is performed by the [pyseaflux](https://seaflux.readthedocs.io/en/latest/api.html?highlight=fCO2_to_pCO2#pyseaflux.fco2_pco2_conversion.fCO2_to_pCO2) package.
 
-To execute this workload on the Bacalhau network we need to perform three steps:
 
-- Upload the data to IPFS
-- Create a docker image with the code and dependencies
-- Run a Bacalhau job with the docker image using the IPFS data
+### Writing the Script
 
-## Upload the Data to IPFS
-
-The first step is to upload the data to IPFS. The simplest way to do this is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
-
-For the purposes of this example:
-1. Downloaded the latest monthly data from the [SOCAT website](https://www.socat.info/)
-2. Downloaded the latest long-term global sea surface temperature data from [NOAA](https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc) - information about that dataset can be found [here](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html).
-3. Pinned the data to IPFS
-
-This resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
-
-
+Let's create a new file called `main.py` and paste the following script in it:
 
 ```python
 %%writefile main.py
@@ -184,6 +175,14 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+This code loads and processes SST and SOCAT data, combines them, computes pCO2, and saves the results for further use.
+
+## Upload the Data to IPFS
+
+The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [NFT.storage](https://nft.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
+
+This resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
+
 
 ## Setting up Docker Container
 
@@ -212,7 +211,7 @@ CMD ["python","main.py"]
 
 ### Build the container
 
-We will run `docker build` command to build the container;
+We will run `docker build` command to build the container:
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
@@ -220,12 +219,13 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+**`hub-user`** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-- **repo-name** with the name of the container, you can name it anything you want
+**`repo-name`** with the name of the container, you can name it anything you want
 
-- **tag** this is not required but you can use the latest tag
+**`tag`** this is not required but you can use the latest tag
 
+### Push the container
 
 Now you can push this repository to the registry designated by its name or tag.
 
@@ -245,11 +245,25 @@ Now that we have the data in IPFS and the Docker image pushed, next is to run a 
 ```bash
 %%bash  --out job_id
 bacalhau docker run \
-        --input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
-        --id-only \
-        --wait \
-        ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py
+    --input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
+    --id-only \
+    --wait \
+    ghcr.io/bacalhau-project/examples/socat:0.0.11 \
+    -- python main.py
 ```
+
+### Structure of the command
+
+Let's look closely at the command above:
+
+`bacalhau docker run`: call to Bacalhau
+
+`--input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+
+`ghcr.io/bacalhau-project/examples/socat:0.0.11`: the name and the tag of the image we are using
+
+`python main.py`: execute the script
+
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
@@ -260,7 +274,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -271,7 +285,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -280,14 +294,14 @@ bacalhau describe ${JOB_ID}
 ```
 
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
 %%bash
 rm -rf results
 mkdir -p ./results # Temporary directory to store the results
-bacalhau get --output-dir ./results ${JOB_ID} # Download the results
+bacalhau get ${JOB_ID} --output-dir ./results # Download the results
 ```
 
 ## Viewing your Job Output
@@ -300,6 +314,5 @@ To view the file, run the following command:
 cat results/stdout
 ```
 
-## Need Support?
-
-For questions, and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
