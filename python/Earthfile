@@ -49,13 +49,13 @@ build:
     RUN poetry version -- $PYPI_VERSION
     RUN echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
     RUN poetry build
-    SAVE ARTIFACT /code/dist AS LOCAL dist
+    SAVE ARTIFACT /code/dist AS LOCAL .
 
 install-twine:
     FROM +build
     BUILD +build
     RUN python3 -m pip install --upgrade twine
-    SAVE ARTIFACT /code/dist AS LOCAL python/dist
+    SAVE ARTIFACT /code/dist AS LOCAL .
 
 publish:
     FROM +install-twine
@@ -88,10 +88,10 @@ publish:
     END
 
     RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
-    SAVE ARTIFACT /code/dist AS LOCAL python/dist
+    SAVE ARTIFACT /code/dist AS LOCAL .
 
 all:
     FROM +publish
     BUILD +publish
     RUN echo "Finishing building all for python"
-    SAVE ARTIFACT /code/dist AS LOCAL python/dist
+    SAVE ARTIFACT /code/dist AS LOCAL .
