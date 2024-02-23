@@ -440,10 +440,6 @@ jobs:
           paths:
             - bacalhau_airflow-*.tar.gz
             - bacalhau_airflow-*.whl
-      - run:
-          name: Build the flyte integration
-          command: |
-            make build-bacalhau-flyte
       - run_make_under_specific_shell:
           # Setup flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte
