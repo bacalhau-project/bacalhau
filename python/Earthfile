@@ -55,6 +55,7 @@ install-twine:
     FROM +build
     BUILD +build
     RUN python3 -m pip install --upgrade twine
+    SAVE ARTIFACT /code/dist AS LOCAL python/dist
 
 publish:
     FROM +install-twine
@@ -87,9 +88,10 @@ publish:
     END
 
     RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
-
+    SAVE ARTIFACT /code/dist AS LOCAL python/dist
 
 all:
     FROM +publish
     BUILD +publish
+    RUN echo "Finishing building all for python"
     SAVE ARTIFACT /code/dist AS LOCAL python/dist
