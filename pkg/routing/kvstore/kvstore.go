@@ -63,7 +63,16 @@ func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
 }
 
 func (n *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
-	return peer.AddrInfo{}, nil
+	// TODO: Remove this once we now longer need to implement the routing.PeerStore interface
+	// We are temporarily matching the code of the inmemory.NodeStore which never returns an
+	// error for this method.
+	nodeID := peerID.String()
+	info, err := n.Get(ctx, nodeID)
+	if err != nil {
+		return peer.AddrInfo{}, nil
+	}
+
+	return *info.PeerInfo, nil
 }
 
 // Add adds a node info to the repo.
