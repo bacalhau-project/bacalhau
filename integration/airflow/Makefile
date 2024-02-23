@@ -92,12 +92,18 @@ docs: ## generate Sphinx HTML documentation, including API docs
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
-.SILENT: release
-release: ## upload a release
-	$(EARTHLY) --push +release --PYPI_VERSION=${VERSION}
-
 dist: clean ## builds source and wheel package
 	$(EARTHLY) --push +dist --PYPI_VERSION=${VERSION}
+
+.SILENT: release
+release: ## upload a release
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(VERSION)" > .arg
+
+	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
+	python ../../scripts/get_pypi_token.py
+
+	$(EARTHLY) --push +release --PYPI_VERSION=${VERSION}
 
 install: clean ## install the package to the active Python's site-packages
 	pip3 install .

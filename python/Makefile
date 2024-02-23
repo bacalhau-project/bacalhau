@@ -67,6 +67,6 @@ publish:
 	echo "PYPI_VERSION=$(VERSION)" > .arg
 
 	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
-	python get_pypi_token.py
+	python ../scripts/get_pypi_token.py
 
 	$(EARTHLY) --push +publish --PYPI_VERSION=$(VERSION)

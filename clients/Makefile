@@ -12,6 +12,12 @@ RM := $(shell command -v rm 2> /dev/null)
 
 .PHONY: release
 release:
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(VERSION)" > .arg
+
+	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
+	python ../scripts/get_pypi_token.py
+
 	$(CP) ${SWAGGER_JSON} ./swagger.json
 	${MAKE} clean && ${EARTHLY} --push +pypi-upload --PACKAGE_NAME=${PACKAGE_NAME} --SWAGGER_JSON=${SWAGGER_JSON} --VERSION=${VERSION}
 	@echo "Python API client released."
