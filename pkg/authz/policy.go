@@ -15,20 +15,27 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/samber/lo"
+	"go.uber.org/multierr"
 )
 
 // The name of the rule that must be `true` for the authorization provider to
 // permit access. This is typically provided by a policy with package name
 // `bacalhau.authz` and then by defining a rule `allow`. See
 // `policy_test_allow.rego` for a minimal example.
-const AuthzAllowRule = "bacalhau.authz.allow"
+//
+//nolint:gosec  // not hardcoded creds
+const (
+	AuthzAllowRule      = "bacalhau.authz.allow"
+	AuthzTokenValidRule = "bacalhau.authz.token_valid"
+)
 
 type policyAuthorizer struct {
 	policy *policy.Policy
 	keyset string
 	nodeID string
 
-	allowQuery policy.Query[authzData, bool]
+	allowQuery      policy.Query[authzData, bool]
+	tokenValidQuery policy.Query[authzData, bool]
 }
 
 type httpData struct {
@@ -58,9 +65,10 @@ var policies embed.FS
 // policy containing logic to make decisions about who should be authorized.
 func NewPolicyAuthorizer(authzPolicy *policy.Policy, key *rsa.PublicKey, nodeID string) Authorizer {
 	p := &policyAuthorizer{
-		policy:     authzPolicy,
-		nodeID:     nodeID,
-		allowQuery: policy.AddQuery[authzData, bool](authzPolicy, AuthzAllowRule),
+		policy:          authzPolicy,
+		nodeID:          nodeID,
+		allowQuery:      policy.AddQuery[authzData, bool](authzPolicy, AuthzAllowRule),
+		tokenValidQuery: policy.AddQuery[authzData, bool](authzPolicy, AuthzTokenValidRule),
 	}
 
 	if key != nil {
@@ -116,8 +124,9 @@ func (authorizer *policyAuthorizer) Authorize(req *http.Request) (Authorization,
 		},
 	}
 
-	approved, err := authorizer.allowQuery(req.Context(), in)
-	return Authorization{Approved: approved}, err
+	approved, aErr := authorizer.allowQuery(req.Context(), in)
+	tokenValid, tvErr := authorizer.tokenValidQuery(req.Context(), in)
+	return Authorization{Approved: approved, TokenValid: tokenValid}, multierr.Append(aErr, tvErr)
 }
 
 // AlwaysAllowPolicy is a policy that will always permit access, irrespective of

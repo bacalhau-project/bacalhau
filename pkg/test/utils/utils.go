@@ -19,7 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *clientv2.Client, out string) *models.Job {
+func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out string) *models.Job {
 	jobID := system.FindJobIDInTestOutput(out)
 	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 	require.Regexp(t, uuidRegex, jobID, "Job ID should be a UUID")

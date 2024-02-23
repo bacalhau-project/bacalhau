@@ -123,7 +123,7 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2().Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
+	response, err := util.GetAPIClientV2(cmd).Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 		JobID: jobID,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

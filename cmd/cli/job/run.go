@@ -151,7 +151,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	}
 
 	// Submit the job
-	client := util.GetAPIClientV2()
+	client := util.GetAPIClientV2(cmd)
 	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
 	})
