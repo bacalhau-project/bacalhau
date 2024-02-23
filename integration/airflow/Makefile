@@ -29,8 +29,7 @@ export PRINT_HELP_PYSCRIPT
 
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
-all:
-	$(MAKE) clean && $(EARTHLY) --push +dist
+all: clean dist
 	@echo "Airflow plugin built."
 
 help:
