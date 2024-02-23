@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
@@ -22,6 +21,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -89,7 +89,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		}
 	}
 
-	bigPort, err := freeport.GetFreePort()
+	bigPort, err := network.GetFreePort()
 	s.Require().NoError(err)
 	port := uint16(bigPort)
 
@@ -299,7 +299,7 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 }
 
 func (s *ServeSuite) Test200ForRoot() {
-	webUIPort, err := freeport.GetFreePort()
+	webUIPort, err := network.GetFreePort()
 	if err != nil {
 		s.T().Fatal(err, "Could not get port for web-ui")
 	}

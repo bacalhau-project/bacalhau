@@ -42,9 +42,10 @@ const (
 )
 
 const (
-	PublisherNoop = "noop"
-	PublisherIPFS = "ipfs"
-	PublisherS3   = "s3"
+	PublisherNoop  = "noop"
+	PublisherIPFS  = "ipfs"
+	PublisherS3    = "s3"
+	PublisherLocal = "local"
 )
 
 const (

@@ -39,7 +39,7 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	nodeID := args[0]
-	response, err := util.GetAPIClientV2().Nodes().Get(ctx, &apimodels.GetNodeRequest{
+	response, err := util.GetAPIClientV2(cmd).Nodes().Get(ctx, &apimodels.GetNodeRequest{
 		NodeID: nodeID,
 	})
 	if err != nil {

@@ -14,7 +14,9 @@ func GetJobState(ctx context.Context, jobStore jobstore.Store, jobID string) (mo
 	if err != nil {
 		return model.JobState{}, err
 	}
-	executions, err := jobStore.GetExecutions(ctx, jobID)
+	executions, err := jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: jobID,
+	})
 	if err != nil {
 		return model.JobState{}, err
 	}

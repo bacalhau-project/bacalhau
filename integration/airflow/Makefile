@@ -31,8 +31,6 @@ help:
 
 setup:
 	pip3 install -r dev-requirements.txt
-## workaround for https://github.com/bacalhau-project/bacalhau/issues/2683:
-	mkdir ~/.bacalhau
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 

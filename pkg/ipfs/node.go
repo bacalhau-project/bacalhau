@@ -83,6 +83,10 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg types
 
 	// TODO if cfg.PrivateInternal is true do we actually want to connect to peers?
 	if err = connectToPeers(ctx, api, ipfsNode, cfg.GetSwarmAddresses()); err != nil {
+		if err == context.Canceled {
+			log.Ctx(ctx).Debug().Msg("gracefully shutting down ipfs node due to context cancellation")
+			return nil, nil
+		}
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
@@ -343,6 +347,9 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 		go func(peerInfo peer.AddrInfo) {
 			defer wg.Done()
 			if err := api.Swarm().Connect(ctx, peerInfo); err != nil {
+				if err == context.Canceled {
+					return // context was canceled, nothing to do
+				}
 				anyErr = err
 				log.Ctx(ctx).Debug().Err(err).Msgf("failed to connect to ipfs peer %s, skipping", peerInfo.ID)
 			}

@@ -29,6 +29,7 @@ var Testing = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
 			Host: "test",
 			Port: 9999,
@@ -144,6 +145,10 @@ var TestingComputeConfig = types.ComputeConfig{
 	},
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
+	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "private",
+		Port:    6001,
 	},
 }
 

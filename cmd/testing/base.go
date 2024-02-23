@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -28,7 +29,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node     *node.Node
 	Client   *client.APIClient
-	ClientV2 *clientv2.Client
+	ClientV2 clientv2.API
 	Host     string
 	Port     uint16
 }
@@ -41,6 +42,9 @@ func (s *BaseSuite) SetupTest() {
 	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
+		},
+		LocalPublisher: types.LocalPublisherConfig{
+			Address: "127.0.0.1",
 		},
 	})
 	s.Require().NoError(err)
@@ -110,7 +114,11 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 
 	s.T().Logf("Command to execute: %v", arguments)
 
+	util.TestError = nil
 	c, err = root.ExecuteC()
+	if err == nil {
+		err = util.TestError
+	}
 	return c, buf.String(), err
 }
 

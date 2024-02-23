@@ -1,6 +1,9 @@
 package migrations
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+)
 
 var (
 	oldSwarmPeers = []string{
@@ -23,40 +26,36 @@ var (
 	}
 )
 
-//nolint:gochecknoinits
-func init() {
-	// this migration removes any IPFS swarm peers or Bootstrap peers that are incorrect from the v1.0.4 upgrade.
-	// if no incorrect values are present they are left as is.
-	set.Register(1, func(current types.BacalhauConfig) (types.BacalhauConfig, error) {
-		migrated := current
-		if haveSameElements(oldSwarmPeers, migrated.Node.IPFS.SwarmAddresses) {
-			migrated.Node.IPFS.SwarmAddresses = []string{}
+var V1Migration = repo.NewMigration(
+	repo.RepoVersion1,
+	repo.RepoVersion2,
+	func(r repo.FsRepo) error {
+		configExist, err := configExists(r)
+		if err != nil {
+			return err
 		}
-		if haveSameElements(oldBootstrapPeers, migrated.Node.BootstrapAddresses) {
-			migrated.Node.BootstrapAddresses = []string{}
+		if !configExist {
+			return nil
 		}
-		return migrated, nil
+		v, cfg, err := readConfig(r)
+		if err != nil {
+			return err
+		}
+
+		// this migration removes any IPFS swarm peers or Bootstrap peers that are incorrect from the v1.0.4 upgrade.
+		// if no incorrect values are present they are left as is.
+		doWrite := false
+		if haveSameElements(oldSwarmPeers, cfg.Node.IPFS.SwarmAddresses) {
+			v.Set(types.NodeIPFSSwarmAddresses, []string{})
+			doWrite = true
+		}
+		if haveSameElements(oldBootstrapPeers, cfg.Node.BootstrapAddresses) {
+			v.Set(types.NodeBootstrapAddresses, []string{})
+			doWrite = true
+		}
+
+		if doWrite {
+			return v.WriteConfig()
+		}
+		return nil
 	})
-}
-
-// haveSameElements returns true if arr1 and arr2 have the same elements, false otherwise.
-func haveSameElements(arr1, arr2 []string) bool {
-	if len(arr1) != len(arr2) {
-		return false
-	}
-
-	elementCount := make(map[string]int)
-
-	for _, item := range arr1 {
-		elementCount[item]++
-	}
-
-	for _, item := range arr2 {
-		if count, exists := elementCount[item]; !exists || count == 0 {
-			return false
-		}
-		elementCount[item]--
-	}
-
-	return true
-}

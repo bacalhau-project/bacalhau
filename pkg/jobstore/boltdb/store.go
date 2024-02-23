@@ -192,7 +192,7 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 // reifyJobID ensures the provided job ID is a full-length ID. This is either through
 // returning the ID, or resolving the short ID to a single job id.
 func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
-	if idgen.ShortID(jobID) == jobID {
+	if idgen.ShortUUID(jobID) == jobID {
 		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
 			return "", err
@@ -258,10 +258,20 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 	return string(keys[0]), nil
 }
 
-func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]models.Execution, error) {
-	jobID, err := b.reifyJobID(tx, jobID)
+func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
+	jobID, err := b.reifyJobID(tx, options.JobID)
 	if err != nil {
 		return nil, err
+	}
+
+	// load latest job state if requested
+	var job *models.Job
+	if options.IncludeJob {
+		j, err := b.getJob(tx, options.JobID)
+		if err != nil {
+			return nil, err
+		}
+		job = &j
 	}
 
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
@@ -278,6 +288,7 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, jobID string) ([]models.Execut
 			return err
 		}
 
+		es.Job = job
 		execs = append(execs, es)
 		return nil
 	})
@@ -513,11 +524,11 @@ func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery)
 }
 
 // GetExecutions returns the current job state for the provided job id
-func (b *BoltJobStore) GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error) {
+func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
 	var state []models.Execution
 
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		state, err = b.getExecutions(tx, jobID)
+		state, err = b.getExecutions(tx, options)
 		return
 	})
 
@@ -868,6 +879,8 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 	if execution.Revision == 0 {
 		execution.Revision = 1
 	}
+	// Ensure the job is not included in the execution when persisting it
+	execution.Job = nil
 	execution.Normalize()
 	err := execution.Validate()
 	if err != nil {

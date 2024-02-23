@@ -25,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -63,7 +62,6 @@ type NodeConfig struct {
 	AllowListedLocalPaths       []string
 	NodeInfoStoreTTL            time.Duration
 
-	FsRepo        *repo.FsRepo
 	NetworkConfig NetworkConfig
 }
 
@@ -149,22 +147,12 @@ func NewNode(
 		return nil, err
 	}
 
-	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
 	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	signingKey, err := pkgconfig.GetClientPublicKey()
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +165,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy),
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, config.NodeID),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
@@ -243,6 +231,15 @@ func NewNode(
 
 	// setup requester node
 	if config.IsRequesterNode {
+		authenticators, err := config.DependencyInjector.AuthenticatorsFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics.NodeInfo.Add(ctx, 1,
+			attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
+		)
+
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.NodeID,
@@ -251,7 +248,6 @@ func NewNode(
 			storageProviders,
 			authenticators,
 			nodeInfoStore,
-			config.FsRepo,
 			transportLayer.ComputeProxy(),
 		)
 		if err != nil {
@@ -267,19 +263,32 @@ func NewNode(
 	if config.IsComputeNode {
 		storagePath := pkgconfig.GetStoragePath()
 
+		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics.NodeInfo.Add(ctx, 1,
+			attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
+			attribute.StringSlice("node_engines", executors.Keys(ctx)),
+		)
+
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
 			config.NodeID,
 			config.CleanupManager,
-			config.NetworkConfig.Libp2pHost,
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
 			storageProviders,
 			executors,
 			publishers,
-			config.FsRepo,
 			transportLayer.CallbackProxy(),
 		)
 		if err != nil {
@@ -346,10 +355,10 @@ func NewNode(
 		return nil
 	})
 
-	// cleanup libp2p resources in the desired order
+	// Cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(ctx)
+			computeNode.Cleanup(ctx)
 		}
 		if requesterNode != nil {
 			requesterNode.cleanup(ctx)
@@ -368,8 +377,6 @@ func NewNode(
 		attribute.String("node_network_transport", config.NetworkConfig.Type),
 		attribute.Bool("node_is_compute", config.IsComputeNode),
 		attribute.Bool("node_is_requester", config.IsRequesterNode),
-		attribute.StringSlice("node_engines", executors.Keys(ctx)),
-		attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
 		attribute.StringSlice("node_storages", storageProviders.Keys(ctx)),
 	)
 	node := &Node{

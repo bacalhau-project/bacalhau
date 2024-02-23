@@ -93,7 +93,7 @@ var listColumns = []output.TableColumn[*models.Job]{
 		ColumnConfig: table.ColumnConfig{
 			Name:             "id",
 			WidthMax:         idgen.ShortIDLengthWithPrefix,
-			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortID(col) }},
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(jwi *models.Job) string { return jwi.ID },
 	},
 	{
@@ -124,7 +124,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
 		}
 	}
-	response, err := util.GetAPIClientV2().Jobs().List(ctx, &apimodels.ListJobsRequest{
+	response, err := util.GetAPIClientV2(cmd).Jobs().List(ctx, &apimodels.ListJobsRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

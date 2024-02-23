@@ -178,6 +178,6 @@ func requireStatusIn(statuses ...int) doRequestWrapper {
 			}
 		}
 
-		return d, nil, newUnexpectedResponseError(fromHTTPResponse(resp), withExpectedStatuses(statuses))
+		return d, resp, newUnexpectedResponseError(fromHTTPResponse(resp), withExpectedStatuses(statuses))
 	}
 }

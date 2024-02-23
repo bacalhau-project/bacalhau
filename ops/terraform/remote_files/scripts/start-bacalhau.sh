@@ -42,7 +42,8 @@ if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
     --labels owner=bacalhau \
-    --requester-job-translation-enabled
+    --requester-job-translation-enabled \
+    --default-publisher local
 
 else
   function getMultiaddress() {
@@ -95,5 +96,6 @@ else
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
     --labels owner=bacalhau \
-    --requester-job-translation-enabled
+    --requester-job-translation-enabled \
+    --default-publisher local
 fi

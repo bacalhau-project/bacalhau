@@ -224,7 +224,7 @@ func (s *StorageProvider) explodeKey(
 		if headResp.ContentType != nil && !strings.HasPrefix(*headResp.ContentType, "application/x-directory") {
 			objectSummary := s3ObjectSummary{
 				key:  aws.String(storageSpec.Key),
-				size: headResp.ContentLength,
+				size: *headResp.ContentLength,
 				eTag: headResp.ETag,
 			}
 			if storageSpec.VersionID != "" {
@@ -262,11 +262,11 @@ func (s *StorageProvider) explodeKey(
 			}
 			res = append(res, s3ObjectSummary{
 				key:   object.Key,
-				size:  object.Size,
+				size:  *object.Size,
 				isDir: strings.HasSuffix(*object.Key, "/"),
 			})
 		}
-		if !resp.IsTruncated {
+		if !*resp.IsTruncated {
 			break
 		}
 		continuationToken = resp.NextContinuationToken

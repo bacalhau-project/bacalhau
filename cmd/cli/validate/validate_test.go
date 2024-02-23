@@ -38,11 +38,12 @@ func (s *ValidateSuite) TestValidate() {
 			_, out, err := s.ExecuteTestCobraCommand("validate",
 				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
 			)
-			require.NoError(s.T(), err)
 
 			if test.valid {
+				require.NoError(s.T(), err)
 				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
+				require.Error(s.T(), err)
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
 				require.NoError(s.T(), err)
 				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))

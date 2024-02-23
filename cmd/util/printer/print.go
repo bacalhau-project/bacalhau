@@ -45,7 +45,7 @@ func PrintJobExecution(
 	jobID string,
 	cmd *cobra.Command,
 	runtimeSettings *cliflags.RunTimeSettings,
-	client *clientv2.Client,
+	client clientv2.API,
 ) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
@@ -107,7 +107,7 @@ func PrintJobExecution(
 	return nil
 }
 
-func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error {
+func followLogs(cmd *cobra.Command, jobID string, client clientv2.API) error {
 	cmd.Printf("Job successfully submitted. Job ID: %s\n", jobID)
 	cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
@@ -139,7 +139,7 @@ func followLogs(cmd *cobra.Command, jobID string, client *clientv2.Client) error
 //
 //nolint:gocyclo,funlen
 func waitForJobAndPrintResultsToUser(
-	ctx context.Context, cmd *cobra.Command, jobID string, quiet bool, client *clientv2.Client) error {
+	ctx context.Context, cmd *cobra.Command, jobID string, quiet bool, client clientv2.API) error {
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
    bacalhau job describe %s`, jobID)
@@ -311,7 +311,7 @@ func summariseExecutions(executions []*models.Execution) map[string][]string {
 		}
 
 		if message != "" {
-			results[message] = append(results[message], idgen.ShortID(execution.NodeID))
+			results[message] = append(results[message], idgen.ShortNodeID(execution.NodeID))
 		}
 	}
 	return results

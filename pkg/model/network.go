@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/samber/lo"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 )
@@ -117,22 +118,58 @@ func (n NetworkConfig) DomainSet() []string {
 		return []string{}
 	}
 	domains := slices.Clone(n.Domains)
-	slices.SortFunc(domains, func(a, b string) bool {
+
+	// Can use cmp package in go 1.21, but for now...
+	cmp := func(a int, b int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	}
+
+	// Compacts the slice by removing any elements that are subdomains of other
+	// elements. This previously used slices.CompactFunc but that only runs
+	// pairwise and so if we had
+	// [foo.com, x.foo.com, y.foo.com] then post compact we would have
+	// [foo.com, y.foo.com] which is not what we want.
+	// This version of compact will keep compacting until no changes were
+	// made in the last iteration, at which point we will filter out any
+	// empty strings
+	compact := func(domains []string) []string {
+		pre := len(domains)
+		post := 0
+
+		// If there's been no change in length, then we can safely return
+		for pre != post {
+			pre = len(domains)
+			domains = slices.CompactFunc(domains, func(a, b string) bool {
+				return matchDomain(a, b) == 0
+			})
+			post = len(domains)
+		}
+
+		return lo.Filter[string](domains, func(item string, _ int) bool {
+			return item != ""
+		})
+	}
+
+	slices.SortFunc(domains, func(a, b string) int {
 		// If the domains "match", the match may be the result of a wildcard. We
 		// want to keep the wildcard because it matches more things. Wildcards
 		// will always be shorter than any subdomain they match, so we can
 		// simply sort on string length. Compact will then remove non-wildcards.
 		ret := matchDomain(a, b)
 		if ret == 0 {
-			return len(a) < len(b)
+			return cmp(len(a), len(b))
 		} else {
-			return ret < 0
+			return strings.Compare(a, b)
 		}
 	})
-	domains = slices.CompactFunc(domains, func(a, b string) bool {
-		return matchDomain(a, b) == 0
-	})
-	return domains
+
+	return compact(domains)
 }
 
 func matchDomain(left, right string) (diff int) {
