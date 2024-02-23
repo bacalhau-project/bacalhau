@@ -50,9 +50,9 @@ func WithSchedulingTimeout(t int64) SpecOpt {
 	}
 }
 
-func WithRetryDelay(t int64) SpecOpt {
+func WithBaseRetryDelay(t int64) SpecOpt {
 	return func(s *model.Spec) error {
-		s.RetryDelay = t
+		s.BaseRetryDelay = t
 		return nil
 	}
 }

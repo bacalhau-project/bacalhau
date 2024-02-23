@@ -69,6 +69,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			ctx := context.Background()
 			randomUUID := uuid.New()
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+				"--base-retry-delay", "10", "--scheduling-timeout", "10",
 				"ubuntu",
 				"echo",
 				randomUUID.String(),
@@ -91,6 +92,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			randomUUID := uuid.New()
 			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+				"--base-retry-delay", "10", "--scheduling-timeout", "10",
 				"ubuntu",
 				entrypointCommand,
 				"--dry-run",
@@ -135,7 +137,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run"}
+			allArgs := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 			allArgs = append(allArgs, tc.submitArgs...)
 			_, out, submitErr := s.ExecuteTestCobraCommand(allArgs...)
 
@@ -174,6 +176,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			s.Require().NoError(err)
 
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+				"--base-retry-delay", "10", "--scheduling-timeout", "10",
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
 				"--output-dir", s.T().TempDir(),
@@ -225,7 +228,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run"}
+				flagsArray := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 				for _, iv := range tcids.inputVolumes {
 					ivString := iv.cid
 					if iv.path != "" {
@@ -292,7 +295,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run"}
+				flagsArray := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 
 				flagsArray = append(flagsArray, turls.inputURL.flag, turls.inputURL.url)
 				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURL.pathInContainer, turls.inputURL.filename))
@@ -341,7 +344,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				flagsArray := []string{"docker", "run"}
+				flagsArray := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 				ovString := ""
 				for _, ov := range tcids.outputVolumes {
 					if ov.name != "" {
@@ -417,6 +420,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 		func() {
 			ctx := context.Background()
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+				"--base-retry-delay", "10", "--scheduling-timeout", "10",
 				"ubuntu",
 				"echo", "'hello world'",
 			)
@@ -476,7 +480,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 			for _, labelTest := range annotationsToTest {
 				var args []string
 
-				args = append(args, "docker", "run")
+				args = append(args, "docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10")
 				for _, label := range labelTest.Annotations {
 					args = append(args, "-l", label)
 				}
@@ -532,7 +536,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			allArgs := []string{"docker", "run"}
+			allArgs := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 			allArgs = append(allArgs, tc.submitArgs...)
 			_, out, submitErr := s.ExecuteTestCobraCommand(allArgs...)
 
@@ -572,7 +576,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
-			flagsArray := []string{"docker", "run"}
+			flagsArray := []string{"docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10"}
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu", "pwd")
 
@@ -622,6 +626,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	allArgs := []string{
 		"docker", "run",
+		"--base-retry-delay", "10", "--scheduling-timeout", "10",
 		"--wait",
 		"-i", fmt.Sprintf("ipfs://%s,dst=/inputs", directoryCid),
 		"ubuntu", "echo", "hello",
@@ -676,6 +681,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			ctx := context.Background()
 			_, out, err := s.ExecuteTestCobraCommand(
 				"docker", "run",
+				"--base-retry-delay", "10", "--scheduling-timeout", "10",
 				"ubuntu", "--", "perl", "-e", fmt.Sprintf(`print "=" x %d`, tc.inputLength),
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
@@ -717,7 +723,7 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		ctx := context.Background()
 		var args []string
 
-		args = append(args, "docker", "run")
+		args = append(args, "docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10")
 		args = append(args, tc.inputFlags...)
 		args = append(args, "ubuntu", "--", "ls", "/input")
 
@@ -769,7 +775,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 			var args []string
 
-			args = append(args, "docker", "run")
+			args = append(args, "docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10")
 			args = append(args, tc.imageName, "--", tc.executable)
 
 			_, out, err := s.ExecuteTestCobraCommand(args...)
@@ -789,7 +795,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 
 	ctx := context.Background()
 
-	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "@", "--", "true")
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "--base-retry-delay", "10", "--scheduling-timeout", "10", "@", "--", "true")
 	s.Require().NoError(err)
 
 	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
@@ -807,6 +813,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+		"--base-retry-delay", "10", "--scheduling-timeout", "10",
 		"ubuntu",
 		"echo", "'hello world'",
 	)
@@ -823,6 +830,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+		"--base-retry-delay", "10", "--scheduling-timeout", "10",
 		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",
