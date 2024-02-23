@@ -56,7 +56,7 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 		ModifyTime:  legacy.Metadata.CreatedAt.UnixNano(),
 		ReschedulingPolicy: models.ReschedulingPolicy{
 			SchedulingTimeout:      legacy.Spec.SchedulingTimeout,
-			BaseRetryDelay:         legacy.Spec.RetryDelay,
+			BaseRetryDelay:         legacy.Spec.BaseRetryDelay,
 			MaximumRetryDelay:      legacy.Spec.MaximumRetryDelay,
 			RetryDelayGrowthFactor: legacy.Spec.RetryDelayGrowthFactor,
 		},

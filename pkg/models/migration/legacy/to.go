@@ -95,7 +95,7 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 		Network:                networkConfig,
 		Timeout:                job.Task().Timeouts.ExecutionTimeout,
 		SchedulingTimeout:      job.ReschedulingPolicy.SchedulingTimeout,
-		RetryDelay:             job.ReschedulingPolicy.BaseRetryDelay,
+		BaseRetryDelay:         job.ReschedulingPolicy.BaseRetryDelay,
 		MaximumRetryDelay:      job.ReschedulingPolicy.MaximumRetryDelay,
 		RetryDelayGrowthFactor: job.ReschedulingPolicy.RetryDelayGrowthFactor,
 		Inputs:                 inputs,

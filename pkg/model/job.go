@@ -222,7 +222,7 @@ type Spec struct {
 	SchedulingTimeout int64 `json:"SchedulingTimeout,omitempty"`
 
 	// How many seconds to wait between retries. This increases each retry, up to MaximumRetryDelay
-	RetryDelay int64 `json:"RetryDelay"`
+	BaseRetryDelay int64 `json:"BaseRetryDelay"`
 
 	// The maximum delay between retries
 	MaximumRetryDelay int64 `json:"MaximumRetryDelay"`

@@ -39,7 +39,7 @@ type SpecFlagSettings struct {
 	EnvVar                 []string          // Array of environment variables
 	Timeout                int64             // Job execution timeout in seconds
 	SchedulingTimeout      int64             // Scheduling timeout in seconds
-	RetryDelay             int64             // Initial delay between retries in seconds
+	BaseRetryDelay         int64             // Initial delay between retries in seconds
 	MaximumRetryDelay      int64             // Maximum delay between retries in seconds
 	RetryDelayGrowthFactor float64           // Factor to multiply the retry delay by after each failure
 	Labels                 []string          // Labels for the job on the Bacalhau network (for searching)
@@ -89,9 +89,9 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		`Job scheduling timeout in seconds (e.g. 300 for 5 minutes)`,
 	)
 	flags.Int64Var(
-		&settings.RetryDelay,
-		"retry-delay",
-		settings.RetryDelay,
+		&settings.BaseRetryDelay,
+		"base-retry-delay",
+		settings.BaseRetryDelay,
 		`Initial job scheduling retry delay in seconds`,
 	)
 	flags.Int64Var(
