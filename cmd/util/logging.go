@@ -35,7 +35,7 @@ func Logs(cmd *cobra.Command, options LogOptions) error {
 		requestedJobID = string(byteResult)
 	}
 
-	apiClient := GetAPIClientV2()
+	apiClient := GetAPIClientV2(cmd)
 	ch, err := apiClient.Jobs().Logs(cmd.Context(), &apimodels.GetLogsRequest{
 		JobID:       options.JobID,
 		ExecutionID: options.ExecutionID,

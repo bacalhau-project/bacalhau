@@ -101,7 +101,7 @@ func autoUnzip(resp *http.Response) error {
 	return nil
 }
 
-func webSocketDialer[T any](ctx context.Context, c *Client, endpoint string, in apimodels.GetRequest) (
+func webSocketDialer[T any](ctx context.Context, c *httpClient, endpoint string, in apimodels.GetRequest) (
 	<-chan *concurrency.AsyncResult[T], error) {
 	r := in.ToHTTPRequest()
 	httpR, err := c.toHTTP(ctx, http.MethodGet, endpoint, r)

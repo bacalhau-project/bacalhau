@@ -2,6 +2,7 @@ export IFS=$'\n\t'
 
 new_repo() {
     export BACALHAU_DIR=$(mktemp -d)
+    export BACALHAU_UPDATE_SKIPCHECKS=true
     bacalhau id >/dev/null 2>&1
 }
 

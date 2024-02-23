@@ -42,7 +42,7 @@ allow if {
     is_legacy_api
     input.http.path[3] in ["submit", "cancel"]
 
-    token_namespaces
+    token_valid
 }
 
 # Allow reading other non-job V1 APIs without a token
@@ -56,6 +56,19 @@ allow if {
     input.http.path[2] == "auth"
 }
 
+# Checks to see whether the token provided is valid, separate from if the access is valid
+default token_valid = false
+
+# If we managed to get namespaces, the token is valid
+token_valid if {
+    token_namespaces
+}
+
+# As we are allowing anonymous access, no token is also valid
+# (so a token that doesn't pass signatures or contains no namespaces is not valid)
+token_valid if {
+    not input.http.headers["Authorization"]
+}
 
 # The permissions the access token grants on the job namespace
 job_namespace_perms := bits.or(token_namespaces[job_namespace], token_namespaces["*"]) if {
@@ -85,6 +98,7 @@ token_namespaces := ns if {
     accessToken := trim_prefix(authHeader, "Bearer ")
 
     [valid, header, claims] := io.jwt.decode_verify(accessToken, input.constraints)
+    valid
     ns := claims["ns"]
 }
 
