@@ -1,7 +1,6 @@
 package hook
 
 import (
-	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -76,7 +75,6 @@ var ClientPreRunHooks runHookE = Chain(
 // communicate with remote servers should have applied.
 var RemoteCmdPreRunHooks runHookE = Chain(
 	ClientPreRunHooks,
-	auth.Authenticate,
 )
 
 // ClientPostRunHooks is the set of post-run hooks that all client commands

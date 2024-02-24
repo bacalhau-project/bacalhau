@@ -29,7 +29,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node     *node.Node
 	Client   *client.APIClient
-	ClientV2 *clientv2.Client
+	ClientV2 clientv2.API
 	Host     string
 	Port     uint16
 }
@@ -114,7 +114,11 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 
 	s.T().Logf("Command to execute: %v", arguments)
 
+	util.TestError = nil
 	c, err = root.ExecuteC()
+	if err == nil {
+		err = util.TestError
+	}
 	return c, buf.String(), err
 }
 
