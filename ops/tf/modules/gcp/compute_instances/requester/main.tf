@@ -29,6 +29,11 @@ resource "google_compute_instance" "requester" {
       nat_ip = var.requester_static_ip // Static IP
     }
   }
+
+  service_account {
+    email  = "bacalhau-video-processing-sa@bacalhau-video-processing.iam.gserviceaccount.com"
+    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+  }
 }
 
 // define disk to contain the bacalhau repo for instance
@@ -95,6 +100,8 @@ locals {
   bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
     node_type = "requester"
     bacalhau_version_cmd = local.bacalhau_install_cmd_content
+    node_count = 0
+    node_rank = 0
     // Add more arguments as needed
   })
 

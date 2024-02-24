@@ -9,7 +9,7 @@ resource "google_compute_instance" "compute" {
     user-data = data.cloudinit_config.compute_cloud_init.rendered
   }
 
-  metadata_startup_script = local.bacalhau_start_script
+  metadata_startup_script = local.bacalhau_start_scripts[count.index]
 
   boot_disk {
     initialize_params {
@@ -29,6 +29,11 @@ resource "google_compute_instance" "compute" {
     access_config {
       // Ephemeral public IP will be assigned
     }
+  }  # Setting the service account for the instance
+
+  service_account {
+    email  = "bacalhau-video-processing-sa@bacalhau-video-processing.iam.gserviceaccount.com"
+    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
 }
 
@@ -109,11 +114,14 @@ locals {
   // inject custom bacalhau install based on variables.
   // I am sorry reader, terraform requires this be one line
   bacalhau_install_cmd_content = var.build_config.install_version  != "" ? "release ${var.build_config.install_version}" : var.build_config.install_branch  != "" ? "branch ${var.build_config.install_branch}" : var.build_config.install_commit  != "" ?"commit ${var.build_config.install_commit}" : ""
-  bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
+  indices = range(var.compute_instance_count)
+  bacalhau_start_scripts = [for i in local.indices : templatefile("${path.module}/../../../instance_files/start.sh", {
     node_type = "compute"
     bacalhau_version_cmd = local.bacalhau_install_cmd_content
+    node_count = var.compute_instance_count
+    node_rank = i + 1  # Adjust based on your needs, Terraform list index starts at 0
     // Add more arguments as needed
-  })
+  })]
 
   bacalhau_install_script_content = file("${path.module}/../../../instance_files/install-bacalhau.sh")
 

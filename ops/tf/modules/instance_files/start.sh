@@ -4,6 +4,8 @@ set -x
 
 NODE_TYPE="${node_type}"
 BACALHAU_VERSION_CMD="${bacalhau_version_cmd}"
+NODE_RANK="${node_rank}"
+NODE_COUNT="${node_count}"
 
 # mount or format repo disk
 function setup-bacalhau-repo-disk() {
@@ -78,6 +80,11 @@ function start-services() {
   sudo systemctl restart bacalhau.service
 }
 
+function setup-bacalhau-node-rank() {
+  echo $NODE_RANK > /local_data/node_rank
+  echo $NODE_COUNT > /local_data/node_count
+}
+
 # setup and start everything
 function start() {
   echo "Starting..."
@@ -85,6 +92,7 @@ function start() {
 
   if [ "$NODE_TYPE" == "compute" ]; then
     setup-bacalhau-local-disk
+    setup-bacalhau-node-rank
   fi
 
   if [ "$BACALHAU_VERSION_CMD" != "" ]; then
