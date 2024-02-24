@@ -7,8 +7,14 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "extends": ["wesbos/typescript"],
-  "plugins": ["prettier", "import"],
+  "extends": [
+    "wesbos/typescript",
+    "plugin:storybook/recommended"
+  ],
+  "plugins": [
+    "prettier",
+    "import"
+  ],
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "off",
@@ -33,7 +39,10 @@
     "endOfLine": 0,
     "react/jsx-uses-react": "off",
     "react/react-in-jsx-scope": "off",
-    "quotes": ["error", "double"],
+    "quotes": [
+      "error",
+      "double"
+    ],
     "import/no-extraneous-dependencies": [
       "error",
       {
@@ -45,7 +54,9 @@
   },
   "overrides": [
     {
-      "files": ["**/*.tsx"],
+      "files": [
+        "**/*.tsx"
+      ],
       "rules": {
         "react/prop-types": "off"
       }
@@ -57,11 +68,19 @@
     },
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".ts",
+          ".tsx"
+        ]
       }
     },
     "import/parsers": {
-      "@typescript-eslint/parser": [".ts", ".tsx"]
+      "@typescript-eslint/parser": [
+        ".ts",
+        ".tsx"
+      ]
     }
   },
   "ignorePatterns": [

@@ -5,26 +5,25 @@ import path from "path"
 
 const config: StorybookConfig = {
   stories: [
-    "../src/stories/*.mdx",
     "../src/**/*.mdx",
     "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
   ],
-
+  addons: [
+    "@storybook/addon-links",
+    "@storybook/addon-essentials",
+    "@storybook/addon-onboarding",
+    "@storybook/addon-interactions",
+  ],
   framework: {
     name: "@storybook/react-vite",
     options: {},
   },
+  docs: {
+    autodocs: "tag",
+  },
   staticDirs: ['../public'],
 
-  addons: [
-    "@storybook/addon-links",
-  ],
-  core: {
-    builder: "@storybook/builder-vite",
-  },
-  docs: {
-    autodocs: true,
-  },
+  core: {},
   async viteFinal(config, { configType }) {
     if (!config.resolve) {
       config.resolve = {}
