@@ -18,6 +18,8 @@ interface TableProps {
   data: Job[]
 }
 
+const MAX_TABLE_LENGTH = 10
+
 const labelColorMap: { [key: string]: string } = {
   running: "green",
   warning: "orange",
@@ -35,7 +37,13 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     return []
   }
 
-  const ParsedJobDataReturn = jobs.map((job) => {
+  const ParsedJobDataReturn: ParsedJobData[] = []
+
+  for (var i = 0; i < jobs.length; i++) {
+    if (i > MAX_TABLE_LENGTH) {
+      break
+    }
+    const job = jobs[i]
     if (! job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
@@ -49,7 +57,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     } else {
       job.Name = jobName
     }
-    return {
+    ParsedJobDataReturn.push({
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
@@ -58,8 +66,8 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       label: createLabelArray(job.Labels),
       status: job.State.StateType,
       action: "Action",
-    }
-  })
+    })
+  }
   return ParsedJobDataReturn
 }
 

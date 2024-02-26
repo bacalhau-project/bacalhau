@@ -1,15 +1,12 @@
-import type { Preview } from "@storybook/react"
-import { passthrough } from "msw"
-import { setupWorker } from "msw/browser"
-import {
-  reactRouterParameters,
-  withRouter,
-} from "storybook-addon-react-router-v6"
-import { handlers as storyBookHandlers } from "../.storybook/storybookHandlers"
-import "../src/index.scss"
-import { worker as importedWorker } from "../tests/msw/browser"
+import type { Preview } from "@storybook/react";
+import { passthrough } from "msw";
+import { setupWorker } from "msw/browser";
+import { reactRouterParameters, withRouter } from "storybook-addon-react-router-v6";
+import "../src/index.scss";
+import { worker as importedWorker } from "../tests/msw/browser";
+import { handlers as storyBookHandlers } from "./storybookHandlers";
 
-// const handlers = []
+const handlers = []
 
 const MSW_FILE = "mockServiceWorker.js"
 const worker = setupWorker(...importedWorker.listHandlers(), ...storyBookHandlers)
