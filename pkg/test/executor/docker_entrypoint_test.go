@@ -192,7 +192,7 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "TrueFalse - Do not override",
 			imageSuffix:    "true-false",
-			expectedStdout: "\n",
+			expectedStdout: "",
 		},
 		// Test cases for false-true
 		{
