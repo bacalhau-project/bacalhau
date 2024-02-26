@@ -39,6 +39,8 @@ TEST_PARALLEL_PACKAGES ?= 1
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
+export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
+
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
@@ -163,31 +165,11 @@ build-dev: build-ci
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/yarn.lock
-WEB_BUILD_GUARD := .web-build-guard
-
-
-webui/node_modules:
-	@echo "Installing webui dependencies"
-	@cd webui && yarn install
 
 .PHONY: build-webui
-build-webui: ${WEB_BUILD_FILES}
+build-webui:
+	cd webui && ${EARTHLY} --push +all
 
-webui/build:
-	mkdir -p $@
-
-$(WEB_INSTALL_GUARD): webui/node_modules webui/package.json
-	@echo "Updating webui dependencies"
-	@cd webui && yarn install
-	touch $(WEB_INSTALL_GUARD)
-
-export GENERATE_SOURCEMAP := false
-${WEB_BUILD_GUARD}: $(WEB_INSTALL_GUARD) $(WEB_SRC_FILES)
-	cd webui && yarn run build
-	touch $(WEB_BUILD_GUARD)
-
-${WEB_BUILD_FILES}: ${WEB_BUILD_GUARD}
 
 ################################################################################
 # Target: build-bacalhau
@@ -198,7 +180,7 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################

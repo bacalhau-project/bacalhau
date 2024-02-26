@@ -44,8 +44,6 @@
     "vite": "^5.0.12",
     "vite-tsconfig-paths": "^4.3.1",
     "web-vitals": "^3.5.2",
-    "webpack": "^5.64.4",
-    "webpack-dev-server": "^4.15.1",
     "wesbos": "^1.0.1"
   },
   "scripts": {
@@ -53,8 +51,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage .",
     "test:debug": "jest --inspect-brk --runInBand --no-cache",
-    "lint": "npx eslint .",
-    "lint:fix": "npx eslint . --fix",
+    "lint": "yarn eslint .",
+    "lint:fix": "yarn eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -109,5 +107,6 @@
   },
   "description": "WebUI for Bacalhau",
   "main": "./src/index.tsx",
-  "homepage": "."
+  "homepage": ".",
+  "packageManager": "yarn@4.1.0"
 }
