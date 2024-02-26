@@ -148,6 +148,7 @@ commands:
     steps:
       - restore_cache:
           keys:
+            - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "poetry.lock" }}
             - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
             - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}
             - asdf-<< parameters.cache_version >>-
@@ -168,7 +169,7 @@ commands:
             git checkout tags/<< parameters.asdf_version >>
             cd -
       - save_cache:
-          key: asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+          key: asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "poetry.lock" }}
           paths:
             - $HOME/.asdf
       - run:
