@@ -39,6 +39,7 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
 		BacalhauVersion: n.bacalhauVersion,
 		Labels:          n.labelsProvider.GetLabels(ctx),
 		NodeType:        models.NodeTypeRequester,
+		Approval:        models.NodeApprovalUnknown,
 	}
 	for _, decorator := range n.nodeInfoDecorators {
 		res = decorator.DecorateNodeInfo(ctx, res)
