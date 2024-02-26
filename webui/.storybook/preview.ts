@@ -22,9 +22,8 @@ await worker.start(
       },
     },
     onUnhandledRequest: ({ method, url }) => {
-      console.info(`Full: ${method} ${url}`)
       if (!url.includes("/api")) {
-        console.info(`Passthrough: ${method} ${url}`)
+        // console.info(`Passthrough: ${method} ${url}`)
         return passthrough();
       }
     },

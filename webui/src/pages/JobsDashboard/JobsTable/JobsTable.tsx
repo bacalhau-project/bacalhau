@@ -30,12 +30,16 @@ const labelColorMap: { [key: string]: string } = {
 }
 
 function parseData(jobs: Job[]): ParsedJobData[] {
+  if (!jobs) {
+    console.log("No jobs data provided.")
+    return []
+  }
+
   const ParsedJobDataReturn = jobs.map((job) => {
-    if (!job.Tasks || job.Tasks.length === 0) {
+    if (! job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
-    // If there are no tasks, return an empty task
-    const firstTask = job.Tasks[0] ?? new Task("--")
+    const firstTask = (job.Tasks && job.Tasks[0]) ?? new Task("--")
     const jobType = job.Type ?? "batch"
     const jobShortID = getShortenedJobID(job.ID)
     const jobName = job.Name
@@ -61,6 +65,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
 
 export const JobsTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext)
+
   const parsedData = parseData(data)
 
   return (

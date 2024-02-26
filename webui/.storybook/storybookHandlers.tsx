@@ -14,22 +14,21 @@ console.log("storyDataPath", storyDataPath)
 import * as internalJobs from '../src/stories/storyData/jobsTable/100-jobs.json'
 import * as internalNodes from '../src/stories/storyData/nodesTable/100-nodes.json'
 
-export function getJobs(key: string = "") : Job[] {
+export function getJobs() : Job[] {
     return internalJobs
 }
-export function getNodes(key: string = ""): Node[] {
+export function getNodes(): Node[] {
     return internalNodes
 }
 
-export const jobsResponse = http.get('http://localhost:1234/api/v1/orchestrator/jobs', ({ request }) => {
+export const jobsResponse = http.get('/api/v1/orchestrator/jobs', ({ request }) => {
     console.log("jobsResponse request", request)
-    // return number of jobs based on limit
     const limitedJobs = getJobs().slice(0, JOBS_RETURN_LIMIT)
     const jobsListResponse: JobsResponse = { Jobs: limitedJobs, NextToken: "" }
     return HttpResponse.json(jobsListResponse)
 })
 
-export const nodesResponse = http.get('http://localhost:1234/api/v1/orchestrator/nodes', ({ request }) => {
+export const nodesResponse = http.get('/api/v1/orchestrator/nodes', ({ request }) => {
     // return number of nodes based on limit
     const limitedNodes = getNodes().slice(0, NODES_RETURN_LIMIT)
     const nodesListResponse: NodesResponse = { Nodes: limitedNodes, NextToken: "" }
