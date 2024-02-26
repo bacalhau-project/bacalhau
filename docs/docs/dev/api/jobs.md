@@ -184,7 +184,7 @@ curl -X PUT \
           }
         }' \
      127.0.0.1:1234/api/v1/orchestrator/jobs
-     
+
  {
   "JobID": "j-9809ae4b-d4fa-47c6-823b-86c924e60604",
   "EvaluationID": "5dac9fe0-2358-4ec7-bec9-6747dfa2b33e",

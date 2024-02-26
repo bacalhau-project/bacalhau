@@ -52,9 +52,9 @@ bacalhau config list [flags]
    **Output**:
 
    ```bash
-    KEY          VALUE                                    
+    KEY          VALUE
     <key_name> <key_value>
-   ...                      
+   ...
    ```
 
 2. **Output in JSON format**:
@@ -76,5 +76,3 @@ bacalhau config list [flags]
      ...
    ]
    ```
-
-   

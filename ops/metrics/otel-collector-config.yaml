@@ -50,4 +50,3 @@ service:
       processors: [memory_limiter, resource, attributes/metrics, batch]
       exporters: [otlp/jaeger]
       #exporters: [logging, otlp/jaeger]
-

@@ -8,7 +8,7 @@ Docker Engine is one of the execution engines supported in Bacalhau. It allows u
 
 ## `Docker` Engine Parameters
 
-- **Image** `(string: <required>)`: Specifies the Docker image to use for task execution. It should be an image that can be pulled by Docker. 
+- **Image** `(string: <required>)`: Specifies the Docker image to use for task execution. It should be an image that can be pulled by Docker.
 
 - **Entrypoint** `(string[]: <optional>)`: Allows overriding the default entrypoint set in the Docker image. Each string in the array represents a segment of the entrypoint command.
 

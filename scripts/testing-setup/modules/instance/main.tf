@@ -1,7 +1,7 @@
 resource "aws_instance" "bacalhau_node" {
   ami           = lookup(var.AMIS, var.AWS_REGION)
   instance_type = var.INSTANCE_TYPE
-  
+
 
   # the VPC subnet
   subnet_id = var.SUBNET_ID
@@ -14,4 +14,3 @@ resource "aws_instance" "bacalhau_node" {
     Name = "bacalhau_node_${var.NODE_NUMBER}"
   }
 }
-

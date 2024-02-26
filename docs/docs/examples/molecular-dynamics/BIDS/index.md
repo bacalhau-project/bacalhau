@@ -44,12 +44,12 @@ Alternatively, you can upload your dataset to IPFS using [IPFS CLI](https://docs
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---id-only \ 
+--id-only \
 --wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 -i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
-nipreps/mriqc:latest 
+nipreps/mriqc:latest
 -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
 ```
 
@@ -116,6 +116,6 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-ls results/ # list the contents of the current directory 
-cat results/stdout # displays the contents of the current directory 
+ls results/ # list the contents of the current directory
+cat results/stdout # displays the contents of the current directory
 ```

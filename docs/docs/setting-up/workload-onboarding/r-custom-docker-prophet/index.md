@@ -115,13 +115,13 @@ Let's have a look at the command below:
 %%bash
 Rscript Saturating-Forecasts.R "example_wp_log_R.csv" "outputs/output0.pdf" "outputs/output1.pdf"
 ```
-This command uses Rscript to execute the script that was created and written to the `Saturating-Forecasts.R` file.  
+This command uses Rscript to execute the script that was created and written to the `Saturating-Forecasts.R` file.
 
 The input parameters provided in this case are the names of input and output files:
 
-`example_wp_log_R.csv` - the example data that was previously downloaded.   
+`example_wp_log_R.csv` - the example data that was previously downloaded.
 
-`outputs/output0.pdf` - the name of the file to save the first forecast plot.  
+`outputs/output0.pdf` - the name of the file to save the first forecast plot.
 
 `outputs/output1.pdf` - the name of the file to save the second forecast plot.
 

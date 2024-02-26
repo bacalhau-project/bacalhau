@@ -52,7 +52,7 @@ v1.2.0  v1.2.0
 
 ## 3. Running a Bacalhau Job
 
-In the example below, an Ubuntu-based job runs to print the message 'Hello from Docker Bacalhau: 
+In the example below, an Ubuntu-based job runs to print the message 'Hello from Docker Bacalhau:
 
 ```shell
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
@@ -76,7 +76,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
  `--`: Separate Bacalhau parameters from the command to be executed inside the container
 
- `sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'`: The command executed inside the container 
+ `sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'`: The command executed inside the container
 
 Let's have a look at the command execution in the terminal:
 
@@ -85,8 +85,8 @@ Let's have a look at the command execution in the terminal:
 ab95a5cc-e6b7-40f1-957d-596b02251a66
 ```
 
-The output you're seeing is in two parts:  
-**The first line:** `13:53:46.478 | INF pkg/repo/fs.go:81 > Initializing repo at '/root/.bacalhau' for environment 'production'` is an informational message indicating the initialization of a repository at the specified directory `('/root/.bacalhau')` for the `production` environment.  
+The output you're seeing is in two parts:
+**The first line:** `13:53:46.478 | INF pkg/repo/fs.go:81 > Initializing repo at '/root/.bacalhau' for environment 'production'` is an informational message indicating the initialization of a repository at the specified directory `('/root/.bacalhau')` for the `production` environment.
 **The second line:** `ab95a5cc-e6b7-40f1-957d-596b02251a66` is a `job ID`, which represents the result of executing a command inside a Docker container. It can be used to obtain additional information about the executed job or to access the job's results. We store that in an environment variable so that we can reuse it later on (env: `JOB_ID=ab95a5cc-e6b7-40f1-957d-596b02251a66`)
 
 To print out the **content of the Job ID**, run the following command:
@@ -172,4 +172,3 @@ After the download has finished you should see the following contents in the res
 ## Support
 
 If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
-

@@ -2,7 +2,7 @@ FROM --platform=$TARGETPLATFORM ubuntu:noble-20231126.1
 ARG TARGETPLATFORM
 RUN echo "I am building for $TARGETPLATFORM" > /log
 
-RUN apt update && apt -yq upgrade && apt -yq install wget unzip 
+RUN apt update && apt -yq upgrade && apt -yq install wget unzip
 RUN if [ $TARGETPLATFORM = 'linux/arm64' ]; then \
     wget -O /tmp/ddb.zip "https://github.com/duckdb/duckdb/releases/download/v0.9.2/duckdb_cli-linux-aarch64.zip"; \
     else \

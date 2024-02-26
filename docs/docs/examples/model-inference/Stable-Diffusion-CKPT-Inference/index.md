@@ -142,7 +142,7 @@ bacalhau docker run \
 --id-only \
 -i ipfs://QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/DavidAronchick.ckpt \
 jsacex/stable-diffusion-ckpt \
--- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../DavidAronchick.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
+-- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../DavidAronchick.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs
 ```
 
 ### Structure of the command
@@ -220,6 +220,3 @@ display.Image("results/outputs/samples/00001.png")
 
 
 ![png](index_files/index_19_0.png)
-    
-
-

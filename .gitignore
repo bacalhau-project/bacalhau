@@ -62,3 +62,5 @@ dist/
 
 .secret
 .arg
+
+.ruff_cache

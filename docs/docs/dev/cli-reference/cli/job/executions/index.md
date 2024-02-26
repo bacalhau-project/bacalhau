@@ -107,7 +107,7 @@ bacalhau job executions [id] [flags]
     ```bash
     bacalhau job executions j-6f2bf0ea-ebcd-4490-899a-9de9d8d95881 --output yaml
     ```
-   
+
    Expected output:
 
    ```yaml

@@ -32,7 +32,7 @@ If an update is available, an INFO level message will be printed to the log.
 
 ## Configuring checks
 
-Bacalhau has some configuration options for controlling how often checks are performed. By default, an update check will run no more than once every 24 hours. Users can opt out of automatic update checks using the configuration described below. 
+Bacalhau has some configuration options for controlling how often checks are performed. By default, an update check will run no more than once every 24 hours. Users can opt out of automatic update checks using the configuration described below.
 
 | Config property | Environment variable | Default value | Meaning |
 |---|---|---|---|
@@ -51,9 +51,8 @@ bacalhau config list
 
 Expected Output
 ...
-update.checkfrequency                                           24h0m0s                                  
-update.checkstatepath                                           /home/user/.bacalhau/update.json  
+update.checkfrequency                                           24h0m0s
+update.checkstatepath                                           /home/user/.bacalhau/update.json
 update.skipchecks                                               false
 ...
 ```
-
