@@ -54,7 +54,7 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
-	registrationCallback requester.RegistrationEndpoint,
+	registrationEndpoint requester.RegistrationEndpoint,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -236,8 +236,10 @@ func NewComputeNode(
 		repo_storage.NewLabelsProvider(),
 	)
 
-	if registrationCallback != nil {
-		err := registrationCallback.Register(ctx)
+	if registrationEndpoint != nil {
+		err := registrationEndpoint.Register(ctx, requester.RegisterRequest{
+			NodeID: nodeID,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to register compute node: %s", err)
 		}

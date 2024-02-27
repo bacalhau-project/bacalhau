@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -27,13 +28,12 @@ func NewNodeManager(params NodeManagerParams) *NodeManager {
 	}
 }
 
-// Register is part of the implmentation of the RegistrationEndpoint
+// Register is part of the implementation of the RegistrationEndpoint
 // interface. It is used to register a compute node with the cluster.
-func (n *NodeManager) Register(ctx context.Context) error {
-	// TODO: Construct a node info object and register it with the
-	// node info store.
-
-	// TODO: Set the node approval state if known
+func (n *NodeManager) Register(ctx context.Context, request requester.RegisterRequest) error {
+	fmt.Println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+	fmt.Println("Registering node ", request.NodeID)
+	fmt.Println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
 	return nil
 }
 

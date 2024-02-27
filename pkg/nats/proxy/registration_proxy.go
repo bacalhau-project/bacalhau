@@ -2,9 +2,13 @@ package proxy
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+	"reflect"
 
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/nats-io/nats.go"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type RegistrationProxyParams struct {
@@ -12,12 +16,12 @@ type RegistrationProxyParams struct {
 }
 
 // RegistrationProxy is a proxy for a compute node to register itself with a requester node.
-// The proxy can forward callbacks to a remote requester node, or locally if the node is the requester and a
-// LocalCallback is provided.
 type RegistrationProxy struct {
 	conn *nats.Conn
 }
 
+// NewRegistrationProxy creates a new RegistrationProxy for the local compute node
+// bound to a provided NATS connection.
 func NewRegistrationProxy(params RegistrationProxyParams) *RegistrationProxy {
 	proxy := &RegistrationProxy{
 		conn: params.Conn,
@@ -25,11 +29,24 @@ func NewRegistrationProxy(params RegistrationProxyParams) *RegistrationProxy {
 	return proxy
 }
 
-func (p *RegistrationProxy) Register(ctx context.Context) error {
-	fmt.Println("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-	fmt.Println("Proxy Register() method called, will send message")
-	fmt.Println("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-	//proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnBidComplete, result)
+// Register sends a `requester.RegisterRequest` containing the current compute node's
+// NodeID to the requester node.
+func (p *RegistrationProxy) Register(ctx context.Context, request requester.RegisterRequest) error {
+	data, err := json.Marshal(request)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(request))
+		return err
+	}
+
+	// We submit registration requests to all subscribers to the registration subject,
+	// and not to a single specific node.
+	subject := registrationPublishSubject(Register)
+	log.Ctx(ctx).Trace().Msgf("Sending registration request to subject %s", subject)
+
+	if err = p.conn.Publish(subject, data); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("error sending request to subject %s", subject)
+		return err
+	}
 
 	return nil
 }

@@ -297,7 +297,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterRegistrationEndpoint(nil)
+		err = transportLayer.RegisterRegistrationEndpoint(nodeManager)
 		if err != nil {
 			return nil, err
 		}

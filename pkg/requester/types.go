@@ -11,7 +11,7 @@ import (
 // register with the requester node.
 type RegistrationEndpoint interface {
 	// Register registers a compute node with the requester node.
-	Register(context.Context) error
+	Register(context.Context, RegisterRequest) error
 }
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
@@ -45,4 +45,8 @@ type ReadLogsRequest struct {
 type ReadLogsResponse struct {
 	Address           string
 	ExecutionComplete bool
+}
+
+type RegisterRequest struct {
+	NodeID string
 }
