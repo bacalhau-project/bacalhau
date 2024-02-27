@@ -204,7 +204,8 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/missing", jobID),
 	)
-	require.NoError(s.T(), err, "error getting results from job download")
+
+	require.Error(s.T(), err, "expected error but it wasn't returned")
 	require.Contains(s.T(), getoutput, "error downloading job")
 }
 
