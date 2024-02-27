@@ -62,10 +62,6 @@ dist/
 
 .ruff_cache
 
-# Auto generated below
-clients/python/bacalhau_apiclient
-clients/python/docs
-
 .secret
 .arg
 
