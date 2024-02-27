@@ -205,6 +205,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
+	require.Error(s.T(), err, "expected error but it wasn't returned")
 	require.Contains(s.T(), getoutput, "error downloading job")
 }
 

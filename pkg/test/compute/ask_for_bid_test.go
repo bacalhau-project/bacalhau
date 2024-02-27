@@ -19,10 +19,9 @@ type AskForBidSuite struct {
 }
 
 type bidResponseTestCase struct {
-	name          string
-	execution     *models.Execution
-	rejected      bool
-	resourceUsage models.Resources
+	name      string
+	execution *models.Execution
+	rejected  bool
 }
 
 func TestAskForBidSuite(t *testing.T) {
@@ -30,7 +29,7 @@ func TestAskForBidSuite(t *testing.T) {
 }
 
 func (s *AskForBidSuite) TestAskForBid() {
-	s.runAskForBidTest(bidResponseTestCase{})
+	s.runAskForBidTest(bidResponseTestCase{name: "empty test case"})
 }
 
 func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Resources) {
@@ -40,13 +39,14 @@ func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Reso
 }
 
 func (s *AskForBidSuite) TestPopulateResourceUsage() {
-	response := s.runAskForBidTest(bidResponseTestCase{})
+	response := s.runAskForBidTest(bidResponseTestCase{name: "populate resrouce usage"})
 	s.verify(response, s.config.DefaultJobResourceLimits)
 }
 
 func (s *AskForBidSuite) TestUseSubmittedResourceUsage() {
 	usage := models.Resources{CPU: 1, Memory: 2, Disk: 3}
 	response := s.runAskForBidTest(bidResponseTestCase{
+		name:      "use submitted resource usage",
 		execution: addResourceUsage(mock.Execution(), usage),
 	})
 	s.verify(response, usage)
@@ -54,6 +54,7 @@ func (s *AskForBidSuite) TestUseSubmittedResourceUsage() {
 
 func (s *AskForBidSuite) TestAcceptUsageBelowLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
+		name: "accept usage below limits",
 		execution: addResourceUsage(mock.Execution(),
 			models.Resources{CPU: s.config.JobResourceLimits.CPU / 2}),
 	})
@@ -61,6 +62,7 @@ func (s *AskForBidSuite) TestAcceptUsageBelowLimits() {
 
 func (s *AskForBidSuite) TestAcceptUsageMatachingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
+		name: "accept usage matching limits",
 		execution: addResourceUsage(mock.Execution(),
 			models.Resources{CPU: s.config.JobResourceLimits.CPU}),
 	})
@@ -68,6 +70,7 @@ func (s *AskForBidSuite) TestAcceptUsageMatachingLimits() {
 
 func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
+		name: "reject usage exceeding limits",
 		execution: addResourceUsage(mock.Execution(),
 			models.Resources{CPU: s.config.JobResourceLimits.CPU + 0.01}),
 		rejected: true,
@@ -77,23 +80,26 @@ func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
 func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.BidResult {
 	ctx := context.Background()
 
-	// setup default values
-	execution := testCase.execution
-	if execution == nil {
-		execution = mock.Execution()
-	}
+	var result compute.BidResult
+	_ = s.Run(testCase.name, func() {
+		// setup default values
+		execution := testCase.execution
+		if execution == nil {
+			execution = mock.Execution()
+		}
 
-	result := s.askForBid(ctx, execution)
-	s.Equal(!testCase.rejected, result.Accepted)
+		result = s.askForBid(ctx, execution)
+		s.Equal(!testCase.rejected, result.Accepted)
 
-	// check execution state
-	localExecutionState, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
-	if testCase.rejected {
-		s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
-	} else {
-		s.NoError(err)
-		s.Equal(store.ExecutionStateCreated, localExecutionState.State)
-	}
+		// check execution state
+		localExecutionState, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
+		if testCase.rejected {
+			s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
+		} else {
+			s.NoError(err)
+			s.Equal(store.ExecutionStateCreated, localExecutionState.State)
+		}
+	})
 
 	return result
 }

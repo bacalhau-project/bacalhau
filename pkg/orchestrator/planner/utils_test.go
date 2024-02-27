@@ -174,7 +174,6 @@ func (m *UpdateJobMatcher) String() string {
 type ComputeRequestMatcher struct {
 	t         *testing.T
 	nodeID    string
-	plan      *models.Plan
 	execution *models.Execution
 	update    *models.PlanExecutionDesiredUpdate
 }
@@ -200,9 +199,8 @@ func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
 	var routingMetadata compute.RoutingMetadata
 	var executionID string
 
-	switch x.(type) {
+	switch req := x.(type) {
 	case compute.AskForBidRequest:
-		req := x.(compute.AskForBidRequest)
 		routingMetadata = req.RoutingMetadata
 		executionID = req.Execution.ID
 		desiredState := m.execution.DesiredState.StateType
@@ -219,15 +217,12 @@ func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
 			}
 		}
 	case compute.BidAcceptedRequest:
-		req := x.(compute.BidAcceptedRequest)
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
 	case compute.BidRejectedRequest:
-		req := x.(compute.BidRejectedRequest)
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
 	case compute.CancelExecutionRequest:
-		req := x.(compute.CancelExecutionRequest)
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
 	default:

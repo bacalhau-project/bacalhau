@@ -67,6 +67,7 @@ func TestBadlySignedChallenge(t *testing.T) {
 	userPubKey := base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&userPrivKey.PublicKey))
 
 	signature, err := system.Sign([]byte("other input phrase"), userPrivKey)
+	require.NoError(t, err)
 	response := response{
 		PhraseSignature: signature,
 		PublicKey:       userPubKey,
@@ -88,8 +89,11 @@ func TestGoodChallenge(t *testing.T) {
 	require.NoError(t, err)
 
 	userPubKey := base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&userPrivKey.PublicKey))
+	require.NoError(t, err)
 
 	signature, err := system.Sign([]byte(req.InputPhrase), userPrivKey)
+	require.NoError(t, err)
+
 	response := response{
 		PhraseSignature: signature,
 		PublicKey:       userPubKey,
