@@ -174,6 +174,8 @@ build-webui:
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
+${BINARY_PATH}: build-bacalhau build-plugins
+
 .PHONY: build-bacalhau
 build-bacalhau: binary-web binary
 
