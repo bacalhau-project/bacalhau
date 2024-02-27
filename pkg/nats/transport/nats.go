@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_pubsub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/hashicorp/go-multierror"
@@ -91,6 +92,7 @@ type NATSTransport struct {
 	callbackProxy     compute.Callback
 	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
 	nodeInfoDecorator models.NodeInfoDecorator
+	registrationProxy requester.RegistrationEndpoint
 }
 
 //nolint:funlen
@@ -187,6 +189,11 @@ func NewNATSTransport(ctx context.Context,
 		Conn: nc.Client,
 	})
 
+	// A proxy to register and unregister compute nodes with the requester
+	registrationProxy := proxy.NewRegistrationProxy(proxy.RegistrationProxyParams{
+		Conn: nc.Client,
+	})
+
 	return &NATSTransport{
 		nodeID:            config.NodeID,
 		natsServer:        sm,
@@ -195,6 +202,7 @@ func NewNATSTransport(ctx context.Context,
 		callbackProxy:     computeCallback,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
+		registrationProxy: registrationProxy,
 	}, nil
 }
 
@@ -229,6 +237,15 @@ func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error
 	return err
 }
 
+// RegisterRegistrationEndpoint registers a requester endpoint with the transport layer.
+func (t *NATSTransport) RegisterRegistrationEndpoint(endpoint requester.RegistrationEndpoint) error {
+	_, err := proxy.NewRegistrationHandler(proxy.RegistrationHandlerParams{
+		Conn:                 t.natsClient.Client,
+		RegistrationEndpoint: endpoint,
+	})
+	return err
+}
+
 // ComputeProxy returns the compute proxy.
 func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 	return t.computeProxy
@@ -237,6 +254,11 @@ func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 // CallbackProxy returns the callback proxy.
 func (t *NATSTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
+}
+
+// RegistrationProxy returns the previoously created registration proxy.
+func (t *NATSTransport) RegistrationProxy() requester.RegistrationEndpoint {
+	return t.registrationProxy
 }
 
 // NodeInfoPubSub returns the node info pubsub.

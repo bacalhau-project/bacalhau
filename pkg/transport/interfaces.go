@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
@@ -17,6 +18,9 @@ type TransportLayer interface {
 
 	// CallbackProxy enables compute nodes to send results and responses back to orchestrator nodes
 	CallbackProxy() compute.Callback
+
+	// RegistrationProxy enables compute nodes to register with the cluster
+	RegistrationProxy() requester.RegistrationEndpoint
 
 	// NodeInfoPubSub enables compute nodes to publish their info and capabilities
 	// to orchestrator nodes for job matching and discovery.
@@ -43,6 +47,10 @@ type TransportLayer interface {
 	// RegisterComputeEndpoint registers a compute endpoint with the transport layer
 	// so that incoming orchestrator requests are forwarded to the handler
 	RegisterComputeEndpoint(endpoint compute.Endpoint) error
+
+	// RegisterRegistrationEndpoint registers a requester endpoint that computes nodes
+	// can use to register with the cluster.
+	RegisterRegistrationEndpoint(endpoint requester.RegistrationEndpoint) error
 
 	// Close closes the transport layer.
 	Close(ctx context.Context) error

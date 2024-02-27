@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -271,6 +272,12 @@ func NewNode(
 			attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
 		)
 
+		// Create a new node manager to keep track of compute nodes connecting
+		// to the network.
+		nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
+			NodeInfo: nodeInfoStore,
+		})
+
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.NodeID,
@@ -280,6 +287,7 @@ func NewNode(
 			authenticators,
 			tracingInfoStore,
 			transportLayer.ComputeProxy(),
+			nodeManager,
 		)
 		if err != nil {
 			return nil, err
@@ -288,6 +296,12 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
+
+		err = transportLayer.RegisterRegistrationEndpoint(nil)
+		if err != nil {
+			return nil, err
+		}
+
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
@@ -321,6 +335,7 @@ func NewNode(
 			executors,
 			publishers,
 			transportLayer.CallbackProxy(),
+			transportLayer.RegistrationProxy(),
 		)
 		if err != nil {
 			return nil, err
