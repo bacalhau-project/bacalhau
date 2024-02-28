@@ -168,10 +168,6 @@ func (n *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 
 // Delete deletes a node info from the repo.
 func (n *NodeStore) Delete(ctx context.Context, nodeID string) error {
-	if err := n.kv.Delete(ctx, nodeID); err != nil {
-		return errors.Wrap(err, "failed to delete node info from node store")
-	}
-
 	if err := n.kv.Purge(ctx, nodeID); err != nil {
 		return errors.Wrap(err, "failed to purge node info from node store")
 	}
