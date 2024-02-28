@@ -40,9 +40,11 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
-ifeq ($(EARTHLY),)
-$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
-endif
+.PHONY: earthly-checker
+earthly-checker:
+	ifeq ($(EARTHLY),)
+	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+	endif
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
@@ -75,7 +77,7 @@ install-pre-commit:
 # it is missing.
 ################################################################################
 .PHONY: precommit
-precommit:
+precommit: earthly-checker
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
@@ -90,7 +92,7 @@ endif
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
-build-python-apiclient:
+build-python-apiclient: earthly-checker
 	cd clients && ${MAKE} clean all
 	@echo "Python API client built."
 
@@ -98,7 +100,7 @@ build-python-apiclient:
 # Target: build-python-sdk
 ################################################################################
 .PHONY: build-python-sdk
-build-python-sdk:
+build-python-sdk: earthly-checker
 	cd python && ${MAKE} clean all
 	@echo "Python SDK built."
 
@@ -106,7 +108,7 @@ build-python-sdk:
 # Target: build-bacalhau-airflow
 ################################################################################
 .PHONY: build-bacalhau-airflow
-build-bacalhau-airflow:
+build-bacalhau-airflow: earthly-checker
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
 
@@ -121,7 +123,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 # Target: release-python-apiclient
 ################################################################################
 .PHONY: release-python-apiclient
-release-python-apiclient:
+release-python-apiclient: earthly-checker
 	cd clients && ${MAKE} pypi-upload
 	@echo "Python API client pushed to PyPi."
 
@@ -129,7 +131,7 @@ release-python-apiclient:
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk:
+release-python-sdk: earthly-checker
 	cd python && ${MAKE} build && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
@@ -137,7 +139,7 @@ release-python-sdk:
 # Target: release-bacalhau-airflow
 ################################################################################
 .PHONY: release-bacalhau-airflow
-release-bacalhau-airflow:
+release-bacalhau-airflow: earthly-checker
 	cd integration/airflow && ${MAKE} release
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
@@ -145,7 +147,7 @@ release-bacalhau-airflow:
 # Target: release-bacalhau-flyte
 ################################################################################
 .PHONY: release-bacalhau-flyte
-release-bacalhau-flyte:
+release-bacalhau-flyte: earthly-checker
 	cd integration/flyte && ${MAKE} release
 	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
@@ -156,10 +158,10 @@ release-bacalhau-flyte:
 build: build-bacalhau build-plugins
 
 .PHONY: build-ci
-build-ci: build-bacalhau install-plugins
+build-ci: earthly-checker build-bacalhau install-plugins
 
 .PHONY: build-dev
-build-dev: build-ci
+build-dev: earthly-checker build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
@@ -170,7 +172,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
-build-webui:
+build-webui: earthly-checker
 	cd webui && ${EARTHLY} --push +all
 
 
@@ -178,12 +180,12 @@ build-webui:
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
-build-bacalhau: ${BINARY_PATH}
+build-bacalhau: earthly-checker ${BINARY_PATH}
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
+${BINARY_PATH}: earthly-checker ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
@@ -286,13 +288,14 @@ clean: clean-plugins
 test: unit-test bash-test
 
 .PHONY: unit-test
+unit-test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
 .PHONY: test-python
-test-python:
+test-python: earthly-checker
 # sdk tests
-	cd python && make test
+	cd python && $(MAKE) test
 
 .PHONY: integration-test
 integration-test:
