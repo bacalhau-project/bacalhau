@@ -210,6 +210,10 @@ func NewNode(
 		}
 
 		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create NATS transport layer")
+		}
+
 		if config.IsRequesterNode {
 			// KV Node Store requires connection info from the NATS server so that it is able
 			// to create its own connection and then subscribe to the node info topic.

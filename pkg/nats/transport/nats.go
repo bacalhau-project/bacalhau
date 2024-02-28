@@ -63,6 +63,10 @@ func (c *NATSTransportConfig) Validate() error {
 		mErr = multierror.Append(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
 	}
 
+	if c.AuthSecret == "" {
+		mErr = multierror.Append(mErr, fmt.Errorf("when using NATS, an auth secret must be provided for each node connecting to the cluster"))
+	}
+
 	if c.IsRequesterNode {
 		mErr = multierror.Append(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
 
@@ -144,10 +148,7 @@ func NewNATSTransport(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-
-		if config.AuthSecret != "" {
-			serverURL.User = url.User(config.AuthSecret)
-		}
+		serverURL.User = url.User(config.AuthSecret)
 
 		config.Orchestrators = append(config.Orchestrators, serverURL.String())
 	}
