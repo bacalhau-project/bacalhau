@@ -119,16 +119,28 @@ func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo
 	return peer.AddrInfo{}, nil
 }
 
-func (r *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
+func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	megaFilter := func(info models.NodeInfo) bool {
+		for _, filter := range filters {
+			if !filter(info) {
+				return false
+			}
+		}
+		return true
+	}
+
 	var nodeInfos []models.NodeInfo
 	var toEvict []nodeInfoWrapper
 	for _, nodeInfo := range r.nodeInfoMap {
 		if time.Now().After(nodeInfo.evictAt) {
 			toEvict = append(toEvict, nodeInfo)
 		} else {
-			nodeInfos = append(nodeInfos, nodeInfo.NodeInfo)
+			if megaFilter(nodeInfo.NodeInfo) {
+				nodeInfos = append(nodeInfos, nodeInfo.NodeInfo)
+			}
 		}
 	}
 	if len(toEvict) > 0 {
