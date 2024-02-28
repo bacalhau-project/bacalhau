@@ -16,11 +16,11 @@ import (
 type StoreNodeDiscovererSuite struct {
 	suite.Suite
 	discoverer *StoreNodeDiscoverer
-	store      *inmemory.NodeInfoStore
+	store      *inmemory.NodeStore
 }
 
 func (s *StoreNodeDiscovererSuite) SetupTest() {
-	s.store = inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
+	s.store = inmemory.NewNodeStore(inmemory.NodeStoreParams{
 		TTL: math.MaxInt64,
 	})
 	s.discoverer = NewStoreNodeDiscoverer(StoreNodeDiscovererParams{

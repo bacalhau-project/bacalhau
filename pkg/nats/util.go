@@ -1,9 +1,13 @@
 package nats
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 var schemeRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+-.]*://`)
@@ -38,4 +42,16 @@ func RoutesFromSlice(routes []string) ([]*url.URL, error) {
 		return []*url.URL{}, nil
 	}
 	return RoutesFromStr(strings.Join(routes, ","))
+}
+
+// CreateAuthSecret will return a signed hash of the nodeID
+// provided, for use as a secret for NATS authentication.
+func CreateAuthSecret(nodeID string) (string, error) {
+	var keySig string
+	keySig, err := system.SignForClient([]byte(nodeID))
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256([]byte(keySig))
+	return base64.RawURLEncoding.EncodeToString(hash[:]), nil
 }

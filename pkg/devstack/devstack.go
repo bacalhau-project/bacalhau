@@ -7,28 +7,29 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 const (
@@ -122,6 +123,8 @@ func Setup(
 		stackConfig.NetworkType = networkType
 	}
 
+	natsAuthSecret := ""
+
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
 		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
@@ -129,6 +132,14 @@ func Setup(
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
+
+		// If this is the requester node, and we are using a NATS network, we need to make sure
+		// that there is an AuthSecret set in the node config.
+		if isRequesterNode && stackConfig.NetworkType == models.NetworkTypeNATS {
+			if natsAuthSecret, err = nats.CreateAuthSecret(nodeID); err != nil {
+				return nil, err
+			}
+		}
 
 		// ////////////////////////////////////
 		// IPFS
@@ -169,6 +180,7 @@ func Setup(
 			Orchestrators: orchestratorAddrs,
 			Port:          swarmPort,
 			ClusterPeers:  clusterPeersAddrs,
+			AuthSecret:    natsAuthSecret,
 		}
 
 		if stackConfig.NetworkType == models.NetworkTypeNATS {
@@ -183,9 +195,11 @@ func Setup(
 			}
 
 			if isRequesterNode {
+				repoPath, _ := fsRepo.Path()
+				clusterConfig.StoreDir = filepath.Join(repoPath, "nats-storage")
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
-				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", swarmPort))
+				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("%s@127.0.0.1:%d", natsAuthSecret, swarmPort))
 				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
 			}
 		} else {
