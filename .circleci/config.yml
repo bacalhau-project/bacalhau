@@ -269,6 +269,7 @@ jobs:
     executor: linux-amd64
     steps:
       - checkout
+      - install_asdf
       - install_earthly
       - attach_workspace:
           at: .
@@ -277,6 +278,7 @@ jobs:
       - run:
           name: Build tarball
           command: |
+            source $BASH_ENV
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
