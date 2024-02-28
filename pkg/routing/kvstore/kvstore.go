@@ -101,7 +101,7 @@ func (n *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, er
 		if errors.Is(err, jetstream.ErrKeyNotFound) {
 			return models.NodeInfo{}, routing.NewErrNodeNotFound(nodeID)
 		}
-		fmt.Println(">?", err)
+
 		return models.NodeInfo{}, errors.Wrap(err, "failed to get node info from node store")
 	}
 
@@ -132,15 +132,10 @@ func (n *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	})
 
 	if len(keys) == 0 {
-		fmt.Println("No keys")
 		return models.NodeInfo{}, routing.NewErrNodeNotFound(prefix)
 	} else if len(keys) > 1 {
-		fmt.Println("Multiple keys")
-
 		return models.NodeInfo{}, routing.NewErrMultipleNodesFound(prefix, keys)
 	}
-
-	fmt.Println("One key")
 
 	return n.Get(ctx, keys[0])
 }
