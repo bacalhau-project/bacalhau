@@ -40,6 +40,9 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
+ifeq ($(EARTHLY),)
+$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+endif
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
