@@ -38,7 +38,7 @@ func (s *KVNodeInfoStoreSuite) SetupTest() {
 	s.nats = natsserver.RunServer(opts)
 	serverAddress := s.nats.Addr().String()
 
-	s.store, _ = kvstore.NewNodeStore(kvstore.NodeStoreParams{
+	s.store, _ = kvstore.NewNodeStore(context.Background(), kvstore.NodeStoreParams{
 		BucketName:     "test_nodes",
 		ConnectionInfo: serverAddress,
 	})

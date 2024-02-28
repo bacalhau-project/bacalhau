@@ -31,7 +31,7 @@ type NodeStore struct {
 	kv jetstream.KeyValue
 }
 
-func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
+func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, error) {
 	url, ok := params.ConnectionInfo.(string)
 	if !ok {
 		return nil, errors.New("invalid connection info provided to KV Node Store")
@@ -53,7 +53,7 @@ func NewNodeStore(params NodeStoreParams) (*NodeStore, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name is required")
 	}
-	kv, err := js.CreateKeyValue(context.Background(), jetstream.KeyValueConfig{
+	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket: bucketName,
 	})
 	if err != nil {

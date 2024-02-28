@@ -225,7 +225,7 @@ func NewNode(
 		if config.IsRequesterNode {
 			// KV Node Store requires connection info from the NATS server so that it is able
 			// to create its own connection and then subscribe to the node info topic.
-			nodeInfoStore, err := kvstore.NewNodeStore(kvstore.NodeStoreParams{
+			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 				BucketName:     kvstore.DefaultBucketName,
 				ConnectionInfo: transportLayer.GetConnectionInfo(ctx),
 			})
