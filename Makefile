@@ -16,6 +16,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
+export EARTHLY = $(shell which earthly)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -38,13 +39,6 @@ TEST_PARALLEL_PACKAGES ?= 1
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
-
-export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
-.PHONY: earthly-checker
-earthly-checker:
-	ifeq ($(EARTHLY),)
-	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
-	endif
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
@@ -69,6 +63,13 @@ install-pre-commit:
 	@ops/install_pre_commit.sh 1>/dev/null
 	@echo "Pre-commit installed."
 
+.PHONY: resolve-earthly
+resolve-earthly:
+	@echo "Resolved Earthly path - ${EARTHLY}"
+ifeq ($(EARTHLY),)
+	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+endif
+
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
@@ -92,7 +93,7 @@ endif
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
-build-python-apiclient: earthly-checker
+build-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} clean all
 	@echo "Python API client built."
 
@@ -100,7 +101,7 @@ build-python-apiclient: earthly-checker
 # Target: build-python-sdk
 ################################################################################
 .PHONY: build-python-sdk
-build-python-sdk: earthly-checker
+build-python-sdk: resolve-earthly
 	cd python && ${MAKE} clean all
 	@echo "Python SDK built."
 
@@ -108,7 +109,7 @@ build-python-sdk: earthly-checker
 # Target: build-bacalhau-airflow
 ################################################################################
 .PHONY: build-bacalhau-airflow
-build-bacalhau-airflow: earthly-checker
+build-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
 
@@ -123,7 +124,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 # Target: release-python-apiclient
 ################################################################################
 .PHONY: release-python-apiclient
-release-python-apiclient: earthly-checker
+release-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} pypi-upload
 	@echo "Python API client pushed to PyPi."
 
@@ -131,7 +132,7 @@ release-python-apiclient: earthly-checker
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk: earthly-checker
+release-python-sdk: resolve-earthly
 	cd python && ${MAKE} build && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
@@ -139,7 +140,7 @@ release-python-sdk: earthly-checker
 # Target: release-bacalhau-airflow
 ################################################################################
 .PHONY: release-bacalhau-airflow
-release-bacalhau-airflow: earthly-checker
+release-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} release
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
@@ -147,7 +148,7 @@ release-bacalhau-airflow: earthly-checker
 # Target: release-bacalhau-flyte
 ################################################################################
 .PHONY: release-bacalhau-flyte
-release-bacalhau-flyte: earthly-checker
+release-bacalhau-flyte: resolve-earthly
 	cd integration/flyte && ${MAKE} release
 	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
@@ -158,10 +159,10 @@ release-bacalhau-flyte: earthly-checker
 build: build-bacalhau build-plugins
 
 .PHONY: build-ci
-build-ci: earthly-checker build-bacalhau install-plugins
+build-ci: build-bacalhau install-plugins
 
 .PHONY: build-dev
-build-dev: earthly-checker build-ci
+build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
@@ -172,7 +173,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
-build-webui: earthly-checker
+build-webui: resolve-earthly
 	cd webui && ${EARTHLY} --push +all
 
 
@@ -180,12 +181,12 @@ build-webui: earthly-checker
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
-build-bacalhau: earthly-checker ${BINARY_PATH}
+build-bacalhau: resolve-earthly ${BINARY_PATH}
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: earthly-checker ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
@@ -293,7 +294,7 @@ unit-test:
 	go test ./... -v --tags=unit
 
 .PHONY: test-python
-test-python: earthly-checker
+test-python: resolve-earthly
 # sdk tests
 	cd python && $(MAKE) test
 
