@@ -314,7 +314,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	)
 
 	// for the requester node to pick up the nodeInfo messages
-	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0].RequesterNode, nodeCount)
 
 	jobConfig := testutils.MakeJobWithOpts(suite.T(),
 		job.WithResources("", "", "", "1"),

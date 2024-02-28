@@ -87,7 +87,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
-	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
+	nodeutils.WaitForNodeDiscovery(s.T(), s.requester.RequesterNode, 4)
 }
 
 func (s *NodeSelectionSuite) TearDownSuite() {

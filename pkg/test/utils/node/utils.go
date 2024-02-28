@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 // WaitForNodeDiscovery for the requester node to pick up the nodeInfo messages
-func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCount int) {
+func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Requester, expectedNodeCount int) {
 	ctx := context.Background()
 	waitDuration := 15 * time.Second
 	waitGaps := 20 * time.Millisecond
@@ -27,6 +27,7 @@ func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCo
 		var err error
 		nodeInfos, err = requesterNode.NodeInfoStore.List(ctx)
 		require.NoError(t, err)
+
 		if time.Now().After(waitLoggingUntil) {
 			t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t models.NodeInfo) string {
 				return t.ID()

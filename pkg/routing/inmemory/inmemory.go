@@ -19,24 +19,24 @@ type nodeInfoWrapper struct {
 	evictAt time.Time
 }
 
-type NodeInfoStoreParams struct {
+type NodeStoreParams struct {
 	TTL time.Duration
 }
 
-type NodeInfoStore struct {
+type NodeStore struct {
 	ttl         time.Duration
 	nodeInfoMap map[string]nodeInfoWrapper
 	mu          sync.RWMutex
 }
 
-func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
-	return &NodeInfoStore{
+func NewNodeStore(params NodeStoreParams) *NodeStore {
+	return &NodeStore{
 		ttl:         params.TTL,
 		nodeInfoMap: make(map[string]nodeInfoWrapper),
 	}
 }
 
-func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
+func (r *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -51,7 +51,7 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error
 	return nil
 }
 
-func (r *NodeInfoStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, error) {
+func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[nodeID]
@@ -65,7 +65,7 @@ func (r *NodeInfoStore) Get(ctx context.Context, nodeID string) (models.NodeInfo
 	return infoWrapper.NodeInfo, nil
 }
 
-func (r *NodeInfoStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error) {
+func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	nodeInfo, err := r.Get(ctx, prefix)
@@ -106,7 +106,7 @@ func (r *NodeInfoStore) GetByPrefix(ctx context.Context, prefix string) (models.
 	return r.nodeInfoMap[nodeIDsWithPrefix[0]].NodeInfo, nil
 }
 
-func (r *NodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
+func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[peerID.String()]
@@ -119,7 +119,7 @@ func (r *NodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.Addr
 	return peer.AddrInfo{}, nil
 }
 
-func (r *NodeInfoStore) List(ctx context.Context) ([]models.NodeInfo, error) {
+func (r *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var nodeInfos []models.NodeInfo
@@ -137,13 +137,13 @@ func (r *NodeInfoStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (r *NodeInfoStore) Delete(ctx context.Context, nodeID string) error {
+func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.doDelete(ctx, nodeID)
 }
 
-func (r *NodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapper) {
+func (r *NodeStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapper) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, infoWrapper := range infoWrappers {
@@ -159,10 +159,10 @@ func (r *NodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapp
 	}
 }
 
-func (r *NodeInfoStore) doDelete(ctx context.Context, nodeID string) error {
+func (r *NodeStore) doDelete(ctx context.Context, nodeID string) error {
 	delete(r.nodeInfoMap, nodeID)
 	return nil
 }
 
 // compile time check that we implement the interface
-var _ routing.NodeInfoStore = (*NodeInfoStore)(nil)
+var _ routing.NodeInfoStore = (*NodeStore)(nil)

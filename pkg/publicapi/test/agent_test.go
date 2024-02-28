@@ -38,9 +38,9 @@ func (s *ServerSuite) TestAgentNode() {
 	s.Require().NotEmpty(resp)
 	s.Require().NotNil(resp.NodeInfo)
 
-	expectedNode, err := s.requesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
+	node := s.requesterNode
+	expectedNode, err := node.RequesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
-
 	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
 }
 
