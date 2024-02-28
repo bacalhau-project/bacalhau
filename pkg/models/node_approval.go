@@ -2,38 +2,93 @@ package models
 
 import "fmt"
 
-// NodeApproval is used to denote the approval status of a given
-// node. These values are set based on the approval process for
-// nodes which will auto-approve some, rely on human approval for
-// others as well as rejecting some nodes as inelligible.
-type NodeApproval string
+type NodeApproval struct {
+	approval
+}
+
+type approval int
 
 const (
-	NodeApprovalUnknown  NodeApproval = "unknown"
-	NodeApprovalPending  NodeApproval = "pending"
-	NodeApprovalApproved NodeApproval = "approved"
-	NodeApprovalRejected NodeApproval = "rejected"
+	unknown approval = iota
+	pending
+	approved
+	rejected
 )
 
-// ParseApproval accepts a string representation of a NodeApproval
-// and returns the matching NodeApproval value, or an error if
-// the string cannot be matched to a NodeApproval value.
-func ParseApproval(s string) (NodeApproval, error) {
-	switch s {
-	case "pending":
-		return NodeApprovalPending, nil
-	case "approved":
-		return NodeApprovalApproved, nil
-	case "rejected":
-		return NodeApprovalRejected, nil
-	case "unknown":
-		return NodeApprovalUnknown, nil
-	default:
-		return NodeApprovalUnknown, fmt.Errorf("invalid approval status: %s", s)
+var (
+	strApprovalArray = [...]string{
+		pending:  "PENDING",
+		approved: "APPROVED",
+		rejected: "REJECTED",
+	}
+
+	typeApprovalMap = map[string]approval{
+		"PENDING":  pending,
+		"APPROVED": approved,
+		"REJECTED": rejected,
+	}
+)
+
+func (t approval) String() string {
+	return strApprovalArray[t]
+}
+
+func Parse(a any) NodeApproval {
+	switch v := a.(type) {
+	case NodeApproval:
+		return v
+	case string:
+		return NodeApproval{stringToApproval(v)}
+	case fmt.Stringer:
+		return NodeApproval{stringToApproval(v.String())}
+	case int:
+		return NodeApproval{approval(v)}
+	case int64:
+		return NodeApproval{approval(int(v))}
+	case int32:
+		return NodeApproval{approval(int(v))}
+	}
+	return NodeApproval{unknown}
+}
+
+func stringToApproval(s string) approval {
+	if v, ok := typeApprovalMap[s]; ok {
+		return v
+	}
+	return unknown
+}
+
+func (t approval) IsValid() bool {
+	return t >= approval(1) && t <= approval(len(strApprovalArray))
+}
+
+type approvalsContainer struct {
+	UNKNOWN  NodeApproval
+	PENDING  NodeApproval
+	APPROVED NodeApproval
+	REJECTED NodeApproval
+}
+
+var NodeApprovals = approvalsContainer{
+	UNKNOWN:  NodeApproval{unknown},
+	PENDING:  NodeApproval{pending},
+	APPROVED: NodeApproval{approved},
+	REJECTED: NodeApproval{rejected},
+}
+
+func (c approvalsContainer) All() []NodeApproval {
+	return []NodeApproval{
+		c.PENDING,
+		c.APPROVED,
+		c.REJECTED,
 	}
 }
 
-// String returns the string representation of the NodeApproval
-func (e NodeApproval) String() string {
-	return string(e)
+func (t NodeApproval) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.String() + `"`), nil
+}
+
+func (t *NodeApproval) UnmarshalJSON(b []byte) error {
+	*t = Parse(string(b))
+	return nil
 }
