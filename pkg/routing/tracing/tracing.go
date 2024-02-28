@@ -29,7 +29,7 @@ func (r *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	stopwatch := telemetry.Timer(ctx, addNodeDurationMilliseconds)
 	defer func() {
 		dur := stopwatch()
-		log.Ctx(ctx).Debug().
+		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Str("node", nodeInfo.ID()).
 			Msg("node added")
@@ -45,7 +45,7 @@ func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, er
 	stopwatch := telemetry.Timer(ctx, getNodeDurationMilliseconds)
 	defer func() {
 		dur := stopwatch()
-		log.Ctx(ctx).Debug().
+		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Str("node", nodeID).
 			Msg("node retrieved")
@@ -61,7 +61,7 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	stopwatch := telemetry.Timer(ctx, getPrefixNodeDurationMilliseconds)
 	defer func() {
 		dur := stopwatch()
-		log.Ctx(ctx).Debug().
+		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Str("prefix", prefix).
 			Msg("node retrieved by previus")
@@ -81,7 +81,7 @@ func (r *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 	stopwatch := telemetry.Timer(ctx, listNodesDurationMilliseconds)
 	defer func() {
 		dur := stopwatch()
-		log.Ctx(ctx).Debug().
+		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Msg("node listed")
 	}()
@@ -96,7 +96,7 @@ func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {
 	stopwatch := telemetry.Timer(ctx, deleteNodeDurationMilliseconds)
 	defer func() {
 		dur := stopwatch()
-		log.Ctx(ctx).Debug().
+		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Str("node", nodeID).
 			Msg("node deleted")
