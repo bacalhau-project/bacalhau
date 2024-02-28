@@ -79,7 +79,13 @@ func getDefaultConfig(path string) types.BacalhauConfig {
 	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
-	defaultConfig.Node.Network.StoreDir = filepath.Join(path, NetworkTransportStore)
+
+	// We default to the folder which contains the job store, and add
+	// a subfolder for the network store.
+	defaultConfig.Node.Network.StoreDir = filepath.Join(
+		filepath.Dir(defaultConfig.Node.Requester.JobStore.Path),
+		NetworkTransportStore,
+	)
 
 	return defaultConfig
 }
