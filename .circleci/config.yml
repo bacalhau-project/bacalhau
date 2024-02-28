@@ -175,15 +175,6 @@ commands:
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
 
-  select_earthly_satellite:
-    description: Select Earthly satellite
-    steps:
-      - run:
-          name: Select Earthly satellite
-          command: |
-            earthly account login
-            earthly sat select << pipeline.parameters.earthly_satellite >>
-
   # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
   # which is a file that asdf uses to install the correct version of python.
   install_python:
@@ -263,6 +254,15 @@ commands:
             asdf plugin-add earthly
             asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
             earthly --version
+
+  select_earthly_satellite:
+    description: Select Earthly satellite
+    steps:
+      - run:
+          name: Select Earthly satellite
+          command: |
+            earthly account login
+            earthly sat select << pipeline.parameters.earthly_satellite >>
 
 jobs:
   build_cli:
@@ -406,6 +406,7 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:

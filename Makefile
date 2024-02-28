@@ -77,7 +77,7 @@ install-pre-commit:
 # it is missing.
 ################################################################################
 .PHONY: precommit
-precommit: earthly-checker
+precommit:
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
