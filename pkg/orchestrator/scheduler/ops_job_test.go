@@ -42,8 +42,8 @@ func TestOpsJobSchedulerTestSuite(t *testing.T) {
 
 func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
-	executions = []models.Execution{}
+	job, _, evaluation := mockOpsJob()
+	executions := []models.Execution{}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
@@ -152,8 +152,8 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTer
 
 func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	ctx := context.Background()
-	job, executions, evaluation := mockOpsJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockOpsJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 	s.mockNodeSelection(job, []models.NodeInfo{})

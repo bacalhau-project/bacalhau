@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type SystemScriptCheckerSuite struct {
