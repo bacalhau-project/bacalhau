@@ -281,7 +281,8 @@ jobs:
       - run:
           name: Build tarball
           command: |
-            source $BASH_ENV
+            source "${BASH_ENV}"
+            echo "${BASH_ENV}"
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
@@ -418,6 +419,10 @@ jobs:
           name: Copy swagger.json from workspace
           command: |
             cp /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
+      - run:
+          name: Set Shell Environment
+          command: |
+            source $BASH_ENV
       - run:
           name: Build Python API client
           command: make build-python-apiclient
