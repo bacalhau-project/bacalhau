@@ -34,8 +34,8 @@ import (
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
-var errExecution = errors.New("I am a bad executor")
-var errPublish = errors.New("I am a bad publisher")
+var errExecution = errors.New("i am a bad executor")
+var errPublish = errors.New("i am a bad publisher")
 var slowExecutorSleep = 5 * time.Second
 var goodExecutorSleep = 250 * time.Millisecond // force bad executors to finish first to have more predictable tests
 

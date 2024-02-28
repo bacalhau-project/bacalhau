@@ -49,10 +49,15 @@ var V2Migration = repo.NewMigration(
 			doWrite = true
 		}
 
-		emptyConfig := types.JobStoreConfig{}
-		if fileCfg.Node.Compute.ExecutionStore == emptyConfig {
+		if fileCfg.Node.Compute.ExecutionStore.Path == "" {
 			// persist the execution store in the repo
 			executionStore := resolvedCfg.Node.Compute.ExecutionStore
+
+			// handle an edge case where config.yaml has store config entry but no path,
+			// which will override the resolved config path and make it empty as well
+			if executionStore.Path == "" {
+				executionStore.Path = filepath.Join(repoPath, "compute_store", "executions.db")
+			}
 
 			// if execution store already exist with nodeID, then rename it to the new name
 			legacyStoreName := filepath.Join(repoPath, libp2pNodeID+"-compute")
@@ -67,9 +72,15 @@ var V2Migration = repo.NewMigration(
 			set(types.NodeComputeExecutionStore, executionStore)
 		}
 
-		if fileCfg.Node.Requester.JobStore == emptyConfig {
+		if fileCfg.Node.Requester.JobStore.Path == "" {
 			// persist the job store in the repo
 			jobStore := resolvedCfg.Node.Requester.JobStore
+
+			// handle an edge case where config.yaml has store config entry but no path,
+			// which will override the resolved config path and make it empty as well
+			if jobStore.Path == "" {
+				jobStore.Path = filepath.Join(repoPath, "orchestrator_store", "jobs.db")
+			}
 
 			// if job store already exist with nodeID, then rename it to the new name
 			legacyStoreName := filepath.Join(repoPath, libp2pNodeID+"-requester")
