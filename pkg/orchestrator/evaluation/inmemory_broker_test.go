@@ -236,7 +236,7 @@ func (s *InMemoryBrokerTestSuite) TestNack_Delay() {
 		return true, nil
 	}}))
 
-	delay := time.Now().Sub(start)
+	delay := time.Since(start)
 	s.Require().GreaterOrEqual(delay, s.broker.subsequentNackDelay, "should have waited for the nack delay")
 
 	// Dequeue should work again

@@ -42,8 +42,8 @@ func TestDaemonJobSchedulerTestSuite(t *testing.T) {
 
 func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockDaemonJob()
-	executions = []models.Execution{}
+	job, _, evaluation := mockDaemonJob()
+	executions := []models.Execution{}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
@@ -161,8 +161,8 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNon
 
 func (s *DaemonJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	ctx := context.Background()
-	job, executions, evaluation := mockDaemonJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockDaemonJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return([]models.NodeInfo{}, nil)
