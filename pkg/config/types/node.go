@@ -29,7 +29,7 @@ type NodeConfig struct {
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
-	ComputeStoragePath string `yaml:"ComputeStoragePath"`
+	StoragePath string `yaml:"StoragePath"`
 
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both

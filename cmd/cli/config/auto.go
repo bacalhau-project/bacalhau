@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -111,7 +112,12 @@ func newAutoResourceCmd() *cobra.Command {
 }
 
 func autoConfig(ctx context.Context, settings *autoSettings) error {
-	pp := system.NewPhysicalCapacityProvider()
+	storage, err := config.GetComputeNodeStorage()
+	if err != nil {
+		return fmt.Errorf("failed to get compute node storage: %w", err)
+	}
+
+	pp := system.NewPhysicalCapacityProvider(storage.GetRoot())
 	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)

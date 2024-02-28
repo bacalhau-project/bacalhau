@@ -157,6 +157,14 @@ func NewNode(
 		return nil, err
 	}
 
+	storagePath := pkgconfig.GetStoragePath()
+	if config.IsComputeNode {
+		pkgconfig.EnsureComputeStorage()
+	}
+	if config.IsRequesterNode {
+		pkgconfig.EnsureRequesterStorage()
+	}
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
@@ -261,8 +269,6 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
-		storagePath := pkgconfig.GetStoragePath()
-
 		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 		if err != nil {
 			return nil, err
@@ -285,7 +291,7 @@ func NewNode(
 			config.CleanupManager,
 			apiServer,
 			config.ComputeConfig,
-			storagePath,
+			storagePath, // This is the root storage path for the compute node
 			storageProviders,
 			executors,
 			publishers,

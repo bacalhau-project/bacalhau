@@ -20,11 +20,6 @@ const (
 	Libp2pPrivateKeyFileName = "libp2p_private_key"
 	UserPrivateKeyFileName   = "user_id.pem"
 
-	// compute paths
-	ComputeStoragesPath = "executor_storages"
-	ComputeStorePath    = "compute_store"
-	PluginsPath         = "plugins"
-
 	// orchestrator paths
 	OrchestratorStorePath = "orchestrator_store"
 	AutoCertCachePath     = "autocert-cache"
@@ -36,10 +31,10 @@ const (
 	TokensPath = "tokens.json"
 )
 
-var (
-	ComputeExecutionsStorePath = filepath.Join(ComputeStorePath, "executions.db")
-	OrchestratorJobStorePath   = filepath.Join(OrchestratorStorePath, "jobs.db")
-)
+// var (
+// 	ComputeExecutionsStorePath = filepath.Join(ComputeStorePath, "executions.db")
+// 	OrchestratorJobStorePath   = filepath.Join(OrchestratorStorePath, "jobs.db")
+// )
 
 var (
 	environmentVariableReplace = strings.NewReplacer(".", "_")
@@ -72,12 +67,16 @@ func getDefaultConfig(path string) types.BacalhauConfig {
 	// set default values for path dependent config.
 	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
 	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
-	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
-	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Node.Compute.ExecutionStore.Path = filepath.Join(path, ComputeExecutionsStorePath)
-	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
 	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
 	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
+
+	reqStorage, _ := GetRequesterNodeStorage(path)
+	computeStorage, _ := GetComputeNodeStorage(path)
+
+	defaultConfig.Node.ExecutorPluginPath = computeStorage.GetExecutionStoragePath()
+	defaultConfig.Node.StoragePath = computeStorage.GetResultsStoragePath()
+	defaultConfig.Node.Compute.ExecutionStore.Path = computeStorage.GetResultsStoragePath()
+	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(reqStorage.GetRoot(), "jobs.db")
 
 	return defaultConfig
 }

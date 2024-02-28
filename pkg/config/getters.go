@@ -219,14 +219,6 @@ func GetUpdateCheckFrequency() time.Duration {
 	return viper.GetDuration(types.UpdateCheckFrequency)
 }
 
-func GetStoragePath() string {
-	path := viper.GetString(types.NodeComputeStoragePath)
-	if path == "" {
-		return os.TempDir()
-	}
-	return path
-}
-
 func GetDockerManifestCacheSettings() (*types.DockerCacheConfig, error) {
 	//var cfg types.DockerCacheConfig
 

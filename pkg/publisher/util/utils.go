@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/pkg/errors"
 )
 
 func NewPublisherProvider(
@@ -48,7 +49,12 @@ func NewPublisherProvider(
 }
 
 func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
+	computeStorage, err := config.GetComputeNodeStorage()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get compute node storage")
+	}
+
+	dir, err := os.MkdirTemp(computeStorage.GetResultsStoragePath(), "bacalhau-s3-publisher")
 	if err != nil {
 		return nil, err
 	}
