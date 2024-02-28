@@ -17,6 +17,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
+const (
+	DefaultBucketName = "nodes"
+)
+
 type NodeStoreParams struct {
 	BucketName     string
 	ConnectionInfo interface{}
