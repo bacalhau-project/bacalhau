@@ -52,6 +52,11 @@ assert_match_matcher() {
   [[ "$2" =~ "$1" ]]
 }
 
+assert_not_match_matcher() {
+  echo "\`$2' was not expected to match \`$1'"
+  [[ ! "$2" =~ "$1" ]]
+}
+
 assert_true_matcher() {
   echo "\`$*' was expected to return true"
   subject "$@"
