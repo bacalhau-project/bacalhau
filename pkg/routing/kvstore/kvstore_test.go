@@ -4,6 +4,7 @@ package kvstore_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -127,6 +128,39 @@ func (s *KVNodeInfoStoreSuite) Test_List() {
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeInfo{nodeInfo0, nodeInfo1}, allNodeInfos)
+}
+
+func (s *KVNodeInfoStoreSuite) Test_ListWithFilters() {
+	ctx := context.Background()
+	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	s.NoError(s.store.Add(ctx, nodeInfo0))
+	s.NoError(s.store.Add(ctx, nodeInfo1))
+
+	// Match one record
+	filterPartialID := func(node models.NodeInfo) bool {
+		return strings.HasPrefix(node.ID(), string(nodeIDs[0][0:8]))
+	}
+	nodes, err := s.store.List(ctx, filterPartialID)
+	s.NoError(err)
+	s.Equal(1, len(nodes))
+	s.Equal(nodeIDs[0], nodes[0].ID())
+
+	// Match all records
+	filterPartialID = func(node models.NodeInfo) bool {
+		return strings.HasPrefix(node.ID(), "Qm")
+	}
+	nodes, err = s.store.List(ctx, filterPartialID)
+	s.NoError(err)
+	s.Equal(2, len(nodes))
+
+	// Match no records
+	filterPartialID = func(node models.NodeInfo) bool {
+		return strings.HasPrefix(node.ID(), "XYZ")
+	}
+	nodes, err = s.store.List(ctx, filterPartialID)
+	s.NoError(err)
+	s.Equal(0, len(nodes))
 }
 
 func (s *KVNodeInfoStoreSuite) Test_Delete() {

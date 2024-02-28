@@ -22,8 +22,14 @@ type NodeInfoStore interface {
 	GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error)
 
 	// List returns a list of nodes
-	List(ctx context.Context) ([]models.NodeInfo, error)
+	List(ctx context.Context, filters ...NodeInfoFilter) ([]models.NodeInfo, error)
 
 	// Delete deletes a node info from the repo.
 	Delete(ctx context.Context, nodeID string) error
 }
+
+// NodeInfoFilter is a function that filters node info
+// when listing nodes. It returns true if the node info
+// should be returned, and false if the node info should
+// be ignored.
+type NodeInfoFilter func(models.NodeInfo) bool
