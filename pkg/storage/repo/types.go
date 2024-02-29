@@ -8,6 +8,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+var supportedTypes = []string{
+	models.StorageSourceRepoClone,
+	models.StorageSourceRepoCloneLFS,
+}
+
 type Source struct {
 	Repo string
 }
@@ -24,10 +29,20 @@ func (c Source) ToMap() map[string]interface{} {
 }
 
 func DecodeSpec(spec *models.SpecConfig) (Source, error) {
-	if !spec.IsType(models.StorageSourceRepoClone) {
-		return Source{}, fmt.Errorf("invalid storage source type. expected %s, but received: %s",
-			models.StorageSourceRepoClone, spec.Type)
+	// Check if the spec.Type is in the supportedTypes slice
+	isSupported := false
+	for _, t := range supportedTypes {
+		if spec.IsType(t) {
+			isSupported = true
+			break
+		}
 	}
+
+	if !isSupported {
+		return Source{}, fmt.Errorf("invalid storage source type. expected one of %v, but received: %s",
+			supportedTypes, spec.Type)
+	}
+
 	inputParams := spec.Params
 	if inputParams == nil {
 		return Source{}, fmt.Errorf("invalid storage source params. cannot be nil")
