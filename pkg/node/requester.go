@@ -38,9 +38,10 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint           requester.Endpoint
-	EndpointV2         *orchestrator.BaseEndpoint
-	JobStore           jobstore.Store
+	Endpoint   requester.Endpoint
+	EndpointV2 *orchestrator.BaseEndpoint
+	JobStore   jobstore.Store
+	// We need a reference to the node info store until libp2p is removed
 	NodeInfoStore      routing.NodeInfoStore
 	NodeDiscoverer     orchestrator.NodeDiscoverer
 	nodeManager        *manager.NodeManager

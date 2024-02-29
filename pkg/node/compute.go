@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -54,7 +53,6 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
-	registrationEndpoint requester.RegistrationEndpoint,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -235,15 +233,6 @@ func NewComputeNode(
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
 	)
-
-	if registrationEndpoint != nil {
-		err := registrationEndpoint.Register(ctx, requester.RegisterRequest{
-			NodeID: nodeID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to register compute node: %s", err)
-		}
-	}
 
 	return &Compute{
 		ID:                 nodeID,

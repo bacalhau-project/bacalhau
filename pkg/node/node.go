@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
@@ -20,6 +21,7 @@ import (
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -58,6 +60,7 @@ type NodeConfig struct {
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
 	AuthConfig                  types.AuthConfig
+	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool
 	Labels                      map[string]string
@@ -275,7 +278,7 @@ func NewNode(
 		// Create a new node manager to keep track of compute nodes connecting
 		// to the network.
 		nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-			NodeInfo: nodeInfoStore,
+			NodeInfo: tracingInfoStore,
 		})
 
 		requesterNode, err = NewRequesterNode(
@@ -335,7 +338,6 @@ func NewNode(
 			executors,
 			publishers,
 			transportLayer.CallbackProxy(),
-			transportLayer.RegistrationProxy(),
 		)
 		if err != nil {
 			return nil, err
@@ -375,19 +377,49 @@ func NewNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// node info publisher
-	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval.IsZero() {
-		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
-	}
+	var nodeInfoPublisher *routing.NodeInfoPublisher
+	if config.NetworkConfig.Type != models.NetworkTypeNATS {
+		// We do not want to keep publishing node information if we are
+		// using NATS. We will initially call the registration endpoint
+		// and then send less static information separately.
+		nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
+		if nodeInfoPublisherInterval.IsZero() {
+			nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
+		}
 
-	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
-	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
-	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           transportLayer.NodeInfoPubSub(),
-		NodeInfoProvider: nodeInfoProvider,
-		IntervalConfig:   nodeInfoPublisherInterval,
-	})
+		// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
+		// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+		nodeInfoPublisher = routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
+			PubSub:           transportLayer.NodeInfoPubSub(),
+			NodeInfoProvider: nodeInfoProvider,
+			IntervalConfig:   nodeInfoPublisherInterval,
+		})
+	} else {
+		// If we know how to register this node (e.g. we're using NATS) then
+		// attempt to register, providing the mostly static (across runs)
+		// node information.
+		registrationEndpoint := transportLayer.RegistrationProxy()
+		if registrationEndpoint != nil {
+			nodeInfoDecorator := transportLayer.NodeInfoDecorator()
+			nodeInfo := nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
+				NodeID: config.NodeID,
+				Labels: labelsProvider.GetLabels(ctx),
+			})
+			// Check requester first to that hybrid nodes show up as requester
+			if config.IsRequesterNode {
+				nodeInfo.NodeType = models.NodeTypeRequester
+			} else {
+				nodeInfo.NodeType = models.NodeTypeCompute
+			}
+
+			log.Ctx(ctx).Info().Str("NodeID", config.NodeID).Msg("Registering compute node with node info")
+			if err := registrationEndpoint.Register(ctx, requests.RegisterRequest{
+				Info: nodeInfo,
+			}); err != nil {
+				return nil, fmt.Errorf("failed to register compute node: %s", err)
+			}
+		}
+	}
 
 	// Start periodic software update checks.
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)

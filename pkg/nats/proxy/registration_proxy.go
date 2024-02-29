@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -31,7 +31,7 @@ func NewRegistrationProxy(params RegistrationProxyParams) *RegistrationProxy {
 
 // Register sends a `requester.RegisterRequest` containing the current compute node's
 // NodeID to the requester node.
-func (p *RegistrationProxy) Register(ctx context.Context, request requester.RegisterRequest) error {
+func (p *RegistrationProxy) Register(ctx context.Context, request requests.RegisterRequest) error {
 	data, err := json.Marshal(request)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(request))

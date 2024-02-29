@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
@@ -63,7 +64,7 @@ func (h *RegistrationHandler) handle(msg *nats.Msg) {
 }
 
 func (h *RegistrationHandler) processRegistration(ctx context.Context, msg *nats.Msg) error {
-	request := new(requester.RegisterRequest)
+	request := new(requests.RegisterRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
