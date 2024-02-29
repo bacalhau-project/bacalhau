@@ -15,7 +15,7 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -54,7 +54,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for k := 0; k < n.numOfJobs; k++ {
 						j := testutils.MakeJobWithOpts(s.T(),
-							jobutils.WithEngineSpec(
+							legacy_job.WithEngineSpec(
 								model.NewEngineBuilder().
 									WithType(strings.ToLower(model.EngineNoop.String())).
 									WithParam("Entrypoint-Unique-Array", uuid.NewString()).
@@ -206,7 +206,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				for i := 0; i < n.numOfJobs; i++ {
 					j := testutils.MakeJobWithOpts(s.T(),
-						jobutils.WithEngineSpec(
+						legacy_job.WithEngineSpec(
 							model.NewEngineBuilder().
 								WithType(strings.ToLower(model.EngineNoop.String())).
 								WithParam("Entrypoint-Unique-Array", uuid.NewString()).

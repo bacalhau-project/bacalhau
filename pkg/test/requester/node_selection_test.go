@@ -14,7 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -33,7 +33,7 @@ type NodeSelectionSuite struct {
 	compute3      *node.Node
 	computeNodes  []*node.Node
 	client        *client.APIClient
-	stateResolver *job.StateResolver
+	stateResolver *legacy_job.StateResolver
 }
 
 func (s *NodeSelectionSuite) SetupSuite() {
@@ -183,7 +183,7 @@ func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	ctx := context.Background()
 	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
 	s.NoError(err)
-	completedExecutionStates := job.GetCompletedExecutionStates(jobState)
+	completedExecutionStates := legacy_job.GetCompletedExecutionStates(jobState)
 
 	nodes := make([]*node.Node, 0, len(completedExecutionStates))
 	for _, executionState := range completedExecutionStates {

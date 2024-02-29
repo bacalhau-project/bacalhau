@@ -16,7 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -146,7 +146,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	if err := jobutils.VerifyJob(ctx, j); err != nil {
+	if err := legacy_job.VerifyJob(ctx, j); err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
 			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", image)
 		} else {
@@ -198,24 +198,24 @@ func CreateJob(ctx context.Context, image string, parameters []string, opts *Doc
 		return nil, err
 	}
 
-	spec, err := jobutils.MakeDockerSpec(
+	spec, err := legacy_job.MakeDockerSpec(
 		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
-		jobutils.WithResources(
+		legacy_job.WithResources(
 			opts.ResourceSettings.CPU,
 			opts.ResourceSettings.Memory,
 			opts.ResourceSettings.Disk,
 			opts.ResourceSettings.GPU,
 		),
-		jobutils.WithNetwork(
+		legacy_job.WithNetwork(
 			opts.NetworkingSettings.Network,
 			opts.NetworkingSettings.Domains,
 		),
-		jobutils.WithTimeout(opts.SpecSettings.Timeout),
-		jobutils.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		jobutils.WithOutputs(outputs...),
-		jobutils.WithAnnotations(labels...),
-		jobutils.WithNodeSelector(nodeSelectorRequirements),
-		jobutils.WithDeal(
+		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
+		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
+		legacy_job.WithOutputs(outputs...),
+		legacy_job.WithAnnotations(labels...),
+		legacy_job.WithNodeSelector(nodeSelectorRequirements),
+		legacy_job.WithDeal(
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 		),

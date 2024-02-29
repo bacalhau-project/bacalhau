@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
@@ -162,7 +162,7 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	return model.JobState{}, outerErr
 }
 
-func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
+func (apiClient *APIClient) GetJobStateResolver() *legacy_job.StateResolver {
 	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
 		j, _, err := apiClient.Get(ctx, jobID)
 		if err != nil {
@@ -173,7 +173,7 @@ func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
 	}
-	return job.NewStateResolver(jobLoader, stateLoader)
+	return legacy_job.NewStateResolver(jobLoader, stateLoader)
 }
 
 func (apiClient *APIClient) GetEvents(

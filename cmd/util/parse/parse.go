@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -20,7 +20,7 @@ func Labels(ctx context.Context, labels []string) ([]string, error) {
 	var jobAnnotations []string
 	var unSafeAnnotations []string
 	for _, a := range labels {
-		if job.IsSafeAnnotation(a) && a != "" {
+		if legacy_job.IsSafeAnnotation(a) && a != "" {
 			jobAnnotations = append(jobAnnotations, a)
 		} else {
 			unSafeAnnotations = append(unSafeAnnotations, a)
