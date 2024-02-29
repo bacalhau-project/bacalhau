@@ -74,7 +74,7 @@ func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo
 	return r.delegate.FindPeer(ctx, peerID)
 }
 
-func (r *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
+func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.List") //nolint:govet
 	defer span.End()
 
@@ -86,7 +86,7 @@ func (r *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 			Msg("node listed")
 	}()
 
-	return r.delegate.List(ctx)
+	return r.delegate.List(ctx, filters...)
 }
 
 func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {

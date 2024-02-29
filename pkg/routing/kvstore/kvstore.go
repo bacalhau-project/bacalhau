@@ -141,7 +141,7 @@ func (n *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 }
 
 // List returns a list of nodes
-func (n *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
+func (n *NodeStore) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
 	keys, err := n.kv.Keys(ctx)
 	if err != nil {
 		// Return an empty list rather than an error if there are no keys in the bucket
@@ -153,14 +153,26 @@ func (n *NodeStore) List(ctx context.Context) ([]models.NodeInfo, error) {
 
 	var errors *multierror.Error
 
-	nodes := make([]models.NodeInfo, len(keys))
-	for i, key := range keys {
+	// Create a mega filter that combines all the filters into one
+	megaFilter := func(info models.NodeInfo) bool {
+		for _, filter := range filters {
+			if !filter(info) {
+				return false
+			}
+		}
+		return true
+	}
+
+	nodes := make([]models.NodeInfo, 0, len(keys))
+	for _, key := range keys {
 		node, err := n.Get(ctx, key)
 		if err != nil {
 			errors = multierror.Append(errors, err)
 		}
 
-		nodes[i] = node
+		if megaFilter(node) {
+			nodes = append(nodes, node)
+		}
 	}
 
 	return nodes, errors.ErrorOrNil()
