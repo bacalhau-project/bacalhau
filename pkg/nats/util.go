@@ -44,7 +44,7 @@ func RoutesFromStr(routesStr string, allowLocal bool) ([]*url.URL, error) {
 	if !allowLocal {
 		routeUrls, err = removeLocalAddresses(routeUrls)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to remove local addresses from NATS routes")
+			return nil, errors.Wrap(err, "failed to remove local addresses from NATS routes. please ensure settings do not contain a local address.") //nolint:lll
 		}
 	}
 
