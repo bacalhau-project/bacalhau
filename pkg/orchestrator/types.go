@@ -76,5 +76,6 @@ func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
 }
 
 type RetryRequest struct {
-	Job *models.Job
+	Job          *models.Job
+	PastFailures int
 }

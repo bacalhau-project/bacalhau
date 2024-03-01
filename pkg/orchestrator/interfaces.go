@@ -110,6 +110,6 @@ type NodeSelector interface {
 }
 
 type RetryStrategy interface {
-	// ShouldRetry returns true if the job can be retried.
-	ShouldRetry(ctx context.Context, request RetryRequest) bool
+	// ShouldRetry returns true if the job can be retried, and the duration to wait before retrying
+	ShouldRetry(ctx context.Context, request RetryRequest) (bool, time.Duration)
 }
