@@ -5,9 +5,6 @@ description: How to run a Python file hosted on Bacalhau
 ---
 # Running a Python Script
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 This tutorial serves as an introduction to Bacalhau. In this example, you'll be executing a simple  "Hello, World!" Python script hosted on a website on Bacalhau.
 
 ### Prerequisites

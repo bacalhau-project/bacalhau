@@ -246,11 +246,11 @@ Now that we have the data in IPFS and the Docker image pushed, next is to run a 
 %%bash  --out job_id
 bacalhau docker run \
     --input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
-    --id-only \
-    --wait \
+    --memory 10Gb \
     ghcr.io/bacalhau-project/examples/socat:0.0.11 \
     -- python main.py
 ```
+
 
 ### Structure of the command
 
@@ -311,7 +311,10 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-cat results/stdout
+ls results/outputs
+
+Expected Output:
+processed.zarr.zip
 ```
 
 ## Support

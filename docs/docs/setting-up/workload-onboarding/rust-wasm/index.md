@@ -5,8 +5,6 @@ sidebar_position: 10
 # Running Rust programs as WebAssembly (WASM)
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org/) program. This example demonstrates how to compile a [Rust](https://www.rust-lang.org/) project into WebAssembly and run the program on Bacalhau.
 
 ### Prerequisites

@@ -4,9 +4,6 @@ sidebar_position: 11
 ---
 # How To Work With Custom Containers in Bacalhau
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
 
 ### Prerequisite

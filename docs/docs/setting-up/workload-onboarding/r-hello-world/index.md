@@ -5,8 +5,6 @@ sidebar_position: 9
 # Running a Simple R Script on Bacalhau
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 You can use official Docker containers for each language like R or Python. In this example, we will use the official R container and run it on Bacalhau.
 
 In this tutorial example, we will run a "hello world" R script on Bacalhau.

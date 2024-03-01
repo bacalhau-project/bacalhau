@@ -5,9 +5,6 @@ sidebar_position: 5
 # Building and Running Custom Python  Container
 
 
-
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 ## **Introduction**
 
 
