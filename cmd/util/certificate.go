@@ -141,3 +141,11 @@ func (c *CACertificate) CreateSignedCertificate(ipAddress []net.IP, certPath, ke
 		certTemplate: cert,
 	}, nil
 }
+
+func FileExists(certPath string) bool {
+	info, err := os.Stat(certPath)
+	if err != nil {
+		return !os.IsNotExist(err)
+	}
+	return !info.IsDir()
+}
