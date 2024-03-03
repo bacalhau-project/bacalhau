@@ -296,6 +296,12 @@ func (s *ServeSuite) TestGetPeers() {
 	s.Require().Error(err)
 }
 
+func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
+	port, err := s.serve("--node-type", "requester", "--node-type", "compute")
+	s.Require().NoError(err, "Error starting server")
+	fmt.Printf("Port: %#v", port)
+}
+
 // Begin WebUI Tests
 func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
