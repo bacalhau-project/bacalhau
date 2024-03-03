@@ -123,7 +123,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		s.NoError(err)
 		return nil
 	})
-
 	t := time.NewTicker(10 * time.Millisecond)
 	defer t.Stop()
 	for {
@@ -285,6 +284,12 @@ func (s *ServeSuite) TestGetPeers() {
 	peerConnect = strings.Join(inputPeers, ",")
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
+}
+
+func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
+	port, err := s.serve("--node-type", "requester", "--node-type", "compute")
+	s.Require().NoError(err, "Error starting server")
+	fmt.Printf("Port: %#v", port)
 }
 
 // Begin WebUI Tests
