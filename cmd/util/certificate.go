@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
 	"net"
@@ -19,11 +18,6 @@ const (
 	serialNumberLimitBits = 128
 )
 
-var (
-	ipv4Loopback = net.IPv4(127, 0, 0, 1) //nolint:gomnd
-	ipv6Loopback = net.IPv6loopback
-)
-
 type Certificate struct {
 	certFile     string
 	keyFile      string
@@ -35,7 +29,7 @@ type CACertificate struct {
 	Certificate
 }
 
-func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
+func NewCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLimitBits)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
@@ -43,12 +37,9 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 	}
 
 	ca := &x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Company, INC."},
-		},
+		SerialNumber:          serialNumber,
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(0, 0, 1),
+		NotAfter:              time.Now().AddDate(1, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -96,7 +87,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 	}, nil
 }
 
-func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*Certificate, error) {
+func (c *CACertificate) CreateSignedCertificate(ipAddress []net.IP, certPath, keyPath string) (*Certificate, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLimitBits)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
@@ -104,14 +95,11 @@ func (c *CACertificate) CreateTestSignedCertificate(certPath, keyPath string) (*
 	}
 	cert := &x509.Certificate{
 		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Test Server"},
-		},
-		IPAddresses: []net.IP{ipv4Loopback, ipv6Loopback},
-		NotBefore:   time.Now(),
-		NotAfter:    time.Now().AddDate(0, 0, 1),
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:    x509.KeyUsageDigitalSignature,
+		IPAddresses:  ipAddress,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1, 0, 0),
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
