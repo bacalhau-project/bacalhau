@@ -3,8 +3,11 @@ package serve
 import (
 	"context"
 	"fmt"
+	"log"
+	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -174,6 +177,7 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("olgibbons debug: repoDir: %#v", repoDir)
 	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
 		return err
@@ -282,6 +286,45 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
 
 		cert, key := config.GetRequesterCertificateSettings()
+		if len(key) == 0 {
+			fmt.Printf("No key provided, generating a key and certificate")
+			//olgibbons: Need to find a suitable means of storing keys/certs. Can potentially use UserIDKey.
+			//Not sure if fsRepo is the dir to use
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+			secretsPath := filepath.Join(home, ".secrets")
+			// Create the .secrets directory if it does not exist
+			if _, err := os.Stat(secretsPath); os.IsNotExist(err) {
+				fmt.Printf("Creating directory: %#v\n", secretsPath)
+				err = os.MkdirAll(secretsPath, 0700) // Using 0700 permissions for a secure directory
+				if err != nil {
+					log.Fatalf("failed to create secrets directory: %v", err)
+				}
+			} else if err != nil {
+				log.Fatalf("failed to check if secrets directory exists: %v", err)
+			}
+			fmt.Printf("olgibbons debug: secrets path: %#v\n", secretsPath)
+			certPath := filepath.Join(secretsPath, "server.crt")
+			keyPath := filepath.Join(secretsPath, "server.key")
+			serverCertPath := filepath.Join(secretsPath, "server_certificate.pem")
+			serverKeyPath := filepath.Join(secretsPath, "server_private_key.pem")
+			caCert, err := util.NewCACertificate(certPath, keyPath)
+			if err != nil {
+				log.Fatalf("failed to generate CA certificate")
+			}
+			//olgibbons: must be a neater way of doing this?
+			ips := []net.IP{}
+			ip := net.ParseIP(nodeConfig.HostAddress)
+			ips = append(ips, ip)
+			_, err = caCert.CreateSignedCertificate(ips, serverCertPath, serverKeyPath)
+			if err != nil {
+				log.Fatalf("failed to create signed certificate")
+			}
+			cert = serverCertPath
+			key = serverKeyPath
+		}
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
 	}
@@ -353,9 +396,6 @@ func serve(cmd *cobra.Command) error {
 		return fmt.Errorf("writing run info to repo: %w", err)
 	} else {
 		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
-	}
-	if err != nil {
-		return err
 	}
 
 	cm.RegisterCallback(func() error {
