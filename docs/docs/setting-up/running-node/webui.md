@@ -16,25 +16,26 @@ For contributing to the WebUI's development, please refer to the [Bacalhau WebUI
 
 ### Prerequisites
 
-- Ensure you have a Bacalhau v1.1.7 or later installed.
+- Ensure you have a Bacalhau v1.1.7 or later installed, preferably use the latest version.
 
 ### Running the WebUI
 
-To launch the WebUI locally, execute the following command:
+To launch the WebUI locally, add the `--web-ui` flag to the `bacalhau serve` command:
 
 ```bash
-bacalhau serve --node-type=requester,compute --web-ui
+bacalhau serve --web-ui
 ```
 
-This command initializes a requester and compute node, configured to listen on `HOST=0.0.0.0` and `PORT=1234`.
+This command initializes a node with enabled WebUI. By default it is listening 8483 port, which can be changed via `--web-ui-port` flag or `node.webui.port` config parameter.
 
 ### Accessing the Local WebUI
 
-Once started, the WebUI is accessible at [http://127.0.0.1/](http://127.0.0.1/). This local instance allows you to interact with your local Bacalhau network setup.
+Once started, the WebUI is accessible at [http://127.0.0.1:8483](http://127.0.0.1:8483). This local instance allows you to interact with your local Bacalhau network setup.
 
-## Accessing the WebUI from the Browser
+## Accessing the demo network WebUI
 
-For observational purposes, a development version of the WebUI is available at [bootstrap.development.bacalhau.org](http://bootstrap.development.bacalhau.org). This instance displays jobs from the development server.
+For observational purposes, a development version of the WebUI is available at [bootstrap.development.bacalhau.org](http://bootstrap.development.bacalhau.org). This instance displays jobs from the demo development server.
 
-N.b.
-The development version of the WebUI is for observation only and may not reflect the latest changes or features available in the local setup.
+:::info
+The demo version of the WebUI is for observation only and may not reflect the latest changes or features available in the local setup.
+:::
