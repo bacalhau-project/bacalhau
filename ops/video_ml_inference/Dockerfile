@@ -1,9 +1,9 @@
 # This base does NOT support GPUs and its 3GB instead of 18GB
-FROM ultralytics/yolov5:v7.0-cpu
+FROM frrist/yolo:v0.1-cpu
 
 # Install Google Cloud SDK for accessing the storage bucket
-RUN curl -sSL https://sdk.cloud.google.com | bash
-ENV PATH $PATH:/root/google-cloud-sdk/bin
+#RUN curl -sSL https://sdk.cloud.google.com | bash
+#ENV PATH $PATH:/root/google-cloud-sdk/bin
 
 # reguired to fetch videos via python
 RUN pip install --no-cache-dir google-cloud-storage

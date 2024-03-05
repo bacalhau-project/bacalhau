@@ -15,7 +15,7 @@ tasks:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: frrist/intel-ml-demo:v1.0-cpu
+        Image: frrist/intel-ml-demo:v2.1-cpu
         EnvironmentVariables:
           # name of the bucket to download videos from. Should be an open bucket
           - VIDEO_BUCKET_NAME=small-set-sample

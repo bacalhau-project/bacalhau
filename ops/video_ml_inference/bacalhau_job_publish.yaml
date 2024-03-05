@@ -7,7 +7,7 @@ tasks:
     - Source:
         Type: localDirectory
         Params:
-          # the directory on each node contains rank and count. entrypoint.sh reads files in here.
+          # the directory on each node tells them their rank and total nodes
           SourcePath: /local_data
           ReadWrite: false
       Target: /local_data
@@ -15,17 +15,21 @@ tasks:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: frrist/intel-ml-demo:v1.0-cpu
+        Image: frrist/intel-ml-demo:v2.1-cpu
         EnvironmentVariables:
           # name of the bucket to download videos from. Should be an open bucket
           - VIDEO_BUCKET_NAME=small-set-sample
           # 0 means classify people, this is the default option in the container, but shown here for demonstration
           # complete list of classes is here: https://github.com/ultralytics/yolov5/blob/master/data/coco.yaml
           - CLASSES=0
+    ResultsPath:
+      - Name: "outputs"
+      - Path: "/outputs"
     Publisher:
       Type: s3
       Params:
         Bucket: small-set-sample-output
+        Key: forrest
         Endpoint: https://storage.googleapis.com
     Network:
       # this job requires networking to download content from buckets
