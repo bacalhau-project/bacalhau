@@ -2,6 +2,8 @@ package compute
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -21,7 +23,9 @@ type ManagementClientParams struct {
 }
 
 // ManagementClient is used to call management functions with
-// the requester nodes, via the NATS transport.
+// the requester nodes, via the NATS transport. When `Start`ed
+// it will periodically send an update to the requester node with
+// the latest node info for this node.
 type ManagementClient struct {
 	closeChannel      chan struct{}
 	labelsProvider    models.LabelsProvider
@@ -50,12 +54,16 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 	})
 }
 
-func (m *ManagementClient) registerNode(ctx context.Context) {
+// RegisterNode sends a registration request to the requester node iff
+// we have not got evidence (a local sentinel file) that we have already
+// registered.  Should we fail to register, we will return an error and
+// expect the caller to exit.
+func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	// We only want to register this node if we haven't already
 	// been registered.
 	if m.registrationFile.Exists() {
 		log.Ctx(ctx).Debug().Msg("not registering with requester, already registered")
-		return
+		return nil
 	}
 
 	nodeInfo := m.getNodeInfo(ctx)
@@ -63,20 +71,22 @@ func (m *ManagementClient) registerNode(ctx context.Context) {
 		Info: nodeInfo,
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to register with requester node")
-		return
+		return errors.New("failed to register with requester node")
 	}
 
 	if response.Accepted {
 		log.Ctx(ctx).Debug().Msg("register request accepted")
 		if err := m.registrationFile.Set(); err != nil {
-			log.Ctx(ctx).Error().Msgf("failed to record registration status")
+			log.Ctx(ctx).Error().Msgf("failed to record local registration status")
 		}
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
 		// state instead
 		log.Ctx(ctx).Error().Msgf("register request rejected: %s", response.Error)
+		return fmt.Errorf("registration rejected: %s", response.Error)
 	}
+
+	return nil
 }
 
 func (m *ManagementClient) deliverInfo(ctx context.Context) {
@@ -100,10 +110,6 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 }
 
 func (m *ManagementClient) Start(ctx context.Context) {
-	// Register the node with the requester node although we expect this
-	// function to be a noop if we are already registered
-	m.registerNode(ctx)
-
 	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
 
 	loop := true

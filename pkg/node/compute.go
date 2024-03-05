@@ -231,13 +231,17 @@ func NewComputeNode(
 	)
 
 	// Set up the management client which will attempt to register this node
-	// with the requester node, and then send frequent node info updates.
+	// with the requester node, and then if successful will send regular node
+	// info updates.
 	managementClient := compute.NewManagementClient(compute.ManagementClientParams{
 		NodeID:            nodeID,
 		LabelsProvider:    labelsProvider,
 		ManagementProxy:   managementProxy,
 		NodeInfoDecorator: nodeInfoDecorator,
 	})
+	if err := managementClient.RegisterNode(ctx); err != nil {
+		return nil, fmt.Errorf("failed to register node with requester: %s", err)
+	}
 	go managementClient.Start(ctx)
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
