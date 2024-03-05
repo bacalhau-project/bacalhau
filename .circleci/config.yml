@@ -162,7 +162,7 @@ commands:
             else
               cd $HOME/.asdf
               git fetch origin
-              git fetch --all
+              git fetch --tags
             fi
             git checkout master
             git pull --all
@@ -282,7 +282,6 @@ jobs:
           name: Build tarball
           command: |
             source "${BASH_ENV}"
-            cat "${BASH_ENV}"
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
