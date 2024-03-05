@@ -21,7 +21,6 @@ import (
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -295,12 +294,13 @@ func NewNode(
 		if err != nil {
 			return nil, err
 		}
+
 		err = transportLayer.RegisterComputeCallback(requesterNode.localCallback)
 		if err != nil {
 			return nil, err
 		}
 
-		err = transportLayer.RegisterRegistrationEndpoint(nodeManager)
+		err = transportLayer.RegisterManagementEndpoint(nodeManager)
 		if err != nil {
 			return nil, err
 		}
@@ -338,6 +338,7 @@ func NewNode(
 			executors,
 			publishers,
 			transportLayer.CallbackProxy(),
+			transportLayer.ManagementProxy(),
 		)
 		if err != nil {
 			return nil, err
@@ -380,7 +381,7 @@ func NewNode(
 	var nodeInfoPublisher *routing.NodeInfoPublisher
 	if config.NetworkConfig.Type != models.NetworkTypeNATS {
 		// We do not want to keep publishing node information if we are
-		// using NATS. We will initially call the registration endpoint
+		// using NATS. We will initially call the management endpoint
 		// and then send less static information separately.
 		nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
 		if nodeInfoPublisherInterval.IsZero() {
@@ -395,28 +396,13 @@ func NewNode(
 			IntervalConfig:   nodeInfoPublisherInterval,
 		})
 	} else {
-		// If we know how to register this node (e.g. we're using NATS) then
-		// attempt to register, providing the mostly static (across runs)
-		// node information.
-		registrationEndpoint := transportLayer.RegistrationProxy()
-		if registrationEndpoint != nil {
-			nodeInfoDecorator := transportLayer.NodeInfoDecorator()
-			nodeInfo := nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
-				NodeID: config.NodeID,
-				Labels: labelsProvider.GetLabels(ctx),
-			})
-			// Check requester first to that hybrid nodes show up as requester
-			if config.IsRequesterNode {
-				nodeInfo.NodeType = models.NodeTypeRequester
-			} else {
-				nodeInfo.NodeType = models.NodeTypeCompute
-			}
-
-			log.Ctx(ctx).Info().Str("NodeID", config.NodeID).Msg("Registering compute node with node info")
-			if err := registrationEndpoint.Register(ctx, requests.RegisterRequest{
-				Info: nodeInfo,
-			}); err != nil {
-				return nil, fmt.Errorf("failed to register compute node: %s", err)
+		// We want to register the current requester node to the node store
+		if config.IsRequesterNode {
+			nodeInfo := nodeInfoProvider.GetNodeInfo(ctx)
+			nodeInfo.Approval = models.NodeApprovals.APPROVED
+			err := tracingInfoStore.Add(ctx, nodeInfo)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to add requester node to the node store")
 			}
 		}
 	}

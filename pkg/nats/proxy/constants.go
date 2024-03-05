@@ -5,7 +5,7 @@ import "fmt"
 const (
 	ComputeEndpointSubjectPrefix = "node.compute"
 	CallbackSubjectPrefix        = "node.orchestrator"
-	RegistrationSubjectPrefix    = "node.registration"
+	ManagementSubjectPrefix      = "node.management"
 
 	AskForBid       = "AskForBid/v1"
 	BidAccepted     = "BidAccepted/v1"
@@ -18,7 +18,8 @@ const (
 	OnCancelComplete = "OnCancelComplete/v1"
 	OnComputeFailure = "OnComputeFailure/v1"
 
-	Register = "Register/v1"
+	RegisterNode   = "RegisterNode/v1"
+	UpdateNodeInfo = "UpdateNodeInfo/v1"
 )
 
 func computeEndpointPublishSubject(nodeID string, method string) string {
@@ -37,10 +38,10 @@ func callbackSubscribeSubject(nodeID string) string {
 	return fmt.Sprintf("%s.%s.>", CallbackSubjectPrefix, nodeID)
 }
 
-func registrationPublishSubject(method string) string {
-	return fmt.Sprintf("%s.%s", RegistrationSubjectPrefix, method)
+func managementPublishSubject(nodeID string, method string) string {
+	return fmt.Sprintf("%s.%s.%s", ManagementSubjectPrefix, nodeID, method)
 }
 
-func registrationSubscribeSubject() string {
-	return fmt.Sprintf("%s.>", RegistrationSubjectPrefix)
+func managementSubscribeSubject() string {
+	return fmt.Sprintf("%s.>", ManagementSubjectPrefix)
 }

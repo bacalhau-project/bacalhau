@@ -35,6 +35,7 @@ type Compute struct {
 	Executors          executor.ExecutorProvider
 	Storages           storage.StorageProvider
 	Bidder             compute.Bidder
+	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
 	autoLabelsProvider models.LabelsProvider
@@ -53,6 +54,7 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
+	managementProxy compute.ManagementEndpoint,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -221,18 +223,29 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// A single Cleanup function to make sure the order of closing dependencies is correct
-	cleanupFunc := func(ctx context.Context) {
-		executionStore.Close(ctx)
-		resultsPath.Close()
-	}
-
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
 	)
+
+	// Set up the management client which will attempt to register this node
+	// with the requester node, and then send frequent node info updates.
+	managementClient := compute.NewManagementClient(compute.ManagementClientParams{
+		NodeID:            nodeID,
+		LabelsProvider:    labelsProvider,
+		ManagementProxy:   managementProxy,
+		NodeInfoDecorator: nodeInfoDecorator,
+	})
+	go managementClient.Start(ctx)
+
+	// A single Cleanup function to make sure the order of closing dependencies is correct
+	cleanupFunc := func(ctx context.Context) {
+		managementClient.Stop()
+		executionStore.Close(ctx)
+		resultsPath.Close()
+	}
 
 	return &Compute{
 		ID:                 nodeID,
@@ -246,6 +259,7 @@ func NewComputeNode(
 		nodeInfoDecorator:  nodeInfoDecorator,
 		autoLabelsProvider: labelsProvider,
 		debugInfoProviders: debugInfoProviders,
+		ManagementClient:   managementClient,
 	}, nil
 }
 

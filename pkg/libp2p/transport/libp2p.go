@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
@@ -154,9 +153,9 @@ func (t *Libp2pTransport) RegisterComputeCallback(callback compute.Callback) err
 	return nil
 }
 
-// RegisterRegistrationEndpoint is not implemented for libp2p transport. Compute
+// RegisterManagementEndpoint is not implemented for libp2p transport. Compute
 // nodes using this transport can call this with no effect.
-func (t *Libp2pTransport) RegisterRegistrationEndpoint(endpoint requester.RegistrationEndpoint) error {
+func (t *Libp2pTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
 	return nil
 }
 
@@ -183,7 +182,7 @@ func (t *Libp2pTransport) CallbackProxy() compute.Callback {
 }
 
 // RegistrationProxy is not supported for the Libp2p transport and returns nil.
-func (t *Libp2pTransport) RegistrationProxy() requester.RegistrationEndpoint {
+func (t *Libp2pTransport) ManagementProxy() compute.ManagementEndpoint {
 	return nil
 }
 
