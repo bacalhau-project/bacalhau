@@ -11,7 +11,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -333,7 +333,7 @@ func URLFlag(value **url.URL, schemes ...string) *ValueFlag[*url.URL] {
 
 func parseTag(s string) (string, error) {
 	var err error
-	if !job.IsSafeAnnotation(s) {
+	if !legacy_job.IsSafeAnnotation(s) {
 		err = fmt.Errorf("%q is not a valid tag", s)
 	}
 	return s, err

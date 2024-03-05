@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package job
+package legacyjob
 
 import (
 	"testing"

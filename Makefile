@@ -156,7 +156,7 @@ release-bacalhau-flyte: resolve-earthly
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: resolve-earthly build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -180,14 +180,20 @@ build-webui: resolve-earthly
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
+${BINARY_PATH}: build-bacalhau build-plugins
+
 .PHONY: build-bacalhau
-build-bacalhau: resolve-earthly ${BINARY_PATH}
+build-bacalhau: binary-web binary
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} build-webui ${WEB_GO_FILES} main.go
+.PHONY: binary
+
+binary: ${CMD_FILES} ${PKG_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
+
+binary-web: build-webui ${WEB_GO_FILES}
 
 ################################################################################
 # Target: build-docker-images

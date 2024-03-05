@@ -1,4 +1,4 @@
-package job
+package legacyjob
 
 func returnAllEmojiString() string {
 	//nolint:lll,stylecheck // exception for one time string

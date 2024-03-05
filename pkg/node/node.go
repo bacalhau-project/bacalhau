@@ -9,6 +9,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
@@ -27,6 +28,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -105,7 +108,6 @@ type Node struct {
 	APIServer      *publicapi.Server
 	ComputeNode    *Compute
 	RequesterNode  *Requester
-	NodeInfoStore  routing.NodeInfoStore
 	CleanupManager *system.CleanupManager
 	IPFSClient     ipfs.Client
 	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
@@ -189,12 +191,9 @@ func NewNode(
 	}
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
-	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
-		TTL: config.NodeInfoStoreTTL,
-	})
 
 	var transportLayer transport.TransportLayer
-
+	var tracingInfoStore routing.NodeInfoStore
 	if config.NetworkConfig.Type == models.NetworkTypeNATS {
 		natsConfig := nats_transport.NATSTransportConfig{
 			NodeID:                   config.NodeID,
@@ -202,21 +201,53 @@ func NewNode(
 			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
 			AuthSecret:               config.NetworkConfig.AuthSecret,
 			Orchestrators:            config.NetworkConfig.Orchestrators,
+			StoreDir:                 config.NetworkConfig.StoreDir,
 			ClusterName:              config.NetworkConfig.ClusterName,
 			ClusterPort:              config.NetworkConfig.ClusterPort,
 			ClusterPeers:             config.NetworkConfig.ClusterPeers,
 			ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
 			IsRequesterNode:          config.IsRequesterNode,
 		}
-		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig, nodeInfoStore)
+
+		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create NATS transport layer")
+		}
+
+		if config.IsRequesterNode {
+			// KV Node Store requires connection info from the NATS server so that it is able
+			// to create its own connection and then subscribe to the node info topic.
+			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
+				BucketName:     kvstore.DefaultBucketName,
+				ConnectionInfo: transportLayer.GetConnectionInfo(ctx),
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create node info store using NATS transport connection info")
+			}
+			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
+
+			// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
+			// of node info.
+			if err := transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
+				return nil, errors.Wrap(err, "failed to register node info consumer with nats transport")
+			}
+		}
 	} else {
+		tracingInfoStore = tracing.NewNodeStore(
+			inmemory.NewNodeStore(inmemory.NodeStoreParams{
+				TTL: config.NodeInfoStoreTTL,
+			}))
+
 		libp2pConfig := libp2p_transport.Libp2pTransportConfig{
 			Host:           config.NetworkConfig.Libp2pHost,
 			Peers:          config.NetworkConfig.ClusterPeers,
 			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
 			CleanupManager: config.CleanupManager,
 		}
-		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, nodeInfoStore)
+		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
+		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
+			return nil, errors.Wrap(err, "failed to register node info consumer with libp2p transport")
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -247,7 +278,7 @@ func NewNode(
 			config.RequesterNodeConfig,
 			storageProviders,
 			authenticators,
-			nodeInfoStore,
+			tracingInfoStore,
 			transportLayer.ComputeProxy(),
 		)
 		if err != nil {
@@ -386,7 +417,6 @@ func NewNode(
 		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
-		NodeInfoStore:  nodeInfoStore,
 		Libp2pHost:     config.NetworkConfig.Libp2pHost,
 	}
 

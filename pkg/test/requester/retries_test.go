@@ -25,7 +25,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -44,7 +44,7 @@ type RetriesSuite struct {
 	requester     *node.Node
 	computeNodes  []*node.Node
 	client        *client.APIClient
-	stateResolver *job.StateResolver
+	stateResolver *legacy_job.StateResolver
 }
 
 func (s *RetriesSuite) SetupSuite() {
@@ -150,7 +150,7 @@ func (s *RetriesSuite) SetupSuite() {
 	s.requester = stack.Nodes[0]
 	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
-	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
+	nodeutils.WaitForNodeDiscovery(s.T(), s.requester.RequesterNode, len(nodeOverrides))
 }
 
 func (s *RetriesSuite) TearDownSuite() {
@@ -307,7 +307,7 @@ func (s *RetriesSuite) TestRetry() {
 			} else {
 				s.Require().NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			}
-			s.Require().NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
+			s.Require().NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), legacy_job.WaitForTerminalStates()))
 
 			jobState, err := s.stateResolver.GetJobState(ctx, submittedJob.ID())
 			if len(tc.expectedExecutionStates) == 0 {

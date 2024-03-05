@@ -16,6 +16,12 @@ var NetworkFlags = []Definition{
 		Description:  `Port to listen for connections from other nodes. Applies to orchestrator nodes.`,
 	},
 	{
+		FlagName:     "network-store-dir",
+		ConfigPath:   types.NodeNetworkStoreDir,
+		DefaultValue: Default.Node.Network.StoreDir,
+		Description:  `Directory that network can use for storage`,
+	},
+	{
 		FlagName:     "orchestrators",
 		ConfigPath:   types.NodeNetworkOrchestrators,
 		DefaultValue: Default.Node.Network.Orchestrators,

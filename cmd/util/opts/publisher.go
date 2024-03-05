@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	flag "github.com/spf13/pflag"
 )
@@ -57,7 +57,7 @@ func (o *PublisherOpt) Set(value string) error {
 			return fmt.Errorf("invalid publisher option: %s", field)
 		}
 	}
-	v, err := job.PublisherStringToPublisherSpec(destinationURI, options)
+	v, err := legacy_job.PublisherStringToPublisherSpec(destinationURI, options)
 	o.value = &v
 	return err
 }

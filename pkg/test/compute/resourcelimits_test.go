@@ -15,13 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -314,10 +314,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	)
 
 	// for the requester node to pick up the nodeInfo messages
-	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0].RequesterNode, nodeCount)
 
 	jobConfig := testutils.MakeJobWithOpts(suite.T(),
-		job.WithResources("", "", "", "1"),
+		legacy_job.WithResources("", "", "", "1"),
 	)
 
 	resolver := legacy.NewStateResolver(stack.Nodes[0].RequesterNode.JobStore)
@@ -351,7 +351,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	for _, jobId := range jobIds {
 		jobState, err := resolver.GetJobState(ctx, jobId)
 		require.NoError(suite.T(), err)
-		completedExecutionStates := job.GetCompletedExecutionStates(jobState)
+		completedExecutionStates := legacy_job.GetCompletedExecutionStates(jobState)
 		require.Equal(suite.T(), 1, len(completedExecutionStates))
 		require.Equal(suite.T(), model.ExecutionStateCompleted, completedExecutionStates[0].State)
 		allocationMap[completedExecutionStates[0].NodeID]++
