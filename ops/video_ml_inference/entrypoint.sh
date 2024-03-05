@@ -45,7 +45,7 @@ echo "  Download process completed."
 #
 # YOLO video inference over the downloaded videos
 #
-cmd="python3 detect.py --save-csv --weights ${YOLO_WEIGHTS_PATH} --source ${VIDEO_DOWNLOAD_DIR} --project ${YOLO_PROJECT_DIR} --conf-thres=${YOLO_CONF_THRES}"
+cmd="python3 detect.py --save-csv --weights ${YOLO_WEIGHTS_PATH} --source ${VIDEO_DOWNLOAD_DIR} --project ${YOLO_PROJECT_DIR}/${NODE_RANK} --conf-thres=${YOLO_CONF_THRES}"
 print_header "YOLO Video Inference Configuration"
 echo "  Source: ${VIDEO_DOWNLOAD_DIR}"
 echo "  Destination: ${YOLO_PROJECT_DIR}"
