@@ -73,9 +73,7 @@ func send[Q managementRequest, R managementResponse](
 	}
 
 	// TODO: Read/parse response and return it
-
-	var response R
-
+	response := R{}
 	return &response, nil
 }
 

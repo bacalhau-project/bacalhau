@@ -300,9 +300,13 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterManagementEndpoint(nodeManager)
-		if err != nil {
-			return nil, err
+		// TODO: We only currently want a management endpoint for register/update
+		// when using NATS
+		if config.NetworkConfig.Type == models.NetworkTypeNATS {
+			err = transportLayer.RegisterManagementEndpoint(nodeManager)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)

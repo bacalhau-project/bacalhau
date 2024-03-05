@@ -230,23 +230,30 @@ func NewComputeNode(
 		repo_storage.NewLabelsProvider(),
 	)
 
-	// Set up the management client which will attempt to register this node
-	// with the requester node, and then if successful will send regular node
-	// info updates.
-	managementClient := compute.NewManagementClient(compute.ManagementClientParams{
-		NodeID:            nodeID,
-		LabelsProvider:    labelsProvider,
-		ManagementProxy:   managementProxy,
-		NodeInfoDecorator: nodeInfoDecorator,
-	})
-	if err := managementClient.RegisterNode(ctx); err != nil {
-		return nil, fmt.Errorf("failed to register node with requester: %s", err)
+	var managementClient *compute.ManagementClient
+	// TODO: When we no longer use libP2P for management, we should remove this
+	// as the managementProxy will always be set.
+	if managementProxy != nil {
+		// Set up the management client which will attempt to register this node
+		// with the requester node, and then if successful will send regular node
+		// info updates.
+		managementClient = compute.NewManagementClient(compute.ManagementClientParams{
+			NodeID:            nodeID,
+			LabelsProvider:    labelsProvider,
+			ManagementProxy:   managementProxy,
+			NodeInfoDecorator: nodeInfoDecorator,
+		})
+		if err := managementClient.RegisterNode(ctx); err != nil {
+			return nil, fmt.Errorf("failed to register node with requester: %s", err)
+		}
+		go managementClient.Start(ctx)
 	}
-	go managementClient.Start(ctx)
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		managementClient.Stop()
+		if managementClient != nil {
+			managementClient.Stop()
+		}
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}

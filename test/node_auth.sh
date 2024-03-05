@@ -11,7 +11,6 @@ testcase_node_can_connect_with_correct_token() {
     subject grep BACALHAU_NODE_NETWORK_ORCHESTRATORS $BACALHAU_DIR/bacalhau.run
     assert_match '@' $stdout
 
-    new_repo
     create_node compute
     # If this returns successfully, the node started and authenticated.
 }
