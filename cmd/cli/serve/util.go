@@ -29,7 +29,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
+func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.ComputeConfig, error) {
 	var cfg types.ComputeConfig
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
@@ -43,10 +43,16 @@ func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 		return node.ComputeConfig{}, err
 	}
 
-	executionStore, err := getExecutionStore(ctx, cfg.ExecutionStore)
-	if err != nil {
-		return node.ComputeConfig{}, err
+	var err error
+	var executionStore store.ExecutionStore
+
+	if createExecutionStore {
+		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
+		if err != nil {
+			return node.ComputeConfig{}, err
+		}
 	}
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,
@@ -72,15 +78,19 @@ func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 	})
 }
 
-func GetRequesterConfig(ctx context.Context) (node.RequesterConfig, error) {
+func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.RequesterConfig, error) {
 	var cfg types.RequesterConfig
 	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
 		return node.RequesterConfig{}, err
 	}
 
-	jobStore, err := getJobStore(ctx, cfg.JobStore)
-	if err != nil {
-		return node.RequesterConfig{}, err
+	var err error
+	var jobStore jobstore.Store
+	if createJobStore {
+		jobStore, err = getJobStore(ctx, cfg.JobStore)
+		if err != nil {
+			return node.RequesterConfig{}, err
+		}
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{

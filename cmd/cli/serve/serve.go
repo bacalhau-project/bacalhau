@@ -215,12 +215,12 @@ func serve(cmd *cobra.Command) error {
 		networkConfig.ClusterPeers = peers
 	}
 
-	computeConfig, err := GetComputeConfig(ctx)
+	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
 	if err != nil {
 		return err
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx)
+	requesterConfig, err := GetRequesterConfig(ctx, isRequesterNode)
 	if err != nil {
 		return err
 	}
