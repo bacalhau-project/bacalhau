@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -48,8 +47,6 @@ func (h *ManagementHandler) handle(msg *nats.Msg) {
 
 	subjectParts := strings.Split(msg.Subject, ".")
 	method := subjectParts[len(subjectParts)-1]
-
-	fmt.Println("--------------", method)
 
 	switch method {
 	case RegisterNode:
