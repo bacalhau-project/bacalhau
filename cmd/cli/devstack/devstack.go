@@ -168,8 +168,8 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		// configured repo if `--stack-repo` was specified
 		repoPath, _ = os.MkdirTemp("", "")
 
-		// If we don't set the repo value in config, readers will be given the a
-		// different path to the one we've just created.
+		// If we don't set the repo value in config, readers will be given
+		// a different path to the one we've just created. Presumably a default.
 		config.SetValue("repo", repoPath)
 		defer os.RemoveAll(repoPath)
 	}
