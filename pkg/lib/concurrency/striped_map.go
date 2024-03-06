@@ -3,6 +3,7 @@ package concurrency
 import (
 	"hash/crc32"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -12,12 +13,14 @@ const (
 type StripedMap[T any] struct {
 	stripeCount int
 	maps        []map[string]T
+	counts      []atomic.Int32
 	locks       []sync.RWMutex
+	total       atomic.Int32
 }
 
 func NewStripedMap[T any](numStripes int) *StripedMap[T] {
 	count := numStripes
-	if count == 0 {
+	if count <= 0 {
 		count = defaultStripeCount
 	}
 
@@ -28,6 +31,7 @@ func NewStripedMap[T any](numStripes int) *StripedMap[T] {
 	for i := 0; i < count; i++ {
 		s.maps = append(s.maps, make(map[string]T))
 		s.locks = append(s.locks, sync.RWMutex{})
+		s.counts = append(s.counts, atomic.Int32{})
 	}
 
 	return s
@@ -38,6 +42,8 @@ func (s *StripedMap[T]) Put(key string, value T) {
 
 	s.locks[idx].Lock()
 	s.maps[idx][key] = value
+	s.counts[idx].Add(1)
+	s.total.Add(1)
 	s.locks[idx].Unlock()
 }
 
@@ -57,19 +63,13 @@ func (s *StripedMap[T]) Delete(key string) {
 	s.locks[idx].Lock()
 	defer s.locks[idx].Unlock()
 
+	s.counts[idx].Add(-1)
+	s.total.Add(-1)
 	delete(s.maps[idx], key)
 }
 
 func (s *StripedMap[T]) Len() int {
-	count := 0
-
-	for i := 0; i < s.stripeCount; i++ {
-		s.locks[i].RLock()
-		defer s.locks[i].RUnlock()
-		count += len(s.maps[i])
-	}
-
-	return count
+	return int(s.total.Load())
 }
 
 func (s *StripedMap[T]) LengthsPerStripe() map[int]int {
@@ -79,7 +79,7 @@ func (s *StripedMap[T]) LengthsPerStripe() map[int]int {
 		s.locks[i].RLock()
 		defer s.locks[i].RUnlock()
 
-		m[i] = len(s.maps[i])
+		m[i] = int(s.counts[i].Load())
 	}
 
 	return m
