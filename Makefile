@@ -16,6 +16,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
+export EARTHLY = $(shell which earthly)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -38,8 +39,6 @@ TEST_PARALLEL_PACKAGES ?= 1
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
-
-export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
@@ -64,6 +63,13 @@ install-pre-commit:
 	@ops/install_pre_commit.sh 1>/dev/null
 	@echo "Pre-commit installed."
 
+.PHONY: resolve-earthly
+resolve-earthly:
+	@echo "Resolved Earthly path - ${EARTHLY}"
+ifeq ($(EARTHLY),)
+	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+endif
+
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
@@ -87,7 +93,7 @@ endif
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
-build-python-apiclient:
+build-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} clean all
 	@echo "Python API client built."
 
@@ -95,7 +101,7 @@ build-python-apiclient:
 # Target: build-python-sdk
 ################################################################################
 .PHONY: build-python-sdk
-build-python-sdk:
+build-python-sdk: resolve-earthly
 	cd python && ${MAKE} clean all
 	@echo "Python SDK built."
 
@@ -103,7 +109,7 @@ build-python-sdk:
 # Target: build-bacalhau-airflow
 ################################################################################
 .PHONY: build-bacalhau-airflow
-build-bacalhau-airflow:
+build-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
 
@@ -118,7 +124,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 # Target: release-python-apiclient
 ################################################################################
 .PHONY: release-python-apiclient
-release-python-apiclient:
+release-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} pypi-upload
 	@echo "Python API client pushed to PyPi."
 
@@ -126,7 +132,7 @@ release-python-apiclient:
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk:
+release-python-sdk: resolve-earthly
 	cd python && ${MAKE} build && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
@@ -134,7 +140,7 @@ release-python-sdk:
 # Target: release-bacalhau-airflow
 ################################################################################
 .PHONY: release-bacalhau-airflow
-release-bacalhau-airflow:
+release-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} release
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
@@ -142,7 +148,7 @@ release-bacalhau-airflow:
 # Target: release-bacalhau-flyte
 ################################################################################
 .PHONY: release-bacalhau-flyte
-release-bacalhau-flyte:
+release-bacalhau-flyte: resolve-earthly
 	cd integration/flyte && ${MAKE} release
 	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
@@ -150,7 +156,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: resolve-earthly build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -167,7 +173,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
-build-webui:
+build-webui: resolve-earthly
 	cd webui && ${EARTHLY} --push +all
 
 
@@ -289,13 +295,14 @@ clean: clean-plugins
 test: unit-test bash-test
 
 .PHONY: unit-test
+unit-test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
 .PHONY: test-python
-test-python:
+test-python: resolve-earthly
 # sdk tests
-	cd python && make test
+	cd python && $(MAKE) test
 
 .PHONY: integration-test
 integration-test:
