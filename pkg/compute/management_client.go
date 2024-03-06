@@ -82,8 +82,8 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
 		// state instead
-		log.Ctx(ctx).Error().Msgf("register request rejected: %s", response.Error)
-		return fmt.Errorf("registration rejected: %s", response.Error)
+		log.Ctx(ctx).Error().Msgf("register request rejected: %s", response.Reason)
+		return fmt.Errorf("registration rejected: %s", response.Reason)
 	}
 
 	return nil
@@ -105,7 +105,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	if response.Accepted {
 		log.Ctx(ctx).Debug().Msg("update info accepted")
 	} else {
-		log.Ctx(ctx).Error().Msgf("update info rejected: %s", response.Error)
+		log.Ctx(ctx).Error().Msgf("update info rejected: %s", response.Reason)
 	}
 }
 

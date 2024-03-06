@@ -36,7 +36,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 	if err == nil {
 		return &requests.RegisterResponse{
 			Accepted: false,
-			Error:    "node already registered",
+			Reason:   "node already registered",
 		}, nil
 	}
 
@@ -57,7 +57,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 	if errors.Is(err, routing.ErrNodeNotFound{}) {
 		return &requests.UpdateInfoResponse{
 			Accepted: false,
-			Error:    "node not yet registered",
+			Reason:   "node not yet registered",
 		}, nil
 	}
 

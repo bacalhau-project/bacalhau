@@ -6,10 +6,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 type ManagementHandlerParams struct {
@@ -50,19 +52,26 @@ func (h *ManagementHandler) handle(msg *nats.Msg) {
 
 	switch method {
 	case RegisterNode:
-		if _, err := h.processRegistration(ctx, msg); err != nil {
-			log.Ctx(ctx).Error().Msgf("error processing registration: %s", err)
+		response, err := h.processRegistration(ctx, msg)
+		asyncResponse := concurrency.NewAsyncResult(response, err)
+
+		if err := sendResponse(h.conn, msg.Reply, asyncResponse); err != nil {
+			log.Ctx(ctx).Error().Msgf("error sending registration response: %s", err)
 		}
+
 	case UpdateNodeInfo:
-		if _, err := h.processUpdateInfo(ctx, msg); err != nil {
-			log.Ctx(ctx).Error().Msgf("error processing info update: %s", err)
+		response, err := h.processUpdateInfo(ctx, msg)
+		asyncResponse := concurrency.NewAsyncResult(response, err)
+
+		if err := sendResponse(h.conn, msg.Reply, asyncResponse); err != nil {
+			log.Ctx(ctx).Error().Msgf("error sending update info response: %s", err)
 		}
 	default:
 		return
 	}
 }
 
-func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*nats.Msg, error) {
+func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*requests.RegisterResponse, error) {
 	request := new(requests.RegisterRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
@@ -70,12 +79,10 @@ func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.M
 		return nil, err
 	}
 
-	_, err = h.endpoint.Register(ctx, *request)
-	// TODO(ross): Process respose (and turn into error if necessary)
-	return nil, err
+	return h.endpoint.Register(ctx, *request)
 }
 
-func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*nats.Msg, error) {
+func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*requests.UpdateInfoResponse, error) {
 	request := new(requests.UpdateInfoRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
@@ -83,7 +90,5 @@ func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg
 		return nil, err
 	}
 
-	_, err = h.endpoint.UpdateInfo(ctx, *request)
-	// TODO(ross): Process respose (and turn into error if necessary)
-	return nil, err
+	return h.endpoint.UpdateInfo(ctx, *request)
 }

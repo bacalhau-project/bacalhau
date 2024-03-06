@@ -7,7 +7,7 @@ type RegisterRequest struct {
 }
 type RegisterResponse struct {
 	Accepted bool
-	Error    string
+	Reason   string
 }
 
 type UpdateInfoRequest struct {
@@ -16,5 +16,5 @@ type UpdateInfoRequest struct {
 
 type UpdateInfoResponse struct {
 	Accepted bool
-	Error    string
+	Reason   string
 }
