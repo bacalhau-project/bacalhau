@@ -38,7 +38,6 @@ testcase_node_connects_with_preconfigured_token() {
 
     # Remove auth token from orchestrator URL
     export BACALHAU_NODE_NETWORK_ORCHESTRATORS=$(echo $BACALHAU_NODE_NETWORK_ORCHESTRATORS | sed "s:[^\/]*@::")
-    new_repo
     subject bacalhau config set node.network.authsecret kerfuffle
     subject bacalhau config set node.network.type nats
     create_node compute
