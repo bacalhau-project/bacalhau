@@ -117,14 +117,15 @@ func NewNATSTransport(ctx context.Context,
 			StoreDir:               config.StoreDir,
 		}
 
-		// Only set cluster options if cluster peers are provided. If we don't Jetstream
-		// will fail to start as it is unable to locate the zero routes we provide when
-		// there are no peers.
+		// Only set cluster options if cluster peers are provided. Jetstream doesn't
+		// like the setting to be present with no values, or with values that are
+		// a local address (e.g. it can't RAFT to itself).
+		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers, false)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(config.ClusterPeers) > 0 {
-			routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers)
-			if err != nil {
-				return nil, err
-			}
 			serverOpts.Routes = routes
 
 			serverOpts.Cluster = server.ClusterOpts{
