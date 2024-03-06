@@ -40,10 +40,16 @@ func NewStripedMap[T any](numStripes int) *StripedMap[T] {
 func (s *StripedMap[T]) Put(key string, value T) {
 	idx := s.hash(key)
 
+	_, found := s.Get(key)
+
 	s.locks[idx].Lock()
 	s.maps[idx][key] = value
-	s.counts[idx].Add(1)
-	s.total.Add(1)
+
+	// Only increment counters if we are not updating an existing key.
+	if !found {
+		s.counts[idx].Add(1)
+		s.total.Add(1)
+	}
 	s.locks[idx].Unlock()
 }
 
@@ -59,6 +65,12 @@ func (s *StripedMap[T]) Get(key string) (T, bool) {
 
 func (s *StripedMap[T]) Delete(key string) {
 	idx := s.hash(key)
+
+	_, found := s.Get(key)
+	if !found {
+		// Return early if the key does not exist.
+		return
+	}
 
 	s.locks[idx].Lock()
 	defer s.locks[idx].Unlock()

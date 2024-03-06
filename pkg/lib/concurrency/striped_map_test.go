@@ -59,6 +59,29 @@ func (s *StripedMapSuite) TestBasic() {
 	s.Require().Equal(2, m.Len())
 }
 
+func (s *StripedMapSuite) TestEdgeCases() {
+	m := cc.NewStripedMap[int](16)
+	s.Require().NotNil(m)
+
+	m.Put("a", 1)
+	m.Put("a", 1)
+	m.Put("b", 2)
+	m.Put("c", 3)
+	m.Put("c", 3)
+
+	v, ok := m.Get("a")
+	s.Require().True(ok)
+	s.Require().Equal(1, v)
+
+	v, ok = m.Get("d")
+	s.Require().False(ok)
+	s.Require().Equal(0, v)
+
+	s.Require().Equal(3, m.Len())
+	m.Delete("d")
+	s.Require().Equal(3, m.Len())
+}
+
 func subtest(m *cc.StripedMap[int]) {
 	// No longer necessary in Go 1.2 to call Seed
 	// rand.Seed(time.Now().UnixNano())
