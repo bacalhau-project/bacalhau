@@ -54,7 +54,6 @@ testcase_node_cannot_connect_without_token() {
 
     # Remove auth token from orchestrator URL
     export BACALHAU_NODE_NETWORK_ORCHESTRATORS=$(echo $BACALHAU_NODE_NETWORK_ORCHESTRATORS | sed "s:[^\/]*@::")
-    new_repo
     subject bacalhau serve --node-type compute
     assert_not_equal 0 $status
     assert_match "nats: Authorization Violation" $stderr
