@@ -58,7 +58,7 @@ func NewRequesterNode(
 	requesterConfig RequesterConfig,
 	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
-	nodeInfoStore routing.NodeInfoStore,
+	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
 	computeProxy compute.Endpoint,
 	nodeManager *manager.NodeManager,
 ) (*Requester, error) {

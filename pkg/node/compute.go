@@ -249,6 +249,7 @@ func NewComputeNode(
 			ManagementProxy:      managementProxy,
 			NodeInfoDecorator:    nodeInfoDecorator,
 			RegistrationFilePath: regFilename,
+			ResourceTracker:      runningCapacityTracker,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)

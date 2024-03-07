@@ -51,6 +51,8 @@ type ManagementEndpoint interface {
 	Register(context.Context, requests.RegisterRequest) (*requests.RegisterResponse, error)
 	// UpdateInfo sends an update of node info to the requester node
 	UpdateInfo(context.Context, requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error)
+	// UpdateResources updates the resources currently in use by a specific node
+	UpdateResources(context.Context, requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error)
 }
 
 ///////////////////////////////////

@@ -280,6 +280,16 @@ func NewNode(
 			NodeInfo: tracingInfoStore,
 		})
 
+		// NodeManager node wraps the node manager and implements the routing.NodeInfoStore
+		// interface so that it can return nodes and add the most recent resource information
+		// to the node info returned.  When the libp2p transport is no longer necessary, we
+		// can remove the parameter from the NewRequesterNode call and use the nodeManager
+		// instead.
+		legacyInfoStore := tracingInfoStore
+		if config.NetworkConfig.Type == models.NetworkTypeNATS {
+			legacyInfoStore = nodeManager
+		}
+
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.NodeID,
@@ -287,7 +297,7 @@ func NewNode(
 			config.RequesterNodeConfig,
 			storageProviders,
 			authenticators,
-			tracingInfoStore,
+			legacyInfoStore,
 			transportLayer.ComputeProxy(),
 			nodeManager,
 		)

@@ -66,6 +66,14 @@ func (h *ManagementHandler) handle(msg *nats.Msg) {
 		if err := sendResponse(h.conn, msg.Reply, asyncResponse); err != nil {
 			log.Ctx(ctx).Error().Msgf("error sending update info response: %s", err)
 		}
+
+	case UpdateResources:
+		response, err := h.processUpdateResources(ctx, msg)
+		asyncResponse := concurrency.NewAsyncResult(response, err)
+
+		if err := sendResponse(h.conn, msg.Reply, asyncResponse); err != nil {
+			log.Ctx(ctx).Error().Msgf("error sending update resources response: %s", err)
+		}
 	default:
 		return
 	}
@@ -91,4 +99,15 @@ func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg
 	}
 
 	return h.endpoint.UpdateInfo(ctx, *request)
+}
+
+func (h *ManagementHandler) processUpdateResources(ctx context.Context, msg *nats.Msg) (*requests.UpdateResourcesResponse, error) {
+	request := new(requests.UpdateResourcesRequest)
+	err := json.Unmarshal(msg.Data, request)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
+		return nil, err
+	}
+
+	return h.endpoint.UpdateResources(ctx, *request)
 }
