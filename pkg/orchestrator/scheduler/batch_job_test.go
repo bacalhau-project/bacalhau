@@ -61,6 +61,70 @@ func TestBatchSchedulerTestSuite(t *testing.T) {
 	suite.Run(t, new(BatchJobSchedulerTestSuite))
 }
 
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayAfterRejections() {
+	ctx := context.Background()
+	job, executions, evaluation := mockJob()
+	job.Count = 1
+	job.ReschedulingPolicy = models.ReschedulingPolicy{
+		SchedulingTimeout:      60,
+		BaseRetryDelay:         10,
+		MaximumRetryDelay:      60,
+		RetryDelayGrowthFactor: 2.0,
+	}
+	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidRejected)
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+
+	nodeInfos := []models.NodeInfo{
+		*mockNodeInfo(s.T(), nodeIDs[0]),
+	}
+	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation:         evaluation,
+		JobState:           models.JobStateTypePending,
+		NewEvaluationDelay: time.Duration(10 * time.Second),
+		StoppedExecutions:  []string{executions[1].ID},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldRetryAfterRejectionDelay() {
+	ctx := context.Background()
+	job, mockExecutions, evaluation := mockJob()
+	job.Count = 1
+	job.ReschedulingPolicy = models.ReschedulingPolicy{
+		SchedulingTimeout:      60,
+		BaseRetryDelay:         10,
+		MaximumRetryDelay:      60,
+		RetryDelayGrowthFactor: 2.0,
+	}
+
+	executions := make([]models.Execution, 1)
+	executions[0] = mockExecutions[0]
+	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidRejected)
+
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+	evaluation.TriggeredBy = models.EvalTriggerDefer
+
+	nodeInfos := []models.NodeInfo{
+		*mockNodeInfo(s.T(), nodeIDs[0]),
+	}
+
+	s.mockNodeSelection(job, nodeInfos, job.Count)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		NewExecutionsNodes: []string{
+			nodeInfos[0].ID(),
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
 	job, _, evaluation := mockJob()

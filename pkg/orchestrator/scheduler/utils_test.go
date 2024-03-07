@@ -5,6 +5,7 @@ package scheduler
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -17,6 +18,7 @@ type PlanMatcher struct {
 	NewExecutionsDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions         []string
 	ApprovedExecutions        []string
+	NewEvaluationDelay        time.Duration
 }
 
 type PlanMatcherParams struct {
@@ -26,6 +28,7 @@ type PlanMatcherParams struct {
 	NewExecutionDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions        []string
 	ApprovedExecutions       []string
+	NewEvaluationDelay       time.Duration
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
@@ -38,6 +41,7 @@ func NewPlanMatcher(t *testing.T, params PlanMatcherParams) PlanMatcher {
 		NewExecutionsDesiredState: params.NewExecutionDesiredState,
 		StoppedExecutions:         params.StoppedExecutions,
 		ApprovedExecutions:        params.ApprovedExecutions,
+		NewEvaluationDelay:        params.NewEvaluationDelay,
 	}
 }
 
@@ -108,6 +112,20 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 	for _, execution := range m.ApprovedExecutions {
 		if _, ok := approvedExecutions[execution]; !ok {
 			m.t.Logf("ApprovedExecutions: %s != %s", approvedExecutions, m.ApprovedExecutions)
+			return false
+		}
+	}
+
+	if m.NewEvaluationDelay != 0 {
+		if plan.NewEvaluation == nil {
+			m.t.Logf("NewEvaluation: nil")
+			return false
+		}
+		// Sadly, the EvaluationBroker requires an absolute timestamp in the WaitUntil field. time.Now() will have advanced a little since the NewEvaluation was created, so we need to (sigh) allow some slack in the comparison here.
+		actualDelay := plan.NewEvaluation.WaitUntil.Sub(time.Now())
+		difference := m.NewEvaluationDelay - actualDelay
+		if difference < 0 || difference > time.Second {
+			m.t.Logf("NewEvaluation.WaitUntil: %s != %s (difference %s is unacceptable)", actualDelay, m.NewEvaluationDelay, difference)
 			return false
 		}
 	}
