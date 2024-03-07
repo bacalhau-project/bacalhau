@@ -16,10 +16,11 @@ const (
 )
 
 type ManagementClientParams struct {
-	NodeID            string
-	LabelsProvider    models.LabelsProvider
-	ManagementProxy   ManagementEndpoint
-	NodeInfoDecorator models.NodeInfoDecorator
+	NodeID               string
+	LabelsProvider       models.LabelsProvider
+	ManagementProxy      ManagementEndpoint
+	NodeInfoDecorator    models.NodeInfoDecorator
+	RegistrationFilePath string
 }
 
 // ManagementClient is used to call management functions with
@@ -42,7 +43,7 @@ func NewManagementClient(params ManagementClientParams) *ManagementClient {
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
 		nodeInfoDecorator: params.NodeInfoDecorator,
-		registrationFile:  NewRegistrationFile(params.NodeID),
+		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -14,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -234,14 +236,19 @@ func NewComputeNode(
 	// TODO: When we no longer use libP2P for management, we should remove this
 	// as the managementProxy will always be set.
 	if managementProxy != nil {
+		repo, _ := pkgconfig.Get[string]("repo")
+		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
+		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
+
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node
 		// info updates.
 		managementClient = compute.NewManagementClient(compute.ManagementClientParams{
-			NodeID:            nodeID,
-			LabelsProvider:    labelsProvider,
-			ManagementProxy:   managementProxy,
-			NodeInfoDecorator: nodeInfoDecorator,
+			NodeID:               nodeID,
+			LabelsProvider:       labelsProvider,
+			ManagementProxy:      managementProxy,
+			NodeInfoDecorator:    nodeInfoDecorator,
+			RegistrationFilePath: regFilename,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
