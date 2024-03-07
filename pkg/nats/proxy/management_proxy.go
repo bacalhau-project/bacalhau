@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -102,15 +101,11 @@ func (p *ManagementProxy) UpdateInfo(ctx context.Context,
 	var asyncRes *concurrency.AsyncResult[requests.UpdateInfoResponse]
 
 	asyncRes, err = send[requests.UpdateInfoRequest, requests.UpdateInfoResponse](
-		ctx, p.conn, request.Info.NodeID, request, RegisterNode)
+		ctx, p.conn, request.Info.NodeID, request, UpdateNodeInfo)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to send response to registration request")
+		return nil, errors.Wrap(err, "failed to send response to update info request")
 	}
-
-	fmt.Printf("response: %T => %+v\n ", asyncRes.Value, asyncRes.Value)
-	fmt.Printf("  ok: %+v\n ", asyncRes.Value.Accepted)
-	fmt.Printf(" err: %+v\n ", asyncRes.Value.Reason)
 
 	return &asyncRes.Value, asyncRes.Err
 }
