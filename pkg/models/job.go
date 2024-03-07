@@ -120,10 +120,10 @@ type Job struct {
 type ReschedulingPolicy struct {
 	// SchedulingTimeout is the time, in seconds, the job is allowed to wait
 	// to be scheduled before we give up trying.
-	SchedulingTimeout int64 `json:"SchedulingDeadline"`
+	SchedulingTimeout int64 `json:"SchedulingTimeout"`
 
 	// How many seconds to initially wait between retries. This increases each retry, up to MaximumRetryDelay
-	BaseRetryDelay int64 `json:"RetryDelay"`
+	BaseRetryDelay int64 `json:"BaseRetryDelay"`
 
 	// The maximum delay between retries
 	MaximumRetryDelay int64 `json:"MaximumRetryDelay"`
