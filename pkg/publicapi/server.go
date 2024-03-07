@@ -152,8 +152,12 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		server.useTLS = true
 	} else {
 		server.useTLS = params.TLSCertificateFile != "" && params.TLSKeyFile != ""
+		fmt.Printf("olgibbons debug: server.useTLS: %#v\n", server.useTLS)
+		//olgibbons testing: Need to use insecure skip validation for self-signed. this needs to be done client-side
 	}
-
+	//olgibbons note: useTLS should always be true
+	fmt.Printf("olgibbons debug: params: %#v\n", params)
+	fmt.Printf("olgibbons debug: server: %#v\n", server)
 	server.TLSCertificateFile = params.TLSCertificateFile
 	server.TLSKeyFile = params.TLSKeyFile
 
@@ -167,7 +171,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			return logger.ContextWithNodeIDLogger(context.Background(), params.HostID)
 		},
 	}
-
+	fmt.Printf("olgibbons debug:server: %#v", server)
 	return server, nil
 }
 
