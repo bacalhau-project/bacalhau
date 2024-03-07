@@ -2,13 +2,14 @@ package compute
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -78,7 +79,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	if response.Accepted {
 		log.Ctx(ctx).Debug().Msg("register request accepted")
 		if err := m.registrationFile.Set(); err != nil {
-			log.Ctx(ctx).Error().Msgf("failed to record local registration status")
+			return errors.Wrap(err, "failed to record local registration status")
 		}
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
