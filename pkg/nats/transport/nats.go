@@ -91,6 +91,7 @@ type NATSTransport struct {
 	callbackProxy     compute.Callback
 	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
 	nodeInfoDecorator models.NodeInfoDecorator
+	managementProxy   compute.ManagementEndpoint
 }
 
 //nolint:funlen
@@ -187,6 +188,11 @@ func NewNATSTransport(ctx context.Context,
 		Conn: nc.Client,
 	})
 
+	// A proxy to register and unregister compute nodes with the requester
+	managementProxy := proxy.NewManagementProxy(proxy.ManagementProxyParams{
+		Conn: nc.Client,
+	})
+
 	return &NATSTransport{
 		nodeID:            config.NodeID,
 		natsServer:        sm,
@@ -195,6 +201,7 @@ func NewNATSTransport(ctx context.Context,
 		callbackProxy:     computeCallback,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
+		managementProxy:   managementProxy,
 	}, nil
 }
 
@@ -229,6 +236,15 @@ func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error
 	return err
 }
 
+// RegisterManagementEndpoint registers a requester endpoint with the transport layer
+func (t *NATSTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
+	_, err := proxy.NewManagementHandler(proxy.ManagementHandlerParams{
+		Conn:               t.natsClient.Client,
+		ManagementEndpoint: endpoint,
+	})
+	return err
+}
+
 // ComputeProxy returns the compute proxy.
 func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 	return t.computeProxy
@@ -237,6 +253,11 @@ func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 // CallbackProxy returns the callback proxy.
 func (t *NATSTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
+}
+
+// RegistrationProxy returns the previoously created registration proxy.
+func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
+	return t.managementProxy
 }
 
 // NodeInfoPubSub returns the node info pubsub.

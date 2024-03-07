@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -41,6 +42,15 @@ type Callback interface {
 	OnRunComplete(ctx context.Context, result RunResult)
 	OnCancelComplete(ctx context.Context, result CancelResult)
 	OnComputeFailure(ctx context.Context, err ComputeError)
+}
+
+// ManagementEndpoint is the transport-based interface for compute nodes to
+// register with the requester node, update information and perform heartbeats.
+type ManagementEndpoint interface {
+	// Register registers a compute node with the requester node.
+	Register(context.Context, requests.RegisterRequest) (*requests.RegisterResponse, error)
+	// UpdateInfo sends an update of node info to the requester node
+	UpdateInfo(context.Context, requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error)
 }
 
 ///////////////////////////////////

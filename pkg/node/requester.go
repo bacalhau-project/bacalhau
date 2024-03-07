@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
@@ -37,11 +38,13 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint           requester.Endpoint
-	EndpointV2         *orchestrator.BaseEndpoint
-	JobStore           jobstore.Store
+	Endpoint   requester.Endpoint
+	EndpointV2 *orchestrator.BaseEndpoint
+	JobStore   jobstore.Store
+	// We need a reference to the node info store until libp2p is removed
 	NodeInfoStore      routing.NodeInfoStore
 	NodeDiscoverer     orchestrator.NodeDiscoverer
+	nodeManager        *manager.NodeManager
 	localCallback      compute.Callback
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []model.DebugInfoProvider
@@ -57,6 +60,7 @@ func NewRequesterNode(
 	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore,
 	computeProxy compute.Endpoint,
+	nodeManager *manager.NodeManager,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
@@ -324,6 +328,7 @@ func NewRequesterNode(
 		NodeDiscoverer:     nodeDiscoveryChain,
 		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
+		nodeManager:        nodeManager,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
