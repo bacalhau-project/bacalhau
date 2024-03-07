@@ -38,8 +38,8 @@ import (
 )
 
 // olgibbons you changed this
-const maxServeTime = 100 * time.Second
-const maxTestTime = 100 * time.Second
+const maxServeTime = 10 * time.Second
+const maxTestTime = 10 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -120,20 +120,18 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
+		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
 		if returnError {
 			return err
 		}
 		s.NoError(err)
 		return nil
 	})
-
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- errs.Wait()
-	}()
-
-	t := time.NewTicker(50 * time.Millisecond)
+	t := time.NewTicker(10 * time.Millisecond)
+	fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
+	fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
+	time.Sleep(10 * time.Minute)
 	for {
 		select {
 		case e := <-errCh:
@@ -145,7 +143,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			s.FailNow("Server did not start in time")
 		case <-t.C:
 			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			//fmt.Printf("olgibbons debug: err from curlEndpoint: %#v\n", err.Error())
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
+				fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
 				return port, nil
 			}
 		}
@@ -160,16 +160,23 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
 		return nil, http.StatusServiceUnavailable, err
 	}
+	//fmt.Printf("olgibbons debug: efaultClient.Do(req) called")
 	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
-	}
 
+	}
+	fmt.Printf("olgibbons debug: responseText: %#v", resp.Body)
 	return responseText, resp.StatusCode, nil
+}
+func (s *ServeSuite) TestDeleteMeAfterTesting() {
+	port, _ := s.serve()
+	fmt.Printf("olgibbons test completed: port: %d", port)
 }
 
 func (s *ServeSuite) TestHealthcheck() {
@@ -299,8 +306,8 @@ func (s *ServeSuite) TestGetPeers() {
 
 func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
 	port, err := s.serve("--node-type", "requester", "--node-type", "compute")
+	fmt.Printf("olgibbons debug: port: %#v", port)
 	s.Require().NoError(err, "Error starting server")
-	fmt.Printf("Port: %#v", port)
 }
 
 // Begin WebUI Tests
