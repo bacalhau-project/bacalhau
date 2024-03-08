@@ -33,6 +33,35 @@ testcase_token_works_for_v1_api() {
     assert_equal '[]' $stdout
 }
 
+testcase_input_can_be_cancelled() {
+    setup
+
+    # Run bacalhau job list in a screen session, else the auth code will detect
+    # that a TTY is not in use and won't use the hanging code
+    CMD='bacalhau job list --output=json'
+    rm -f screenlog.0
+    screen -L -d -m bacalhau job list --output=json
+    while ! grep 'token:' screenlog.0 1>/dev/null 2>&1; do sleep 0.01; done
+
+    PIDS=$(pgrep -fx $CMD)
+    assert_equal 0 $?
+    assert_not_equal '' $PIDS
+
+    # Send 'job list' an interrupt signal as if the user pressed Ctrl+C
+    kill -INT $PIDS
+    sleep 1
+
+    NOW=$(pgrep -fx $CMD)
+    assert_not_equal 0 $?
+    assert_equal '' $NOW
+
+    assert_not_match '[]' "$(cat screenlog.0)"
+    assert_match 'context canceled' "$(cat screenlog.0)"
+
+    rm screenlog.0
+    pkill -9 "$CMD"
+}
+
 testcase_invalid_token_is_rejected_and_not_persisted() {
     setup
 

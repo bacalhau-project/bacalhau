@@ -16,7 +16,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
-export EARTHLY = $(shell which earthly)
+export EARTHLY ?= $(shell which earthly)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
