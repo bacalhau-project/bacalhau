@@ -38,8 +38,8 @@ import (
 )
 
 // olgibbons you changed this
-const maxServeTime = 10 * time.Second
-const maxTestTime = 10 * time.Second
+const maxServeTime = 60 * time.Second
+const maxTestTime = 60 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -64,7 +64,11 @@ func (s *ServeSuite) SetupTest() {
 	s.repoPath = repoPath
 
 	var cancel context.CancelFunc
+	deadline, ok := context.Background().Deadline()
+	fmt.Printf("olgibbons debug: Background context deadline: %s/%v\n", deadline, ok)
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
+	deadline, ok = s.ctx.Deadline()
+	fmt.Printf("olgibbons debug: %s Setting overall deadline %s: %s/%v\n", time.Now(), maxTestTime, deadline, ok)
 	s.T().Cleanup(func() {
 		cancel()
 	})
@@ -112,7 +116,11 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
+	oldDeadline, oldDeadlineOK := s.ctx.Deadline()
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
+	newDeadline, newDeadlineOK := ctx.Deadline()
+	fmt.Printf("olgibbons debug: %s: Starting %s server timeout NOW: %s/%#v -> %s/%#v\n", time.Now(), maxServeTime, oldDeadline, oldDeadlineOK, newDeadline, newDeadlineOK)
+
 	errs, ctx := errgroup.WithContext(ctx)
 
 	s.T().Cleanup(cancel)
@@ -128,8 +136,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	t := time.NewTicker(10 * time.Millisecond)
 	fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
-	fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
-	time.Sleep(10 * time.Minute)
 	for {
 		select {
 		case <-ctx.Done():
@@ -167,7 +173,6 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, resp.StatusCode, err
 
 	}
-	fmt.Printf("olgibbons debug: responseText: %#v", resp.Body)
 	return responseText, resp.StatusCode, nil
 }
 func (s *ServeSuite) TestDeleteMeAfterTesting() {

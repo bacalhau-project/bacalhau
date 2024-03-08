@@ -385,8 +385,13 @@ func serve(cmd *cobra.Command) error {
 		return os.Remove(ripath)
 	})
 	fmt.Printf("olgibbons debug: registercallback called\n")
+
+	deadline, ok := ctx.Deadline()
+	contextErr := ctx.Err()
+	fmt.Printf("olgibbons debug: %s: About to block until the end of the server. Deadline = %s/%#v, Err = %#v\n", time.Now(), deadline, ok, contextErr)
+
 	<-ctx.Done() // block until killed
-	fmt.Printf("olgibbons debug: ctx done\n")
+	fmt.Printf("olgibbons debug: %s: ctx done: err = %#v\n", time.Now(), ctx.Err())
 	return nil
 }
 
