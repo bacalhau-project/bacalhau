@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -27,7 +28,7 @@ type Publisher struct {
 func NewLocalPublisher(ctx context.Context, directory string, host string, port int) *Publisher {
 	p := &Publisher{
 		baseDirectory: directory,
-		host:          host,
+		host:          resolveAddress(ctx, host),
 		port:          port,
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
@@ -91,3 +92,21 @@ func (p *Publisher) PublishResult(
 }
 
 var _ publisher.Publisher = (*Publisher)(nil)
+
+func resolveAddress(ctx context.Context, address string) string {
+	addressType, ok := network.AddressTypeFromString(address)
+	if !ok {
+		log.Ctx(ctx).Debug().Stringer("AddressType", addressType).Msgf("unable to find address type: %s, using 127.0.0.1", address)
+		return address
+	}
+
+	// If we were provided with an address type and not an address, so we should look up
+	// an address from the type.
+	addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
+	if err == nil && len(addrs) > 0 {
+		return addrs[0]
+	}
+
+	log.Ctx(ctx).Error().Err(err).Stringer("AddressType", addressType).Msgf("unable to find address for type, using 127.0.0.1")
+	return "127.0.0.1"
+}

@@ -38,7 +38,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		devstack.WithNodeOverrides(nodeOverrides...),
 	)
 	// for the requester node to pick up the nodeInfo messages
-	nodeutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(t, stack.Nodes[0].RequesterNode, nodeCount)
 
 	var swarmAddresses []string
 	for _, n := range stack.Nodes {

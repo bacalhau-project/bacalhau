@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -40,12 +40,12 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: testutils.MakeSpecWithOpts(s.T(),
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},
 			),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -58,8 +58,8 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		ResultsChecker: scenario.ManyChecks(
 			scenario.FileEquals(downloader.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForSuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForSuccessfulCompletion(),
 		},
 	}
 

@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - v**
   workflow_run:
     workflows: ["Dependabot"]
     types:
@@ -54,4 +56,4 @@ jobs:
           ./.circleci/trigger_pipeline.sh
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}

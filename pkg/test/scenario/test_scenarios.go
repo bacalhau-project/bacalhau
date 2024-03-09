@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
@@ -33,7 +33,7 @@ func CatFileToStdout(t testing.TB) Scenario {
 			FileEquals(downloader.DownloadFilenameStdout, helloWorld),
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(simpleMountPath).
@@ -60,7 +60,7 @@ func CatFileToVolume(t testing.TB) Scenario {
 			},
 		},
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder("ubuntu:latest").
 					WithEntrypoint("bash", simpleMountPath).
 					Build(),
@@ -81,7 +81,7 @@ func GrepFile(t testing.TB) Scenario {
 			2,
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder("ubuntu:latest").
 					WithEntrypoint("grep", "kiwi", simpleMountPath).
 					Build(),
@@ -102,7 +102,7 @@ func SedFile(t testing.TB) Scenario {
 			5, //nolint:gomnd // magic number ok for testing
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder("ubuntu:latest").
 					WithEntrypoint(
 						"sed",
@@ -128,7 +128,7 @@ func AwkFile(t testing.TB) Scenario {
 			501, //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder("ubuntu:latest").
 					WithEntrypoint(
 						"awk",
@@ -163,7 +163,7 @@ func WasmExitCode(t testing.TB) Scenario {
 			"5",
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(exit_code.Program())).
 					WithEntrypoint("_start").
 					WithEnvironmentVariables(map[string]string{"EXIT_CODE": "5"}).
@@ -181,7 +181,7 @@ func WasmEnvVars(t testing.TB) Scenario {
 			3, //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(env.Program())).
 					WithEntrypoint("_start").
 					WithEnvironmentVariables(
@@ -214,7 +214,7 @@ func WasmCsvTransform(t testing.TB) Scenario {
 			},
 		},
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(csv.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -238,7 +238,7 @@ func WasmDynamicLink(t testing.TB) Scenario {
 			"17\n",
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(dynamic.Program())).
 					WithEntrypoint("_start").
 					Build(),
@@ -259,7 +259,7 @@ func WasmLogTest(t testing.TB) Scenario {
 			-1,                                    //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(InlineData(logtest.Program())).
 					WithEntrypoint("_start").
 					WithParameters(

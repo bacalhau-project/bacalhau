@@ -2,8 +2,6 @@ package serve
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -26,11 +24,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
+func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.ComputeConfig, error) {
 	var cfg types.ComputeConfig
 	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
 		return node.ComputeConfig{}, err
@@ -44,10 +43,16 @@ func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 		return node.ComputeConfig{}, err
 	}
 
-	executionStore, err := getExecutionStore(ctx, cfg.ExecutionStore)
-	if err != nil {
-		return node.ComputeConfig{}, err
+	var err error
+	var executionStore store.ExecutionStore
+
+	if createExecutionStore {
+		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
+		if err != nil {
+			return node.ComputeConfig{}, err
+		}
 	}
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,
@@ -73,15 +78,19 @@ func GetComputeConfig(ctx context.Context) (node.ComputeConfig, error) {
 	})
 }
 
-func GetRequesterConfig(ctx context.Context) (node.RequesterConfig, error) {
+func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.RequesterConfig, error) {
 	var cfg types.RequesterConfig
 	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
 		return node.RequesterConfig{}, err
 	}
 
-	jobStore, err := getJobStore(ctx, cfg.JobStore)
-	if err != nil {
-		return node.RequesterConfig{}, err
+	var err error
+	var jobStore jobstore.Store
+	if createJobStore {
+		jobStore, err = getJobStore(ctx, cfg.JobStore)
+		if err != nil {
+			return node.RequesterConfig{}, err
+		}
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
@@ -199,13 +208,11 @@ func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 		// Generate an auth token using the user's client key. It should not be
 		// possible to compute this value by anyone other than the NATS server, and
 		// should be stable across restarts of the node.
-		var keySig string
-		keySig, err := system.SignForClient([]byte(nodeID))
+		secret, err := nats.CreateAuthSecret(nodeID)
 		if err != nil {
 			return node.NetworkConfig{}, err
 		}
-		hash := sha256.Sum256([]byte(keySig))
-		networkCfg.AuthSecret = base64.RawURLEncoding.EncodeToString(hash[:])
+		networkCfg.AuthSecret = secret //nolint: gosec
 	} else {
 		// If the user supplied an auth secret and some orchestrator(s), assume
 		// they are passing a auth secret to be used as a client. Attach the
@@ -228,6 +235,7 @@ func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 		Port:                     networkCfg.Port,
 		AdvertisedAddress:        networkCfg.AdvertisedAddress,
 		Orchestrators:            networkCfg.Orchestrators,
+		StoreDir:                 networkCfg.StoreDir,
 		AuthSecret:               networkCfg.AuthSecret,
 		ClusterName:              networkCfg.Cluster.Name,
 		ClusterPort:              networkCfg.Cluster.Port,

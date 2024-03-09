@@ -155,6 +155,7 @@ type NetworkConfig struct {
 	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
 	AuthSecret        string               `yaml:"AuthSecret"`
 	Orchestrators     []string             `yaml:"Orchestrators"`
+	StoreDir          string               `yaml:"StoreDir"`
 	Cluster           NetworkClusterConfig `yaml:"Cluster"`
 }
 

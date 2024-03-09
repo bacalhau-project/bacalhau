@@ -27,6 +27,9 @@ type NetworkConfig struct {
 	AdvertisedAddress string
 	Orchestrators     []string
 
+	// Storage directory for NATS features that require it
+	StoreDir string
+
 	// AuthSecret is a secret string that clients must use to connect. It is
 	// only used by NATS servers; clients should supply the auth secret as the
 	// user part of their Orchestrator URL.

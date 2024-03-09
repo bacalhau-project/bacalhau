@@ -18,7 +18,7 @@ package scenario
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
@@ -67,7 +67,7 @@ type Scenario struct {
 	// A set of checkers that will decide when the job has completed, and maybe
 	// whether it was successful or not. If empty, the job will not be waited
 	// for once it has been submitted.
-	JobCheckers []job.CheckStatesFunction
+	JobCheckers []legacy_job.CheckStatesFunction
 }
 
 // All the information that is needed to uniquely define a devstack.

@@ -3,6 +3,7 @@
 package templates
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/stringutils"
@@ -37,6 +38,8 @@ func TestExamples(t *testing.T) {
   # Describe a job and include all server and local events
   bacalhau describe --include-events j-b6ad164a`)
 
+	actual = stringutils.CrossPlatformNormalizeLineEndings(actual)
+
 	want := `  # Describe a job with the full ID
   bacalhau describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 
@@ -46,8 +49,7 @@ func TestExamples(t *testing.T) {
   # Describe a job and include all server and local events
   bacalhau describe --include-events j-b6ad164a`
 
-	actual = stringutils.CrossPlatformNormalizeLineEndings(actual)
 	want = stringutils.CrossPlatformNormalizeLineEndings(want)
 
-	assert.Equal(t, want, actual)
+	assert.Equal(t, want, actual, "Examples did not match - GOOS: %s\nGOARCH: %s", runtime.GOOS, runtime.GOARCH)
 }

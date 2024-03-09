@@ -122,8 +122,12 @@ function install-bacalhau-from-source() {
   sudo apt-get -y install --no-install-recommends jq nodejs make
   git clone --branch "${BACALHAU_BRANCH}" https://github.com/bacalhau-project/bacalhau.git
   pushd bacalhau
+
+  echo "Installing Earthly"
+  sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly && /usr/local/bin/earthly bootstrap --with-autocomplete'
+
   pushd webui && corepack enable && yarn set version stable && yarn install && popd
-  make build-bacalhau
+  make build
   sudo mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
   popd
 }

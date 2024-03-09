@@ -74,7 +74,7 @@ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=${terraform.workspace}"
 export BACALHAU_NODE_NETWORK_TYPE=${var.network_type}
 export BACALHAU_NODE_NETWORK_ORCHESTRATORS="${var.internal_ip_addresses[0]}:4222"
 export BACALHAU_NODE_NETWORK_ADVERTISEDADDRESS="${var.public_ip_addresses[count.index]}:4222"
-export BACALHAU_NODE_NETWORK_CLUSTER_PEERS="${var.internal_ip_addresses[0]}:6222"
+export BACALHAU_NODE_NETWORK_CLUSTER_PEERS=""
 
 ### secrets are installed in the install-node.sh script
 export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"

@@ -13,7 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -68,17 +68,17 @@ func runURLTest(
 			scenario.FileEquals(downloader.DownloadFilenameStderr, ""),
 			scenario.FileEquals(downloader.DownloadFilenameStdout, allContent),
 		),
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForSuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForSuccessfulCompletion(),
 		},
 
 		Spec: testutils.MakeSpecWithOpts(suite.T(),
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},
 			),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -237,12 +237,12 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 		),
 
 		Spec: testutils.MakeSpecWithOpts(s.T(),
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},
 			),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
