@@ -122,6 +122,10 @@ func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval 
 
 // Stop stops the background task that publishes the node info periodically
 func (n *NodeInfoPublisher) Stop(ctx context.Context) {
+	if n == nil {
+		return
+	}
+
 	n.stopOnce.Do(func() {
 		n.stopped = true
 		n.stopChannel <- struct{}{}

@@ -13,7 +13,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -96,6 +95,16 @@ func (s *ComputeSuite) setupNode() {
 		},
 	}
 
+	// TODO: Not needed until we switch to nats
+	// mgmtProxy := ManagementEndpointMock{
+	// 	RegisterHandler: func(ctx context.Context, req requests.RegisterRequest) (*requests.RegisterResponse, error) {
+	// 		return nil, nil
+	// 	},
+	// 	UpdateInfoHandler: func(ctx context.Context, req requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
+	// 		return nil, nil
+	// 	},
+	// }
+
 	s.node, err = node.NewComputeNode(
 		ctx,
 		"test",
@@ -107,6 +116,7 @@ func (s *ComputeSuite) setupNode() {
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
 		callback,
+		nil, // until we switch to testing with NATS
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
@@ -141,15 +151,4 @@ func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, execution *model
 	result := s.askForBid(ctx, execution)
 	s.True(result.Accepted)
 	return result.ExecutionID
-}
-
-func (s *ComputeSuite) prepareAndRun(ctx context.Context, execution *models.Execution) string {
-	executionID := s.prepareAndAskForBid(ctx, execution)
-
-	// run the job
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
-	s.NoError(err)
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCompleted))
-	s.NoError(err)
-	return executionID
 }

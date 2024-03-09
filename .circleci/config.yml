@@ -156,13 +156,13 @@ commands:
           name: Install asdf
           command: |
             git config advice.detachedHead false
+            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
             else
               cd $HOME/.asdf
               git fetch origin
-              git fetch --all
             fi
             git checkout master
             git pull --all
@@ -177,15 +177,6 @@ commands:
           command: |
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
-
-  select_earthly_satellite:
-    description: Select Earthly satellite
-    steps:
-      - run:
-          name: Select Earthly satellite
-          command: |
-            earthly account login
-            earthly sat select << pipeline.parameters.earthly_satellite >>
 
   # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
   # which is a file that asdf uses to install the correct version of python.
@@ -267,11 +258,21 @@ commands:
             asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
             earthly --version
 
+  select_earthly_satellite:
+    description: Select Earthly satellite
+    steps:
+      - run:
+          name: Select Earthly satellite
+          command: |
+            earthly account login
+            earthly sat select << pipeline.parameters.earthly_satellite >>
+
 jobs:
   build_cli:
     executor: linux-amd64
     steps:
       - checkout
+      - install_asdf
       - install_earthly
       - attach_workspace:
           at: .
@@ -280,6 +281,7 @@ jobs:
       - run:
           name: Build tarball
           command: |
+            source "${BASH_ENV}"
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
@@ -418,7 +420,9 @@ jobs:
             cp /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
       - run:
           name: Build Python API client
-          command: make build-python-apiclient
+          command: |
+            source $BASH_ENV
+            make build-python-apiclient
       - persist_to_workspace:
           root: clients/python/dist
           paths:

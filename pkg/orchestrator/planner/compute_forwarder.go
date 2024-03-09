@@ -6,7 +6,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,7 +13,6 @@ type ComputeForwarder struct {
 	id             string
 	computeService compute.Endpoint
 	jobStore       jobstore.Store
-	evalBroker     orchestrator.EvaluationBroker //nolint:unused
 }
 
 type ComputeForwarderParams struct {

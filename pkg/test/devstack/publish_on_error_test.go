@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -32,12 +32,12 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
 		Spec: testutils.MakeSpecWithOpts(s.T(),
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},
 			),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -48,8 +48,8 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 			),
 		),
 		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, stdoutText),
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForSuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForSuccessfulCompletion(),
 		},
 	}
 

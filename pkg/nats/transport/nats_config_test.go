@@ -25,6 +25,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node1",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: nil,
 		},
@@ -32,6 +33,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			name: "Missing NodeID",
 			config: NATSTransportConfig{
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"missing node ID"},
 		},
@@ -40,6 +42,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node 1",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"node ID contains a space"},
 		},
@@ -48,6 +51,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node\x00ID",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"node ID contains a null character"},
 		},
@@ -56,6 +60,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node>ID",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"contains one or more reserved character"},
 		},
@@ -64,6 +69,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node.ID",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"contains one or more reserved character"},
 		},
@@ -72,13 +78,15 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:        "node*ID",
 				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
 			},
 			expectedErrors: []string{"contains one or more reserved character"},
 		},
 		{
 			name: "Missing Orchestrators in Non-Requester Node",
 			config: NATSTransportConfig{
-				NodeID: "node2",
+				NodeID:     "node2",
+				AuthSecret: "sekret",
 			},
 			expectedErrors: []string{"missing orchestrators"},
 		},
@@ -87,6 +95,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			config: NATSTransportConfig{
 				NodeID:          "node3",
 				IsRequesterNode: true,
+				AuthSecret:      "sekret",
 			},
 			expectedErrors: []string{"port 0 must be greater than zero"},
 		},
@@ -100,8 +109,18 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				ClusterPort:              -1, // Invalid cluster port
 				ClusterAdvertisedAddress: "localhost",
 				ClusterPeers:             []string{"node5"},
+				AuthSecret:               "sekret",
 			},
 			expectedErrors: []string{"cluster port -1 must be greater than zero"},
+		},
+		{
+			name: "Missing Auth secret in Requester Node",
+			config: NATSTransportConfig{
+				NodeID:          "node3",
+				Port:            4222,
+				IsRequesterNode: true,
+			},
+			expectedErrors: []string{"when using NATS, an auth secret must be provided for each node connecting to the cluster"}, //nolint:lll
 		},
 	}
 

@@ -3,7 +3,7 @@ package jobtransform
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
@@ -14,7 +14,7 @@ func NewPublisherMigrator(defaultPublisher string) Transformer {
 	var pubSpec model.PublisherSpec
 
 	if defaultPublisher != "" {
-		pubSpec, err = job.RawPublisherStringToPublisherSpec(defaultPublisher)
+		pubSpec, err = legacy_job.RawPublisherStringToPublisherSpec(defaultPublisher)
 		if err != nil {
 			log.Error().
 				Err(err).

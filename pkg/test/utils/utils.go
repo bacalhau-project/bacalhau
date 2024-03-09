@@ -8,14 +8,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -62,8 +61,8 @@ func MakeNoopJob(t testing.TB) *model.Job {
 	return &j
 }
 
-func MakeJobWithOpts(t testing.TB, opts ...job.SpecOpt) model.Job {
-	spec, err := job.MakeSpec(opts...)
+func MakeJobWithOpts(t testing.TB, opts ...legacy_job.SpecOpt) model.Job {
+	spec, err := legacy_job.MakeSpec(opts...)
 	if err != nil {
 		t.Fatalf("creating job spec: %s", err)
 	}
@@ -73,8 +72,8 @@ func MakeJobWithOpts(t testing.TB, opts ...job.SpecOpt) model.Job {
 	return *j
 }
 
-func MakeSpecWithOpts(t testing.TB, opts ...job.SpecOpt) model.Spec {
-	spec, err := job.MakeSpec(opts...)
+func MakeSpecWithOpts(t testing.TB, opts ...legacy_job.SpecOpt) model.Spec {
+	spec, err := legacy_job.MakeSpec(opts...)
 	if err != nil {
 		t.Fatalf("creating job spec: %s", err)
 	}
