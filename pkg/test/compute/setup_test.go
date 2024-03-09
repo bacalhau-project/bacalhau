@@ -95,6 +95,16 @@ func (s *ComputeSuite) setupNode() {
 		},
 	}
 
+	// TODO: Not needed until we switch to nats
+	// mgmtProxy := ManagementEndpointMock{
+	// 	RegisterHandler: func(ctx context.Context, req requests.RegisterRequest) (*requests.RegisterResponse, error) {
+	// 		return nil, nil
+	// 	},
+	// 	UpdateInfoHandler: func(ctx context.Context, req requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
+	// 		return nil, nil
+	// 	},
+	// }
+
 	s.node, err = node.NewComputeNode(
 		ctx,
 		"test",
@@ -106,6 +116,7 @@ func (s *ComputeSuite) setupNode() {
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
 		callback,
+		nil, // until we switch to testing with NATS
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

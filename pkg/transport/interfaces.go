@@ -18,6 +18,9 @@ type TransportLayer interface {
 	// CallbackProxy enables compute nodes to send results and responses back to orchestrator nodes
 	CallbackProxy() compute.Callback
 
+	// RegistrationProxy enables compute nodes to register with the cluster
+	ManagementProxy() compute.ManagementEndpoint
+
 	// NodeInfoPubSub enables compute nodes to publish their info and capabilities
 	// to orchestrator nodes for job matching and discovery.
 	NodeInfoPubSub() pubsub.PubSub[models.NodeInfo]
@@ -43,6 +46,10 @@ type TransportLayer interface {
 	// RegisterComputeEndpoint registers a compute endpoint with the transport layer
 	// so that incoming orchestrator requests are forwarded to the handler
 	RegisterComputeEndpoint(endpoint compute.Endpoint) error
+
+	// RegisterRegistrationEndpoint registers a requester endpoint that computes nodes
+	// can use to register with the cluster.
+	RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error
 
 	// Close closes the transport layer.
 	Close(ctx context.Context) error

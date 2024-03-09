@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
@@ -21,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -57,6 +59,7 @@ type NodeConfig struct {
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
 	AuthConfig                  types.AuthConfig
+	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool
 	Labels                      map[string]string
@@ -271,6 +274,12 @@ func NewNode(
 			attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
 		)
 
+		// Create a new node manager to keep track of compute nodes connecting
+		// to the network.
+		nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
+			NodeInfo: tracingInfoStore,
+		})
+
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.NodeID,
@@ -280,14 +289,26 @@ func NewNode(
 			authenticators,
 			tracingInfoStore,
 			transportLayer.ComputeProxy(),
+			nodeManager,
 		)
 		if err != nil {
 			return nil, err
 		}
+
 		err = transportLayer.RegisterComputeCallback(requesterNode.localCallback)
 		if err != nil {
 			return nil, err
 		}
+
+		// TODO: We only currently want a management endpoint for register/update
+		// when using NATS
+		if config.NetworkConfig.Type == models.NetworkTypeNATS {
+			err = transportLayer.RegisterManagementEndpoint(nodeManager)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
@@ -321,6 +342,7 @@ func NewNode(
 			executors,
 			publishers,
 			transportLayer.CallbackProxy(),
+			transportLayer.ManagementProxy(),
 		)
 		if err != nil {
 			return nil, err
@@ -360,19 +382,34 @@ func NewNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// node info publisher
-	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval.IsZero() {
-		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
-	}
+	var nodeInfoPublisher *routing.NodeInfoPublisher
+	if config.NetworkConfig.Type != models.NetworkTypeNATS {
+		// We do not want to keep publishing node information if we are
+		// using NATS. We will initially call the management endpoint
+		// and then send less static information separately.
+		nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
+		if nodeInfoPublisherInterval.IsZero() {
+			nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
+		}
 
-	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
-	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
-	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           transportLayer.NodeInfoPubSub(),
-		NodeInfoProvider: nodeInfoProvider,
-		IntervalConfig:   nodeInfoPublisherInterval,
-	})
+		// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
+		// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+		nodeInfoPublisher = routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
+			PubSub:           transportLayer.NodeInfoPubSub(),
+			NodeInfoProvider: nodeInfoProvider,
+			IntervalConfig:   nodeInfoPublisherInterval,
+		})
+	} else {
+		// We want to register the current requester node to the node store
+		if config.IsRequesterNode {
+			nodeInfo := nodeInfoProvider.GetNodeInfo(ctx)
+			nodeInfo.Approval = models.NodeApprovals.APPROVED
+			err := tracingInfoStore.Add(ctx, nodeInfo)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to add requester node to the node store")
+			}
+		}
+	}
 
 	// Start periodic software update checks.
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)

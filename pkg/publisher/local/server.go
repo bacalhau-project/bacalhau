@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,26 +23,9 @@ const (
 func NewLocalPublisherServer(ctx context.Context, directory, address string, port int) *LocalPublisherServer {
 	return &LocalPublisherServer{
 		rootDirectory: directory,
-		address:       resolveAddress(ctx, address),
+		address:       address,
 		port:          port,
 	}
-}
-
-func resolveAddress(ctx context.Context, address string) string {
-	addressType, ok := network.AddressTypeFromString(address)
-	if !ok {
-		return address
-	}
-
-	// If we were provided with an address type and not an address, so we should look up
-	// an address from the type.
-	addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
-	if err == nil && len(addrs) > 0 {
-		return addrs[0]
-	}
-
-	log.Ctx(ctx).Error().Err(err).Stringer("AddressType", addressType).Msgf("unable to find address for type, using 127.0.0.1")
-	return "127.0.0.1"
 }
 
 func (s *LocalPublisherServer) Run(ctx context.Context) {

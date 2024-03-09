@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -14,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -35,6 +37,7 @@ type Compute struct {
 	Executors          executor.ExecutorProvider
 	Storages           storage.StorageProvider
 	Bidder             compute.Bidder
+	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
 	autoLabelsProvider models.LabelsProvider
@@ -53,6 +56,7 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
+	managementProxy compute.ManagementEndpoint,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -221,18 +225,45 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// A single Cleanup function to make sure the order of closing dependencies is correct
-	cleanupFunc := func(ctx context.Context) {
-		executionStore.Close(ctx)
-		resultsPath.Close()
-	}
-
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
 	)
+
+	var managementClient *compute.ManagementClient
+	// TODO: When we no longer use libP2P for management, we should remove this
+	// as the managementProxy will always be set.
+	if managementProxy != nil {
+		repo, _ := pkgconfig.Get[string]("repo")
+		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
+		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
+
+		// Set up the management client which will attempt to register this node
+		// with the requester node, and then if successful will send regular node
+		// info updates.
+		managementClient = compute.NewManagementClient(compute.ManagementClientParams{
+			NodeID:               nodeID,
+			LabelsProvider:       labelsProvider,
+			ManagementProxy:      managementProxy,
+			NodeInfoDecorator:    nodeInfoDecorator,
+			RegistrationFilePath: regFilename,
+		})
+		if err := managementClient.RegisterNode(ctx); err != nil {
+			return nil, fmt.Errorf("failed to register node with requester: %s", err)
+		}
+		go managementClient.Start(ctx)
+	}
+
+	// A single Cleanup function to make sure the order of closing dependencies is correct
+	cleanupFunc := func(ctx context.Context) {
+		if managementClient != nil {
+			managementClient.Stop()
+		}
+		executionStore.Close(ctx)
+		resultsPath.Close()
+	}
 
 	return &Compute{
 		ID:                 nodeID,
@@ -246,6 +277,7 @@ func NewComputeNode(
 		nodeInfoDecorator:  nodeInfoDecorator,
 		autoLabelsProvider: labelsProvider,
 		debugInfoProviders: debugInfoProviders,
+		ManagementClient:   managementClient,
 	}, nil
 }
 

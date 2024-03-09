@@ -91,6 +91,7 @@ type NATSTransport struct {
 	callbackProxy     compute.Callback
 	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
 	nodeInfoDecorator models.NodeInfoDecorator
+	managementProxy   compute.ManagementEndpoint
 }
 
 //nolint:funlen
@@ -117,14 +118,15 @@ func NewNATSTransport(ctx context.Context,
 			StoreDir:               config.StoreDir,
 		}
 
-		// Only set cluster options if cluster peers are provided. If we don't Jetstream
-		// will fail to start as it is unable to locate the zero routes we provide when
-		// there are no peers.
+		// Only set cluster options if cluster peers are provided. Jetstream doesn't
+		// like the setting to be present with no values, or with values that are
+		// a local address (e.g. it can't RAFT to itself).
+		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers, false)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(config.ClusterPeers) > 0 {
-			routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers)
-			if err != nil {
-				return nil, err
-			}
 			serverOpts.Routes = routes
 
 			serverOpts.Cluster = server.ClusterOpts{
@@ -186,6 +188,11 @@ func NewNATSTransport(ctx context.Context,
 		Conn: nc.Client,
 	})
 
+	// A proxy to register and unregister compute nodes with the requester
+	managementProxy := proxy.NewManagementProxy(proxy.ManagementProxyParams{
+		Conn: nc.Client,
+	})
+
 	return &NATSTransport{
 		nodeID:            config.NodeID,
 		natsServer:        sm,
@@ -194,6 +201,7 @@ func NewNATSTransport(ctx context.Context,
 		callbackProxy:     computeCallback,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
+		managementProxy:   managementProxy,
 	}, nil
 }
 
@@ -228,6 +236,15 @@ func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error
 	return err
 }
 
+// RegisterManagementEndpoint registers a requester endpoint with the transport layer
+func (t *NATSTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
+	_, err := proxy.NewManagementHandler(proxy.ManagementHandlerParams{
+		Conn:               t.natsClient.Client,
+		ManagementEndpoint: endpoint,
+	})
+	return err
+}
+
 // ComputeProxy returns the compute proxy.
 func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 	return t.computeProxy
@@ -236,6 +253,11 @@ func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 // CallbackProxy returns the callback proxy.
 func (t *NATSTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
+}
+
+// RegistrationProxy returns the previoously created registration proxy.
+func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
+	return t.managementProxy
 }
 
 // NodeInfoPubSub returns the node info pubsub.

@@ -153,6 +153,12 @@ func (t *Libp2pTransport) RegisterComputeCallback(callback compute.Callback) err
 	return nil
 }
 
+// RegisterManagementEndpoint is not implemented for libp2p transport. Compute
+// nodes using this transport can call this with no effect.
+func (t *Libp2pTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
+	return nil
+}
+
 // RegisterComputeEndpoint registers a compute endpoint with the transport layer.
 func (t *Libp2pTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error {
 	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
@@ -173,6 +179,11 @@ func (t *Libp2pTransport) ComputeProxy() compute.Endpoint {
 // CallbackProxy returns the callback proxy.
 func (t *Libp2pTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
+}
+
+// RegistrationProxy is not supported for the Libp2p transport and returns nil.
+func (t *Libp2pTransport) ManagementProxy() compute.ManagementEndpoint {
+	return nil
 }
 
 // NodeInfoPubSub returns the node info pubsub.
