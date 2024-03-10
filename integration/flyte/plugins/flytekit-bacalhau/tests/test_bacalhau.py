@@ -18,7 +18,6 @@ test_spec = dict(
     language={"job_context": None},
     wasm=None,
     resources=None,
-    timeout=1800,
     outputs=[
         {
             "storage_source": "IPFS",
@@ -107,10 +106,6 @@ def test_serialization():
     assert (
         workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["resources"]
         == test_spec["resources"]
-    )
-    assert (
-        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["timeout"]
-        == test_spec["timeout"]
     )
     assert (
         workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["do_not_track"]
