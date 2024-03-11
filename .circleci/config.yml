@@ -156,13 +156,13 @@ commands:
           name: Install asdf
           command: |
             git config advice.detachedHead false
+            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
             else
               cd $HOME/.asdf
               git fetch origin
-              git fetch --tags
             fi
             git checkout master
             git pull --all
@@ -428,10 +428,10 @@ jobs:
           paths:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo
-          make_command: build-python-sdk
+      - run:
+          name: Build Python SDK
+          command: |
+            make build-python-sdk
       - persist_to_workspace:
           root: python/dist
           paths:
@@ -612,6 +612,7 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
       - attach_workspace:
           at: /tmp/py_dist
       - run:
@@ -632,7 +633,8 @@ jobs:
       - run:
           name: Release python sdk
           command: |
-            python -m poetry run make release-python-sdk
+            export RELEASE_PYTHON_PACKAGES=1
+            make release-python-sdk
       - run:
           name: Release python Airflow integration
           command: |

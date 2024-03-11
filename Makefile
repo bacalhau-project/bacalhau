@@ -101,8 +101,8 @@ build-python-apiclient: resolve-earthly
 # Target: build-python-sdk
 ################################################################################
 .PHONY: build-python-sdk
-build-python-sdk: resolve-earthly
-	cd python && ${MAKE} clean all
+build-python-sdk:
+	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
 ################################################################################
@@ -132,8 +132,8 @@ release-python-apiclient: resolve-earthly
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk: resolve-earthly
-	cd python && ${MAKE} build && ${MAKE} publish
+release-python-sdk: build-python-sdk
+	cd python && ${EARTHLY} --push +publish --PYPI_TOKEN=${PYPI_TOKEN}
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
