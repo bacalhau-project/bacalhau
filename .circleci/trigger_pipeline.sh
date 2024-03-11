@@ -4,7 +4,7 @@ IFS=$'\n\t'
 
 if [[ -z "${BRANCH}" ]]; then
     TARGET="\"branch\": \"main\""
-elif [[ "${BRANCH}" =~ "refs/tags" ]]; then
+    elif [[ "${BRANCH}" =~ "refs/tags" ]]; then
     TAG=$(echo "${BRANCH}" | sed 's:refs/tags/::')
     TARGET="\"tag\": \"${TAG}\""
 else
