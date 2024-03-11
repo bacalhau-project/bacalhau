@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	sysmath "math"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -18,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
@@ -31,9 +34,7 @@ const (
 	BucketJobHistory       = "job_history"
 	BucketExecutionHistory = "execution_history"
 
-	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
-	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
 	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
 
@@ -50,10 +51,10 @@ type BoltJobStore struct {
 	watcherLock sync.Mutex
 
 	inProgressIndex  *Index
-	namespacesIndex  *Index
-	tagsIndex        *Index
 	executionsIndex  *Index
 	evaluationsIndex *Index
+
+	search *StoreSearch
 }
 
 type Option func(store *BoltJobStore)
@@ -82,7 +83,6 @@ func WithClock(clock clock.Clock) Option {
 //
 //	TagsIndex        = tag -> Job id
 //	ProgressIndex    = job-id -> {}
-//	NamespacesIndex  = namespace -> Job id
 //	ExecutionsIndex  = execution-id -> Job id
 //	EvaluationsIndex = evaluation-id -> Job id
 func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
@@ -102,6 +102,14 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		opt(store)
 	}
 
+	searchPath := filepath.Dir(dbPath)
+	searchPath = filepath.Join(searchPath, "jobindex.bleve")
+	search, err := NewStoreSearch(searchPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create search index for job store")
+	}
+	store.search = search
+
 	// Create the top level buckets ready for use as they
 	// will definitely be required
 	err = db.Update(func(tx *bolt.Tx) (err error) {
@@ -112,9 +120,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		}
 
 		indexBuckets := []string{
-			BucketTagsIndex,
 			BucketProgressIndex,
-			BucketNamespacesIndex,
 			BucketExecutionsIndex,
 			BucketEvaluationsIndex,
 		}
@@ -129,8 +135,6 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	})
 
 	store.inProgressIndex = NewIndex(BucketProgressIndex)
-	store.namespacesIndex = NewIndex(BucketNamespacesIndex)
-	store.tagsIndex = NewIndex(BucketTagsIndex)
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
 
@@ -387,26 +391,24 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 	jobSet := make(map[string]struct{})
 
 	if query.ReturnAll || query.Namespace == "" {
-		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
-		if err != nil {
-			return nil, err
-		}
-
-		err = bkt.ForEachBucket(func(k []byte) error {
-			jobSet[string(k)] = struct{}{}
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		ids, err := b.namespacesIndex.List(tx, []byte(query.Namespace))
+		ids, _, err := b.search.Search("ID:*", 0, sysmath.MaxInt)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, k := range ids {
-			jobSet[string(k)] = struct{}{}
+			jobSet[k] = struct{}{}
+		}
+	} else {
+		// Search for ids that match
+		nsQuery := b.search.StringForNamespace(query.Namespace)
+		ids, _, err := b.search.Search(nsQuery, 0, sysmath.MaxInt)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, k := range ids {
+			jobSet[k] = struct{}{}
 		}
 	}
 
@@ -419,16 +421,20 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		return jobSet, nil
 	}
 	tagSet := make(map[string]struct{})
-	for _, tag := range tags {
-		tagLabel := []byte(strings.ToLower(tag))
-		ids, err := b.tagsIndex.List(tx, tagLabel)
-		if err != nil {
-			return nil, err
-		}
 
-		for _, k := range ids {
-			tagSet[string(k)] = struct{}{}
-		}
+	var subQ []string
+	for _, tag := range tags {
+		subQ = append(subQ, b.search.StringForLabel(tag))
+	}
+	fullQ := strings.Join(subQ, " ")
+
+	ids, _, err := b.search.Search(fullQ, 0, sysmath.MaxInt)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, k := range ids {
+		tagSet[k] = struct{}{}
 	}
 
 	// remove jobs that are not in the tag set
@@ -447,16 +453,19 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		return jobSet, nil
 	}
 
+	var subQ []string
 	for _, tag := range tags {
-		tagLabel := []byte(strings.ToLower(tag))
-		ids, err := b.tagsIndex.List(tx, tagLabel)
-		if err != nil {
-			return nil, err
-		}
+		subQ = append(subQ, b.search.StringForLabel(tag))
+	}
+	fullQ := strings.Join(subQ, " ")
 
-		for _, k := range ids {
-			delete(jobSet, string(k))
-		}
+	ids, _, err := b.search.Search(fullQ, 0, sysmath.MaxInt)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, k := range ids {
+		delete(jobSet, k)
 	}
 
 	return jobSet, nil
@@ -666,6 +675,8 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
 		return err
 	}
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		_ = b.search.IndexJob(job)
+
 		return b.createJob(tx, job)
 	})
 }
@@ -717,24 +728,13 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		return err
 	}
 
-	if err = b.namespacesIndex.Add(tx, jobIDKey, []byte(job.Namespace)); err != nil {
-		return err
-	}
-
-	// Write sentinels keys for specific tags
-	for tag := range job.Labels {
-		tagBytes := []byte(strings.ToLower(tag))
-		if err = b.tagsIndex.Add(tx, jobIDKey, tagBytes); err != nil {
-			return err
-		}
-	}
-
 	return b.appendJobHistory(tx, job, models.JobStateTypePending, newJobComment)
 }
 
 // DeleteJob removes the specified job from the system entirely
 func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) error {
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		_ = b.search.RemoveJob(jobID)
 		return b.deleteJob(tx, jobID)
 	})
 }
@@ -762,18 +762,6 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	if err = b.inProgressIndex.Remove(tx, jobIDKey); err != nil {
 		return err
-	}
-
-	if err = b.namespacesIndex.Remove(tx, jobIDKey, []byte(job.Namespace)); err != nil {
-		return err
-	}
-
-	// Delete sentinels keys for specific tags
-	for tag := range job.Labels {
-		tagBytes := []byte(strings.ToLower(tag))
-		if err = b.tagsIndex.Remove(tx, jobIDKey, tagBytes); err != nil {
-			return err
-		}
 	}
 
 	return nil
