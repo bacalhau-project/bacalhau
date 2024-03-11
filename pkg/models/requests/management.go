@@ -18,3 +18,10 @@ type UpdateInfoResponse struct {
 	Accepted bool
 	Reason   string
 }
+
+type UpdateResourcesRequest struct {
+	NodeID    string
+	Resources models.Resources
+}
+
+type UpdateResourcesResponse struct{}

@@ -8,12 +8,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 const (
-	infoUpdateFrequencyMinutes = 5
+	infoUpdateFrequencyMinutes     = 5
+	resourceUpdateFrequencySeconds = 30
 )
 
 type ManagementClientParams struct {
@@ -22,6 +24,7 @@ type ManagementClientParams struct {
 	ManagementProxy      ManagementEndpoint
 	NodeInfoDecorator    models.NodeInfoDecorator
 	RegistrationFilePath string
+	ResourceTracker      capacity.Tracker
 }
 
 // ManagementClient is used to call management functions with
@@ -35,6 +38,7 @@ type ManagementClient struct {
 	nodeID            string
 	nodeInfoDecorator models.NodeInfoDecorator
 	registrationFile  *RegistrationFile
+	resourceTracker   capacity.Tracker
 }
 
 func NewManagementClient(params ManagementClientParams) *ManagementClient {
@@ -45,6 +49,7 @@ func NewManagementClient(params ManagementClientParams) *ManagementClient {
 		nodeID:            params.NodeID,
 		nodeInfoDecorator: params.NodeInfoDecorator,
 		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
+		resourceTracker:   params.ResourceTracker,
 	}
 }
 
@@ -111,8 +116,22 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	}
 }
 
+func (m *ManagementClient) updateResources(ctx context.Context) {
+	log.Ctx(ctx).Debug().Msg("Sending updated resources")
+
+	resources := m.resourceTracker.GetAvailableCapacity(ctx)
+	_, err := m.managementProxy.UpdateResources(ctx, requests.UpdateResourcesRequest{
+		NodeID:    m.nodeID,
+		Resources: resources,
+	})
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to send resource update to requester node")
+	}
+}
+
 func (m *ManagementClient) Start(ctx context.Context) {
 	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
+	resourceTicker := time.NewTicker(resourceUpdateFrequencySeconds * time.Second)
 
 	loop := true
 	for loop {
@@ -124,9 +143,13 @@ func (m *ManagementClient) Start(ctx context.Context) {
 		case <-infoTicker.C:
 			// Send the latest node info to the requester node
 			m.deliverInfo(ctx)
+		case <-resourceTicker.C:
+			// Send the latest resource info
+			m.updateResources(ctx)
 		}
 	}
 
+	resourceTicker.Stop()
 	infoTicker.Stop()
 }
 
