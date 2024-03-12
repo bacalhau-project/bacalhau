@@ -8,7 +8,7 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 SED := $(shell command -v gsed 2> /dev/null)
 ifeq ($(SED),)
-@$(warning "gsed is not installed. Please run 'brew install gsed' to install it. You may have issues with the Makefile. Falling back to default sed.")
+$(warning gsed is not installed. Please run 'brew install gsed' to install it. You may have issues with the Makefile. Falling back to default sed.)
 export SED = sed
 else
 export SED = gsed
