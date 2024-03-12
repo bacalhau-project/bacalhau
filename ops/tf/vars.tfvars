@@ -1,6 +1,3 @@
-//Usage: install-bacalhau [ | release <version> | branch <branch-name>]" >&2
-// if no args are provided bacalhau will use https://get.bacalhau.org/install.sh
-// there is only 1 requester
 requester_machine_type ="e2-standard-8"
 
 // have all the compute you'd like, they will bootstrap to requester automatically
@@ -23,6 +20,6 @@ bacalhau_otel_collector_endpoint = "http://analytics.bacalhau.tech:4318"
 bacalhau_requester_api_token = "token_for_requester_api"
 bacalhau_compute_api_token = "token_for_compute_api"
 
-bacalhau_install_branch = ""
+bacalhau_install_branch = "main"
 bacalhau_install_version = ""
-bacalhau_install_commit = "baa71cff57819fd2ec3fb5a2880e2a1f25a9f74e"
+bacalhau_install_commit = ""

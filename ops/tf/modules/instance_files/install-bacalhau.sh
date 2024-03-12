@@ -53,26 +53,9 @@ function install-bacalhau-from-release() {
   }
 }
 
-# installs the dependencies required to build bacalhau from source
-function install-bacalhau-dependencies() {
-  echo "Installing Bacalhau dependencies..."
-  sudo apt update -y
-  sudo apt-get -y install --no-install-recommends jq make gcc g++ zip || {
-    echo "Failed to install dependencies." >&2
-    return 1
-  }
 
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-  sudo apt-get install -y nodejs
 
-  sudo apt remove cmdtest -y
-  curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-  echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-  sudo apt update
-  sudo apt-get -y install --no-install-recommends yarn
-}
-
-# installs bacalhau based on a branch name, e.g. main, frrist/some-code, simon/some-other-code, etc.
+# installs bacalhau based on a branch name, e.g. main, frrist/some-code, walid/some-other-code, etc.
 function install-bacalhau-from-branch() {
   local branch=$1
   echo "Installing Bacalhau from branch ${branch}"
@@ -84,20 +67,7 @@ function install-bacalhau-from-branch() {
   }
 
   pushd bacalhau || return 1
-  pushd webui || return 1
-  yarn install || {
-    echo "Failed to install yarn packages" >&2
-    popd
-    return 1
-  }
-  popd
-
-  make build-bacalhau || {
-    echo "Failed to build bacalhau" >&2
-    popd
-    return 1
-  }
-  mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
+  build-bacalhau-from-source || return 1
   popd
 }
 
@@ -119,21 +89,54 @@ function install-bacalhau-from-commit() {
     return 1
   }
 
-  pushd webui || return 1
-  yarn install || {
-    echo "Failed to install yarn packages" >&2
-    popd
-    return 1
-  }
+  build-bacalhau-from-source || return 1
   popd
+}
 
-  make build-bacalhau || {
+# Common function to build bacalhau from source
+function build-bacalhau-from-source() {
+  make || {
     echo "Failed to build bacalhau" >&2
-    popd
     return 1
   }
-  mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau
-  popd
+
+  mv ./bin/*/*/bacalhau /usr/local/bin/bacalhau || {
+    echo "Failed to move Bacalhau to /usr/local/bin" >&2
+    return 1
+  }
+}
+
+# Main function to install all dependencies
+function install-bacalhau-dependencies() {
+  echo "Installing Bacalhau dependencies..."
+  apt-update
+  install-apt-dependencies
+  install-earthly
+}
+
+# Function to update apt package lists
+function apt-update() {
+  sudo apt update -y || {
+    echo "Failed to update package lists." >&2
+    return 1
+  }
+}
+
+# Function to install dependencies via apt
+function install-apt-dependencies() {
+  sudo apt-get -y install --no-install-recommends jq make gcc g++ zip vim || {
+    echo "Failed to install apt dependencies." >&2
+    return 1
+  }
+}
+
+
+# Function to install Earthly
+function install-earthly() {
+  sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly && /usr/local/bin/earthly bootstrap --with-autocomplete' || {
+    echo "Failed to install Earthly." >&2
+    return 1
+  }
 }
 
 install-bacalhau "$@"
