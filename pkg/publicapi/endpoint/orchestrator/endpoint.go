@@ -46,5 +46,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/jobs/:id/logs", e.logs)
 	g.GET("/nodes", e.listNodes)
 	g.GET("/nodes/:id", e.getNode)
+	g.PUT("/nodes/:id", e.updateNode)
 	return e
 }

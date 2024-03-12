@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -115,5 +116,28 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, &apimodels.ListNodesResponse{
 		Nodes: res,
+	})
+}
+
+func (e *Endpoint) updateNode(c echo.Context) error {
+	//ctx := c.Request().Context()
+
+	if c.Param("id") == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
+	}
+
+	var args apimodels.PutNodeRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+
+	fmt.Println("PERFORMING", args.Action)
+
+	return c.JSON(http.StatusOK, apimodels.PutNodeResponse{
+		Success: false,
+		Error:   "not yet implemented",
 	})
 }
