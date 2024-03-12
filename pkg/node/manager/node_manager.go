@@ -162,5 +162,53 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 	return n.nodeInfo.Delete(ctx, nodeID)
 }
 
+// ---- Implementation of node actions ----
+
+// Approve is used to approve a node for joining the cluster along with a specific
+// reason for the approval (for audit). The return values denote success and any
+// failure of the operation as a human readable string.
+func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.Get(ctx, nodeID)
+	if err != nil {
+		return false, "node not found"
+	}
+
+	if info.Approval == models.NodeApprovals.APPROVED {
+		return false, "node already approved"
+	}
+
+	info.Approval = models.NodeApprovals.APPROVED
+	log.Ctx(ctx).Info().Str("reason", reason).Msgf("node %s approved", nodeID)
+
+	if err := n.nodeInfo.Add(ctx, info); err != nil {
+		return false, "failed to save nodeinfo during node approval"
+	}
+
+	return true, ""
+}
+
+// Reject is used to reject a node from joining the cluster along with a specific
+// reason for the rejection (for audit). The return values denote success and any
+// failure of the operation as a human readable string.
+func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.Get(ctx, nodeID)
+	if err != nil {
+		return false, "node not found"
+	}
+
+	if info.Approval == models.NodeApprovals.REJECTED {
+		return false, "node already rejected"
+	}
+
+	info.Approval = models.NodeApprovals.REJECTED
+	log.Ctx(ctx).Info().Str("reason", reason).Msgf("node %s rejected", nodeID)
+
+	if err := n.nodeInfo.Add(ctx, info); err != nil {
+		return false, "failed to save nodeinfo during node rejection"
+	}
+
+	return true, ""
+}
+
 var _ compute.ManagementEndpoint = (*NodeManager)(nil)
 var _ routing.NodeInfoStore = (*NodeManager)(nil)

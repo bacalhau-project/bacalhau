@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -18,7 +18,7 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	if c.Param("id") == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
 	}
-	job, err := e.nodeStore.GetByPrefix(ctx, c.Param("id"))
+	job, err := e.nodeManager.GetByPrefix(ctx, c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	}
 
 	// query nodes
-	allNodes, err := e.nodeStore.List(ctx)
+	allNodes, err := e.nodeManager.List(ctx)
 	if err != nil {
 		return err
 	}
@@ -120,9 +120,10 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 }
 
 func (e *Endpoint) updateNode(c echo.Context) error {
-	//ctx := c.Request().Context()
+	ctx := c.Request().Context()
 
-	if c.Param("id") == "" {
+	nodeID := c.Param("id")
+	if nodeID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
 	}
 
@@ -134,10 +135,20 @@ func (e *Endpoint) updateNode(c echo.Context) error {
 		return err
 	}
 
-	fmt.Println("PERFORMING", args.Action)
+	var action func(context.Context, string, string) (bool, string)
+	if args.Action == string(apimodels.NodeActionApprove) {
+		action = e.nodeManager.Approve
+	} else if args.Action == string(apimodels.NodeActionReject) {
+		action = e.nodeManager.Reject
+	} else {
+		action = func(context.Context, string, string) (bool, string) {
+			return false, "unsupported action"
+		}
+	}
 
+	success, msg := action(ctx, nodeID, args.Message)
 	return c.JSON(http.StatusOK, apimodels.PutNodeResponse{
-		Success: false,
-		Error:   "not yet implemented",
+		Success: success,
+		Error:   msg,
 	})
 }
