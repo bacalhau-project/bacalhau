@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
+	docker_sys "github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -61,28 +62,28 @@ func (c TracedClient) ContainerInspect(ctx context.Context, containerID string) 
 	return telemetry.RecordErrorOnSpanTwo[types.ContainerJSON](span)(c.client.ContainerInspect(ctx, containerID))
 }
 
-func (c TracedClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (c TracedClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 	ctx, span := c.span(ctx, "container.list")
 	defer span.End()
 
 	return telemetry.RecordErrorOnSpanTwo[[]types.Container](span)(c.client.ContainerList(ctx, options))
 }
 
-func (c TracedClient) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (c TracedClient) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
 	ctx, span := c.span(ctx, "container.logs")
 	// span ends when the io.ReadCloser is closed
 
 	return telemetry.RecordErrorOnSpanReadCloserAndClose(span)(c.client.ContainerLogs(ctx, container, options))
 }
 
-func (c TracedClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+func (c TracedClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
 	ctx, span := c.span(ctx, "container.rm")
 	defer span.End()
 
 	return telemetry.RecordErrorOnSpan(span)(c.client.ContainerRemove(ctx, containerID, options))
 }
 
-func (c TracedClient) ContainerStart(ctx context.Context, id string, options types.ContainerStartOptions) error {
+func (c TracedClient) ContainerStart(ctx context.Context, id string, options container.StartOptions) error {
 	ctx, span := c.span(ctx, "container.start")
 	defer span.End()
 
@@ -181,11 +182,11 @@ func (c TracedClient) NetworkRemove(ctx context.Context, networkID string) error
 	return telemetry.RecordErrorOnSpan(span)(c.client.NetworkRemove(ctx, networkID))
 }
 
-func (c TracedClient) Info(ctx context.Context) (types.Info, error) {
+func (c TracedClient) Info(ctx context.Context) (docker_sys.Info, error) {
 	ctx, span := c.span(ctx, "info")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[types.Info](span)(c.client.Info(ctx))
+	return telemetry.RecordErrorOnSpanTwo[docker_sys.Info](span)(c.client.Info(ctx))
 }
 
 func (c TracedClient) ServerVersion(ctx context.Context) (types.Version, error) {
