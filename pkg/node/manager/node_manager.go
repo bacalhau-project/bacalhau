@@ -47,8 +47,16 @@ func NewNodeManager(params NodeManagerParams) *NodeManager {
 // Register is part of the implementation of the ManagementEndpoint
 // interface. It is used to register a compute node with the cluster.
 func (n *NodeManager) Register(ctx context.Context, request requests.RegisterRequest) (*requests.RegisterResponse, error) {
-	_, err := n.nodeInfo.Get(ctx, request.Info.NodeID)
+	existing, err := n.nodeInfo.Get(ctx, request.Info.NodeID)
 	if err == nil {
+		// If we have already seen this node and rejected it, then let the node know
+		if existing.Approval == models.NodeApprovals.REJECTED {
+			return &requests.RegisterResponse{
+				Accepted: false,
+				Reason:   "node has been rejected",
+			}, nil
+		}
+
 		return &requests.RegisterResponse{
 			Accepted: false,
 			Reason:   "node already registered",
@@ -71,7 +79,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 // UpdateInfo is part of the implementation of the ManagementEndpoint
 // interface. It is used to update the node info for a particular node
 func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
-	_, err := n.nodeInfo.Get(ctx, request.Info.NodeID)
+	existing, err := n.nodeInfo.Get(ctx, request.Info.NodeID)
 
 	if errors.Is(err, routing.ErrNodeNotFound{}) {
 		return &requests.UpdateInfoResponse{
@@ -82,6 +90,13 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get nodeinfo during node registration")
+	}
+
+	if existing.Approval == models.NodeApprovals.REJECTED {
+		return &requests.UpdateInfoResponse{
+			Accepted: false,
+			Reason:   "node registration rejected",
+		}, nil
 	}
 
 	// TODO(ross): Add a Put endpoint that takes the revision into account
@@ -98,9 +113,14 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 // is used to augment information about the available resources for each node.
 func (n *NodeManager) UpdateResources(ctx context.Context,
 	request requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error) {
-	_, err := n.nodeInfo.Get(ctx, request.NodeID)
+	existing, err := n.nodeInfo.Get(ctx, request.NodeID)
 	if errors.Is(err, routing.ErrNodeNotFound{}) {
 		return nil, fmt.Errorf("unable to update resources for missing node: %s", request.NodeID)
+	}
+
+	if existing.Approval == models.NodeApprovals.REJECTED {
+		log.Ctx(ctx).Debug().Msg("not updating resources for rejected node ")
+		return &requests.UpdateResourcesResponse{}, nil
 	}
 
 	log.Ctx(ctx).Debug().Msg("updating resources availability for node")
