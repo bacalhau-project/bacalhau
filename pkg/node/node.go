@@ -192,7 +192,7 @@ func NewNode(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("olgibbons debug: serverParams: %#v\n", serverParams)
+	//fmt.Printf("olgibbons debug: serverParams: %#v\n", serverParams)
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 
 	var transportLayer transport.TransportLayer
