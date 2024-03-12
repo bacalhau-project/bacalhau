@@ -1,18 +1,20 @@
 import json
 from dataclasses import asdict
 from datetime import timedelta
+
+import grpc
+from google.protobuf import struct_pb2
 from unittest import mock
 from unittest.mock import MagicMock
 
-import flytekit.models.interface as interface_models
-import grpc
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
-from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
+from flytekit.models import literals, task, types
 from flytekit.models.task import TaskTemplate
+import flytekit.models.interface as interface_models
+
 from flytekitplugins.bacalhau.agent import Metadata
-from google.protobuf import struct_pb2
 
 
 @mock.patch("flytekitplugins.bacalhau.agent.submit")

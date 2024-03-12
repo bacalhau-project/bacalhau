@@ -164,6 +164,7 @@ jsonbs
 Keras
 kthnx
 kubo
+kwtypes
 labstack
 launchplans
 lcur

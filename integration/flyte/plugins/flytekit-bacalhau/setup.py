@@ -1,5 +1,4 @@
 import os
-
 from setuptools import setup
 
 PLUGIN_NAME = "bacalhau"

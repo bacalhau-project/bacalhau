@@ -1,11 +1,14 @@
 from collections import OrderedDict
 
 import pytest
-from flytekit import kwtypes, workflow
+from urllib3.exceptions import LocationParseError
+
+from flytekitplugins.bacalhau import BacalhauTask
+from flytekit import workflow
+from flytekit import kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
-from flytekitplugins.bacalhau import BacalhauTask
-from urllib3.exceptions import LocationParseError
+
 
 test_spec = dict(
     engine="Docker",

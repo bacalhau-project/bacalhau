@@ -2,6 +2,23 @@ export GO = go
 export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
 
+UNAME_S := $(shell uname -s)
+
+# Detect if gsed is installed - sed default on MacOS is very old
+ifeq ($(UNAME_S),Darwin)
+SED := $(shell command -v gsed 2> /dev/null)
+ifeq ($(SED),)
+$(warning gsed is not installed. Please run 'brew install gsed' to install it. You may have issues with the Makefile. Falling back to default sed.)
+export SED = sed
+else
+export SED = gsed
+endif
+endif
+
+ifeq ($(UNAME_S),Linux)
+export SED = sed
+endif
+
 ifeq ($(GOARCH),armv6)
 export GOARCH = arm
 export GOARM = 6
@@ -30,7 +47,7 @@ BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
-REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
+REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | $(SED) 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
@@ -40,13 +57,18 @@ TEST_PARALLEL_PACKAGES ?= 1
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
+export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
+export MAKE := $(shell command -v make 2> /dev/null)
+
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
 # versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$$/.dev0/'))$(PYPI_VERSION)
+GIT_VERSION := $(shell git describe --tags --dirty)
+PYPI_VERSION ?= $(shell python3 scripts/convert_git_version_to_pep440_compatible.py $(GIT_VERSION))
+
 export PYPI_VERSION
 
 all: build
@@ -82,7 +104,7 @@ precommit:
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
-	cd python && make pre-commit
+	cd python && ${MAKE} pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
@@ -112,6 +134,14 @@ build-python-sdk:
 build-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
+
+################################################################################
+# Target: build-bacalhau-flyte
+################################################################################
+.PHONY: build-bacalhau-flyte
+build-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} all
+	@echo "Python bacalhau-flyte built."
 
 # Builds all python packages
 ################################################################################
@@ -170,7 +200,6 @@ build-dev: build-ci
 ################################################################################
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
 
 .PHONY: build-webui
 build-webui: resolve-earthly
@@ -299,10 +328,10 @@ unit-test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
-.PHONY: test-python
-test-python: resolve-earthly
+.PHONY: test-python-sdk
+test-python-sdk: resolve-earthly
 # sdk tests
-	cd python && $(MAKE) test
+	cd python && ${MAKE} test
 
 .PHONY: integration-test
 integration-test:
@@ -330,7 +359,7 @@ test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-all
-test-all: test test-python
+test-all: test test-python-sdk
 	cd webui && yarn run build && yarn run lint && yarn run test
 
 ################################################################################

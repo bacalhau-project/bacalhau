@@ -1,4 +1,4 @@
-VERSION ?= $${PYPI_VERSION}
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py --pep440))
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)

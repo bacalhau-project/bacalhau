@@ -60,9 +60,6 @@ webui/.yarn/yarn.build.json
 dist/
 .web-build-guard
 
-.ruff_cache
-
 .secret
 .arg
-
 .ruff_cache

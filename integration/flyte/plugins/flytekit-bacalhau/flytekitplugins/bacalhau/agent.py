@@ -16,7 +16,10 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import (
+    AgentBase,
+    AgentRegistry,
+)
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate

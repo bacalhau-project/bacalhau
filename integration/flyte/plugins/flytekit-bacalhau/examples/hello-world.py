@@ -19,7 +19,7 @@ bacalhau_task = BacalhauTask(
 
 @workflow
 def wf():
-    bac_task = bacalhau_task(  # noqa: F841
+    bac_task = bacalhau_task(  # noqa F841
         api_version="V1beta1",
         spec=dict(
             engine="Docker",

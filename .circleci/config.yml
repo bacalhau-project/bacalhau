@@ -156,7 +156,6 @@ commands:
           name: Install asdf
           command: |
             git config advice.detachedHead false
-            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
@@ -331,7 +330,7 @@ jobs:
           name: Build webui
           command: |
             cd webui
-            earthly --push --no-sat +all
+            earthly --push +all
       - persist_to_workspace:
           root: .
           paths:
@@ -412,6 +411,7 @@ jobs:
       - checkout
       - install_python
       - install_earthly
+      - select_earthly_satellite
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:
@@ -430,24 +430,20 @@ jobs:
             - bacalhau_apiclient-*.whl
       - run:
           name: Build Python SDK
-          command: |
-            make build-python-sdk
+          command: make build-python-sdk
       - persist_to_workspace:
           root: python/dist
           paths:
             - bacalhau_sdk-*.tar.gz
             - bacalhau_sdk-*.whl
       - run:
-          name: Install bacalhau-airflow pre-requisites
-          working_directory: integration/airflow
-          command: |
-            source "$BASH_ENV"
-            python -m poetry run pip install -r dev-requirements.txt
-      - run_make_under_specific_shell:
-          # Build the airflow integration
-          directory_to_change_to: $HOME/repo/integration/airflow
-          makefile_directory: $HOME/repo
-          make_command: build-bacalhau-airflow
+          name: Build the airflow integration
+          command: make build-bacalhau-airflow
+      - persist_to_workspace:
+          root: integration/airflow/dist
+          paths:
+            - bacalhau_airflow-*.tar.gz
+            - bacalhau_airflow-*.whl
       - run_make_under_specific_shell:
           # Setup flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte
@@ -458,11 +454,6 @@ jobs:
           directory_to_change_to: $HOME/repo/integration/flyte/plugins
           makefile_directory: $HOME/repo/integration/flyte/plugins
           make_command: build_all_plugins
-      - persist_to_workspace:
-          root: integration/airflow/dist
-          paths:
-            - bacalhau_airflow-*.tar.gz
-            - bacalhau_airflow-*.whl
 
   test_cli:
     environment:
@@ -536,25 +527,27 @@ jobs:
           paths:
             - "*.coverage"
 
-  build_and_test_python_sdk:
+  test_python_sdk:
     executor: linux-amd64
-    working_directory: ~/repo
     steps:
       - checkout
-      - install_python
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo/python
-          make_command: setup test
+      - install_earthly
+      - select_earthly_satellite
+      - run:
+          working_directory: python
+          command: |
+            earthly --push +run-unittest
+
 
   test_python_airflow:
     executor: linux-amd64
     steps:
       - checkout
-      - install_python
+      - install_earthly
+      - select_earthly_satellite
       - run:
           working_directory: integration/airflow
-          command: python -m poetry run make setup test-all
+          command: earthly --push +run-tests
 
   test_python_flyte:
     executor: linux-amd64
@@ -638,8 +631,8 @@ jobs:
       - run:
           name: Release python Airflow integration
           command: |
-            python -m poetry run pip install twine==4.0.2
-            python -m poetry run make release-bacalhau-airflow
+            export RELEASE_PYTHON_PACKAGES=1
+            make dist
       - run:
           name: Release python Flyte integration
           command: |
@@ -743,7 +736,7 @@ workflows:
               - target_os: windows
                 target_arch: arm64
                 build_tags: integration
-      - build_and_test_python_sdk
+      - test_python_sdk
       - test_python_airflow
       - test_python_flyte
       - coverage:

@@ -1,8 +1,20 @@
 VERSION 0.8
-FROM python:3
+FROM python:3.10
 WORKDIR /code
 
+install-piptools:
+    # pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
+	RUN python3 -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
+
+install-requirements:
+    FROM +install-piptools
+    COPY ./requirements.in .
+    RUN pip-compile --generate-hashes --output-file=requirements.txt requirements.in
+    SAVE ARTIFACT requirements.txt LOCALLY AS requirements.txt
+
+
 build:
+    FROM +install-requirements
     COPY ./requirements.txt .
     RUN pip install -r requirements.txt
     COPY . .

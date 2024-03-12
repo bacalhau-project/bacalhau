@@ -2,8 +2,10 @@ export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 export POETRY ?= $(shell command -v poetry 2> /dev/null)
 
 # Should come from global make file
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$$/.dev0/'))$(PYPI_VERSION)
-export PYPI_VERSION
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../scripts/get_current_version_for_builds.py --pep440))
+ifeq ($(VERSION),)
+	VERSION := 0.0.0+develop
+endif
 
 sources = bacalhau_sdk
 
@@ -51,7 +53,7 @@ clean:
 .PHONY: build
 build:
 	# Echo PYPI_VERSION to .arg file
-	echo "PYPI_VERSION=$(PYPI_VERSION)" > .arg
+	echo "PYPI_VERSION=$(VERSION)" > .arg
 
 	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
 	python get_pypi_token.py
@@ -61,4 +63,10 @@ build:
 .SILENT: publish
 .PHONY: publish
 publish:
-	$(EARTHLY) --push +publish
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(VERSION)" > .arg
+
+	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
+	python ../scripts/get_pypi_token.py
+
+	$(EARTHLY) --push +publish --PYPI_VERSION=$(VERSION)
