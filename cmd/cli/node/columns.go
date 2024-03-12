@@ -24,6 +24,10 @@ var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 		ColumnConfig: table.ColumnConfig{Name: "type"},
 		Value:        func(ni *models.NodeInfo) string { return ni.NodeType.String() },
 	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "status"},
+		Value:        func(ni *models.NodeInfo) string { return ni.Approval.String() },
+	},
 }
 
 var toggleColumns = map[string][]output.TableColumn[*models.NodeInfo]{

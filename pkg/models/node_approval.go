@@ -1,6 +1,8 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type NodeApproval struct {
 	approval
@@ -89,6 +91,16 @@ func (t NodeApproval) MarshalJSON() ([]byte, error) {
 }
 
 func (t *NodeApproval) UnmarshalJSON(b []byte) error {
-	*t = Parse(string(b))
+	val := string(trimQuotes(b))
+	*t = Parse(val)
 	return nil
+}
+
+func trimQuotes(b []byte) []byte {
+	if len(b) >= 2 {
+		if b[0] == '"' && b[len(b)-1] == '"' {
+			return b[1 : len(b)-1]
+		}
+	}
+	return b
 }
