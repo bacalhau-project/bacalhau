@@ -117,7 +117,7 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 				err := cli.ContainerStop(ctx, runningContainer.ID, container.StopOptions{})
 				require.NoError(suite.T(), err, fmt.Sprintf("Error stopping container %q", runningContainer.ID))
 
-				err = cli.ContainerRemove(ctx, runningContainer.ID, types.ContainerRemoveOptions{})
+				err = cli.ContainerRemove(ctx, runningContainer.ID, container.RemoveOptions{})
 				require.NoError(suite.T(), err, fmt.Sprintf("Error removing container %q", runningContainer.ID))
 			}
 		}
