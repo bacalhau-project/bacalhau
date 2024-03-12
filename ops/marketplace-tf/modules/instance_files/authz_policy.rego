@@ -10,9 +10,16 @@ allow if {
     input.http.path[2] == "auth"
 }
 
+default token_valid = false
+
+# If we managed to get namespaces, the token is valid
+token_valid if {
+    token_namespaces
+}
+
 # You are only allowed access if you have a token. Token == root
 allow if {
-    token_namespaces
+    token_valid
 }
 
 # The list of namespaces from the verified access token
@@ -21,7 +28,7 @@ token_namespaces := ns if {
     startswith(authHeader, "Bearer ")
     accessToken := trim_prefix(authHeader, "Bearer ")
 
-    # TODO(simon): [fixme] verify signature
-    [header, claims, sig] := io.jwt.decode(accessToken)
+    [valid, header, claims] := io.jwt.decode_verify(accessToken, input.constraints)
+    valid
     ns := claims["ns"]
 }
