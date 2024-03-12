@@ -45,26 +45,44 @@ func askResponder(cmd *cobra.Command) responder {
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "%s: ", name)
 
-			var input []byte
-			var err error
+			inputChan := make(chan []byte, 1)
+			errChan := make(chan error, 1)
 
-			// If the property is marked as write only, assume it is a sensitive
-			// value and make sure we don't display it in the terminal
-			if subschema.WriteOnly && term.IsTerminal(int(os.Stdin.Fd())) {
-				input, err = term.ReadPassword(int(os.Stdin.Fd()))
-				fmt.Fprintln(cmd.ErrOrStderr())
-			} else {
-				reader := bufio.NewScanner(cmd.InOrStdin())
-				if reader.Scan() {
-					input = reader.Bytes()
+			// Reading a value is not a cancellable operation. So we manually
+			// listen for the context here and write a final byte to the input
+			// if the user cancels, to hopefully get the input read to end.
+			go func(inputCh chan<- []byte, errCh chan<- error) {
+				var input []byte
+				var err error
+
+				// If the property is marked as write only, assume it is a sensitive
+				// value and make sure we don't display it in the terminal
+				if subschema.WriteOnly && term.IsTerminal(int(os.Stdin.Fd())) {
+					input, err = term.ReadPassword(int(os.Stdin.Fd()))
+				} else {
+					reader := bufio.NewScanner(cmd.InOrStdin())
+					if reader.Scan() {
+						input = reader.Bytes()
+					}
+					err = reader.Err()
 				}
-				err = reader.Err()
-			}
 
-			if err != nil {
+				if err != nil {
+					errCh <- err
+				} else {
+					inputCh <- input
+				}
+			}(inputChan, errChan)
+
+			select {
+			case input := <-inputChan:
+				response[name] = string(input)
+			case err = <-errChan:
 				return nil, err
+			case <-cmd.Context().Done():
+				_, _ = os.Stdin.Write([]byte{'\n'})
+				return nil, cmd.Context().Err()
 			}
-			response[name] = string(input)
 		}
 
 		respBytes, err := json.Marshal(response)

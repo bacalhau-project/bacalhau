@@ -19,11 +19,11 @@ const (
 )
 
 type managementRequest interface {
-	requests.RegisterRequest | requests.UpdateInfoRequest
+	requests.RegisterRequest | requests.UpdateInfoRequest | requests.UpdateResourcesRequest
 }
 
 type managementResponse interface {
-	requests.RegisterResponse | requests.UpdateInfoResponse
+	requests.RegisterResponse | requests.UpdateInfoResponse | requests.UpdateResourcesResponse
 }
 
 type ManagementProxyParams struct {
@@ -61,37 +61,6 @@ func (p *ManagementProxy) Register(ctx context.Context,
 	return &asyncRes.Value, asyncRes.Err
 }
 
-// send will deliver a message to the requester node and wait for a response. The response
-// will be wrapped in a concurrency.AsyncResult and returned to the caller. It is the caller's
-// responsibility to unwrap the asyncresult and check the error.
-func send[Q managementRequest, R managementResponse](
-	ctx context.Context,
-	conn *nats.Conn,
-	nodeID string,
-	req Q, method string) (*concurrency.AsyncResult[R], error) {
-	data, err := json.Marshal(req)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(req))
-		return nil, err
-	}
-
-	subject := managementPublishSubject(nodeID, method)
-	log.Ctx(ctx).Trace().Msgf("Sending request to subject %s", subject)
-
-	respMsg, err := conn.Request(subject, data, requestTimeout)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error sending request to subject %s", subject)
-		return nil, err
-	}
-
-	var response concurrency.AsyncResult[R]
-	if err := json.Unmarshal(respMsg.Data, &response); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal response to NATS request")
-	}
-
-	return &response, nil
-}
-
 // UpdateInfo sends the latest node info from the current compute node to the server.
 // We will do this even if we are not registered so that we will generate a regular
 // error explaining why the update failed.
@@ -108,4 +77,52 @@ func (p *ManagementProxy) UpdateInfo(ctx context.Context,
 	}
 
 	return &asyncRes.Value, asyncRes.Err
+}
+
+// UpdateResources sends the currently available resources from the current compute
+// node to the server.
+func (p *ManagementProxy) UpdateResources(ctx context.Context,
+	request requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error) {
+	var err error
+	var asyncRes *concurrency.AsyncResult[requests.UpdateResourcesResponse]
+
+	asyncRes, err = send[requests.UpdateResourcesRequest, requests.UpdateResourcesResponse](
+		ctx, p.conn, request.NodeID, request, UpdateResources)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to send response to update resources request")
+	}
+
+	return &asyncRes.Value, asyncRes.Err
+}
+
+// send will deliver a message to the requester node and wait for a response. The response
+// will be wrapped in a concurrency.AsyncResult and returned to the caller. It is the caller's
+// responsibility to unwrap the asyncresult and check the error.
+func send[Q managementRequest, R managementResponse](
+	ctx context.Context,
+	conn *nats.Conn,
+	nodeID string,
+	req Q, method string) (*concurrency.AsyncResult[R], error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(req))
+		return nil, err
+	}
+
+	subject := managementPublishSubject(nodeID, method)
+	log.Ctx(ctx).Trace().Msgf("Sending %T request to subject %s", req, subject)
+
+	respMsg, err := conn.Request(subject, data, requestTimeout)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("error sending request to subject %s", subject)
+		return nil, err
+	}
+
+	var response concurrency.AsyncResult[R]
+	if err := json.Unmarshal(respMsg.Data, &response); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal response to NATS request")
+	}
+
+	return &response, nil
 }

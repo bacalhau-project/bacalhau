@@ -27,7 +27,6 @@ exclude = [
     "site-packages",
     "venv",
     "clients/python",
-    "integration/flyte/plugins/flytekit-bacalhau",
 ]
 
 # Same as Black.

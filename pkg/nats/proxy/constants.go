@@ -18,8 +18,9 @@ const (
 	OnCancelComplete = "OnCancelComplete/v1"
 	OnComputeFailure = "OnComputeFailure/v1"
 
-	RegisterNode   = "RegisterNode/v1"
-	UpdateNodeInfo = "UpdateNodeInfo/v1"
+	RegisterNode    = "RegisterNode/v1"
+	UpdateNodeInfo  = "UpdateNodeInfo/v1"
+	UpdateResources = "UpdateResources/v1"
 )
 
 func computeEndpointPublishSubject(nodeID string, method string) string {

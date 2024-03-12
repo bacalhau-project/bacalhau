@@ -24,7 +24,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
-export EARTHLY = $(shell which earthly)
+export EARTHLY ?= $(shell which earthly)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -115,9 +115,7 @@ build-python-apiclient: resolve-earthly
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
-	@echo "GIT_VERSION: $(GIT_VERSION)"
-	@echo "PYPI_VERSION: $(PYPI_VERSION)"
-	cd python && ${MAKE} clean all
+	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
 ################################################################################

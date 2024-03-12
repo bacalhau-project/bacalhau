@@ -156,7 +156,6 @@ commands:
           name: Install asdf
           command: |
             git config advice.detachedHead false
-            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
