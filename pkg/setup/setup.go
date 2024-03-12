@@ -2,7 +2,6 @@ package setup
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -50,7 +49,7 @@ func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	viper.Reset()
 
-	path := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()))
+	path := filepath.Join(t.TempDir(), fmt.Sprint(time.Now().UnixNano()))
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)
