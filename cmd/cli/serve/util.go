@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
@@ -49,7 +50,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	if createExecutionStore {
 		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
 		if err != nil {
-			return node.ComputeConfig{}, err
+			return node.ComputeConfig{}, errors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
@@ -89,7 +90,7 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	if createJobStore {
 		jobStore, err = getJobStore(ctx, cfg.JobStore)
 		if err != nil {
-			return node.RequesterConfig{}, err
+			return node.RequesterConfig{}, errors.Wrapf(err, "failed to create job store")
 		}
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
@@ -245,6 +246,10 @@ func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 }
 
 func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig) (store.ExecutionStore, error) {
+	if err := storeCfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	switch storeCfg.Type {
 	case types.BoltDB:
 		return boltdb.NewStore(ctx, storeCfg.Path)
@@ -254,6 +259,10 @@ func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig) (stor
 }
 
 func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig) (jobstore.Store, error) {
+	if err := storeCfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	switch storeCfg.Type {
 	case types.BoltDB:
 		log.Ctx(ctx).Debug().Str("Path", storeCfg.Path).Msg("creating boltdb backed jobstore")

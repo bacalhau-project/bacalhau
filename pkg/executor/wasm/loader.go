@@ -19,8 +19,18 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-// ModuleLoader handles the loading of WebAssembly modules from storage.PreparedStorage
-// and the automatic resolution of required imports.
+// ModuleLoader handles the loading of WebAssembly modules from
+// storage.PreparedStorage and the automatic resolution of required imports.
+//
+// ModuleLoader allows WebAssembly module dependencies to be specified within
+// the WebAssembly program, allowing the user to deploy self-contained
+// WebAssembly blobs. See the introductory talk at https://youtu.be/6zJkMLzXbQc.
+//
+// This works by using the "module name" field of a WebAssmelby import header,
+// (which for user-supplied modules is arbitrary) as a hint to the loader as to
+// where the dependency lives and how to retrieve it. The module still needs to
+// be specified as input data for the job (a previous implementation of the
+// ModuleLoader could load modules from remote locations, but this one cannot).
 type ModuleLoader struct {
 	runtime  wazero.Runtime
 	config   wazero.ModuleConfig
@@ -91,15 +101,7 @@ func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedSt
 }
 
 // InstantiateRemoteModule loads and instantiates the remote module and all of
-// its dependencies. To do this, it attempts to parse the import module name as
-// a storage location and retrieves the module from there.
-//
-// For example, a WASM module specifies an import:
-//
-//	(import "QmPympgyrEGEdSJ93rqvQkR71QLuQGdhKQtYztFwxpQsid" "easter" (func $easter (type 4)))
-//
-// InstantiateRemoteModule will recognize the module name as a CID and attempt
-// to load the module via IPFS. URLs are also supported.
+// its dependencies. It only looks in the job's input storage specs for modules.
 //
 // This function calls itself reucrsively for any discovered dependencies on the
 // loaded modules, so that the returned module has all of its dependencies fully
@@ -143,6 +145,11 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(m.InputSource.Alias))
 }
 
+const unknownModuleErrStr = ("unknown WASM module with name %q. " +
+	"expecting a built-in module name (like %q), " +
+	"or the name of a module specified as a job input source. " +
+	"see also: https://docs.bacalhau.org/getting-started/wasm-workload-onboarding")
+
 func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModuleByName")
 	span.SetAttributes(attribute.String("ModuleName", moduleName))
@@ -167,11 +174,15 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 	}
 
 	// check if the module we are dynamically linking was specific in as an input to the job.
+	// BUG: this just completely ignores the module name?? and
+	// will presumably end up in an error if the first storage is not a WASM
+	// module, or if the first storage is a WASM module but not the one we were
+	// looking for?
 	for _, s := range loader.storages {
 		if s.InputSource.Source.IsType(models.StorageSourceIPFS) || s.InputSource.Source.IsType(models.StorageSourceURL) {
 			return loader.InstantiateRemoteModule(ctx, s)
 		}
 	}
 
-	return nil, fmt.Errorf("loading module with name %s", moduleName)
+	return nil, fmt.Errorf(unknownModuleErrStr, moduleName, wasi_snapshot_preview1.ModuleName)
 }

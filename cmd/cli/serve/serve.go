@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -217,12 +218,12 @@ func serve(cmd *cobra.Command) error {
 
 	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
 	requesterConfig, err := GetRequesterConfig(ctx, isRequesterNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
 	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)

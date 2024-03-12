@@ -55,6 +55,10 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 		}, nil
 	}
 
+	// TODO: We will default to PENDING, but once we start filtering on NodeApprovals.APPROVED we will need to
+	// make a decision on how this is determined.
+	request.Info.Approval = models.NodeApprovals.PENDING
+
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
 	}
@@ -100,7 +104,6 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 	}
 
 	log.Ctx(ctx).Debug().Msg("updating resources availability for node")
-	fmt.Println("UPDATE FROM", request.NodeID, "RESOURCES", request.Resources)
 
 	// Update the resources for the node in the stripedmap. This is a thread-safe operation as locking
 	// is handled by the stripedmap on a per-bucket basis.
@@ -143,7 +146,6 @@ func (n *NodeManager) GetByPrefix(ctx context.Context, prefix string) (models.No
 }
 
 func (n *NodeManager) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
-	fmt.Println("NODE MANAGER LIST!!!!")
 	items, err := n.nodeInfo.List(ctx, filters...)
 	if err != nil {
 		return nil, err
