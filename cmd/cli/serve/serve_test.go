@@ -120,7 +120,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
-		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
+		//	fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
 		if returnError {
 			return err
 		}
@@ -128,10 +128,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		return nil
 	})
 	t := time.NewTicker(10 * time.Millisecond)
-	fmt.Printf("olgibbons debug: port: %d\n", port)
+	//fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
-	fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
-	time.Sleep(10 * time.Minute)
+	//fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
+	//olgibbons delete after testing: time.Sleep(10 * time.Minute)
 	for {
 		select {
 		case e := <-errCh:
@@ -145,7 +145,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
 			//fmt.Printf("olgibbons debug: err from curlEndpoint: %#v\n", err.Error())
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
-				fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
+				//fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
 				return port, nil
 			}
 		}
@@ -160,7 +160,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
+		//fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
 		return nil, http.StatusServiceUnavailable, err
 	}
 	//fmt.Printf("olgibbons debug: efaultClient.Do(req) called")
@@ -171,7 +171,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, resp.StatusCode, err
 
 	}
-	fmt.Printf("olgibbons debug: responseText: %#v", resp.Body)
+	//fmt.Printf("olgibbons debug: responseText: %#v", resp.Body)
 	return responseText, resp.StatusCode, nil
 }
 func (s *ServeSuite) TestDeleteMeAfterTesting() {
