@@ -18,6 +18,7 @@ func AllInputSources(job *models.Job) []*models.InputSource {
 			wasmEngineSpec, err := wasm.DecodeSpec(task.Engine)
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to decode wasm engine spec %+v", task.Engine)
+				continue
 			}
 			inputSources = append(inputSources, wasmEngineSpec.EntryModule)
 			inputSources = append(inputSources, wasmEngineSpec.ImportModules...)
