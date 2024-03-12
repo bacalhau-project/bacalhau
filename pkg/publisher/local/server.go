@@ -33,29 +33,30 @@ func (s *LocalPublisherServer) Run(ctx context.Context) {
 	mux := http.NewServeMux()
 	mux.Handle("/", fs)
 
-	var server *http.Server
+	errChan := make(chan error, 1)
+	server := &http.Server{
+		Addr:              fmt.Sprintf("%s:%d", s.address, s.port),
+		ReadTimeout:       readTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
+		Handler:           mux,
+	}
 
-	listenTo := fmt.Sprintf("%s:%d", s.address, s.port)
-	go func() {
-		server = &http.Server{
-			Addr:              listenTo,
-			ReadTimeout:       readTimeout,
-			ReadHeaderTimeout: readHeaderTimeout,
-			Handler:           mux,
-		}
-
-		err := server.ListenAndServe()
+	go func(svr *http.Server, errs chan error) {
+		err := svr.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			panic(err)
+			errChan <- err
 		}
-	}()
+	}(server, errChan)
 
-	log.Ctx(ctx).Info().Msgf("Running local publishing server on %s", listenTo)
+	log.Ctx(ctx).Info().Msgf("Running local publishing server on %s", server.Addr)
 
-	// Wait for cancellation
-	<-ctx.Done()
-
-	log.Ctx(ctx).Info().Msgf("Stopping local publishing server on %s", listenTo)
+	// Wait for cancellation or an error during ListenAndServe
+	select {
+	case <-ctx.Done(): // context cancelled
+		log.Ctx(ctx).Info().Msg("Shutting down local publishing server")
+	case err := <-errChan:
+		log.Ctx(ctx).Error().Err(err).Msg("error running local publishing server")
+	}
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("error calling shutdown on local publishing server")
