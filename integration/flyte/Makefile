@@ -1,3 +1,5 @@
+EARTHLY := $(shell command -v earthly 2> /dev/null)
+
 .PHONY: install-piptools
 install-piptools:
 	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
@@ -9,7 +11,7 @@ setup: install-piptools ## Install requirements
 
 .PHONY: test
 test: ## Run tests
-	cd plugins && $(MAKE) test
+	cd plugins && $(EARTHLY) +test-plugins
 
 .PHONY: fmt
 fmt: ## Format code with black and isort

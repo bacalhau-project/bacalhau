@@ -1,0 +1,11 @@
+VERSION 0.8
+FROM python:3.10
+WORKDIR /code
+
+copy:
+    COPY flytekit-bacalhau/ __init__.py run_all_plugins.sh setup.py ./
+
+test-plugins:
+    FROM +copy
+	RUN python3 -m pip install -e flytekit-bacalhau
+	RUN find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 python3 -m pytest --log-cli-level=DEBUG --capture=no

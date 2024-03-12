@@ -15,8 +15,7 @@ export BACALHAU_API_PORT=99999
 
 .PHONY: test
 test:
-	python3 -m pip install -e flytekit-bacalhau
-	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 python3 -m pytest --log-cli-level=DEBUG --capture=no
+	$(EARTHLY) +test-plugins
 
 .PHONY: build_all_plugins
 build_all_plugins:
