@@ -3,14 +3,18 @@ export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
 
 UNAME_S := $(shell uname -s)
+
+# Detect if gsed is installed - sed default on MacOS is very old
 ifeq ($(UNAME_S),Darwin)
-# Detect if gsed is installed
 SED := $(shell command -v gsed 2> /dev/null)
 ifeq ($(SED),)
-@$(error "gsed is not installed. Please run 'brew install gsed' to install it.")
-endif
+@$(warning "gsed is not installed. Please run 'brew install gsed' to install it. You may have issues with the Makefile. Falling back to default sed.")
+export SED = sed
+else
 export SED = gsed
 endif
+endif
+
 ifeq ($(UNAME_S),Linux)
 export SED = sed
 endif
