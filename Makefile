@@ -4,6 +4,11 @@ export GOARCH ?= $(shell $(GO) env GOARCH)
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
+# Detect if gsed is installed
+SED := $(shell command -v gsed 2> /dev/null)
+ifeq ($(SED),)
+@$(error "gsed is not installed. Please run 'brew install gsed' to install it.")
+endif
 export SED = gsed
 endif
 ifeq ($(UNAME_S),Linux)
