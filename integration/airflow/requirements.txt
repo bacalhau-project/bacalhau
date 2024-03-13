@@ -114,7 +114,7 @@ cron-descriptor==1.4.3
     # via apache-airflow
 croniter==2.0.1
     # via apache-airflow
-cryptography==41.0.7
+cryptography==42.0.4
     # via
     #   apache-airflow
     #   bacalhau-sdk
