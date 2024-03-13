@@ -80,5 +80,5 @@ func (j *Jobs) Stop(ctx context.Context, r *apimodels.StopJobRequest) (*apimodel
 
 // Logs returns a stream of logs for a given job/execution.
 func (j *Jobs) Logs(ctx context.Context, r *apimodels.GetLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	return webSocketDialer[models.ExecutionLog](ctx, j.client.(*httpClient), jobsPath+"/"+r.JobID+"/logs", r)
+	return DialAsyncResult[*apimodels.GetLogsRequest, models.ExecutionLog](ctx, j.client, jobsPath+"/"+r.JobID+"/logs", r)
 }

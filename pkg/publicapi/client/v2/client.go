@@ -1,12 +1,16 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 )
@@ -19,6 +23,7 @@ type Client interface {
 	Put(context.Context, string, apimodels.PutRequest, apimodels.PutResponse) error
 	Post(context.Context, string, apimodels.PutRequest, apimodels.PutResponse) error
 	Delete(context.Context, string, apimodels.PutRequest, apimodels.Response) error
+	Dial(context.Context, string, apimodels.Request) (<-chan *concurrency.AsyncResult[[]byte], error)
 }
 
 // New creates a new transport.
@@ -110,6 +115,64 @@ func (c *httpClient) Post(ctx context.Context, endpoint string, in apimodels.Put
 // Delete is used to do a DELETE request against an endpoint
 func (c *httpClient) Delete(ctx context.Context, endpoint string, in apimodels.PutRequest, out apimodels.Response) error {
 	return c.write(ctx, http.MethodDelete, endpoint, in, out)
+}
+
+// Dial is used to upgrade to a Websocket connection and subscribe to an
+// endpoint. The method returns on error or if the endpoint has been
+// successfully dialed, from which point on the returned channel will contain
+// every received message.
+func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Request) (<-chan *concurrency.AsyncResult[[]byte], error) {
+	r := in.ToHTTPRequest()
+	httpR, err := c.toHTTP(ctx, http.MethodGet, endpoint, r)
+	if err != nil {
+		return nil, err
+	}
+	httpR.URL.Scheme = "ws"
+
+	// Connect to the server
+	conn, resp, err := websocket.DefaultDialer.Dial(httpR.URL.String(), httpR.Header)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read messages from the server, and send them until the conn is closed or
+	// the context is cancelled. We have to read them here because the reader
+	// will be discarded upon the next call to NextReader.
+	output := make(chan *concurrency.AsyncResult[[]byte], c.config.WebsocketChannelBuffer)
+	go func() {
+		defer func() {
+			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			conn.Close()
+			close(output)
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				_, reader, err := conn.NextReader()
+				if err != nil {
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+						output <- &concurrency.AsyncResult[[]byte]{Err: err}
+					}
+					return
+				}
+
+				if reader != nil {
+					var buf bytes.Buffer
+					if _, err := io.Copy(&buf, reader); err != nil {
+						output <- &concurrency.AsyncResult[[]byte]{Err: err}
+						return
+					}
+					output <- &concurrency.AsyncResult[[]byte]{Value: buf.Bytes()}
+				}
+			}
+		}
+	}()
+
+	return output, nil
 }
 
 // doRequest runs a request with our client
@@ -269,6 +332,19 @@ func (t *AuthenticatingClient) Delete(ctx context.Context, path string, in apimo
 	return doRequest(t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Post(ctx, path, req, out)
 	})
+}
+
+func (t *AuthenticatingClient) Dial(
+	ctx context.Context,
+	path string,
+	in apimodels.Request,
+) (<-chan *concurrency.AsyncResult[[]byte], error) {
+	var output <-chan *concurrency.AsyncResult[[]byte]
+	err := doRequest(t, in, func(req apimodels.Request) (err error) {
+		output, err = t.Client.Dial(ctx, path, req)
+		return
+	})
+	return output, err
 }
 
 func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
