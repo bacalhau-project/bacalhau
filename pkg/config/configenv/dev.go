@@ -42,10 +42,6 @@ var Development = types.BacalhauConfig{
 		Network: types.NetworkConfig{
 			Type: models.NetworkTypeNATS,
 			Port: 4222,
-			Cluster: types.NetworkClusterConfig{
-				Name: "global",
-				Port: 6222,
-			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.86.177.175/tcp/1235/p2p/QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu",
