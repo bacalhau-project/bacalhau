@@ -375,6 +375,9 @@ func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.No
 
 	nodeConfig.RequesterNodeConfig.JobStore = jobStore
 	nodeConfig.ComputeConfig.ExecutionStore = executionStore
+	if nodeConfig.ComputeConfig.RegistrationFilePath == "" {
+		nodeConfig.ComputeConfig.RegistrationFilePath = computeStoreRootPath
+	}
 	return nil
 }
 
