@@ -54,6 +54,10 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 		}
 	}
 
+	// We will store the registration file alongside the executions database. We don't need to
+	// make this configurable.
+	registrationFilePath := filepath.Dir(cfg.ExecutionStore.Path)
+
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,
@@ -76,6 +80,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
 		LocalPublisher:               cfg.LocalPublisher,
+		RegistrationFilePath:         registrationFilePath,
 	})
 }
 
