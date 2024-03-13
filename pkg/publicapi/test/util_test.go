@@ -54,7 +54,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	var libp2pHost host.Host
 	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 	if !ok {
-		networkType = models.NetworkTypeLibp2p
+		networkType = models.NetworkTypeNATS
 	}
 
 	if networkType == models.NetworkTypeLibp2p {

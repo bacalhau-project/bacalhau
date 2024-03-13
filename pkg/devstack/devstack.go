@@ -118,7 +118,7 @@ func Setup(
 	if stackConfig.NetworkType == "" {
 		networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 		if !ok {
-			networkType = models.NetworkTypeLibp2p
+			networkType = models.NetworkTypeNATS
 		}
 		stackConfig.NetworkType = networkType
 	}
