@@ -204,6 +204,14 @@ func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }
 
+func getTransportType() (string, error) {
+	var networkCfg types.NetworkConfig
+	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+		return "", err
+	}
+	return networkCfg.Type, nil
+}
+
 func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
 	var networkCfg types.NetworkConfig
 	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {

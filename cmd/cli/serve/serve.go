@@ -179,9 +179,26 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	nodeName, err := getNodeID(ctx)
+	var nodeName string
+	var libp2pHost host.Host
+	var libp2pPeers []string
+	transportType, err := getTransportType()
 	if err != nil {
 		return err
+	}
+	// if the transport type is libp2p, we use the peerID as the node name
+	// even if the user provided one to avoid issues with peer lookups
+	if transportType == models.NetworkTypeLibp2p {
+		libp2pHost, libp2pPeers, err = setupLibp2p()
+		if err != nil {
+			return err
+		}
+		nodeName = libp2pHost.ID().String()
+	} else {
+		nodeName, err = getNodeID(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
@@ -208,12 +225,8 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if networkConfig.Type == models.NetworkTypeLibp2p {
-		libp2pHost, peers, err := setupLibp2p()
-		if err != nil {
-			return err
-		}
 		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = peers
+		networkConfig.ClusterPeers = libp2pPeers
 	}
 
 	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
