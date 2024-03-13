@@ -75,6 +75,8 @@ type ComputeConfigParams struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	RegistrationFilePath string
 }
 
 type ComputeConfig struct {
@@ -119,6 +121,8 @@ type ComputeConfig struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	RegistrationFilePath string
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -204,6 +208,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		BidResourceStrategy:          params.BidResourceStrategy,
 		ExecutionStore:               params.ExecutionStore,
 		LocalPublisher:               params.LocalPublisher,
+		RegistrationFilePath:         params.RegistrationFilePath,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {
