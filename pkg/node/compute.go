@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -235,7 +236,9 @@ func NewComputeNode(
 	// TODO: When we no longer use libP2P for management, we should remove this
 	// as the managementProxy will always be set.
 	if managementProxy != nil {
-		regFilename := filepath.Join(config.RegistrationFilePath, fmt.Sprintf("%s.registration.lock", nodeID))
+		repo, _ := pkgconfig.Get[string]("repo")
+		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
+		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
 
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node
