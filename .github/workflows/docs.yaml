@@ -14,10 +14,6 @@ jobs:
           make spellcheck-docs
 
   build:
-    if: |
-      github.event_name == 'pull_request' &&
-      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
-      !contains(github.event.pull_request.labels.*.name, 'wip')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,15 +33,9 @@ jobs:
           path: docs/build/
 
   deploy:
-
     runs-on: ubuntu-latest
     needs: build
-    if: |
-      github.event_name == 'pull_request' &&
-      github.ref == 'refs/heads/main' &&
-      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
-      !contains(github.event.pull_request.labels.*.name, 'wip')
-
+    if: github.ref == 'refs/heads/main'
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
