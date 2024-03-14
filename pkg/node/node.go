@@ -261,7 +261,10 @@ func NewNode(
 
 	var requesterNode *Requester
 	var computeNode *Compute
-	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
+	labelsProvider := models.MergeLabelsInOrder(
+		&ConfigLabelsProvider{staticLabels: config.Labels},
+		&RuntimeLabelsProvider{},
+	)
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -353,6 +356,7 @@ func NewNode(
 			publishers,
 			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
+			config.Labels,
 		)
 		if err != nil {
 			return nil, err
@@ -363,17 +367,16 @@ func NewNode(
 			return nil, err
 		}
 
-		labelsProvider = models.MergeLabelsInOrder(
-			computeNode.autoLabelsProvider,
-			labelsProvider,
-		)
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
+	// Create a node info provider for LibP2P, and specify the default node approval state
+	// of Approved to avoid confusion as approval state is not used for this transport type.
 	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		NodeID:          config.NodeID,
-		LabelsProvider:  labelsProvider,
-		BacalhauVersion: *version.Get(),
+		NodeID:              config.NodeID,
+		LabelsProvider:      labelsProvider,
+		BacalhauVersion:     *version.Get(),
+		DefaultNodeApproval: models.NodeApprovals.APPROVED,
 	})
 	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
 	if computeNode != nil {

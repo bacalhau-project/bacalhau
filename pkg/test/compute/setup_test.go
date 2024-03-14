@@ -116,7 +116,8 @@ func (s *ComputeSuite) setupNode() {
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
 		callback,
-		nil, // until we switch to testing with NATS
+		nil,                 // until we switch to testing with NATS
+		map[string]string{}, // empty configured labels
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

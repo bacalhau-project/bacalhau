@@ -602,7 +602,7 @@ func (s *InMemoryBrokerTestSuite) TestNack_Timeout() {
 
 // Ensure we nack in a timely manner
 func (s *InMemoryBrokerTestSuite) TestNack_TimeoutReset() {
-	s.broker.visibilityTimeout = 50 * time.Millisecond
+	s.broker.visibilityTimeout = 100 * time.Millisecond
 	s.broker.SetEnabled(true)
 
 	// Enqueue

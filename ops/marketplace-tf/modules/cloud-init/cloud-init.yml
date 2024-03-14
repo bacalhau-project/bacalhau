@@ -1,0 +1,56 @@
+write_files:
+  # bacalhau install-script
+  - path: /etc/install-bacalhau.sh
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_install_script_file}
+
+  # bacalhau config
+  - path: /etc/config.yaml
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_config_file}
+
+  # bacalhau service file
+  - path: /etc/systemd/system/bacalhau.service
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_service_file}
+
+  # authn policy file
+  - path: /etc/authn_policy.rego
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_authn_policy_file}
+
+  # authz policy file
+  - path: /etc/authz_policy.rego
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${bacalhau_authz_policy_file}
+
+  # otel config file
+  - path: /etc/otel-collector.yaml
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${otel_config_file}
+
+  # otel service file
+  - path: /etc/systemd/system/otel.service
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${otel_service_file}
