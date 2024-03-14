@@ -261,7 +261,10 @@ func NewNode(
 
 	var requesterNode *Requester
 	var computeNode *Compute
-	var labelsProvider models.LabelsProvider = &ConfigLabelsProvider{staticLabels: config.Labels}
+	labelsProvider := models.MergeLabelsInOrder(
+		&ConfigLabelsProvider{staticLabels: config.Labels},
+		&RuntimeLabelsProvider{},
+	)
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -353,6 +356,7 @@ func NewNode(
 			publishers,
 			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
+			config.Labels,
 		)
 		if err != nil {
 			return nil, err
@@ -363,10 +367,6 @@ func NewNode(
 			return nil, err
 		}
 
-		labelsProvider = models.MergeLabelsInOrder(
-			computeNode.autoLabelsProvider,
-			labelsProvider,
-		)
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
