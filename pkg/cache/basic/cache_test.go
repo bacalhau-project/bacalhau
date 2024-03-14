@@ -110,7 +110,7 @@ func (s *BasicCacheSuite) TestExpiry() {
 		return willEvict
 	}
 
-	c, err := s.createTestCache("TestExpiry", 1, 1, f)
+	c, err := s.createTestCache("TestExpiry", 1, 100*time.Millisecond, f)
 	require.NoError(s.T(), err)
 	defer c.Close()
 
@@ -138,7 +138,7 @@ func (s *BasicCacheSuite) TestExpiryDefaultTTL() {
 		return false
 	}
 
-	c, err := s.createTestCacheWithDefaultTTL("TestExpiry", 1, 1, 1*time.Second, f)
+	c, err := s.createTestCacheWithDefaultTTL("TestExpiry", 1, 100*time.Millisecond, 1*time.Second, f)
 	require.NoError(s.T(), err)
 	defer c.Close()
 
