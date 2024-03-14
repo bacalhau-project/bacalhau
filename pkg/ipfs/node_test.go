@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	icorepath "github.com/ipfs/boxo/coreiface/path"
+	icorepath "github.com/ipfs/boxo/path"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
