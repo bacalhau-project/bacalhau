@@ -5,3 +5,7 @@ output "requester_public_ips" {
 output "requester_private_ips" {
   value = google_compute_instance.requester.*.network_interface.0.network_ip
 }
+
+output "tls_cert" {
+  value = tls_self_signed_cert.tlscert.cert_pem
+}

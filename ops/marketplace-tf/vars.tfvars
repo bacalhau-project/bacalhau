@@ -17,9 +17,9 @@ bacalhau_accept_networked_jobs = true
 
 bacalhau_otel_collector_endpoint = "http://analytics.bacalhau.tech:4318"
 
-bacalhau_requester_api_token = "token_for_requester_api"
-bacalhau_compute_api_token = "token_for_compute_api"
+bacalhau_requester_api_token = "password"
+bacalhau_compute_api_token = "password"
 
-bacalhau_install_branch = "main"
+bacalhau_install_branch = ""
 bacalhau_install_version = ""
 bacalhau_install_commit = ""

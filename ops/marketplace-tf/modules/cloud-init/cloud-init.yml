@@ -54,3 +54,19 @@ write_files:
     permissions: "0600"
     content: |
       ${otel_service_file}
+
+  # tls private key
+  - path: /etc/ssl/private/bacalhau_sk.key
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${tls_key_file}
+
+  # tls cert
+  - path: /etc/ssl/certs/bacalhau_cert.crt
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${tls_cert_file}

@@ -26,7 +26,7 @@ resource "google_compute_instance" "requester" {
     network = var.gcp_config.network
     subnetwork = var.gcp_config.subnetwork
     access_config {
-      nat_ip = var.requester_static_ip // Static IP
+      nat_ip = var.requester_static_ip // static ip
     }
   }
 }
@@ -90,12 +90,12 @@ locals {
   //
 
   // inject custom bacalhau install based on variables.
-  // I am sorry reader, terraform requires this be one line
+  // i am sorry reader, terraform requires this be one line
   bacalhau_install_cmd_content = var.build_config.install_version  != "" ? "release ${var.build_config.install_version}" : var.build_config.install_branch  != "" ? "branch ${var.build_config.install_branch}" : var.build_config.install_commit  != "" ?"commit ${var.build_config.install_commit}" : ""
   bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
     node_type = "requester"
     bacalhau_version_cmd = local.bacalhau_install_cmd_content
-    // Add more arguments as needed
+    // add more arguments as needed
   })
 
   //
@@ -144,6 +144,33 @@ data "cloudinit_config" "requester_cloud_init" {
       bacalhau_authz_policy_file  : base64encode(local.bacalhau_authz_policy_content)
       otel_config_file            : base64encode(local.otel_config_content)
       otel_service_file           : base64encode(local.otel_service_content)
+      tls_cert_file               : base64encode(tls_self_signed_cert.tlscert.cert_pem)
+      tls_key_file                : base64encode(tls_private_key.privkey.private_key_pem)
     })
   }
+}
+
+resource "tls_private_key" "privkey" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "tlscert" {
+  private_key_pem = tls_private_key.privkey.private_key_pem
+
+  subject {
+    common_name  = var.requester_static_ip
+  }
+
+  validity_period_hours = 8760 // 365 days
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+
+  ip_addresses = [var.requester_static_ip]
+
+  is_ca_certificate = false
 }

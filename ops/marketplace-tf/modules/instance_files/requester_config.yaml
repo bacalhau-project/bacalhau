@@ -7,9 +7,17 @@ Auth:
 Node:
   Type:
     - requester
+  ServerAPI:
+    Port: 443
+    TLS:
+      ServerCertificate: /etc/ssl/certs/bacalhau_cert.crt
+      ServerKey: /etc/ssl/private/bacalhau_sk.key
   ClientAPI:
     Host: 0.0.0.0
-    Port: 1234
+    Port: 443
+    ClientTLS:
+      UseTLS: true
+      CaCert: /etc/ssl/certs/bacalhau_cert.crt
     # TLS:
       # TODO(simon) [fixme]: allow requester to generate its own cert
   Network:
