@@ -57,6 +57,7 @@ func NewComputeNode(
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
+	configuredLabels map[string]string,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -227,6 +228,7 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
+		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
