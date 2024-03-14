@@ -13,3 +13,8 @@ func (e ErrUnknownRepoVersion) Error() string {
 		"\nBacalhau does not know how to read this configuration format and" +
 		"\nyou will need to upgrade to a newer version to upgrade this repository."
 }
+
+func IsUnknownVersion(err error) bool {
+	_, ok := err.(ErrUnknownRepoVersion)
+	return ok
+}
