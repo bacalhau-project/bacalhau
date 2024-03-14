@@ -35,7 +35,12 @@ func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}
 	if exists, err := fsRepo.Exists(); err != nil {
-		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
+		switch err.(type) {
+		case repo.ErrUnknownRepoVersion:
+			return nil, err
+		default:
+			return nil, fmt.Errorf("failed to check if repo exists: %w", err)
+		}
 	} else if !exists {
 		if err := fsRepo.Init(); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
