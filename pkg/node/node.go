@@ -370,10 +370,13 @@ func NewNode(
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
+	// Create a node info provider for LibP2P, and specify the default node approval state
+	// of Approved to avoid confusion as approval state is not used for this transport type.
 	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		NodeID:          config.NodeID,
-		LabelsProvider:  labelsProvider,
-		BacalhauVersion: *version.Get(),
+		NodeID:              config.NodeID,
+		LabelsProvider:      labelsProvider,
+		BacalhauVersion:     *version.Get(),
+		DefaultNodeApproval: models.NodeApprovals.APPROVED,
 	})
 	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
 	if computeNode != nil {
