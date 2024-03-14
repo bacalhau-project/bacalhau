@@ -1,14 +1,14 @@
 ---
-sidebar_label: 'Configuring TLS'
+sidebar_label: "Configuring TLS"
 sidebar_position: 185
-title: 'Configuring Transport Level Security'
+title: "Configuring Transport Level Security"
 description: How to configure TLS for the requester node APIs
 ---
 
 By default, the requester node APIs used by the Bacalhau CLI are accessible over HTTP, but it is possible to configure it to use Transport Level Security (TLS) so that they are accessible over HTTPS instead. There are several ways to obtain the necessary certificates and keys, and Bacalhau supports obtaining them via ACME and Certificate Authorities or even self-signing them.
 
 :::info
-Once configured, you must ensure that instead of using __http__://IP:PORT you use __https__://IP:PORT
+Once configured, you must ensure that instead of using **http**://IP:PORT you use **https**://IP:PORT
 to access the Bacalhau API
 :::
 
@@ -26,10 +26,10 @@ As a result of the Lets Encrypt verification step, it is necessary for the serve
 ```
 sudo setcap CAP_NET_BIND_SERVICE+ep $(which bacalhau)
 ```
+
 :::
 
 A cache of ACME data is held in the config repository, by default `~/.bacalhau/autocert-cache`, and this will be used to manage renewals to avoid rate limits.
-
 
 ## Getting a certificate from a Certificate Authority
 
@@ -47,28 +47,27 @@ Obtaining a TLS certificate from a Certificate Authority (CA) without using the 
 
 6. Payment and Processing: If you're obtaining a paid certificate, you'll need to make the payment at this stage. Once the CA has received your payment and completed the verification process, they will issue the TLS certificate.
 
-Once you have obtained your certificates, you will need to put two files in a location that bacalhau can read them.  You need the server certificate, often called something like `server.cert` or `server.cert.pem`, and the server key which is often called something like `server.key` or `server.key.pem`.
+Once you have obtained your certificates, you will need to put two files in a location that bacalhau can read them. You need the server certificate, often called something like `server.cert` or `server.cert.pem`, and the server key which is often called something like `server.key` or `server.key.pem`.
 
-Once you have these two files available, you must start `bacalhau serve` which two new flags.  These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file.  An example of how it is used is:
+Once you have these two files available, you must start `bacalhau serve` which two new flags. These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file. An example of how it is used is:
 
 ```
 bacalhau server --node-type=requester --tlscert=server.cert --tlskey=server.key
 ```
 
-Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerTLSKey` instead.
-
+Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerKey` instead.
 
 ## Self-signed certificates
 
 If you wish, it is possible to use Bacalhau with a self-signed certificate which does not rely on an external Certificate Authority. This is an involved process and so is not described in detail here although there is [a helpful script in the Bacalhau github repository](https://github.com/bacalhau-project/bacalhau/blob/main/scripts/make-certs.sh) which should provide a good starting point.
 
-Once you have generated the necessary files, the steps are much like above, you must start `bacalhau serve` which two new flags.  These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file.  An example of how it is used is:
+Once you have generated the necessary files, the steps are much like above, you must start `bacalhau serve` which two new flags. These are `tlscert` and `tlskey` flags, whose arguments should point to the relevant file. An example of how it is used is:
 
 ```
 bacalhau server --node-type=requester --tlscert=server.cert --tlskey=server.key
 ```
 
-Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerTLSKey` instead.
+Alternatively, you may set these options via the environment variables, `BACALHAU_TLS_CERT` and `BACALHAU_TLS_KEY`. If you are using a configuration file, you can set the values in`Node.ServerAPI.TLS.ServerCertificate` and `Node.ServerAPI.TLS.ServerKey` instead.
 
 If you use self-signed certificates, it is unlikely that any clients will be able to verify the certificate when connecting to the Bacalhau APIs. There are three options available to work around this problem:
 
