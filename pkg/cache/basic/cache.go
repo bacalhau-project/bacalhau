@@ -1,7 +1,6 @@
 package basic
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
@@ -51,8 +50,6 @@ func NewCache[T any](options ...Option) (*BasicCache[T], error) {
 		evictionFunction: config.evictionFunction,
 		defaultTTL:       config.defaultTTL,
 	}
-
-	fmt.Println("Cache frequency is", config.cleanupFrequency)
 
 	if config.cleanupFrequency == 0 {
 		config.cleanupFrequency = DefaultFrequency
