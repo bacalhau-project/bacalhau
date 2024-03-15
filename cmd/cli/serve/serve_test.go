@@ -4,6 +4,7 @@ package serve_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -108,26 +109,26 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
-
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
-	s.T().Cleanup(func() {
-		cancel()
-	})
-
+	fmt.Printf("olgibbons debug: ctx, errs: %#v, %#v\n", ctx, errs)
+	s.T().Cleanup(cancel)
+	fmt.Printf("olgibbons debug: Cleanup called...\n")
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
-		//	fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
+		fmt.Printf("olgibbons debug: err from cmd.ExecuteContextC(ctx): %#v\n", err)
+		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
 		if returnError {
 			return err
 		}
 		s.NoError(err)
 		return nil
 	})
-	t := time.NewTicker(10 * time.Millisecond)
+	fmt.Printf("olgibbons debug: errs.Go(...) called\n")
+	t := time.NewTicker(250 * time.Millisecond)
 	//fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
 	//fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
@@ -142,10 +143,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
-			//fmt.Printf("olgibbons debug: err from curlEndpoint: %#v\n", err.Error())
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
-				//fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
+				fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
 				return port, nil
 			}
 		}
@@ -157,8 +157,12 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
+	client := &http.Client{}
+	client.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		//fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
 		return nil, http.StatusServiceUnavailable, err
@@ -175,7 +179,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	return responseText, resp.StatusCode, nil
 }
 func (s *ServeSuite) TestDeleteMeAfterTesting() {
-	port, _ := s.serve()
+	port, _ := s.serve("--node-type", "requester,compute")
 	fmt.Printf("olgibbons test completed: port: %d", port)
 }
 
@@ -204,7 +208,7 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
+	port, _ := s.serve("--node-type", "requester, compute")
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
