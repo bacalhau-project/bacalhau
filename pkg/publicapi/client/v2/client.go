@@ -324,13 +324,13 @@ func (t *AuthenticatingClient) Post(ctx context.Context, path string, in apimode
 
 func (t *AuthenticatingClient) Put(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
 	return doRequest(t, in, func(req apimodels.PutRequest) error {
-		return t.Client.Post(ctx, path, req, out)
+		return t.Client.Put(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Delete(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.Response) error {
 	return doRequest(t, in, func(req apimodels.PutRequest) error {
-		return t.Client.Post(ctx, path, req, out)
+		return t.Client.Delete(ctx, path, req, out)
 	})
 }
 
