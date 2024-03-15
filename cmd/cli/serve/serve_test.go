@@ -179,7 +179,12 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	return responseText, resp.StatusCode, nil
 }
 func (s *ServeSuite) TestDeleteMeAfterTesting() {
-	port, _ := s.serve("--node-type", "requester,compute")
+	port, err := s.serve("--node-type", "compute")
+	if err != nil {
+		fmt.Printf("olgibbons debug: err : %#v\n", err)
+	} else {
+		fmt.Printf("olgibbons no error\n")
+	}
 	fmt.Printf("olgibbons test completed: port: %d", port)
 }
 
@@ -208,9 +213,14 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, _ := s.serve("--node-type", "requester, compute")
+	port, err := s.serve("--node-type", "requester,compute")
+	if err != nil {
+		fmt.Printf("olgibbons debug: err != nil\n")
+	} else {
+		fmt.Printf("olgibbons debug: no error...\n")
+	}
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
-	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
+	clientV2 := clientv2.New(fmt.Sprintf("https://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
