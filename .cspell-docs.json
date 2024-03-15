@@ -30,6 +30,8 @@
         "./docs/docs/dev/setting_up_development.md"
     ],
     "ignoreRegExpList": [
+        "ABAC",
+        "gcloud",
         "Urls",
         "saturnia",
         "Niels",
