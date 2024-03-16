@@ -113,7 +113,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
-
 	s.T().Cleanup(cancel)
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
@@ -124,7 +123,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		return nil
 	})
 
-	t := time.NewTicker(10 * time.Millisecond)
+	t := time.NewTicker(50 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {
@@ -173,7 +172,7 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
 	s.Require().Contains(actualUrl, expectedURL)
