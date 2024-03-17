@@ -2,6 +2,23 @@ export GO = go
 export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
 
+UNAME_S := $(shell uname -s)
+
+# Detect if gsed is installed - sed default on MacOS is very old
+ifeq ($(UNAME_S),Darwin)
+SED := $(shell command -v gsed 2> /dev/null)
+ifeq ($(SED),)
+$(warning gsed is not installed. Please run 'brew install gsed' to install it. You may have issues with the Makefile. Falling back to default sed.)
+export SED = sed
+else
+export SED = gsed
+endif
+endif
+
+ifeq ($(UNAME_S),Linux)
+export SED = sed
+endif
+
 ifeq ($(GOARCH),armv6)
 export GOARCH = arm
 export GOARM = 6
@@ -16,6 +33,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
+export EARTHLY ?= $(shell command -v earthly --push 2> /dev/null)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -29,7 +47,7 @@ BINARY_PATH = bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
-REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
+REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | $(SED) 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
@@ -39,13 +57,17 @@ TEST_PARALLEL_PACKAGES ?= 1
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
+export MAKE := $(shell command -v make 2> /dev/null)
+
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
 # versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$$/.dev0/'))$(PYPI_VERSION)
+GIT_VERSION := $(shell git describe --tags --dirty)
+PYPI_VERSION ?= $(shell python3 scripts/convert_git_version_to_pep440_compatible.py $(GIT_VERSION))
+
 export PYPI_VERSION
 
 all: build
@@ -62,6 +84,13 @@ install-pre-commit:
 	@ops/install_pre_commit.sh 1>/dev/null
 	@echo "Pre-commit installed."
 
+.PHONY: resolve-earthly
+resolve-earthly:
+	@echo "Resolved Earthly path - ${EARTHLY}"
+ifeq ($(EARTHLY),)
+	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+endif
+
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
@@ -74,7 +103,7 @@ precommit:
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
-	cd python && make pre-commit
+	cd python && ${MAKE} pre-commit
 
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
@@ -85,7 +114,7 @@ endif
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
-build-python-apiclient:
+build-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} clean all
 	@echo "Python API client built."
 
@@ -94,16 +123,24 @@ build-python-apiclient:
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
-	cd python && ${MAKE} clean all
+	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
 ################################################################################
 # Target: build-bacalhau-airflow
 ################################################################################
 .PHONY: build-bacalhau-airflow
-build-bacalhau-airflow:
+build-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
+
+################################################################################
+# Target: build-bacalhau-flyte
+################################################################################
+.PHONY: build-bacalhau-flyte
+build-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} all
+	@echo "Python bacalhau-flyte built."
 
 # Builds all python packages
 ################################################################################
@@ -116,7 +153,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 # Target: release-python-apiclient
 ################################################################################
 .PHONY: release-python-apiclient
-release-python-apiclient:
+release-python-apiclient: resolve-earthly
 	cd clients && ${MAKE} pypi-upload
 	@echo "Python API client pushed to PyPi."
 
@@ -124,15 +161,15 @@ release-python-apiclient:
 # Target: release-python-sdk
 ################################################################################
 .PHONY: release-python-sdk
-release-python-sdk:
-	cd python && ${MAKE} build && ${MAKE} publish
+release-python-sdk: build-python-sdk
+	cd python && ${EARTHLY} --push +publish --PYPI_TOKEN=${PYPI_TOKEN}
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
 # Target: release-bacalhau-airflow
 ################################################################################
 .PHONY: release-bacalhau-airflow
-release-bacalhau-airflow:
+release-bacalhau-airflow: resolve-earthly
 	cd integration/airflow && ${MAKE} release
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
@@ -140,7 +177,7 @@ release-bacalhau-airflow:
 # Target: release-bacalhau-flyte
 ################################################################################
 .PHONY: release-bacalhau-flyte
-release-bacalhau-flyte:
+release-bacalhau-flyte: resolve-earthly
 	cd integration/flyte && ${MAKE} release
 	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
@@ -148,7 +185,7 @@ release-bacalhau-flyte:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau build-plugins
+build: resolve-earthly build-bacalhau build-plugins
 
 .PHONY: build-ci
 build-ci: build-bacalhau install-plugins
@@ -162,44 +199,29 @@ build-dev: build-ci
 ################################################################################
 WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
-WEB_BUILD_FILES := $(shell find webui/build -not -path 'webui/build/index.html' -not -path 'webui/build' ) webui/build/index.html
-WEB_INSTALL_GUARD := webui/yarn.lock
-WEB_BUILD_GUARD := .web-build-guard
-
-
-webui/node_modules:
-	@echo "Installing webui dependencies"
-	@cd webui && yarn install
 
 .PHONY: build-webui
-build-webui: ${WEB_BUILD_FILES}
+build-webui: resolve-earthly
+	cd webui && ${EARTHLY} --push +all
 
-webui/build:
-	mkdir -p $@
-
-$(WEB_INSTALL_GUARD): webui/node_modules webui/package.json
-	@echo "Updating webui dependencies"
-	@cd webui && yarn install
-	touch $(WEB_INSTALL_GUARD)
-
-export GENERATE_SOURCEMAP := false
-${WEB_BUILD_GUARD}: $(WEB_INSTALL_GUARD) $(WEB_SRC_FILES)
-	cd webui && yarn run build
-	touch $(WEB_BUILD_GUARD)
-
-${WEB_BUILD_FILES}: ${WEB_BUILD_GUARD}
 
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
+${BINARY_PATH}: build-bacalhau build-plugins
+
 .PHONY: build-bacalhau
-build-bacalhau: ${BINARY_PATH}
+build-bacalhau: binary-web binary
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} ${WEB_BUILD_FILES} ${WEB_GO_FILES} main.go
+.PHONY: binary
+
+binary: ${CMD_FILES} ${PKG_FILES} main.go
 	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
+
+binary-web: build-webui ${WEB_GO_FILES}
 
 ################################################################################
 # Target: build-docker-images
@@ -301,13 +323,14 @@ clean: clean-plugins
 test: unit-test bash-test
 
 .PHONY: unit-test
+unit-test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
-.PHONY: test-python
-test-python:
+.PHONY: test-python-sdk
+test-python-sdk: resolve-earthly
 # sdk tests
-	cd python && make test
+	cd python && ${MAKE} test
 
 .PHONY: integration-test
 integration-test:
@@ -335,7 +358,7 @@ test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-all
-test-all: test test-python
+test-all: test test-python-sdk
 	cd webui && yarn run build && yarn run lint && yarn run test
 
 ################################################################################

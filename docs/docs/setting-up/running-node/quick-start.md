@@ -29,7 +29,6 @@ We'll add instructions for your favorite OS.
 ## Quick start (Ubuntu 22.04)
 
 Estimated time for completion: 10 min.
-
 Tested on: Ubuntu 22.04 LTS (x86/64) running on a GCP e2-standard-4 (4 vCPU, 16 GB memory) instance with 40 GB disk size.
 
 ### Prerequisites
@@ -182,7 +181,7 @@ Firewall configuration is very specific to your network and we can't provide gen
 
 ### Install the Bacalhau Binary
 
-[Install the bacalhau binary](./../getting-started/installation.md#install-the-bacalhau-cli) to run `bacalhau serve`.
+[Install the bacalhau binary](/getting-started/installation.md#install-the-bacalhau-cli) to run `bacalhau serve`.
 
 :::info
 

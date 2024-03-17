@@ -135,7 +135,7 @@ variable "grafana_cloud_prometheus_user" {
   default = ""
 }
 
-// Remote Write Endpoint 
+// Remote Write Endpoint
 // e.g. https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
 variable "grafana_cloud_prometheus_endpoint" {
   type    = string

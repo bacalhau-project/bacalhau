@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -34,6 +35,10 @@ func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}
 	if exists, err := fsRepo.Exists(); err != nil {
+		if repo.IsUnknownVersion(err) {
+			return nil, err
+		}
+
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
 		if err := fsRepo.Init(); err != nil {
@@ -50,7 +55,12 @@ func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	viper.Reset()
 
-	path := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()))
+	tmpDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "failed to create temporary directory in test setup"))
+	}
+
+	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)
@@ -58,5 +68,13 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Cleanup(func() {
+		// This may fail on windows, and if so then we'll log the error but not fail the test.
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("failed to clean up repo at: %s: %s", path, err)
+		}
+	})
+
 	return fsRepo
 }

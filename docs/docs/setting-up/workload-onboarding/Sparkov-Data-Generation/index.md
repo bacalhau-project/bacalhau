@@ -140,7 +140,7 @@ After the repo image has been pushed to Docker Hub, we can now use the container
 ## 4. Running a Bacalhau Job
 
 
-Now we're ready to run a Bacalhau job: 
+Now we're ready to run a Bacalhau job:
 
 
 ```bash
@@ -158,7 +158,7 @@ bacalhau docker run \
 
 `jsacex/sparkov-data-generation`: the name of the docker image we are using
 
-`--  python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"`: the arguments passed into the container, specifying the execution of the Python script `datagen.py` with specific parameters, such as the amount of data, output path, and time range. 
+`--  python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"`: the arguments passed into the container, specifying the execution of the Python script `datagen.py` with specific parameters, such as the amount of data, output path, and time range.
 
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on:
@@ -206,7 +206,7 @@ To view the contents of the current directory, run the following command:
 
 ```bash
 %%bash
-ls results/outputs  
+ls results/outputs
 ```
 
 ## Support

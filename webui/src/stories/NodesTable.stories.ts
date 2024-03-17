@@ -22,5 +22,5 @@ export const Default = {
 }
 
 export const FullData = {
-  args: { data: fullDataGenerator() },
+    args: { data: fullDataGenerator(10) },
 }

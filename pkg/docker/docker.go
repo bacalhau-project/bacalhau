@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
@@ -71,7 +72,7 @@ func (c *Client) HostGatewayIP(ctx context.Context) (net.IP, error) {
 }
 
 func (c *Client) removeContainers(ctx context.Context, filterz filters.Args) error {
-	containers, err := c.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filterz})
+	containers, err := c.ContainerList(ctx, container.ListOptions{All: true, Filters: filterz})
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func (c *Client) RemoveObjectsWithLabel(ctx context.Context, labelName, labelVal
 }
 
 func (c *Client) FindContainer(ctx context.Context, label string, value string) (string, error) {
-	containers, err := c.ContainerList(ctx, types.ContainerListOptions{All: true})
+	containers, err := c.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return "", err
 	}
@@ -134,7 +135,7 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 		return nil, nil, errors.Wrap(err, "failed to get container")
 	}
 
-	logOptions := types.ContainerLogsOptions{
+	logOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -176,7 +177,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 		return nil, errors.Wrap(err, "cannot get logs when container is not running")
 	}
 
-	logOptions := types.ContainerLogsOptions{
+	logOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     follow,
@@ -197,7 +198,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	log.Ctx(ctx).Debug().Str("id", id).Msgf("Container Stop")
 	// ContainerRemove kills and removes a container from the docker host.
-	err := c.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
+	err := c.ContainerRemove(ctx, id, container.RemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})

@@ -21,11 +21,11 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
+* `bacalhau docker run`: call to bacalhau
 
 * `ghcr.io/bacalhau-project/examples/upload:v1`: the name and the tag of the docker image we are using
 
-* ` --input=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \`: URL path of the input data volumes downloaded from a URL source. 
+* ` --input=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \`: URL path of the input data volumes downloaded from a URL source.
 
 The `bacalhau docker run` command takes advantage of the `--input` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to your public storage via IPFS. In our case we are using Filecoin as our public storage.
 
@@ -48,7 +48,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 
 ```bash
 %%bash
-bacalhau describe  $JOB_ID 
+bacalhau describe  $JOB_ID
 ```
 
 **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
@@ -56,7 +56,7 @@ bacalhau describe  $JOB_ID
 ```bash
 %%bash
 rm -rf results && mkdir ./results
-bacalhau get --output-dir ./results $JOB_ID 
+bacalhau get --output-dir ./results $JOB_ID
 ```
 
 ## Viewing your Job Output

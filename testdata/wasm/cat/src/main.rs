@@ -10,12 +10,12 @@ fn cat(path: &String) -> Result<(), Box<dyn Error>> {
     let mut input = File::open(path)?;
     let mut buffer = [0; 256];
     let mut output = io::stdout();
-    
+
     loop {
         let read = input.read(&mut buffer)?;
         let mut written = 0;
 
-        if read <= 0 { 
+        if read <= 0 {
             return Ok(());
         }
 
@@ -34,6 +34,6 @@ fn main() {
             process::exit(1);
         }
     }
-    
+
     process::exit(0);
 }

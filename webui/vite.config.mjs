@@ -38,8 +38,8 @@ export default defineConfig(({ mode }) => {
     target: browserslistToEsbuild([">0.2%", "not dead", "not op_mini all"]),
     resolve: {
       alias: {
-        "@": fileURLToPath(new URL("./src", import.meta.url)),
-        'msw/native': require.resolve(path.resolve(__dirname, './node_modules/msw/lib/native/index.mjs')),
+        "@": path.resolve(__dirname, "./src"),
+        "@tests": path.resolve(__dirname, "./tests")
       },
       mainFields: ["browser"],
     },

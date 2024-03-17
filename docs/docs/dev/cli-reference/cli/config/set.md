@@ -28,7 +28,7 @@ bacalhau config set <key> <value>
 ```bash
 $ bacalhau config set node.serverapi.port 9999
 $ bacalhau config list | grep serverapi.port
- node.serverapi.port                                             9999                                     
+ node.serverapi.port                                             9999
 $ cat ~/.bacalhau/config.yaml
 node:
     serverapi:
@@ -40,7 +40,7 @@ node:
 ```bash
 $ bacalhau config set node.loggingmode json
 $ bacalhau config list | grep loggingmode
- node.loggingmode                                                json                                     
+ node.loggingmode                                                json
 $ cat ~/.bacalhau/config.yaml
 node:
     loggingmode: json
@@ -74,4 +74,3 @@ $ bacalhau config set node.volumesizerequesttimeout 10days
 Error: setting "node.volumesizerequesttimeout": time: unknown unit "days" in duration "10days"
 
 ```
-

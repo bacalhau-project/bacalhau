@@ -1,6 +1,11 @@
 .PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black setup
 .DEFAULT_GOAL := help
-VERSION ?= $${PYPI_VERSION}
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../scripts/get_current_version_for_builds.py --pep440))
+ifeq ($(VERSION),)
+	VERSION := 0.0.0+develop
+endif
+
+EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -24,7 +29,8 @@ export PRINT_HELP_PYSCRIPT
 
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
-all: lint dist
+all: clean dist
+	@echo "Airflow plugin built."
 
 help:
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
@@ -53,17 +59,21 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-lint/flake8: ## check style with flake8
-	flake8 bacalhau_airflow tests
-lint/black: ## check style with black
-	black --check bacalhau_airflow tests
+lint:
+	$(EARTHLY) --push +run-lint
 
-lint: lint/flake8 lint/black ## check style
+lint-local: ruff --fix ## check style locally (outside of Earthly)
 
-test: ## run tests quickly with the default Python
+test:
+	$(EARTHLY) --push +run-tests
+
+test-local: ## run tests quickly with the default Python
 	python3 setup.py test
 
 test-all: ## run tests on every Python version with tox
+	$(EARTHLY) --push +run-tests
+
+test-all-local: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
@@ -75,21 +85,24 @@ coverage: ## check code coverage quickly with the default Python
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/bacalhau_airflow.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ bacalhau_airflow
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
+	$(MAKE) -C docs clean # clean the docs
+	$(EARTHLY) --push +make-docs
 
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
+dist: clean ## builds source and wheel package
+	$(EARTHLY) --push +dist --PYPI_VERSION=${VERSION}
+
 .SILENT: release
 release: ## upload a release
-	twine upload --verbose dist/* -u __token__ -p ${PYPI_TOKEN}
+	# Echo PYPI_VERSION to .arg file
+	echo "PYPI_VERSION=$(VERSION)" > .arg
 
-dist: clean ## builds source and wheel package
-	python3 setup.py sdist
-	python3 setup.py bdist_wheel
-	ls -l dist
+	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
+	python ../../scripts/get_pypi_token.py
+
+	$(EARTHLY) --push +release --PYPI_VERSION=${VERSION}
 
 install: clean ## install the package to the active Python's site-packages
 	pip3 install .

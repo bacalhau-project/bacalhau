@@ -251,6 +251,3 @@ display.Image("results/outputs/mars.png")
 
 
 ![png](index_files/index_24_0.png)
-    
-
-

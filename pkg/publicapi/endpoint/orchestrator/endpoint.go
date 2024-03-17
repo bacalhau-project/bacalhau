@@ -2,9 +2,9 @@ package orchestrator
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/labstack/echo/v4"
 	echo_middleware "github.com/labstack/echo/v4/middleware"
 )
@@ -13,14 +13,14 @@ type EndpointParams struct {
 	Router       *echo.Echo
 	Orchestrator *orchestrator.BaseEndpoint
 	JobStore     jobstore.Store
-	NodeStore    routing.NodeInfoStore
+	NodeManager  *manager.NodeManager
 }
 
 type Endpoint struct {
 	router       *echo.Echo
 	orchestrator *orchestrator.BaseEndpoint
 	store        jobstore.Store
-	nodeStore    routing.NodeInfoStore
+	nodeManager  *manager.NodeManager
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
@@ -28,7 +28,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		router:       params.Router,
 		orchestrator: params.Orchestrator,
 		store:        params.JobStore,
-		nodeStore:    params.NodeStore,
+		nodeManager:  params.NodeManager,
 	}
 
 	// JSON group
@@ -46,5 +46,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/jobs/:id/logs", e.logs)
 	g.GET("/nodes", e.listNodes)
 	g.GET("/nodes/:id", e.getNode)
+	g.PUT("/nodes/:id", e.updateNode)
 	return e
 }

@@ -9,7 +9,7 @@ echo "Done."
 
 # Setup bacalhau
 echo -n "Downloading bacalhau... "
-curl -s https://bacalhau.org/install.sh | bash -- 
+curl -s https://bacalhau.org/install.sh | bash --
 echo "Done."
 
 # This is way more complicated than it should be - I have to write to a tmp file on disk

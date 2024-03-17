@@ -129,10 +129,10 @@ evals, evecs = np.linalg.eig(cov_mat)
 # Calculate cosine similarity, sort by most similar, and return the top N.
 
 def top_cosine_similarity(data, movie_id, top_n=10):
-   
+
 index = movie_id - 1
 # Movie id starts from 1
-   
+
 movie_row = data[index, :]
 magnitude = np.sqrt(np.einsum('ij, ij -> i', data, data))
 similarity = np.dot(movie_row, data.T) / (magnitude[index] * magnitude)
@@ -183,7 +183,7 @@ For further reading on how the script works, go to [Simple Movie Recommender Usi
 
 ### Running the Script
 
-Running the script `similar-movies.py` using the default values: 
+Running the script `similar-movies.py` using the default values:
 
 
 ```python

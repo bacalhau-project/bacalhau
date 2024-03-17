@@ -8,6 +8,7 @@ from airflow.models import BaseOperator
 from airflow.models.baseoperator import BaseOperatorLink
 from airflow.models.taskinstance import TaskInstanceKey
 from airflow.utils.context import Context
+
 from bacalhau_airflow.hooks import BacalhauHook
 
 
@@ -36,7 +37,7 @@ class BacalhauSubmitJobOperator(BaseOperator):
         job_spec: dict,
         #  inputs: dict = None,
         input_volumes: list = [],
-        **kwargs
+        **kwargs,
     ) -> None:
         """Constructor of the operator to submit a Bacalhau job.
 

@@ -45,7 +45,7 @@ Flags:
 Use "bacalhau [command] --help" for more information about a command.
 ```
 
-## Cancel 
+## Cancel
 
 Cancels a job that was previously submitted and stops it running if it has not yet completed.
 
@@ -60,7 +60,7 @@ Flags:
       --quiet   Do not print anything to stdout or stderr
 ```
 
-#### Examples 
+#### Examples
 
 ```
 Examples:
@@ -354,7 +354,7 @@ bacalhau list
 bacalhau list --output json
 ```
 
-## Logs 
+## Logs
 
 Retrieves the log output (stdout, and stderr) from a job.
 If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
@@ -370,7 +370,7 @@ Flags:
   -h, --help     help for logs
 ```
 
-#### Examples 
+#### Examples
 
 ```
 Examples:
@@ -446,15 +446,15 @@ Examples:
   bacalhau serve
   # or
   bacalhau serve --node-type requester
-  
+
   # Start a private bacalhau hybrid node that acts as both compute and requester
   bacalhau serve --node-type compute --node-type requester
   # or
   bacalhau serve --node-type compute,requester
-  
+
   # Start a private bacalhau node with a persistent local IPFS node
   BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
-  
+
   # Start a public bacalhau requester node
   bacalhau serve --peer env --private-internal-ipfs=false
 

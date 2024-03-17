@@ -166,7 +166,7 @@ func (e *Executor) createHTTPGateway(
 	}
 
 	// Start the container and wait for it to come up
-	err = e.client.ContainerStart(ctx, gatewayContainer.ID, types.ContainerStartOptions{})
+	err = e.client.ContainerStart(ctx, gatewayContainer.ID, container.StartOptions{})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to start network gateway container")
 	}

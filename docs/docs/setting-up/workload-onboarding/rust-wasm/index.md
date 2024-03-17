@@ -11,7 +11,7 @@ Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org
 
 ### Prerequisites
 
-1. To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md).  
+1. To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md).
 
 2. A working Rust installation with the `wasm32-wasi` target. For example, you can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets. For those using the notebook, these are installed in hidden cells below.
 
@@ -32,7 +32,7 @@ The program below will use the Rust `imageproc` crate to resize an image through
 
 
 ```python
-%%writefile ./my-program/src/main.rs 
+%%writefile ./my-program/src/main.rs
 use image::{open, GrayImage, Luma, Pixel};
 use imageproc::definitions::Clamp;
 use imageproc::gradients::sobel_gradient_map;
@@ -66,7 +66,7 @@ fn main() {
     for i in 0..seams_to_remove {
         if i % 100 == 0 {
             println!("Removing seam {}", i);
-        }        
+        }
         let vertical_seam = find_vertical_seam(&shrunk);
         shrunk = remove_vertical_seam(&mut shrunk, &vertical_seam);
         seams.push(vertical_seam);
@@ -169,7 +169,7 @@ When a job is submitted, Bacalhau prints out the related job_id. We store that i
 
 You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`wasm_results`) and downloaded our job output to be stored in that directory.
 
-We can now get the results. 
+We can now get the results.
 
 
 
@@ -221,7 +221,7 @@ display.Image("./wasm_results/outputs/shrunk.png")
 
 
 ![png](index_files/index_20_0.png)
-    
+
 
 ## Support
-If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel). 
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).

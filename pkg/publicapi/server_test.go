@@ -70,7 +70,7 @@ func (s *APIServerTestSuite) TestListenAndServe() {
 	assert.NoError(s.T(), err)
 
 	// Make a request to ensure the server is shutdown
-	resp, err = http.Get(s.server.GetURI().String())
+	_, err = http.Get(s.server.GetURI().String())
 	assert.Error(s.T(), err)
 }
 

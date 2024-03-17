@@ -21,7 +21,6 @@ test_spec = dict(
     language={"job_context": None},
     wasm=None,
     resources=None,
-    timeout=1800,
     outputs=[
         {
             "storage_source": "IPFS",
@@ -87,12 +86,31 @@ def test_serialization():
 
     # check Workflow
     workflow_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert workflow_spec.template.nodes[0].inputs[0].binding.scalar.primitive.string_value == "V1beta1"
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["engine"] == test_spec["engine"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["verifier"] == test_spec["verifier"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["wasm"] == test_spec["wasm"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["engine"] == test_spec["engine"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["resources"] == test_spec["resources"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["timeout"] == test_spec["timeout"]
-    assert workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["do_not_track"] == test_spec["do_not_track"]
-    
+    assert (
+        workflow_spec.template.nodes[0].inputs[0].binding.scalar.primitive.string_value
+        == "V1beta1"
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["engine"]
+        == test_spec["engine"]
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["verifier"]
+        == test_spec["verifier"]
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["wasm"]
+        == test_spec["wasm"]
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["engine"]
+        == test_spec["engine"]
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["resources"]
+        == test_spec["resources"]
+    )
+    assert (
+        workflow_spec.template.nodes[0].inputs[1].binding.scalar.generic["do_not_track"]
+        == test_spec["do_not_track"]
+    )

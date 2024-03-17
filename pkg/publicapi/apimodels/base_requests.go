@@ -83,8 +83,25 @@ func (o *BaseListRequest) ToHTTPRequest() *HTTPRequest {
 	return r
 }
 
+// BasePostRequest is the base request used for all POST requests
+type BasePostRequest struct {
+	BaseRequest
+	IdempotencyToken string `query:"idempotency_token"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *BasePostRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseRequest.ToHTTPRequest()
+
+	if o.IdempotencyToken != "" {
+		r.Params.Set("idempotency_token", o.IdempotencyToken)
+	}
+	return r
+}
+
 // compile time check for interface implementation
 var _ Request = (*BaseRequest)(nil)
 var _ PutRequest = (*BasePutRequest)(nil)
+var _ PostRequest = (*BasePostRequest)(nil)
 var _ GetRequest = (*BaseGetRequest)(nil)
 var _ ListRequest = (*BaseListRequest)(nil)

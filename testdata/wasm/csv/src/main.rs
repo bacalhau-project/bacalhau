@@ -15,10 +15,10 @@ fn run(input_path: &String, output_path: &String) -> Result<(), Box<dyn Error>> 
     let input = File::open(input_path)?;
     let mut wtr = csv::Writer::from_path(output_path)?;
     let mut rdr = csv::Reader::from_reader(input);
-    
+
     let headers = csv::ByteRecord::from(vec!["parent", "parentLabel", "child", "childLabel"]);
     wtr.write_byte_record(&headers)?;
-    
+
     for result in rdr.records() {
         let record = result?;
         let horse_id = record.get(HORSE_ID).or(Some("")).unwrap();
@@ -38,7 +38,7 @@ fn run(input_path: &String, output_path: &String) -> Result<(), Box<dyn Error>> 
             wtr.write_byte_record(&father_record.into_byte_record())?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -49,7 +49,7 @@ fn main() {
         let program_name = args.first().unwrap_or(&default);
         eprintln!("Usage: {} input-csv output-csv", program_name);
         process::exit(1);
-    } 
+    }
 
     let input_path = &args[1];
     let output_path = &args[2];

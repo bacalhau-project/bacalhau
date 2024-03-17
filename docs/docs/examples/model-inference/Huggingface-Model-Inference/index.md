@@ -41,8 +41,8 @@ from transformers import pipeline
 def main(prompt_string, model_version):
 
     # use dolly-v2-12b if you're using Colab Pro+, using pythia-2.8b for Free Colab
-    generate_text = pipeline(model=model_version, 
-                            torch_dtype=torch.bfloat16, 
+    generate_text = pipeline(model=model_version,
+                            torch_dtype=torch.bfloat16,
                             trust_remote_code=True,
                             device_map="auto")
 
@@ -73,7 +73,7 @@ RUN apt-get update -y
 
 RUN pip -q install git+https://github.com/huggingface/transformers
 
-RUN pip -q install accelerate>=0.12.0 
+RUN pip -q install accelerate>=0.12.0
 
 WORKDIR /
 
@@ -138,4 +138,3 @@ jsacex/dolly_inference:latest \
   * `--prompt "Where is Earth located ?"`: Specifies the text prompt to be used for the inference.
 
   * `--model_version "./databricks/dolly-v2-3b"`: Specifies the path to the Dolly V2-3B model. In this case, the model files are mounted to `/inputs/databricks/dolly-v2-3b`.
-

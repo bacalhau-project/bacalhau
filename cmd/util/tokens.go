@@ -23,6 +23,11 @@ func readTokens(path string) (tokens, error) {
 	}
 	defer closer.CloseWithLogOnError(path, file)
 
+	// Treat an empty file as an empty map: #3569.
+	if info, err := file.Stat(); err == nil && info.Size() == 0 {
+		return map[string]string{}, nil
+	}
+
 	var t tokens
 	err = json.NewDecoder(file).Decode(&t)
 	if err != nil {

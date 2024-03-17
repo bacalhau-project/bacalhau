@@ -4,7 +4,7 @@ set -euo pipefail
 export INTERATION_ID="$1"
 
 # select the port of the next requester node
-export API_PORT=$((${API_PORT:-"20000"}  + INTERATION_ID % REQUESTER_NODES)) 
+export API_PORT=$((${API_PORT:-"20000"}  + INTERATION_ID % REQUESTER_NODES))
 
 sudo tee "./results/parameters-${RUN_ID}.json" >/dev/null <<EOI
 {
