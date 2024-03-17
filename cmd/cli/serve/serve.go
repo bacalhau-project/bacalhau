@@ -150,10 +150,8 @@ func NewCmd() *cobra.Command {
 				util.Fatal(cmd, err, 1)
 			}
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return serve(cmd)
 		},
 	}
 
