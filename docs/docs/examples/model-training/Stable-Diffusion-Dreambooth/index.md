@@ -13,7 +13,7 @@ Stable diffusion has revolutionalized text2image models by producing high qualit
 
 Although the [dreambooth paper](https://arxiv.org/abs/2208.12242) used [Imagen](https://imagen.research.google/) to finetune the pre-trained model since both the Imagen model and Dreambooth code are closed source, several opensource projects have emerged using stable diffusion.
 
-Dreambooth makes stable-diffusion even more powered with the ability to generate realistic looking pictures of humans, animals or any other object by just training them on 20-30 images. 
+Dreambooth makes stable-diffusion even more powered with the ability to generate realistic looking pictures of humans, animals or any other object by just training them on 20-30 images.
 
 In this example tutorial, we will be fine-tuning a pretrained stable diffusion using images of a human and generating images of him drinking coffee.
 
@@ -39,7 +39,7 @@ bacalhau docker run \
  --gpu 1 \
   -i ipfs://QmUEJPr5pfV6tRzWQuNSSb3wdcN6tRQS5tdk3dYSCJ55Xs:/SBF.ckpt \
    jsacex/stable-diffusion-ckpt \
-   -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of sbf without hair" --plms --ckpt ../SBF.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
+   -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of sbf without hair" --plms --ckpt ../SBF.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs
 ```
 Output:
 
@@ -381,7 +381,7 @@ bacalhau docker run \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 -i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a:/aronchick \
--i ipfs://<CID-OF-THE-MODEL>:/model 
+-i ipfs://<CID-OF-THE-MODEL>:/model
 -i https://gist.githubusercontent.com/js-ts/54b270a36aa3c35fdc270640680b3bd4/raw/7d8e8fa47bc3811ef63772f7fc7f4360aa9d51a8/finetune.sh
 --wait \
 --id-only \
@@ -462,7 +462,7 @@ bacalhau docker run \
 --id-only \
 -i ipfs://QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg \
 jsacex/stable-diffusion-ckpt \
--- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
+-- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs
 ```
 
 If you are facing difficulties using the above method you can mount the whole output CID
@@ -476,7 +476,7 @@ bacalhau docker run \
 --id-only \
 -i ipfs://QmcmD7M7pYLP8QgwjqpbP4dojRLiLuEBdhevuCD9kFmbdV \
 jsacex/stable-diffusion-ckpt \
--- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/outputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
+-- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/outputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs
 ```
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
@@ -543,10 +543,3 @@ display.Image("results/outputs/samples/00001.png")
 
 
 ![png](index_files/index_31_0.png)
-    
-
-
-
-    
-
-

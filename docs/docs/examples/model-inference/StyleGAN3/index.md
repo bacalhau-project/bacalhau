@@ -82,7 +82,7 @@ Before running the command replace;
 In our case
 
 ```bash
-docker build -t jsacex/stylegan3 
+docker build -t jsacex/stylegan3
 ```
 
 ### Push the container
@@ -96,7 +96,7 @@ docker push <hub-user>/<repo-name>:<tag>
 In our case
 
 ```bash
-docker push jsacex/stylegan3 
+docker push jsacex/stylegan3
 ```
 
 

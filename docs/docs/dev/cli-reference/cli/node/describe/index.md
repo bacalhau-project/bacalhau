@@ -64,4 +64,3 @@ bacalhau node describe [id] [flags]
    ```bash
    bacalhau node describe nodeID123 --pretty
    ```
-

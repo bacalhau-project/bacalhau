@@ -7,7 +7,7 @@ However, for better reproducibility we provide a containerized environment you'd
 
 ## 🌍 Hello World
 
-Print a sample string to stdout. 
+Print a sample string to stdout.
 See the [full source code here](./hello-world.py).
 
 ```shell

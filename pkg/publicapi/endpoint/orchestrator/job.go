@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -458,11 +459,12 @@ func (e *Endpoint) logs(c echo.Context) error {
 
 	err = e.logsWS(c, ws)
 	if err != nil {
+		log.Ctx(c.Request().Context()).Error().Err(err).Msg("websocket failure")
 		err = ws.WriteJSON(concurrency.AsyncResult[models.ExecutionLog]{
 			Err: err,
 		})
 		if err != nil {
-			c.Logger().Errorf("failed to write error to websocket: %s", err)
+			log.Ctx(c.Request().Context()).Error().Err(err).Msg("failed to write error to websocket")
 		}
 	}
 	_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))

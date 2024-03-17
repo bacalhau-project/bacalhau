@@ -36,6 +36,9 @@ type NATSTransportConfig struct {
 	Orchestrators     []string
 	IsRequesterNode   bool
 
+	// StoreDir is the directory where the NATS server will store its data
+	StoreDir string
+
 	// AuthSecret is a secret string that clients must use to connect. It is
 	// only used by NATS servers; clients should supply the auth secret as the
 	// user part of their Orchestrator URL.
@@ -58,6 +61,10 @@ func (c *NATSTransportConfig) Validate() error {
 		mErr = multierror.Append(mErr, errors.New("node ID contains a null character"))
 	} else if strings.ContainsAny(c.NodeID, reservedChars) {
 		mErr = multierror.Append(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
+	}
+
+	if c.AuthSecret == "" {
+		mErr = multierror.Append(mErr, fmt.Errorf("when using NATS, an auth secret must be provided for each node connecting to the cluster"))
 	}
 
 	if c.IsRequesterNode {
@@ -84,11 +91,12 @@ type NATSTransport struct {
 	callbackProxy     compute.Callback
 	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
 	nodeInfoDecorator models.NodeInfoDecorator
+	managementProxy   compute.ManagementEndpoint
 }
 
+//nolint:funlen
 func NewNATSTransport(ctx context.Context,
-	config NATSTransportConfig,
-	nodeInfoStore routing.NodeInfoStore) (*NATSTransport, error) {
+	config NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
@@ -96,27 +104,41 @@ func NewNATSTransport(ctx context.Context,
 
 	var sm *nats_helper.ServerManager
 	if config.IsRequesterNode {
+		var err error
+
 		// create nats server with servers acting as its cluster peers
-		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers)
+		serverOpts := &server.Options{
+			ServerName:             config.NodeID,
+			Port:                   config.Port,
+			ClientAdvertise:        config.AdvertisedAddress,
+			Authorization:          config.AuthSecret,
+			Debug:                  true, // will only be used if log level is debug
+			JetStream:              true,
+			DisableJetStreamBanner: true,
+			StoreDir:               config.StoreDir,
+		}
+
+		// Only set cluster options if cluster peers are provided. Jetstream doesn't
+		// like the setting to be present with no values, or with values that are
+		// a local address (e.g. it can't RAFT to itself).
+		routes, err := nats_helper.RoutesFromSlice(config.ClusterPeers, false)
 		if err != nil {
 			return nil, err
 		}
-		serverOps := &server.Options{
-			ServerName:      config.NodeID,
-			Port:            config.Port,
-			ClientAdvertise: config.AdvertisedAddress,
-			Routes:          routes,
-			Authorization:   config.AuthSecret,
-			Debug:           true, // will only be used if log level is debug
-			Cluster: server.ClusterOpts{
+
+		if len(config.ClusterPeers) > 0 {
+			serverOpts.Routes = routes
+
+			serverOpts.Cluster = server.ClusterOpts{
 				Name:      config.ClusterName,
 				Port:      config.ClusterPort,
 				Advertise: config.ClusterAdvertisedAddress,
-			},
+			}
 		}
-		log.Debug().Msgf("Creating NATS server with options: %+v", serverOps)
+
+		log.Debug().Msgf("Creating NATS server with options: %+v", serverOpts)
 		sm, err = nats_helper.NewServerManager(ctx, nats_helper.ServerManagerParams{
-			Options: serverOps,
+			Options: serverOpts,
 		})
 		if err != nil {
 			return nil, err
@@ -153,16 +175,6 @@ func NewNATSTransport(ctx context.Context,
 		return nil, err
 	}
 
-	if config.IsRequesterNode {
-		// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
-		nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-		nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
-		err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// compute proxy
 	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
 		Conn: nc.Client,
@@ -176,6 +188,11 @@ func NewNATSTransport(ctx context.Context,
 		Conn: nc.Client,
 	})
 
+	// A proxy to register and unregister compute nodes with the requester
+	managementProxy := proxy.NewManagementProxy(proxy.ManagementProxyParams{
+		Conn: nc.Client,
+	})
+
 	return &NATSTransport{
 		nodeID:            config.NodeID,
 		natsServer:        sm,
@@ -184,7 +201,19 @@ func NewNATSTransport(ctx context.Context,
 		callbackProxy:     computeCallback,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
+		managementProxy:   managementProxy,
 	}, nil
+}
+
+func (t *NATSTransport) GetConnectionInfo(ctx context.Context) interface{} {
+	return t.natsClient.Client.ConnectedUrl()
+}
+
+func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {
+	// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](infostore.Add))
+	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
 
 // RegisterComputeCallback registers a compute callback with the transport layer.
@@ -207,6 +236,15 @@ func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error
 	return err
 }
 
+// RegisterManagementEndpoint registers a requester endpoint with the transport layer
+func (t *NATSTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
+	_, err := proxy.NewManagementHandler(proxy.ManagementHandlerParams{
+		Conn:               t.natsClient.Client,
+		ManagementEndpoint: endpoint,
+	})
+	return err
+}
+
 // ComputeProxy returns the compute proxy.
 func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 	return t.computeProxy
@@ -215,6 +253,11 @@ func (t *NATSTransport) ComputeProxy() compute.Endpoint {
 // CallbackProxy returns the callback proxy.
 func (t *NATSTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
+}
+
+// RegistrationProxy returns the previoously created registration proxy.
+func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
+	return t.managementProxy
 }
 
 // NodeInfoPubSub returns the node info pubsub.

@@ -164,6 +164,7 @@ jsonbs
 Keras
 kthnx
 kubo
+kwtypes
 labstack
 launchplans
 lcur
@@ -232,8 +233,8 @@ pbnode
 pflag
 phayes
 PKCS
-popd
 pmmmwh
+popd
 projectcontour
 proto
 protobuf
@@ -275,6 +276,7 @@ softmax
 sparkoperator
 stackdriver
 stretchr
+stringutils
 Strs
 struct
 svgr

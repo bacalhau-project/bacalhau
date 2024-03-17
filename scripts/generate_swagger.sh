@@ -21,3 +21,6 @@ if [[ ! -d "${PUBLIC_PATH}" ]]; then
   mkdir -p "${PUBLIC_PATH}"
 fi
 mv "${SWAGGER_DIR}/swagger.json" "${PUBLIC_PATH}"
+
+echo "swagger.json also copied to ${PUBLIC_PATH}/swagger.json"
+cp "${PUBLIC_PATH}/swagger.json" "${PATH_TO_PROJECT_ROOT}/docs/swagger.json"

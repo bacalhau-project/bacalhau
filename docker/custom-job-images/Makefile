@@ -4,17 +4,17 @@ local: python-local duckdb-local
 
 build: python duckdb
 
-python: 
-	@$(MAKE) -C python build 
+python:
+	@$(MAKE) -C python build
 
-python-local: 
+python-local:
 	@$(MAKE) -C python local
 
-duckdb: 
-	@$(MAKE) -C duckdb build 
+duckdb:
+	@$(MAKE) -C duckdb build
 
-duckdb-local: 
-	@$(MAKE) -C duckdb local	
+duckdb-local:
+	@$(MAKE) -C duckdb local
 
 .PHONY: local python duckdb
 

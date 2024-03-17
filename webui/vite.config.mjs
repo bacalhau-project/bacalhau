@@ -28,7 +28,8 @@ export default defineConfig(({ mode }) => {
     target: browserslistToEsbuild([">0.2%", "not dead", "not op_mini all"]),
     resolve: {
       alias: {
-        "@": fileURLToPath(new URL("./src", import.meta.url)),
+        "@": path.resolve(__dirname, "./src"),
+        "@tests": path.resolve(__dirname, "./tests")
       },
       mainFields: ["browser"],
     },

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -23,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -146,7 +146,7 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	if err := job.VerifyJob(ctx, j); err != nil {
+	if err := legacy_job.VerifyJob(ctx, j); err != nil {
 		return fmt.Errorf("verifying job: %w", err)
 	}
 
@@ -197,24 +197,24 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
 
-	spec, err := job.MakeWasmSpec(
+	spec, err := legacy_job.MakeWasmSpec(
 		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		job.WithResources(
+		legacy_job.WithResources(
 			opts.ResourceSettings.CPU,
 			opts.ResourceSettings.Memory,
 			opts.ResourceSettings.Disk,
 			opts.ResourceSettings.GPU,
 		),
-		job.WithNetwork(
+		legacy_job.WithNetwork(
 			opts.NetworkingSettings.Network,
 			opts.NetworkingSettings.Domains,
 		),
-		job.WithTimeout(opts.SpecSettings.Timeout),
-		job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		job.WithOutputs(outputs...),
-		job.WithAnnotations(labels...),
-		job.WithNodeSelector(nodeSelectorRequirements),
-		job.WithDeal(
+		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
+		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
+		legacy_job.WithOutputs(outputs...),
+		legacy_job.WithAnnotations(labels...),
+		legacy_job.WithNodeSelector(nodeSelectorRequirements),
+		legacy_job.WithDeal(
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 		),

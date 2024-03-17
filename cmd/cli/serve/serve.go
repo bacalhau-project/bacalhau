@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -178,9 +179,26 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	nodeName, err := getNodeID(ctx)
+	var nodeName string
+	var libp2pHost host.Host
+	var libp2pPeers []string
+	transportType, err := getTransportType()
 	if err != nil {
 		return err
+	}
+	// if the transport type is libp2p, we use the peerID as the node name
+	// even if the user provided one to avoid issues with peer lookups
+	if transportType == models.NetworkTypeLibp2p {
+		libp2pHost, libp2pPeers, err = setupLibp2p()
+		if err != nil {
+			return err
+		}
+		nodeName = libp2pHost.ID().String()
+	} else {
+		nodeName, err = getNodeID(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
@@ -207,22 +225,18 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if networkConfig.Type == models.NetworkTypeLibp2p {
-		libp2pHost, peers, err := setupLibp2p()
-		if err != nil {
-			return err
-		}
 		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = peers
+		networkConfig.ClusterPeers = libp2pPeers
 	}
 
-	computeConfig, err := GetComputeConfig(ctx)
+	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx)
+	requesterConfig, err := GetRequesterConfig(ctx, isRequesterNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
 	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)
@@ -400,16 +414,12 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 
 		switch nodeConfig.NetworkConfig.Type {
 		case models.NetworkTypeNATS:
-			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
-			if advertisedAddr == "" {
-				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
-			}
+			advertisedAddr := getPublicNATSOrchestratorURL(nodeConfig)
 
 			headerB.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
-
 			cmdB.WriteString(fmt.Sprintf("%s=%s ",
 				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
-				advertisedAddr,
+				advertisedAddr.String(),
 			))
 
 		case models.NetworkTypeLibp2p:
@@ -471,20 +481,10 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 
 		switch nodeConfig.NetworkConfig.Type {
 		case models.NetworkTypeNATS:
-			orchestrator := &url.URL{
-				Scheme: "nats",
-				Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
-				User:   url.User(nodeConfig.NetworkConfig.AuthSecret),
-			}
-
-			if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
-				orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
-			}
-
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-				orchestrator.String(),
+				getPublicNATSOrchestratorURL(nodeConfig).String(),
 			))
 		case models.NetworkTypeLibp2p:
 			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodeConfig.NetworkConfig.Libp2pHost.ID().String())
@@ -515,6 +515,26 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 	}
 
 	return envVarBuilder.String(), nil
+}
+
+func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
+	orchestrator := &url.URL{
+		Scheme: "nats",
+		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
+	}
+
+	// Only display the secret if the user did not set it explicitly.
+	// Else, they should already know it!
+	secret, err := config.Get[string](types.NodeNetworkAuthSecret)
+	if err == nil && secret == "" && nodeConfig.NetworkConfig.AuthSecret != "" {
+		orchestrator.User = url.User(nodeConfig.NetworkConfig.AuthSecret)
+	}
+
+	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
+		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
+	}
+
+	return orchestrator
 }
 
 // pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list

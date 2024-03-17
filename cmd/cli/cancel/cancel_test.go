@@ -40,7 +40,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	job := testutils.GetJobFromTestOutputLegacy(ctx, suite.T(), suite.Client, stdout)
 	suite.T().Logf("Created job %s", job.Metadata.ID)
 
-	_, stdout, err = suite.ExecuteTestCobraCommand("cancel", job.Metadata.ID)
+	_, _, err = suite.ExecuteTestCobraCommand("cancel", job.Metadata.ID)
 	require.ErrorContains(suite.T(), err, "already in a terminal state")
 }
 

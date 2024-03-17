@@ -29,3 +29,12 @@ func (c *Nodes) List(ctx context.Context, r *apimodels.ListNodesRequest) (*apimo
 	}
 	return &resp, nil
 }
+
+// Put is used to update a node's state with a node action (pause, drain, approve etc)
+func (c *Nodes) Put(ctx context.Context, r *apimodels.PutNodeRequest) (*apimodels.PutNodeResponse, error) {
+	var resp apimodels.PutNodeResponse
+	if err := c.client.Put(ctx, nodesPath+"/"+r.NodeID, r, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}

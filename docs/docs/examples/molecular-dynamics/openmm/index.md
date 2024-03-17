@@ -126,15 +126,15 @@ head ./dataset/2dri-processed.pdb
 ```
 
     REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
-    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1 
-    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N  
-    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C  
-    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H  
-    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C  
-    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O  
-    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C  
-    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H  
-    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H  
+    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1
+    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N
+    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C
+    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H
+    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C
+    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O
+    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C
+    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H
+    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H
 
 
 ## Upload the Data to IPFS

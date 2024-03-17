@@ -28,8 +28,9 @@ parameters:
     default: true
     type: boolean
 
-orbs:
-  node: circleci/node@5.2.0
+  earthly_satellite:
+    default: "build-vm-linux-amd64"
+    type: string
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
@@ -55,7 +56,10 @@ executors:
     resource_class: windows.xlarge
   docker-linux:
     docker:
-      - image: cimg/base:2022.01
+      - image: cimg/base:2022.09
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: xlarge
 
 commands:
@@ -144,24 +148,27 @@ commands:
     steps:
       - restore_cache:
           keys:
+            - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "poetry.lock" }}
             - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
             - asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}
             - asdf-<< parameters.cache_version >>-
       - run:
           name: Install asdf
           command: |
+            git config advice.detachedHead false
             if [ ! -d $HOME/.asdf ]; then
               git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
               cd $HOME/.asdf
             else
               cd $HOME/.asdf
               git fetch origin
-              git pull
             fi
+            git checkout master
+            git pull --all
             git checkout tags/<< parameters.asdf_version >>
             cd -
       - save_cache:
-          key: asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}
+          key: asdf-<< parameters.cache_version >>-{{ checksum ".tool-versions" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "poetry.lock" }}
           paths:
             - $HOME/.asdf
       - run:
@@ -238,22 +245,42 @@ commands:
             deactivate
             # Return to the original directory
             popd
+  install_earthly:
+    description: Install Earthly and dependencies.
+    steps:
+      - install_asdf:
+          cache_version: v1-1
+      - run:
+          name: Install Earthly
+          command: |
+            asdf plugin-add earthly
+            asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
+            earthly --version
+
+  select_earthly_satellite:
+    description: Select Earthly satellite
+    steps:
+      - run:
+          name: Select Earthly satellite
+          command: |
+            earthly account login
+            earthly sat select << pipeline.parameters.earthly_satellite >>
 
 jobs:
   build_cli:
     executor: linux-amd64
     steps:
       - checkout
-
+      - install_asdf
+      - install_earthly
       - attach_workspace:
           at: .
-
       - install_go:
           executor: linux-amd64
-
       - run:
           name: Build tarball
           command: |
+            source "${BASH_ENV}"
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
@@ -293,16 +320,17 @@ jobs:
       - run: cd test && bin/bashtub *.sh
 
   build_webui:
-    executor: node/default
+    executor: docker-linux
     steps:
       - checkout
+      - setup_remote_docker
+      - install_earthly
+      - select_earthly_satellite
       - run:
-          working_directory: webui
-          environment:
-            GENERATE_SOURCEMAP: "false"
+          name: Build webui
           command: |
-            yarn install
-            yarn run build
+            cd webui
+            earthly --push +all
       - persist_to_workspace:
           root: .
           paths:
@@ -382,6 +410,8 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
+      - select_earthly_satellite
       - attach_workspace:
           at: /tmp/swagger_spec/
       - run:
@@ -390,32 +420,30 @@ jobs:
             cp /tmp/swagger_spec/webui/public/swagger/swagger.json ./docs/swagger.json
       - run:
           name: Build Python API client
-          command: make build-python-apiclient
+          command: |
+            source $BASH_ENV
+            make build-python-apiclient
       - persist_to_workspace:
           root: clients/python/dist
           paths:
             - bacalhau_apiclient-*.tar.gz
             - bacalhau_apiclient-*.whl
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo
-          make_command: build-python-sdk
+      - run:
+          name: Build Python SDK
+          command: make build-python-sdk
       - persist_to_workspace:
           root: python/dist
           paths:
             - bacalhau_sdk-*.tar.gz
             - bacalhau_sdk-*.whl
       - run:
-          name: Install bacalhau-airflow pre-requisites
-          working_directory: integration/airflow
-          command: |
-            source "$BASH_ENV"
-            python -m poetry run pip install -r dev-requirements.txt
-      - run_make_under_specific_shell:
-          # Build the airflow integration
-          directory_to_change_to: $HOME/repo/integration/airflow
-          makefile_directory: $HOME/repo
-          make_command: build-bacalhau-airflow
+          name: Build the airflow integration
+          command: make build-bacalhau-airflow
+      - persist_to_workspace:
+          root: integration/airflow/dist
+          paths:
+            - bacalhau_airflow-*.tar.gz
+            - bacalhau_airflow-*.whl
       - run_make_under_specific_shell:
           # Setup flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte
@@ -426,11 +454,6 @@ jobs:
           directory_to_change_to: $HOME/repo/integration/flyte/plugins
           makefile_directory: $HOME/repo/integration/flyte/plugins
           make_command: build_all_plugins
-      - persist_to_workspace:
-          root: integration/airflow/dist
-          paths:
-            - bacalhau_airflow-*.tar.gz
-            - bacalhau_airflow-*.whl
 
   test_cli:
     environment:
@@ -504,29 +527,26 @@ jobs:
           paths:
             - "*.coverage"
 
-  build_and_test_python_sdk:
+  test_python_sdk:
     executor: linux-amd64
-    working_directory: ~/repo
     steps:
       - checkout
-      - install_python
+      - install_earthly
+      - select_earthly_satellite
       - run:
+          working_directory: python
           command: |
-            cd webui
-            yarn install && yarn run build
-      - run_make_under_specific_shell:
-          directory_to_change_to: $HOME/repo/python
-          makefile_directory: $HOME/repo/python
-          make_command: setup test
+            earthly --push +run-unittest
 
   test_python_airflow:
     executor: linux-amd64
     steps:
       - checkout
-      - install_python
+      - install_earthly
+      - select_earthly_satellite
       - run:
           working_directory: integration/airflow
-          command: python -m poetry run make setup test-all
+          command: earthly --push +run-tests
 
   test_python_flyte:
     executor: linux-amd64
@@ -584,6 +604,7 @@ jobs:
     steps:
       - checkout
       - install_python
+      - install_earthly
       - attach_workspace:
           at: /tmp/py_dist
       - run:
@@ -604,12 +625,13 @@ jobs:
       - run:
           name: Release python sdk
           command: |
-            python -m poetry run make release-python-sdk
+            export RELEASE_PYTHON_PACKAGES=1
+            make release-python-sdk
       - run:
           name: Release python Airflow integration
           command: |
-            python -m poetry run pip install twine==4.0.2
-            python -m poetry run make release-bacalhau-airflow
+            export RELEASE_PYTHON_PACKAGES=1
+            make dist
       - run:
           name: Release python Flyte integration
           command: |
@@ -646,40 +668,40 @@ jobs:
             - pkg/swagger/docs.go
             - webui/public/swagger/swagger.json
 
-      - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
-          condition:
-            equal: ["main", << pipeline.git.branch >>]
-          steps:
-            - run:
-                name: Install gh
-                command: |
-                  wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
-                  sudo dpkg -i gh_2.14.7_linux_amd64.deb
-                  echo "$GITHUB_PR_PAT" | gh auth login --with-token
-                  rm gh_2.14.7_linux_amd64.deb
-            - run:
-                name: Install human-id generator
-                command: |
-                  pip3 install human-id
-            - run:
-                name: Git commit
-                command: |
-                  git config user.email "$(git log --format='format:%ae' -n1)"
-                  git config user.name "$(git log --format='format:%an' -n1)"
-                  # Note: we delete this branch after the PR is merged
-                  GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
-                  git checkout -b $GH_BRANCH_NAME
-                  if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
-                    git add --verbose -- ./docs
-                    COMMIT_MSG="Build swagger reference - this is an automatic commit"
-                    git commit -m "[circleci] $COMMIT_MSG [skip ci]"
-                    git push --set-upstream origin $GH_BRANCH_NAME
-                    # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
-                    echo "Pull request: $PR_URL"
-                    sleep 3
-                    gh pr merge --auto --delete-branch -r $PR_URL
-                  fi
+      # - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
+      #     condition:
+      #       equal: ["main", << pipeline.git.branch >>]
+      #     steps:
+      #       - run:
+      #           name: Install gh
+      #           command: |
+      #             wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+      #             sudo dpkg -i gh_2.14.7_linux_amd64.deb
+      #             echo "$GITHUB_PR_PAT" | gh auth login --with-token
+      #             rm gh_2.14.7_linux_amd64.deb
+      #       - run:
+      #           name: Install human-id generator
+      #           command: |
+      #             pip3 install human-id
+      #       - run:
+      #           name: Git commit
+      #           command: |
+      #             git config user.email "$(git log --format='format:%ae' -n1)"
+      #             git config user.name "$(git log --format='format:%an' -n1)"
+      #             # Note: we delete this branch after the PR is merged
+      #             GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
+      #             git checkout -b $GH_BRANCH_NAME
+      #             if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
+      #               git add --verbose -- ./docs
+      #               COMMIT_MSG="Build swagger reference - this is an automatic commit"
+      #               git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+      #               git push --set-upstream origin $GH_BRANCH_NAME
+      #               # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
+      #               PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
+      #               echo "Pull request: $PR_URL"
+      #               sleep 3
+      #               gh pr merge --auto --delete-branch -r $PR_URL
+      #             fi
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -713,7 +735,7 @@ workflows:
               - target_os: windows
                 target_arch: arm64
                 build_tags: integration
-      - build_and_test_python_sdk
+      - test_python_sdk
       - test_python_airflow
       - test_python_flyte
       - coverage:
@@ -751,6 +773,8 @@ workflows:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - build_webui:
+          context:
+            - CREDENTIALS
           filters: *build_on_branch_and_tag_push
       - build_cli:
           requires: [build_webui]

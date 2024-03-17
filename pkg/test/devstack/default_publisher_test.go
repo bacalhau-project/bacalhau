@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -28,7 +28,7 @@ func TestDefaultPublisherSuite(t *testing.T) {
 func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 	testcase := scenario.Scenario{
 		Spec: testutils.MakeSpecWithOpts(s.T(),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -39,8 +39,8 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 			),
 		),
 		ResultsChecker: expectResultsNone,
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForSuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForSuccessfulCompletion(),
 		},
 	}
 
@@ -53,7 +53,7 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 
 	testcase := scenario.Scenario{
 		Spec: testutils.MakeSpecWithOpts(s.T(),
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
 					WithEntrypoint("_start").
 					WithParameters(
@@ -65,8 +65,8 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 		),
 		Stack:          &stack,
 		ResultsChecker: expectResultsSome,
-		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForSuccessfulCompletion(),
+		JobCheckers: []legacy_job.CheckStatesFunction{
+			legacy_job.WaitForSuccessfulCompletion(),
 		},
 	}
 

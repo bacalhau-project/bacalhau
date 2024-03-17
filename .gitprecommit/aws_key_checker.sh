@@ -11,7 +11,7 @@ fi
 
 # Redirect output to stderr.
 exec 1>&2
- 
+
 # Check changed files for an AWS keys
 FILES=$(git diff --cached --name-only "${against}")
 

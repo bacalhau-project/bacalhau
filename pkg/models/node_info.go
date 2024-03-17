@@ -83,6 +83,7 @@ type NodeInfo struct {
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
+	Approval        NodeApproval      `json:"Approval"`
 }
 
 // ID returns the node ID

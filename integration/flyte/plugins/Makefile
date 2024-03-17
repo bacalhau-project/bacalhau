@@ -1,4 +1,4 @@
-VERSION ?= $${PYPI_VERSION}
+VERSION ?= $(or ${PYPI_VERSION}, $(shell ../../../scripts/get_current_version_for_builds.py --pep440))
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -20,6 +20,7 @@ test:
 
 .PHONY: build_all_plugins
 build_all_plugins:
+	./run_all_plugins.sh pip install wheel
 	./run_all_plugins.sh python3 setup.py sdist bdist_wheel
 
 .PHONY: publish_all_plugins

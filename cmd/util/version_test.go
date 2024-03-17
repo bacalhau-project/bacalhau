@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -45,7 +45,7 @@ func (s *UtilsSuite) TestSafeRegex() {
 	}
 
 	for _, tc := range tests {
-		strippedString := job.SafeStringStripper(tc.stringToTest)
+		strippedString := legacy_job.SafeStringStripper(tc.stringToTest)
 		require.LessOrEqual(s.T(), len(strippedString), len(tc.stringToTest))
 		if tc.predictedLength >= 0 {
 			require.Equal(s.T(), tc.predictedLength, len(strippedString))
@@ -148,7 +148,7 @@ func (s *UtilsSuite) TestImages() {
 		s.Run(name, func() {
 			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
 			sampleJob.Spec.EngineSpec = model.NewDockerEngineBuilder(test.Image).Build()
-			err := job.VerifyJob(context.TODO(), sampleJob)
+			err := legacy_job.VerifyJob(context.TODO(), sampleJob)
 			if test.Valid {
 				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)
 			} else {

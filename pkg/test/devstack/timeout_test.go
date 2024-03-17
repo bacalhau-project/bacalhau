@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -18,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -91,14 +91,14 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: testutils.MakeSpecWithOpts(suite.T(),
-				job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
-				job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
+				legacy_job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
+				legacy_job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
 			),
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
 			},
-			JobCheckers: []job.CheckStatesFunction{
-				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+			JobCheckers: []legacy_job.CheckStatesFunction{
+				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted:         testCase.completedCount,
 					model.ExecutionStateCancelled:         testCase.errorCount,
 					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,

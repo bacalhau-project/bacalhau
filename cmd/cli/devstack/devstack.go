@@ -167,6 +167,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		// do this because we know it is a temporary directory. Do not delete the
 		// configured repo if `--stack-repo` was specified
 		repoPath, _ = os.MkdirTemp("", "")
+
+		// If we don't set the repo value in config, readers will be given
+		// a different path to the one we've just created. Presumably a default.
+		config.SetValue("repo", repoPath)
 		defer os.RemoveAll(repoPath)
 	}
 
@@ -208,11 +212,12 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig(ctx)
+	computeConfig, err := serve.GetComputeConfig(ctx, true)
 	if err != nil {
 		return err
 	}
-	requesterConfig, err := serve.GetRequesterConfig(ctx)
+
+	requesterConfig, err := serve.GetRequesterConfig(ctx, true)
 	if err != nil {
 		return err
 	}

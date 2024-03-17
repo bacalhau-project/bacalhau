@@ -19,7 +19,11 @@ def install_all_plugins(sources, develop=False):
     """
     Use pip to install all plugins
     """
-    print("Installing all Flyte plugins in {} mode".format("development" if develop else "normal"))
+    print(
+        "Installing all Flyte plugins in {} mode".format(
+            "development" if develop else "normal"
+        )
+    )
     wd = os.getcwd()
     for k, v in sources.items():
         try:
