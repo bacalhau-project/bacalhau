@@ -123,10 +123,17 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		return nil
 	})
 
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- errs.Wait()
+	}()
+
 	t := time.NewTicker(50 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {
+		case e := <-errCh:
+			s.FailNow("Server raised an error during startup: %s", e)
 		case <-ctx.Done():
 			if returnError {
 				return 0, errs.Wait()
