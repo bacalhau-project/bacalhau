@@ -3,6 +3,7 @@ package serve
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -20,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -174,6 +177,7 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("olgibbons debug: repoDir: %#v", repoDir)
 	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
 		return err
@@ -274,7 +278,6 @@ func serve(cmd *cobra.Command) error {
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
-
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
@@ -282,26 +285,62 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
 
 		cert, key := config.GetRequesterCertificateSettings()
+		if cert != "" && key == "" {
+			return fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
+		}
+		// invariant: if cert != "" then key != ""
+		// If the user has not specified a private key, use their client key
+		if nodeConfig.RequesterAutoCert == "" && key == "" {
+			key, err = config.Get[string](types.UserKeyPath)
+			if err != nil {
+				return err
+			}
+		}
+		// invariant: if RequesterAutoCert == "" then key != ""
+		// The user has not specified a certificate, generate a self-signed one
+		// It doesn't need to be persisted because the key material is stable
+		if nodeConfig.RequesterAutoCert == "" && len(cert) == 0 {
+			certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
+			if err != nil {
+				return errors.Wrap(err, "unable to create temporary server certificate")
+			}
+			defer closer.CloseWithLogOnError(certFile.Name(), certFile)
+
+			var ips []net.IP = nil
+			if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
+				ips = append(ips, ip)
+			}
+
+			if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
+				return err
+			} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
+				return errors.Wrap(err, "failed to generate server certificate")
+			} else if err = caCert.MarshalCertficate(certFile); err != nil {
+				return errors.Wrap(err, "failed to write server certificate")
+			}
+			cert = certFile.Name()
+		}
+		// invariant: if RquesterAutoCert == "" then cert != ""
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
 	}
-
+	fmt.Printf("olgibbons debug: cert and key generated\n")
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
 	}
-
+	fmt.Printf("olgibbons debug. New node created\n")
 	// Persist the node config after the node is created and its config is valid.
 	if err = persistConfigs(repoDir); err != nil {
 		return fmt.Errorf("error persisting configs: %w", err)
 	}
-
+	fmt.Printf("olgibbons debug: config persisted\n")
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
 	}
-
+	fmt.Printf("olgibbons debug: Node started\n")
 	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 	if err != nil {
 		return err
@@ -327,7 +366,7 @@ func serve(cmd *cobra.Command) error {
 			}
 		}()
 	}
-
+	fmt.Printf("olgibbons debug: webui started\n")
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
@@ -354,15 +393,18 @@ func serve(cmd *cobra.Command) error {
 	} else {
 		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 	}
-	if err != nil {
-		return err
-	}
-
+	fmt.Printf("olgibbons debug: run info written\n")
 	cm.RegisterCallback(func() error {
 		return os.Remove(ripath)
 	})
+	fmt.Printf("olgibbons debug: registercallback called\n")
+
+	deadline, ok := ctx.Deadline()
+	contextErr := ctx.Err()
+	fmt.Printf("olgibbons debug: %s: About to block until the end of the server. Deadline = %s/%#v, Err = %#v\n", time.Now(), deadline, ok, contextErr)
 
 	<-ctx.Done() // block until killed
+	fmt.Printf("olgibbons debug: %s: ctx done: err = %#v\n", time.Now(), ctx.Err())
 	return nil
 }
 

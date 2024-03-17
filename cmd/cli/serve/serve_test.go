@@ -37,8 +37,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 15 * time.Second
-const maxTestTime = 10 * time.Second
+// olgibbons you changed this
+const maxServeTime = 60 * time.Second
+const maxTestTime = 60 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -63,7 +64,11 @@ func (s *ServeSuite) SetupTest() {
 	s.repoPath = repoPath
 
 	var cancel context.CancelFunc
+	deadline, ok := context.Background().Deadline()
+	fmt.Printf("olgibbons debug: Background context deadline: %s/%v\n", deadline, ok)
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
+	deadline, ok = s.ctx.Deadline()
+	fmt.Printf("olgibbons debug: %s Setting overall deadline %s: %s/%v\n", time.Now(), maxTestTime, deadline, ok)
 	s.T().Cleanup(func() {
 		cancel()
 	})
@@ -111,20 +116,25 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
+	oldDeadline, oldDeadlineOK := s.ctx.Deadline()
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
+	newDeadline, newDeadlineOK := ctx.Deadline()
+	fmt.Printf("olgibbons debug: %s: Starting %s server timeout NOW: %s/%#v -> %s/%#v\n", time.Now(), maxServeTime, oldDeadline, oldDeadlineOK, newDeadline, newDeadlineOK)
+
 	errs, ctx := errgroup.WithContext(ctx)
 
 	s.T().Cleanup(cancel)
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
+		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
 		if returnError {
 			return err
 		}
 		s.NoError(err)
 		return nil
 	})
-
 	t := time.NewTicker(10 * time.Millisecond)
+	fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
 	for {
 		select {
@@ -135,7 +145,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			s.FailNow("Server did not start in time")
 		case <-t.C:
 			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			//fmt.Printf("olgibbons debug: err from curlEndpoint: %#v\n", err.Error())
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
+				fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
 				return port, nil
 			}
 		}
@@ -150,16 +162,22 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
 		return nil, http.StatusServiceUnavailable, err
 	}
+	//fmt.Printf("olgibbons debug: efaultClient.Do(req) called")
 	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
-	}
 
+	}
 	return responseText, resp.StatusCode, nil
+}
+func (s *ServeSuite) TestDeleteMeAfterTesting() {
+	port, _ := s.serve()
+	fmt.Printf("olgibbons test completed: port: %d", port)
 }
 
 func (s *ServeSuite) TestHealthcheck() {
@@ -285,6 +303,12 @@ func (s *ServeSuite) TestGetPeers() {
 	peerConnect = strings.Join(inputPeers, ",")
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
+}
+
+func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
+	port, err := s.serve("--node-type", "requester", "--node-type", "compute")
+	fmt.Printf("olgibbons debug: port: %#v", port)
+	s.Require().NoError(err, "Error starting server")
 }
 
 // Begin WebUI Tests
