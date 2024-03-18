@@ -61,8 +61,14 @@ func CopyOversize(
 		specsizes = append(specsizes, specSize{artifact: spec, size: datasize.ByteSize(size)})
 	}
 
-	slices.SortFunc(specsizes, func(a, b specSize) bool {
-		return a.size < b.size
+	// TODO: When we move to Go 1.21, we can use the cmp package to simplify this
+	slices.SortFunc(specsizes, func(a, b specSize) int {
+		if a.size < b.size {
+			return -1
+		} else if a.size > b.size {
+			return 1
+		}
+		return 0
 	})
 
 	remainingSpace := maxTotal

@@ -1,7 +1,8 @@
-import dotenv
-import tempfile
 import os
+import tempfile
 from pathlib import Path
+
+import dotenv
 from update_metadata import update_metadata_function
 
 dotenv.load_dotenv()

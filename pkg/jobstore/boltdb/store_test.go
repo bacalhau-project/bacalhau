@@ -451,23 +451,67 @@ func (s *BoltJobstoreTestSuite) TestGetJob() {
 	s.Require().Error(err)
 }
 
+func (s *BoltJobstoreTestSuite) TestCreateExecution() {
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	s.Require().NoError(s.store.CreateJob(s.ctx, *job))
+	s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
+
+	// Ensure that the execution is created
+	exec, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(exec))
+	s.Require().Nil(exec[0].Job)
+
+	// Ensure that the execution is created and the job is included
+	exec, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:      job.ID,
+		IncludeJob: true,
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(exec))
+	s.Require().NotNil(exec[0].Job)
+	s.Require().Equal(job.ID, exec[0].Job.ID)
+}
+
 func (s *BoltJobstoreTestSuite) TestGetExecutions() {
-	state, err := s.store.GetExecutions(s.ctx, "110")
+	state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: "110",
+	})
 	s.Require().NoError(err)
 	s.NotNil(state)
-	s.Greater(len(state), 0)
+	s.Equal(len(state), 1)
+	s.Nil(state[0].Job)
 
-	state, err = s.store.GetExecutions(s.ctx, "100")
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:      "110",
+		IncludeJob: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(len(state), 1)
+	s.NotNil(state[0].Job)
+	s.Equal("110", state[0].Job.ID)
+
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: "100",
+	})
 	s.Require().Error(err)
 	s.Require().IsType(err, &bacerrors.JobNotFound{})
 	s.Require().Nil(state)
 
-	state, err = s.store.GetExecutions(s.ctx, "11")
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: "11",
+	})
 	s.Require().NoError(err)
 	s.NotNil(state)
 	s.Require().Equal("110", state[0].JobID)
 
-	state, err = s.store.GetExecutions(s.ctx, "1")
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: "1",
+	})
 	s.Require().Error(err)
 	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
 	s.Require().Nil(state)

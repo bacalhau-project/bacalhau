@@ -105,7 +105,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			case types.StorageType:
 				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
 			default:
-				return fmt.Errorf("unhandled type: %T", v)
+				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
 			}
 		}
 		cmd.PersistentFlags().AddFlagSet(fset)

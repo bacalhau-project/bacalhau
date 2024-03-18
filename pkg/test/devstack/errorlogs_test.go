@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -34,17 +34,17 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 func executorTestCases(t testing.TB) []model.Spec {
 	return []model.Spec{
 		testutils.MakeSpecWithOpts(t,
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{Type: model.PublisherIpfs},
 			),
 		),
 		testutils.MakeSpecWithOpts(t,
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder("ubuntu").
 					WithEntrypoint("bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;").
 					Build(),
 			),
-			job.WithPublisher(
+			legacy_job.WithPublisher(
 				model.PublisherSpec{Type: model.PublisherIpfs},
 			),
 		),
@@ -70,8 +70,8 @@ var errorLogsTestCase = scenario.Scenario{
 		scenario.FileEquals(downloader.DownloadFilenameStdout, "apples"),
 		scenario.FileEquals(downloader.DownloadFilenameStderr, "oranges"),
 	),
-	JobCheckers: []job.CheckStatesFunction{
-		job.WaitForSuccessfulCompletion(),
+	JobCheckers: []legacy_job.CheckStatesFunction{
+		legacy_job.WaitForSuccessfulCompletion(),
 	},
 }
 

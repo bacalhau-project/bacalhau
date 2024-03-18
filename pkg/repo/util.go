@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,12 @@ func initRepoFiles(cfg types.BacalhauConfig) error {
 
 	if err := initDir(cfg.Node.ComputeStoragePath); err != nil {
 		return fmt.Errorf("failed to create executor storage dir: %w", err)
+	}
+	if err := initParentDir(cfg.Node.Compute.ExecutionStore.Path); err != nil {
+		return fmt.Errorf("failed to create executor execution store dir: %w", err)
+	}
+	if err := initParentDir(cfg.Node.Requester.JobStore.Path); err != nil {
+		return fmt.Errorf("failed to create orchestrator job store dir: %w", err)
 	}
 
 	return nil
@@ -96,6 +103,33 @@ func initDir(path string) error {
 	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
 		return fmt.Errorf("failed to create directory at at '%s': %w", path, err)
 	}
+	return nil
+}
+
+// initParentDir will create a user directory at the specified path. It returns an error if a file is already
+// present at the provided path, but will create the parent directory if it does not exist.
+func initParentDir(path string) error {
+	// Extract the parent directory from the provided path.
+	parentDir := filepath.Dir(path)
+
+	// Check if the parent directory exists.
+	parentInfo, err := os.Stat(parentDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Parent directory does not exist, so create it along with any necessary subdirectories.
+			if mkdirErr := os.MkdirAll(parentDir, util.OS_USER_RWX); mkdirErr != nil {
+				return fmt.Errorf("failed to create parent directory: %s, error: %v", parentDir, mkdirErr)
+			}
+		} else {
+			// Some other error occurred when trying to stat the parent directory.
+			return fmt.Errorf("error checking parent directory: %s, error: %v", parentDir, err)
+		}
+	} else if !parentInfo.IsDir() {
+		// The parent path exists but is not a directory (e.g., it's a file), return an error.
+		return fmt.Errorf("parent path is a file, not a directory: %s", parentDir)
+	}
+
+	// If the parent directory already exists and is a directory, do nothing.
 	return nil
 }
 

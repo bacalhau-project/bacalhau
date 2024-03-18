@@ -1,0 +1,120 @@
+VERSION 0.8
+FROM python:3.10
+
+WORKDIR /code
+
+# All files to be copied are in the .earthlyignore file - with ! in front of them
+
+install-build-essential:
+    RUN apt-get update && \
+        apt-get install build-essential jq --no-install-recommends -y && \
+        rm -rf /var/lib/apt/lists/*
+
+install-java:
+    FROM +install-build-essential
+    RUN apt-get update && \
+        apt-get install default-jre --no-install-recommends -y && \
+        rm -rf /var/lib/apt/lists/*
+
+install-codegen:
+    FROM +install-java
+    ENV CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+    RUN mkdir -p ${HOME}/bin
+    RUN wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.52/swagger-codegen-cli-3.0.52.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+    RUN java -jar ${HOME}/bin/swagger-codegen-cli.jar version
+
+update-templates:
+    FROM +install-codegen
+    ARG --required PACKAGE_NAME
+    RUN echo "PACKAGE_NAME=${PACKAGE_NAME}"
+
+    COPY config.json.template .
+
+    LET UNDERSCORE_PACKAGE_NAME=$(echo "${PACKAGE_NAME}" | sed 's/-/_/g')
+	RUN cat config.json.template | \
+        sed -e "s/VERSION/${VERSION}/g" | \
+		sed -e "s/PACKAGE-NAME/${UNDERSCORE_PACKAGE_NAME}/g" > python-config.json
+    SAVE ARTIFACT python-config.json
+
+fix-swagger-spec:
+    FROM +update-templates
+    COPY ./swagger.json .
+
+    # swagger codegen names the generated methods after the related endpoint @ID annotation (e.g. pkg/requester/publicapi/submit)
+	# this results into a names that are not quite user-friendly (e.g. pkgrequesterpublicapisubmit)
+	# furthermore, codegen does not allow overriding the prefix name for python
+	# thus, we patch the swagger spec file to remove the prefix above
+	# TODO: remove the line below when https://github.com/swagger-api/swagger-codegen/issues/11993 is addressed
+	RUN cat swagger.json | sed -e 's/model.//g;s/publicapi.//g;s/pkg\/requester//g;s/types.//g' | tee ./swagger-edited-tmp.json >> /dev/null
+	RUN jq '.info += {"version":"${VERSION}"}' ./swagger-edited-tmp.json > ./swagger-edited.json
+
+generate-python-client:
+    FROM +fix-swagger-spec
+    ARG --required VERSION
+    COPY ./pyproject.toml.template .
+
+	RUN rm -rf python/ && java -jar ${HOME}/bin/swagger-codegen-cli.jar generate \
+            -i ./swagger-edited.json \
+            -l python \
+            -o python/ \
+            -c python-config.json \
+            --remove-operation-id-prefix=true
+
+	# patch package version
+	RUN cat pyproject.toml.template | sed -e "s/VERSION/${VERSION}/g" > python/pyproject.toml
+	# patch README
+	RUN cat python/README.md | sed -e "s/Python 2.7 and 3.4+/Python 3.6+/g" | tee python/README.md
+
+    SAVE ARTIFACT python/ AS LOCAL python
+    SAVE ARTIFACT python-config.json AS LOCAL python-config.json
+
+pypi-build:
+    FROM +generate-python-client
+    BUILD +generate-python-client
+    RUN cd python && python3 -m pip install --upgrade build && python3 -m build
+    SAVE ARTIFACT python/dist/* AS LOCAL python/dist/
+
+install-twine:
+    FROM +pypi-build
+    BUILD +pypi-build
+    RUN python3 -m pip install --upgrade twine
+
+pypi-upload:
+    FROM +install-twine
+    BUILD +install-twine
+
+    ARG RELEASE_PYTHON_PACKAGES
+    LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
+    IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
+        RUN echo "Publishing to pypi.org"
+        RUN REPOSITORY_FLAG = "" # Publish to default repository
+        RUN --secret PYPI_TOKEN test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
+        RUN --secret PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${PYPI_TOKEN} \
+            --verbose \
+            python/dist/* \
+            ${REPOSITORY_FLAG}
+    ELSE
+        RUN echo "Publishing to test.pypi.org"
+        RUN --secret TEST_PYPI_TOKEN test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
+        RUN --secret TEST_PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${TEST_PYPI_TOKEN} \
+            --verbose \
+            python/dist/* \
+            ${REPOSITORY_FLAG}
+    END
+
+    RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
+
+all:
+    FROM +pypi-build
+    BUILD +pypi-build
+    SAVE ARTIFACT python AS LOCAL python
+    SAVE ARTIFACT python-config.json AS LOCAL python-config.json
+    SAVE ARTIFACT python/dist/* AS LOCAL python/dist/

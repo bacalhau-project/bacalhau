@@ -17,7 +17,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -153,7 +153,7 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 		ColumnConfig: table.ColumnConfig{
 			Name:             "id",
 			WidthMax:         idgen.ShortIDLengthWithPrefix,
-			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortID(col) }},
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(jwi *model.JobWithInfo) string { return jwi.Job.ID() },
 	},
 	{
@@ -165,11 +165,11 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "state", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
-		Value:        func(jwi *model.JobWithInfo) string { return job.ComputeStateSummary(jwi.State) },
+		Value:        func(jwi *model.JobWithInfo) string { return legacy_job.ComputeStateSummary(jwi.State) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "published"},
-		Value:        job.ComputeResultsSummary,
+		Value:        legacy_job.ComputeResultsSummary,
 	},
 }
 

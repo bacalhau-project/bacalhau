@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
@@ -30,7 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -38,10 +38,13 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint           requester.Endpoint
-	EndpointV2         *orchestrator.BaseEndpoint
-	JobStore           jobstore.Store
+	Endpoint   requester.Endpoint
+	EndpointV2 *orchestrator.BaseEndpoint
+	JobStore   jobstore.Store
+	// We need a reference to the node info store until libp2p is removed
+	NodeInfoStore      routing.NodeInfoStore
 	NodeDiscoverer     orchestrator.NodeDiscoverer
+	nodeManager        *manager.NodeManager
 	localCallback      compute.Callback
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []model.DebugInfoProvider
@@ -55,9 +58,9 @@ func NewRequesterNode(
 	requesterConfig RequesterConfig,
 	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
-	nodeInfoStore routing.NodeInfoStore,
-	fsRepo *repo.FsRepo,
+	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
 	computeProxy compute.Endpoint,
+	nodeManager *manager.NodeManager,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
@@ -67,10 +70,7 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore, err := fsRepo.InitJobStore(ctx, nodeID)
-	if err != nil {
-		return nil, err
-	}
+	jobStore := requesterConfig.JobStore
 
 	// compute node discoverer
 	nodeDiscoveryChain := discovery.NewChain(true)
@@ -272,7 +272,7 @@ func NewRequesterNode(
 		Router:       apiServer.Router,
 		Orchestrator: endpointV2,
 		JobStore:     jobStore,
-		NodeStore:    nodeInfoStore,
+		NodeManager:  nodeManager,
 	})
 
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)
@@ -296,7 +296,7 @@ func NewRequesterNode(
 		requesterAPIServer,
 	)
 
-	// A single cleanup function to make sure the order of closing dependencies is correct
+	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
 		housekeeping.Stop()
@@ -326,7 +326,9 @@ func NewRequesterNode(
 		localCallback:      endpoint,
 		EndpointV2:         endpointV2,
 		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
+		nodeManager:        nodeManager,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil

@@ -88,11 +88,11 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortID(j.ExecutionID) },
+		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortID(j.NodeID) },
+		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
@@ -126,7 +126,7 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2().Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+	response, err := util.GetAPIClientV2(cmd).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,

@@ -7,7 +7,7 @@ class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
     """
     This task submits a job to Bacalhau (https://github.com/bacalhau-project/bacalhau).
     """
-    
+
     _TASK_TYPE = "bacalhau_task"
 
     job_spec: dict
@@ -31,7 +31,7 @@ class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
                 spec=dict,
                 api_version=str,
             ),
-            outputs=kwtypes(results=str)
+            outputs=kwtypes(results=str),
         )
         print(f"executing BacalhauTask with name: {name}")
         super(BacalhauTask, self).__init__(
@@ -42,5 +42,3 @@ class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):
             # environment put ENV VAR into this param?
             **kwargs,
         )
-
-    

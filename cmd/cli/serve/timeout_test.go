@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -59,11 +59,11 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 			testJob := model.NewJob()
-			specOpts := []job.SpecOpt{}
+			specOpts := []legacy_job.SpecOpt{}
 			if tc.timeoutSpecified != nil {
-				specOpts = append(specOpts, job.WithTimeout(int64(tc.timeoutSpecified.Seconds())))
+				specOpts = append(specOpts, legacy_job.WithTimeout(int64(tc.timeoutSpecified.Seconds())))
 			}
-			testJob.Spec, err = job.MakeSpec(specOpts...)
+			testJob.Spec, err = legacy_job.MakeSpec(specOpts...)
 			s.Require().NoError(err)
 
 			returnedJob, err := client.Submit(s.ctx, testJob)

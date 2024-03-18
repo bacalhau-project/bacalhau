@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -27,17 +27,17 @@ func getSampleDockerJob() (*model.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	spec, err := job.MakeSpec(
-		job.WithPublisher(model.PublisherSpec{
+	spec, err := legacy_job.MakeSpec(
+		legacy_job.WithPublisher(model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		}),
-		job.WithEngineSpec(
+		legacy_job.WithEngineSpec(
 			model.NewDockerEngineBuilder("ubuntu").
 				WithEntrypoint("echo", defaultEchoMessage).
 				Build(),
 		),
-		job.WithAnnotations(canaryAnnotation),
-		job.WithNodeSelector(nodeSelectors),
+		legacy_job.WithAnnotations(canaryAnnotation),
+		legacy_job.WithNodeSelector(nodeSelectors),
 	)
 	if err != nil {
 		return nil, err
@@ -57,11 +57,11 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
-	spec, err := job.MakeSpec(
-		job.WithPublisher(model.PublisherSpec{
+	spec, err := legacy_job.MakeSpec(
+		legacy_job.WithPublisher(model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		}),
-		job.WithEngineSpec(
+		legacy_job.WithEngineSpec(
 			model.NewDockerEngineBuilder("ubuntu").
 				WithEntrypoint(
 					"bash",
@@ -69,7 +69,7 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 					"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
 				).Build(),
 		),
-		job.WithInputs(
+		legacy_job.WithInputs(
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
 			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
 			model.StorageSpec{
@@ -79,15 +79,15 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 				Path:          "/inputs/data.tar.gz",
 			},
 		),
-		job.WithOutputs(
+		legacy_job.WithOutputs(
 			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
 				Path:          "/outputs",
 			},
 		),
-		job.WithAnnotations(canaryAnnotation),
-		job.WithNodeSelector(nodeSelectors),
+		legacy_job.WithAnnotations(canaryAnnotation),
+		legacy_job.WithNodeSelector(nodeSelectors),
 	)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func waitUntilCompleted(ctx context.Context, client *client.APIClient, submitted
 	return resolver.Wait(
 		ctx,
 		submittedJob.Metadata.ID,
-		job.WaitForSuccessfulCompletion(),
+		legacy_job.WaitForSuccessfulCompletion(),
 	)
 }
 
@@ -147,7 +147,7 @@ func getClient() *client.APIClient {
 	return client.NewAPIClient(legacyTLS, host, port)
 }
 
-func getClientV2() *clientv2.Client {
+func getClientV2() clientv2.API {
 	host, port := getClientHostAndPort()
 	return clientv2.New(fmt.Sprintf("http://%s:%d", host, port))
 }

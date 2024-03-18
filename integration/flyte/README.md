@@ -2,7 +2,7 @@
 
 This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be merged into Flytekit repository.
 
-## Install 
+## Install
 
 The only prerequisite is having `flytekit` installed (via pip) ⚡️
 

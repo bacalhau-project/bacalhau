@@ -7,6 +7,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+var TestError error
+
 // FakeFatalErrorHandler captures the error for testing, responsibility of the test to handle the exit (if any)
 // NOTE: If your test is not idempotent, you can cause side effects
 // (the underlying function will continue to run)
@@ -15,4 +17,5 @@ func FakeFatalErrorHandler(cmd *cobra.Command, msg error, code int) {
 	c := model.TestFatalErrorHandlerContents{Message: msg.Error(), Code: code}
 	b, _ := marshaller.JSONMarshalWithMax(c)
 	cmd.Println(string(b))
+	TestError = msg
 }

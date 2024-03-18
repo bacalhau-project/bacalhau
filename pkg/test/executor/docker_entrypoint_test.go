@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -21,7 +22,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -117,7 +117,7 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 				err := cli.ContainerStop(ctx, runningContainer.ID, container.StopOptions{})
 				require.NoError(suite.T(), err, fmt.Sprintf("Error stopping container %q", runningContainer.ID))
 
-				err = cli.ContainerRemove(ctx, runningContainer.ID, types.ContainerRemoveOptions{})
+				err = cli.ContainerRemove(ctx, runningContainer.ID, container.RemoveOptions{})
 				require.NoError(suite.T(), err, fmt.Sprintf("Error removing container %q", runningContainer.ID))
 			}
 		}
@@ -269,7 +269,7 @@ func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image stri
 	testScenario := scenario.Scenario{
 		ResultsChecker: checkResults,
 		Spec: testutils.MakeSpecWithOpts(t,
-			job.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				model.NewDockerEngineBuilder(image).
 					WithEntrypoint(entrypoint...).
 					WithParameters(parameters...).

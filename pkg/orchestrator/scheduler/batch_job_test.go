@@ -62,10 +62,10 @@ func TestBatchSchedulerTestSuite(t *testing.T) {
 
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// we need 3 executions. discover enough nodes
 	nodeInfos := []models.NodeInfo{
@@ -93,7 +93,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -121,7 +121,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 	executions[2].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)       // already running
 	executions[1].ModifyTime = executions[0].ModifyTime + 1                                       // trick scheduler to reject the second execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -147,7 +147,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	job.Count = 2
 	executions[execBidAccepted].Revision = executions[execAskForBid].Revision + 1
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -165,10 +165,10 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 func (s *BatchJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// we need 3 executions. discover fewer nodes
 	nodeInfos := []models.NodeInfo{
@@ -198,7 +198,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonT
 			job, executions, evaluation := mockJob()
 			job.State = models.NewJobState(terminalState)
 			s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-			s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+			s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 			matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 				Evaluation: evaluation,
@@ -217,7 +217,7 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock node discoverer to exclude the node in BidAccepted state
 	nodeInfos := []models.NodeInfo{
@@ -244,7 +244,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsCompleted() {
 	executions[execAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
 	executions[execBidAccepted].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -258,7 +258,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreNod
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mark all nodes as unhealthy so that we don't retry on other nodes
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return([]models.NodeInfo{}, nil)
@@ -280,7 +280,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 	s.scheduler.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false})
 
 	// mark askForBid exec as lost so we attempt to retry

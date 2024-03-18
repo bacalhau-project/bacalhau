@@ -42,21 +42,21 @@ bacalhau docker run \
 
 `/inputs/hello.ipynb`: This is the path of the input Jupyter Notebook inside the Docker container.
 
-`-i`: This flag stands for "input" and is used to provide the URL of the input Jupyter Notebook you want to execute.  
+`-i`: This flag stands for "input" and is used to provide the URL of the input Jupyter Notebook you want to execute.
 
-`https://raw.githubusercontent.com/js-ts/hello-notebook/main/hello.ipynb`: This is the URL of the input Jupyter Notebook.  
+`https://raw.githubusercontent.com/js-ts/hello-notebook/main/hello.ipynb`: This is the URL of the input Jupyter Notebook.
 
-`jsacex/jupyter`: This is the name of the Docker image used for running the Jupyter Notebook. It is a minimal Jupyter Notebook stack based on the official Jupyter Docker Stacks.  
+`jsacex/jupyter`: This is the name of the Docker image used for running the Jupyter Notebook. It is a minimal Jupyter Notebook stack based on the official Jupyter Docker Stacks.
 
-`--`: This double dash is used to separate the Bacalhau command options from the command that will be executed inside the Docker container.  
+`--`: This double dash is used to separate the Bacalhau command options from the command that will be executed inside the Docker container.
 
-`jupyter nbconvert`: This is the primary command used to convert and execute Jupyter Notebooks. It allows for the conversion of notebooks to various formats, including execution.  
+`jupyter nbconvert`: This is the primary command used to convert and execute Jupyter Notebooks. It allows for the conversion of notebooks to various formats, including execution.
 
-`--execute`: This flag tells `nbconvert` to execute the notebook and store the results in the output file.  
+`--execute`: This flag tells `nbconvert` to execute the notebook and store the results in the output file.
 
-`--to notebook`: This option specifies the output format. In this case, we want to keep the output as a Jupyter Notebook.  
+`--to notebook`: This option specifies the output format. In this case, we want to keep the output as a Jupyter Notebook.
 
-`--output /outputs/hello_output.ipynb`: This option specifies the path and filename for the output Jupyter Notebook, which will contain the results of the executed input notebook.  
+`--output /outputs/hello_output.ipynb`: This option specifies the path and filename for the output Jupyter Notebook, which will contain the results of the executed input notebook.
 
 
 
@@ -103,11 +103,11 @@ hello_output.nbconvert.ipynb
 ### Building the container (optional)
 
 #### Prerequisite
-1. Install Docker on your local machine.  
+1. Install Docker on your local machine.
 
-2. Sign up for a DockerHub account if you don't already have one.  
+2. Sign up for a DockerHub account if you don't already have one.
 
-**Step 1: Create a Dockerfile**  
+**Step 1: Create a Dockerfile**
 
 Create a new file named Dockerfile in your project directory with the following content:
 
@@ -133,7 +133,7 @@ RUN pip install -U scikit-learn
 ```
 This Dockerfile creates a Docker image based on the official `TensorFlow` GPU-enabled image, sets the working directory to the root, updates the package list, and copies an IPython notebook (`mnist.ipynb`) and a `requirements.txt` file. It then upgrades `pip` and installs Python packages from the `requirements.txt` file, along with `scikit-learn`. The resulting image provides an environment ready for running the `mnist.ipynb` notebook with `TensorFlow` and `scikit-learn`, as well as other specified dependencies.
 
-**Step 2: Build the Docker Image**  
+**Step 2: Build the Docker Image**
 
 In your terminal, navigate to the directory containing the Dockerfile and run the following command to build the Docker image:
 
@@ -142,7 +142,7 @@ docker build -t your-dockerhub-username/jupyter-mnist-tensorflow:latest .
 ```
 Replace "your-dockerhub-username" with your actual DockerHub username. This command will build the Docker image and tag it with your DockerHub username and the name "your-dockerhub-username/jupyter-mnist-tensorflow".
 
-**Step 3: Push the Docker Image to DockerHub**  
+**Step 3: Push the Docker Image to DockerHub**
 
 Once the build process is complete, push the Docker image to DockerHub using the following command:
 
@@ -174,13 +174,13 @@ bacalhau docker run \
 
 ### Structure of the command
 
-`--gpu 1`: Flag to specify the number of GPUs to use for the execution. In this case, 1 GPU will be used.  
+`--gpu 1`: Flag to specify the number of GPUs to use for the execution. In this case, 1 GPU will be used.
 
-`-i gitlfs://huggingface.co/datasets/VedantPadwal/mnist.git`: The `-i` flag is used to clone the MNIST dataset from Hugging Face's repository using Git LFS. The files will be mounted inside the container.  
+`-i gitlfs://huggingface.co/datasets/VedantPadwal/mnist.git`: The `-i` flag is used to clone the MNIST dataset from Hugging Face's repository using Git LFS. The files will be mounted inside the container.
 
-`jsacex/jupyter-tensorflow-mnist:v02`: The name and the tag of the Docker image.  
+`jsacex/jupyter-tensorflow-mnist:v02`: The name and the tag of the Docker image.
 
-`--`: This double dash is used to separate the Bacalhau command options from the command that will be executed inside the Docker container.  
+`--`: This double dash is used to separate the Bacalhau command options from the command that will be executed inside the Docker container.
 
 `jupyter nbconvert --execute --to notebook --output /outputs/mnist_output.ipynb mnist.ipynb`: The command to be executed inside the container. In this case, it runs the `jupyter nbconvert` command to execute the `mnist.ipynb` notebook and save the output as `mnist_output.ipynb` in the `/outputs` directory.
 

@@ -54,10 +54,10 @@ func TestServiceSchedulerTestSuite(t *testing.T) {
 
 func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockServiceJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockServiceJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// we need 3 executions. discover enough nodes
 	nodeInfos := []models.NodeInfo{
@@ -85,7 +85,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	ctx := context.Background()
 	job, executions, evaluation := mockServiceJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -114,7 +114,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 	executions[2].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)       // already running
 	executions[1].ModifyTime = executions[0].ModifyTime + 1                                       // trick scheduler to reject the second execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -141,7 +141,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	executions[execServiceBidAccepted1].Revision = executions[execServiceAskForBid].Revision + 1
 	executions[execServiceBidAccepted2].Revision = executions[execServiceAskForBid].Revision + 1
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
@@ -160,10 +160,10 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 func (s *ServiceJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockServiceJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockServiceJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// we need 3 executions. discover fewer nodes
 	nodeInfos := []models.NodeInfo{
@@ -193,7 +193,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNo
 			job, executions, evaluation := mockServiceJob()
 			job.State = models.NewJobState(terminalState)
 			s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-			s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+			s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 			matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 				Evaluation: evaluation,
@@ -213,7 +213,7 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 	ctx := context.Background()
 	job, executions, evaluation := mockServiceJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock node discoverer to exclude the node in BidAccepted state
 	nodeInfos := []models.NodeInfo{
@@ -246,7 +246,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TreatCompletedExecutionsAsFai
 	executions[execServiceAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
 	executions[execServiceBidAccepted1].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted)
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// discover all nodes to avoid treating active executions as unhealthy
 	nodeInfos := []models.NodeInfo{
@@ -274,7 +274,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreN
 	ctx := context.Background()
 	job, executions, evaluation := mockServiceJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mark all nodes as unhealthy so that we don't retry on other nodes
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return([]models.NodeInfo{}, nil)
@@ -297,7 +297,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 	ctx := context.Background()
 	job, executions, evaluation := mockServiceJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 	s.scheduler.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false})
 
 	// mark askForBid exec as lost so we attempt to retry

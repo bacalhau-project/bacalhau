@@ -3,7 +3,7 @@ sidebar_label: Wasm
 ---
 
 # WebAssembly (WASM) Engine Specification
-  
+
   The WASM Engine in Bacalhau allows tasks to be executed in a WebAssembly environment, offering compatibility and speed. This engine supports WASM and WASI (WebAssembly System Interface) jobs, making it highly adaptable for various use cases. Below are the parameters for configuring the WASM Engine.
 
 ## `WASM` Engine Parameters
@@ -21,7 +21,7 @@ sidebar_label: Wasm
 ### Example
 
 Here’s a sample configuration of the WASM Engine within a task, expressed in YAML:
-  
+
   ```yaml
 Engine:
   Type: "WASM"
@@ -45,5 +45,5 @@ Engine:
           Params:
             Path: "/local/path/to/module.wasm"
   ```
-  
+
   In this example, the task is configured to run in a WASM environment. The EntryModule is fetched from an S3 bucket, the entrypoint is `_start`, and parameters and environment variables are passed into the WASM environment. Additionally, an ImportModule is loaded from a local directory, making its exports available to the EntryModule.

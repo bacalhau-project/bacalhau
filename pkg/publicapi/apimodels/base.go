@@ -1,11 +1,17 @@
 package apimodels
 
 type Request interface {
+	// SetCredential is used to set the authorization token for the request
+	SetCredential(*HTTPCredential)
 	// ToHTTPRequest is used to convert the request to an HTTP request
 	ToHTTPRequest() *HTTPRequest
 }
 
 type PutRequest interface {
+	Request
+}
+
+type PostRequest interface {
 	Request
 }
 
@@ -23,6 +29,10 @@ type Response interface {
 }
 
 type PutResponse interface {
+	Response
+}
+
+type PostResponse interface {
 	Response
 }
 

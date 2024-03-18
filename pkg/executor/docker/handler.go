@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -66,7 +65,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	}()
 	// start the container
 	h.logger.Info().Msg("starting container execution")
-	if err := h.client.ContainerStart(ctx, h.containerID, dockertypes.ContainerStartOptions{}); err != nil {
+	if err := h.client.ContainerStart(ctx, h.containerID, container.StartOptions{}); err != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container"
 		if strings.Contains(err.Error(), "executable file not found") {

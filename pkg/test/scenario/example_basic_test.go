@@ -6,7 +6,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
 
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -21,7 +21,7 @@ func basicScenario(t testing.TB) Scenario {
 		ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
 		JobCheckers:    WaitUntilSuccessful(1),
 		Spec: testutils.MakeSpecWithOpts(t,
-			jobutils.WithEngineSpec(
+			legacy_job.WithEngineSpec(
 				// TODO(forrest): [correctness] this isn't a valid wasm engine spec - it needs an entry module
 				// but leaving as is to preserve whatever behaviour this test is after.
 				model.NewWasmEngineBuilder(model.StorageSpec{}).

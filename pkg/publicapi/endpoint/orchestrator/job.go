@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 // godoc for Orchestrator PutJob
@@ -69,13 +72,56 @@ func (e *Endpoint) putJob(c echo.Context) error {
 func (e *Endpoint) getJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
+	var args apimodels.GetJobRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	job, err := e.store.GetJob(ctx, jobID)
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, apimodels.GetJobResponse{
+	response := apimodels.GetJobResponse{
 		Job: &job,
-	})
+	}
+
+	for _, include := range strings.Split(args.Include, ",") {
+		include = strings.TrimSpace(include)
+		switch include {
+		case "history":
+			// ignore if user requested history twice
+			if response.History != nil {
+				continue
+			}
+			history, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryFilterOptions{})
+			if err != nil {
+				return err
+			}
+			response.History = &apimodels.ListJobHistoryResponse{
+				History: make([]*models.JobHistory, len(history)),
+			}
+			for i := range history {
+				response.History.History[i] = &history[i]
+			}
+		case "executions":
+			// ignore if user requested executions twice
+			if response.Executions != nil {
+				continue
+			}
+			executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+				JobID: jobID,
+			})
+			if err != nil {
+				return err
+			}
+			response.Executions = &apimodels.ListJobExecutionsResponse{
+				Executions: make([]*models.Execution, len(executions)),
+			}
+			for i := range executions {
+				response.Executions.Executions[i] = &executions[i]
+			}
+		}
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 // godoc for Orchestrator ListJobs
@@ -291,26 +337,39 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 
 	// TODO: move ordering to jobstore
 	// parse order_by
-	var sortFnc func(a, b models.Execution) bool
+	var sortFnc func(a, b models.Execution) int
 	switch args.OrderBy {
 	case "modify_time", "":
-		sortFnc = func(a, b models.Execution) bool { return a.ModifyTime < b.ModifyTime }
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
 	case "create_time":
-		sortFnc = func(a, b models.Execution) bool { return a.CreateTime < b.CreateTime }
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
 	case "id":
-		sortFnc = func(a, b models.Execution) bool { return a.ID < b.ID }
+		sortFnc = func(a, b models.Execution) int { return util.Compare[string]{}.Cmp(a.ID, b.ID) }
 	case "state":
-		sortFnc = func(a, b models.Execution) bool { return a.ComputeState.StateType < b.ComputeState.StateType }
+		sortFnc = func(a, b models.Execution) int {
+			return util.Compare[models.ExecutionStateType]{}.Cmp(a.ComputeState.StateType, b.ComputeState.StateType)
+		}
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
 	if args.Reverse {
 		baseSortFnc := sortFnc
-		sortFnc = func(a, b models.Execution) bool { return !baseSortFnc(a, b) }
+		sortFnc = func(a, b models.Execution) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
+			}
+			if r == 1 {
+				return -1
+			}
+			return 0
+		}
 	}
 
 	// query executions
-	executions, err := e.store.GetExecutions(ctx, jobID)
+	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: jobID,
+	})
 	if err != nil {
 		return err
 	}
@@ -400,11 +459,12 @@ func (e *Endpoint) logs(c echo.Context) error {
 
 	err = e.logsWS(c, ws)
 	if err != nil {
+		log.Ctx(c.Request().Context()).Error().Err(err).Msg("websocket failure")
 		err = ws.WriteJSON(concurrency.AsyncResult[models.ExecutionLog]{
 			Err: err,
 		})
 		if err != nil {
-			c.Logger().Errorf("failed to write error to websocket: %s", err)
+			log.Ctx(c.Request().Context()).Error().Err(err).Msg("failed to write error to websocket")
 		}
 	}
 	_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))

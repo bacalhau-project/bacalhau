@@ -12,6 +12,10 @@ type BasePutResponse struct {
 	BaseResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
 }
 
+type BasePostResponse struct {
+	BaseResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
+}
+
 type BaseGetResponse struct {
 	BaseResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
 }
@@ -26,5 +30,6 @@ func (o *BaseListResponse) GetNextToken() string { return o.NextToken }
 // compile time check for interface implementation
 var _ Response = (*BaseResponse)(nil)
 var _ PutResponse = (*BasePutResponse)(nil)
+var _ PostResponse = (*BasePostResponse)(nil)
 var _ GetResponse = (*BaseGetResponse)(nil)
 var _ ListResponse = (*BaseListResponse)(nil)

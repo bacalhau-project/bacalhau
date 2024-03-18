@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/stretchr/testify/require"

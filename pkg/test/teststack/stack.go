@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -53,16 +54,23 @@ func Setup(
 	var fsRepo *repo.FsRepo
 	if repoPath != "" {
 		var err error
-		fsRepo, err = repo.NewFS(repoPath)
+		fsRepo, err = repo.NewFS(repo.FsRepoParams{
+			Path: repoPath,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if err := fsRepo.Open(); err != nil {
 			t.Fatal(err)
 		}
+
+		// TODO(ross) - Remove this once compute node registration lock does not rely on
+		// this config for finding it's storage path.
+		config.SetValue("repo", repoPath)
 	} else {
 		fsRepo = setup.SetupBacalhauRepoForTesting(t)
 	}
+
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)

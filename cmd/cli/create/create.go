@@ -19,7 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -161,7 +161,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	if len(byteResult) == 0 {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad)
+		return fmt.Errorf("%s: job is empty", userstrings.JobSpecBad)
 	}
 
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
@@ -174,7 +174,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	// See if the job spec is empty
 	if j == nil || reflect.DeepEqual(j.Spec, &model.Job{}) {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad)
+		return fmt.Errorf("%s: job is empty", userstrings.JobSpecBad)
 	}
 
 	// Warn on fields with data that will be ignored
@@ -212,7 +212,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))
 	}
 
-	err = jobutils.VerifyJob(ctx, j)
+	err = legacy_job.VerifyJob(ctx, j)
 	if err != nil {
 		return fmt.Errorf("error verifying job: %w", err)
 	}

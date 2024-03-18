@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	flag "github.com/spf13/pflag"
 )
@@ -70,7 +70,7 @@ func (o *StorageOpt) Set(value string) error {
 			return fmt.Errorf("unpexted key %s in field %s", key, field)
 		}
 	}
-	storageSpec, err := job.ParseStorageString(sourceURI, destination, options)
+	storageSpec, err := legacy_job.ParseStorageString(sourceURI, destination, options)
 	if err != nil {
 		return err
 	}

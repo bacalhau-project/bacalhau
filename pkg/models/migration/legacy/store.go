@@ -3,8 +3,8 @@ package legacy
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -14,7 +14,9 @@ func GetJobState(ctx context.Context, jobStore jobstore.Store, jobID string) (mo
 	if err != nil {
 		return model.JobState{}, err
 	}
-	executions, err := jobStore.GetExecutions(ctx, jobID)
+	executions, err := jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: jobID,
+	})
 	if err != nil {
 		return model.JobState{}, err
 	}
@@ -27,8 +29,8 @@ func GetJobState(ctx context.Context, jobStore jobstore.Store, jobID string) (mo
 	return *jobState, nil
 }
 
-func NewStateResolver(jobStore jobstore.Store) *job.StateResolver {
-	return job.NewStateResolver(
+func NewStateResolver(jobStore jobstore.Store) *legacy_job.StateResolver {
+	return legacy_job.NewStateResolver(
 		func(ctx context.Context, jobID string) (model.Job, error) {
 			return GetJob(ctx, jobStore, jobID)
 		},

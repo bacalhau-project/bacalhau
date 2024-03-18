@@ -34,3 +34,37 @@ type ListNodesResponse struct {
 	BaseListResponse
 	Nodes []*models.NodeInfo
 }
+
+type PutNodeRequest struct {
+	BasePutRequest
+	Action  string
+	Message string
+	NodeID  string
+}
+
+type PutNodeResponse struct {
+	BasePutResponse
+	Success bool
+	Error   string
+}
+
+type NodeAction string
+
+const (
+	NodeActionApprove NodeAction = "approve"
+	NodeActionReject  NodeAction = "reject"
+)
+
+func (n NodeAction) Description() string {
+	switch n {
+	case NodeActionApprove:
+		return "Approve a node whose membership is pending"
+	case NodeActionReject:
+		return "Reject a node whose membership is pending"
+	}
+	return ""
+}
+
+func (n NodeAction) IsValid() bool {
+	return n == NodeActionApprove || n == NodeActionReject
+}

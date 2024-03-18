@@ -96,7 +96,7 @@ def main(input_dir, output_dir):
         df = pd.read_csv(transactions_file)
         df['value'] = df['value'].astype('float')
         df['block_datetime'] = pd.to_datetime(df['block_timestamp'], unit='s')
-        
+
         print("Processing %d blocks" % (df.shape[0]))
         results = df[['block_datetime', 'value']].groupby(pd.Grouper(key='block_datetime', freq='1D')).sum()
         print("Finished processing %d days worth of records" % (results.shape[0]))
@@ -245,7 +245,7 @@ for h in $(cat hashes.txt); do \
     --id-only \
     --wait=false \
     --input=ipfs://$h:/inputs/data.tar.gz \
-    ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6 >> job_ids.txt 
+    ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6 >> job_ids.txt
 done
 ```
 
@@ -450,8 +450,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable prysm.service
 sudo systemctl enable geth.service
 sudo systemctl daemon-reload
-sudo service prysm start 
-sudo service geth start 
+sudo service prysm start
+sudo service geth start
 ```
 
 Check they are running:
@@ -513,4 +513,3 @@ Export your Web3.storage JWT API key as an environment variable called `TOKEN`:
 printf "" > hashes.txt
 for i in $(seq 0 50000 16000000); do curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}" -H 'accept: application/json' -H 'Content-Type: text/plain' -H "X-NAME: ethereum-etl-block-$i" --data-binary "@output_$i.tar.gz" >> raw.json; done
 ```
-

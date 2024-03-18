@@ -148,7 +148,6 @@ func (s *HelperSuite) PreparePublisherSpec(compressed bool) s3helper.PublisherSp
 	return s3helper.PublisherSpec{
 		Bucket:   s.Bucket,
 		Key:      prefix,
-		Compress: compressed,
 		Region:   s.Region,
 		Endpoint: s.Endpoint,
 	}
@@ -270,11 +269,12 @@ func (s *HelperSuite) DeleteObjects(prefix string) {
 	}
 
 	// Delete the objects
+	quiet := true
 	deleteInput := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.Bucket),
 		Delete: &types.Delete{
 			Objects: objects,
-			Quiet:   true,
+			Quiet:   &quiet,
 		},
 	}
 	_, err := svc.DeleteObjects(context.Background(), deleteInput)

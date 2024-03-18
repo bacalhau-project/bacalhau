@@ -27,7 +27,7 @@ Within the CLI each custom job type requires a template file,
 a JSON representation of the job with a .tpl extension,
 found in the [templates folder](https://github.com/bacalhau-project/bacalhau/tree/main/cmd/cli/exec/templates). This template defines the base components of the job and is extended by the command line parameters provided to exec.
 
-In addition to the usual runtime and specification flags, that can be found in [the CLI reference for exec](../references/cli/exec/), the `--code` parameter allows for single code files, or directories of code files to be added to the specification.  By default they will be added inline to the job specification, although the requester node may chose to change the storage provider for the code. There is however a hard-limit of 10MB for the attached code.
+In addition to the usual runtime and specification flags, that can be found in [the CLI reference for exec](/dev/cli-reference/cli/job/exec/), the `--code` parameter allows for single code files, or directories of code files to be added to the specification.  By default they will be added inline to the job specification, although the requester node may chose to change the storage provider for the code. There is however a hard-limit of 10MB for the attached code.
 
 
 ## Requester node

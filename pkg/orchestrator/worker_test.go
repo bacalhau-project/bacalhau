@@ -30,7 +30,6 @@ type WorkerTestSuite struct {
 	worker               *Worker
 	eval                 *models.Evaluation
 	receiptHandle        string
-	cancelFn             context.CancelFunc
 }
 
 func (s *WorkerTestSuite) SetupTest() {
