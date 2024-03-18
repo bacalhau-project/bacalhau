@@ -41,7 +41,7 @@ var defaultConfig = Config{
 	RequestHandlerTimeout: 30 * time.Second,
 	MaxBytesToReadInBody:  "10MB",
 	ThrottleLimit:         1000,
-	Protocol:              "http",
+	Protocol:              "https",
 	LogLevel:              "info",
 }
 

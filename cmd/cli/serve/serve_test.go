@@ -120,8 +120,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	fmt.Printf("olgibbons debug: Cleanup called...\n")
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
+		fmt.Println("=====================================================================================================")
 		fmt.Printf("olgibbons debug: err from cmd.ExecuteContextC(ctx): %#v\n", err)
 		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
+		fmt.Println("=====================================================================================================")
 		if returnError {
 			return err
 		}
@@ -201,9 +203,12 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: https://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
+
+	fmt.Println("ACTUAL:", actualUrl)
+	fmt.Println("EXPECTED:", expectedURL)
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
@@ -338,8 +343,9 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
 	s.Require().NoError(err, "Error starting server")
 
-	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
+	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/", port))
 	_ = content
+
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }

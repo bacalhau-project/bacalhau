@@ -157,7 +157,10 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 
 	apiServer := stack.Nodes[0].APIServer
 	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
-	apiClientV2 := clientv2.New(fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port))
+	apiClientV2 := clientv2.New(
+		fmt.Sprintf("https://%s:%d", apiServer.Address, apiServer.Port),
+		clientv2.WithTLS(true), clientv2.WithInsecureTLS(true),
+	)
 
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
