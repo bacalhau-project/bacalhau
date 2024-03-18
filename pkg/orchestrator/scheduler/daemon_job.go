@@ -85,7 +85,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job)
+	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job, 0)
 	if err != nil {
 		return newExecs, err
 	}
