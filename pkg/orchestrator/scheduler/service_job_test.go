@@ -322,9 +322,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 
 func (s *ServiceJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, 0, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nodeInfos, nil)
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, 0, desiredCount).Return(nodeInfos, nil)
 	}
 }
 

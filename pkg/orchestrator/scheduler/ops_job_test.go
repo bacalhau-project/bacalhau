@@ -167,7 +167,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 }
 
 func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo) {
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, time.Duration(0)).Return(nodeInfos, nil)
 }
 
 func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {

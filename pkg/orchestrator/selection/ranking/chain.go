@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -22,7 +23,7 @@ func (c *Chain) Add(ranker ...orchestrator.NodeRanker) {
 	c.rankers = append(c.rankers, ranker...)
 }
 
-func (c *Chain) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (c *Chain) RankNodes(ctx context.Context, job models.Job, retryDelay time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	// initialize map of node ranks
 	ranksMap := make(map[string]*orchestrator.NodeRank, len(nodes))
 	for _, node := range nodes {
@@ -33,7 +34,7 @@ func (c *Chain) RankNodes(ctx context.Context, job models.Job, nodes []models.No
 	// once a node is ranked below zero, it is not considered for job execution and the rank will never be increased above zero
 	// by other rankers. It can only go down more
 	for _, ranker := range c.rankers {
-		nodeRanks, err := ranker.RankNodes(ctx, job, nodes)
+		nodeRanks, err := ranker.RankNodes(ctx, job, retryDelay, nodes)
 		if err != nil {
 			return nil, err
 		}

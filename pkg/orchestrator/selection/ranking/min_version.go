@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -28,7 +29,7 @@ func NewMinVersionNodeRanker(params MinVersionNodeRankerParams) *MinVersionNodeR
 	}
 }
 
-func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	for i, node := range nodes {
 		rank := orchestrator.RankPreferred

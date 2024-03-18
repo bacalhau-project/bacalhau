@@ -99,6 +99,8 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// All failed/lost/rejected executions
 	allFailed := existingExecs.filterFailed().union(lost).union(rejected)
 
+	shouldRetry, retryDelay := b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job})
+
 	// If we have failed executions, we need to retry in case the nodes accept
 	// them in future (eg, due to transient capacity issues). b.handleRetry()
 	// will do this for us, but it results in this same scheduler code being
@@ -107,11 +109,10 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// retry; and if so, we do NOT just defer a retry into the future, as
 	// otherwise we'd loop forever.
 	if (len(allFailed) > 0) && evaluation.TriggeredBy != models.EvalTriggerDefer {
-		shouldRetry, delay := b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job})
 		if shouldRetry {
 			// Only delay if we have rejected executions, otherwise fall through to retry immediately
 			if len(rejected) > 0 {
-				b.handleRetry(plan, &job, delay)
+				b.handleRetry(plan, &job, retryDelay)
 				return b.planner.Process(ctx, plan)
 			}
 		} else {
@@ -123,11 +124,18 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
 	if remainingExecutionCount > 0 {
-		var placementErr error
-		_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
+		newExecs, placementErr := b.createMissingExecs(ctx, remainingExecutionCount, &job, retryDelay, plan)
 		if placementErr != nil {
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)
+		}
+		if len(newExecs) < remainingExecutionCount {
+			// Not enough nodes were available for the number of executions we
+			// want.  Nodes may become available later, either directly or through
+			// having had executions currently within the retryDelay interval that
+			// time out of it. So as well as creating these new executions, let's
+			// also schedule a new evaluation in retryDelay seconds.
+			b.handleRetry(plan, &job, retryDelay)
 		}
 	}
 
@@ -146,7 +154,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 }
 
 func (b *BatchServiceJobScheduler) createMissingExecs(
-	ctx context.Context, remainingExecutionCount int, job *models.Job, plan *models.Plan) (execSet, error) {
+	ctx context.Context, remainingExecutionCount int, job *models.Job, retryDelay time.Duration, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
 	for i := 0; i < remainingExecutionCount; i++ {
 		execution := &models.Execution{
@@ -162,27 +170,36 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		newExecs[execution.ID] = execution
 	}
 	if len(newExecs) > 0 {
-		err := b.placeExecs(ctx, newExecs, job)
+		err := b.placeExecs(ctx, newExecs, job, retryDelay)
 		if err != nil {
 			return newExecs, err
 		}
 	}
 	for _, exec := range newExecs {
-		plan.AppendExecution(exec)
+		// Not all execs might get Node IDs from placeExecs, if there weren't
+		// enough nodes to place them all at once
+		if exec.NodeID != "" {
+			plan.AppendExecution(exec)
+		}
 	}
 	return newExecs, nil
 }
 
 // placeExecs places the executions
-func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
+func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job, retryDelay time.Duration) error {
 	if len(execs) > 0 {
-		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, len(execs))
+		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, retryDelay, len(execs))
 		if err != nil {
 			return err
 		}
 		i := 0
 		for _, exec := range execs {
-			exec.NodeID = selectedNodes[i].ID()
+			// We may get less nodes back than we requested, if there aren't enough available yet
+			if i < len(selectedNodes) {
+				exec.NodeID = selectedNodes[i].ID()
+			} else {
+				exec.NodeID = ""
+			}
 			i++
 		}
 	}

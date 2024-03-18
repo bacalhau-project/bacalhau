@@ -63,7 +63,7 @@ func TestEnginesNodeRankerSuite(t *testing.T) {
 func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	job := mock.Job()
 	job.Task().Engine.Type = models.EngineDocker
-	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
+	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, 0, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "docker", 10)
@@ -74,7 +74,7 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 	job := mock.Job()
 	job.Task().Engine.Type = models.EngineWasm
-	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
+	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, 0, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "docker", -1)
@@ -86,7 +86,7 @@ func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 func (s *FeatureNodeRankerSuite) TestEngineNoop() {
 	job := mock.Job()
 	job.Task().Engine.Type = models.EngineNoop
-	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
+	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, 0, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "docker", -1)
@@ -100,7 +100,7 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
 	job.Task().InputSources = []*models.InputSource{
 		{Source: &models.SpecConfig{Type: models.StorageSourceIPFS}},
 	}
-	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
+	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), *job, 0, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "ipfs", 10)
@@ -115,7 +115,7 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFSAndURL() {
 		{Source: &models.SpecConfig{Type: models.StorageSourceIPFS}},
 		{Source: &models.SpecConfig{Type: models.StorageSourceURL}},
 	}
-	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
+	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), *job, 0, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "ipfs", -1)

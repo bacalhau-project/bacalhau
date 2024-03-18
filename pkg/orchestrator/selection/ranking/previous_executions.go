@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -26,21 +27,27 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // nodes when handling retries:
 // - Rank 30: Node has never executed the job.
 // - Rank 0: Node has already executed the job, or rejected a bid.
+// - Rank -1: Node is still executing the job, or has rejected it within the retryDelay interval
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
-	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+	job models.Job, retryDelay time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes)) // Rank of each node, indexes corresponding to those in the nodes array
 	previousExecutors := make(map[string]int)          // Map from node ID to number of previous active or completed executions
 	toFilterOut := make(map[string]bool)
 	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: job.ID,
 	})
+	now := time.Now()
 	if err == nil {
 		for _, execution := range executions {
 			if _, ok := previousExecutors[execution.NodeID]; !ok {
 				previousExecutors[execution.NodeID] = 0
 			}
 			previousExecutors[execution.NodeID]++
-			if !execution.IsDiscarded() {
+			if !execution.IsTerminalComputeState() {
+				toFilterOut[execution.NodeID] = true
+			}
+			if execution.IsRejected() &&
+				now.Sub(execution.GetModifyTime()) < retryDelay {
 				toFilterOut[execution.NodeID] = true
 			}
 		}
@@ -51,7 +58,7 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 		if _, ok := previousExecutors[node.ID()]; ok {
 			if _, filterOut := toFilterOut[node.ID()]; filterOut {
 				rank = orchestrator.RankUnsuitable
-				reason = "job already executing on this node"
+				reason = "job still running, rejected within retry interval, on this node"
 			} else {
 				// This will include cases where the execution was
 				// ExecutionStateAskForBidRejected; this might be a transient error
