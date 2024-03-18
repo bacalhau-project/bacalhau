@@ -200,7 +200,6 @@ func Setup(
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
 				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("%s@127.0.0.1:%d", natsAuthSecret, swarmPort))
-				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
 			}
 		} else {
 			if i == 0 {
