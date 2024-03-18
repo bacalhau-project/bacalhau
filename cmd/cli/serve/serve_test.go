@@ -78,6 +78,7 @@ func (s *ServeSuite) SetupTest() {
 	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
 	s.Require().NoError(err)
 	s.ipfsPort = node.APIPort
+	fmt.Printf("olgibbons debug: SetupTest() complete...\n")
 }
 
 func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
@@ -188,8 +189,9 @@ func (s *ServeSuite) TestDeleteMeAfterTesting() {
 
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
-	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
+	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
+
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
@@ -198,7 +200,7 @@ func (s *ServeSuite) TestHealthcheck() {
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
 	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
+	expectedURL := fmt.Sprintf("API: https://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
 	s.Require().Contains(actualUrl, expectedURL)
 }
@@ -217,8 +219,15 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	} else {
 		fmt.Printf("olgibbons debug: no error...\n")
 	}
-	client := client.NewAPIClient(client.NoTLS, "localhost", port)
-	clientV2 := clientv2.New(fmt.Sprintf("https://127.0.0.1:%d", port))
+
+	// Create a v1 client for submitting jobs over TLS but not verifying the certificate
+	tlsSettings := client.LegacyTLSSupport{Insecure: true, UseTLS: true}
+	fmt.Printf("olgibbons debug: tlsSettings set\n")
+	client := client.NewAPIClient(tlsSettings, "localhost", port)
+
+	// Create a v2 client, that does not verify the certificate but does use TLS. This
+	// is only used to check the nodes are up.
+	clientV2 := clientv2.New(fmt.Sprintf("https://127.0.0.1:%d", port), clientv2.WithTLS(true), clientv2.WithInsecureTLS(true))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
