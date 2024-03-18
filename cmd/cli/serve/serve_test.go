@@ -113,7 +113,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
-	s.T().Cleanup(cancel)
+	s.T().Cleanup(func() {
+		cancel()
+	})
+
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
 		if returnError {

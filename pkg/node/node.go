@@ -444,11 +444,21 @@ func NewNode(
 		if requesterNode != nil {
 			requesterNode.cleanup(ctx)
 		}
-		nodeInfoPublisher.Stop(ctx)
+
+		if nodeInfoPublisher != nil {
+			nodeInfoPublisher.Stop(ctx)
+		}
 
 		var errors *multierror.Error
-		errors = multierror.Append(errors, transportLayer.Close(ctx))
-		errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+
+		if transportLayer != nil {
+			errors = multierror.Append(errors, transportLayer.Close(ctx))
+		}
+
+		if apiServer != nil {
+			errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+		}
+
 		cancel()
 		return errors.ErrorOrNil()
 	})
