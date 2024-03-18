@@ -5,19 +5,53 @@ sidebar_label: Setting Up Your Development Environment
 If you are looking to develop on the project, this page will help you get started.
 
 **Instructions**
-- Set environment variables:
+- We recommend `brew` for all packages. Install it by following the instructions [here](https://brew.sh/) - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+- In order to install all the tools, you'll need some core build tools. This should be the only tool you install outside of asdf (see below).
+  - MAC: `brew install openssl readline sqlite3 xz zlib && xcode-select --install`
+  - Linux: `sudo apt install -y git libc6-dev build-essential liblzma-dev zlib1g-dev libbz2-dev libncurses5-dev libffi-dev libssl-dev zlib1g-dev sqlite3 libreadline-dev libsqlite3-dev`
+- Add the following to your `.bashrc` or `.zshrc`:
 ```
-export PYTHONVER='3.11.7'
-export GOLANGCILINTVER='v1.51.2'
-export GOLANGVER='1.20'
+    (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/$USER/.bashrc
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 ```
+- We use asdf to manage our development environment. Install asdf by following the instructions [here](https://asdf-vm.com/#/core-manage-asdf-vm) - `brew install asdf`
+- Add asdf to your .bashrc: `echo -e "\n. $(brew --prefix asdf)/libexec/asdf.sh" >> ~/.bashrc`
+- Install the github client: `brew install gh`
+- Login to the repository: `gh auth login -p ssh -w --hostname github.com`
+- Clone the repository: `gh repo clone bacalhau-project/bacalhau`
+- Log into the directory: `cd bacalhau`
+- Install the plugins for asdf by executing this at the root of the directory: `cut -d' ' -f1 .tool-versions|xargs -I{} asdf plugin add {}`
+- Now install all the versions of the tools by executing this at the root of the directory: `asdf install`
+- Install global `uv` the virtual environment tool: `pip3 install uv`
+- Create a virtual environment: `python -m uv venv`
+- Enable direnv in your shell: `direnv allow`
+- Add direnv to your shell: `echo 'eval "$(direnv hook bash)"' >> ~/.bashrc`
+- Reload direnv: `direnv reload`
+- Activate the virtual environment: `source .venv/bin/activate`
+- REInstall uv (yes again - this is for the virtual environment): `python3 -m pip install uv`
+- Update pip (in the virtual environment): `python3 -m pip install --upgrade pip`
+- Install poetry: `python3 -m uv pip install poetry`
+- Install docker repository:
+```
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-- Install asdf: `brew install asdf`
-- Install asdf python plug-in: `asdf plugin add python`
-- Install python: `asdf local python $PYTHONVER`
-- Install asdf golang plug-in: `asdf plugin add golang`
-- Install golang: `asdf install golang $GOLANGVER`
-- Install golangci-lint: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINTVER`
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+- Install docker: `sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin`
+- Add your user to the docker group: `sudo usermod -aG docker $USER`
+- Logout - or rehash the group by running `newgrp docker`
+- Install pre-commit: `make install-pre-commit`
+- You're done! You can now run `make` to see all the commands you can run.
+
 
 **Useful VSCode launch.json**
 ```
