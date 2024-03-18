@@ -46,7 +46,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_VerySmallJob() {
 	job := mock.Job()
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "0.1"}
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 10)
@@ -58,7 +58,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_SmallJob() {
 	job := mock.Job()
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "1"}
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 10)
@@ -70,7 +70,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_MedJob() {
 	job := mock.Job()
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "2"}
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (2) than the maximum available (1)")
@@ -82,7 +82,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_LargeJob() {
 	job := mock.Job()
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3"}
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3) than the maximum available (1)")
@@ -95,7 +95,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_VeryLargeJob() {
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3.1"}
 
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3.1) than the maximum available (1)")
@@ -133,7 +133,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodesUnknownJob() {
 	job := mock.Job()
 	job.Task().ResourcesConfig = &models.ResourcesConfig{}
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", 0)

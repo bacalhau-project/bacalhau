@@ -86,7 +86,6 @@ func (p *Plan) DeferEvaluation(delay time.Duration) {
 		ModifyTime:  now.UTC().UnixNano(),
 		WaitUntil:   now.Add(delay),
 	}
-	p.DesiredJobState = JobStateTypePending
 }
 
 // MarkJobRunningIfEligible updates the job state to "Running" under certain conditions.

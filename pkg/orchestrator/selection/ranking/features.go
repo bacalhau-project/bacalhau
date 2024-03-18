@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	modelsutils "github.com/bacalhau-project/bacalhau/pkg/models/utils"
@@ -86,6 +87,7 @@ func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, 
 func (s *featureNodeRanker) RankNodes(
 	ctx context.Context,
 	job models.Job,
+	_ time.Duration,
 	nodes []models.NodeInfo,
 ) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))

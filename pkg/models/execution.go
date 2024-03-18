@@ -207,6 +207,16 @@ func (e *Execution) IsDiscarded() bool {
 	}
 }
 
+// IsRejected returns true if the execution has been rejected.
+func (e *Execution) IsRejected() bool {
+	switch e.ComputeState.StateType {
+	case ExecutionStateAskForBidRejected, ExecutionStateBidRejected:
+		return true
+	default:
+		return false
+	}
+}
+
 // AllocateResources allocates resources to a task
 func (e *Execution) AllocateResources(taskID string, resources Resources) {
 	e.AllocatedResources.Tasks[taskID] = resources.Copy()

@@ -37,7 +37,7 @@ func (s *ChainSuite) TestRankNodes() {
 	s.chain.Add(NewFixedRanker(0, 0, 0))
 	s.chain.Add(NewFixedRanker(0, 10, 20))
 
-	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
+	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, 0, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
 	s.NoError(err)
 	s.Equal(3, len(ranks))
 	assertEquals(s.T(), ranks, "peerID1", 0)
@@ -50,7 +50,7 @@ func (s *ChainSuite) TestRankNodes_Negative() {
 	s.chain.Add(NewFixedRanker(0, 0, -1))
 	s.chain.Add(NewFixedRanker(0, 10, 1000))
 
-	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
+	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, 0, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
 	s.NoError(err)
 	s.Equal(3, len(ranks))
 	assertEquals(s.T(), ranks, "peerID1", 10)
@@ -63,7 +63,7 @@ func (s *ChainSuite) TestRankNodes_AllNegative() {
 	s.chain.Add(NewFixedRanker(-1, -1, -1))
 	s.chain.Add(NewFixedRanker(-999, 999, 999))
 
-	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
+	ranks, err := s.chain.RankNodes(context.Background(), models.Job{}, 0, []models.NodeInfo{s.peerID1, s.peerID2, s.peerID3})
 	s.NoError(err)
 	s.Equal(3, len(ranks))
 	assertEquals(s.T(), ranks, "peerID1", -1)

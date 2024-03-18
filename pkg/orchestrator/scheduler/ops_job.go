@@ -103,7 +103,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job)
+	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job, time.Duration(0))
 	if err != nil {
 		return newExecs, err
 	}
