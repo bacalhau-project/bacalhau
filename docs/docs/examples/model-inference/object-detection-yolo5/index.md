@@ -70,6 +70,30 @@ ultralytics/yolov5:v6.2 \
 ```
 This should output a UUID (like `59c59bfb-4ef8-45ac-9f4b-f0e9afd26e70`), which will be stored in the environment variable `JOB_ID`. This is the ID of the job that was created. You can check the status of the job using the commands below.
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Object Detection with YOLOv5
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: ultralytics/yolov5:v6.2
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - "find /inputs -type f -exec cp {} /outputs/yolov5s.pt \\; ; python detect.py --weights /outputs/yolov5s.pt --source $(pwd)/data/images --project /outputs"
+    Source:
+      Type: urlDownload
+      Params:
+        URL: https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt
+```
 
 ### Checking the State of your Jobs
 
