@@ -18,12 +18,13 @@ type LocalPublisherServer struct {
 const (
 	readHeaderTimeout = 3 * time.Second
 	readTimeout       = 3 * time.Second
+	allAddresses      = "0.0.0.0"
 )
 
-func NewLocalPublisherServer(ctx context.Context, directory, address string, port int) *LocalPublisherServer {
+func NewLocalPublisherServer(ctx context.Context, directory string, port int) *LocalPublisherServer {
 	return &LocalPublisherServer{
 		rootDirectory: directory,
-		address:       address,
+		address:       allAddresses, // we listen on all addresses
 		port:          port,
 	}
 }

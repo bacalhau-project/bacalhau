@@ -33,7 +33,7 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
 
-	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.host, p.port)
+	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.port)
 	go p.server.Run(ctx)
 
 	return p
