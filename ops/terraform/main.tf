@@ -75,7 +75,7 @@ export BACALHAU_NODE_NETWORK_TYPE=${var.network_type}
 export BACALHAU_NODE_NETWORK_ORCHESTRATORS="${var.internal_ip_addresses[0]}:4222"
 export BACALHAU_NODE_NETWORK_ADVERTISEDADDRESS="${var.public_ip_addresses[count.index]}:4222"
 export BACALHAU_NODE_NETWORK_CLUSTER_PEERS=""
-export BACALHAU_NODE_COMPUTE_LOCAL_PUBLISHER_ADDRESS="${var.public_ip_addresses[count.index]}"
+export BACALHAU_LOCAL_PUBLISHER_ADDRESS="${var.public_ip_addresses[count.index]}"
 
 
 ### secrets are installed in the install-node.sh script

@@ -43,8 +43,8 @@ if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
     --web-ui-port 80 \
     --labels owner=bacalhau \
     --requester-job-translation-enabled \
-    --default-publisher local
-    --local-publisher-address "${BACALHAU_NODE_COMPUTE_LOCAL_PUBLISHER_ADDRESS}"
+    --default-publisher local \
+    --local-publisher-address "${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
 
 else
   function getMultiaddress() {
@@ -98,6 +98,6 @@ else
     --web-ui-port 80 \
     --labels owner=bacalhau \
     --requester-job-translation-enabled \
-    --default-publisher local
-    --local-publisher-address "${BACALHAU_NODE_COMPUTE_LOCAL_PUBLISHER_ADDRESS}"
+    --default-publisher local \
+    --local-publisher-address "${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
 fi
