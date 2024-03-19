@@ -75,6 +75,8 @@ export BACALHAU_NODE_NETWORK_TYPE=${var.network_type}
 export BACALHAU_NODE_NETWORK_ORCHESTRATORS="${var.internal_ip_addresses[0]}:4222"
 export BACALHAU_NODE_NETWORK_ADVERTISEDADDRESS="${var.public_ip_addresses[count.index]}:4222"
 export BACALHAU_NODE_NETWORK_CLUSTER_PEERS=""
+export BACALHAU_NODE_COMPUTE_LOCAL_PUBLISHER_ADDRESS="${var.public_ip_addresses[count.index]}"
+
 
 ### secrets are installed in the install-node.sh script
 export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"
@@ -204,8 +206,8 @@ EOF
 
 resource "google_compute_address" "ipv4_address" {
   region = var.region
-  name  = "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
-  count = var.protect_resources ? var.instance_count : 0
+  name   = "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
+  count  = var.protect_resources ? var.instance_count : 0
   lifecycle {
     prevent_destroy = true
   }
@@ -308,8 +310,8 @@ resource "google_compute_firewall" "bacalhau_ingress_firewall" {
   allow {
     protocol = "udp"
     ports = [
-      "4001",  // ipfs swarm
-      "1235",  // bacalhau swarm
+      "4001", // ipfs swarm
+      "1235", // bacalhau swarm
     ]
   }
 
@@ -325,18 +327,18 @@ resource "google_compute_firewall" "bacalhau_egress_firewall" {
   allow {
     protocol = "tcp"
     ports = [
-      "4001",  // ipfs swarm
-      "1235",  // bacalhau swarm
-      "4222",  // nats
-      "6222",  // nats cluster
+      "4001", // ipfs swarm
+      "1235", // bacalhau swarm
+      "4222", // nats
+      "6222", // nats cluster
     ]
   }
 
   allow {
     protocol = "udp"
     ports = [
-      "4001",  // ipfs swarm
-      "1235",  // bacalhau swarm
+      "4001", // ipfs swarm
+      "1235", // bacalhau swarm
     ]
   }
 
