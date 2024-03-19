@@ -96,8 +96,8 @@ var _ publisher.Publisher = (*Publisher)(nil)
 func resolveAddress(ctx context.Context, address string) string {
 	addressType, ok := network.AddressTypeFromString(address)
 	if !ok {
-		log.Ctx(ctx).Debug().Stringer("AddressType", addressType).Msgf("unable to find address type: %s, using 127.0.0.1", address)
-		return address
+		log.Ctx(ctx).Debug().Stringer("AddressType", addressType).Msgf("unable to find address type: %s, binding to 0.0.0.0", address)
+		return "0.0.0.0"
 	}
 
 	// If we were provided with an address type and not an address, so we should look up
