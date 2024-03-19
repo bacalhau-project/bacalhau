@@ -222,6 +222,11 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 			Type:   publisherSpec.Type.String(),
 			Params: publisherSpec.Params,
 		}
+	} else {
+		job.Tasks[0].Publisher = &models.SpecConfig{
+			Type:   "ipfs",
+			Params: map[string]interface{}{},
+		}
 	}
 
 	// Handle ResultPaths by using the legacy parser and converting.
@@ -307,6 +312,10 @@ func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Jo
 	legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
 	if err != nil {
 		return err
+	}
+
+	if len(legacyOutputs) == 0 {
+		return nil
 	}
 
 	job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
