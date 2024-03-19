@@ -99,6 +99,9 @@ func ResolveAddress(ctx context.Context, address string) string {
 		addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
 		if err == nil && len(addrs) > 0 {
 			return addrs[0]
+		} else {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to resolve network address by type, using 127.0.0.1")
+			return "127.0.0.1"
 		}
 	}
 
