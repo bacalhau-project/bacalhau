@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	icorepath "github.com/ipfs/boxo/path"
+	"github.com/ipfs/kubo/core/commands/cmdutils"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -64,12 +64,14 @@ func (s *NodeSuite) TestFunctionality() {
 	// Upload a file to the second client:
 	cl2 := n2.Client()
 
-	cid, err := cl2.Put(ctx, filePath)
+	cidStr, err := cl2.Put(ctx, filePath)
 	s.Require().NoError(err)
-	s.Require().NotEmpty(cid)
+	s.Require().NotEmpty(cidStr)
 
 	// Validate file was uploaded and pinned
-	_, isPinned, err := cl2.API.Pin().IsPinned(ctx, icorepath.New(cid))
+	p, err := cmdutils.PathOrCidPath(cidStr)
+	s.Require().NoError(err)
+	_, isPinned, err := cl2.API.Pin().IsPinned(ctx, p)
 	s.Require().NoError(err)
 	s.Require().True(isPinned)
 
@@ -77,7 +79,7 @@ func (s *NodeSuite) TestFunctionality() {
 	cl1 := n1.Client()
 
 	outputPath := filepath.Join(dirPath, "output.txt")
-	err = cl1.Get(ctx, cid, outputPath)
+	err = cl1.Get(ctx, cidStr, outputPath)
 	s.Require().NoError(err)
 
 	// Check that the file was downloaded correctly:
