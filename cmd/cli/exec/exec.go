@@ -222,11 +222,6 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 			Type:   publisherSpec.Type.String(),
 			Params: publisherSpec.Params,
 		}
-	} else {
-		job.Tasks[0].Publisher = &models.SpecConfig{
-			Type:   "ipfs",
-			Params: map[string]interface{}{},
-		}
 	}
 
 	// Handle ResultPaths by using the legacy parser and converting.
@@ -316,6 +311,14 @@ func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Jo
 
 	if len(legacyOutputs) == 0 {
 		return nil
+	}
+
+	// If we only have the single legacy default output then we will only use it if we have a publisher
+	// configured. If no publisher then we can just return early.
+	if len(legacyOutputs) == 1 && legacyOutputs[0].Name == "outputs" && legacyOutputs[0].Path == "/outputs" {
+		if job.Tasks[0].Publisher == nil {
+			return nil
+		}
 	}
 
 	job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
