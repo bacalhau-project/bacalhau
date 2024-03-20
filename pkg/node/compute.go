@@ -266,6 +266,7 @@ func NewComputeNode(
 		if managementClient != nil {
 			managementClient.Stop()
 		}
+
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}

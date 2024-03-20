@@ -43,7 +43,7 @@ type ManagementClient struct {
 
 func NewManagementClient(params ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		closeChannel:      make(chan struct{}),
+		closeChannel:      make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
@@ -154,5 +154,7 @@ func (m *ManagementClient) Start(ctx context.Context) {
 }
 
 func (m *ManagementClient) Stop() {
-	m.closeChannel <- struct{}{}
+	if m.closeChannel != nil {
+		m.closeChannel <- struct{}{}
+	}
 }

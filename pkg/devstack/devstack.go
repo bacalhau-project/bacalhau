@@ -118,7 +118,7 @@ func Setup(
 	if stackConfig.NetworkType == "" {
 		networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 		if !ok {
-			networkType = models.NetworkTypeLibp2p
+			networkType = models.NetworkTypeNATS
 		}
 		stackConfig.NetworkType = networkType
 	}
@@ -200,7 +200,6 @@ func Setup(
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
 				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("%s@127.0.0.1:%d", natsAuthSecret, swarmPort))
-				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
 			}
 		} else {
 			if i == 0 {
@@ -375,6 +374,7 @@ func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.No
 
 	nodeConfig.RequesterNodeConfig.JobStore = jobStore
 	nodeConfig.ComputeConfig.ExecutionStore = executionStore
+
 	return nil
 }
 

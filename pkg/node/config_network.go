@@ -39,7 +39,11 @@ type NetworkConfig struct {
 	ClusterName              string
 	ClusterPort              int
 	ClusterAdvertisedAddress string
-	ClusterPeers             []string
+
+	// When using NATS, never set this value unless you are connecting multiple requester
+	// nodes together. This should never reference this current running instance (e.g.
+	// don't use localhost).
+	ClusterPeers []string
 }
 
 func (c *NetworkConfig) Validate() error {
