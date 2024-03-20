@@ -74,7 +74,7 @@ func (p *Plan) MarkJobCompleted() {
 }
 
 // Defer this job, to be re-evaluated after the given delay
-func (p *Plan) DeferEvaluation(delay time.Duration) {
+func (p *Plan) DeferEvaluation(waitUntil time.Time) {
 	now := time.Now()
 	p.NewEvaluation = &Evaluation{
 		ID:          uuid.NewString(),
@@ -84,7 +84,7 @@ func (p *Plan) DeferEvaluation(delay time.Duration) {
 		Status:      EvalStatusPending,
 		CreateTime:  now.UTC().UnixNano(),
 		ModifyTime:  now.UTC().UnixNano(),
-		WaitUntil:   now.Add(delay),
+		WaitUntil:   waitUntil,
 	}
 }
 

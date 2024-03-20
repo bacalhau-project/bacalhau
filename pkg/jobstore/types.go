@@ -3,6 +3,7 @@ package jobstore
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
@@ -80,6 +81,9 @@ type Store interface {
 	// UpdateExecution updates the execution state according to the values
 	// within [UpdateExecutionRequest].
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+
+	// Record that further scheduling of executions for a job has been deferred until the specified time
+	RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error
 
 	// DeleteJob removes all trace of the provided job from storage
 	DeleteJob(ctx context.Context, jobID string) error
