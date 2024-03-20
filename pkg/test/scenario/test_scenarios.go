@@ -148,11 +148,14 @@ func WasmHelloWorld(t testing.TB) Scenario {
 			downloader.DownloadFilenameStdout,
 			"Hello, world!\n",
 		),
-		Spec: model.Spec{
-			EngineSpec: model.NewWasmEngineBuilder(InlineData(noop.Program())).
-				WithEntrypoint("_start").
-				Build(),
-		},
+		Spec: testutils.MakeSpecWithOpts(t,
+			legacy_job.WithEngineSpec(
+				model.NewWasmEngineBuilder(InlineData(noop.Program())).
+					WithEntrypoint("_start").
+					Build(),
+			),
+			legacy_job.WithSchedulingTimeout(1),
+		),
 	}
 }
 
