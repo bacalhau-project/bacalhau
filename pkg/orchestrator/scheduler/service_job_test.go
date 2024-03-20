@@ -5,6 +5,7 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -322,9 +323,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 
 func (s *ServiceJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, 0, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, time.Duration(0), desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, 0, desiredCount).Return(nodeInfos, nil)
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, time.Duration(0), desiredCount).Return(nodeInfos, nil)
 	}
 }
 

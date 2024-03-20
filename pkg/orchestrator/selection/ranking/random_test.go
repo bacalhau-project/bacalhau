@@ -32,7 +32,7 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 	}
 	s.RandomNodeRanker = NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: randomnessRange})
 
-	ranks, err := s.RandomNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
+	ranks, err := s.RandomNodeRanker.RankNodes(context.Background(), models.Job{}, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 
