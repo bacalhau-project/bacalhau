@@ -49,6 +49,11 @@ func (p *Plan) AppendExecution(execution *Execution) {
 	p.NewExecutions = append(p.NewExecutions, execution)
 }
 
+// CancelNewExecutions removes any new executions that had been planned
+func (p *Plan) CancelNewExecutions() {
+	p.NewExecutions = []*Execution{}
+}
+
 // AppendStoppedExecution marks an execution to be stopped.
 func (p *Plan) AppendStoppedExecution(execution *Execution, comment string) {
 	updateRequest := &PlanExecutionDesiredUpdate{
