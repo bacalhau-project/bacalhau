@@ -135,7 +135,14 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 			// having had executions currently within the retryDelay interval that
 			// time out of it. So as well as creating these new executions, let's
 			// also schedule a new evaluation in retryDelay seconds.
-			b.handleRetry(ctx, plan, &job, retryDelay)
+			if shouldRetry {
+				b.handleRetry(ctx, plan, &job, retryDelay)
+			} else {
+				// Remove any new executions we managed from the plan, no sense creating them now
+				plan.CancelNewExecutions()
+				b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("exceeded max retries for job %s", job.ID))
+				return b.planner.Process(ctx, plan)
+			}
 		}
 	}
 
