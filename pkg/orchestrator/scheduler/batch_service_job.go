@@ -129,13 +129,18 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		}
-		if len(newExecs) < remainingExecutionCount {
+		if newExecs.countPlaced() < remainingExecutionCount {
 			// Not enough nodes were available for the number of executions we
 			// want.  Nodes may become available later, either directly or through
 			// having had executions currently within the retryDelay interval that
 			// time out of it. So as well as creating these new executions, let's
 			// also schedule a new evaluation in retryDelay seconds.
-			b.handleRetry(plan, &job, retryDelay)
+			if shouldRetry {
+				b.handleRetry(plan, &job, retryDelay)
+			} else {
+				// TODO: what about the ones we just made
+				b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("failed to place executions for job %s", job.ID))
+			}
 		}
 	}
 

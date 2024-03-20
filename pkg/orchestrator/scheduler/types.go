@@ -234,6 +234,17 @@ func (set execSet) latest() *models.Execution {
 	return latest
 }
 
+// countPlaced counts the number of executions that have been placed on a node.
+func (set execSet) countPlaced() int {
+	var count int
+	for _, exec := range set {
+		if exec.NodeID != "" {
+			count++
+		}
+	}
+	return count
+}
+
 // countByState counts the number of executions in each state.
 func (set execSet) countByState() map[models.ExecutionStateType]int {
 	counts := map[models.ExecutionStateType]int{}
