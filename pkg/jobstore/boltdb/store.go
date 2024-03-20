@@ -840,6 +840,34 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	return b.appendJobHistory(tx, job, previousState, request.Comment)
 }
 
+func (b *BoltJobStore) RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error {
+	historyEntry := models.JobHistory{
+		Type:  models.JobHistoryTypeJobSchedulingDeferral,
+		JobID: jobID,
+		SchedulingDeferral: &models.SchedulingDeferral{
+			DeferredUntil: waitUntil,
+		},
+		Comment: comment,
+		Time:    time.Now(),
+	}
+	data, err := b.marshaller.Marshal(historyEntry)
+	if err != nil {
+		return err
+	}
+
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, true); err != nil {
+			return err
+		} else {
+			seq := BucketSequenceString(tx, bkt)
+			if err = bkt.Put([]byte(seq), data); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, comment string) error {
 	historyEntry := models.JobHistory{
 		Type:  models.JobHistoryTypeJobLevel,

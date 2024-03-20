@@ -7,6 +7,7 @@ package jobstore
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
@@ -207,6 +208,20 @@ func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) (*JobQueryRespo
 func (mr *MockStoreMockRecorder) GetJobs(ctx, query interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockStore)(nil).GetJobs), ctx, query)
+}
+
+// RecordJobDeferral mocks base method.
+func (m *MockStore) RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordJobDeferral", ctx, jobID, waitUntil, comment)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordJobDeferral indicates an expected call of RecordJobDeferral.
+func (mr *MockStoreMockRecorder) RecordJobDeferral(ctx, jobID, waitUntil, comment interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordJobDeferral", reflect.TypeOf((*MockStore)(nil).RecordJobDeferral), ctx, jobID, waitUntil, comment)
 }
 
 // UpdateExecution mocks base method.

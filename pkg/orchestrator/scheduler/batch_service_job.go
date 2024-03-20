@@ -112,7 +112,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		if shouldRetry {
 			// Only delay if we have rejected executions, otherwise fall through to retry immediately
 			if len(rejected) > 0 {
-				b.handleRetry(plan, &job, retryDelay)
+				b.handleRetry(ctx, plan, &job, retryDelay)
 				return b.planner.Process(ctx, plan)
 			}
 		} else {
@@ -135,12 +135,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 			// having had executions currently within the retryDelay interval that
 			// time out of it. So as well as creating these new executions, let's
 			// also schedule a new evaluation in retryDelay seconds.
-			if shouldRetry {
-				b.handleRetry(plan, &job, retryDelay)
-			} else {
-				// TODO: what about the ones we just made
-				b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("failed to place executions for job %s", job.ID))
-			}
+			b.handleRetry(ctx, plan, &job, retryDelay)
 		}
 	}
 
@@ -211,9 +206,13 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 	return nil
 }
 
-func (b *BatchServiceJobScheduler) handleRetry(plan *models.Plan, job *models.Job, delay time.Duration) {
+func (b *BatchServiceJobScheduler) handleRetry(ctx context.Context, plan *models.Plan, job *models.Job, delay time.Duration) {
+	// Compute time to try again
+	waitUntil := time.Now().Add(delay)
 	// Schedule a new evaluation
-	plan.DeferEvaluation(delay)
+	plan.DeferEvaluation(waitUntil)
+	// Record deferral
+	b.jobStore.RecordJobDeferral(ctx, job.ID, waitUntil, fmt.Sprintf("Deferring rescheduling for %s", delay))
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {

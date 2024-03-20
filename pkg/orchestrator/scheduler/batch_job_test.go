@@ -74,6 +74,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayAfterRejections() {
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidRejected)
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+	s.jobStore.EXPECT().RecordJobDeferral(gomock.Any(), job.ID, gomock.Any(), "Deferring rescheduling for 10s")
 
 	nodeInfos := []models.NodeInfo{
 		*mockNodeInfo(s.T(), nodeIDs[0]),
