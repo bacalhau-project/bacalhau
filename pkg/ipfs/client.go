@@ -7,16 +7,18 @@ import (
 	"os"
 	"sync"
 
-	icore "github.com/ipfs/boxo/coreiface"
-	icoreoptions "github.com/ipfs/boxo/coreiface/options"
-	icorepath "github.com/ipfs/boxo/coreiface/path"
 	files "github.com/ipfs/boxo/files"
 	dag "github.com/ipfs/boxo/ipld/merkledag"
 	ft "github.com/ipfs/boxo/ipld/unixfs"
+	icorepath "github.com/ipfs/boxo/path"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	httpapi "github.com/ipfs/kubo/client/rpc"
+	icore "github.com/ipfs/kubo/core/coreiface"
+	icoreoptions "github.com/ipfs/kubo/core/coreiface/options"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -173,7 +175,12 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
-	node, err := cl.API.Unixfs().Get(ctx, icorepath.New(cid))
+	path, err := pathFromCIDString(cid)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
+	}
+
+	node, err := cl.API.Unixfs().Get(ctx, path)
 	if err != nil {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
@@ -208,7 +215,7 @@ func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
 
-	cid := ipfsPath.Cid().String()
+	cid := ipfsPath.RootCid().String()
 	return cid, nil
 }
 
@@ -226,7 +233,12 @@ type StatResult struct {
 
 // Stat returns information about an IPLD CID on the ipfs network.
 func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
-	node, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
+	path, err := pathFromCIDString(cid)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to create path from CID in call to Stat(): %s", cid))
+	}
+
+	node, err := cl.API.ResolveNode(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
@@ -242,7 +254,12 @@ func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 }
 
 func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
-	stat, err := cl.API.Object().Stat(ctx, icorepath.New(cid))
+	path, err := pathFromCIDString(cid)
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("unable to create path from CID in call to GetCidSize(): %s", cid))
+	}
+
+	stat, err := cl.API.Object().Stat(ctx, path)
 	if err != nil {
 		return 0, err
 	}
@@ -252,7 +269,12 @@ func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 
 // nodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
 func (cl Client) nodesWithCID(ctx context.Context, cid string) ([]string, error) {
-	ch, err := cl.API.Dht().FindProviders(ctx, icorepath.New(cid))
+	path, err := pathFromCIDString(cid)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
+	}
+
+	ch, err := cl.API.Dht().FindProviders(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
 	}
@@ -287,7 +309,12 @@ func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
 }
 
 func (cl Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
-	ipldNode, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
+	path, err := pathFromCIDString(cid)
+	if err != nil {
+		return IPLDTreeNode{}, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
+	}
+
+	ipldNode, err := cl.API.ResolveNode(ctx, path)
 	if err != nil {
 		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
@@ -320,4 +347,13 @@ func getNodeType(node ipld.Node) (IPLDType, error) {
 	}
 
 	return nodeType, nil
+}
+
+func pathFromCIDString(cidString string) (icorepath.Path, error) {
+	cid, err := cid.Decode(cidString)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to decode CID: %s", cidString))
+	}
+
+	return icorepath.FromCid(cid), nil
 }
