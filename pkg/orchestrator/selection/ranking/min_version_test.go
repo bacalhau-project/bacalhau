@@ -93,7 +93,7 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes() {
 		})
 	}
 
-	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
+	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	for _, t := range minVersionNodeRankerTestCases {
@@ -114,7 +114,7 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes_NilMinVersion() {
 		})
 	}
 
-	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
+	ranks, err := s.MinVersionNodeRanker.RankNodes(context.Background(), models.Job{}, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	for _, t := range minVersionNodeRankerTestCases {

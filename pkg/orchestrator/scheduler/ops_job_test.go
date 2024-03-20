@@ -5,6 +5,7 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
