@@ -60,7 +60,6 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
-		devstack.WithNetworkType("nats"),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address

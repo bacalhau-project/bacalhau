@@ -178,7 +178,7 @@ You can use the `bacalhau docker run` [command](../dev/cli-reference/all-flags.m
                  --ipfs-swarm-key string            Optional IPFS swarm key required to connect to a private IPFS swarm
              -l, --labels strings                   List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
                  --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
-                 --network network-type             Networking capability required by the job. None, HTTP, or Full (default "nats")
+                 --network network-type             Networking capability required by the job. None, HTTP, or Full (default None)
                  --node-details                     Print out details of all nodes (overridden by --id-only).
              -o, --output strings                   name:path of the output data volumes. 'outputs:/outputs' is always added unless '/outputs' is mapped to a different name. (default [outputs:/outputs])
                  --output-dir string                Directory to write the output to.

@@ -137,7 +137,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			suite.T(),
 			devstack.WithNumberOfHybridNodes(1),
 			devstack.WithComputeConfig(computeConfig),
-			devstack.WithNetworkType("nats"),
 			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
