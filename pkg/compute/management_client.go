@@ -61,12 +61,17 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 	})
 }
 
-// RegisterNode sends a registration request to the requester node. We will do this
-// even if we know we have previously registered. This will allow us to not worry
-// about split state (some local sentinel object and the remote state) and potential
-// issues. The requester node will handle the case of a duplicate registration by
-// accepting it but replying with a message to that effect.
+// RegisterNode sends a registration request to the requester node. If we successfully
+// register, a sentinel file is created to indicate that we are registered. If present
+// the requester node will know it is already registered.  If not present, it will
+// attempt to register again, expecting the requester node to gracefully handle any
+// previous registrations.
 func (m *ManagementClient) RegisterNode(ctx context.Context) error {
+	if m.registrationFile.Exists() {
+		log.Ctx(ctx).Debug().Msg("not registering with requester, already registered")
+		return nil
+	}
+
 	nodeInfo := m.getNodeInfo(ctx)
 	response, err := m.managementProxy.Register(ctx, requests.RegisterRequest{
 		Info: nodeInfo,
@@ -76,6 +81,9 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	if response.Accepted {
+		if err := m.registrationFile.Set(); err != nil {
+			return errors.Wrap(err, "failed to record local registration status")
+		}
 		log.Ctx(ctx).Debug().Msg("register request accepted")
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
