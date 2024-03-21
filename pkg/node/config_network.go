@@ -30,9 +30,9 @@ type NetworkConfig struct {
 	// Storage directory for NATS features that require it
 	StoreDir string
 
-	// AuthSecret is a secret string that clients must use to connect. It is
-	// only used by NATS servers; clients should supply the auth secret as the
-	// user part of their Orchestrator URL.
+	// AuthSecret is a secret string that clients must use to connect. NATS servers
+	// must supply this config, while clients can also supply it as the user part
+	// of their Orchestrator URL.
 	AuthSecret string
 
 	// NATS config for requester nodes to connect with each other

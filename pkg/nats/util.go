@@ -1,15 +1,12 @@
 package nats
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"net"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
@@ -80,16 +77,4 @@ func removeLocalAddresses(routes []*url.URL) ([]*url.URL, error) {
 		}
 	}
 	return result, nil
-}
-
-// CreateAuthSecret will return a signed hash of the nodeID
-// provided, for use as a secret for NATS authentication.
-func CreateAuthSecret(nodeID string) (string, error) {
-	var keySig string
-	keySig, err := system.SignForClient([]byte(nodeID))
-	if err != nil {
-		return "", err
-	}
-	hash := sha256.Sum256([]byte(keySig))
-	return base64.RawURLEncoding.EncodeToString(hash[:]), nil
 }

@@ -3,7 +3,6 @@ package kvstore
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -22,8 +21,8 @@ const (
 )
 
 type NodeStoreParams struct {
-	BucketName     string
-	ConnectionInfo interface{}
+	BucketName string
+	Client     *nats.Conn
 }
 
 type NodeStore struct {
@@ -32,19 +31,7 @@ type NodeStore struct {
 }
 
 func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, error) {
-	url, ok := params.ConnectionInfo.(string)
-	if !ok {
-		return nil, errors.New("invalid connection info provided to KV Node Store")
-	}
-
-	// The connection we get from NATS is thread-safe (see https://pkg.go.dev/github.com/nats-io/nats.go#Conn)
-	// so no need to wrap everything in a mutex
-	nc, err := nats.Connect(url)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to connect to nats network at %s", url))
-	}
-
-	js, err := jetstream.New(nc)
+	js, err := jetstream.New(params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to jetstream")
 	}
