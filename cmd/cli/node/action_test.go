@@ -13,7 +13,7 @@ import (
 )
 
 type NodeActionSuite struct {
-	cmdtesting.BaseNATSSuite
+	cmdtesting.BaseSuite
 }
 
 func TestNodeActionSuite(t *testing.T) {

@@ -113,8 +113,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
+	s.T().Cleanup(func() {
+		cancel()
+	})
 
-	s.T().Cleanup(cancel)
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
 		if returnError {
@@ -124,10 +126,17 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		return nil
 	})
 
-	t := time.NewTicker(10 * time.Millisecond)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- errs.Wait()
+	}()
+
+	t := time.NewTicker(50 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {
+		case e := <-errCh:
+			s.FailNow("Server raised an error during startup: %s", e)
 		case <-ctx.Done():
 			if returnError {
 				return 0, errs.Wait()
@@ -173,7 +182,7 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
 	s.Require().Contains(actualUrl, expectedURL)
