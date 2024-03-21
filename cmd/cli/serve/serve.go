@@ -217,7 +217,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(nodeName)
+	networkConfig, err := getNetworkConfig()
 	if err != nil {
 		return err
 	}
@@ -519,13 +519,6 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 	orchestrator := &url.URL{
 		Scheme: "nats",
 		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
-	}
-
-	// Only display the secret if the user did not set it explicitly.
-	// Else, they should already know it!
-	secret, err := config.Get[string](types.NodeNetworkAuthSecret)
-	if err == nil && secret == "" && nodeConfig.NetworkConfig.AuthSecret != "" {
-		orchestrator.User = url.User(nodeConfig.NetworkConfig.AuthSecret)
 	}
 
 	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {

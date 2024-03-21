@@ -32,10 +32,6 @@ type TransportLayer interface {
 	// DebugInfoProviders enables transport layer to provide meaningful debug info to operators
 	DebugInfoProviders() []model.DebugInfoProvider
 
-	// GetConnectionInfo retrieves information relevant to the transport layer for those that
-	// require it.
-	GetConnectionInfo(ctx context.Context) interface{}
-
 	// RegisterNodeInfoConsumer registers a node info consumer with the transport layer
 	RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error
 
