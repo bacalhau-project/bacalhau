@@ -57,8 +57,10 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 			}, nil
 		}
 
+		// Otherwise we'll allow the registration, but let the compute node
+		// that it has already been registered on a previous occasion.
 		return &requests.RegisterResponse{
-			Accepted: false,
+			Accepted: true,
 			Reason:   "node already registered",
 		}, nil
 	}
