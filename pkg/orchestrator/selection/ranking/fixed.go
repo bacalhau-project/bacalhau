@@ -19,7 +19,8 @@ func NewFixedRanker(ranks ...int) *fixedRanker {
 	}
 }
 
-func (f *fixedRanker) RankNodes(_ context.Context, _ models.Job, _ time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (f *fixedRanker) RankNodes(_ context.Context, _ models.Job, _ time.Duration,
+	nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	for i, rank := range f.ranks {
 		ranks[i] = orchestrator.NodeRank{

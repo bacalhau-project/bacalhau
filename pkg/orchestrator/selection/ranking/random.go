@@ -30,7 +30,8 @@ func NewRandomNodeRanker(params RandomNodeRankerParams) *RandomNodeRanker {
 	}
 }
 
-func (s *RandomNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *RandomNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration,
+	nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	for i, node := range nodes {
 		rank, err := s.getRandomRank()
