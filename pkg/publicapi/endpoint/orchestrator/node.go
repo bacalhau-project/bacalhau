@@ -74,6 +74,10 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 		sortFnc = func(a, b *models.NodeInfo) int {
 			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
 		}
+	case "approval", "status":
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
+		}
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
