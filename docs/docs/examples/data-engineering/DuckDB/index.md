@@ -111,13 +111,10 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-`bacalhau docker run`: call to Bacalhau
-
-`davidgasquez/datadex:v0.2.0`: the name and the tag of the docker image we are using
-
-`/inputs/`: path to input dataset
-
-`duckdb -s "select 1"`: execute DuckDB
+1. `bacalhau docker run`: call to Bacalhau
+1. `davidgasquez/datadex:v0.2.0`: the name and the tag of the docker image we are using
+1. `/inputs/`: path to input dataset
+1. `duckdb -s "select 1"`: execute DuckDB
 
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
@@ -125,6 +122,32 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ```python
 %env JOB_ID={job_id}
+```
+
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: DuckDB Hello World
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: davidgasquez/datadex:v0.2.0
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - duckdb -s "select 1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `duckdb1.yaml`, and then run with the command:
+```bash
+bacalhau job run duckdb1.yaml
 ```
 
 ## Checking the State of your Jobs
@@ -204,6 +227,42 @@ Let's look closely at the command above:
 
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: DuckDB Parquet Query
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        WorkingDirectory: "/inputs"
+        Image: davidgasquez/duckdb:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - duckdb -s "select count(*) from '0_yellow_taxi_trips.parquet'"
+    InputSources:
+    - Target: "/inputs"
+      Source:
+        Type: "s3"
+        Params:
+          Bucket: "bacalhau-duckdb"
+          Key: "*"
+          Region: "us-east-1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `duckdb2.yaml`, and then run with the command:
+```bash
+bacalhau job run duckdb2.yaml
+```
+
 
 **Job status**: You can check the status of the job using `bacalhau list`:
 
