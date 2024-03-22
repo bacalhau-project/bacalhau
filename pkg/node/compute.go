@@ -154,6 +154,7 @@ func NewComputeNode(
 		computeCallback,
 		bufferRunner,
 		apiServer,
+		capacityCalculator,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              nodeID,
@@ -261,6 +262,7 @@ func NewBidder(
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	apiServer *publicapi.Server,
+	calculator capacity.UsageCalculator,
 ) compute.Bidder {
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if config.BidSemanticStrategy == nil {
@@ -321,6 +323,6 @@ func NewBidder(
 		GetApproveURL: func() *url.URL {
 			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
 		},
+		UsageCalculator: calculator,
 	})
-
 }

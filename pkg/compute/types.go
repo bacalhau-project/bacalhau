@@ -140,7 +140,6 @@ type ExecutionLogsResponse struct {
 // BidResult is the result of the compute node bidding on a job that is returned
 // to the caller through a Callback.
 type BidResult struct {
-	// TODO remove routing metadata and execution metadata
 	RoutingMetadata
 	ExecutionMetadata
 	Accepted bool
