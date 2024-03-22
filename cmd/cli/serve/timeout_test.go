@@ -63,6 +63,8 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 			if tc.timeoutSpecified != nil {
 				specOpts = append(specOpts, legacy_job.WithTimeout(int64(tc.timeoutSpecified.Seconds())))
 			}
+			// Make sure scheduling timeout doesn't ruin our test
+			specOpts = append(specOpts, legacy_job.WithSchedulingTimeout(int64(10*time.Minute)))
 			testJob.Spec, err = legacy_job.MakeSpec(specOpts...)
 			s.Require().NoError(err)
 

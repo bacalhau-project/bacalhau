@@ -254,6 +254,16 @@ func ToLegacyRunCommandResult(result *models.RunCommandResult) *model.RunCommand
 	}
 }
 
+func ToLegacySchedulingDeferral(deferral *models.SchedulingDeferral) *model.SchedulingDeferral {
+	if deferral == nil {
+		return nil
+	} else {
+		return &model.SchedulingDeferral{
+			DeferredUntil: deferral.DeferredUntil,
+		}
+	}
+}
+
 // ToLegacyJobHistory converts a models.JobHistory to a model.JobHistory
 func ToLegacyJobHistory(history *models.JobHistory) *model.JobHistory {
 	return &model.JobHistory{
@@ -264,9 +274,10 @@ func ToLegacyJobHistory(history *models.JobHistory) *model.JobHistory {
 		JobState:         ToLegacyStateChange[models.JobStateType, model.JobStateType](history.JobState, ToLegacyJobStateType),
 		ExecutionState: ToLegacyStateChange[models.ExecutionStateType, model.ExecutionStateType](
 			history.ExecutionState, ToLegacyExecutionStateType),
-		NewVersion: int(history.NewRevision),
-		Comment:    history.Comment,
-		Time:       history.Time,
+		SchedulingDeferral: ToLegacySchedulingDeferral(history.SchedulingDeferral),
+		NewVersion:         int(history.NewRevision),
+		Comment:            history.Comment,
+		Time:               history.Time,
 	}
 }
 
@@ -339,7 +350,11 @@ func ToLegacyJobHistoryType(historyType models.JobHistoryType) model.JobHistoryT
 	switch historyType {
 	case models.JobHistoryTypeExecutionLevel:
 		return model.JobHistoryTypeExecutionLevel
-	default:
+	case models.JobHistoryTypeJobLevel:
 		return model.JobHistoryTypeJobLevel
+	case models.JobHistoryTypeJobSchedulingDeferral:
+		return model.JobHistoryTypeJobSchedulingDeferral
+	default:
+		panic(fmt.Sprintf("ToLegacyJobHistoryType: Invalid job history type %d", historyType))
 	}
 }
