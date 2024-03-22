@@ -10,11 +10,12 @@ The latter is listed as a dependency of this SDK and will be installed automatic
 
 ## Features
 
-* List, create and inspect Bacalhau jobs using Python objects :balloon:
-* Use the production network, or set the following environment variables to target any Bacalhau network out there:
-    * `BACALHAU_API_HOST`
-    * `BACALHAU_API_PORT`
-* Generate a key pair used to sign requests stored in the path specified by the `BACALHAU_DIR` env var (default: `~/.bacalhau`)
+- List, create and inspect Bacalhau jobs using Python objects :balloon:
+- Use the production network, or set the following environment variables to target any Bacalhau network out there:
+  - `BACALHAU_API_HOST`
+  - `BACALHAU_API_PORT`
+- Generate a key pair used to sign requests stored in the path specified by the `BACALHAU_DIR` env var (default: `~/.bacalhau`)
+
 ## Install
 
 ### From PyPi:
@@ -27,13 +28,13 @@ $ pip install bacalhau-sdk
 
 Clone the public repository:
 
-``` console
+```console
 $ git clone https://github.com/bacalhau-project/bacalhau/
 ```
 
 Once you have a copy of the source, you can install it with:
 
-``` console
+```console
 $ cd python/
 $ pip install .
 ```
@@ -42,7 +43,6 @@ $ pip install .
 
 Likewise the Bacalhau CLI, this SDK uses a key pair to be stored in `BACALHAU_DIR` used for signing requests.
 If a key pair is not found there, it will create one for you.
-
 
 ## Example Use
 
@@ -58,7 +58,6 @@ from bacalhau_sdk.api import submit
 from bacalhau_sdk.config import get_client_id
 from bacalhau_apiclient.models.storage_spec import StorageSpec
 from bacalhau_apiclient.models.spec import Spec
-from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
 from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
 from bacalhau_apiclient.models.publisher_spec import PublisherSpec
 from bacalhau_apiclient.models.deal import Deal
@@ -74,7 +73,6 @@ data = dict(
             image="ubuntu",
             entrypoint=["echo", "Hello World!"],
         ),
-        language=JobSpecLanguage(job_context=None),
         wasm=None,
         resources=None,
         timeout=1800,
