@@ -285,12 +285,10 @@ func (b Bidder) runSemanticBidding(
 
 		if resp.ShouldWait {
 			shouldWait = true
-			reasons = append(reasons, fmt.Sprintf("%s: waiting to bid: %s",
-				strategyType, resp.Reason))
+			reasons = append(reasons, fmt.Sprintf("waiting to bid: %s", resp.Reason))
 		} else if !resp.ShouldBid {
 			shouldBid = false
-			reasons = append(reasons, fmt.Sprintf("%s: rejected bid: %s",
-				strategyType, resp.Reason))
+			reasons = append(reasons, fmt.Sprintf("rejected bid: %s", resp.Reason))
 		}
 	}
 
@@ -347,12 +345,10 @@ func (b Bidder) runResourceBidding(
 
 		if resp.ShouldWait {
 			shouldWait = true
-			reasons = append(reasons, fmt.Sprintf("%s: waiting to bid: %s",
-				strategyType, resp.Reason))
+			reasons = append(reasons, fmt.Sprintf("waiting to bid: %s", resp.Reason))
 		} else if !resp.ShouldBid {
 			shouldBid = false
-			reasons = append(reasons, fmt.Sprintf("%s: rejected bid: %s",
-				strategyType, resp.Reason))
+			reasons = append(reasons, fmt.Sprintf("rejected bid: %s", resp.Reason))
 		}
 	}
 
