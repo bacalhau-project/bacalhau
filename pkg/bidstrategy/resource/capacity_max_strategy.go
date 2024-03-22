@@ -34,7 +34,7 @@ func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
 	return bidstrategy.BidStrategyResponse{
 		ShouldBid:  false,
 		ShouldWait: false,
-		Reason:     fmt.Sprintf("insufficent resources - requested: %s, avaliable: %s", usage.String(), s.maxJobRequirements.String()),
+		Reason:     fmt.Sprintf("insufficient resources - requested: %s, available: %s", usage.String(), s.maxJobRequirements.String()),
 	}, nil
 }
 
