@@ -324,22 +324,48 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-`bacalhau docker run`: call to Bacalhau
-
-`-i ipfs://QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
-
-`jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
-
-`../inputs/transactions.csv `: path to input dataset
-
-`../outputs/transactions.parquet parquet`: path to the output
-
-`python3 src/converter.py`: execute the script
+1. `bacalhau docker run`: call to Bacalhau
+1. `-i ipfs://QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+1. `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
+1. `../inputs/transactions.csv `: path to input dataset
+1. `../outputs/transactions.parquet parquet`: path to the output
+1. `python3 src/converter.py`: execute the script
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ```python
 %env JOB_ID={job_id}
+```
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Convert CSV To Parquet Or Avro
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: jsacex/csv-to-arrow-or-parquet
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - python3 src/converter.py ../inputs/transactions.csv  ../outputs/transactions.parquet parquet
+    InputSources:
+      - Source:
+          Type: "ipfs"
+          Params:
+            CID: "QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W"
+      - Target: "/inputs"
+```
+
+The job description should be saved in `.yaml` format, e.g. `convertcsv.yaml`, and then run with the command:
+```bash
+bacalhau job run convertcsv.yaml
 ```
 
 ## Checking the State of your Jobs
