@@ -28,7 +28,8 @@ func NewLabelsNodeRanker() *LabelsNodeRanker {
 // - Rank 10: Selectors match node labels.
 // - Rank -1: Selectors don't match node labels.
 // - Rank 0: Job selectors are not set.
-func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration,
+	nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	mustSelector := labels.NewSelector()
 	favourSelector := labels.NewSelector()

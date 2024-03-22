@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -41,6 +42,7 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 	}
 }
 
+//nolint:funlen // It's only long because I wrote plenty of good comments
 func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
@@ -219,7 +221,13 @@ func (b *BatchServiceJobScheduler) handleRetry(ctx context.Context, plan *models
 	// Schedule a new evaluation
 	plan.DeferEvaluation(waitUntil)
 	// Record deferral
-	b.jobStore.RecordJobDeferral(ctx, job.ID, waitUntil, fmt.Sprintf("Deferring rescheduling for %s", delay))
+	err := b.jobStore.RecordJobDeferral(ctx, job.ID, waitUntil, fmt.Sprintf("Deferring rescheduling for %s", delay))
+	// No need to pass the error up and fail the overall operation due to an
+	// inability to record the deferral, but this is cause for concern so should
+	// be logged as a (non-fatal) error
+	if err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).Msg("Could not record job deferral in the job history")
+	}
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {

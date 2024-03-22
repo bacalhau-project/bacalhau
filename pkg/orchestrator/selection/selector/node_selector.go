@@ -44,7 +44,8 @@ func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job, ret
 	nodeInfos := generic.Map(filteredNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
 	return nodeInfos, nil
 }
-func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, retryDelay time.Duration, desiredCount int) ([]models.NodeInfo, error) {
+func (n NodeSelector) TopMatchingNodes(ctx context.Context,
+	job *models.Job, retryDelay time.Duration, desiredCount int) ([]models.NodeInfo, error) {
 	possibleNodes, _, err := n.rankAndFilterNodes(ctx, job, retryDelay)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,8 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, ret
 	return selectedInfos, nil
 }
 
-func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job, retryDelay time.Duration) (selected, rejected []orchestrator.NodeRank, err error) {
+func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job,
+	retryDelay time.Duration) (selected, rejected []orchestrator.NodeRank, err error) {
 	listed, err := n.nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
 		return nil, nil, err

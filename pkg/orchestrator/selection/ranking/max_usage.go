@@ -23,7 +23,8 @@ func NewMaxUsageNodeRanker() *MaxUsageNodeRanker {
 // - Rank 10: Node is accepting MaxJobRequirements that are equal or higher than the job requirements.
 // - Rank -1: Node is accepting MaxJobRequirements that are lower than the job requirements.
 // - Rank 0: Node MaxJobRequirements are not set, or the node was discovered not through nodeInfoPublisher (e.g. identity protocol)
-func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, _ time.Duration,
+	nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	jobResourceUsage, err := job.Task().ResourcesConfig.ToResources()
 	if err != nil {

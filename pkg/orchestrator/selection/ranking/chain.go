@@ -23,7 +23,8 @@ func (c *Chain) Add(ranker ...orchestrator.NodeRanker) {
 	c.rankers = append(c.rankers, ranker...)
 }
 
-func (c *Chain) RankNodes(ctx context.Context, job models.Job, retryDelay time.Duration, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (c *Chain) RankNodes(ctx context.Context, job models.Job, retryDelay time.Duration,
+	nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	// initialize map of node ranks
 	ranksMap := make(map[string]*orchestrator.NodeRank, len(nodes))
 	for _, node := range nodes {
