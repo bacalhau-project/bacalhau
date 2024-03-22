@@ -14,7 +14,7 @@ import (
 )
 
 var defaultColumnGroups = []string{"labels", "capacity"}
-var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu"}
+var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu", "status"}
 
 // ListOptions is a struct to support node command
 type ListOptions struct {
