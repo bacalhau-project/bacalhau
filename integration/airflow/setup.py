@@ -13,7 +13,7 @@ pypi_version = os.getenv("PYPI_VERSION", "0.0.0")
 
 requirements = [
     "bacalhau_sdk",
-    "apache-airflow>=2.3.0",
+    "apache-airflow>=2.8.3",
 ]
 
 test_requirements = []
