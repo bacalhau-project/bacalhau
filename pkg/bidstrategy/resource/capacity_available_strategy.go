@@ -42,7 +42,7 @@ func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	return bidstrategy.BidStrategyResponse{
 		ShouldBid:  false,
 		ShouldWait: false,
-		Reason:     fmt.Sprintf("insuffucuent capacity - requested: %s, available: %s", usage.String(), totalCapacity.String()),
+		Reason:     fmt.Sprintf("insufficient capacity - requested: %s, available: %s", usage.String(), totalCapacity.String()),
 	}, nil
 }
 
