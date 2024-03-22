@@ -194,13 +194,10 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-`bacalhau docker run`: call to bacalhau
-
-`--input https://github.com/js-ts/Coreset/blob/master/monaco-latest.geojson`: mount the `monaco-latest.geojson` file inside the container so it can be used by the script
-
-`jsace/coreset`:  the name of the docker image we are using
-
-`python Coreset/python/coreset.py -f monaco-latest.geojson -o outputs`: the script initializes cluster centers, creates a coreset using these centers, and saves the results to the specified folder.
+1. `bacalhau docker run`: call to bacalhau
+1. `--input https://github.com/js-ts/Coreset/blob/master/monaco-latest.geojson`: mount the `monaco-latest.geojson` file inside the container so it can be used by the script
+1. `jsace/coreset`:  the name of the docker image we are using
+1. `python Coreset/python/coreset.py -f monaco-latest.geojson -o outputs`: the script initializes cluster centers, creates a coreset using these centers, and saves the results to the specified folder.
 
 
 **Additional parameters:**  
@@ -218,6 +215,40 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 %env JOB_ID={job_id}
 ```
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Coresets On Bacalhau
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: "jsace/coreset" 
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - "osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson;
+python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o outputs"
+    InputSources:
+      - Target: "/input"
+        Source:
+          Type: "s3"
+          Params:
+            Bucket: "coreset"
+            Key: "*"
+            Region: "us-east-1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `coreset.yaml`, and then run with the command:
+```bash
+bacalhau job run coreset.yaml
+```
 
 ## Checking the State of your Jobs
 
