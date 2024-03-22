@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -21,12 +22,20 @@ func NewMaxCapacityStrategy(params MaxCapacityStrategyParams) *MaxCapacityStrate
 	}
 }
 
-const resourceReason = "run jobs that require this many resources (%s requested but only %s is allowed)"
-
 func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
-	// skip bidding if we don't have enough capacity available
-	return bidstrategy.NewBidResponse(usage.LessThanEq(s.maxJobRequirements), resourceReason, usage, s.maxJobRequirements), nil
+	if usage.LessThanEq(s.maxJobRequirements) {
+		return bidstrategy.BidStrategyResponse{
+			ShouldBid:  true,
+			ShouldWait: false,
+			Reason:     "",
+		}, nil
+	}
+	return bidstrategy.BidStrategyResponse{
+		ShouldBid:  false,
+		ShouldWait: false,
+		Reason:     fmt.Sprintf("insufficent resources - requested: %s, avaliable: %s", usage.String(), s.maxJobRequirements.String()),
+	}, nil
 }
 
 // compile-time interface check

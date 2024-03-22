@@ -10,12 +10,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -54,8 +55,8 @@ func (s *BidderSuite) SetupTest() {
 	s.mockExecutor = compute.NewMockExecutor(s.ctrl)
 	s.bidder = compute.NewBidder(compute.BidderParams{
 		NodeID:           "testNodeID",
-		SemanticStrategy: s.mockSemanticStrategy,
-		ResourceStrategy: s.mockResourceStrategy,
+		SemanticStrategy: []bidstrategy.SemanticBidStrategy{s.mockSemanticStrategy},
+		ResourceStrategy: []bidstrategy.ResourceBidStrategy{s.mockResourceStrategy},
 		Store:            s.mockExecutionStore,
 		Callback:         s.mockCallback,
 		Executor:         s.mockExecutor,
