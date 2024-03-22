@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slices"
@@ -101,9 +102,15 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 		return err
 	}
 
-	// filter nodes
+	args.FilterByStatus = strings.ToUpper(args.FilterByStatus)
+
+	// filter nodes, first by status, then by label selectors
 	res := make([]*models.NodeInfo, 0)
 	for i, node := range allNodes {
+		if args.FilterByStatus != "" && args.FilterByStatus != node.Approval.String() {
+			continue
+		}
+
 		if selector.Matches(labels.Set(node.Labels)) {
 			res = append(res, &allNodes[i])
 		}
