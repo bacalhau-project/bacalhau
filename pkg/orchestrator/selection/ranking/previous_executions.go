@@ -58,7 +58,7 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 		if _, ok := previousExecutors[node.ID()]; ok {
 			if _, filterOut := toFilterOut[node.ID()]; filterOut {
 				rank = orchestrator.RankUnsuitable
-				reason = "job still running, rejected within retry interval, on this node"
+				reason = "job still running, or rejected within retry interval, on this node"
 			} else {
 				// This will include cases where the execution was
 				// ExecutionStateAskForBidRejected; this might be a transient error

@@ -10,6 +10,7 @@ const (
 	jobHistoryTypeUndefined JobHistoryType = iota
 	JobHistoryTypeJobLevel
 	JobHistoryTypeExecutionLevel
+	JobHistoryTypeJobSchedulingDeferral
 )
 
 func (s JobHistoryType) MarshalText() ([]byte, error) {
@@ -33,19 +34,25 @@ type StateChange[StateType any] struct {
 	New      StateType `json:"New,omitempty"`
 }
 
+// Deferral represents a deferral of scheduling for the job, due to a backoff/retry cycle
+type SchedulingDeferral struct {
+	DeferredUntil time.Time `json:"Time"`
+}
+
 // JobHistory represents a single event in the history of a job. An event can be
 // at the job level, or execution (node) level.
 //
 // {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
-	Type             JobHistoryType                   `json:"Type"`
-	JobID            string                           `json:"JobID"`
-	NodeID           string                           `json:"NodeID,omitempty"`
-	ComputeReference string                           `json:"ComputeReference,omitempty"`
-	JobState         *StateChange[JobStateType]       `json:"JobState,omitempty"`
-	ExecutionState   *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
-	NewVersion       int                              `json:"NewVersion"`
-	Comment          string                           `json:"Comment,omitempty"`
-	Time             time.Time                        `json:"Time"`
+	Type               JobHistoryType                   `json:"Type"`
+	JobID              string                           `json:"JobID"`
+	NodeID             string                           `json:"NodeID,omitempty"`
+	ComputeReference   string                           `json:"ComputeReference,omitempty"`
+	JobState           *StateChange[JobStateType]       `json:"JobState,omitempty"`
+	ExecutionState     *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
+	SchedulingDeferral *SchedulingDeferral              `json:"SchedulingDeferral,omitempty"`
+	NewVersion         int                              `json:"NewVersion"`
+	Comment            string                           `json:"Comment,omitempty"`
+	Time               time.Time                        `json:"Time"`
 }
