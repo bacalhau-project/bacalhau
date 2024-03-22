@@ -55,9 +55,9 @@ type ManagementEndpoint interface {
 	UpdateResources(context.Context, requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error)
 }
 
-///////////////////////////////////
+// /////////////////////////////////
 // Endpoint request/response models
-///////////////////////////////////
+// /////////////////////////////////
 
 type RoutingMetadata struct {
 	SourcePeerID string
@@ -133,16 +133,18 @@ type ExecutionLogsResponse struct {
 	ExecutionFinished bool
 }
 
-///////////////////////////////////
+// /////////////////////////////////
 // Callback result models
-///////////////////////////////////
+// /////////////////////////////////
 
 // BidResult is the result of the compute node bidding on a job that is returned
 // to the caller through a Callback.
 type BidResult struct {
+	// TODO remove routing metadata and execution metadata
 	RoutingMetadata
 	ExecutionMetadata
 	Accepted bool
+	Wait     bool
 	Reason   string
 }
 

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -18,9 +19,7 @@ type AvailableCapacityStrategy struct {
 	enqueuedCapacityTracker capacity.Tracker
 }
 
-const capacityReason = "have capacity to run the job (%s requested but only %s is available)"
-
-func NewAvailableCapacityStrategy(ctx context.Context, params AvailableCapacityStrategyParams) *AvailableCapacityStrategy {
+func NewAvailableCapacityStrategy(params AvailableCapacityStrategyParams) *AvailableCapacityStrategy {
 	s := &AvailableCapacityStrategy{
 		runningCapacityTracker:  params.RunningCapacityTracker,
 		enqueuedCapacityTracker: params.EnqueuedCapacityTracker,
@@ -30,11 +29,21 @@ func NewAvailableCapacityStrategy(ctx context.Context, params AvailableCapacityS
 
 func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
-	// skip bidding if we don't have enough capacity available
 	runningCapacity := s.runningCapacityTracker.GetAvailableCapacity(ctx)
 	enqueuedCapacity := s.enqueuedCapacityTracker.GetAvailableCapacity(ctx)
 	totalCapacity := runningCapacity.Add(enqueuedCapacity)
-	return bidstrategy.NewBidResponse(usage.LessThanEq(*totalCapacity), capacityReason, totalCapacity, usage), nil
+	if usage.LessThanEq(*totalCapacity) {
+		return bidstrategy.BidStrategyResponse{
+			ShouldBid:  true,
+			ShouldWait: false,
+			Reason:     "",
+		}, nil
+	}
+	return bidstrategy.BidStrategyResponse{
+		ShouldBid:  false,
+		ShouldWait: false,
+		Reason:     fmt.Sprintf("insufficent capacity - requested: %s, avaliable: %s", usage.String(), totalCapacity.String()),
+	}, nil
 }
 
 // compile-time interface check

@@ -4,20 +4,22 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"reflect"
+	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
 type BidderParams struct {
 	NodeID           string
-	SemanticStrategy bidstrategy.SemanticBidStrategy
-	ResourceStrategy bidstrategy.ResourceBidStrategy
+	SemanticStrategy []bidstrategy.SemanticBidStrategy
+	ResourceStrategy []bidstrategy.ResourceBidStrategy
 	Store            store.ExecutionStore
 	Executor         Executor
 	Callback         Callback
@@ -31,8 +33,8 @@ type Bidder struct {
 	callback      Callback
 	getApproveURL func() *url.URL
 
-	semanticStrategy bidstrategy.SemanticBidStrategy
-	resourceStrategy bidstrategy.ResourceBidStrategy
+	semanticStrategy []bidstrategy.SemanticBidStrategy
+	resourceStrategy []bidstrategy.ResourceBidStrategy
 }
 
 func NewBidder(params BidderParams) Bidder {
@@ -48,7 +50,7 @@ func NewBidder(params BidderParams) Bidder {
 }
 
 // TODO: evaluate the need for async bidding and marking bids as waiting
-func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageCalc capacity.UsageCalculator) {
+func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, resources *models.Resources) (*BidResult, error) {
 	var (
 		// ask the bidding strategy if we should bid on this job
 		bidStrategyRequest = bidstrategy.BidStrategyRequest{
@@ -56,99 +58,30 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 			Job:      *request.Execution.Job,
 			Callback: b.getApproveURL(),
 		}
+	)
 
-		routingMetadata = RoutingMetadata{
+	// run bidding
+	response, err := b.doBidding(ctx, bidStrategyRequest, resources)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("running bid strategy")
+		return nil, fmt.Errorf("running bid strategy: %w", err)
+	}
+
+	return &BidResult{
+		RoutingMetadata: RoutingMetadata{
 			// the source of this response is the bidders nodeID.
 			SourcePeerID: b.nodeID,
 			// the target of this response is the source of the request.
 			TargetPeerID: request.SourcePeerID,
-		}
-		executionMetadata = NewExecutionMetadata(request.Execution)
-	)
-
-	response, resourceUsage, err := b.doBidding(ctx, bidStrategyRequest, usageCalc)
-
-	// update the execution with the calculated resource usage
-	request.Execution.AllocateResources(request.Execution.Job.Task().Name, resourceUsage)
-
-	if err != nil {
-		b.callback.OnComputeFailure(ctx, ComputeError{
-			RoutingMetadata:   routingMetadata,
-			ExecutionMetadata: executionMetadata,
-			Err:               err.Error(),
-		})
-
-		log.Ctx(ctx).Error().Err(err).Msg("Error running bid strategy")
-		return
-	}
-
-	// if the request is pre-approved, we should run the execution immediately if the bid is accepted
-	if !request.WaitForApproval {
-		if !response.ShouldBid || response.ShouldWait {
-			b.callback.OnComputeFailure(ctx, ComputeError{
-				RoutingMetadata:   routingMetadata,
-				ExecutionMetadata: executionMetadata,
-				Err:               fmt.Sprintf("Job rejected: %s", response.Reason),
-			})
-		} else {
-			execution := store.NewLocalExecutionState(request.Execution, request.SourcePeerID)
-			execution.State = store.ExecutionStateBidAccepted
-			if err := b.store.CreateExecution(ctx, *execution); err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
-				return
-			}
-			err := b.executor.Run(ctx, *execution)
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg("Unable to run execution")
-				return
-			}
-		}
-		return
-	}
-
-	bidResult := BidResult{
-		RoutingMetadata:   routingMetadata,
-		ExecutionMetadata: executionMetadata,
-		Accepted:          response.ShouldBid,
-		Reason:            response.Reason,
-	}
-
-	// if we are bidding or waiting create an execution
-	if response.ShouldWait || response.ShouldBid {
-		execution := store.NewLocalExecutionState(request.Execution, request.SourcePeerID)
-		if err := b.store.CreateExecution(ctx, *execution); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
-			return
-		}
-	}
-
-	// if we are not bidding and not wait return a response, we can't do this job. mark as complete then bail
-	if !response.ShouldBid && !response.ShouldWait {
-		b.callback.OnBidComplete(ctx, bidResult)
-		return
-	}
-
-	// were not waiting return a response.
-	if !response.ShouldWait {
-		b.callback.OnBidComplete(ctx, bidResult)
-	}
-}
-
-func (b Bidder) ReturnBidResult(
-	ctx context.Context, localExecutionState store.LocalExecutionState, response *bidstrategy.BidStrategyResponse) {
-	if response.ShouldWait {
-		return
-	}
-	result := BidResult{
-		RoutingMetadata: RoutingMetadata{
-			SourcePeerID: b.nodeID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
 		},
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
-		Accepted:          response.ShouldBid,
-		Reason:            response.Reason,
-	}
-	b.callback.OnBidComplete(ctx, result)
+		ExecutionMetadata: ExecutionMetadata{
+			ExecutionID: request.Execution.ID,
+			JobID:       request.Execution.JobID,
+		},
+		Accepted: response.ShouldBid,
+		Wait:     response.ShouldWait,
+		Reason:   response.Reason,
+	}, nil
 }
 
 // doBidding returns a response based on the below semantics. It should never be the case that semantic or resource
@@ -166,36 +99,139 @@ func (b Bidder) ReturnBidResult(
 func (b Bidder) doBidding(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	calculator capacity.UsageCalculator,
-) (*bidstrategy.BidStrategyResponse, models.Resources, error) {
+	resourceUsage *models.Resources) (*bidstrategy.BidStrategyResponse, error) {
 	// Check semantic bidding strategies before calculating resource usage.
-	semanticResponse, err := b.semanticStrategy.ShouldBid(ctx, request)
+	semanticResponse, err := runSemanticBidding(ctx, request, b.semanticStrategy...)
 	if err != nil {
-		return nil, models.Resources{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+		return nil, fmt.Errorf("semantic bidding: %w", err)
 	}
 
 	// we shouldn't bid, and we're not waiting, bail.
 	if !semanticResponse.ShouldBid && !semanticResponse.ShouldWait {
-		return &semanticResponse, models.Resources{}, nil
+		return semanticResponse, nil
 	}
 
-	// the request is semantically biddable or waiting, calculate resource usage and check resource-based bidding.
-	parsedUsage, err := request.Job.Task().ResourcesConfig.ToResources()
+	// else the request is semantically biddable or waiting, calculate resource usage and check resource-based bidding.
+	resourceResponse, err := runResourceBidding(ctx, request, resourceUsage, b.resourceStrategy...)
 	if err != nil {
-		return nil, models.Resources{}, fmt.Errorf("error parsing resources config: %w", err)
-	}
-	resourceUsage, err := calculator.Calculate(ctx, request.Job, *parsedUsage)
-	if err != nil {
-		return nil, models.Resources{}, fmt.Errorf("error calculating resource requirements for job: %w", err)
-	}
-	resourceResponse, err := b.resourceStrategy.ShouldBidBasedOnUsage(ctx, request, *resourceUsage)
-	if err != nil {
-		return nil, models.Resources{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+		return nil, fmt.Errorf("resource bidding: %w", err)
 	}
 
 	return &bidstrategy.BidStrategyResponse{
 		ShouldBid:  resourceResponse.ShouldBid,
 		ShouldWait: semanticResponse.ShouldWait || resourceResponse.ShouldWait,
 		Reason:     resourceResponse.Reason,
-	}, *resourceUsage, nil
+	}, nil
+}
+
+func runSemanticBidding(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	strategies ...bidstrategy.SemanticBidStrategy,
+) (*bidstrategy.BidStrategyResponse, error) {
+	// assume we are bidding unless a request is rejected
+	shouldBid := true
+	// assume we're not waiting to bid unless a request indicates so.
+	shouldWait := false
+	reasons := make([]string, 0, len(strategies))
+	for _, s := range strategies {
+		// TODO(forrest): this can be parallelized with a wait group, although semantic checks ought to be quick.
+		strategyType := reflect.TypeOf(s).String()
+		resp, err := s.ShouldBid(ctx, request)
+		if err != nil {
+			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
+			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, errors.Wrap(err, errMsg)
+		}
+		log.Ctx(ctx).Info().
+			Str("Job", request.Job.ID).
+			Str("strategy", strategyType).
+			Bool("bid", resp.ShouldBid).
+			Bool("wait", resp.ShouldWait).
+			Str("reason", resp.Reason).
+			Msgf("bit strategy response")
+
+		if resp.ShouldWait {
+			shouldWait = true
+			reasons = append(reasons, fmt.Sprintf("%s: waiting to bid: %s",
+				strategyType, resp.Reason))
+		} else if !resp.ShouldBid {
+			shouldBid = false
+			reasons = append(reasons, fmt.Sprintf("%s: rejected bid: %s",
+				strategyType, resp.Reason))
+		}
+	}
+
+	return &bidstrategy.BidStrategyResponse{
+		ShouldBid:  shouldBid,
+		ShouldWait: shouldWait,
+		Reason:     strings.Join(reasons, "; "),
+	}, nil
+}
+
+func runResourceBidding(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	resources *models.Resources,
+	strategies ...bidstrategy.ResourceBidStrategy,
+) (*bidstrategy.BidStrategyResponse, error) {
+	// assume we are bidding unless a request is rejected
+	shouldBid := true
+	// assume we're not waiting to bid unless a request indicates so.
+	shouldWait := false
+	reasons := make([]string, 0, len(strategies))
+	// TODO(forrest): this can be parallelized with a wait group, room for improvement here if resource validation
+	//  is time consuming.
+	for _, s := range strategies {
+		strategyType := reflect.TypeOf(s).String()
+		resp, err := s.ShouldBidBasedOnUsage(ctx, request, *resources)
+		if err != nil {
+			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
+			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, errors.Wrap(err, errMsg)
+		}
+		log.Ctx(ctx).Info().
+			Str("Job", request.Job.ID).
+			Str("strategy", strategyType).
+			Bool("bid", resp.ShouldBid).
+			Bool("wait", resp.ShouldWait).
+			Str("reason", resp.Reason).
+			Msgf("bit strategy response")
+
+		if resp.ShouldWait {
+			shouldWait = true
+			reasons = append(reasons, fmt.Sprintf("%s: waiting to bid: %s",
+				strategyType, resp.Reason))
+		} else if !resp.ShouldBid {
+			shouldBid = false
+			reasons = append(reasons, fmt.Sprintf("%s: rejected bid: %s",
+				strategyType, resp.Reason))
+		}
+	}
+
+	return &bidstrategy.BidStrategyResponse{
+		ShouldBid:  shouldBid,
+		ShouldWait: shouldWait,
+		Reason:     strings.Join(reasons, ";"),
+	}, nil
+
+}
+
+func (b Bidder) ReturnBidResult(
+	ctx context.Context, localExecutionState store.LocalExecutionState, response *bidstrategy.BidStrategyResponse) {
+	if response.ShouldWait {
+		return
+	}
+	result := BidResult{
+		RoutingMetadata: RoutingMetadata{
+			SourcePeerID: b.nodeID,
+			TargetPeerID: localExecutionState.RequesterNodeID,
+		},
+		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
+		Accepted:          response.ShouldBid,
+		Reason:            response.Reason,
+	}
+	b.callback.OnBidComplete(ctx, result)
 }
