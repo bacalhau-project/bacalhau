@@ -120,6 +120,38 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 %env JOB_ID={job_id}
 ```
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Run CUDA programs
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: nvidia/cuda:12.2.2-devel-ubuntu22.04
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello
+    InputSources:
+    - Target: /inputs
+      Source:
+        Type: urlDownload
+        Params:
+          URL: https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu
+```
+
+The job description should be saved in `.yaml` format, e.g. `cuda.yaml`, and then run with the command:
+```bash
+bacalhau job run cuda.yaml
+```
+
 ## 3. Checking the State of your Jobs
 
 **Job status**: You can check the status of the job using `bacalhau list`.
