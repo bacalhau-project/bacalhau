@@ -190,9 +190,9 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 // reason for the approval (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
 func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string) (bool, string) {
-	info, err := n.nodeInfo.Get(ctx, nodeID)
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
-		return false, "node not found"
+		return false, err.Error()
 	}
 
 	if info.Approval == models.NodeApprovals.APPROVED {
@@ -213,9 +213,9 @@ func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string)
 // reason for the rejection (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
 func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) (bool, string) {
-	info, err := n.nodeInfo.Get(ctx, nodeID)
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
-		return false, "node not found"
+		return false, err.Error()
 	}
 
 	if info.Approval == models.NodeApprovals.REJECTED {
