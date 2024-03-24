@@ -78,6 +78,32 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
  `sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'`: The command executed inside the container 
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: A Simple Docker Job
+type: batch
+count: 3
+tasks:
+  - name: My main task
+    engine:
+      type: docker
+      params:
+        Image: ubuntu:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - echo Hello Bacalhau!
+```
+
+The job description should be saved in `.yaml` format, e.g. `hello.yaml`, and then run with the command:
+```bash
+bacalhau job run hello.yaml
+```
+
 Let's have a look at the command execution in the terminal:
 
 ```shell
