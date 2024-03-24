@@ -197,6 +197,32 @@ bacalhau docker run \
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: A Simple Docker Job
+type: batch
+count: 3
+tasks:
+  - name: My main task
+    engine:
+      type: docker
+      params:
+        Image: ghcr.io/bacalhau-project/examples/codsay:v1.0.0
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - codsay Look at all this data
+```
+
+The job description should be saved in `.yaml` format, e.g. `custom.yaml`, and then run with the command:
+```bash
+bacalhau job run custom.yaml
+```
+
 Download your job results directly by using `bacalhau get` command.
 
 
