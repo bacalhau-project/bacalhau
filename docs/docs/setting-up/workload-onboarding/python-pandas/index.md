@@ -108,7 +108,40 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %env JOB_ID={job_id}
 ```
+### Declarative job description
 
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Running Pandas
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        WorkingDirectory: "/files"
+        Image: amancevice/pandas
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - python read_csv.py
+    InputSources:
+      - Target: "/files"
+        Source:
+          Type: "s3"
+          Params:
+            Bucket: "bacallhau-python-pandas"
+            Key: "*"
+            Region: "us-east-1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `pandas.yaml`, and then run with the command:
+```bash
+bacalhau job run pandas.yaml
+```
 ## 4. Checking the State of your Jobs
 
 **Job status**: You can check the status of the job using `bacalhau list`.
