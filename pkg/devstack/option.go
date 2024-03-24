@@ -76,6 +76,7 @@ type DevStackConfig struct {
 	NodeInfoStoreTTL           time.Duration
 	TLS                        DevstackTLSSettings
 	NetworkType                string
+	AuthSecret                 string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -225,6 +226,12 @@ func WithExecutorPlugins(enabled bool) ConfigOption {
 func WithNetworkType(typ string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NetworkType = typ
+	}
+}
+
+func WithAuthSecret(secret string) ConfigOption {
+	return func(c *DevStackConfig) {
+		c.AuthSecret = secret
 	}
 }
 

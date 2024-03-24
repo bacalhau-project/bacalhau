@@ -40,12 +40,8 @@ var Local = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeLibp2p,
+			Type: models.NetworkTypeNATS,
 			Port: 4222,
-			Cluster: types.NetworkClusterConfig{
-				Name: "global",
-				Port: 6222,
-			},
 		},
 		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),

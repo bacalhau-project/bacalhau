@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog/log"
@@ -25,6 +26,12 @@ type ServerManager struct {
 // NewServerManager is a helper function to create a NATS server with a given options
 func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerManager, error) {
 	opts := params.Options
+
+	// If the port we want to use is already running (or the port is in use) then bail
+	if !network.IsPortOpen(opts.Port) {
+		return nil, fmt.Errorf("port %d is already in use", opts.Port)
+	}
+
 	ns, err := server.NewServer(opts)
 	if err != nil {
 		return nil, err

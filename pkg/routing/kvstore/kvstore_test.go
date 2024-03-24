@@ -9,6 +9,7 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server"
 	natsserver "github.com/nats-io/nats-server/v2/test"
+	"github.com/nats-io/nats.go"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -37,11 +38,12 @@ func (s *KVNodeInfoStoreSuite) SetupTest() {
 	opts.StoreDir = s.T().TempDir()
 
 	s.nats = natsserver.RunServer(opts)
-	serverAddress := s.nats.Addr().String()
+	natsClient, err := nats.Connect(s.nats.Addr().String())
+	s.Require().NoError(err)
 
 	s.store, _ = kvstore.NewNodeStore(context.Background(), kvstore.NodeStoreParams{
-		BucketName:     "test_nodes",
-		ConnectionInfo: serverAddress,
+		BucketName: "test_nodes",
+		Client:     natsClient,
 	})
 }
 

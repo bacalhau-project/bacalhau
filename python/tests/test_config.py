@@ -132,7 +132,6 @@ def test_sign_for_client():
     from bacalhau_apiclient.api import job_api
     from bacalhau_apiclient.models.deal import Deal
     from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
-    from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
     from bacalhau_apiclient.models.publisher_spec import PublisherSpec
     from bacalhau_apiclient.models.spec import Spec
     from bacalhau_apiclient.models.storage_spec import StorageSpec
@@ -157,7 +156,6 @@ def test_sign_for_client():
                 image="ubuntu",
                 entrypoint=["date"],
             ),
-            language=JobSpecLanguage(job_context=None),
             wasm=None,
             resources=None,
             timeout=1800,

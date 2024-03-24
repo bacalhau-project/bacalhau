@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
-	icore "github.com/ipfs/boxo/coreiface"
+	icore "github.com/ipfs/kubo/core/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
