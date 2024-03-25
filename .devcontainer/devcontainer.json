@@ -1,0 +1,27 @@
+{
+	"name": "Bacalhau",
+	"image": "docker.io/bacalhauproject/bacalhau-devcontainer:latest",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"nodeGypDependencies": true,
+			"version": "lts",
+			"nvmVersion": "latest"
+		},
+		"ghcr.io/devcontainers-contrib/features/ruff:1": {
+			"version": "latest"
+		},
+		"ghcr.io/earthly/devcontainer-features/earthly:1": {
+			"bootstrap": true
+		},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"enabled": true,
+			"version": "latest"
+		}
+	},
+	"overrideCommand": false,
+	"postStartCommand": "/bin/bash -c . scripts/devcontainer-post-start-command.sh",
+	"userEnvProbe": "loginInteractiveShell",
+	"mounts": [
+		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+		]	
+}
