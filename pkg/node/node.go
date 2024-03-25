@@ -54,7 +54,7 @@ type NodeConfig struct {
 	RequesterAutoCertCache      string
 	RequesterTLSCertificateFile string
 	RequesterTLSKeyFile         string
-	RequesterSelfSigned         bool
+	RequesterSelfSign           bool
 	DisabledFeatures            FeatureConfig
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig

@@ -84,7 +84,7 @@ Using this option results in the API serving over HTTPS`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_KEY"},
 	},
 	{
-		FlagName:             "selfsigned",
+		FlagName:             "self-signed",
 		DefaultValue:         Default.Node.ServerAPI.TLS.SelfSigned,
 		ConfigPath:           types.NodeServerAPITLSSelfSigned,
 		Description:          `Specifies whether to auto-generate a self-signed certificate for the requester node`,

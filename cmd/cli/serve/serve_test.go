@@ -4,7 +4,6 @@ package serve_test
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -134,7 +133,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/livez", port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -147,12 +146,8 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
-	client := &http.Client{}
-	client.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
@@ -167,7 +162,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 }
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
-	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/healthz", port))
+	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
 
 	var healthzJSON types.HealthInfo
@@ -178,11 +173,9 @@ func (s *ServeSuite) TestHealthcheck() {
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
 	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: https://0.0.0.0:%d/api/v1/compute/debug", port)
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
 
-	fmt.Println("ACTUAL:", actualUrl)
-	fmt.Println("EXPECTED:", expectedURL)
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
@@ -196,13 +189,11 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, err := s.serve("--node-type", "requester,compute")
 	s.Require().NoError(err)
-	// Create a v1 client for submitting jobs over TLS but not verifying the certificate
-	tlsSettings := client.LegacyTLSSupport{Insecure: true, UseTLS: true}
-	client := client.NewAPIClient(tlsSettings, "localhost", port)
+	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 
 	// Create a v2 client, that does not verify the certificate but does use TLS. This
 	// is only used to check the nodes are up.
-	clientV2 := clientv2.New(fmt.Sprintf("https://127.0.0.1:%d", port), clientv2.WithTLS(true), clientv2.WithInsecureTLS(true))
+	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
@@ -299,7 +290,9 @@ func (s *ServeSuite) TestGetPeers() {
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
 }
-func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
+
+// olgibbons add test later
+func (s *ServeSuite) TestAutoGenerateTLSCertificate() {
 	_, err := s.serve("--node-type", "requester", "--node-type", "compute")
 	s.Require().NoError(err, "Error starting server")
 }
@@ -309,7 +302,7 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
 	s.Require().NoError(err, "Error starting server")
 
-	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/", port))
+	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
 	_ = content
 
 	s.Require().NoError(err, "Error curling root endpoint")
