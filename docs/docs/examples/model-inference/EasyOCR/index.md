@@ -176,18 +176,18 @@ tasks:
           - -c
           - easyocr -l ch_sim  en -f ./inputs/chinese.jpg --detail=1 --gpu=True
     InputSources:
-    - Target: "/inputs/chinese.jpg"
-      Source:
-      Type: "urlDownload"
+    - Source:
+        Type: "urlDownload"
         Params:
           URL: "https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg"
-    - Target: "/root/.EasyOCR/model/zh_sim_g2.pth"
-      Source:
+      Target: "/inputs/chinese.jpg"
+    - Source:
         Type: "s3"
         Params:
           Bucket: "landsat-image-processing"
           Key: "*"
           Region: "us-east-1"
+      Target: "/root/.EasyOCR/model/zh_sim_g2.pth"
     Resources:
       GPU: "1"
 ```
