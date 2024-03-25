@@ -10,6 +10,7 @@ repos:
   - id: detect-private-key
     exclude: testdata/.*
   - id: check-yaml
+    exclude: testdata/.*
   - id: check-json
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.

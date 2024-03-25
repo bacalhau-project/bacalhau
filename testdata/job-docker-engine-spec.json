@@ -1,30 +1,32 @@
 {
-  "APIVersion": "v1beta1",
-  "Spec": {
-    "EngineSpec": {
-      "Type": "docker",
-      "Params": {
-        "Image": "ubuntu:latest",
-        "Entrypoint": ["/bin/bash", "-c", "echo 15"]
-      }
-    }
-  },
-  "Publisher": "ipfs",
-  "Resources": {
-    "CPU": "",
-    "GPU": "",
-    "Memory": "",
-    "Disk": ""
-  },
-  "Inputs": [
-  ],
-  "Outputs": [
+  "Name": "Job Docker Engine Spec",
+  "Type": "batch",
+  "Count": 1,
+  "Tasks": [
     {
-      "StorageSource": "ipfs",
-      "Name": "output_custom",
-      "CID": "",
-      "Path": "/output_custom"
+      "Name": "main",
+      "Engine": {
+        "Type": "docker",
+        "Params": {
+          "Image": "ubuntu:latest",
+          "Entrypoint": [
+            "/bin/bash"
+          ],
+          "Parameters": [
+            "-c",
+            "echo 15"
+          ]
+        }
+      },
+      "Publisher": {
+        "Type": "ipfs"
+      },
+      "ResultPaths": [
+        {
+          "Name": "output_custom",
+          "Path": "/output_custom"
+        }
+      ]
     }
-  ],
-  "Annotations": []
+  ]
 }

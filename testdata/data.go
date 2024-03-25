@@ -72,16 +72,16 @@ var noopJobYAML []byte
 var wasmJobYAML []byte
 
 var (
-	JsonJobNoop             *FixtureLegacy
+	JsonJobNoop             *Fixture
 	JsonJobCancel           *FixtureLegacy
-	JsonJobDockerEngineSpec *FixtureLegacy
-	JsonJobWasmEngineSpec   *FixtureLegacy
+	JsonJobDockerEngineSpec *Fixture
+	JsonJobWasmEngineSpec   *Fixture
 
-	YamlJobS3               *FixtureLegacy
-	YamlJobNoop             *FixtureLegacy
-	YamlJobNoopInvalid      *FixtureLegacy
-	YamlJobNoopUrl          *FixtureLegacy
-	YamlJobDockerEngineSpec *FixtureLegacy
+	YamlJobS3               *Fixture
+	YamlJobNoop             *Fixture
+	YamlJobNoopInvalid      *Fixture
+	YamlJobNoopUrl          *Fixture
+	YamlJobDockerEngineSpec *Fixture
 
 	IPVMTaskDocker     *FixtureLegacy
 	IPVMTaskWasm       *FixtureLegacy
@@ -97,24 +97,24 @@ var (
 )
 
 func init() {
-	JsonJobNoop = NewLegacySpecFixture(jobNoopJSON)
-	YamlJobNoop = NewLegacySpecFixture(jobNoopYAML)
-	YamlJobNoopInvalid = NewLegacySpecFixture(jobNoopYAMLInvalid)
+	JsonJobNoop = NewJobFixture("json noop job", jobNoopJSON, false)
+	YamlJobNoop = NewJobFixture("yaml noop job", jobNoopYAML, false)
+	YamlJobNoopInvalid = NewJobFixture("yaml invalid noop job", jobNoopYAMLInvalid, true)
 
 	JsonJobCancel = NewLegacySpecFixture(jobCancelJSON)
 
-	YamlJobS3 = NewLegacySpecFixture(jobS3YAML)
+	YamlJobS3 = NewJobFixture("yaml s3 job", jobS3YAML, false)
 
-	YamlJobNoopUrl = NewLegacySpecFixture(jobNoopURLYAML)
+	YamlJobNoopUrl = NewJobFixture("yaml noop url job", jobNoopURLYAML, false)
 
 	IPVMTaskDocker = NewLegacyIPVMFixture(dockerTaskJSON)
 	IPVMTaskWasm = NewLegacyIPVMFixture(wasmTaskJSON)
 	IPVMTaskWithConfig = NewLegacyIPVMFixture(taskWithConfigJSON)
 
-	JsonJobDockerEngineSpec = NewLegacySpecFixture(jobJsonDockerEngineSpec)
-	YamlJobDockerEngineSpec = NewLegacySpecFixture(jobYamlDockerEngineSpec)
+	JsonJobDockerEngineSpec = NewJobFixture("json docker job", jobJsonDockerEngineSpec, false)
+	YamlJobDockerEngineSpec = NewJobFixture("yaml docker job", jobYamlDockerEngineSpec, false)
 
-	JsonJobWasmEngineSpec = NewLegacySpecFixture(jobJsonWasmEngineSpec)
+	JsonJobWasmEngineSpec = NewJobFixture("json wasm docker job", jobJsonWasmEngineSpec, false)
 
 	DockerJobYAML = NewJobFixture("docker job", dockerJobYAML, false)
 	DockerOutputYAML = NewJobFixture("docker with output yaml", dockerOutputYAML, false)
@@ -134,6 +134,15 @@ type Fixture struct {
 
 func AllFixtures() []*Fixture {
 	return []*Fixture{
+		JsonJobNoop,
+		JsonJobDockerEngineSpec,
+		JsonJobWasmEngineSpec,
+		YamlJobS3,
+		YamlJobNoop,
+		YamlJobNoopInvalid,
+		YamlJobNoopUrl,
+		YamlJobDockerEngineSpec,
+
 		DockerJobYAML,
 		DockerOutputYAML,
 		DockerOutputJSON,

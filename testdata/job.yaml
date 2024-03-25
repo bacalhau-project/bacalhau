@@ -1,16 +1,19 @@
-APIVersion: v1beta1
-Spec:
-  Engine: docker
-  Publisher: ipfs
-  Docker:
-    Image: ubuntu:latest
-    Entrypoint:
-    - /bin/bash
-    - -c
-    - echo 15
-  Outputs:
-  - StorageSource: ipfs
-    Name: output_custom
-    Path: /output_custom
-  Deal:
-    Concurrency: 1
+Name: Job Docker Engine Spec
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: "ubuntu:latest"
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - echo 15
+    Publisher:
+      Type: "ipfs"
+    ResultPaths:
+      - Name: output_custom
+        Path: /output_custom

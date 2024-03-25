@@ -31,8 +31,9 @@ func TestCreateSuite(t *testing.T) {
 
 func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 	tests := []struct {
-		Name    string
-		Fixture *testdata.FixtureLegacy
+		Name          string
+		Fixture       *testdata.Fixture
+		FixtureLegacy *testdata.FixtureLegacy
 	}{
 		{
 			Name:    "noop json",
@@ -51,12 +52,12 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 			Fixture: testdata.YamlJobNoopUrl,
 		},
 		{
-			Name:    "docker task json",
-			Fixture: testdata.IPVMTaskDocker,
+			Name:          "docker task json",
+			FixtureLegacy: testdata.IPVMTaskDocker,
 		},
 		{
-			Name:    "task with config json",
-			Fixture: testdata.IPVMTaskWithConfig,
+			Name:          "task with config json",
+			FixtureLegacy: testdata.IPVMTaskWithConfig,
 		},
 		//"TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network")
 		/*

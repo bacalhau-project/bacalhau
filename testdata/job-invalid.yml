@@ -1,17 +1,20 @@
-# Missing API Version
-# APIVersion: v1beta1
-Spec:
-  Engine: docker
-  Publisher: ipfs
-  Docker:
-    Image: gromacs/gromacs
-    Entrypoint:
-    - /bin/bash
-    - -c
-    - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
-  Outputs:
-  - StorageSource: ipfs
-    Name: output_custom
-    Path: /output_custom
-  Deal:
-    Concurrency: 1
+Name: Job Docker Output Engine Spec
+# Missing Job Type
+# Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: gromacs/gromacs
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
+    Publisher:
+      Type: "ipfs"
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
