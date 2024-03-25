@@ -89,10 +89,17 @@ tasks:
         Parameters:
           - -c
           - "find /inputs -type f -exec cp {} /outputs/yolov5s.pt \\; ; python detect.py --weights /outputs/yolov5s.pt --source $(pwd)/data/images --project /outputs"
-    Source:
-      Type: urlDownload
-      Params:
-        URL: https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    InputSources:
+      - Source:
+          Type: "urlDownload"
+          Params:
+            URL: "https://github.com/ultralytics/yolov5/releases/download/v6.1/yolov5s.pt"
+        Target: "/inputs"
 ```
 
 ### Checking the State of your Jobs
