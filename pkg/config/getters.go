@@ -105,14 +105,10 @@ func ServerAutoCertDomain() string {
 	return viper.GetString(types.NodeServerAPITLSAutoCert)
 }
 
-func GetRequesterCertificateSettings() (cert, key string) {
-	cert = viper.GetString(types.NodeServerAPITLSServerCertificate)
-	key = viper.GetString(types.NodeServerAPITLSServerKey)
+func GetRequesterCertificateSettings() (string, string) {
+	cert := viper.GetString(types.NodeServerAPITLSServerCertificate)
+	key := viper.GetString(types.NodeServerAPITLSServerKey)
 	return cert, key
-}
-
-func GetRequesterSelgSigned() bool {
-	return viper.GetBool(types.NodeServerAPITLSSelfSigned)
 }
 
 func DevstackGetShouldPrintInfo() bool {
