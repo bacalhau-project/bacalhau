@@ -111,6 +111,10 @@ func GetRequesterCertificateSettings() (cert, key string) {
 	return cert, key
 }
 
+func GetRequesterSelgSigned() bool {
+	return viper.GetBool(types.NodeServerAPITLSSelfSigned)
+}
+
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }

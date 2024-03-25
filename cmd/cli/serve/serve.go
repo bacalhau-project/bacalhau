@@ -280,46 +280,11 @@ func serve(cmd *cobra.Command) error {
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
-
 		cert, key := config.GetRequesterCertificateSettings()
-		if cert != "" && key == "" {
-			return fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
+		nodeConfig.RequesterTLSCertificateFile, nodeConfig.RequesterTLSKeyFile, err = GetTLSCertificate(&nodeConfig, cert, key)
+		if err != nil {
+			return err
 		}
-		// invariant: if cert != "" then key != ""
-		// If the user has not specified a private key, use their client key
-		if nodeConfig.RequesterAutoCert == "" && key == "" {
-			key, err = config.Get[string](types.UserKeyPath)
-			if err != nil {
-				return err
-			}
-		}
-		// invariant: if RequesterAutoCert == "" then key != ""
-		// The user has not specified a certificate, generate a self-signed one
-		// It doesn't need to be persisted because the key material is stable
-		if nodeConfig.RequesterAutoCert == "" && len(cert) == 0 {
-			certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
-			if err != nil {
-				return errors.Wrap(err, "unable to create temporary server certificate")
-			}
-			defer closer.CloseWithLogOnError(certFile.Name(), certFile)
-
-			var ips []net.IP = nil
-			if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
-				ips = append(ips, ip)
-			}
-
-			if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
-				return err
-			} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
-				return errors.Wrap(err, "failed to generate server certificate")
-			} else if err = caCert.MarshalCertficate(certFile); err != nil {
-				return errors.Wrap(err, "failed to write server certificate")
-			}
-			cert = certFile.Name()
-		}
-		// invariant: if RquesterAutoCert == "" then cert != ""
-		nodeConfig.RequesterTLSCertificateFile = cert
-		nodeConfig.RequesterTLSKeyFile = key
 	}
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
@@ -589,4 +554,52 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	})
 
 	return addresses[0]
+}
+func GetTLSCertificate(nodeConfig *node.NodeConfig, cert string, key string) (string, string, error) {
+
+	if nodeConfig.RequesterAutoCert != "" {
+		return "", "", nil
+	}
+
+	if cert != "" && key != "" {
+		return cert, key, nil
+	}
+	if cert != "" && key == "" {
+		return "", "", fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
+	}
+	if cert == "" && key != "" {
+		return "", "", fmt.Errorf("invalid config: private key specified without corresponding TLS certificate")
+	}
+	if nodeConfig.RequesterSelfSigned {
+		var err error
+		// If the user has not specified a private key, use their client key
+		if key == "" {
+			key, err = config.Get[string](types.UserKeyPath)
+			if err != nil {
+				return "", "", err
+			}
+		}
+		certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
+		if err != nil {
+			return "", "", errors.Wrap(err, "unable to create temporary server certificate")
+		}
+		defer closer.CloseWithLogOnError(certFile.Name(), certFile)
+
+		var ips []net.IP = nil
+		if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
+			ips = append(ips, ip)
+		}
+
+		if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
+			return "", "", err
+		} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
+			return "", "", errors.Wrap(err, "failed to generate server certificate")
+		} else if err = caCert.MarshalCertficate(certFile); err != nil {
+			return "", "", errors.Wrap(err, "failed to write server certificate")
+		}
+		cert = certFile.Name()
+		return cert, key, nil
+	}
+
+	return "", "", nil
 }
