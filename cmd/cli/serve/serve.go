@@ -175,7 +175,6 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Printf("olgibbons debug: repoDir: %#v", repoDir)
 	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
 		return err
@@ -322,23 +321,19 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
 	}
-	//fmt.Printf("olgibbons debug: cert and key generated\n")
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
 	}
-	//fmt.Printf("olgibbons debug. New node created\n")
 	// Persist the node config after the node is created and its config is valid.
 	if err = persistConfigs(repoDir); err != nil {
 		return fmt.Errorf("error persisting configs: %w", err)
 	}
-	//fmt.Printf("olgibbons debug: config persisted\n")
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
 	}
-	//fmt.Printf("olgibbons debug: Node started\n")
 	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 	if err != nil {
 		return err
@@ -364,7 +359,6 @@ func serve(cmd *cobra.Command) error {
 			}
 		}()
 	}
-	//fmt.Printf("olgibbons debug: webui started\n")
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
@@ -391,13 +385,10 @@ func serve(cmd *cobra.Command) error {
 	} else {
 		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 	}
-	//fmt.Printf("olgibbons debug: run info written\n")
 	cm.RegisterCallback(func() error {
 		return os.Remove(ripath)
 	})
-	//fmt.Printf("olgibbons debug: registercallback called\n")
 	<-ctx.Done() // block until killed
-	//fmt.Printf("olgibbons debug: ctx done\n")
 	return nil
 }
 
