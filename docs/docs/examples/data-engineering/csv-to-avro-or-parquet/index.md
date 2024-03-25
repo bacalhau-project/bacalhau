@@ -355,12 +355,17 @@ tasks:
         Parameters:
           - -c
           - python3 src/converter.py ../inputs/transactions.csv  ../outputs/transactions.parquet parquet
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
     InputSources:
-      - Source:
+      - Target: "/inputs"
+        Source:
           Type: "ipfs"
           Params:
             CID: "QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W"
-      - Target: "/inputs"
 ```
 
 The job description should be saved in `.yaml` format, e.g. `convertcsv.yaml`, and then run with the command:
