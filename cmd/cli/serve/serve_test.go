@@ -38,7 +38,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-// olgibbons you changed this
 const maxServeTime = 10 * time.Second
 const maxTestTime = 10 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
@@ -78,7 +77,6 @@ func (s *ServeSuite) SetupTest() {
 	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
 	s.Require().NoError(err)
 	s.ipfsPort = node.APIPort
-	fmt.Printf("olgibbons debug: SetupTest() complete...\n")
 }
 
 func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
@@ -115,27 +113,17 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
-	fmt.Printf("olgibbons debug: ctx, errs: %#v, %#v\n", ctx, errs)
 	s.T().Cleanup(cancel)
-	fmt.Printf("olgibbons debug: Cleanup called...\n")
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
-		fmt.Println("=====================================================================================================")
-		fmt.Printf("olgibbons debug: err from cmd.ExecuteContextC(ctx): %#v\n", err)
-		fmt.Printf("olgibbons debug: cmd.ExecuteContext(ctx) called...\n")
-		fmt.Println("=====================================================================================================")
 		if returnError {
 			return err
 		}
 		s.NoError(err)
 		return nil
 	})
-	fmt.Printf("olgibbons debug: errs.Go(...) called\n")
 	t := time.NewTicker(250 * time.Millisecond)
-	//fmt.Printf("olgibbons debug: port: %d\n", port)
 	defer t.Stop()
-	//fmt.Printf("olgibbons debug: About to go to sleep...zzzz\n")
-	//olgibbons delete after testing: time.Sleep(10 * time.Minute)
 	for {
 		select {
 		case e := <-errCh:
@@ -148,7 +136,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		case <-t.C:
 			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
-				fmt.Printf("olgibbons debug: liveztext statuscode: %#v", statusCode)
 				return port, nil
 			}
 		}
@@ -167,10 +154,8 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		//fmt.Printf("olgibbons debug: err != nil: for http.DefaultClient.Do(req): err: %#v\n", err.Error())
 		return nil, http.StatusServiceUnavailable, err
 	}
-	//fmt.Printf("olgibbons debug: efaultClient.Do(req) called")
 	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
@@ -178,19 +163,8 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, resp.StatusCode, err
 
 	}
-	//fmt.Printf("olgibbons debug: responseText: %#v", resp.Body)
 	return responseText, resp.StatusCode, nil
 }
-func (s *ServeSuite) TestDeleteMeAfterTesting() {
-	port, err := s.serve("--node-type", "compute")
-	if err != nil {
-		fmt.Printf("olgibbons debug: err : %#v\n", err)
-	} else {
-		fmt.Printf("olgibbons no error\n")
-	}
-	fmt.Printf("olgibbons test completed: port: %d", port)
-}
-
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
 	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("https://127.0.0.1:%d/api/v1/healthz", port))
@@ -221,15 +195,9 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, err := s.serve("--node-type", "requester,compute")
-	if err != nil {
-		fmt.Printf("olgibbons debug: err != nil\n")
-	} else {
-		fmt.Printf("olgibbons debug: no error...\n")
-	}
-
+	s.Require().NoError(err)
 	// Create a v1 client for submitting jobs over TLS but not verifying the certificate
 	tlsSettings := client.LegacyTLSSupport{Insecure: true, UseTLS: true}
-	fmt.Printf("olgibbons debug: tlsSettings set\n")
 	client := client.NewAPIClient(tlsSettings, "localhost", port)
 
 	// Create a v2 client, that does not verify the certificate but does use TLS. This
@@ -331,10 +299,8 @@ func (s *ServeSuite) TestGetPeers() {
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
 }
-
 func (s *ServeSuite) TestAutoGenerateTLSCertifcate() {
-	port, err := s.serve("--node-type", "requester", "--node-type", "compute")
-	fmt.Printf("olgibbons debug: port: %#v", port)
+	_, err := s.serve("--node-type", "requester", "--node-type", "compute")
 	s.Require().NoError(err, "Error starting server")
 }
 
