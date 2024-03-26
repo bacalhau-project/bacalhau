@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
@@ -25,10 +26,12 @@ const (
 type NodeManager struct {
 	nodeInfo    routing.NodeInfoStore
 	resourceMap *concurrency.StripedMap[models.Resources]
+	heartbeats  *heartbeat.HeartbeatServer
 }
 
 type NodeManagerParams struct {
-	NodeInfo routing.NodeInfoStore
+	NodeInfo   routing.NodeInfoStore
+	Heartbeats *heartbeat.HeartbeatServer
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
@@ -37,7 +40,22 @@ func NewNodeManager(params NodeManagerParams) *NodeManager {
 	return &NodeManager{
 		resourceMap: concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
 		nodeInfo:    params.NodeInfo,
+		heartbeats:  params.Heartbeats,
 	}
+}
+
+func (n *NodeManager) Start(ctx context.Context) error {
+	log.Ctx(ctx).Info().Msg("Node manager started")
+
+	if n.heartbeats != nil {
+		err := n.heartbeats.Start(ctx)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to start heartbeat server")
+			return err
+		}
+	}
+
+	return nil
 }
 
 //

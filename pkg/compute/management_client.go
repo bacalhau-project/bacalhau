@@ -11,11 +11,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 )
 
 const (
 	infoUpdateFrequencyMinutes     = 5
 	resourceUpdateFrequencySeconds = 30
+	heartbeatFrequencySeconds      = 30
 )
 
 type ManagementClientParams struct {
@@ -23,8 +25,9 @@ type ManagementClientParams struct {
 	LabelsProvider       models.LabelsProvider
 	ManagementProxy      ManagementEndpoint
 	NodeInfoDecorator    models.NodeInfoDecorator
-	RegistrationFilePath string
 	ResourceTracker      capacity.Tracker
+	RegistrationFilePath string
+	HeartbeatClient      *heartbeat.HeartbeatClient
 }
 
 // ManagementClient is used to call management functions with
@@ -37,11 +40,12 @@ type ManagementClient struct {
 	managementProxy   ManagementEndpoint
 	nodeID            string
 	nodeInfoDecorator models.NodeInfoDecorator
-	registrationFile  *RegistrationFile
 	resourceTracker   capacity.Tracker
+	registrationFile  *RegistrationFile
+	heartbeatClient   *heartbeat.HeartbeatClient
 }
 
-func NewManagementClient(params ManagementClientParams) *ManagementClient {
+func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
 		closeChannel:      make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,
@@ -50,6 +54,7 @@ func NewManagementClient(params ManagementClientParams) *ManagementClient {
 		nodeInfoDecorator: params.NodeInfoDecorator,
 		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
 		resourceTracker:   params.ResourceTracker,
+		heartbeatClient:   params.HeartbeatClient,
 	}
 }
 
@@ -128,9 +133,22 @@ func (m *ManagementClient) updateResources(ctx context.Context) {
 	}
 }
 
+func (m *ManagementClient) heartbeat(ctx context.Context, seq uint64) {
+	if err := m.heartbeatClient.SendHeartbeat(ctx, seq); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("heartbeat failed sending sequence %d", seq)
+	}
+}
+
 func (m *ManagementClient) Start(ctx context.Context) {
 	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
 	resourceTicker := time.NewTicker(resourceUpdateFrequencySeconds * time.Second)
+
+	// The heartbeat ticker will fire twice as often as the configured, to ensure that
+	// we don't slip outside the window.  If we only ever sent on the configured
+	// frequency we are at risk of the node's liveness flapping between good and bad.
+	heartbeatTicker := time.NewTicker((heartbeatFrequencySeconds / 2) * time.Second)
+
+	var heartbeatSequence uint64 = 0
 
 	loop := true
 	for loop {
@@ -145,9 +163,14 @@ func (m *ManagementClient) Start(ctx context.Context) {
 		case <-resourceTicker.C:
 			// Send the latest resource info
 			m.updateResources(ctx)
+		case <-heartbeatTicker.C:
+			// Send a heartbeat to the requester node
+			heartbeatSequence += 1
+			m.heartbeat(ctx, heartbeatSequence)
 		}
 	}
 
+	heartbeatTicker.Stop()
 	resourceTicker.Stop()
 	infoTicker.Stop()
 }
