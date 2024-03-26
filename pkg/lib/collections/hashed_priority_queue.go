@@ -33,7 +33,7 @@ func (q *HashedPriorityQueue[K, T]) Contains(id K) bool {
 
 // Enqueue will add the item specified by `data` to the queue with the
 // the priority given by `priority`.
-func (q *HashedPriorityQueue[K, T]) Enqueue(data T, priority int) {
+func (q *HashedPriorityQueue[K, T]) Enqueue(data T, priority int64) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
