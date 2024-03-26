@@ -96,7 +96,7 @@ func (s *PriorityQueueSuite) TestDequeueWhere() {
 
 	s.Require().NotNil(qitem)
 	s.Require().Equal("B", qitem.Value)
-	s.Require().Equal(3, qitem.Priority)
+	s.Require().Equal(int64(3), qitem.Priority)
 	s.Require().Equal(count-1, pq.Len())
 
 }
