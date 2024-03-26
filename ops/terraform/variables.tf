@@ -34,10 +34,6 @@ variable "bacalhau_node_id_2" {
   type    = string
   default = ""
 }
-variable "bacalhau_node_type" {
-  type    = string
-  default = "requester,compute"
-}
 variable "bacalhau_connect_peer" {
   type    = string
   default = ""
