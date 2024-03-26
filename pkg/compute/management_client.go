@@ -35,7 +35,7 @@ type ManagementClientParams struct {
 // it will periodically send an update to the requester node with
 // the latest node info for this node.
 type ManagementClient struct {
-	closeChannel      chan struct{}
+	done              chan struct{}
 	labelsProvider    models.LabelsProvider
 	managementProxy   ManagementEndpoint
 	nodeID            string
@@ -47,7 +47,7 @@ type ManagementClient struct {
 
 func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		closeChannel:      make(chan struct{}, 1),
+		done:              make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
@@ -148,15 +148,20 @@ func (m *ManagementClient) Start(ctx context.Context) {
 	// frequency we are at risk of the node's liveness flapping between good and bad.
 	heartbeatTicker := time.NewTicker((heartbeatFrequencySeconds / 2) * time.Second)
 
+	defer func() {
+		heartbeatTicker.Stop()
+		resourceTicker.Stop()
+		infoTicker.Stop()
+	}()
+
 	var heartbeatSequence uint64 = 0
 
-	loop := true
-	for loop {
+	for {
 		select {
 		case <-ctx.Done():
-			loop = false
-		case <-m.closeChannel:
-			loop = false
+			return
+		case <-m.done:
+			return
 		case <-infoTicker.C:
 			// Send the latest node info to the requester node
 			m.deliverInfo(ctx)
@@ -169,14 +174,10 @@ func (m *ManagementClient) Start(ctx context.Context) {
 			m.heartbeat(ctx, heartbeatSequence)
 		}
 	}
-
-	heartbeatTicker.Stop()
-	resourceTicker.Stop()
-	infoTicker.Stop()
 }
 
 func (m *ManagementClient) Stop() {
-	if m.closeChannel != nil {
-		m.closeChannel <- struct{}{}
+	if m.done != nil {
+		m.done <- struct{}{}
 	}
 }
