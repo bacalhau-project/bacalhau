@@ -1,6 +1,11 @@
 package heartbeat
 
-const heartbeatTopic = "heartbeat"
+import "time"
+
+const (
+	heartbeatTopic               = "heartbeat"
+	heartbeatQueueCheckFrequency = 5 * time.Second
+)
 
 // Heartbeat represents a heartbeat message from a specific node.
 // It contains the node ID and the sequence number of the heartbeat

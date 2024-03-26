@@ -120,7 +120,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		execution.AllocateResources(execution.Job.Task().Name, *added)
 	}
 
-	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), execution.Job.Priority)
+	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), int64(execution.Job.Priority))
 	s.deque()
 	return err
 }
