@@ -5,7 +5,6 @@ import (
 
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/rs/zerolog/log"
 
 	"github.com/nats-io/nats.go"
 )
@@ -36,7 +35,6 @@ func (h *HeartbeatClient) Start(ctx context.Context) error {
 }
 
 func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) error {
-	log.Ctx(ctx).Trace().Msgf("sending heartbeat seq: %d", sequence)
 	return h.Publish(ctx, Heartbeat{NodeID: h.nodeID, Sequence: sequence})
 }
 

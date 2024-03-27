@@ -129,7 +129,7 @@ func (m *ManagementClient) updateResources(ctx context.Context) {
 		Resources: resources,
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to send resource update to requester node")
+		log.Ctx(ctx).Warn().Err(err).Msg("failed to send resource update to requester node")
 	}
 }
 
