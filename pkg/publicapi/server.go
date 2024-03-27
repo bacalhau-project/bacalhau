@@ -110,6 +110,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	middlewareLogger := log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))
 	// base middle after routing
 	server.Router.Use(
+		echomiddelware.CORS(),
 		echomiddelware.Recover(),
 		echomiddelware.RequestID(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
