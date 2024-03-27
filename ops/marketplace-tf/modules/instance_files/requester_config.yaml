@@ -1,9 +1,9 @@
 Auth:
-  AccessPolicyPath: "/etc/authz_policy.rego"
+  AccessPolicyPath: "/bacalhau_repo/authz_policy.rego"
   Methods:
     shared_secret:
       type: ask
-      policypath: "/etc/authn_policy.rego"
+      policypath: "/bacalhau_repo/authn_policy.rego"
 Node:
   Type:
     - requester
