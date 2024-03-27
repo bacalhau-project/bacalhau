@@ -83,6 +83,7 @@ locals {
     # add variables you'd like to inject into the config
     bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
     compute_api_token = var.token_config.compute_api_token
+    requester_ip = var.requester_static_ip
   })
 
   //
@@ -123,6 +124,9 @@ locals {
   bacalhau_authz_policy_content = templatefile("${path.module}/../../../instance_files/authz_policy.rego", {
     // add more arguments as needed
   })
+
+  tls_cert_content = var.tls_config.bacalhau_tls_crt
+  tls_key_content = var.tls_config.bacalhau_tls_sk
 }
 
 
@@ -143,6 +147,9 @@ data "cloudinit_config" "requester_cloud_init" {
       bacalhau_authz_policy_file  : base64encode(local.bacalhau_authz_policy_content)
       otel_config_file            : base64encode(local.otel_config_content)
       otel_service_file           : base64encode(local.otel_service_content)
+      tls_cert_file               : base64encode(local.tls_cert_content)
+      tls_key_file                : base64encode(local.tls_key_content)
+
     })
   }
 }

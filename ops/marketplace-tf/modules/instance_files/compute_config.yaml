@@ -3,7 +3,10 @@ Node:
     - compute
   ClientAPI:
     Host: ${requester_ip}
-    Port: 1234
+    Port: 443
+    ClientTLS:
+      UseTLS: true
+      CaCert: /bacalhau_repo/bacalhau_cert.crt
   BootstrapAddresses:
   Network:
     Type: nats

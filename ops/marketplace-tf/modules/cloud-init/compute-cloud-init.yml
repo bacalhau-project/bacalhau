@@ -18,6 +18,15 @@ write_files:
     content: |
       ${bacalhau_config_file}
 
+    # tls cert
+  - path: /bacalhau_repo/bacalhau_cert.crt
+    encoding: b64
+    owner: bacalhau:bacalhau
+    permissions: "0400"
+    defer: true
+    content: |
+      ${tls_cert_file}
+
   # Runs at every boot to ensure disks are mounted. Ensures on instance restarts disks are mounted.
   - path: /var/lib/cloud/scripts/per-boot/mount-bacalhau-disks.sh
     permissions: '0755'

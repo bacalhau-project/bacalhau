@@ -23,6 +23,11 @@ variable "token_config" {
   })
 }
 
+variable "bacalhau_tls_crt" {
+  description = "Certificate for TLS"
+  type = string
+}
+
 variable "gcp_config" {
   description = "Configuration specific to GCP including networking and boot image"
   type = object({
