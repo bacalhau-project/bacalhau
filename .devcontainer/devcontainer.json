@@ -1,6 +1,6 @@
 {
 	"name": "Bacalhau",
-	"image": "docker.io/bacalhauproject/bacalhau-devcontainer:v1.3.0@sha256:bd87929cfcead1abed94b783e719b4e8e0b3514de286e67d95dfe6799585a5a4",
+	"image": "docker.io/bacalhauproject/bacalhau-devcontainer:v1.3.0@sha256:543614217411ae2e94031e03230b1b598c76bd3aaa4b4bdb9a236f60fa3e4c42",
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {
 			"nodeGypDependencies": true,
