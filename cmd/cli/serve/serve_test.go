@@ -112,7 +112,10 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
-	s.T().Cleanup(cancel)
+	s.T().Cleanup(func() {
+		cancel()
+	})
+
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
 		if returnError {
@@ -121,7 +124,14 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		s.NoError(err)
 		return nil
 	})
-	t := time.NewTicker(250 * time.Millisecond)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- errs.Wait()
+	}()
+
+	t := time.NewTicker(50 * time.Millisecond)
+
 	defer t.Stop()
 	for {
 		select {
@@ -191,8 +201,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	s.Require().NoError(err)
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
 
-	// Create a v2 client, that does not verify the certificate but does use TLS. This
-	// is only used to check the nodes are up.
 	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
