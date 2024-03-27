@@ -245,6 +245,7 @@ func (e *BaseEndpoint) OnBidComplete(ctx context.Context, response compute.BidRe
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).WithMessage(response.Reason),
 		},
+		Comment: response.Reason,
 	}
 
 	if !response.Accepted {
@@ -339,6 +340,7 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(result.Error()),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution failed"),
 		},
+		Comment: result.Err,
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to update execution")

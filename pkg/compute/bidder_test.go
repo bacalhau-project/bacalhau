@@ -10,16 +10,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 )
 
 type BidderSuite struct {
@@ -54,11 +55,12 @@ func (s *BidderSuite) SetupTest() {
 	s.mockExecutor = compute.NewMockExecutor(s.ctrl)
 	s.bidder = compute.NewBidder(compute.BidderParams{
 		NodeID:           "testNodeID",
-		SemanticStrategy: s.mockSemanticStrategy,
-		ResourceStrategy: s.mockResourceStrategy,
+		SemanticStrategy: []bidstrategy.SemanticBidStrategy{s.mockSemanticStrategy},
+		ResourceStrategy: []bidstrategy.ResourceBidStrategy{s.mockResourceStrategy},
 		Store:            s.mockExecutionStore,
 		Callback:         s.mockCallback,
 		Executor:         s.mockExecutor,
+		UsageCalculator:  capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}}),
 		GetApproveURL: func() *url.URL {
 			return &url.URL{}
 		},
@@ -73,8 +75,6 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		Execution:       execution,
 		WaitForApproval: true,
 	}
-
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
@@ -154,7 +154,12 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		s.Run(tt.name, func() {
 			s.SetupTest()
 			tt.mockExpectations()
-			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
+			s.bidder.RunBidding(ctx, &compute.BidderRequest{
+				SourcePeerID:    askForBidRequest.SourcePeerID,
+				Execution:       askForBidRequest.Execution,
+				WaitForApproval: askForBidRequest.WaitForApproval,
+				ResourceUsage:   &models.Resources{},
+			})
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
@@ -172,8 +177,6 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 		Execution:       mock.ExecutionForJob(mock.Job()),
 		WaitForApproval: false,
 	}
-
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
@@ -253,7 +256,12 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 		s.Run(tt.name, func() {
 			s.SetupTest()
 			tt.mockExpectations()
-			s.bidder.RunBidding(ctx, askForBidRequest, usageCalculator)
+			s.bidder.RunBidding(ctx, &compute.BidderRequest{
+				SourcePeerID:    askForBidRequest.SourcePeerID,
+				Execution:       askForBidRequest.Execution,
+				WaitForApproval: askForBidRequest.WaitForApproval,
+				ResourceUsage:   &models.Resources{},
+			})
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
