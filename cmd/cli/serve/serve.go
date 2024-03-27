@@ -275,8 +275,6 @@ func serve(cmd *cobra.Command) error {
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
-	//olgibbons: for testing
-	nodeConfig.RequesterSelfSign = false
 	if isRequesterNode {
 		var cert string
 		var key string
@@ -288,7 +286,7 @@ func serve(cmd *cobra.Command) error {
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err = GetTLSCertificate(nodeConfig.RequesterSelfSign)
+			cert, key, err = GetTLSCertificate(&nodeConfig)
 			if err != nil {
 				return err
 			}
@@ -565,7 +563,7 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 
 	return addresses[0]
 }
-func GetTLSCertificate(nodeConfig node.NodeConfig) (string, string, error) {
+func GetTLSCertificate(nodeConfig *node.NodeConfig) (string, string, error) {
 	cert, key := config.GetRequesterCertificateSettings()
 	if cert != "" && key != "" {
 		return cert, key, nil
