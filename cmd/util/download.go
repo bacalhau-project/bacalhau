@@ -80,6 +80,7 @@ func DownloadResultsHandler(
 
 	return nil
 }
+
 func processDownloadSettings(settings *cliflags.DownloaderSettings, jobID string) (*cliflags.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)

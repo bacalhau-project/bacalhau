@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -133,25 +134,23 @@ func Setup(
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
 		// ////////////////////////////////////
-		// IPFS
+		// IPFS client
 		// ////////////////////////////////////
 
-		var ipfsSwarmAddresses []string
-		if i > 0 {
-			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
-			}
+		var ipfsClient *ipfs.Client
 
-			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-			// connecting/joining topics, when using multiple addresses for a single host.
-			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
-			ipfsSwarmAddresses = append(ipfsSwarmAddresses, addresses[0])
+		ipfsConfig, err := getIPFSConfig()
+		if err != nil {
+			return nil, err
 		}
 
-		ipfsNode, err := createIPFSNode(ctx, cm, stackConfig.PublicIPFSMode, ipfsSwarmAddresses)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		// If we have configured an IPFS node to connect to, then we can have a
+		// client. If not, then not.
+		if ipfsConfig.Connect != "" {
+			ipfsClient, err = ipfs.SetupIPFSClient(ctx, cm, ipfsConfig)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// ////////////////////////////////////
@@ -261,7 +260,7 @@ func Setup(
 
 		nodeConfig := node.NodeConfig{
 			NodeID:              nodeID,
-			IPFSClient:          ipfsNode.Client(),
+			IPFSClient:          ipfsClient,
 			CleanupManager:      cm,
 			HostAddress:         "127.0.0.1",
 			APIPort:             apiPort,
@@ -393,18 +392,6 @@ func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, port int) 
 	return libp2pHost, nil
 }
 
-func createIPFSNode(ctx context.Context,
-	cm *system.CleanupManager,
-	publicIPFSMode bool,
-	ipfsSwarmAddresses []string) (*ipfs.Node, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
-	defer span.End()
-	// ////////////////////////////////////
-	// IPFS
-	// ////////////////////////////////////
-	return ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{SwarmAddresses: ipfsSwarmAddresses, PrivateInternal: !publicIPFSMode})
-}
-
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
@@ -414,36 +401,24 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, c
 	logString := ""
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
-	devStackIPFSSwarmAddress := ""
 	var devstackPeerAddrs []string
 
 	requesterOnlyNodes := 0
 	computeOnlyNodes := 0
 	hybridNodes := 0
 	for nodeIndex, node := range stack.Nodes {
-		swarmAddrrs := ""
-		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
-		if err != nil {
-			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
-		} else {
-			swarmAddrrs = strings.Join(swarmAddresses, ",")
+		// Only show IPFS details if we have been given a client
+		if node.IPFSClient != nil {
+			logString += fmt.Sprintf(`
+export BACALHAU_IPFS_%d=%s`,
+				nodeIndex,
+				node.IPFSClient.APIAddress(),
+			)
 		}
 
-		peerConnect := fmt.Sprintf("/ip4/%s/tcp/%d/http", node.APIServer.Address, node.APIServer.Port)
-		devstackPeerAddrs = append(devstackPeerAddrs, peerConnect)
-
 		logString += fmt.Sprintf(`
-export BACALHAU_IPFS_%d=%s
-export BACALHAU_IPFS_SWARM_ADDRESSES_%d=%s
-export BACALHAU_PEER_CONNECT_%d=%s
 export BACALHAU_API_HOST_%d=%s
 export BACALHAU_API_PORT_%d=%d`,
-			nodeIndex,
-			node.IPFSClient.APIAddress(),
-			nodeIndex,
-			swarmAddrrs,
-			nodeIndex,
-			peerConnect,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
@@ -453,18 +428,9 @@ export BACALHAU_API_PORT_%d=%d`,
 		requesterOnlyNodes += boolToInt(node.IsRequesterNode() && !node.IsComputeNode())
 		computeOnlyNodes += boolToInt(node.IsComputeNode() && !node.IsRequesterNode())
 		hybridNodes += boolToInt(node.IsRequesterNode() && node.IsComputeNode())
-
-		// Just setting this to the last one, really doesn't matter
-		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(ctx)
-		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 	}
 
 	summaryBuilder := strings.Builder{}
-	summaryBuilder.WriteString(fmt.Sprintf(
-		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-		devStackIPFSSwarmAddress,
-	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
 		config.KeyAsEnvVar(types.NodeClientAPIHost),
@@ -491,17 +457,6 @@ export BACALHAU_API_PORT_%d=%d`,
 	cm.RegisterCallback(func() error {
 		return os.Remove(ripath)
 	})
-
-	if !stack.PublicIPFSMode {
-		summaryBuilder.WriteString(
-			"\nBy default devstack is not running on the public IPFS network.\n" +
-				"If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.\n" +
-				"You can also run a new IPFS daemon locally and connect it to Bacalhau using:\n\n",
-		)
-		summaryBuilder.WriteString(
-			fmt.Sprintf("ipfs swarm connect $%s", config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses)),
-		)
-	}
 
 	log.Ctx(ctx).Debug().Msg(logString)
 
@@ -533,8 +488,8 @@ func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
-func (stack *DevStack) IPFSClients() []ipfs.Client {
-	clients := make([]ipfs.Client, 0, len(stack.Nodes))
+func (stack *DevStack) IPFSClients() []*ipfs.Client {
+	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
 	for _, node := range stack.Nodes {
 		clients = append(clients, node.IPFSClient)
 	}
@@ -554,4 +509,19 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+func getIPFSConfig() (types.IpfsConfig, error) {
+	var ipfsConfig types.IpfsConfig
+	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
+		return types.IpfsConfig{}, err
+	}
+	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
+		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
+			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
+		)
+	}
+
+	return ipfsConfig, nil
 }

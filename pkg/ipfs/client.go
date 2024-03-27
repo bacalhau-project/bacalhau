@@ -39,10 +39,10 @@ type Client struct {
 
 // NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
 // NOTE: the API address is _not_ the same as the swarm address
-func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, error) {
+func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (*Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
 	}
 
 	// This http.Transport is the same that httpapi.NewApi would use if we weren't passing in our own http.Client
@@ -60,17 +60,17 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 		),
 	})
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 
-	client := Client{
+	client := &Client{
 		API:  api,
 		addr: apiAddr,
 	}
 
 	id, err := client.ID(ctx)
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 	log.Ctx(ctx).Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
 	return client, nil
@@ -78,8 +78,8 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 
 const MagicInternalIPFSAddress = "memory://in-memory-node/"
 
-func NewClient(api icore.CoreAPI) Client {
-	return Client{
+func NewClient(api icore.CoreAPI) *Client {
+	return &Client{
 		API:  api,
 		addr: MagicInternalIPFSAddress,
 	}

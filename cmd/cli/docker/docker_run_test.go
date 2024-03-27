@@ -11,7 +11,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -170,11 +169,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
 
-			swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-			s.Require().NoError(err)
-
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
 				"--output-dir", s.T().TempDir(),
 				"ubuntu",

@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Quick Start'
+sidebar_label: "Quick Start"
 sidebar_position: 100
 toc_max_heading_level: 4
 ---
@@ -12,12 +12,12 @@ This section will show you how to configure and run a Bacalhau node and start ac
 
 To bootstrap your node and join the network as a CP you can leap right into the [Ubuntu 22.04 quick start](#quick-start-ubuntu-2204) below, or find more setup details in these guides:
 
-* [Networking](https://docs.bacalhau.org/running-node/networking)
-* [Storage Providers](https://docs.bacalhau.org/running-node/storage-providers)
-* [Job Selection Policy](https://docs.bacalhau.org/running-node/job-selection)
-* [Resource Limits](https://docs.bacalhau.org/running-node/resource-limits)
-* [GPU Support](https://docs.bacalhau.org/running-node/gpu)
-* [Windows Support](https://docs.bacalhau.org/running-node/windows-support) (with limitations)
+- [Networking](https://docs.bacalhau.org/running-node/networking)
+- [Storage Providers](https://docs.bacalhau.org/running-node/storage-providers)
+- [Job Selection Policy](https://docs.bacalhau.org/running-node/job-selection)
+- [Resource Limits](https://docs.bacalhau.org/running-node/resource-limits)
+- [GPU Support](https://docs.bacalhau.org/running-node/gpu)
+- [Windows Support](https://docs.bacalhau.org/running-node/windows-support) (with limitations)
 
 :::info
 
@@ -33,10 +33,10 @@ Tested on: Ubuntu 22.04 LTS (x86/64) running on a GCP e2-standard-4 (4 vCPU, 16 
 
 ### Prerequisites
 
-* Docker Engine - to take on Docker workloads
-* Connection to storage provider - for storing job's results
-* Firewall - to ensure your node can communicate with the rest of the network
-* Physical hardware, Virtual Machine, or cloud-based host. A Bacalhau compute node is not intended to be run from within a Docker container.
+- Docker Engine - to take on Docker workloads
+- Connection to storage provider - for storing job's results
+- Firewall - to ensure your node can communicate with the rest of the network
+- Physical hardware, Virtual Machine, or cloud-based host. A Bacalhau compute node is not intended to be run from within a Docker container.
 
 #### Install Docker
 
@@ -44,10 +44,10 @@ To run docker-based workloads, you should have docker installed and running.
 
 If you already have it installed and want to configure the connection to Docker with the following environment variables:
 
-* `DOCKER_HOST` to set the URL to the docker server.
-* `DOCKER_API_VERSION` to set the version of the API to reach, leave empty for "latest".
-* `DOCKER_CERT_PATH` to load the TLS certificates from.
-* `DOCKER_TLS_VERIFY` to enable or disable TLS verification, off by default.
+- `DOCKER_HOST` to set the URL to the docker server.
+- `DOCKER_API_VERSION` to set the version of the API to reach, leave empty for "latest".
+- `DOCKER_CERT_PATH` to load the TLS certificates from.
+- `DOCKER_TLS_VERIFY` to enable or disable TLS verification, off by default.
 
 If you do not have Docker on your system, you can follow the official [docker installation instructions](https://docs.docker.com/engine/install/) or just use the snippet below:
 
@@ -198,7 +198,6 @@ LOG_LEVEL=debug BACALHAU_ENVIRONMENT=production \
   bacalhau serve \
     --node-type compute \
     --ipfs-connect $IPFS_CONNECT \
-    --private-internal-ipfs=false \
     --peer env
 ```
 
@@ -211,7 +210,6 @@ docker run -it --rm \
   ghcr.io/bacalhau-project/bacalhau:latest serve \
     --node-type compute \
     --ipfs-connect $IPFS_CONNECT \
-    --private-internal-ipfs=false \
     --peer env
 ```
 

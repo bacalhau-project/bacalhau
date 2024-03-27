@@ -11,13 +11,13 @@ import (
 )
 
 type DevStackIPFS struct {
-	IPFSClients    []ipfs.Client
+	IPFSClients    []*ipfs.Client
 	CleanupManager *system.CleanupManager
 }
 
 // NewDevStackIPFS creates a devstack but with only IPFS servers connected to each other
 func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
-	var clients []ipfs.Client
+	var clients []*ipfs.Client
 	for i := 0; i < count; i++ {
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d`, i)
 

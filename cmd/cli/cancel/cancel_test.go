@@ -47,7 +47,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 func (suite *CancelSuite) TestCancelJob() {
 	ctx := context.Background()
 
-	_, stdout, err := suite.ExecuteTestCobraCommandWithStdinBytes(testdata.JsonJobCancel.Data, "create", "--wait=false")
+	_, stdout, err := suite.ExecuteTestCobraCommand("docker", "run", "--wait=false", "ubuntu:latest", "/bin/sh", "--", "-c", "sleep 10")
 	require.NoError(suite.T(), err, "Error submitting job")
 
 	// Read the job ID from stdout of the create command and make sure

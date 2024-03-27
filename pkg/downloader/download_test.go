@@ -37,7 +37,7 @@ import (
 type DownloaderSuite struct {
 	*s3test.HelperSuite
 	cm               *system.CleanupManager
-	ipfsClient       ipfs.Client
+	ipfsClient       *ipfs.Client
 	downloadSettings *downloader.DownloaderSettings
 	downloadProvider downloader.DownloaderProvider
 	s3Signer         *s3helper.ResultSigner

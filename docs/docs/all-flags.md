@@ -454,14 +454,13 @@ Examples:
   BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
 
   # Start a public bacalhau requester node
-  bacalhau serve --peer env --private-internal-ipfs=false
+  bacalhau serve --peer env
 
 Flags:
       --filecoin-unsealed-path string                    The go template that can turn a filecoin CID into a local filepath with the unsealed data.
   -h, --help                                             help for serve
       --host string                                      The host to listen on (for both api and swarm connections). (default "0.0.0.0")
-      --ipfs-connect string                              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
-      --ipfs-swarm-addr strings                          IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.
+      --ipfs-connect string                              The ipfs host multiaddress to connect to.
       --job-execution-timeout-bypass-client-id strings   List of IDs of clients that are allowed to bypass the job execution timeout check
       --job-selection-accept-networked                   Accept jobs that require network access.
       --job-selection-data-locality string               Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")
@@ -481,7 +480,6 @@ Flags:
       --lotus-upload-directory string                    Directory to use when uploading content to Lotus Filecoin.
       --node-type strings                                Whether the node is a compute, requester or both. (default [requester])
       --peer string                                      A comma-separated list of libp2p multiaddress to connect to. Use "none" to avoid connecting to any peer, "env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var). (default "none")
-      --private-internal-ipfs                            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
       --swarm-port int                                   The port to listen on for swarm connections. (default 1235)
 
 Global Flags:

@@ -154,7 +154,7 @@ func (n *Node) LogDetails() {
 }
 
 // Client returns an API client for interacting with the node.
-func (n *Node) Client() Client {
+func (n *Node) Client() *Client {
 	return NewClient(n.api)
 }
 

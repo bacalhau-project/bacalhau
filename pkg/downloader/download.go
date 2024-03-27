@@ -77,10 +77,12 @@ func DownloadResults( //nolint:funlen,gocyclo
 	log.Ctx(ctx).Info().Msgf("Downloading %d results to: %s.", len(publishedResults), resultsOutputDir)
 	downloadedResults := make(map[string]struct{})
 	for _, publishedResult := range publishedResults {
+		fmt.Println("Getting downloader for ", publishedResult.Type)
 		downloader, err := downloadProvider.Get(ctx, publishedResult.Type)
 		if err != nil {
 			return err
 		}
+
 		resultPath, err := downloader.FetchResult(ctx, DownloadItem{
 			Result:     publishedResult,
 			SingleFile: settings.SingleFile,

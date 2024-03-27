@@ -3,6 +3,7 @@ package ranking
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -73,6 +74,10 @@ func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, 
 		}
 
 		if !found {
+			sort.Slice(providedKeys, func(i, j int) bool {
+				return providedKeys[i] < providedKeys[j]
+			})
+
 			// Target wasn't found – we can end early as we won't use this node.
 			availableKeys := strings.Join(providedKeys, ", ")
 			return orchestrator.RankUnsuitable, fmt.Sprintf("does not support %s, only %s", requiredKey, availableKeys)
