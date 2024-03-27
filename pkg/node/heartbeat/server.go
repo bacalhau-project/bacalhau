@@ -42,14 +42,14 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 		return err
 	}
 
-	go func(ctx context.Context) {
-		log.Ctx(ctx).Info().Msg("Heartbeat server started")
-		<-ctx.Done()
-		_ = h.subscription.Close(ctx)
-		log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
-	}(ctx)
+	log.Ctx(ctx).Info().Msg("Heartbeat server started")
 
 	go func(ctx context.Context) {
+		defer func() {
+			_ = h.subscription.Close(ctx) // We're closing down, not much we can do with an error
+			log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
+		}()
+
 		ticker := time.NewTicker(heartbeatQueueCheckFrequency)
 
 		for {

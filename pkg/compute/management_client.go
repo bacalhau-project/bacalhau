@@ -154,7 +154,9 @@ func (m *ManagementClient) Start(ctx context.Context) {
 		infoTicker.Stop()
 	}()
 
-	var heartbeatSequence uint64 = 0
+	// Send an initial heartbeat when we start up
+	var heartbeatSequence uint64 = 1
+	m.heartbeat(ctx, heartbeatSequence)
 
 	for {
 		select {
