@@ -56,6 +56,7 @@ func (q *HashedPriorityQueue[K, T]) Dequeue() *QueueItem[T] {
 		return nil
 	}
 
+	// Find the key for the item and delete it from the presence map
 	k := q.indexer(item.Value)
 	delete(q.identifiers, k)
 

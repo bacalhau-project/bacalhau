@@ -119,7 +119,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		}, nil
 	}
 
-	// TODO(ross): Add a Put endpoint that takes the revision into account
+	// TODO: Add a Put endpoint that takes the revision into account?
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
 	}
@@ -160,10 +160,14 @@ func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	return n.nodeInfo.Add(ctx, nodeInfo)
 }
 
-func (n *NodeManager) addResourcesToInfo(ctx context.Context, info *models.NodeInfo) {
+func (n *NodeManager) addToInfo(ctx context.Context, info *models.NodeInfo) {
 	resources, found := n.resourceMap.Get(info.NodeID)
 	if found && info.ComputeNodeInfo != nil {
 		info.ComputeNodeInfo.AvailableCapacity = resources
+	}
+
+	if n.heartbeats != nil {
+		n.heartbeats.UpdateNodeInfo(info)
 	}
 }
 
@@ -172,7 +176,7 @@ func (n *NodeManager) Get(ctx context.Context, nodeID string) (models.NodeInfo, 
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -181,7 +185,7 @@ func (n *NodeManager) GetByPrefix(ctx context.Context, prefix string) (models.No
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -192,7 +196,7 @@ func (n *NodeManager) List(ctx context.Context, filters ...routing.NodeInfoFilte
 	}
 
 	for i := range items {
-		n.addResourcesToInfo(ctx, &items[i])
+		n.addToInfo(ctx, &items[i])
 	}
 
 	return items, nil
