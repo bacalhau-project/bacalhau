@@ -437,21 +437,6 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 				peerAddress,
 			))
 		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			cmdB.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
-
-			cmdB.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-				pickP2pAddress(ipfsAddresses).String(),
-			))
-		}
 	} else {
 		if nodeConfig.NetworkConfig.Type == models.NetworkTypeLibp2p {
 			headerB.WriteString("Make sure there's at least one requester node in your network.")
@@ -499,19 +484,6 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 				peerAddress,
-			))
-		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-				pickP2pAddress(ipfsAddresses).String(),
 			))
 		}
 	}
