@@ -5,6 +5,9 @@ import "time"
 const (
 	heartbeatTopic               = "heartbeat"
 	heartbeatQueueCheckFrequency = 5 * time.Second
+
+	unhealthyAfter = 30 * time.Second
+	unknownAfter   = 60 * time.Second
 )
 
 // Heartbeat represents a heartbeat message from a specific node.
