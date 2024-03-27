@@ -1,0 +1,14 @@
+name: A Simple Docker Job
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    engine:
+      type: docker
+      params:
+        Image: ubuntu:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - echo Hello Bacalhau!
