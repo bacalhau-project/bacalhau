@@ -23,6 +23,14 @@ variable "token_config" {
   })
 }
 
+variable "tls_config" {
+  description = "Configuration for TLS"
+  type = object({
+    bacalhau_tls_crt = string
+    bacalhau_tls_sk = string
+  })
+}
+
 variable "gcp_config" {
   description = "Configuration specific to GCP including networking and boot image"
   type = object({
