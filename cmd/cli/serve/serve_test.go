@@ -203,11 +203,12 @@ func (s *ServeSuite) TestCanSubmitJob() {
 }
 
 func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
+	connectString := ipfs.MustHaveIPFS(s.T())
+
 	cm := system.NewCleanupManager()
 
 	client, err := ipfs.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
-		Connect:         "",
-		PrivateInternal: true,
+		Connect: connectString,
 	})
 	s.Require().NoError(err)
 
