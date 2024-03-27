@@ -204,7 +204,7 @@ The same job can be presented in the [declarative](../../../setting-up/jobs/job-
 ```yaml
 name: A Simple Docker Job
 type: batch
-count: 3
+count: 1
 tasks:
   - name: My main task
     engine:
