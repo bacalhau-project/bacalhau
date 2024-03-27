@@ -242,12 +242,10 @@ tasks:
         Path: /outputs      
     InputSources:
       - Source:
-          Type: "s3"
+          Type: "ipfs"
           Params:
-            Bucket: "r-custom-docker-prophet"
-            Key: "*"
-            Region: "us-east-1"
-        Target: "/inputs"
+            CID: "QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt"
+        Target: "/inputs/example_wp_log_R.csv"
 ```
 
 The job description should be saved in `.yaml` format, e.g. `job.yaml`, and then run with the command:
