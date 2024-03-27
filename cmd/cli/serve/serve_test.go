@@ -98,7 +98,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		"serve",
 		"--repo", s.repoPath,
 		"--peer", serve.DefaultPeerConnect,
-		"--private-internal-ipfs",
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)

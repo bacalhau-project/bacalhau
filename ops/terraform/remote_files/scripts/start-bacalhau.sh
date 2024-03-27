@@ -37,7 +37,6 @@ if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
     --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
     --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
     --api-port 1234 \
-    --private-internal-ipfs=false \
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
     --labels owner=bacalhau \
@@ -91,7 +90,6 @@ else
     --swarm-port "${BACALHAU_PORT}" \
     --api-port 1234 \
     --peer "${CONNECT_PEER}" \
-    --private-internal-ipfs=false \
     --web-ui "${BACALHAU_NODE_WEBUI}" \
     --web-ui-port 80 \
     --labels owner=bacalhau \

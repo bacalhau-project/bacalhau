@@ -19,8 +19,8 @@ import (
 )
 
 type Downloader struct {
-	cm   *system.CleanupManager
-	node *ipfs.Node // defaults to nil
+	cm     *system.CleanupManager
+	client *ipfs.Client
 }
 
 func NewIPFSDownloader(cm *system.CleanupManager) *Downloader {
@@ -56,17 +56,20 @@ func (d *Downloader) getClient(ctx context.Context) (*ipfs.Client, error) {
 		return client, nil
 	}
 
-	log.Ctx(ctx).Debug().Msg("creating ipfs node")
-	if d.node == nil {
-		node, err := ipfs.NewNodeWithConfig(ctx, d.cm, cfg)
-		if err != nil {
-			return nil, err
-		}
-
-		d.node = node
+	if cfg.Connect == "" {
+		return nil, fmt.Errorf("unable to download from IPFS without a connect address. Specify --ipfs-connect")
 	}
 
-	return d.node.Client(), nil
+	if d.client == nil {
+		var err error
+
+		d.client, err = ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
+		if err != nil {
+			return nil, fmt.Errorf("error creating IPFS client: %s. Is the node at %s running?", err, cfg.Connect)
+		}
+	}
+
+	return d.client, nil
 }
 
 func (d *Downloader) describeResult(ctx context.Context, result ipfssource.Source) (map[string]string, error) {

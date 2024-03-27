@@ -181,7 +181,6 @@ You can use the `bacalhau docker run` [command](../dev/cli-reference/all-flags.m
                  --node-details                     Print out details of all nodes (overridden by --id-only).
              -o, --output strings                   name:path of the output data volumes. 'outputs:/outputs' is always added unless '/outputs' is mapped to a different name. (default [outputs:/outputs])
                  --output-dir string                Directory to write the output to.
-                 --private-internal-ipfs            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
              -p, --publisher publisher              Where to publish the result of the job (default ipfs)
                  --raw                              Download raw result CIDs instead of merging multiple CIDs into a single result
              -s, --selector string                  Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.

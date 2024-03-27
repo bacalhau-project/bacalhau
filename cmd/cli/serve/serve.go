@@ -55,7 +55,7 @@ var (
 		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
 
 		# Start a public bacalhau requester node
-		bacalhau serve --peer env --private-internal-ipfs=false
+		bacalhau serve --peer env
 
 		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
 		bacalhau serve --web-ui --web-ui-port=3000
