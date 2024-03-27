@@ -63,3 +63,6 @@ dist/
 .secret
 .arg
 .ruff_cache
+
+# Ignoring here, because it should always be copied from above dir
+dev/.tool-versions

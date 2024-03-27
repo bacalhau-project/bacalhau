@@ -5,18 +5,26 @@ ARG GO_VERSION
 ARG GO_ARCHIVE_NAME
 
 RUN apt-get update
-RUN apt-get install -y wget git gcc
+RUN apt-get install -y wget git gcc curl direnv
 
-RUN wget -P /tmp "https://go.dev/dl/${GO_ARCHIVE_NAME}"
+# Install asdf
+RUN git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0 && \
+    echo ". $HOME/.asdf/asdf.sh" >> /root/.bashrc && \
+    echo ". $HOME/.asdf/asdf.sh" >> /root/.zshrc
 
-RUN tar -C /usr/local -xzf "/tmp/${GO_ARCHIVE_NAME}"
-RUN rm "/tmp/${GO_ARCHIVE_NAME}"
+SHELL ["/bin/bash", "-lc"]
 
-ENV GOPATH /go
-ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
-RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+# Install all packages from .tool-versions
+COPY .tool-versions /tmp/.tool-versions
 
-WORKDIR $GOPATH
+# Cut each line and install the package. The first time, it's the package, then it's the package and the version
+RUN cat /tmp/.tool-versions | while read line; do \
+    package=$(echo $line | cut -d ' ' -f 1); \
+    version=$(echo $line | cut -d ' ' -f 2); \
+    asdf plugin add $package; \
+    asdf install $package $version; \
+    asdf global $package $version; \
+    done
 
 COPY ./docker-build.sh /
 RUN chmod +x /docker-build.sh
