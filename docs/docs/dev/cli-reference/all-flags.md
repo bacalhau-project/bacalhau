@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'All commands'
+sidebar_label: "All commands"
 sidebar_position: 7
 ---
 
@@ -87,7 +87,6 @@ Global Flags
 </details>
 :::
 
-
 ## Agent
 
 The `bacalhau agent` command is a parent command that offers sub-commands to query information about the Bacalhau agent. This can be useful for debugging, monitoring, or managing the agent's behavior and health.
@@ -97,12 +96,15 @@ Usage:
 ```shell
 bacalhau agent [command]
 ```
+
 Available Commands:
 
 ### alive
+
 ```shell
 bacalhau agent alive [flags]
 ```
+
 The `bacalhau agent alive` command retrieves the agent's liveness and health information. This can be helpful to determine if the agent is running and healthy.
 
 ```shell
@@ -114,6 +116,7 @@ Flags:
 ```
 
 :::info
+
 <details>
   <summary>`--output format`</summary>
   <div>
@@ -213,6 +216,7 @@ Bacalhau v1.2.0
 BuildDate 2023-12-11 18:46:13 +0000 UTC
 GitCommit 4252ba4406c40c3d01bdcf58709f8d7a705fdc75
 ```
+
 To retrieve the agent version in JSON format, run:
 
 ```shell
@@ -262,6 +266,7 @@ To cancel a previously submitted job, run:
 ```shell
  bacalhau cancel 51225160-807e-48b8-88c9-28311c7899e1
 ```
+
 To cancel a job using a short ID, run:
 
 ```shell
@@ -281,6 +286,7 @@ bacalhau completion [command]
 Available Commands:
 
 ### bash
+
 ```shell
 bacalhau completion bash [flags]
 ```
@@ -311,20 +317,21 @@ Flags:
   -h, --help              help for fish
       --no-descriptions   disable completion descriptions
 ```
+
 :::info
 To load completions in your current shell session:
-	`bacalhau completion fish | source`
+`bacalhau completion fish | source`
 To load completions for every new session, execute once:
-	`bacalhau completion fish > ~/.config/fish/completions/bacalhau.fish`
+`bacalhau completion fish > ~/.config/fish/completions/bacalhau.fish`
 You will need to start a new shell for this setup to take effect.
 :::
-
 
 ### powershell
 
 ```shell
 bacalhau completion powershell [flags]
 ```
+
 The `bacalhau completion powershell` command generates the autocompletion script for powershell.
 
 ```shell
@@ -335,7 +342,7 @@ Flags:
 
 :::info
 To load completions in your current shell session:
-	`bacalhau completion powershell | Out-String | Invoke-Expression`
+`bacalhau completion powershell | Out-String | Invoke-Expression`
 To load completions for every new session, add the output of the above command
 to your powershell profile.
 :::
@@ -345,6 +352,7 @@ to your powershell profile.
 ```shell
 bacalhau completion zsh [flags]
 ```
+
 The `bacalhau completion zsh` command generates the autocompletion script for the zsh shell.
 
 ```shell
@@ -355,8 +363,8 @@ Flags:
 
 :::info
 If shell completion is not already enabled in your environment you will need
-to enable it.  You can execute the following once:
-	`echo "autoload -U compinit; compinit" >> ~/.zshrc`
+to enable it. You can execute the following once:
+`echo "autoload -U compinit; compinit" >> ~/.zshrc`
 :::
 
 ## Config
@@ -372,6 +380,7 @@ bacalhau config [command]
 Available Commands:
 
 ### auto-resources
+
 ```shell
 bacalhau config auto-resources [flags]
 ```
@@ -400,33 +409,34 @@ Ran on an Apple M1 Max with 10 Cores and 64GB RAM
 ```shell
 bacalhau config auto-resources
 ```
+
 Config File:
 
- ```yaml
-   node:
-       compute:
-           capacity:
-               defaultjobresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-               jobresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-               queueresourcelimits:
-                   cpu: 15000m
-                   disk: 1.1 TB
-                   gpu: "0"
-                   memory: 103 GB
-               totalresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-   ```
+```yaml
+node:
+  compute:
+    capacity:
+      defaultjobresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+      jobresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+      queueresourcelimits:
+        cpu: 15000m
+        disk: 1.1 TB
+        gpu: "0"
+        memory: 103 GB
+      totalresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+```
 
 2. Queue 500% system resources:
 
@@ -437,32 +447,33 @@ bacalhau config auto-resources --queue-job-percentage=500
 Config File:
 
 ```yaml
-   node:
-       compute:
-           capacity:
-               defaultjobresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-               jobresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-               queueresourcelimits:
-                   cpu: 50000m
-                   disk: 3.8 TB
-                   gpu: "0"
-                   memory: 344 GB
-               totalresourcelimits:
-                   cpu: 7500m
-                   disk: 568 GB
-                   gpu: "0"
-                   memory: 52 GB
-   ```
+node:
+  compute:
+    capacity:
+      defaultjobresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+      jobresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+      queueresourcelimits:
+        cpu: 50000m
+        disk: 3.8 TB
+        gpu: "0"
+        memory: 344 GB
+      totalresourcelimits:
+        cpu: 7500m
+        disk: 568 GB
+        gpu: "0"
+        memory: 52 GB
+```
 
 ### default
+
 ```shell
 bacalhau config default [flags]
 ```
@@ -484,12 +495,15 @@ Flags:
 ```shell
 bacalhau config default > ~/.bacalhau/config.yaml
 ```
+
 This command redirects the default configuration output directly into the bacalhau configuration file at `~/.bacalhau/config.yaml`, effectively resetting it to default settings.
 
 ### list
+
 ```shell
 bacalhau config list [flags]
 ```
+
 The `bacalhau config list` command lists the configuration keys and values of the bacalhau node. This command is useful for understanding how configuration keys map to their respective values, aiding in the use of the bacalhau config set command.
 
 :::info
@@ -530,9 +544,11 @@ KEY                                                             VALUE
 ```
 
 ### set
+
 ```shell
 bacalhau config set <key> <value>
 ```
+
 The `bacalhau config set` command sets a value in the bacalhau node's configuration file. This command is used to modify the configuration file that the bacalhau node will reference for its settings. Key names in the configuration are case-insensitive. Additionally, the command validates the value being set based on the type of the configuration key, ensuring that only appropriate and valid configurations are applied.
 
 :::info
@@ -543,6 +559,7 @@ Changes made using this command will be applied to the configuration file, but t
 Flags:
   -h, --help   help for set
 ```
+
 #### Examples
 
 1. Configuring the Server API Port Value
@@ -550,6 +567,7 @@ Flags:
 ```shell
 bacalhau config set node.serverapi.port 9999
 ```
+
 Verifying that the parameter was successfully set
 
 ```shell
@@ -560,6 +578,7 @@ node:
     serverapi:
         port: 9999
 ```
+
 2. Configuring multiple values
 
 ```shell
@@ -567,6 +586,7 @@ bacalhau config set node.serverapi.port 9999
 bacalhau config set node.serverapi.host 0.0.0.0
 bacalhau config set node.loggingmode json
 ```
+
 Verifying that the parameters were successfully set
 
 ```shell
@@ -608,6 +628,7 @@ Flags:
 #### Examples
 
 1. To create a job using the data in `job.yaml`, run:
+
 ```shell
 bacalhau create ./job.yaml
 ```
@@ -624,22 +645,23 @@ Let's have a look at a job example in **YAML format**:
 
 ```yaml
 spec:
-    engine: Docker
-    verifier: Noop
-    publisher: IPFS
-    docker:
-        image: ubuntu
-        entryPoint:
-            - echo
-        parameters:
-            - Hello
-            - World
-    outputs:
-        - name: outputs
-          path: /outputs
+  engine: Docker
+  verifier: Noop
+  publisher: IPFS
+  docker:
+    image: ubuntu
+    entryPoint:
+      - echo
+    parameters:
+      - Hello
+      - World
+  outputs:
+    - name: outputs
+      path: /outputs
 deal:
-    concurrency: 1
+  concurrency: 1
 ```
+
 This example shows how a YAML file can be structured to describe a job and its parameters, which can then be used in Bacalhau to perform executions.
 
 ### UCAN Invocation format
@@ -709,6 +731,7 @@ An example UCAN Invocation that runs a WebAssembly job might look like:
   }
 }
 ```
+
 Using a UCAN Invocation object allows you to customize the parameters of job execution in Bacalhau in a more flexible and detailed way.
 
 ## Describe
@@ -736,11 +759,13 @@ Flags:
 ```shell
 bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
 ```
+
 2. To describe a job with the shortened ID, run:
 
 ```shell
 bacalhau describe e3f8c209
 ```
+
 3. To describe a job and include all server and local events, run:
 
 ```shell
@@ -756,6 +781,7 @@ Usage:
 ```shell
 bacalhau devstack [flags]
 ```
+
 ```shell
 Flags:
       --Noop                                             Use the noop executor for all jobs
@@ -797,6 +823,7 @@ Flags:
       --tlscert string                                   Specifies a TLS certificate file to be used by the requester node
       --tlskey string                                    Specifies a TLS key file matching the certificate to be used by the requester node
 ```
+
 #### Examples
 
 1. To create a devstack cluster with a single requester node and 3 compute nodes (default values), run:
@@ -804,16 +831,19 @@ Flags:
 ```shell
 bacalhau devstack
 ```
+
 2. To create a devstack cluster with 2 requester nodes and 10 compute nodes, run:
 
 ```shell
 bacalhau devstack  --requester-nodes 2 --compute-nodes 10
 ```
+
 3. To create a devstack cluster with a single hybrid (requester and compute) node, run:
 
 ```shell
 bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 ```
+
 4. To run a devstack and create (or use) the config repo in a specific folder, run:
 
 ```shell
@@ -829,6 +859,7 @@ Usage:
 ```shell
 bacalhau docker run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]
 ```
+
 ```shell
 Flags:
       --concurrency int                  How many nodes should run the job (default 1)
@@ -856,7 +887,6 @@ Flags:
                                          -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
       --ipfs-connect string              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
       --ipfs-serve-path string           path local Ipfs node will persist data to
-      --ipfs-swarm-addrs strings         IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect. (default [/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/35.245.161.250/udp/4001/quic/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH,/ip4/34.86.254.26/tcp/4001/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/34.86.254.26/udp/4001/quic/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK,/ip4/35.245.215.155/tcp/4001/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/35.245.215.155/udp/4001/quic/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF,/ip4/34.145.201.224/tcp/4001/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/34.145.201.224/udp/4001/quic/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf,/ip4/35.245.41.51/tcp/4001/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa,/ip4/35.245.41.51/udp/4001/quic/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa])
       --ipfs-swarm-key string            Optional IPFS swarm key required to connect to a private IPFS swarm
   -l, --labels strings                   List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
       --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
@@ -874,6 +904,7 @@ Flags:
       --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
   -w, --workdir string                   Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).
 ```
+
 #### Examples
 
 1. Let's run a Docker job, using the image `dpokidov/imagemagick`, with a CID mounted at `/input_images` and an output volume mounted at `/outputs` in the container. All flags after the `--` are passed directly into the container for execution:
@@ -884,6 +915,7 @@ bacalhau docker run \
   dpokidov/imagemagick:7.1.0-47-ubuntu \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
+
 This command allows you to start a job in a Docker container using the specified image, mount an external CID resource from IPFS inside the container to handle images, and execute a command inside the container to process files.
 
 2. To check the job specification before submitting it to the bacalhau network, run:
@@ -891,6 +923,7 @@ This command allows you to start a job in a Docker container using the specified
 ```shell
 bacalhau docker run --dry-run ubuntu echo hello
 ```
+
 The command does not run the job itself, but only displays information about how it would be run so you can make sure that all job parameters and commands are correctly specified before sending it to the Bacalhau network for execution
 
 3. To save the job specification to a YAML file, run:
@@ -910,6 +943,7 @@ bacalhau docker run ubuntu:bionic echo hello
 ```shell
 bacalhau docker run ubuntu@sha256:35b4f89ec2ee42e7e12db3d107fe6a487137650a2af379bbd49165a1494246ea echo hello
 ```
+
 The command starts an Ubuntu image container using a specific version of the image identified by its SHA256 hash. This ensures the accuracy of the image source, independent of its tag and possible future changes, since the image digest remains constant for a particular version.
 
 ## Exec
@@ -1009,6 +1043,7 @@ Usage:
 ```shell
 bacalhau help [command] [flags]
 ```
+
 ```shell
 Flags:
   -h, --help   help for help
@@ -1041,6 +1076,7 @@ Flags:
 The `bacalhau job` command provides a suite of sub-commands to submit, query, and manage jobs within Bacalhau. Users can deploy jobs, obtain job details, track execution logs, and more.
 
 Usage:
+
 ```shell
  bacalhau job [command]
 ```
@@ -1052,6 +1088,7 @@ Available Commands:
 ```shell
 bacalhau job describe [id] [flags]
 ```
+
 The `bacalhau job describe` command provides a detailed description of a specific job in YAML format. This description can be particularly useful when wanting to understand the attributes and current status of a specific job. To list all available jobs, the `bacalhau job list` command can be used.
 
 ```shell
@@ -1060,6 +1097,7 @@ Flags:
       --output format   The output format for the command (one of ["json" "yaml"]) (default yaml)
       --pretty          Pretty print the output. Only applies to json and yaml output formats.
 ```
+
 #### Examples
 
 1. To describe a job with the full ID, run:
@@ -1067,11 +1105,13 @@ Flags:
 ```shell
 bacalhau job describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 ```
+
 2. To describe a job with the shortened ID, run:
 
 ```shell
 bacalhau job describe j-e3f8c209
 ```
+
 3. To describe a job with json output, run:
 
 ```shell
@@ -1083,6 +1123,7 @@ bacalhau job describe j-e3f8c209 --output json --pretty
 ```shell
 bacalhau job executions [id] [flags]
 ```
+
 The `bacalhau job executions` command retrieves a list of executions for a specific job based on its ID. This can be essential when tracking the various runs and their respective states for a particular job.
 
 ```shell
@@ -1098,6 +1139,7 @@ Flags:
       --pretty              Pretty print the output. Only applies to json and yaml output formats.
       --wide                Print full values in the table result without truncating any information.
 ```
+
 #### Examples
 
 1. To get all executions for a specific job, run:
@@ -1135,6 +1177,7 @@ Expected Output:
 ```shell
 bacalhau job history [id] [flags]
 ```
+
 The `bacalhau job history` command lists the history events of a specific job based on its ID. This feature allows users to track changes, executions, and other significant milestones associated with a particular job.
 
 ```shell
@@ -1205,6 +1248,7 @@ Expected Output:
 ```shell
 bacalhau job list [flags]
 ```
+
 The `bacalhau job list` command provides a listing of all submitted jobs. This command offers an overview of all tasks and processes registered in the system, allowing users to monitor and manage their jobs effectively.
 
 ```shell
@@ -1242,6 +1286,7 @@ CREATED   ID          JOB     TYPE   STATE
  04:01:13  4a72e10b    docker  batch  Completed
  09:02:51  a50b8ea3    docker  batch  Completed
 ```
+
 2. To limit the list to the last 2 jobs, run:
 
 ```shell
@@ -1271,6 +1316,7 @@ Expected Output:
  16:50:20  162bb215    docker  batch  Completed
  16:47:51  33e98bd9    docker  batch  Completed
 ```
+
 4. To filter the jobs by specific labels (`region in (us-east-1, us-east-2)` and `env = prod`), run:
 
 ```shell
@@ -1302,11 +1348,13 @@ bacalhau job list --limit 1 --output json --pretty
     "Meta":
     ...
 ```
+
 ### logs
 
 ```shell
 bacalhau job logs [id] [flags]
 ```
+
 The `bacalhau job logs` command allows users to retrieve logs from a job that has been previously submitted. This command is useful for tracking and debugging the progress and state of a running or completed job.
 
 ```shell
@@ -1314,6 +1362,7 @@ The `bacalhau job logs` command allows users to retrieve logs from a job that ha
   -f, --follow   Follow the logs in real-time after retrieving the current logs.
   -h, --help     help for logs
 ```
+
 #### Examples
 
 1. To display Logs for a Previously Submitted Job using Full Job ID, run:
@@ -1364,9 +1413,11 @@ Flags:
       --wait                           Wait for the job to finish. Use --wait=false to return as soon as the job is submitted. (default true)
       --wait-timeout-secs int          If --wait is provided, this flag sets the maximum time (in seconds) the command will wait for the job to finish before it terminates. (default 600)
 ```
+
 #### Examples
 
 A sample job used in the following examples is provided below:
+
 ```bash
 cat job.yaml
 ```
@@ -1392,22 +1443,22 @@ This configuration describes a batch job that runs a Docker task. It utilizes th
 
 1. To run a job with a configuration provided in a `job.yaml` file:
 
- ```bash
- bacalhau job run job.yaml
+```bash
+bacalhau job run job.yaml
 
- Expected Output:
- Job successfully submitted. Job ID: j-2d0f513a-9eb1-49c2-8bc8-246c6fb41520
-   Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
+Expected Output:
+Job successfully submitted. Job ID: j-2d0f513a-9eb1-49c2-8bc8-246c6fb41520
+  Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
 
 	Communicating with the network  ................  done ✅  0.1s
 	               Job in progress  ................  done ✅  0.6s
 
-   To get more details about the run, execute:
+  To get more details about the run, execute:
 	bacalhau job describe j-2d0f513a-9eb1-49c2-8bc8-246c6fb41520
 
-   To get more details about the run executions, execute:
+  To get more details about the run executions, execute:
 	bacalhau job executions j-2d0f513a-9eb1-49c2-8bc8-246c6fb41520
- ```
+```
 
 2. To run a Job and follow its Logs:
 
@@ -1467,6 +1518,7 @@ To get more details about the run, execute:
 To get more details about the run executions, execute:
 	bacalhau job executions j-3634acc2-c92c-494d-9413-ddd8629d0e74
 ```
+
 7. To rerun a previously submitting job:
 
 ```shell
@@ -1528,6 +1580,7 @@ Expected Output:
 The `bacalhau list` command lists jobs on the network.
 
 Usage:
+
 ```shell
 bacalhau list [flags]
 ```
@@ -1556,6 +1609,7 @@ Flags:
 ```shell
 bacalhau list
 ```
+
 2. To List jobs and output as json, run:
 
 ```shell
@@ -1568,6 +1622,7 @@ The `bacalhau logs` command retrieves the log output (stdout, and stderr) from a
 If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
 
 Usage:
+
 ```shell
 bacalhau logs [id] [flags]
 ```
@@ -1597,6 +1652,7 @@ bacalhau logs ebd9bf2f
 The `bacalhau node` command provides a set of sub-commands to query and manage node-related information within Bacalhau. With these tools, users can access specific details about nodes, list all network nodes, and more.
 
 Usage:
+
 ```shell
 bacalhau node [command]
 ```
@@ -1608,6 +1664,7 @@ Available Commands:
 ```shell
 bacalhau node describe [id] [flags]
 ```
+
 The `bacalhau node describe` command offers users the ability to retrieve detailed information about a specific node using its unique identifier. This information is crucial for system administrators and network managers to understand the state, specifications, and other attributes of nodes in their infrastructure.
 
 ```shell
@@ -1662,6 +1719,7 @@ ComputeNodeInfo:
     Memory: 12561032806
     ...
 ```
+
 2. To describe a Node with Output in JSON Format, run:
 
 ```shell
@@ -1676,7 +1734,8 @@ Expected Output:
 ```shell
  bacalhau node list [flags]
 ```
-The `bacalhau node list` command is designed to provide users with a comprehensive list of network nodes along with details based on specified flags.  It supports various filtering, ordering, and output formatting options, allowing users to tailor the output to their needs.
+
+The `bacalhau node list` command is designed to provide users with a comprehensive list of network nodes along with details based on specified flags. It supports various filtering, ordering, and output formatting options, allowing users to tailor the output to their needs.
 
 ```shell
 Flags:
@@ -1784,6 +1843,7 @@ Expected Output:
 The `bacalhau serve` command starts a bacalhau node.
 
 Usage:
+
 ```shell
 bacalhau serve [flags]
 ```
@@ -1861,6 +1921,7 @@ bacalhau serve --node-type compute,requester
 ```shell
 BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
 ```
+
 The command creates and starts a Bacalhau private node using the local IPFS node and specifies the path to save the IPFS data.
 
 4. To Start a public bacalhau requester node, run:
@@ -1880,6 +1941,7 @@ bacalhau serve --webui
 The `bacalhau validate` command allows you to validate job files in JSON or YAML formats before sending them to the Bacalhau system. It is used to confirm that the structure and contents of the job description file conform to the expected format.
 
 Usage:
+
 ```shell
 bacalhau validate [flags]
 ```
@@ -1903,6 +1965,7 @@ bacalhau validate ./job.yaml
 The `bacalhau version` command allows you to get the client and server version.
 
 Usage:
+
 ```shell
 bacalhau version [flags]
 ```
@@ -1923,6 +1986,7 @@ Flags:
 The `bacalhau wasm` command Runs and prepares WASM jobs on the network
 
 Usage:
+
 ```shell
 bacalhau wasm [command]
 ```
@@ -1934,6 +1998,7 @@ Available Commands:
 ```shell
 bacalhau wasm run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...] [flags]
 ```
+
 The `bacalhau wasm run` command Runs a job that was compiled to WASM.
 
 ```shell

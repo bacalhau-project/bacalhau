@@ -38,16 +38,15 @@ func (suite *IPFSHostStorageSuite) SetupTest() {
 	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
-type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api *ipfs.Client) (
 	storage.Storage, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+		func(ctx context.Context, cm *system.CleanupManager, api *ipfs.Client) (
 			storage.Storage, error) {
-
 			return ipfs_storage.NewStorage(api)
 		},
 	)
@@ -57,7 +56,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+		func(ctx context.Context, cm *system.CleanupManager, api *ipfs.Client) (
 			storage.Storage, error) {
 
 			return ipfs_storage.NewStorage(api)

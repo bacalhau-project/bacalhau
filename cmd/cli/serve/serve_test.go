@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
@@ -28,7 +29,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -46,7 +46,6 @@ type ServeSuite struct {
 
 	out, err strings.Builder
 
-	ipfsPort int
 	ctx      context.Context
 	repoPath string
 }
@@ -72,10 +71,6 @@ func (s *ServeSuite) SetupTest() {
 	s.T().Cleanup(func() {
 		cm.Cleanup(s.ctx)
 	})
-
-	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
-	s.Require().NoError(err)
-	s.ipfsPort = node.APIPort
 }
 
 func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
@@ -211,10 +206,9 @@ func (s *ServeSuite) TestCanSubmitJob() {
 func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
 	cm := system.NewCleanupManager()
 
-	client, err := serve.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
+	client, err := ipfs.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
 		Connect:         "",
 		PrivateInternal: true,
-		SwarmAddresses:  []string{},
 	})
 	s.Require().NoError(err)
 

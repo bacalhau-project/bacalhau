@@ -16,7 +16,7 @@ import (
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
@@ -24,7 +24,7 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	API                   ipfs.Client
+	API                   *ipfs.Client
 	DownloadPath          string
 	AllowListedLocalPaths []string
 }
@@ -38,20 +38,7 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
-	if err != nil {
-		return nil, err
-	}
-
 	urlDownloadStorage := urldownload.NewStorage()
-	if err != nil {
-		return nil, err
-	}
-
-	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
-	if err != nil {
-		return nil, err
-	}
 
 	inlineStorage := inline.NewStorage()
 
@@ -67,17 +54,32 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
-
-	return provider.NewMappedProvider(map[string]storage.Storage{
-		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+	mappedProvider := provider.NewMappedProvider(map[string]storage.Storage{
 		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
 		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
 		models.StorageSourceS3:             tracing.Wrap(s3Storage),
 		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
-	}), nil
+	})
+
+	// Only add storages that depend on IPFS if we have a valid IPFS client
+	if options.API != nil {
+		ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
+		if err != nil {
+			return nil, err
+		}
+
+		repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
+		if err != nil {
+			return nil, err
+		}
+
+		var useIPFSDriver storage.Storage = ipfsAPICopyStorage
+		mappedProvider.Add(models.StorageSourceIPFS, tracing.Wrap(useIPFSDriver))
+		mappedProvider.Add(models.StorageSourceRepoClone, tracing.Wrap(repoCloneStorage))
+		mappedProvider.Add(models.StorageSourceRepoCloneLFS, tracing.Wrap(repoCloneStorage))
+	}
+
+	return mappedProvider, nil
 }
 
 func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {

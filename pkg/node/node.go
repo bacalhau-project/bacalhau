@@ -46,7 +46,7 @@ type FeatureConfig struct {
 // Node configuration
 type NodeConfig struct {
 	NodeID                      string
-	IPFSClient                  ipfs.Client
+	IPFSClient                  *ipfs.Client
 	CleanupManager              *system.CleanupManager
 	HostAddress                 string
 	APIPort                     uint16
@@ -112,7 +112,7 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	IPFSClient     ipfs.Client
+	IPFSClient     *ipfs.Client
 	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 }
 

@@ -22,10 +22,10 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	ipfsClient ipfs.Client
+	ipfsClient *ipfs.Client
 }
 
-func NewStorage(cl ipfs.Client) (*StorageProvider, error) {
+func NewStorage(cl *ipfs.Client) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		ipfsClient: cl,
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -133,25 +134,23 @@ func Setup(
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
 		// ////////////////////////////////////
-		// IPFS
+		// IPFS client
 		// ////////////////////////////////////
 
-		var ipfsSwarmAddresses []string
-		if i > 0 {
-			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
-			}
+		var ipfsClient *ipfs.Client
 
-			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-			// connecting/joining topics, when using multiple addresses for a single host.
-			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
-			ipfsSwarmAddresses = append(ipfsSwarmAddresses, addresses[0])
+		ipfsConfig, err := getIPFSConfig()
+		if err != nil {
+			return nil, err
 		}
 
-		ipfsNode, err := createIPFSNode(ctx, cm, stackConfig.PublicIPFSMode, ipfsSwarmAddresses)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		// If we have configured an IPFS node to connect to, then we can have a
+		// client. If not, then not.
+		if ipfsConfig.Connect != "" {
+			ipfsClient, err = ipfs.SetupIPFSClient(ctx, cm, ipfsConfig)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// ////////////////////////////////////
@@ -261,7 +260,7 @@ func Setup(
 
 		nodeConfig := node.NodeConfig{
 			NodeID:              nodeID,
-			IPFSClient:          ipfsNode.Client(),
+			IPFSClient:          ipfsClient,
 			CleanupManager:      cm,
 			HostAddress:         "127.0.0.1",
 			APIPort:             apiPort,
@@ -393,18 +392,6 @@ func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, port int) 
 	return libp2pHost, nil
 }
 
-func createIPFSNode(ctx context.Context,
-	cm *system.CleanupManager,
-	publicIPFSMode bool,
-	ipfsSwarmAddresses []string) (*ipfs.Node, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
-	defer span.End()
-	// ////////////////////////////////////
-	// IPFS
-	// ////////////////////////////////////
-	return ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{SwarmAddresses: ipfsSwarmAddresses, PrivateInternal: !publicIPFSMode})
-}
-
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
@@ -533,8 +520,8 @@ func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
-func (stack *DevStack) IPFSClients() []ipfs.Client {
-	clients := make([]ipfs.Client, 0, len(stack.Nodes))
+func (stack *DevStack) IPFSClients() []*ipfs.Client {
+	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
 	for _, node := range stack.Nodes {
 		clients = append(clients, node.IPFSClient)
 	}
@@ -554,4 +541,19 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+func getIPFSConfig() (types.IpfsConfig, error) {
+	var ipfsConfig types.IpfsConfig
+	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
+		return types.IpfsConfig{}, err
+	}
+	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
+		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
+			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
+			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
+		)
+	}
+
+	return ipfsConfig, nil
 }

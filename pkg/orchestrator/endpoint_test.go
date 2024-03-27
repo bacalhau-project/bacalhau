@@ -32,7 +32,7 @@ type EndpointSuite struct {
 	ctx context.Context
 	cm  *system.CleanupManager
 
-	client ipfs.Client
+	client *ipfs.Client
 	node   *ipfs.Node
 }
 

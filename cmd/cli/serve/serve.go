@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -207,14 +208,17 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	// Establishing IPFS connection
+	var ipfsClient *ipfs.Client
 	ipfsConfig, err := getIPFSConfig()
 	if err != nil {
 		return err
 	}
 
-	ipfsClient, err := SetupIPFSClient(ctx, cm, ipfsConfig)
-	if err != nil {
-		return err
+	if ipfsConfig.Connect != "" {
+		ipfsClient, err = ipfs.SetupIPFSClient(ctx, cm, ipfsConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	networkConfig, err := getNetworkConfig()

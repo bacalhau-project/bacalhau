@@ -460,8 +460,7 @@ Flags:
       --filecoin-unsealed-path string                    The go template that can turn a filecoin CID into a local filepath with the unsealed data.
   -h, --help                                             help for serve
       --host string                                      The host to listen on (for both api and swarm connections). (default "0.0.0.0")
-      --ipfs-connect string                              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
-      --ipfs-swarm-addr strings                          IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.
+      --ipfs-connect string                              The ipfs host multiaddress to connect to.
       --job-execution-timeout-bypass-client-id strings   List of IDs of clients that are allowed to bypass the job execution timeout check
       --job-selection-accept-networked                   Accept jobs that require network access.
       --job-selection-data-locality string               Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")

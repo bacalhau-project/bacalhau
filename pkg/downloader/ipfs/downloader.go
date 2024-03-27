@@ -33,23 +33,23 @@ func (d *Downloader) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
+func (d *Downloader) getClient(ctx context.Context) (*ipfs.Client, error) {
 	var cfg types.IpfsConfig
 	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
-		return ipfs.Client{}, err
+		return nil, err
 	}
 
 	if cfg.Connect != "" {
 		log.Ctx(ctx).Debug().Msg("creating ipfs client")
 		client, err := ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
 		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+			return nil, fmt.Errorf("error creating IPFS client: %s", err)
 		}
 
 		if len(cfg.SwarmAddresses) != 0 {
 			maddrs, err := ipfs.ParsePeersString(cfg.SwarmAddresses)
 			if err != nil {
-				return ipfs.Client{}, err
+				return nil, err
 			}
 			client.SwarmConnect(ctx, maddrs)
 		}
@@ -60,7 +60,7 @@ func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
 	if d.node == nil {
 		node, err := ipfs.NewNodeWithConfig(ctx, d.cm, cfg)
 		if err != nil {
-			return ipfs.Client{}, err
+			return nil, err
 		}
 
 		d.node = node

@@ -8,14 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
-func AddFileToNodes(ctx context.Context, filePath string, clients ...Client) (string, error) {
+func AddFileToNodes(ctx context.Context, filePath string, clients ...*Client) (string, error) {
 	var res string
 	for i, client := range clients {
 		cid, err := client.Put(ctx, filePath)
@@ -30,7 +32,7 @@ func AddFileToNodes(ctx context.Context, filePath string, clients ...Client) (st
 	return res, nil
 }
 
-func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...Client) (string, error) {
+func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*Client) (string, error) {
 	tempDir, err := os.MkdirTemp("", "bacalhau-test")
 	if err != nil {
 		return "", err
@@ -93,4 +95,12 @@ func copyFile(sourcePath, destinationPath string) error {
 	}
 
 	return nil
+}
+
+func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg types.IpfsConfig) (*Client, error) {
+	client, err := NewClientUsingRemoteHandler(ctx, ipfsCfg.Connect)
+	if err != nil {
+		return nil, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+	return client, nil
 }

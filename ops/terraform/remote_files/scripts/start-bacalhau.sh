@@ -35,7 +35,6 @@ if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
     --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \
     --max-job-execution-timeout '60m' \
     --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
-    --ipfs-swarm-addrs "" \
     --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
     --api-port 1234 \
     --private-internal-ipfs=false \
@@ -88,7 +87,6 @@ else
     --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \
     --max-job-execution-timeout '60m' \
     --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
-    --ipfs-swarm-addrs "" \
     --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
     --swarm-port "${BACALHAU_PORT}" \
     --api-port 1234 \

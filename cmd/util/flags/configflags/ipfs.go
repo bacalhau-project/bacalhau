@@ -4,13 +4,6 @@ import "github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 var IPFSFlags = []Definition{
 	{
-		FlagName:             "ipfs-swarm-addrs",
-		ConfigPath:           types.NodeIPFSSwarmAddresses,
-		DefaultValue:         Default.Node.IPFS.SwarmAddresses,
-		Description:          "IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
-		EnvironmentVariables: []string{"BACALHAU_IPFS_SWARM_ADDRESSES"},
-	},
-	{
 		FlagName:             "ipfs-swarm-key",
 		ConfigPath:           types.NodeIPFSSwarmKeyPath,
 		DefaultValue:         Default.Node.IPFS.SwarmKeyPath,
