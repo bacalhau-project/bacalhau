@@ -12,5 +12,5 @@ testcase_can_get_results() {
     assert_equal 0 $status
     assert_match "15" $(echo $stdout)
     assert_equal '' $stderr
-    rm -rf job-*
+    rm -rf job-${job_id%%-*}
 }
