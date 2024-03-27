@@ -23,5 +23,8 @@ func NewCmd() *cobra.Command {
 	// Reject Action
 	cmd.AddCommand(NewActionCmd(apimodels.NodeActionReject))
 
+	// Reject Action
+	cmd.AddCommand(NewActionCmd(apimodels.NodeActionDelete))
+
 	return cmd
 }
