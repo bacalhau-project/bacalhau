@@ -129,13 +129,11 @@ tasks:
           - -c
           - python read_csv.py
     InputSources:
-      - Target: "/files"
-        Source:
-          Type: "s3"
+      - Source:
+          Type: "ipfs"
           Params:
-            Bucket: "bacallhau-python-pandas"
-            Key: "*"
-            Region: "us-east-1"
+            CID: "QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz"
+        Target: "/files"
 ```
 
 The job description should be saved in `.yaml` format, e.g. `pandas.yaml`, and then run with the command:
