@@ -216,6 +216,42 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %env JOB_ID={job_id}
 ```
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Building and Running your Custom R Containers
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: "ghcr.io/bacalhau-project/examples/r-prophet:0.0.2" 
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - Rscript Saturating-Forecasts.R "/inputs/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
+    InputSources:
+      - Source:
+          Type: "ipfs"
+          Params:
+            CID: "QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt"
+        Target: "/inputs/example_wp_log_R.csv"
+```
+
+The job description should be saved in `.yaml` format, e.g. `job.yaml`, and then run with the command:
+```bash
+bacalhau job run job.yaml
+```
 
 ## 5. Checking the State of your Jobs
 
