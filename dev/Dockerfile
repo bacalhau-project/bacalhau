@@ -1,4 +1,4 @@
-FROM python:3.11.8-slim
+FROM python:3.11.1-slim
 
 # Install Go
 ARG GO_VERSION

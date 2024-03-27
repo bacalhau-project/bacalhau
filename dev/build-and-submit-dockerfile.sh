@@ -28,7 +28,7 @@ fi
 latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
 
 # Get golang version from ../.tool-versions and trim whitespace. The entry should look like "golang 1.16.7". Do not print line numbers.
-GO_VERSION=$(cat ../.tool-versions | sed -n 's/golang \([0-9]*\.[0-9]*\.[0-9]*\)/\1/p')
+GO_VERSION=$(sed -n 's/golang \([0-9]*\.[0-9]*\.[0-9]*\)/\1/p' ../.tool-versions | tr -d '[:space:]')
 
 GOARCH=$(dpkg --print-architecture)
 GOOS=$(uname -s | tr '[:upper:]' '[:lower:]')

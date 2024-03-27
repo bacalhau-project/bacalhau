@@ -5,6 +5,7 @@ direnv allow
 
 # Add the current directory to the safe directory list
 git config --global --add safe.directory /workspaces/bacalhau
+
 python3 --version
 python3 -m ensurepip
 python3 -m pip install --upgrade pip
