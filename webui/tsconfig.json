@@ -1,23 +1,27 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": false,
-    "skipLibCheck": false,
+    "allowJs": true,
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "ESNext",
+    "noFallthroughCasesInSwitch": true,
+    "module": "commonjs",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react",
-    "noEmit": false,
-    "outDir": "./compiled",
+    "noEmit": true,
+    "jsx": "react-jsx",
     "typeRoots": ["node_modules/@types", "src/types"],
-    "types": ["vite/client"]
+    "types": ["node", "jest", "react", "react-dom"]
   },
+  "ts-node": {
+    "esm": true
+  },
+  "files": ["src/index.tsx"],
   "include": [
     "src/**/*.tsx",
     "src/**/*.ts",

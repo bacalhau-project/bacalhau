@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { faker } from "@faker-js/faker"
-import { randomUUID } from "crypto"
 import { Node } from "../../src/helpers/nodeInterfaces"
+import { randomUUID } from "./cryptoFunctions"
 import { selectRandomElements } from "./mockUtilities"
 
 // Generate an array with one or more of the following strings

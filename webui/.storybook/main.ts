@@ -1,6 +1,7 @@
-import type { StorybookConfig } from "@storybook/react-webpack5";
-
-import { config as baseConfig } from '../webpack.config';
+// Replace your-framework with the framework you are using (e.g., react-vite, vue3-vite)
+import type { StorybookConfig } from "@storybook/react-vite"
+import { mergeConfig } from "vite"
+import path from "path"
 
 const config: StorybookConfig = {
   stories: [
@@ -12,46 +13,39 @@ const config: StorybookConfig = {
     "@storybook/addon-essentials",
     "@storybook/addon-onboarding",
     "@storybook/addon-interactions",
-    '@storybook/addon-storysource',
-    '@storybook/addon-controls',
-    '@storybook/addon-actions',
-    '@storybook/addon-viewport',
-    '@storybook/addon-a11y',
-    '@storybook/react',
-    {
-      name: '@storybook/addon-coverage',
-      options: {
-        istanbul: {
-          exclude: ['**/components/**/index.ts'],
-        },
-      },
-    },
-    'storybook-addon-module-mock',
-    'storybook-addon-react-router-v6',
   ],
   framework: {
-    name: "@storybook/react-webpack5",
-    options: {
-      builder: {
-        useSWC: true,
-      },
-    },
+    name: "@storybook/react-vite",
+    options: {},
   },
   docs: {
     autodocs: "tag",
   },
-  typescript: {
-    reactDocgen: 'react-docgen',
-  },
-  webpackFinal: async (config) => {
-    const webpackConfig = config;
-    return {
-      ...webpackConfig,
-      module: {
-        ...webpackConfig.module,
-        rules: [...(webpackConfig.module?.rules ?? []), ...(baseConfig.module?.rules ?? [])]
+  staticDirs: ['../public'],
+
+  core: {},
+  async viteFinal(config, { configType }) {
+    if (!config.resolve) {
+      config.resolve = {}
+    }
+    if (!config.resolve.alias) {
+      config.resolve.alias = {}
+    }
+    if (configType === "DEVELOPMENT") {
+      config.resolve.alias["./cryptoFunctions"] = path.resolve(
+        __dirname,
+        "../tests/mocks/__mocks__/cryptoFunctions.ts"
+      )
+
+    }
+    if (configType === "PRODUCTION") {
+      // Prodcution Specific Config
+    }
+    return mergeConfig(config, {
+      optimizeDeps: {
+        include: ["storybook-dark-mode"],
       },
-    };
+    })
   },
 }
 
