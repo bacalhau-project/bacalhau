@@ -111,6 +111,7 @@ function install-bacalhau-dependencies() {
   echo "Installing Bacalhau dependencies..."
   apt-update
   install-apt-dependencies
+  install-golang
   install-earthly
 }
 
@@ -137,6 +138,20 @@ function install-earthly() {
     echo "Failed to install Earthly." >&2
     return 1
   }
+}
+
+function install-golang() {
+  # Install go
+  export HOME=/root
+  export GOCACHE="$HOME/.cache/go-build"
+  export GOPATH="/root/go"
+  export PATH="$PATH:$GOPATH/bin:/usr/local/go/bin"
+  sudo mkdir -p "$GOPATH"
+
+  sudo rm -fr /usr/local/go /usr/local/bin/go
+  curl --silent --show-error --location --fail 'https://go.dev/dl/go1.21.8.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  go version
 }
 
 install-bacalhau "$@"
