@@ -24,6 +24,11 @@ module "requester_instance" {
     repo_size = var.bacalhau_repo_disk_size
   }
 
+  tls_config = {
+    bacalhau_tls_crt = tls_self_signed_cert.tlscert.cert_pem
+    bacalhau_tls_sk = tls_private_key.privkey.private_key_pem
+  }
+
   requester_static_ip = module.gcp_network.requester_ip
   requester_instance_type = var.requester_machine_type
 
@@ -54,6 +59,7 @@ module "compute_instance" {
 
   bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
   bacalhau_otel_collector_endpoint = var.bacalhau_otel_collector_endpoint
+  bacalhau_tls_crt = tls_self_signed_cert.tlscert.cert_pem
 }
 
 locals {
@@ -94,6 +100,32 @@ resource "random_string" "bacalhau_compute_api_token" {
   keepers = {
     token = var.bacalhau_compute_api_token == "" ? "generate" : "provided"
   }
+}
+
+
+resource "tls_private_key" "privkey" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "tlscert" {
+  private_key_pem = tls_private_key.privkey.private_key_pem
+
+  subject {
+    common_name  = module.gcp_network.requester_ip
+  }
+
+  validity_period_hours = 8760 // 365 days
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+
+  ip_addresses = [module.gcp_network.requester_ip]
+
+  is_ca_certificate = false
 }
 
 
