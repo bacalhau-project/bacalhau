@@ -30,13 +30,20 @@ latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
 # Get golang version from ../.tool-versions and trim whitespace. The entry should look like "golang 1.16.7". Do not print line numbers.
 GO_VERSION=$(sed -n 's/golang \([0-9]*\.[0-9]*\.[0-9]*\)/\1/p' ../.tool-versions | tr -d '[:space:]')
 
-GOARCH=$(dpkg --print-architecture)
+# If running on linux, set GOARCH to the architecture of the machine - else if running on MacOS, set GOARCH to amd64
+if [ "$(uname)" == "Linux" ]; then
+    GOARCH=$(dpkg --print-architecture)
+else
+    GOARCH="amd64"
+fi
 GOOS=$(uname -s | tr '[:upper:]' '[:lower:]')
 
 GO_ARCHIVE_NAME="go${GO_VERSION}.${GOOS}-${GOARCH}.tar.gz"
 
 # Copy .tool-versions from parent directory to here
 cp ../.tool-versions .
+cp ../pyproject.toml .
+cp ../poetry.lock .
 
 # Use custom buildx builder
 # First see if the build driver already exists

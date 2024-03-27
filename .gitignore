@@ -66,3 +66,5 @@ dist/
 
 # Ignoring here, because it should always be copied from above dir
 dev/.tool-versions
+dev/pyproject.toml
+dev/poetry.lock

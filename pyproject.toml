@@ -10,6 +10,7 @@ pre-commit = "^2.20.0"
 sgqlc = "^16.0"
 semver = "^2.13.0"
 ruff = "^0.2.1"
+uv = "^0.1.24"
 
 [tool.poetry.dev-dependencies]
 

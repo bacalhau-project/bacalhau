@@ -1,4 +1,4 @@
-FROM python:3.11.1-slim
+FROM python:3.11.8-slim
 
 # Install Go
 ARG GO_VERSION
@@ -26,6 +26,16 @@ RUN cat /tmp/.tool-versions | while read line; do \
     asdf global $package $version; \
     done
 
+# Install git-town follow redirect
+RUN curl -L https://git-town.com/install.sh -o /tmp/git-town-install.sh && \
+    chmod +x /tmp/git-town-install.sh && \
+    /tmp/git-town-install.sh
+
+RUN mkdir -p /workspace/bacalhau
+WORKDIR /workspace/bacalhau
+COPY pyproject.toml poetry.lock /workspace/bacalhau/
+
+# Do the below inside the container so that they are using the right .venv
 COPY ./docker-build.sh /
 RUN chmod +x /docker-build.sh
 RUN /docker-build.sh
