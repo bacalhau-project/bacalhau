@@ -14,11 +14,11 @@ function parseData(nodes: Node[]): ParsedNodeData[] {
     const outputs: string[] = node.ComputeNodeInfo?.Publishers ?? []
 
     return {
-      id: node.PeerInfo.ID,
+      id: node.NodeID,
       type: node.NodeType,
       environment: node.Labels.env,
-      inputs,
-      outputs,
+      inputs: inputs,
+      outputs: outputs,
       version: node.BacalhauVersion.GitVersion,
       // action: "Action",
     }
