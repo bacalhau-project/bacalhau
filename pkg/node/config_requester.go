@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
@@ -51,6 +52,8 @@ type RequesterConfigParams struct {
 	JobStore jobstore.Store
 
 	DefaultPublisher string
+
+	ControlPlaneSettings types.RequesterControlPlaneConfig
 }
 
 type RequesterConfig struct {

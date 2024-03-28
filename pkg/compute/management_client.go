@@ -9,15 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
-)
-
-const (
-	infoUpdateFrequencyMinutes     = 5
-	resourceUpdateFrequencySeconds = 30
-	heartbeatFrequencySeconds      = 30
 )
 
 type ManagementClientParams struct {
@@ -28,6 +23,7 @@ type ManagementClientParams struct {
 	ResourceTracker      capacity.Tracker
 	RegistrationFilePath string
 	HeartbeatClient      *heartbeat.HeartbeatClient
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 // ManagementClient is used to call management functions with
@@ -43,6 +39,7 @@ type ManagementClient struct {
 	resourceTracker   capacity.Tracker
 	registrationFile  *RegistrationFile
 	heartbeatClient   *heartbeat.HeartbeatClient
+	settings          types.ComputeControlPlaneConfig
 }
 
 func NewManagementClient(params *ManagementClientParams) *ManagementClient {
@@ -55,6 +52,7 @@ func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
 		resourceTracker:   params.ResourceTracker,
 		heartbeatClient:   params.HeartbeatClient,
+		settings:          params.ControlPlaneSettings,
 	}
 }
 
@@ -140,13 +138,15 @@ func (m *ManagementClient) heartbeat(ctx context.Context, seq uint64) {
 }
 
 func (m *ManagementClient) Start(ctx context.Context) {
-	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
-	resourceTicker := time.NewTicker(resourceUpdateFrequencySeconds * time.Second)
+	infoTicker := time.NewTicker(m.settings.InfoUpdateFrequency.AsTimeDuration())
+	resourceTicker := time.NewTicker(m.settings.ResourceUpdateFrequency.AsTimeDuration())
 
-	// The heartbeat ticker will fire twice as often as the configured, to ensure that
-	// we don't slip outside the window.  If we only ever sent on the configured
-	// frequency we are at risk of the node's liveness flapping between good and bad.
-	heartbeatTicker := time.NewTicker((heartbeatFrequencySeconds / 2) * time.Second)
+	// The heartbeat ticker will be used to send heartbeats to the requester node and
+	// should be configured to be about half of the heartbeat frequency of the requester node
+	// to ensure that the requester node does not consider this node as dead. If the server
+	// heartbeat frequency is 30 seconds, the client heartbeat frequency should be configured to
+	// fire more than once in that 30 seconds.
+	heartbeatTicker := time.NewTicker(m.settings.HeartbeatFrequency.AsTimeDuration())
 
 	defer func() {
 		heartbeatTicker.Stop()

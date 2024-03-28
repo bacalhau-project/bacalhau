@@ -15,9 +15,10 @@ import (
 )
 
 type HeartbeatServer struct {
-	subscription *natsPubSub.PubSub[Heartbeat]
-	pqueue       *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
-	livenessMap  *concurrency.StripedMap[models.NodeState]
+	subscription   *natsPubSub.PubSub[Heartbeat]
+	pqueue         *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
+	livenessMap    *concurrency.StripedMap[models.NodeState]
+	checkFrequency time.Duration
 }
 
 type TimestampedHeartbeat struct {
@@ -25,9 +26,9 @@ type TimestampedHeartbeat struct {
 	Timestamp int64
 }
 
-func NewServer(conn *nats.Conn) (*HeartbeatServer, error) {
+func NewServer(conn *nats.Conn, topic string, checkFrequency time.Duration) (*HeartbeatServer, error) {
 	subParams := natsPubSub.PubSubParams{
-		Subject: heartbeatTopic,
+		Subject: topic,
 		Conn:    conn,
 	}
 
@@ -43,9 +44,10 @@ func NewServer(conn *nats.Conn) (*HeartbeatServer, error) {
 	)
 
 	return &HeartbeatServer{
-		subscription: subscription,
-		pqueue:       pqueue,
-		livenessMap:  concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
+		subscription:   subscription,
+		pqueue:         pqueue,
+		livenessMap:    concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
+		checkFrequency: checkFrequency,
 	}, nil
 }
 
@@ -62,7 +64,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 			log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
 		}()
 
-		ticker := time.NewTicker(heartbeatQueueCheckFrequency)
+		ticker := time.NewTicker(h.checkFrequency)
 
 		for {
 			select {

@@ -238,7 +238,10 @@ func NewNode(
 			}
 			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
 
-			heartbeatSvr, err = heartbeat.NewServer(natsClient.Client)
+			heartbeatSvr, err = heartbeat.NewServer(natsClient.Client,
+				config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatTopic,
+				config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
+			)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
 			}
@@ -378,7 +381,11 @@ func NewNode(
 				return nil, errors.Wrap(err, "failed to create NATS client for node info store")
 			}
 
-			hbClient, err = heartbeat.NewClient(natsClient.Client, config.NodeID)
+			hbClient, err = heartbeat.NewClient(
+				natsClient.Client,
+				config.NodeID,
+				config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
+			)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create heartbeat client")
 			}
