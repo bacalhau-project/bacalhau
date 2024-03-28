@@ -68,7 +68,7 @@ var Production = types.BacalhauConfig{
 		},
 		IPFS: types.IpfsConfig{
 			Connect:         "",
-			PrivateInternal: true,
+			PrivateInternal: false,
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
 				"/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH",
