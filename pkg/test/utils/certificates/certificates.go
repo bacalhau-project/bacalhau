@@ -41,6 +41,7 @@ func NewTestCACertificate(caCertPath, caKeyPath string) (*CACertificate, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	ca := &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{

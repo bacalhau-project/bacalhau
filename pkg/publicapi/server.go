@@ -154,7 +154,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	} else {
 		server.useTLS = params.TLSCertificateFile != "" && params.TLSKeyFile != ""
 	}
-
 	server.TLSCertificateFile = params.TLSCertificateFile
 	server.TLSKeyFile = params.TLSKeyFile
 
@@ -168,7 +167,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			return logger.ContextWithNodeIDLogger(context.Background(), params.HostID)
 		},
 	}
-
 	return server, nil
 }
 
