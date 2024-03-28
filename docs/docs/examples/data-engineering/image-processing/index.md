@@ -43,15 +43,11 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-`bacalhau docker run`: call to Bacalhau
-
-`-i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images`: Specifies the input data, which is stored in IPFS at the given CID.
-
-`--entrypoint mogrify`:  Overrides the default ENTRYPOINT of the image, indicating that the mogrify utility from the ImageMagick package will be used instead of the default entry.
-
-`dpokidov/imagemagick:7.1.0-47-ubuntu`: The name and the tag of the docker image we are using
-
-`-- -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'`: These arguments are passed to mogrify and specify operations on the images: resizing to 100x100 pixels, setting quality to 100, and saving the results to the `/outputs` folder.
+1. `bacalhau docker run`: call to Bacalhau
+1. `-i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images`: Specifies the input data, which is stored in IPFS at the given CID.
+1. `--entrypoint mogrify`:  Overrides the default ENTRYPOINT of the image, indicating that the mogrify utility from the ImageMagick package will be used instead of the default entry.
+1. `dpokidov/imagemagick:7.1.0-47-ubuntu`: The name and the tag of the docker image we are using
+1. `-- -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'`: These arguments are passed to mogrify and specify operations on the images: resizing to 100x100 pixels, setting quality to 100, and saving the results to the `/outputs` folder.
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
@@ -59,6 +55,45 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %env JOB_ID={job_id}
 ```
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Simple Image Processing
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: dpokidov/imagemagick:7.1.0-47-ubuntu
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    InputSources:
+    - Target: "/input_images"
+      Source:
+        Type: "s3"
+        Params:
+          Bucket: "landsat-image-processing"
+          Key: "*"
+          Region: "us-east-1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `image.yaml`, and then run with the command:
+```bash
+bacalhau job run image.yaml
+```
+
 
 ## Checking the State of your Jobs
 
