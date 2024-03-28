@@ -110,6 +110,11 @@ tasks:
         Parameters:
           - -c
           - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
     InputSources:
       - Target: "/input"
         Source:
