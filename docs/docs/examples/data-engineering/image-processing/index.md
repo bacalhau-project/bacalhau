@@ -74,6 +74,11 @@ tasks:
         Parameters:
           - -c
           - magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
     InputSources:
     - Target: "/input_images"
       Source:
