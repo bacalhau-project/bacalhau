@@ -1,6 +1,6 @@
 {
 	"name": "Bacalhau",
-	"image": "docker.io/bacalhauproject/bacalhau-devcontainer:v1.3.0@sha256:d835fc39c2ba82eb9a684a3e7ae8",
+	"image": "docker.io/bacalhauproject/bacalhau-devcontainer@sha256:8265f12dd8093fe3161bdcd9d1edc17334914996b48a019b8edf95b4289332dc",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {
 			"enabled": true,

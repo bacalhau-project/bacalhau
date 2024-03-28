@@ -5,7 +5,7 @@ ARG GO_VERSION
 ARG GO_ARCHIVE_NAME
 
 RUN apt-get update
-RUN apt-get install -y wget git gcc curl direnv
+RUN apt-get install -y wget git gcc curl direnv make
 
 # Install asdf
 RUN git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0 && \
