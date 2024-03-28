@@ -122,10 +122,6 @@ func NewComputeNode(
 		},
 	})
 
-	// TODO(forrest) fix before merging
-	// semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
-	// resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
-
 	// logging server
 	logserver := logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: executionStore,
