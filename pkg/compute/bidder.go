@@ -225,8 +225,9 @@ func (b Bidder) doBidding(
 	ctx context.Context,
 	job *models.Job,
 	resourceUsage *models.Resources) (*bidStrategyResponse, error) {
-	// NB(forrest): allways run semantic bidding before resource bidding
-	// Check semantic bidding strategies before calculating resource usage.
+	// NB(forrest): allways run semantic bidding before resource bidding since generally there isn't much point in
+	// calling resource strategies that require DiskUsageCalculator.Calculate (a precursor to checking bidding) if
+	// semantically the job cannot run.
 	semanticResponse, err := b.runSemanticBidding(ctx, job)
 	if err != nil {
 		return nil, fmt.Errorf("semantic bidding: %w", err)
