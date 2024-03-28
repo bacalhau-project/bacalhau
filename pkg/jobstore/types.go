@@ -175,11 +175,12 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 }
 
 type JobHistoryFilterOptions struct {
-	Since                 int64  `json:"since"`
-	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
-	ExcludeJobLevel       bool   `json:"exclude_job_level"`
-	ExecutionID           string `json:"execution_id"`
-	NodeID                string `json:"node_id"`
+	Since                     int64  `json:"since"`
+	ExcludeExecutionLevel     bool   `json:"exclude_execution_level"`
+	ExcludeJobLevel           bool   `json:"exclude_job_level"`
+	ExcludeSchedulingDeferral bool   `json:"exclude_scheduling_deferral"`
+	ExecutionID               string `json:"execution_id"`
+	NodeID                    string `json:"node_id"`
 }
 
 type GetExecutionsOptions struct {
