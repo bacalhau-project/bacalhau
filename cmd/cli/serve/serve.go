@@ -28,6 +28,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -161,7 +162,6 @@ func NewCmd() *cobra.Command {
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
-
 	return serveCmd
 }
 
@@ -270,6 +270,7 @@ func serve(cmd *cobra.Command) error {
 		AuthConfig:            authConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
+		RequesterSelfSign:     config.GetRequesterSelfSign(),
 		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
@@ -286,7 +287,7 @@ func serve(cmd *cobra.Command) error {
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err = GetTLSCertificate(&nodeConfig)
+			cert, key, err = GetTLSCertificate(ctx, &nodeConfig, cmd)
 			if err != nil {
 				return err
 			}
@@ -563,7 +564,7 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 
 	return addresses[0]
 }
-func GetTLSCertificate(nodeConfig *node.NodeConfig) (string, string, error) {
+func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig, cmd *cobra.Command) (string, string, error) {
 	cert, key := config.GetRequesterCertificateSettings()
 	if cert != "" && key != "" {
 		return cert, key, nil
@@ -577,6 +578,7 @@ func GetTLSCertificate(nodeConfig *node.NodeConfig) (string, string, error) {
 	if !nodeConfig.RequesterSelfSign {
 		return "", "", nil
 	}
+	log.Ctx(ctx).Info().Msg("Generating self-signed certificate")
 	var err error
 	// If the user has not specified a private key, use their client key
 	if key == "" {
@@ -604,5 +606,6 @@ func GetTLSCertificate(nodeConfig *node.NodeConfig) (string, string, error) {
 		return "", "", errors.Wrap(err, "failed to write server certificate")
 	}
 	cert = certFile.Name()
+	cmd.Println("Requester Node is using a self-signed certificate")
 	return cert, key, nil
 }

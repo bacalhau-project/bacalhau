@@ -4,6 +4,7 @@ package serve_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,6 +50,7 @@ type ServeSuite struct {
 	ipfsPort int
 	ctx      context.Context
 	repoPath string
+	protocol string
 }
 
 func TestServeSuite(t *testing.T) {
@@ -61,6 +63,7 @@ func (s *ServeSuite) SetupTest() {
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
 	s.repoPath = repoPath
+	s.protocol = "http"
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -142,8 +145,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 				return 0, errs.Wait()
 			}
 			s.FailNow("Server did not start in time")
+
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -157,7 +161,15 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, http.StatusServiceUnavailable, err
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	client := http.DefaultClient
+	if strings.HasPrefix(URL, "https") {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
@@ -297,6 +309,15 @@ func (s *ServeSuite) TestGetPeers() {
 	peerConnect = strings.Join(inputPeers, ",")
 	_, err = serve.GetPeers(peerConnect)
 	s.Require().Error(err)
+}
+
+func (s *ServeSuite) TestSelfSignedRequester() {
+	s.protocol = "https"
+	_, err := s.serve("--node-type", "requester", "--self-signed")
+	s.Require().NoError(err)
+	expectedLogMessage := "Requester Node is using a self-signed certificate"
+	logOutput := s.out.String()
+	s.Contains(logOutput, expectedLogMessage)
 }
 
 // Begin WebUI Tests
