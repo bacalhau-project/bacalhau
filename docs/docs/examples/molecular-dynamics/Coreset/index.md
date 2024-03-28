@@ -233,16 +233,20 @@ tasks:
           - /bin/bash
         Parameters:
           - -c
-          - "osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson;
-python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o outputs"
+          - "osmium export input/liechtenstein-latest.osm.pbf -o /liechtenstein-latest.geojson;python Coreset/python/coreset.py -f /liechtenstein-latest.geojson -o /outputs"
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
     InputSources:
-      - Target: "/input"
-        Source:
+      - Source:
           Type: "s3"
           Params:
             Bucket: "coreset"
             Key: "*"
             Region: "us-east-1"
+        Target: "/input"    
 ```
 
 The job description should be saved in `.yaml` format, e.g. `coreset.yaml`, and then run with the command:
