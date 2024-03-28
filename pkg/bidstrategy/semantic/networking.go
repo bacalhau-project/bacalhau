@@ -17,10 +17,8 @@ func NewNetworkingStrategy(accept bool) *NetworkingStrategy {
 }
 
 const (
-	// TODO(forrest) [correctness] this link is no longer valid
-	docsLink        = "(see https://docs.bacalhau.org/next-steps/networking)"
-	accessReason    = "run jobs that require network access " + docsLink
-	localOnlyReason = "run jobs that do not require network access " + docsLink
+	accessReason    = "run jobs that require network access"
+	localOnlyReason = "run jobs that do not require network access"
 )
 
 // ShouldBid implements BidStrategy
