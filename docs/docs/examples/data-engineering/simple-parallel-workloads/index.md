@@ -71,6 +71,11 @@ tasks:
         Parameters:
           - -c
           - find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
     InputSources:
     - Target: "/inputs"
       Source:
