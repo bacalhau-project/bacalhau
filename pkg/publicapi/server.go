@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"golang.org/x/time/rate"
@@ -211,27 +212,54 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 		}
 	}
 
-	log.Ctx(ctx).Debug().Msgf(
-		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
-
+	// Create an error channel
+	errChan := make(chan error, 1)
 	go func() {
-		var err error
+		defer close(errChan)
+		var serveErr error
 
 		if apiServer.useTLS {
-			err = apiServer.httpServer.ServeTLS(listener, apiServer.TLSCertificateFile, apiServer.TLSKeyFile)
+			serveErr = apiServer.httpServer.ServeTLS(listener, apiServer.TLSCertificateFile, apiServer.TLSKeyFile)
+			if serveErr != nil {
+				serveErr = fmt.Errorf(
+					"failed to start API server with TLS (cert path: %s) (key path: %s): %w",
+					apiServer.TLSCertificateFile,
+					apiServer.TLSKeyFile,
+					serveErr,
+				)
+			}
 		} else {
-			err = apiServer.httpServer.Serve(listener)
+			serveErr = apiServer.httpServer.Serve(listener)
+			if serveErr != nil {
+				serveErr = fmt.Errorf(
+					"failed to start API server: %w", err)
+			}
 		}
 
-		if err == http.ErrServerClosed {
-			log.Ctx(ctx).Debug().Msgf(
+		if serveErr == http.ErrServerClosed {
+			log.Ctx(ctx).Info().Msgf(
 				"API server closed for host %s on %s.", apiServer.Address, apiServer.httpServer.Addr)
-		} else if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Api server can't run. Cannot serve client requests!")
+		} else if serveErr != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("Api server can't run. Cannot serve client requests")
+			errChan <- serveErr
 		}
 	}()
 
-	return nil
+	// NB(forrest): There are few cases when http.Serve* will return an error,
+	// one of which is when there are issues reading the TLS configuration.
+	// In most cases, if the server starts successfully, http.Serve* will block and not return an error.
+	// We use a select statement to wait for either an error from errChan or a timeout of 2 seconds.
+	// If an error is received within the timeout, it means the server encountered an issue during startup.
+	// If no error is received within the timeout, we assume the server started successfully.
+	// TODO: call os.Exit(1) or log.Fatal if the server stops running for a reason other than ErrServerClosed
+	select {
+	case startErr := <-errChan:
+		return startErr
+	case <-time.After(time.Second * 2):
+		log.Ctx(ctx).Info().Msgf(
+			"API server listening for host %s on %s", apiServer.Address, listener.Addr().String())
+		return nil
+	}
 }
 
 // Shutdown shuts down the http server
