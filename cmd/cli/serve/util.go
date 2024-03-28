@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -145,12 +144,18 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
 		return types.IpfsConfig{}, err
 	}
+
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
+		ipfsConfig.PrivateInternal = false
+		log.Debug().Msg("disabling ipfs private internal")
+	}
+
+	/*if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
 		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
 			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
 			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
 		)
-	}
+	}*/
 
 	return ipfsConfig, nil
 }
