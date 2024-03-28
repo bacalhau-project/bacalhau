@@ -139,6 +139,11 @@ tasks:
         Parameters:
           - -c
           - nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
     InputSources:
     - Target: /inputs
       Source:
