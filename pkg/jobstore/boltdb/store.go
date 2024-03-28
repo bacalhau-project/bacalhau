@@ -579,6 +579,21 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	return history, err
 }
 
+func (b *BoltJobStore) getJobHistoryByPath(bkt *bolt.Bucket, history []models.JobHistory) ([]models.JobHistory, error) {
+	err := bkt.ForEach(func(key []byte, data []byte) error {
+		var item models.JobHistory
+
+		err := b.marshaller.Unmarshal(data, &item)
+		if err != nil {
+			return err
+		}
+
+		history = append(history, item)
+		return nil
+	})
+	return history, err
+}
+
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	var history []models.JobHistory
@@ -589,21 +604,11 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	}
 
 	if !options.ExcludeJobLevel {
+		// Get the job state changes for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
-			err = bkt.ForEach(func(key []byte, data []byte) error {
-				var item models.JobHistory
-
-				err := b.marshaller.Unmarshal(data, &item)
-				if err != nil {
-					return err
-				}
-
-				history = append(history, item)
-				return nil
-			})
-
+			history, err = b.getJobHistoryByPath(bkt, history)
 			if err != nil {
 				return nil, err
 			}
@@ -611,21 +616,11 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	}
 
 	if !options.ExcludeExecutionLevel {
-		// 	// Get the executions for this JobID
+		// Get the executions for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketExecutionHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
-			err = bkt.ForEach(func(key []byte, data []byte) error {
-				var item models.JobHistory
-
-				err := b.marshaller.Unmarshal(data, &item)
-				if err != nil {
-					return err
-				}
-
-				history = append(history, item)
-				return nil
-			})
+			history, err = b.getJobHistoryByPath(bkt, history)
 
 			if err != nil {
 				return nil, err
@@ -634,21 +629,11 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	}
 
 	if !options.ExcludeSchedulingDeferral {
-		// 	// Get the executions for this JobID
+		// Get the scheduling deferrals for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketDeferralHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
-			err = bkt.ForEach(func(key []byte, data []byte) error {
-				var item models.JobHistory
-
-				err := b.marshaller.Unmarshal(data, &item)
-				if err != nil {
-					return err
-				}
-
-				history = append(history, item)
-				return nil
-			})
+			history, err = b.getJobHistoryByPath(bkt, history)
 
 			if err != nil {
 				return nil, err
