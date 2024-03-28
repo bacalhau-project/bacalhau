@@ -287,7 +287,7 @@ func serve(cmd *cobra.Command) error {
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err = GetTLSCertificate(ctx, &nodeConfig, cmd)
+			cert, key, err = GetTLSCertificate(ctx, &nodeConfig)
 			if err != nil {
 				return err
 			}
@@ -564,7 +564,7 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 
 	return addresses[0]
 }
-func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig, cmd *cobra.Command) (string, string, error) {
+func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig) (string, string, error) {
 	cert, key := config.GetRequesterCertificateSettings()
 	if cert != "" && key != "" {
 		return cert, key, nil
@@ -606,6 +606,5 @@ func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig, cmd *co
 		return "", "", errors.Wrap(err, "failed to write server certificate")
 	}
 	cert = certFile.Name()
-	cmd.Println("Requester Node is using a self-signed certificate")
 	return cert, key, nil
 }

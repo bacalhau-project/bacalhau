@@ -315,9 +315,6 @@ func (s *ServeSuite) TestSelfSignedRequester() {
 	s.protocol = "https"
 	_, err := s.serve("--node-type", "requester", "--self-signed")
 	s.Require().NoError(err)
-	expectedLogMessage := "Requester Node is using a self-signed certificate"
-	logOutput := s.out.String()
-	s.Contains(logOutput, expectedLogMessage)
 }
 
 // Begin WebUI Tests
