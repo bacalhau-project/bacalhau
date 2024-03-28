@@ -9,16 +9,26 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-
 	"github.com/nats-io/nats.go"
+
 	"github.com/rs/zerolog/log"
 )
+
+type HeartbeatServerParams struct {
+	Client             *nats.Conn
+	Topic              string
+	CheckFrequency     time.Duration
+	NodeUnhealthyAfter time.Duration
+	NodeUnknownAfter   time.Duration
+}
 
 type HeartbeatServer struct {
 	subscription   *natsPubSub.PubSub[Heartbeat]
 	pqueue         *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
 	livenessMap    *concurrency.StripedMap[models.NodeState]
 	checkFrequency time.Duration
+	unhealthyAfter time.Duration
+	unknownAfter   time.Duration
 }
 
 type TimestampedHeartbeat struct {
@@ -26,10 +36,10 @@ type TimestampedHeartbeat struct {
 	Timestamp int64
 }
 
-func NewServer(conn *nats.Conn, topic string, checkFrequency time.Duration) (*HeartbeatServer, error) {
+func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 	subParams := natsPubSub.PubSubParams{
-		Subject: topic,
-		Conn:    conn,
+		Subject: params.Topic,
+		Conn:    params.Client,
 	}
 
 	subscription, err := natsPubSub.NewPubSub[Heartbeat](subParams)
@@ -47,7 +57,9 @@ func NewServer(conn *nats.Conn, topic string, checkFrequency time.Duration) (*He
 		subscription:   subscription,
 		pqueue:         pqueue,
 		livenessMap:    concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
-		checkFrequency: checkFrequency,
+		checkFrequency: params.CheckFrequency,
+		unhealthyAfter: params.NodeUnhealthyAfter,
+		unknownAfter:   params.NodeUnknownAfter,
 	}, nil
 }
 
@@ -89,8 +101,8 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 	// These are the timestamps, below which we'll consider the item in one of those two
 	// states
 	nowStamp := time.Now().UTC().Unix()
-	unhealthyUnder := nowStamp - int64(unhealthyAfter.Seconds())
-	unknownUnder := nowStamp - int64(unknownAfter.Seconds())
+	unhealthyUnder := nowStamp - int64(h.unhealthyAfter.Seconds())
+	unknownUnder := nowStamp - int64(h.unknownAfter.Seconds())
 
 	for {
 		// Dequeue anything older than the unknown timestamp

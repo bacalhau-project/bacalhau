@@ -72,6 +72,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	ControlPlaneSettings: types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
+		NodeUnhealthyAfter:      types.Duration(30 * time.Second), //nolint:gomnd
+		NodeUnknownAfter:        types.Duration(60 * time.Second), //nolint:gomnd
 	},
 }
 
@@ -105,6 +107,8 @@ var TestRequesterConfig = RequesterConfigParams{
 	ControlPlaneSettings: types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
+		NodeUnhealthyAfter:      types.Duration(30 * time.Second), //nolint:gomnd
+		NodeUnknownAfter:        types.Duration(60 * time.Second), //nolint:gomnd
 	},
 }
 
