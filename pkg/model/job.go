@@ -218,6 +218,18 @@ type Spec struct {
 	// This includes the time required to run, verify and publish results
 	Timeout int64 `json:"Timeout,omitempty"`
 
+	// How long a job can wait to be scheduled in seconds before we give up on it
+	SchedulingTimeout int64 `json:"SchedulingTimeout,omitempty"`
+
+	// How many seconds to wait between retries. This increases each retry, up to MaximumRetryDelay
+	BaseRetryDelay int64 `json:"BaseRetryDelay,omitempty"`
+
+	// The maximum delay between retries
+	MaximumRetryDelay int64 `json:"MaximumRetryDelay,omitempty"`
+
+	// The growth factor: how much longer to wait before retrying each time
+	RetryDelayGrowthFactor float64 `json:"RetryDelayGrowthFactor,omitempty"`
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []StorageSpec `json:"Inputs,omitempty"`

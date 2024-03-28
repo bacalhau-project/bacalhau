@@ -43,6 +43,34 @@ func WithTimeout(t int64) SpecOpt {
 	}
 }
 
+func WithSchedulingTimeout(t int64) SpecOpt {
+	return func(s *model.Spec) error {
+		s.SchedulingTimeout = t
+		return nil
+	}
+}
+
+func WithBaseRetryDelay(t int64) SpecOpt {
+	return func(s *model.Spec) error {
+		s.BaseRetryDelay = t
+		return nil
+	}
+}
+
+func WithMaximumRetryDelay(t int64) SpecOpt {
+	return func(s *model.Spec) error {
+		s.MaximumRetryDelay = t
+		return nil
+	}
+}
+
+func WithRetryDelayGrowthFactor(t float64) SpecOpt {
+	return func(s *model.Spec) error {
+		s.RetryDelayGrowthFactor = t
+		return nil
+	}
+}
+
 func WithDeal(targeting model.TargetingMode, concurrency int) SpecOpt {
 	return func(s *model.Spec) error {
 		s.Deal.TargetingMode = targeting

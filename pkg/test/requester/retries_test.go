@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/selection"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -49,7 +49,6 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
 
 	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
@@ -173,104 +172,94 @@ func (s *RetriesSuite) TestRetry() {
 		concurrency             int
 		failed                  bool // whether the job should fail
 		expectedJobState        model.JobStateType
-		expectedStateCount      IntMatch
-		expectedExecutionStates map[model.ExecutionStateType]IntMatch
+		expectedExecutionStates map[string]model.ExecutionStateType
 		expectedExecutionErrors map[model.ExecutionStateType]string
 	}{
 		{
-			name:               "bid-rejected-succeed-with-retry-on-good-nodes",
-			nodes:              []string{"bid-rejector", "good-guy1"},
-			expectedStateCount: NewIntMatch(2),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateCompleted:         NewIntMatch(1),
-				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
+			name:  "bid-rejected-succeed-with-retry-on-good-nodes",
+			nodes: []string{"bid-rejector", "good-guy1"},
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"good-guy1":    model.ExecutionStateCompleted,
+				"bid-rejector": model.ExecutionStateAskForBidRejected,
 			},
 		},
 		{
-			name:               "bid-rejected-no-good-nodes",
-			nodes:              []string{"bid-rejector"},
-			failed:             true,
-			expectedStateCount: NewIntMatch(1),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
+			name:   "bid-rejected-no-good-nodes",
+			nodes:  []string{"bid-rejector"},
+			failed: true,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"bid-rejector": model.ExecutionStateAskForBidRejected,
 			},
 		},
 		{
-			name:               "execution-failure-succeed-with-retry-on-good-nodes",
-			nodes:              []string{"bad-executor", "good-guy1"},
-			expectedStateCount: NewIntMatch(2),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateCompleted: NewIntMatch(1),
-				model.ExecutionStateFailed:    NewIntMatch(1),
+			name:  "execution-failure-succeed-with-retry-on-good-nodes",
+			nodes: []string{"bad-executor", "good-guy1"},
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"good-guy1":    model.ExecutionStateCompleted,
+				"bad-executor": model.ExecutionStateFailed,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: errExecution.Error(),
 			},
 		},
 		{
-			name:               "execution-failure-no-good-nodes",
-			nodes:              []string{"bad-executor"},
-			failed:             true,
-			expectedStateCount: NewIntMatch(1),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateFailed: NewIntMatch(2), // we retry up to two times on the same node
+			name:   "execution-failure-no-good-nodes",
+			nodes:  []string{"bad-executor"},
+			failed: true,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"bad-executor": model.ExecutionStateFailed, // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: errExecution.Error(),
 			},
 		},
 		{
-			name:               "publish-failure-succeed-with-retry-on-good-nodes",
-			nodes:              []string{"bad-publisher", "good-guy1"},
-			expectedStateCount: NewIntMatch(2),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateCompleted: NewIntMatch(1),
-				model.ExecutionStateFailed:    NewIntMatch(1),
+			name:  "publish-failure-succeed-with-retry-on-good-nodes",
+			nodes: []string{"bad-publisher", "good-guy1"},
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"good-guy1":    model.ExecutionStateCompleted,
+				"bad-executor": model.ExecutionStateFailed,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:               "publish-failure-no-good-nodes",
-			nodes:              []string{"bad-publisher"},
-			failed:             true,
-			expectedStateCount: NewIntMatch(1),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateFailed: NewIntMatch(2),
+			name:   "publish-failure-no-good-nodes",
+			nodes:  []string{"bad-publisher"},
+			failed: true,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"bad-publisher": model.ExecutionStateFailed,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:               "publish-partial-failure",
-			nodes:              []string{"bad-publisher", "good-guy1"},
-			concurrency:        2,
-			failed:             true,
-			expectedJobState:   model.JobStateError,
-			expectedStateCount: NewIntMatch(2),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
+			name:             "publish-partial-failure",
+			nodes:            []string{"bad-publisher", "good-guy1"},
+			concurrency:      2,
+			failed:           true,
+			expectedJobState: model.JobStateError,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
 				// we cancel the good-guy1 if the two attempts on bad-publisher fail but it may
 				// have completed so we will allow 0,1 cancelled and 0,1 completed
-				model.ExecutionStateCancelled: NewIntMatch(0, 1),
-				model.ExecutionStateCompleted: NewIntMatch(0, 1),
-				model.ExecutionStateFailed:    NewIntMatch(2), // we retry up to two times on the same node
+				"good-guy1":     model.ExecutionStateCompleted,
+				"bad-publisher": model.ExecutionStateFailed, // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: errPublish.Error(),
 			},
 		},
 		{
-			name:               "cancel-slow-executor-on-failure",
-			nodes:              []string{"slow-executor", "bad-executor"},
-			concurrency:        2,
-			failed:             true,
-			expectedJobState:   model.JobStateError,
-			expectedStateCount: NewIntMatch(2),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateFailed:    NewIntMatch(2), // we retry up to two times on the same node
-				model.ExecutionStateCancelled: NewIntMatch(1),
+			name:             "cancel-slow-executor-on-failure",
+			nodes:            []string{"slow-executor", "bad-executor"},
+			concurrency:      2,
+			failed:           true,
+			expectedJobState: model.JobStateError,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"good-guy1":     model.ExecutionStateFailed, // we retry up to two times on the same node
+				"slow-executor": model.ExecutionStateCancelled,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed:    errExecution.Error(),
@@ -278,14 +267,14 @@ func (s *RetriesSuite) TestRetry() {
 			},
 		},
 		{
-			name:               "multiple-failures-succeed-with-retry-on-good-nodes",
-			nodes:              []string{"bid-rejector", "bad-executor", "good-guy1", "good-guy2"},
-			concurrency:        2,
-			expectedStateCount: NewIntMatch(3),
-			expectedExecutionStates: map[model.ExecutionStateType]IntMatch{
-				model.ExecutionStateAskForBidRejected: NewIntMatch(1),
-				model.ExecutionStateFailed:            NewIntMatch(1),
-				model.ExecutionStateCompleted:         NewIntMatch(2),
+			name:        "multiple-failures-succeed-with-retry-on-good-nodes",
+			nodes:       []string{"bid-rejector", "bad-executor", "good-guy1", "good-guy2"},
+			concurrency: 2,
+			expectedExecutionStates: map[string]model.ExecutionStateType{
+				"bid-rejector": model.ExecutionStateAskForBidRejected,
+				"bad-executor": model.ExecutionStateFailed,
+				"good-guy1":    model.ExecutionStateCompleted,
+				"good-guy2":    model.ExecutionStateCompleted,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed:    errExecution.Error(),
@@ -295,7 +284,6 @@ func (s *RetriesSuite) TestRetry() {
 	}
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			ctx := context.Background()
 			j := makeBadTargetingJob(s.T(), tc.nodes)
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
@@ -329,18 +317,27 @@ func (s *RetriesSuite) TestRetry() {
 				"Expected job in state %s, found %s", tc.expectedJobState.String(), jobState.State.String())
 
 			// verify execution states
-			executionStates := jobState.GroupExecutionsByState()
-			s.Require().True(tc.expectedStateCount.Match(len(executionStates)), "Expected %s, got %d", tc.expectedStateCount.String(), len(executionStates))
+			nodeInfo, err := s.client.Nodes(ctx)
+			s.Require().NoError(err)
 
-			for state, matcher := range tc.expectedExecutionStates {
-				// Does the number of states match one of the values in the IntMatch
-				s.Require().True(matcher.Match(len(executionStates[state])),
-					"Expected %d executions in state %s, found %d", matcher.String(), state.String(), len(executionStates[state]))
+			nodes := lo.GroupBy(nodeInfo, func(item models.NodeInfo) string { return item.NodeID })
+			executionStates := lo.GroupBy(jobState.Executions, func(s model.ExecutionState) string { return nodes[s.NodeID][0].Labels["name"] })
+			stateTypes := lo.MapValues(executionStates, func(states []model.ExecutionState, _ string) []model.ExecutionStateType {
+				return lo.Uniq(lo.Map(states, func(item model.ExecutionState, index int) model.ExecutionStateType { return item.State }))
+			})
+			s.T().Log(stateTypes)
+			for node, state := range tc.expectedExecutionStates {
+				states := stateTypes[node]
+				s.Require().Len(states, 1,
+					"Expected node %q to have executions in 1 state %q but has %s states\n%+v", node, state, states, stateTypes)
+				s.Require().Contains(states, state,
+					"Expected node %q to have executions in state %q but has %s states\n%+v", node, state, states, stateTypes)
 			}
 
 			// verify execution error status message
+			executionsByState := jobState.GroupExecutionsByState()
 			for state, message := range tc.expectedExecutionErrors {
-				for _, execution := range executionStates[state] {
+				for _, execution := range executionsByState[state] {
 					s.Require().Contains(execution.Status, message)
 				}
 			}
@@ -349,7 +346,10 @@ func (s *RetriesSuite) TestRetry() {
 }
 
 func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *model.Job {
-	j := testutils.MakeJobWithOpts(t)
+	j := testutils.MakeJobWithOpts(t,
+		legacy_job.WithSchedulingTimeout(5),
+		legacy_job.WithBaseRetryDelay(1),
+	)
 	req := []model.LabelSelectorRequirement{
 		{
 			Key:      "favour_name",

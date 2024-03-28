@@ -3,8 +3,10 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -40,6 +42,7 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 	}
 }
 
+//nolint:funlen // It's only long because I wrote plenty of good comments
 func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
@@ -51,6 +54,17 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: evaluation.JobID,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
+			evaluation.JobID, evaluation, err)
+	}
+	// Retrieve the job deferral history
+	jobDeferralHistory, err := b.jobStore.GetJobHistory(ctx, evaluation.JobID,
+		jobstore.JobHistoryFilterOptions{
+			ExcludeExecutionLevel:     true,
+			ExcludeJobLevel:           true,
+			ExcludeSchedulingDeferral: false,
+		})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
@@ -92,19 +106,49 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	execsByApprovalStatus.toApprove.markApproved(plan)
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
 
-	// create new executions if needed
+	// How many executions failed due to compute nodes rejecting bids?
+	rejected := existingExecs.filterRejected()
+
+	// All failed/lost/rejected executions
+	allFailed := existingExecs.filterFailed().union(lost).union(rejected)
+
+	shouldRetry, retryDelay := b.retryStrategy.ShouldRetry(ctx,
+		orchestrator.RetryRequest{
+			Job:          &job,
+			PastFailures: len(jobDeferralHistory),
+		})
+
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
-	if remainingExecutionCount > 0 {
-		allFailed := existingExecs.filterFailed().union(lost)
-		var placementErr error
-		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
-			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
-		} else {
-			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
+
+	// If we're not retrying, then we're not creating any new executions; if we
+	// needed any more, then the job has failed. (but this is skipped if we've
+	// not tried any executions previously)
+	if !shouldRetry && len(jobExecutions) != 0 {
+		if remainingExecutionCount > 0 {
+			b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("exceeded max retries for job %s", job.ID))
+			return b.planner.Process(ctx, plan)
 		}
+	}
+
+	// create new executions if needed
+	if remainingExecutionCount > 0 {
+		newExecs, placementErr := b.createMissingExecs(ctx, remainingExecutionCount, &job, retryDelay, plan)
 		if placementErr != nil {
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)
+		}
+		if newExecs.countPlaced() < remainingExecutionCount {
+			// Not enough nodes were available for the number of executions we
+			// want.  Nodes may become available later, either directly or through
+			// having had executions currently within the retryDelay interval that
+			// time out of it. So as well as creating these new executions, let's
+			// also schedule a new evaluation in retryDelay seconds.
+			if shouldRetry {
+				b.handleRetry(ctx, plan, &job, retryDelay)
+			} else {
+				b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("exceeded max retries for job %s", job.ID))
+				return b.planner.Process(ctx, plan)
+			}
 		}
 	}
 
@@ -123,7 +167,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 }
 
 func (b *BatchServiceJobScheduler) createMissingExecs(
-	ctx context.Context, remainingExecutionCount int, job *models.Job, plan *models.Plan) (execSet, error) {
+	ctx context.Context, remainingExecutionCount int, job *models.Job, retryDelay time.Duration, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
 	for i := 0; i < remainingExecutionCount; i++ {
 		execution := &models.Execution{
@@ -139,35 +183,58 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		newExecs[execution.ID] = execution
 	}
 	if len(newExecs) > 0 {
-		err := b.placeExecs(ctx, newExecs, job)
+		err := b.placeExecs(ctx, newExecs, job, retryDelay)
 		if err != nil {
 			return newExecs, err
 		}
 	}
 	for _, exec := range newExecs {
-		plan.AppendExecution(exec)
+		// Not all execs might get Node IDs from placeExecs, if there weren't
+		// enough nodes to place them all at once
+		if exec.NodeID != "" {
+			plan.AppendExecution(exec)
+		}
 	}
 	return newExecs, nil
 }
 
 // placeExecs places the executions
-func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
+func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job, retryDelay time.Duration) error {
 	if len(execs) > 0 {
-		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, len(execs))
+		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, retryDelay, len(execs))
 		if err != nil {
 			return err
 		}
 		i := 0
 		for _, exec := range execs {
-			exec.NodeID = selectedNodes[i].ID()
+			// We may get less nodes back than we requested, if there aren't enough available yet
+			if i < len(selectedNodes) {
+				exec.NodeID = selectedNodes[i].ID()
+			} else {
+				exec.NodeID = ""
+			}
 			i++
 		}
 	}
 	return nil
 }
 
+func (b *BatchServiceJobScheduler) handleRetry(ctx context.Context, plan *models.Plan, job *models.Job, delay time.Duration) {
+	// Compute time to try again
+	waitUntil := time.Now().Add(delay)
+	// Schedule a new evaluation
+	plan.DeferEvaluation(waitUntil)
+	// Record deferral
+	err := b.jobStore.RecordJobDeferral(ctx, job.ID, waitUntil, fmt.Sprintf("Deferring rescheduling for %s", delay))
+	// No need to pass the error up and fail the overall operation due to an
+	// inability to record the deferral, but this is cause for concern so should
+	// be logged as a (non-fatal) error
+	if err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).Msg("Could not record job deferral in the job history")
+	}
+}
+
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
 	// mark all non-terminal executions as failed
 	nonTerminalExecs.markStopped(jobFailed, plan)
 

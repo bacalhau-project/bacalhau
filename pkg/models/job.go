@@ -114,6 +114,23 @@ type Job struct {
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`
+
+	ReschedulingPolicy ReschedulingPolicy `json:"ReschedulingPolicy,omitempty"`
+}
+
+type ReschedulingPolicy struct {
+	// SchedulingTimeout is the time, in seconds, the job is allowed to wait
+	// to be scheduled before we give up trying.
+	SchedulingTimeout int64 `json:"SchedulingTimeout"`
+
+	// How many seconds to initially wait between retries. This increases each retry, up to MaximumRetryDelay
+	BaseRetryDelay int64 `json:"BaseRetryDelay"`
+
+	// The maximum delay between retries
+	MaximumRetryDelay int64 `json:"MaximumRetryDelay"`
+
+	// The growth factor: how much longer to wait before retrying each time
+	RetryDelayGrowthFactor float64 `json:"RetryDelayGrowthFactor"`
 }
 
 func (j *Job) MetricAttributes() []attribute.KeyValue {

@@ -135,6 +135,12 @@ func NewRequesterNode(
 			EventEmitter: eventEmitter,
 		}),
 
+		// planner that generates new evaluations to defer jobs
+		planner.NewReEvaluator(planner.ReEvaluatorParams{
+			ID:               nodeID,
+			EvaluationBroker: evalBroker,
+		}),
+
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
 	)
@@ -144,7 +150,7 @@ func NewRequesterNode(
 		// retry strategy
 		retryStrategyChain := retry.NewChain()
 		retryStrategyChain.Add(
-			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+			retry.NewDeadlineStrategy(retry.DeadlineStrategyParams{}),
 		)
 		retryStrategy = retryStrategyChain
 	}
@@ -204,14 +210,14 @@ func NewRequesterNode(
 	}
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         nodeID,
-		EvaluationBroker:           evalBroker,
-		EventEmitter:               eventEmitter,
-		ComputeEndpoint:            computeProxy,
-		Store:                      jobStore,
-		StorageProviders:           storageProvider,
-		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
-		DefaultPublisher:           requesterConfig.DefaultPublisher,
+		ID:               nodeID,
+		EvaluationBroker: evalBroker,
+		EventEmitter:     eventEmitter,
+		ComputeEndpoint:  computeProxy,
+		Store:            jobStore,
+		StorageProviders: storageProvider,
+		DefaultPublisher: requesterConfig.DefaultPublisher,
+		JobDefaults:      requesterConfig.JobDefaults,
 	})
 
 	var translationProvider translation.TranslatorProvider

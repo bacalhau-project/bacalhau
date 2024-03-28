@@ -16,21 +16,22 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type BaseEndpointParams struct {
-	ID                         string
-	EvaluationBroker           orchestrator.EvaluationBroker
-	Store                      jobstore.Store
-	EventEmitter               orchestrator.EventEmitter
-	ComputeEndpoint            compute.Endpoint
-	StorageProviders           storage.StorageProvider
-	MinJobExecutionTimeout     time.Duration
-	DefaultJobExecutionTimeout time.Duration
-	DefaultPublisher           string
+	ID                     string
+	EvaluationBroker       orchestrator.EvaluationBroker
+	Store                  jobstore.Store
+	EventEmitter           orchestrator.EventEmitter
+	ComputeEndpoint        compute.Endpoint
+	StorageProviders       storage.StorageProvider
+	MinJobExecutionTimeout time.Duration
+	DefaultPublisher       string
+	JobDefaults            transformer.JobDefaults
 }
 
 // BaseEndpoint base implementation of requester Endpoint
@@ -46,11 +47,12 @@ type BaseEndpoint struct {
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
-		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
+		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.JobDefaults.ExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(params.DefaultPublisher),
 		jobtransform.NewEngineMigrator(),
+		jobtransform.NewDefaultRetryPolicyApplier(),
 		// jobtransform.DockerImageDigest(),
 	}
 

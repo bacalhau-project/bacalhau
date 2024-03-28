@@ -30,6 +30,7 @@ const (
 	BucketJobEvaluations   = "evaluations"
 	BucketJobHistory       = "job_history"
 	BucketExecutionHistory = "execution_history"
+	BucketDeferralHistory  = "deferral_history"
 
 	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
@@ -632,6 +633,29 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
+	if !options.ExcludeSchedulingDeferral {
+		// 	// Get the executions for this JobID
+		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketDeferralHistory).Get(tx, false); err != nil {
+			return nil, err
+		} else {
+			err = bkt.ForEach(func(key []byte, data []byte) error {
+				var item models.JobHistory
+
+				err := b.marshaller.Unmarshal(data, &item)
+				if err != nil {
+					return err
+				}
+
+				history = append(history, item)
+				return nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Filter out anything before the specified Since time, and anything that doesn't match the
 	// specified ExecutionID or NodeID
 	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
@@ -693,8 +717,10 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobHistory)); err != nil {
 			return err
 		}
-
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketExecutionHistory)); err != nil {
+			return err
+		}
+		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketDeferralHistory)); err != nil {
 			return err
 		}
 	}
@@ -837,6 +863,34 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	return b.appendJobHistory(tx, job, previousState, request.Comment)
+}
+
+func (b *BoltJobStore) RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error {
+	historyEntry := models.JobHistory{
+		Type:  models.JobHistoryTypeJobSchedulingDeferral,
+		JobID: jobID,
+		SchedulingDeferral: &models.SchedulingDeferral{
+			DeferredUntil: waitUntil,
+		},
+		Comment: comment,
+		Time:    time.Now(),
+	}
+	data, err := b.marshaller.Marshal(historyEntry)
+	if err != nil {
+		return err
+	}
+
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketDeferralHistory).Get(tx, true); err != nil {
+			return err
+		} else {
+			seq := BucketSequenceString(tx, bkt)
+			if err = bkt.Put([]byte(seq), data); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, comment string) error {

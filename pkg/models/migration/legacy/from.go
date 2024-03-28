@@ -54,6 +54,12 @@ func FromLegacyJob(legacy *model.Job) (*models.Job, error) {
 		Revision:    1,
 		CreateTime:  legacy.Metadata.CreatedAt.UnixNano(),
 		ModifyTime:  legacy.Metadata.CreatedAt.UnixNano(),
+		ReschedulingPolicy: models.ReschedulingPolicy{
+			SchedulingTimeout:      legacy.Spec.SchedulingTimeout,
+			BaseRetryDelay:         legacy.Spec.BaseRetryDelay,
+			MaximumRetryDelay:      legacy.Spec.MaximumRetryDelay,
+			RetryDelayGrowthFactor: legacy.Spec.RetryDelayGrowthFactor,
+		},
 	}
 
 	job.Normalize()
@@ -281,7 +287,11 @@ func FromLegacyJobHistoryType(historyType model.JobHistoryType) models.JobHistor
 	switch historyType {
 	case model.JobHistoryTypeExecutionLevel:
 		return models.JobHistoryTypeExecutionLevel
-	default:
+	case model.JobHistoryTypeJobLevel:
 		return models.JobHistoryTypeJobLevel
+	case model.JobHistoryTypeJobSchedulingDeferral:
+		return models.JobHistoryTypeJobSchedulingDeferral
+	default:
+		panic(fmt.Sprintf("FromLegacyJobHistoryType: Invalid job history type %d", historyType))
 	}
 }

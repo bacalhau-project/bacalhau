@@ -3,6 +3,7 @@ package jobstore
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
@@ -80,6 +81,9 @@ type Store interface {
 	// UpdateExecution updates the execution state according to the values
 	// within [UpdateExecutionRequest].
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+
+	// Record that further scheduling of executions for a job has been deferred until the specified time
+	RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error
 
 	// DeleteJob removes all trace of the provided job from storage
 	DeleteJob(ctx context.Context, jobID string) error
@@ -171,11 +175,12 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 }
 
 type JobHistoryFilterOptions struct {
-	Since                 int64  `json:"since"`
-	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
-	ExcludeJobLevel       bool   `json:"exclude_job_level"`
-	ExecutionID           string `json:"execution_id"`
-	NodeID                string `json:"node_id"`
+	Since                     int64  `json:"since"`
+	ExcludeExecutionLevel     bool   `json:"exclude_execution_level"`
+	ExcludeJobLevel           bool   `json:"exclude_job_level"`
+	ExcludeSchedulingDeferral bool   `json:"exclude_scheduling_deferral"`
+	ExecutionID               string `json:"execution_id"`
+	NodeID                    string `json:"node_id"`
 }
 
 type GetExecutionsOptions struct {
