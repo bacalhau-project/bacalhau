@@ -58,6 +58,17 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
+	// Retrieve the job deferral history
+	jobDeferralHistory, err := b.jobStore.GetJobHistory(ctx, evaluation.JobID,
+		jobstore.JobHistoryFilterOptions{
+			ExcludeExecutionLevel:     true,
+			ExcludeJobLevel:           true,
+			ExcludeSchedulingDeferral: false,
+		})
+	if err != nil {
+		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
+			evaluation.JobID, evaluation, err)
+	}
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
@@ -101,30 +112,25 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// All failed/lost/rejected executions
 	allFailed := existingExecs.filterFailed().union(lost).union(rejected)
 
-	shouldRetry, retryDelay := b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{Job: &job})
+	shouldRetry, retryDelay := b.retryStrategy.ShouldRetry(ctx,
+		orchestrator.RetryRequest{
+			Job:          &job,
+			PastFailures: len(jobDeferralHistory),
+		})
 
-	// If we have failed executions, we need to retry in case the nodes accept
-	// them in future (eg, due to transient capacity issues). b.handleRetry()
-	// will do this for us, but it results in this same scheduler code being
-	// re-executed after the delay. Therefore, we must check
-	// evaluation.TriggeredBy to see if we are being triggered by a deferred
-	// retry; and if so, we do NOT just defer a retry into the future, as
-	// otherwise we'd loop forever.
-	if (len(allFailed) > 0) && evaluation.TriggeredBy != models.EvalTriggerDefer {
-		if shouldRetry {
-			// Only delay if we have rejected executions, otherwise fall through to retry immediately
-			if len(rejected) > 0 {
-				b.handleRetry(ctx, plan, &job, retryDelay)
-				return b.planner.Process(ctx, plan)
-			}
-		} else {
+	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
+
+	// If we're not retrying, then we're not creating any new executions; if we
+	// needed any more, then the job has failed. (but this is skipped if we've
+	// not tried any executions previously)
+	if !shouldRetry && len(jobExecutions) != 0 {
+		if remainingExecutionCount > 0 {
 			b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("exceeded max retries for job %s", job.ID))
 			return b.planner.Process(ctx, plan)
 		}
 	}
 
 	// create new executions if needed
-	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
 	if remainingExecutionCount > 0 {
 		newExecs, placementErr := b.createMissingExecs(ctx, remainingExecutionCount, &job, retryDelay, plan)
 		if placementErr != nil {
@@ -140,8 +146,6 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 			if shouldRetry {
 				b.handleRetry(ctx, plan, &job, retryDelay)
 			} else {
-				// Remove any new executions we managed from the plan, no sense creating them now
-				plan.CancelNewExecutions()
 				b.handleFailure(nonTerminalExecs, allFailed, plan, fmt.Errorf("exceeded max retries for job %s", job.ID))
 				return b.planner.Process(ctx, plan)
 			}
