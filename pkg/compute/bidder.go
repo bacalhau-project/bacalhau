@@ -87,6 +87,7 @@ type BidderRequest struct {
 }
 
 // TODO: evaluate the need for async bidding and marking bids as waiting
+// https://github.com/bacalhau-project/bacalhau/issues/3732
 func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 	routingMetadata := RoutingMetadata{
 		// the source of this response is the bidders nodeID.
@@ -179,7 +180,8 @@ func (b Bidder) handleBidResult(
 			return
 		}
 		if err := b.executor.Run(ctx, *localExecution); err != nil {
-			handleComputeFailure(ctx, err, "failed to run execution")
+			// no need to check for run errors as they are already handled by the executor.
+			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
 			return
 		}
 		return
