@@ -14,9 +14,9 @@ type HeartbeatClient struct {
 	nodeID    string
 }
 
-func NewClient(conn *nats.Conn, nodeID string) (*HeartbeatClient, error) {
+func NewClient(conn *nats.Conn, nodeID string, topic string) (*HeartbeatClient, error) {
 	subParams := natsPubSub.PubSubParams{
-		Subject: heartbeatTopic,
+		Subject: topic,
 		Conn:    conn,
 	}
 

@@ -33,6 +33,12 @@ var DefaultComputeConfig = ComputeConfigParams{
 	LocalPublisher: types.LocalPublisherConfig{
 		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
 	},
+	ControlPlaneSettings: types.ComputeControlPlaneConfig{
+		InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
+		ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
@@ -62,6 +68,11 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
 	TranslationEnabled: false,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -90,6 +101,11 @@ var TestRequesterConfig = RequesterConfigParams{
 
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

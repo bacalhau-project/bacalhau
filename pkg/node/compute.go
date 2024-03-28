@@ -212,6 +212,7 @@ func NewComputeNode(
 			RegistrationFilePath: regFilename,
 			ResourceTracker:      runningCapacityTracker,
 			HeartbeatClient:      heartbeatClient,
+			ControlPlaneSettings: config.ControlPlaneSettings,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
