@@ -31,9 +31,9 @@ RUN curl -L https://git-town.com/install.sh -o /tmp/git-town-install.sh && \
     chmod +x /tmp/git-town-install.sh && \
     /tmp/git-town-install.sh
 
-RUN mkdir -p /workspace/bacalhau
-WORKDIR /workspace/bacalhau
-COPY pyproject.toml poetry.lock /workspace/bacalhau/
+RUN mkdir -p /workspaces/bacalhau
+WORKDIR /workspaces/bacalhau
+COPY pyproject.toml poetry.lock /workspaces/bacalhau/
 
 # Do the below inside the container so that they are using the right .venv
 COPY ./docker-build.sh /
