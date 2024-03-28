@@ -137,6 +137,11 @@ tasks:
         Parameters:
           - -c     
           - swipl -q -s helloworld.pl -g hello_world
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
     InputSources:
       - Target: "/helloworld.pl"
         Source:
