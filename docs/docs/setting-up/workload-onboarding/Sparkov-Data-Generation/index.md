@@ -187,6 +187,11 @@ tasks:
         Parameters:
           - -c    
           - python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
 ```
 
 The job description should be saved in `.yaml` format, e.g. `sparkov.yaml`, and then run with the command:
