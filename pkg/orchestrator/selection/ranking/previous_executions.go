@@ -46,8 +46,8 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 			if !execution.IsTerminalComputeState() {
 				toFilterOut[execution.NodeID] = true
 			}
-			if execution.IsRejected() &&
-				now.Sub(execution.GetModifyTime()) < retryDelay {
+			executionAge := now.Sub(execution.GetModifyTime())
+			if execution.IsRejected() && executionAge < retryDelay {
 				toFilterOut[execution.NodeID] = true
 			}
 		}
