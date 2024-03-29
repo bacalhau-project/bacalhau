@@ -1,10 +1,8 @@
 package publicapi
 
 import (
-	"net/http"
-
+	"github.com/bacalhau-project/bacalhau/pkg/lib/bad"
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo/v4"
 )
 
 type validatable interface {
@@ -21,12 +19,12 @@ type CustomValidator struct {
 
 func (cv *CustomValidator) Validate(i interface{}) error {
 	if err := cv.validator.Struct(i); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return bad.Input(err)
 	}
 	if v, ok := i.(validatable); ok {
 		err := v.Validate()
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			return bad.Input(err)
 		}
 	}
 	return nil

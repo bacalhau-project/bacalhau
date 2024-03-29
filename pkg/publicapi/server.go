@@ -91,6 +91,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	// TODO: disable debug mode after we implement our own error handler
 	server.Router.Debug = true
 
+	server.Router.HTTPErrorHandler = handleAPIError
+
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
 	if err != nil {

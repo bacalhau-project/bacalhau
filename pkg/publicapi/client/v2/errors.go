@@ -10,12 +10,15 @@ package client
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/bad"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"golang.org/x/exp/slices"
 )
 
@@ -131,13 +134,18 @@ func fromHTTPResponse(resp *http.Response) unexpectedResponseErrorSource {
 			}
 
 			// Body has been tested as safe to close more than once
-			_ = resp.Body.Close()
-			body := strings.TrimSpace(buf.String())
+			closer.CloseWithLogOnError(resp.Request.RequestURI, resp.Body)
+
+			var apiErr bad.Error
+			if err := json.NewDecoder(&buf).Decode(&apiErr); err == nil {
+				u.err = &apiErr
+			} else {
+				u.body = strings.TrimSpace(buf.String())
+			}
 
 			// make and return the error
 			u.statusCode = resp.StatusCode
 			u.statusText = strings.TrimSpace(strings.TrimPrefix(resp.Status, fmt.Sprint(resp.StatusCode)))
-			u.body = body
 		}
 		return u
 	}
