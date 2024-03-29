@@ -29,6 +29,7 @@ package inline
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -37,7 +38,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/c2h5oh/datasize"
 	"github.com/vincent-petithory/dataurl"
-	"go.uber.org/multierr"
 )
 
 // The maximum size that will be stored inline without gzip compression.
@@ -134,7 +134,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
 			Target: spec.Target,
-		}, multierr.Combine(werr, cerr)
+		}, errors.Join(werr, cerr)
 	}
 }
 

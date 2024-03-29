@@ -1,11 +1,9 @@
 package apimodels
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -23,15 +21,7 @@ func (r *PutJobRequest) Normalize() {
 
 // Validate is used to validate fields in the PutJobRequest.
 func (r *PutJobRequest) Validate() error {
-	mErr := new(multierror.Error)
-	if r.Job == nil {
-		mErr = multierror.Append(mErr, errors.New("job is required"))
-	}
-	jobErrs := r.Job.ValidateSubmission()
-	if jobErrs != nil {
-		mErr = multierror.Append(mErr, jobErrs)
-	}
-	return mErr.ErrorOrNil()
+	return r.Job.ValidateSubmission()
 }
 
 type PutJobResponse struct {

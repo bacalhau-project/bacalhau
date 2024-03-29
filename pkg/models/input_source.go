@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -56,12 +55,12 @@ func (a *InputSource) Validate() error {
 	if a == nil {
 		return nil
 	}
-	var mErr multierror.Error
+	var mErr error
 	if err := a.Source.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid artifact source: %w", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid artifact source: %w", err))
 	}
 	if validate.IsBlank(a.Target) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing artifact target"))
+		mErr = errors.Join(mErr, errors.New("missing artifact target"))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
