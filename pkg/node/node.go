@@ -2,14 +2,14 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
@@ -73,9 +73,9 @@ type NodeConfig struct {
 
 func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
-	var mErr *multierror.Error
-	mErr = multierror.Append(mErr, c.NetworkConfig.Validate())
-	return mErr.ErrorOrNil()
+	var mErr error
+	mErr = errors.Join(mErr, c.NetworkConfig.Validate())
+	return mErr
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -214,7 +214,7 @@ func NewNode(
 
 		natsTransportLayer, err := nats_transport.NewNATSTransport(ctx, natsConfig)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create NATS transport layer")
+			return nil, pkgerrors.Wrap(err, "failed to create NATS transport layer")
 		}
 		transportLayer = natsTransportLayer
 
@@ -223,21 +223,21 @@ func NewNode(
 			// to create its own connection and then subscribe to the node info topic.
 			natsClient, err := nats_transport.CreateClient(ctx, natsTransportLayer.Config)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create NATS client for node info store")
+				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 				BucketName: kvstore.DefaultBucketName,
 				Client:     natsClient.Client,
 			})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create node info store using NATS transport connection info")
+				return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 			}
 			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
 
 			// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
 			// of node info.
 			if err := transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-				return nil, errors.Wrap(err, "failed to register node info consumer with nats transport")
+				return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
 			}
 		}
 	} else {
@@ -254,7 +254,7 @@ func NewNode(
 		}
 		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
 		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-			return nil, errors.Wrap(err, "failed to register node info consumer with libp2p transport")
+			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with libp2p transport")
 		}
 	}
 	if err != nil {
@@ -454,18 +454,17 @@ func NewNode(
 			nodeInfoPublisher.Stop(ctx)
 		}
 
-		var errors *multierror.Error
-
+		var err error
 		if transportLayer != nil {
-			errors = multierror.Append(errors, transportLayer.Close(ctx))
+			err = errors.Join(err, transportLayer.Close(ctx))
 		}
 
 		if apiServer != nil {
-			errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+			err = errors.Join(err, apiServer.Shutdown(ctx))
 		}
 
 		cancel()
-		return errors.ErrorOrNil()
+		return err
 	})
 
 	metrics.NodeInfo.Add(ctx, 1,

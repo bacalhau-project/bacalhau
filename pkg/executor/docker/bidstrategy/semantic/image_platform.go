@@ -2,9 +2,8 @@ package semantic
 
 import (
 	"context"
+	"errors"
 	"sync"
-
-	"go.uber.org/multierr"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -95,7 +94,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
 	}
 
-	errs := multierr.Combine(serr, ierr)
+	errs := errors.Join(serr, ierr)
 	if errs != nil {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,

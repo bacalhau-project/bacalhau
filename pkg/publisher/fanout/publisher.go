@@ -2,13 +2,13 @@ package fanout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
@@ -76,7 +76,7 @@ func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T
 		close(internalErrorChannel)
 		var multi error
 		for err := range internalErrorChannel {
-			multi = multierr.Append(multi, err)
+			multi = errors.Join(multi, err)
 		}
 		externalErrorChannel <- multi
 		close(externalErrorChannel)
