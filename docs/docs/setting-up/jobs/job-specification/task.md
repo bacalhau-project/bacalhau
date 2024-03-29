@@ -17,3 +17,4 @@ A `Task` signifies a distinct unit of work within the broader context of a `Job`
 - **Resources** `(`[`Resources`](./resources.md)` : optional)`: Details the resources that this task requires.
 - **Network** `(`[`Network`](./network.md)` : optional)`: Configurations related to the networking aspects of the task.
 - **Timeouts** `(`[`Timeouts`](./timeouts.md)` : optional)`: Configurations concerning any timeouts associated with the task.
+- **ReschedulingPolicy** `(`[`ReschedulingPolicy`](./rescheduling.md)` : optional)`: Configuration concerning rescheduling the task.
