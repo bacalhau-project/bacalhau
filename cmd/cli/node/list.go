@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -14,14 +15,16 @@ import (
 )
 
 var defaultColumnGroups = []string{"labels", "capacity"}
-var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu"}
+var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu", "status"}
+var filterStatusValues = []string{"approved", "pending", "rejected"}
 
 // ListOptions is a struct to support node command
 type ListOptions struct {
 	output.OutputOptions
 	cliflags.ListOptions
-	ColumnGroups []string
-	Labels       string
+	ColumnGroups   []string
+	Labels         string
+	FilterByStatus string
 }
 
 // NewListOptions returns initialized Options
@@ -43,11 +46,13 @@ func NewListCmd() *cobra.Command {
 	}
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
-
 	nodeCmd.Flags().StringVar(&o.Labels, "labels", o.Labels,
 		"Filter nodes by labels. See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more information.")
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
+	nodeCmd.Flags().StringVar(&o.FilterByStatus, "filter-status", o.FilterByStatus,
+		fmt.Sprintf("Filter nodes by status. One of: %q", filterStatusValues))
+
 	return nodeCmd
 }
 
@@ -63,8 +68,16 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
 		}
 	}
+
+	if o.FilterByStatus != "" {
+		if !slices.Contains(filterStatusValues, o.FilterByStatus) {
+			util.Fatal(cmd, fmt.Errorf("cannot use '%s' as filter status value, should be one of: %q", o.FilterByStatus, filterStatusValues), 1)
+		}
+	}
+
 	response, err := util.GetAPIClientV2(cmd).Nodes().List(ctx, &apimodels.ListNodesRequest{
-		Labels: labelRequirements,
+		Labels:         labelRequirements,
+		FilterByStatus: o.FilterByStatus,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,
 			NextToken: o.NextToken,
