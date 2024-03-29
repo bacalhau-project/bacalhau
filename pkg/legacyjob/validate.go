@@ -2,11 +2,11 @@ package legacyjob
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/hashicorp/go-multierror"
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.
@@ -29,9 +29,9 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	// NB(forrest): this is a great place to use multierror pattern since it will expose everything wrong if there is
 	// more than one issue with the job.
-	var veriferrs *multierror.Error
+	var veriferrs error
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("job spec is empty"))
+		veriferrs = errors.Join(veriferrs, fmt.Errorf("job spec is empty"))
 	}
 
 	if err := j.Spec.Deal.IsValid(); err != nil {
@@ -48,21 +48,21 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 	*/
 	/*
 		if !model.IsValidEngine(j.Spec.Engine) {
-			veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
+			veriferrs = errors.Join(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
 		}
 	*/
 
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))
+		veriferrs = errors.Join(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))
 	}
 
 	if err := j.Spec.Network.IsValid(); err != nil {
-		veriferrs = multierror.Append(veriferrs, err)
+		veriferrs = errors.Join(veriferrs, err)
 	}
 
 	for _, inputVolume := range j.Spec.Inputs {
 		if !model.IsValidStorageSourceType(inputVolume.StorageSource) {
-			veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String()))
+			veriferrs = errors.Join(veriferrs, fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String()))
 		}
 	}
 
@@ -73,10 +73,10 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 	/*
 		for _, outputVolume := range j.Spec.Outputs {
 			if !model.IsValidStorageSourceType(outputVolume.StorageSource) {
-				veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid output volume type: %s", outputVolume.StorageSource.String()))
+				veriferrs = errors.Join(veriferrs, fmt.Errorf("invalid output volume type: %s", outputVolume.StorageSource.String()))
 			}
 		}
 	*/
 
-	return veriferrs.ErrorOrNil()
+	return veriferrs
 }

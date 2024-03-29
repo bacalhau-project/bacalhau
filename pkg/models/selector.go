@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
@@ -43,25 +42,25 @@ func (r *LabelSelectorRequirement) Copy() *LabelSelectorRequirement {
 }
 
 func (r *LabelSelectorRequirement) Validate() error {
-	var mErr multierror.Error
+	var mErr error
 	if validate.IsBlank(r.Key) {
-		mErr.Errors = append(mErr.Errors, errors.New("selector key cannot be blank"))
+		mErr = errors.Join(mErr, errors.New("selector key cannot be blank"))
 	}
 	switch r.Operator {
 	case selection.In, selection.NotIn:
 		if validate.IsEmpty(r.Values) {
-			mErr.Errors = append(mErr.Errors, errors.New("selector values cannot be empty for In or NotIn operators"))
+			mErr = errors.Join(mErr, errors.New("selector values cannot be empty for In or NotIn operators"))
 		}
 	case selection.Exists, selection.DoesNotExist:
 		if !validate.IsEmpty(r.Values) {
-			mErr.Errors = append(mErr.Errors, errors.New("selector values must be empty for Exists or DoesNotExist operators"))
+			mErr = errors.Join(mErr, errors.New("selector values must be empty for Exists or DoesNotExist operators"))
 		}
 	default:
 		if len(r.Values) != 1 {
-			mErr.Errors = append(mErr.Errors, errors.New("selector values must have exactly one value for other operators"))
+			mErr = errors.Join(mErr, errors.New("selector values must have exactly one value for other operators"))
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 func ToLabelSelectorRequirements(requirements ...labels.Requirement) []LabelSelectorRequirement {

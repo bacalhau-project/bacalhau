@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
@@ -16,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"go.uber.org/multierr"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -149,7 +149,7 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 				case authn.MethodTypeChallenge:
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
 					if err != nil {
-						allErr = multierr.Append(allErr, err)
+						allErr = errors.Join(allErr, err)
 						continue
 					}
 
@@ -162,7 +162,7 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 				case authn.MethodTypeAsk:
 					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
 					if err != nil {
-						allErr = multierr.Append(allErr, err)
+						allErr = errors.Join(allErr, err)
 						continue
 					}
 
@@ -172,7 +172,7 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 						nodeConfig.NodeID,
 					)
 				default:
-					allErr = multierr.Append(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
+					allErr = errors.Join(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
 				}
 			}
 

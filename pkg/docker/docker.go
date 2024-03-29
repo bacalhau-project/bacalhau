@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,11 +23,10 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -111,7 +111,7 @@ func (c *Client) RemoveObjectsWithLabel(ctx context.Context, labelName, labelVal
 
 	containerErr := c.removeContainers(ctx, filterz)
 	networkErr := c.removeNetworks(ctx, filterz)
-	return multierr.Combine(containerErr, networkErr)
+	return errors.Join(containerErr, networkErr)
 }
 
 func (c *Client) FindContainer(ctx context.Context, label string, value string) (string, error) {
@@ -132,7 +132,7 @@ func (c *Client) FindContainer(ctx context.Context, label string, value string) 
 func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.Reader, err error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get container")
+		return nil, nil, pkgerrors.Wrap(err, "failed to get container")
 	}
 
 	logOptions := container.LogsOptions{
@@ -144,7 +144,7 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get container logs")
+		return nil, nil, pkgerrors.Wrap(err, "failed to get container logs")
 	}
 
 	stdoutReader, stdoutWriter := io.Pipe()
@@ -170,11 +170,11 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 func (c *Client) GetOutputStream(ctx context.Context, id string, since string, follow bool) (io.ReadCloser, error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get container")
+		return nil, pkgerrors.Wrap(err, "failed to get container")
 	}
 
 	if !cont.State.Running {
-		return nil, errors.Wrap(err, "cannot get logs when container is not running")
+		return nil, pkgerrors.Wrap(err, "cannot get logs when container is not running")
 	}
 
 	logOptions := container.LogsOptions{
@@ -189,7 +189,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get container logs")
+		return nil, pkgerrors.Wrap(err, "failed to get container logs")
 	}
 
 	return logsReader, nil
@@ -203,7 +203,7 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 		Force:         true,
 	})
 	if err != nil {
-		return errors.WithStack(err)
+		return pkgerrors.WithStack(err)
 	}
 	return nil
 }
@@ -228,7 +228,7 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, DistributionInspectError, image)
+		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
 	}
 
 	return distribution.Platforms, nil
@@ -342,7 +342,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, DistributionInspectError, image)
+		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
 	}
 
 	obj := dist.Descriptor.Digest

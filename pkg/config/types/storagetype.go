@@ -1,10 +1,10 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	"go.uber.org/multierr"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,11 +16,11 @@ type JobStoreConfig struct {
 func (cfg JobStoreConfig) Validate() error {
 	var err error
 	if cfg.Type <= UnknownStorage || cfg.Type > BoltDB {
-		err = multierr.Append(err, fmt.Errorf("unknown execution store type: %q", cfg.Type.String()))
+		err = errors.Join(err, fmt.Errorf("unknown execution store type: %q", cfg.Type.String()))
 	}
 
 	if cfg.Path == "" {
-		err = multierr.Append(err, fmt.Errorf("execution store path is missing"))
+		err = errors.Join(err, fmt.Errorf("execution store path is missing"))
 	}
 
 	return err
