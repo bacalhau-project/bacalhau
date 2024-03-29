@@ -1,4 +1,4 @@
-python 3.11.8
+python 3.10.14
 nodejs 21.5.0
 direnv 2.33.0
 golang 1.21.8
