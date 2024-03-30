@@ -8,11 +8,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
 // Client is the object that makes transport-level requests to specified APIs.
@@ -127,10 +128,18 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	if err != nil {
 		return nil, err
 	}
+
+	dialer := *websocket.DefaultDialer
 	httpR.URL.Scheme = "ws"
 
+	// if we are using TLS create a TLS config
+	if c.config.TLS.UseTLS {
+		httpR.URL.Scheme = "wss"
+		dialer.TLSClientConfig = getTLSTransport(&c.config).TLSClientConfig
+	}
+
 	// Connect to the server
-	conn, resp, err := websocket.DefaultDialer.Dial(httpR.URL.String(), httpR.Header)
+	conn, resp, err := dialer.Dial(httpR.URL.String(), httpR.Header)
 	if err != nil {
 		return nil, err
 	}
