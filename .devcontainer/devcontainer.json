@@ -3,7 +3,8 @@
 	"image": "docker.io/bacalhauproject/bacalhau-devcontainer@sha256:a7eb77e9f04e7c43bb7c230fb385f513a47f91ea991a8c88b68a04d7b54ae5d0",
 	"containerEnv": {},
 	"features": {
-		"ghcr.io/devcontainers/features/github-cli:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker": {}
 	},
 	"overrideCommand": false,
 	"userEnvProbe": "loginInteractiveShell",

@@ -26,6 +26,8 @@ go version
 eval "$(ssh-agent -s)"
 grep -slR "PRIVATE" ~/.ssh/ | xargs ssh-add
 
+direnv allow
+
 # Invoke /usr/local/share/docker-bind-mount.sh or docker-init.sh as appropriate
 set +e
 if [[ "${BIND_LOCALHOST_DOCKER,,}" == "true" ]]; then

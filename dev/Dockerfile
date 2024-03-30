@@ -25,6 +25,8 @@ ENV ASDF_DIR=/home/${USERNAME}/.asdf
 RUN apt-get update
 RUN apt-get install -y wget git gcc curl direnv make zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libssl-dev libffi-dev lzma liblzma-dev libbz2-dev
 
+RUN apt-get install -y zsh
+
 RUN useradd -ms /usr/local/bin/zsh ${USERNAME}
 USER ${USERNAME}
 
