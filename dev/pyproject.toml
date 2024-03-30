@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "bacalhau"
+version = "0.1"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.10.5"
+pre-commit = "^2.20.0"
+sgqlc = "^16.0"
+semver = "^2.13.0"
+ruff = "^0.2.1"
+uv = "^0.1.24"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
