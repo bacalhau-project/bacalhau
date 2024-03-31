@@ -2,7 +2,25 @@ package network
 
 import (
 	"net"
+	"strconv"
 )
+
+// IsPortOpen checks if a port is open by attempting to listen on it. If the
+// port is open, it returns true, otherwise it returns false. The port listen
+// socket will be closed if the function was able to create it.
+func IsPortOpen(port int) bool {
+	addr := net.JoinHostPort("", strconv.Itoa(port))
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		// There was a problem listening, the port is probably in use
+		return false
+	}
+
+	// We were able to use the port, so it is free, but we should close it
+	// first
+	_ = ln.Close()
+	return true
+}
 
 // GetFreePort returns a single available port by asking the operating
 // system to pick one for us. Luckily ports are not re-used so after asking

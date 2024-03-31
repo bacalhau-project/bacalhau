@@ -17,7 +17,8 @@ type GetNodeResponse struct {
 
 type ListNodesRequest struct {
 	BaseListRequest
-	Labels []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+	Labels         []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+	FilterByStatus string               `query:"filter-status"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -27,6 +28,11 @@ func (o *ListNodesRequest) ToHTTPRequest() *HTTPRequest {
 	for _, v := range o.Labels {
 		r.Params.Add("labels", v.String())
 	}
+
+	if o.FilterByStatus != "" {
+		r.Params.Add("filter-status", o.FilterByStatus)
+	}
+
 	return r
 }
 

@@ -34,6 +34,14 @@ func (s *PublisherTestSuite) SetupTest() {
 	s.pub = local.NewLocalPublisher(s.ctx, s.baseDir, defaultHost, defaultPort)
 }
 
+func (s *PublisherTestSuite) TestAddressResolving() {
+	ctx := context.Background()
+
+	s.Require().Equal("127.0.0.1", local.ResolveAddress(ctx, "127.0.0.1"), "address did not resolve to itself")
+	s.Require().Equal("192.168.1.100", local.ResolveAddress(ctx, "192.168.1.100"), "address did not resolve to itself")
+	s.Require().Equal("127.0.0.1", local.ResolveAddress(ctx, "local"))
+}
+
 func (s *PublisherTestSuite) TestPublishFolder() {
 	source := s.T().TempDir()
 

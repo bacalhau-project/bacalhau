@@ -7,12 +7,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeProxyTestSuite struct {
@@ -70,8 +71,8 @@ func (s *ComputeProxyTestSuite) TeardownSuite() {
 // Gets the metadata for calling the compute node of the test
 func (s *ComputeProxyTestSuite) getRoutingMetadataForCompute() compute.RoutingMetadata {
 	return compute.RoutingMetadata{
-		SourcePeerID: s.proxy.host.ID().Pretty(),
-		TargetPeerID: s.handler.host.ID().Pretty(),
+		SourcePeerID: s.proxy.host.ID().String(),
+		TargetPeerID: s.handler.host.ID().String(),
 	}
 }
 
