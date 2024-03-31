@@ -4,7 +4,7 @@ requester_machine_type ="e2-standard-8"
 compute_machine_type = "e2-standard-8"
 compute_count = 2
 
-gcp_boot_image = "projects/forrest-dev-407420/global/images/bacalhau-ubuntu-2204-lts-test-latest"
+gcp_boot_image = "projects/bacalhau-dev/global/images/bacalhau-v1-2-2-ubuntu-2204-lts"
 gcp_project_id = "forrest-dev-407420"
 gcp_region = "us-west1"
 gcp_zone = "us-west1-b"

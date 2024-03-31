@@ -24,7 +24,6 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/rs/zerolog/log"
 )
 
 const NodeInfoTopic = "bacalhau-node-info"
@@ -126,11 +125,6 @@ func NewLibp2pTransport(ctx context.Context,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: peerInfoDecorator,
 	}, nil
-}
-
-func (t *Libp2pTransport) GetConnectionInfo(ctx context.Context) interface{} {
-	log.Ctx(ctx).Debug().Msg("libp2p transport get connection info is unsupported")
-	return nil
 }
 
 func (t *Libp2pTransport) RegisterNodeInfoConsumer(ctx context.Context, nodeInfoStore routing.NodeInfoStore) error {
