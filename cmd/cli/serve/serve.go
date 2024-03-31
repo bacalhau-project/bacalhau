@@ -150,10 +150,8 @@ func NewCmd() *cobra.Command {
 				util.Fatal(cmd, err, 1)
 			}
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return serve(cmd)
 		},
 	}
 
@@ -179,9 +177,26 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	nodeName, err := getNodeID(ctx)
+	var nodeName string
+	var libp2pHost host.Host
+	var libp2pPeers []string
+	transportType, err := getTransportType()
 	if err != nil {
 		return err
+	}
+	// if the transport type is libp2p, we use the peerID as the node name
+	// even if the user provided one to avoid issues with peer lookups
+	if transportType == models.NetworkTypeLibp2p {
+		libp2pHost, libp2pPeers, err = setupLibp2p()
+		if err != nil {
+			return err
+		}
+		nodeName = libp2pHost.ID().String()
+	} else {
+		nodeName, err = getNodeID(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
@@ -202,18 +217,14 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(nodeName)
+	networkConfig, err := getNetworkConfig()
 	if err != nil {
 		return err
 	}
 
 	if networkConfig.Type == models.NetworkTypeLibp2p {
-		libp2pHost, peers, err := setupLibp2p()
-		if err != nil {
-			return err
-		}
 		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = peers
+		networkConfig.ClusterPeers = libp2pPeers
 	}
 
 	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
@@ -508,13 +519,6 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 	orchestrator := &url.URL{
 		Scheme: "nats",
 		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
-	}
-
-	// Only display the secret if the user did not set it explicitly.
-	// Else, they should already know it!
-	secret, err := config.Get[string](types.NodeNetworkAuthSecret)
-	if err == nil && secret == "" && nodeConfig.NetworkConfig.AuthSecret != "" {
-		orchestrator.User = url.User(nodeConfig.NetworkConfig.AuthSecret)
 	}
 
 	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {

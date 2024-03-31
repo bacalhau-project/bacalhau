@@ -69,7 +69,7 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
     expect(nodesTableContainer.length).toBeGreaterThan(0)
   })
 
-  const firstNodeID = mockNodes[0].PeerInfo.ID
+  const firstNodeID = mockNodes[0].NodeID
   const c1 = screen.getAllByText(firstNodeID)[0]
   expect(c1.innerHTML).toContain(firstNodeID)
 
@@ -81,7 +81,7 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
   expect(nodesDisplayed.length).toEqual(lastNodeIndex)
 
   // Test to see if the last node is in the document
-  const lastNodeID = mockNodes[lastNodeIndex - 1].PeerInfo.ID
+  const lastNodeID = mockNodes[lastNodeIndex - 1].NodeID
   const c2 = screen.getAllByText(lastNodeID)[0]
   expect(c2.innerHTML).toContain(lastNodeID)
 

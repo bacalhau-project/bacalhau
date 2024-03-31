@@ -1,0 +1,36 @@
+@import "./variables";
+
+@mixin button {
+    background-color: $blue-label;
+    color: $text-color-dark;
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    column-gap: 1ch;
+    align-items: center;
+
+    &[disabled] {
+        background-color: $grey-label;
+        color: $grey-text;
+        text-decoration: line-through;
+        cursor: not-allowed;
+
+        &:hover {
+            background-color: $grey-label;
+        }
+        &:active {
+            background-color: $grey-label;
+        }
+    }
+
+    &:hover {
+        background-color: rgba($light-blue, 0.7);
+    }
+
+    &:active {
+        background-color: rgba($light-blue, 0.8);
+    }
+}

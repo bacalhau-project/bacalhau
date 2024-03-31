@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -35,6 +36,10 @@ func SetupBacalhauRepo(repoDir string) (*repo.FsRepo, error) {
 		return nil, fmt.Errorf("failed to create repo: %w", err)
 	}
 	if exists, err := fsRepo.Exists(); err != nil {
+		if repo.IsUnknownVersion(err) {
+			return nil, err
+		}
+
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
 		if err := fsRepo.Init(); err != nil {
@@ -57,6 +62,8 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	}
 
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
+	config.SetValue("repo", path)
+
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)

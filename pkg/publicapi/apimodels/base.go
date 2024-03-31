@@ -11,6 +11,10 @@ type PutRequest interface {
 	Request
 }
 
+type PostRequest interface {
+	Request
+}
+
 type GetRequest interface {
 	Request
 }
@@ -25,6 +29,10 @@ type Response interface {
 }
 
 type PutResponse interface {
+	Response
+}
+
+type PostResponse interface {
 	Response
 }
 

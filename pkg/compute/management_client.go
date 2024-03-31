@@ -43,7 +43,7 @@ type ManagementClient struct {
 
 func NewManagementClient(params ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		closeChannel:      make(chan struct{}),
+		closeChannel:      make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
@@ -61,13 +61,12 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 	})
 }
 
-// RegisterNode sends a registration request to the requester node iff
-// we have not got evidence (a local sentinel file) that we have already
-// registered.  Should we fail to register, we will return an error and
-// expect the caller to exit.
+// RegisterNode sends a registration request to the requester node. If we successfully
+// register, a sentinel file is created to indicate that we are registered. If present
+// the requester node will know it is already registered.  If not present, it will
+// attempt to register again, expecting the requester node to gracefully handle any
+// previous registrations.
 func (m *ManagementClient) RegisterNode(ctx context.Context) error {
-	// We only want to register this node if we haven't already
-	// been registered.
 	if m.registrationFile.Exists() {
 		log.Ctx(ctx).Debug().Msg("not registering with requester, already registered")
 		return nil
@@ -82,10 +81,10 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	if response.Accepted {
-		log.Ctx(ctx).Debug().Msg("register request accepted")
 		if err := m.registrationFile.Set(); err != nil {
 			return errors.Wrap(err, "failed to record local registration status")
 		}
+		log.Ctx(ctx).Debug().Msg("register request accepted")
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
 		// state instead
@@ -154,5 +153,7 @@ func (m *ManagementClient) Start(ctx context.Context) {
 }
 
 func (m *ManagementClient) Stop() {
-	m.closeChannel <- struct{}{}
+	if m.closeChannel != nil {
+		m.closeChannel <- struct{}{}
+	}
 }

@@ -272,7 +272,7 @@ func NewRequesterNode(
 		Router:       apiServer.Router,
 		Orchestrator: endpointV2,
 		JobStore:     jobStore,
-		NodeStore:    nodeInfoStore,
+		NodeManager:  nodeManager,
 	})
 
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)

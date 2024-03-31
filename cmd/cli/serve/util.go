@@ -3,7 +3,6 @@ package serve
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"time"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -54,10 +52,6 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 		}
 	}
 
-	// We will store the registration file alongside the executions database. We don't need to
-	// make this configurable.
-	registrationFilePath := filepath.Dir(cfg.ExecutionStore.Path)
-
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		QueueResourceLimits:                   *queueResources,
@@ -80,7 +74,6 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
 		LocalPublisher:               cfg.LocalPublisher,
-		RegistrationFilePath:         registrationFilePath,
 	})
 }
 
@@ -204,36 +197,18 @@ func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }
 
-func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
+func getTransportType() (string, error) {
+	var networkCfg types.NetworkConfig
+	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+		return "", err
+	}
+	return networkCfg.Type, nil
+}
+
+func getNetworkConfig() (node.NetworkConfig, error) {
 	var networkCfg types.NetworkConfig
 	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
 		return node.NetworkConfig{}, err
-	}
-
-	if networkCfg.AuthSecret == "" {
-		// Generate an auth token using the user's client key. It should not be
-		// possible to compute this value by anyone other than the NATS server, and
-		// should be stable across restarts of the node.
-		secret, err := nats.CreateAuthSecret(nodeID)
-		if err != nil {
-			return node.NetworkConfig{}, err
-		}
-		networkCfg.AuthSecret = secret //nolint: gosec
-	} else {
-		// If the user supplied an auth secret and some orchestrator(s), assume
-		// they are passing a auth secret to be used as a client. Attach the
-		// secret to the orchestrator urls, ignoring any which have one already.
-		for index, orchestrator := range networkCfg.Orchestrators {
-			orchestratorURL, err := url.Parse(orchestrator)
-			if err != nil {
-				return node.NetworkConfig{}, err
-			}
-
-			if orchestratorURL.User == nil {
-				orchestratorURL.User = url.User(networkCfg.AuthSecret)
-			}
-			networkCfg.Orchestrators[index] = orchestratorURL.String()
-		}
 	}
 
 	return node.NetworkConfig{
