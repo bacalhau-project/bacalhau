@@ -1,10 +1,9 @@
 #!bin/bashtub
 
-source bin/bacalhau.sh
+source bin/bacalhau-client.sh
 
 testcase_can_get_results() {
-    # Assuming create_node is a function that takes two arguments separated by space, not comma
-    create_node requester,compute
+    create_client "spawn"
 
     job_id=$(bacalhau job run --id-only $ROOT/testdata/jobs/docker-output.yaml)
     bacalhau get $job_id > /dev/null 2>&1

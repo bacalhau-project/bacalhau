@@ -1,10 +1,9 @@
 #!bin/bashtub
 
-source bin/bacalhau.sh
+source bin/bacalhau-client.sh
 
 testcase_can_run_docker_hello_world() {
-    # Assuming create_node is a function that takes two arguments separated by comma, not space
-    create_client "production"
+    create_client "spawn"
     subject bacalhau job run --follow $ROOT/testdata/jobs/docker-hello.yaml
     assert_equal 0 $status
     assert_match "Hello Bacalhau!" $(echo $stdout)

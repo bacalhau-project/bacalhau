@@ -1,10 +1,8 @@
 #!bin/bashtub
 
-source bin/bacalhau.sh
+source bin/bacalhau-client.sh
 
 testcase_can_get_logs() {
-    # Assuming create_node is a function that takes two arguments separated by space, not comma
-    # create_node requester,compute
     create_client "production"
     job_id=$(bacalhau job run --id-only $ROOT/testdata/jobs/docker-hello.yaml)
     subject bacalhau job logs $job_id
