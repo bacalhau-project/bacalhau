@@ -23,7 +23,7 @@ func (s *ServerSuite) TestNodeList() {
 
 func (s *ServerSuite) TestNodeListLabels() {
 	ctx := context.Background()
-	req1, err := labels.NewRequirement("name", selection.Equals, []string{"node-1"})
+	req1, err := labels.NewRequirement("name", selection.Equals, []string{"node-0"})
 	require.NoError(s.T(), err)
 	req2, err := labels.NewRequirement("env", selection.Equals, []string{"devstack"})
 	require.NoError(s.T(), err)

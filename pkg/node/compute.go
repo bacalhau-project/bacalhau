@@ -57,6 +57,7 @@ func NewComputeNode(
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
+	configuredLabels map[string]string,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -227,6 +228,7 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
+		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
@@ -236,6 +238,8 @@ func NewComputeNode(
 	// TODO: When we no longer use libP2P for management, we should remove this
 	// as the managementProxy will always be set.
 	if managementProxy != nil {
+		// TODO: Make the registration lock folder a config option so that we have it
+		// available and don't have to depend on getting the repo folder.
 		repo, _ := pkgconfig.Get[string]("repo")
 		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
 		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
@@ -262,6 +266,7 @@ func NewComputeNode(
 		if managementClient != nil {
 			managementClient.Stop()
 		}
+
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}

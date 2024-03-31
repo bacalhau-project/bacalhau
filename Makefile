@@ -33,7 +33,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
-export EARTHLY ?= $(shell which earthly)
+export EARTHLY ?= $(shell command -v earthly --push 2> /dev/null)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -57,7 +57,6 @@ TEST_PARALLEL_PACKAGES ?= 1
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
-export EARTHLY := $(shell command -v earthly --push 2> /dev/null)
 export MAKE := $(shell command -v make 2> /dev/null)
 
 define BUILD_FLAGS

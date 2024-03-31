@@ -38,6 +38,7 @@ func getIpfsStorage(t *testing.T) *StorageProvider {
 
 func TestGetVolumeSize(t *testing.T) {
 	ctx := context.Background()
+	config.SetVolumeSizeRequestTimeout(time.Second * 3)
 
 	for _, testString := range []string{
 		"hello from test volume size",

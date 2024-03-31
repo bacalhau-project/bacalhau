@@ -1,7 +1,9 @@
 package orchestrator
 
 import (
+	"context"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slices"
@@ -17,7 +19,7 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	if c.Param("id") == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
 	}
-	job, err := e.nodeStore.GetByPrefix(ctx, c.Param("id"))
+	job, err := e.nodeManager.GetByPrefix(ctx, c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -73,6 +75,10 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 		sortFnc = func(a, b *models.NodeInfo) int {
 			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
 		}
+	case "approval", "status":
+		sortFnc = func(a, b *models.NodeInfo) int {
+			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
+		}
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
@@ -91,14 +97,20 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	}
 
 	// query nodes
-	allNodes, err := e.nodeStore.List(ctx)
+	allNodes, err := e.nodeManager.List(ctx)
 	if err != nil {
 		return err
 	}
 
-	// filter nodes
+	args.FilterByStatus = strings.ToUpper(args.FilterByStatus)
+
+	// filter nodes, first by status, then by label selectors
 	res := make([]*models.NodeInfo, 0)
 	for i, node := range allNodes {
+		if args.FilterByStatus != "" && args.FilterByStatus != node.Approval.String() {
+			continue
+		}
+
 		if selector.Matches(labels.Set(node.Labels)) {
 			res = append(res, &allNodes[i])
 		}
@@ -115,5 +127,39 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, &apimodels.ListNodesResponse{
 		Nodes: res,
+	})
+}
+
+func (e *Endpoint) updateNode(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	nodeID := c.Param("id")
+	if nodeID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
+	}
+
+	var args apimodels.PutNodeRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+
+	var action func(context.Context, string, string) (bool, string)
+	if args.Action == string(apimodels.NodeActionApprove) {
+		action = e.nodeManager.Approve
+	} else if args.Action == string(apimodels.NodeActionReject) {
+		action = e.nodeManager.Reject
+	} else {
+		action = func(context.Context, string, string) (bool, string) {
+			return false, "unsupported action"
+		}
+	}
+
+	success, msg := action(ctx, nodeID, args.Message)
+	return c.JSON(http.StatusOK, apimodels.PutNodeResponse{
+		Success: success,
+		Error:   msg,
 	})
 }

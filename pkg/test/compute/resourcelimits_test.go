@@ -303,7 +303,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	suite.Require().NoError(err)
 	stack := teststack.Setup(ctx,
 		suite.T(),
-		devstack.WithNumberOfHybridNodes(nodeCount),
+		devstack.WithNumberOfHybridNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{

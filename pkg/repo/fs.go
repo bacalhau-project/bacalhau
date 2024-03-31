@@ -73,7 +73,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 		return false, err
 	}
 	if !IsValidVersion(version) {
-		return false, fmt.Errorf("unknown repo version %d", version)
+		return false, NewUnknownRepoVersionError(version)
 	}
 	return true, nil
 }

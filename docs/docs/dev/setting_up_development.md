@@ -5,11 +5,13 @@ sidebar_label: Setting Up Your Development Environment
 If you are looking to develop on the project, this page will help you get started.
 
 **Instructions**
+
 - Set environment variables:
+
 ```
 export PYTHONVER='3.11.7'
 export GOLANGCILINTVER='v1.51.2'
-export GOLANGVER='1.20'
+export GOLANGVER='1.21'
 ```
 
 - Install asdf: `brew install asdf`
@@ -20,6 +22,7 @@ export GOLANGVER='1.20'
 - Install golangci-lint: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINTVER`
 
 **Useful VSCode launch.json**
+
 ```
 {
   // Use IntelliSense to learn about possible attributes.
@@ -96,9 +99,11 @@ export GOLANGVER='1.20'
 ```
 
 **Common Errors**
+
 - Using alternatives to `npm` - we have explored using `bun` but `prettier` did not work properly with it.
 
 - We use `pre-commit` to run pre-commit hooks. If you run into an error like the below, it is likely because you are using 3.12+ (which as of the end of 2023, pre-commit does not support).
+
 ```
 [INFO] Installing environment for https://github.com/pre-commit/pre-commit-hooks.
 [INFO] Once installed this environment will be reused.
