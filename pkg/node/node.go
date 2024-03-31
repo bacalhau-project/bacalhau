@@ -212,17 +212,22 @@ func NewNode(
 			IsRequesterNode:          config.IsRequesterNode,
 		}
 
-		transportLayer, err = nats_transport.NewNATSTransport(ctx, natsConfig)
+		natsTransportLayer, err := nats_transport.NewNATSTransport(ctx, natsConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create NATS transport layer")
 		}
+		transportLayer = natsTransportLayer
 
 		if config.IsRequesterNode {
 			// KV Node Store requires connection info from the NATS server so that it is able
 			// to create its own connection and then subscribe to the node info topic.
+			natsClient, err := nats_transport.CreateClient(ctx, natsTransportLayer.Config)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create NATS client for node info store")
+			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
-				BucketName:     kvstore.DefaultBucketName,
-				ConnectionInfo: transportLayer.GetConnectionInfo(ctx),
+				BucketName: kvstore.DefaultBucketName,
+				Client:     natsClient.Client,
 			})
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create node info store using NATS transport connection info")
@@ -444,11 +449,21 @@ func NewNode(
 		if requesterNode != nil {
 			requesterNode.cleanup(ctx)
 		}
-		nodeInfoPublisher.Stop(ctx)
+
+		if nodeInfoPublisher != nil {
+			nodeInfoPublisher.Stop(ctx)
+		}
 
 		var errors *multierror.Error
-		errors = multierror.Append(errors, transportLayer.Close(ctx))
-		errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+
+		if transportLayer != nil {
+			errors = multierror.Append(errors, transportLayer.Close(ctx))
+		}
+
+		if apiServer != nil {
+			errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+		}
+
 		cancel()
 		return errors.ErrorOrNil()
 	})

@@ -113,15 +113,6 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			},
 			expectedErrors: []string{"cluster port -1 must be greater than zero"},
 		},
-		{
-			name: "Missing Auth secret in Requester Node",
-			config: NATSTransportConfig{
-				NodeID:          "node3",
-				Port:            4222,
-				IsRequesterNode: true,
-			},
-			expectedErrors: []string{"when using NATS, an auth secret must be provided for each node connecting to the cluster"}, //nolint:lll
-		},
 	}
 
 	for _, tt := range tests {

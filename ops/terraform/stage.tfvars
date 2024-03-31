@@ -31,4 +31,4 @@ public_ip_addresses         = ["34.85.228.65", "34.86.73.105", "34.150.138.100",
 log_level                   = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
-network_type            = "libp2p"
+network_type            = "nats"

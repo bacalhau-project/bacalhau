@@ -1,4 +1,5 @@
 @import "../../styles/variables";
+@import "../../styles/button";
 
 .column {
   display: flex;
@@ -9,29 +10,7 @@
 }
 
 .actionButton {
-  background-color: rgba($light-blue, 0.5);
-  color: $text-color-dark;
-  padding: 5px 15px;
-  border-radius: 20px;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  column-gap: 1ch;
-  align-items: center;
-
-  &:hover {
-    background-color: rgba($light-blue, 0.7);
-  }
-}
-
-.viewIcon {
-  width: 18px;
-  height: 18px;
-}
-
-.actionButton:active {
-  background-color: rgba($light-blue, 0.7);
+  @include button;
 }
 
 .viewIcon {

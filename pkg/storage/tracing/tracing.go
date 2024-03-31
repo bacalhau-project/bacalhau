@@ -57,9 +57,9 @@ func (t *tracingStorage) PrepareStorage(
 	defer func() {
 		dur := stopwatch()
 		log.Ctx(ctx).Debug().
-			Dur("duration", dur).
-			Object("spec", &spec).
-			Str("dir", storageDirectory).
+			Dur("Duration", dur).
+			Str("Alias", spec.Alias).
+			Str("Dir", storageDirectory).
 			Msg("storage prepared")
 	}()
 
@@ -74,8 +74,8 @@ func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSo
 	defer func() {
 		dur := stopwatch()
 		log.Ctx(ctx).Debug().
-			Dur("duration", dur).
-			Object("spec", &spec).
+			Dur("Duration", dur).
+			Str("Alias", spec.Alias).
 			Msg("storage cleanup")
 	}()
 

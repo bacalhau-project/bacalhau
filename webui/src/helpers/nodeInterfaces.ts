@@ -1,12 +1,14 @@
 // src/interfaces.ts
 
+import { ListRequest } from "./baseInterfaces"
+
 export interface NodesResponse {
   NextToken: string
   Nodes: Node[]
 }
 
 export interface Node {
-  PeerInfo: PeerInfo
+  NodeID: string
   NodeType: string
   Labels: Labels
   ComputeNodeInfo: ComputeNodeInfo
@@ -65,6 +67,6 @@ export interface ParsedNodeData {
   // action: string;
 }
 
-export interface NodeListRequest {
+export interface NodeListRequest extends ListRequest {
   labels: string | undefined
 }
