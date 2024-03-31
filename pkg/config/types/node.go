@@ -99,7 +99,7 @@ type TLSConfiguration struct {
 
 	// ServerKey is the TLS server key to match the certificate to allow the
 	// requester to server TLS.
-	ServerKey string `yaml:"ServerTLSKey"`
+	ServerKey string `yaml:"ServerKey"`
 }
 
 type Libp2pConfig struct {

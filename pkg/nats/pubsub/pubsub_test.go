@@ -11,6 +11,7 @@ import (
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
@@ -80,10 +81,7 @@ func (s *PubSubSuite) createNatsServer() *server.Server {
 }
 
 func (s *PubSubSuite) createPubSub(ctx context.Context, subject, subscriptionSubject string, server string) *PubSub[string] {
-	clientManager, err := nats_helper.NewClientManager(ctx, nats_helper.ClientManagerParams{
-		Name:    "test",
-		Servers: server,
-	})
+	clientManager, err := nats_helper.NewClientManager(ctx, server, nats.Name("test"))
 	s.Require().NoError(err)
 
 	pubSub, err := NewPubSub[string](PubSubParams{

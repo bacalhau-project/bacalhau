@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'CLI Reference'
+sidebar_label: "CLI Reference"
 sidebar_position: 7
 ---
 
@@ -111,21 +111,21 @@ An example job in YAML format:
 
 ```yaml
 spec:
-    engine: Docker
-    verifier: Noop
-    publisher: IPFS
-    docker:
-        image: ubuntu
-        entryPoint:
-            - echo
-        parameters:
-            - Hello
-            - World
-    outputs:
-        - name: outputs
-          path: /outputs
+  engine: Docker
+  verifier: Noop
+  publisher: IPFS
+  docker:
+    image: ubuntu
+    entryPoint:
+      - echo
+    parameters:
+      - Hello
+      - World
+  outputs:
+    - name: outputs
+      path: /outputs
 deal:
-    concurrency: 1
+  concurrency: 1
 ```
 
 ### UCAN Invocation format
@@ -283,7 +283,7 @@ Flags:
       --local                            Run the job locally. Docker is required
       --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
       --min-bids int                     Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)
-      --network network-type             Networking capability required by the job (default None)
+      --network network-type             Networking capability required by the job (default "nats")
       --node-details                     Print out details of all nodes (overridden by --id-only).
       --output-dir string                Directory to write the output to.
   -o, --output-volumes strings           name:path of the output data volumes. 'outputs:/outputs' is always added.
@@ -381,7 +381,6 @@ Examples:
   bacalhau logs ebd9bf2f
 ```
 
-
 ## Run Python
 
 ```
@@ -431,7 +430,6 @@ Flags:
       --wait                             Wait for the job to finish. (default true)
       --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
 ```
-
 
 ## Serve
 

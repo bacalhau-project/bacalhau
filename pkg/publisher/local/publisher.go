@@ -28,12 +28,12 @@ type Publisher struct {
 func NewLocalPublisher(ctx context.Context, directory string, host string, port int) *Publisher {
 	p := &Publisher{
 		baseDirectory: directory,
-		host:          resolveAddress(ctx, host),
+		host:          ResolveAddress(ctx, host),
 		port:          port,
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
 
-	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.host, p.port)
+	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.port)
 	go p.server.Run(ctx)
 
 	return p
@@ -93,20 +93,17 @@ func (p *Publisher) PublishResult(
 
 var _ publisher.Publisher = (*Publisher)(nil)
 
-func resolveAddress(ctx context.Context, address string) string {
+func ResolveAddress(ctx context.Context, address string) string {
 	addressType, ok := network.AddressTypeFromString(address)
-	if !ok {
-		log.Ctx(ctx).Debug().Stringer("AddressType", addressType).Msgf("unable to find address type: %s, binding to 0.0.0.0", address)
-		return "0.0.0.0"
+	if ok {
+		addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
+		if err == nil && len(addrs) > 0 {
+			return addrs[0]
+		} else {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to resolve network address by type, using 127.0.0.1")
+			return "127.0.0.1"
+		}
 	}
 
-	// If we were provided with an address type and not an address, so we should look up
-	// an address from the type.
-	addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
-	if err == nil && len(addrs) > 0 {
-		return addrs[0]
-	}
-
-	log.Ctx(ctx).Error().Err(err).Stringer("AddressType", addressType).Msgf("unable to find address for type, using 127.0.0.1")
-	return "127.0.0.1"
+	return address
 }
