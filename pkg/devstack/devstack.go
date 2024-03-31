@@ -23,7 +23,6 @@ import (
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -52,6 +51,7 @@ type DevStackOptions struct {
 	ExecutorPlugins            bool   // when true pluggable executors will be used.
 	ConfigurationRepo          string // A custom config repo
 	NetworkType                string
+	AuthSecret                 string
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
@@ -70,6 +70,7 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
 		WithNetworkType(o.NetworkType),
+		WithAuthSecret(o.AuthSecret),
 	}
 	return opts
 }
@@ -118,12 +119,10 @@ func Setup(
 	if stackConfig.NetworkType == "" {
 		networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 		if !ok {
-			networkType = models.NetworkTypeLibp2p
+			networkType = models.NetworkTypeNATS
 		}
 		stackConfig.NetworkType = networkType
 	}
-
-	natsAuthSecret := ""
 
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
@@ -132,14 +131,6 @@ func Setup(
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
-
-		// If this is the requester node, and we are using a NATS network, we need to make sure
-		// that there is an AuthSecret set in the node config.
-		if isRequesterNode && stackConfig.NetworkType == models.NetworkTypeNATS {
-			if natsAuthSecret, err = nats.CreateAuthSecret(nodeID); err != nil {
-				return nil, err
-			}
-		}
 
 		// ////////////////////////////////////
 		// IPFS
@@ -180,7 +171,7 @@ func Setup(
 			Orchestrators: orchestratorAddrs,
 			Port:          swarmPort,
 			ClusterPeers:  clusterPeersAddrs,
-			AuthSecret:    natsAuthSecret,
+			AuthSecret:    stackConfig.AuthSecret,
 		}
 
 		if stackConfig.NetworkType == models.NetworkTypeNATS {
@@ -199,8 +190,7 @@ func Setup(
 				clusterConfig.StoreDir = filepath.Join(repoPath, "nats-storage")
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
-				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("%s@127.0.0.1:%d", natsAuthSecret, swarmPort))
-				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
+				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", swarmPort))
 			}
 		} else {
 			if i == 0 {
@@ -375,6 +365,7 @@ func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.No
 
 	nodeConfig.RequesterNodeConfig.JobStore = jobStore
 	nodeConfig.ComputeConfig.ExecutionStore = executionStore
+
 	return nil
 }
 

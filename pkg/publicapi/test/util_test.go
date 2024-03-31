@@ -52,13 +52,24 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	nodeID := peerID.String()
 
 	var libp2pHost host.Host
+
+	networkConfig := node.NetworkConfig{}
+
 	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 	if !ok {
-		networkType = models.NetworkTypeLibp2p
+		// Default to NATS
+		networkType = models.NetworkTypeNATS
 	}
 
+	networkConfig.Type = networkType
 	if networkType == models.NetworkTypeLibp2p {
 		libp2pHost, err = libp2p.NewHost(libp2pPort, privKey)
+		require.NoError(t, err)
+
+		networkConfig.Libp2pHost = libp2pHost
+	} else {
+		networkConfig.AuthSecret = "test"
+		networkConfig.Port, err = network.GetFreePort()
 		require.NoError(t, err)
 	}
 
@@ -90,10 +101,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
 		NodeInfoStoreTTL:          10 * time.Minute,
-		NetworkConfig: node.NetworkConfig{
-			Type:       networkType,
-			Libp2pHost: libp2pHost,
-		},
+		NetworkConfig:             networkConfig,
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)
