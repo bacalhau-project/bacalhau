@@ -1,0 +1,56 @@
+{
+	"name": "Go",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "docker.io/bacalhauproject/bacalhau-devcontainer@sha256:dd38d902e6f26a2e53ec304716c7f33cdfe5ef16430d61223dab0fbbfc8af9cc",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"moby": true,
+			"azureDnsAutoDetection": true,
+			"installDockerBuildx": true,
+			"installDockerComposeSwitch": true,
+			"version": "20.10",
+			"dockerDashComposeVersion": "latest"
+		}
+	},
+
+	"overrideCommand": false,
+	"userEnvProbe": "loginInteractiveShell",
+	"mounts": [
+		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/bacalhau/.ssh,consistency=cached",
+		"type=volume,source=dind-var-lib-docker,target=/var/lib/docker",
+		"type=bind,source=/var/run/docker.sock,target=/var/run/docker-host.sock"
+	],
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined",
+		"--privileged",
+		"--init",
+        "-u",
+        "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro"
+    ],
+    "remoteEnv": {
+		"DOCKER_HOST": "unix:///var/run/docker-host.sock"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"davidanson.vscode-markdownlint",
+				"golang.go",
+				"ms-azuretools.vscode-docker"
+			],
+			"settings": {
+				"go.toolsManagement.checkForUpdates": "local",
+				"go.useLanguageServer": true,
+				"go.gopath": "/go",
+				"go.buildTags": "e2e,perf,conftests,unit,integration_test,certtests,allcomponents",
+				"git.alwaysSignOff": true,
+				"terminal.integrated.env.linux": {},
+				"python.languageServer": "Pylance"
+			}
+		}
+	},
+	"remoteUser": "bacalhau",
+	"workspaceFolder": "/workspaces/bacalhau",
+	"workspaceMount": "type=bind,source=${localWorkspaceFolder},target=/workspaces/bacalhau"
+}

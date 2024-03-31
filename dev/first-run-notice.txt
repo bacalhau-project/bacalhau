@@ -1,0 +1,8 @@
+👋 Welcome to the Bacalhau dev container! You are on our Bacalhau Contributors image.
+It includes everything to build, run and test the https://github.com/bacalhauproject/bacalhau
+repository.
+
+📚 Bacalhau contributing docs can be found at: https://docs.bacalhau.org/contributing
+
+🎓 If you are looking to run the Bacalhau quickstarts and tutorials, head over to
+https://github.com/bacalhauproject/examples instead.
