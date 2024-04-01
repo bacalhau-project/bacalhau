@@ -30,6 +30,10 @@ case "$environment" in
     echo "Spawning a new environment"
     create_node requester,compute
     ;;
+  private)
+    echo "Running Against Private Cluster"
+    export BACALHAU_DIR=$BACALHAU_CUSTOM_CONFIG
+  ;;
   *)
     echo "Unknown environment: $environment"
     ;;
