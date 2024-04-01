@@ -2,16 +2,11 @@
 
 source bin/bacalhau-client.sh
 
-testcase_can_get_results() {
-    create_client "spawn"
-
-    job_id=$(bacalhau job run --id-only $ROOT/testdata/jobs/docker-output.yaml)
-    bacalhau get $job_id > /dev/null 2>&1
-    subject cat job-*/output_custom/output.txt
+testcase_can_get_logs() {
+    create_client "$CLUSTER"
+    job_id=$(bacalhau job run --id-only $ROOT/testdata/jobs/docker-hello.yaml)
+    subject bacalhau job logs $job_id
     assert_equal 0 $status
-    assert_match "15" $(echo $stdout)
+    assert_match "Hello Bacalhau!" $(echo $stdout | xargs)
     assert_equal '' $stderr
-    extracted_id=$(echo $job_id | awk -F'-' '{print $1"-"$2}')
-    rm -rf job-$extracted_id
-
 }

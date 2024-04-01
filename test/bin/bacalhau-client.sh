@@ -5,7 +5,8 @@ find "${BACALHAU_DIR}" -mindepth 1 \( ! -name 'config.yaml' ! -name 'token.txt' 
 }
 
 create_client() {
-environment=$1
+# Set 'spawn' as default value if $1 is not provided
+environment=${1:-spawn}
 
 case "$environment" in
   production)

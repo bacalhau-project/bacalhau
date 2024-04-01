@@ -3,7 +3,7 @@
 source bin/bacalhau-client.sh
 
 testcase_can_list_version() {
-    create_client "spawn"
+    create_client "$CLUSTER"
     VERSION_INFO=$(curl -s https://get.bacalhau.org/version)
     EXPECTED_GITVERSION=$(echo "$VERSION_INFO" | jq -r '.version.gitversion')
     subject bacalhau version --output json
