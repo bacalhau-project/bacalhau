@@ -1,7 +1,7 @@
 source bin/bacalhau.sh
 
 clean_repo_external() {
-find "${BACALHAU_DIR}" -mindepth 1 \( ! -name 'config.yaml' ! -name 'token.txt' \) -exec rm -rf {} +
+find "${BACALHAU_DIR}" -mindepth 1 \( ! -name 'config.yaml' ! -name 'token.txt' ! -name 'metadata.json' \) -exec rm -rf {} +
 }
 
 create_client() {
@@ -44,6 +44,7 @@ before_all() {
   ROOT=$(git rev-parse --show-toplevel)
   BACALHAU_BINARY=$(find "$ROOT/bin" -name 'bacalhau' -print -quit)
   BACALHAU="$BACALHAU_BINARY"
+  export BACALHAU_UPDATE_SKIPCHECKS=true
   export LOG_LEVEL=WARN
   # export BACALHAU_NODE_SERVERAPI_HOST='localhost'
   export PATH="$(dirname "$BACALHAU_BINARY"):$PATH"
