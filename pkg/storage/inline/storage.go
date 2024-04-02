@@ -180,4 +180,15 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (models.SpecConfi
 	}, nil
 }
 
+// StoreBytes returns the passed data embedded as a "data:" URL in a SpecConfig.
+// The input is never compressed.
+func (*InlineStorage) StoreBytes(data []byte) models.SpecConfig {
+	return models.SpecConfig{
+		Type: models.StorageSourceInline,
+		Params: Source{
+			URL: dataurl.EncodeBytes(data),
+		}.ToMap(),
+	}
+}
+
 var _ storage.Storage = (*InlineStorage)(nil)
