@@ -118,6 +118,43 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %env JOB_ID={job_id}
 ```
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Running a Prolog Script
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: "swipl" 
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c     
+          - swipl -q -s helloworld.pl -g hello_world
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
+    InputSources:
+      - Target: "/helloworld.pl"
+        Source:
+          Type: urlDownload
+          Params:
+            URL: https://raw.githubusercontent.com/bacalhau-project/examples/main/scripts/helloworld.pl
+            Path: /helloworld.pl
+```
+
+The job description should be saved in `.yaml` format, e.g. `prolog.yaml`, and then run with the command:
+```bash
+bacalhau job run prolog.yaml
+```
 
 ## 3. Checking the State of your Jobs
 
