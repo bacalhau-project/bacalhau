@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
@@ -56,7 +57,23 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)
 
-	go s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
+	// parse job resource config
+	parsedUsage, err := request.Execution.Job.Task().ResourcesConfig.ToResources()
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Error parsing job resource config")
+		return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
+			ExecutionID: request.Execution.ID,
+			JobID:       request.Execution.JobID,
+		}}, err
+	}
+
+	// TODO: context shareable?
+	go s.bidder.RunBidding(ctx, &BidderRequest{
+		SourcePeerID:    request.SourcePeerID,
+		Execution:       request.Execution,
+		WaitForApproval: request.WaitForApproval,
+		ResourceUsage:   parsedUsage,
+	})
 
 	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
 		ExecutionID: request.Execution.ID,
