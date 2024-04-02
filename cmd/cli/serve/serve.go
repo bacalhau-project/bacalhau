@@ -277,9 +277,6 @@ func serve(cmd *cobra.Command) error {
 		NetworkConfig:         networkConfig,
 	}
 	if isRequesterNode {
-		var cert string
-		var key string
-		var err error
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
@@ -287,7 +284,7 @@ func serve(cmd *cobra.Command) error {
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err = GetTLSCertificate(ctx, &nodeConfig)
+			cert, key, err := GetTLSCertificate(ctx, &nodeConfig)
 			if err != nil {
 				return err
 			}
