@@ -82,8 +82,13 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayAfterRejections() {
 	s.mockNodeSelection(job, nodeInfos, job.Count, 10*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         evaluation,
-		NewEvaluationDelay: time.Duration(10 * time.Second),
+		Evaluation: evaluation,
+		NewEvaluation: &models.Evaluation{
+			JobID:       job.ID,
+			TriggeredBy: models.EvalTriggerDefer,
+			Type:        job.Type,
+			WaitUntil:   time.Now().Add(10 * time.Second),
+		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))

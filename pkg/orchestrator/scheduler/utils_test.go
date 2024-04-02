@@ -18,7 +18,7 @@ type PlanMatcher struct {
 	NewExecutionsDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions         []string
 	ApprovedExecutions        []string
-	NewEvaluationDelay        time.Duration
+	NewEvaluation             *models.Evaluation
 }
 
 type PlanMatcherParams struct {
@@ -28,7 +28,7 @@ type PlanMatcherParams struct {
 	NewExecutionDesiredState models.ExecutionDesiredStateType
 	StoppedExecutions        []string
 	ApprovedExecutions       []string
-	NewEvaluationDelay       time.Duration
+	NewEvaluation            *models.Evaluation
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
@@ -41,7 +41,7 @@ func NewPlanMatcher(t *testing.T, params PlanMatcherParams) PlanMatcher {
 		NewExecutionsDesiredState: params.NewExecutionDesiredState,
 		StoppedExecutions:         params.StoppedExecutions,
 		ApprovedExecutions:        params.ApprovedExecutions,
-		NewEvaluationDelay:        params.NewEvaluationDelay,
+		NewEvaluation:             params.NewEvaluation,
 	}
 }
 
@@ -116,17 +116,43 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 		}
 	}
 
-	if m.NewEvaluationDelay != 0 {
+	if m.NewEvaluation != nil {
 		if plan.NewEvaluation == nil {
 			m.t.Logf("NewEvaluation: nil")
 			return false
 		}
-		// Sadly, the EvaluationBroker requires an absolute timestamp in the WaitUntil field. time.Now() will have advanced a little since the NewEvaluation was created, so we need to (sigh) allow some slack in the comparison here.
-		actualDelay := plan.NewEvaluation.WaitUntil.Sub(time.Now())
-		difference := m.NewEvaluationDelay - actualDelay
-		if difference < 0 || difference > time.Second {
-			m.t.Logf("NewEvaluation.WaitUntil: %s != %s (difference %s is unacceptable)", actualDelay, m.NewEvaluationDelay, difference)
-			return false
+
+		wanted := m.NewEvaluation
+		got := plan.NewEvaluation
+
+		if wanted.JobID != "" {
+			if wanted.JobID != got.JobID {
+				m.t.Logf("NewEvaluation.JobID: %s != %s", got.JobID, wanted.JobID)
+				return false
+			}
+		}
+
+		if wanted.TriggeredBy != "" {
+			if wanted.TriggeredBy != got.TriggeredBy {
+				m.t.Logf("NewEvaluation.TriggeredBy: %s != %s", got.TriggeredBy, wanted.TriggeredBy)
+				return false
+			}
+		}
+
+		if wanted.Type != "" {
+			if wanted.Type != got.Type {
+				m.t.Logf("NewEvaluation.Type: %s != %s", got.Type, wanted.Type)
+				return false
+			}
+		}
+
+		if !wanted.WaitUntil.IsZero() {
+			// Sadly, the EvaluationBroker requires an absolute timestamp in the WaitUntil field. time.Now() will have advanced a little since the NewEvaluation was created, so we need to (sigh) allow some slack in the comparison here.
+			difference := got.WaitUntil.Sub(wanted.WaitUntil)
+			if difference < 0 || difference > time.Second {
+				m.t.Logf("NewEvaluation.WaitUntil: %s != %s (difference %s is unacceptable)", got.WaitUntil, wanted.WaitUntil, difference)
+				return false
+			}
 		}
 	}
 
