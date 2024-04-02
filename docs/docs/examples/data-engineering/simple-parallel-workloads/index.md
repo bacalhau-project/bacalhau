@@ -36,13 +36,10 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-`bacalhau docker run`: call to Bacalhau
-
-`-i ipfs://Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
-
-`linuxserver/ffmpeg`: the name of the docker image we are using to resize the videos
-
-`-- bash -c 'find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}'`: the command that will be executed inside the container. It uses `find` to locate all files with the extension ".mp4" within `/inputs` and then uses `ffmpeg` to resize each found file to 72 pixels in height, saving the results in the `/outputs` folder.
+1. `bacalhau docker run`: call to Bacalhau
+1. `-i ipfs://Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+1. `linuxserver/ffmpeg`: the name of the docker image we are using to resize the videos
+1. `-- bash -c 'find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}'`: the command that will be executed inside the container. It uses `find` to locate all files with the extension ".mp4" within `/inputs` and then uses `ffmpeg` to resize each found file to 72 pixels in height, saving the results in the `/outputs` folder.
 
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
@@ -55,6 +52,44 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 [Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
 :::
 
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Video Processing
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: linuxserver/ffmpeg
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    InputSources:
+    - Target: "/inputs"
+      Source:
+        Type: "s3"
+        Params:
+          Bucket: "bacalhau-video-processing"
+          Key: "*"
+          Region: "us-east-1"
+```
+
+The job description should be saved in `.yaml` format, e.g. `video.yaml`, and then run with the command:
+```bash
+bacalhau job run video.yaml
+```
 
 ## Checking the State of your Jobs
 
