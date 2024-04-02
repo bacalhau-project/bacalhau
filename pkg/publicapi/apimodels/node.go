@@ -69,7 +69,7 @@ func (n NodeAction) Description() string {
 	case NodeActionReject:
 		return "Reject a node whose membership is pending"
 	case NodeActionDelete:
-		return "Delete a node from the cluster. Note this does not stop them re-connecting."
+		return "Delete a node from the cluster."
 	}
 	return ""
 }
