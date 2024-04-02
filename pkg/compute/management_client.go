@@ -152,6 +152,9 @@ func (m *ManagementClient) Start(ctx context.Context) {
 		heartbeatTicker.Stop()
 		resourceTicker.Stop()
 		infoTicker.Stop()
+
+		// Close the heartbeat client and it's resources
+		m.heartbeatClient.Close(ctx)
 	}()
 
 	// Send an initial heartbeat when we start up

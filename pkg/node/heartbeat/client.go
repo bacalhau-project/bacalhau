@@ -28,18 +28,16 @@ func NewClient(conn *nats.Conn, nodeID string, topic string) (*HeartbeatClient, 
 	return &HeartbeatClient{publisher: publisher, nodeID: nodeID}, nil
 }
 
-func (h *HeartbeatClient) Start(ctx context.Context) error {
-	// Waits until we are cancelled and then closes the publisher
-	<-ctx.Done()
-	return h.publisher.Close(ctx)
-}
-
 func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) error {
 	return h.Publish(ctx, Heartbeat{NodeID: h.nodeID, Sequence: sequence})
 }
 
 func (h *HeartbeatClient) Publish(ctx context.Context, message Heartbeat) error {
 	return h.publisher.Publish(ctx, message)
+}
+
+func (h *HeartbeatClient) Close(ctx context.Context) error {
+	return h.publisher.Close(ctx)
 }
 
 var _ pubsub.Publisher[Heartbeat] = (*HeartbeatClient)(nil)
