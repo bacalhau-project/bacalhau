@@ -1,0 +1,2 @@
+// Replace all PublicKey with string
+replace PublicKey string

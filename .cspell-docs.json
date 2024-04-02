@@ -1,0 +1,57 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "allowCompoundWords": true,
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-dictionary",
+            "path": "./.cspell/custom-dictionary.txt",
+            "addWords": true
+        }
+    ],
+    "dictionaries": [
+        "en",
+        "custom-words"
+    ],
+    "ignorePaths": [
+        "**/package.json",
+        "**/docs/package-lock.json",
+        "**/docs/docs/examples/model-training/Stable-Diffusion-Dreambooth/index.md",
+        "docs/docs/examples/model-training/Training-Tensorflow-Model/index.md",
+        "./docs/swagger.json",
+        "./docs/docusaurus.config.js",
+        "./docs/sidebars.js",
+        "./docs/docs/dev/cli-reference/all-flags.md",
+        "./docs/docs/dev/api/jobs.md",
+        "**/*.css",
+        "**/cli-reference/**",
+        "**/api/**",
+        "./docs/docs/dev/databases.md",
+        "./docs/docs/dev/setting_up_development.md"
+    ],
+    "ignoreRegExpList": [
+        "Urls",
+        "saturnia",
+        "Niels",
+        "TKNG",
+        "runc",
+        "Kernighan",
+        "Email",
+        "RsaCert",
+        "SshRsa",
+        "Base64MultiLine",
+        "Base64SingleLine",
+        "CommitHash",
+        "CommitHashLink",
+        "CStyleHexValue",
+        "CSSHexValue",
+        "SHA",
+        "HashStrings",
+        "UnicodeRef",
+        "UUID",
+        "/github.com.*/",
+        "/\\w+{12,}/",
+        "/ipfs://\\w*/",
+        "/Qm[\\w]+[^\\w]/"
+    ]
+}

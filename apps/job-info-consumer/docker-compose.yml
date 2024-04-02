@@ -1,0 +1,14 @@
+version: '3.4'
+services:
+  postgres:
+    image: postgres:12.13-alpine
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
+  consumer:
+    image: ${IMAGE_CONSUMER}
+    restart: always
+    depends_on:
+      - postgres

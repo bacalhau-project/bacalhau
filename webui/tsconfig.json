@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ],
+    "types": [
+      "node",
+      "jest",
+      "react",
+      "react-dom"
+    ]
+  },
+  "include": [
+    "./src",
+    "./src/**/*.tsx",
+    "./src/**/*.ts",
+    "./babel.config.js",
+    "./tests/**/*.ts",
+    "./tests/**/*.tsx",
+    "tests/mocks/svgMock.js",
+    "src/setupTests.ts"
+  ]
+}
