@@ -59,6 +59,7 @@ type NodeAction string
 const (
 	NodeActionApprove NodeAction = "approve"
 	NodeActionReject  NodeAction = "reject"
+	NodeActionDelete  NodeAction = "delete"
 )
 
 func (n NodeAction) Description() string {
@@ -67,10 +68,12 @@ func (n NodeAction) Description() string {
 		return "Approve a node whose membership is pending"
 	case NodeActionReject:
 		return "Reject a node whose membership is pending"
+	case NodeActionDelete:
+		return "Delete a node from the cluster."
 	}
 	return ""
 }
 
 func (n NodeAction) IsValid() bool {
-	return n == NodeActionApprove || n == NodeActionReject
+	return n == NodeActionApprove || n == NodeActionReject || n == NodeActionDelete
 }
