@@ -152,7 +152,6 @@ module.exports = {
       items: [
         'integration/python-sdk',
         'integration/apache-airflow',
-        'integration/amplify',
         'integration/lilypad',
         'integration/wasm-observe'
       ],
