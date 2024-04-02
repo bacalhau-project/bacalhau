@@ -70,10 +70,6 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 	err = server.Start(ctx)
 	s.Require().NoError(err)
 
-	nodeInfo := models.NodeInfo{
-		NodeID: "node1",
-	}
-
 	type testcase struct {
 		name           string
 		includeInitial bool
@@ -117,7 +113,9 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 	}
 
 	for i, tc := range testcases {
-		nodeInfo.NodeID = "node-" + strconv.Itoa(i)
+		nodeInfo := models.NodeInfo{
+			NodeID: "node-" + strconv.Itoa(i),
+		}
 
 		s.T().Run(tc.name, func(t *testing.T) {
 			// Wait for the first heartbeat to be sent
