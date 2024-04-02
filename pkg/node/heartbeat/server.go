@@ -4,25 +4,28 @@ import (
 	"context"
 	"time"
 
+	"github.com/benbjohnson/clock"
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/nats-io/nats.go"
-
-	"github.com/rs/zerolog/log"
 )
 
 type HeartbeatServerParams struct {
 	Client             *nats.Conn
 	Topic              string
+	Clock              clock.Clock
 	CheckFrequency     time.Duration
 	NodeUnhealthyAfter time.Duration
 	NodeUnknownAfter   time.Duration
 }
 
 type HeartbeatServer struct {
+	clock          clock.Clock
 	subscription   *natsPubSub.PubSub[Heartbeat]
 	pqueue         *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
 	livenessMap    *concurrency.StripedMap[models.NodeState]
@@ -53,7 +56,14 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		},
 	)
 
+	// If no clock was specified, use the real time clock
+	clk := params.Clock
+	if clk == nil {
+		clk = clock.New()
+	}
+
 	return &HeartbeatServer{
+		clock:          clk,
 		subscription:   subscription,
 		pqueue:         pqueue,
 		livenessMap:    concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
@@ -70,13 +80,16 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	log.Ctx(ctx).Info().Msg("Heartbeat server started")
 
+	tickerStartCh := make(chan struct{})
+
 	go func(ctx context.Context) {
 		defer func() {
 			_ = h.subscription.Close(ctx) // We're closing down, not much we can do with an error
 			log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
 		}()
 
-		ticker := time.NewTicker(h.checkFrequency)
+		ticker := h.clock.Ticker(h.checkFrequency)
+		tickerStartCh <- struct{}{}
 
 		for {
 			select {
@@ -87,6 +100,9 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 			}
 		}
 	}(ctx)
+
+	// Wait for the ticker to be created before returning
+	<-tickerStartCh
 
 	return nil
 }
@@ -100,7 +116,7 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 
 	// These are the timestamps, below which we'll consider the item in one of those two
 	// states
-	nowStamp := time.Now().UTC().Unix()
+	nowStamp := h.clock.Now().UTC().Unix()
 	unhealthyUnder := nowStamp - int64(h.unhealthyAfter.Seconds())
 	unknownUnder := nowStamp - int64(h.unknownAfter.Seconds())
 
@@ -168,7 +184,7 @@ func (h *HeartbeatServer) RemoveNode(nodeID string) {
 func (h *HeartbeatServer) Handle(ctx context.Context, message Heartbeat) error {
 	log.Ctx(ctx).Trace().Msgf("heartbeat received from %s", message.NodeID)
 
-	timestamp := time.Now().UTC().Unix()
+	timestamp := h.clock.Now().UTC().Unix()
 
 	if h.pqueue.Contains(message.NodeID) {
 		// If we think we already have a heartbeat from this node, we'll update the
