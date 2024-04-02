@@ -1,7 +1,0 @@
-gcp_project_id = "forrest-dev-407420"
-gcp_region = "us-west1"
-gcp_zone = "us-west1-b"
-gcp_boot_image = "projects/forrest-dev-407420/global/images/bacalhau-ubuntu-2004-lts-test"
-otel_collector_machine_type = "e2-standard-4"
-grafana_prometheus_username = ""
-grafana_prometheus_password = ""
