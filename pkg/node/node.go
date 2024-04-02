@@ -247,7 +247,7 @@ func NewNode(
 			}
 			heartbeatSvr, err = heartbeat.NewServer(heartbeatParams)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
+				return nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
 			}
 
 			// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
@@ -310,7 +310,7 @@ func NewNode(
 		// that any errors are logged. If we are unable to start the manager
 		// then we should not start the node.
 		if err := nodeManager.Start(ctx); err != nil {
-			return nil, errors.Wrap(err, "failed to start node manager")
+			return nil, pkgerrors.Wrap(err, "failed to start node manager")
 		}
 
 		// NodeManager node wraps the node manager and implements the routing.NodeInfoStore
@@ -382,7 +382,7 @@ func NewNode(
 		if natsConfig != nil {
 			natsClient, err := nats_transport.CreateClient(ctx, natsConfig)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create NATS client for node info store")
+				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 
 			hbClient, err = heartbeat.NewClient(
@@ -391,7 +391,7 @@ func NewNode(
 				config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
 			)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create heartbeat client")
+				return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
 			}
 		}
 
