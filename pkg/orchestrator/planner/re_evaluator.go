@@ -29,6 +29,7 @@ func NewReEvaluator(params ReEvaluatorParams) *ReEvaluator {
 
 // Process creates new evaluations, if the plan demands it
 func (s *ReEvaluator) Process(ctx context.Context, plan *models.Plan) error {
+	// This is set by (*Plan).DeferEvaluation in pkg/models/plan.go
 	if plan.NewEvaluation != nil {
 		return s.evaluationBroker.Enqueue(plan.NewEvaluation)
 	}

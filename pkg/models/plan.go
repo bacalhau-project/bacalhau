@@ -77,6 +77,7 @@ func (p *Plan) MarkJobCompleted() {
 // Defer this job, to be re-evaluated after the given delay
 func (p *Plan) DeferEvaluation(waitUntil time.Time) {
 	now := time.Now()
+	// This is picked up by pkg/orchestrator/planner/re_evaluator.go
 	p.NewEvaluation = &Evaluation{
 		ID:          uuid.NewString(),
 		JobID:       p.Job.ID,
