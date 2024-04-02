@@ -1,4 +1,0 @@
-*.out
-.terraform.lock.hcl
-.terraform/*
-*secrets*.tfvars

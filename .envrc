@@ -1,2 +1,0 @@
-source .venv/bin/activate
-
