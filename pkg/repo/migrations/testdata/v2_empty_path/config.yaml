@@ -1,0 +1,9 @@
+node:
+  compute:
+    executionstore:
+      Type: BoltDB
+      Path: ""
+  requester:
+    jobstore:
+      Type: BoltDB
+      Path: ""

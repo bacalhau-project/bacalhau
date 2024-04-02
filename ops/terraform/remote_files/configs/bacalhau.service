@@ -1,0 +1,15 @@
+[Unit]
+Description=Bacalhau Daemon
+After=network-online.target ipfs.service otel.service
+Wants=network-online.target systemd-networkd-wait-online.service ipfs.service otel.service
+
+[Service]
+Environment="LOG_TYPE=json"
+Environment="BACALHAU_PATH=/data"
+Environment="BACALHAU_DIR=/data"
+Restart=always
+RestartSec=5s
+ExecStart=bash /terraform_node/start-bacalhau.sh
+
+[Install]
+WantedBy=multi-user.target

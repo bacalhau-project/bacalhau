@@ -1,0 +1,28 @@
+APIVersion: v1beta1
+Spec:
+  Engine: docker
+  PublisherSpec:
+    Type: s3
+    Params:
+      Bucket: bacalhau-test-datasets
+      Key: integration-tests-published-result/job-{jobID}
+      Region: eu-west-1
+  Docker:
+    Image: ubuntu:latest
+    Entrypoint:
+      - /bin/bash
+      - -c
+      - ls /input_custom
+  Inputs:
+    - StorageSource: s3
+      S3:
+        Bucket: bacalhau-test-datasets
+        Key: integration-tests-do-not-delete/set1/
+        Region: eu-west-1
+      Path: /input_custom
+  Outputs:
+    - StorageSource: ipfs
+      Name: output_custom
+      Path: /output_custom
+  Deal:
+    Concurrency: 1

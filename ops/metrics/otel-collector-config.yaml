@@ -1,0 +1,52 @@
+# receive telemetry data from bacalhau otel sdk.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+
+# batch process data and label it with 'otel' as the service colector
+processors:
+  batch:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 4000
+    spike_limit_mib: 500
+  resource:
+    attributes:
+      - key: service.collector
+        value: otel
+        action: insert
+  attributes/metrics:
+    actions:
+      - pattern: net\.sock.+
+        action: delete
+
+
+exporters:
+  # metrics are exported to prometheus
+  prometheus:
+    endpoint: "0.0.0.0:9095"
+    namespace: "bacalhau"
+  # uncomment for debugging, will print all metrics to stdout
+  #logging:
+    #loglevel: debug
+  # traces go to jaeger instance
+  otlp/jaeger:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+      insecure_skip_verify: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes/metrics, batch]
+      exporters: [prometheus]
+      #exporters: [prometheus, logging]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes/metrics, batch]
+      exporters: [otlp/jaeger]
+      #exporters: [logging, otlp/jaeger]

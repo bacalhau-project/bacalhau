@@ -1,0 +1,35 @@
+package routing
+
+import (
+	"context"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	libp2p_routing "github.com/libp2p/go-libp2p/core/routing"
+)
+
+type NodeInfoStore interface {
+	// TODO: Remove this interface once we switch to nats
+	libp2p_routing.PeerRouting
+
+	// Add adds a node info to the repo.
+	Add(ctx context.Context, nodeInfo models.NodeInfo) error
+
+	// Get returns the node info for the given node ID.
+	Get(ctx context.Context, nodeID string) (models.NodeInfo, error)
+
+	// GetByPrefix returns the node info for the given node ID.
+	// Supports both full and short node IDs.
+	GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error)
+
+	// List returns a list of nodes
+	List(ctx context.Context, filters ...NodeInfoFilter) ([]models.NodeInfo, error)
+
+	// Delete deletes a node info from the repo.
+	Delete(ctx context.Context, nodeID string) error
+}
+
+// NodeInfoFilter is a function that filters node info
+// when listing nodes. It returns true if the node info
+// should be returned, and false if the node info should
+// be ignored.
+type NodeInfoFilter func(models.NodeInfo) bool

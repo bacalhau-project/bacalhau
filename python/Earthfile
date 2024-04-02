@@ -1,0 +1,97 @@
+VERSION 0.8
+FROM python:3.10
+
+ENV SOURCES bacalhau_sdk
+
+WORKDIR /code
+
+# All files to be copied are in the .earthlyignore file - with ! in front of them
+
+install-deps:
+    RUN pip install --upgrade pip
+    RUN pip3 install poetry==1.7.1
+    COPY pyproject.toml poetry.lock ./
+    RUN poetry lock --no-update --no-interaction
+    RUN poetry install --no-root --no-interaction --no-ansi --with test
+
+install-precommit:
+    FROM +install-deps
+    RUN poetry run pre-commit install
+
+check-python-version-is-same-as-in-pyproject:
+    FROM +install-deps
+    RUN poetry version --check
+
+copy-code:
+    FROM +install-deps
+    COPY --dir $SOURCES tests examples README.md ./
+
+run-linter:
+    FROM +copy-code
+    RUN poetry run ruff $SOURCES tests examples
+
+run-unittest:
+    FROM +run-linter
+    RUN poetry run pytest --capture=no --log-cli-level=DEBUG
+
+run-coverage:
+    FROM +run-unittest
+    RUN poetry run pytest --cov=$SOURCES --cov-branch --cov-report=term-missing tests
+    SAVE ARTIFACT /code/.coverage AS LOCAL ./.coverage
+
+build:
+    FROM +copy-code
+    ARG PYPI_VERSION
+
+    # Exit with error if PYPI_VERSION environment variable is not set
+    RUN test $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
+    # Test to see if poetry version is same as the one in pyproject.toml
+    RUN poetry version -- $PYPI_VERSION
+    RUN echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
+    RUN poetry build
+    SAVE ARTIFACT /code/dist AS LOCAL .
+
+install-twine:
+    FROM +build
+    BUILD +build
+    RUN python3 -m pip install --upgrade twine
+    SAVE ARTIFACT /code/dist AS LOCAL .
+
+publish:
+    FROM +install-twine
+    BUILD +install-twine
+    ARG RELEASE_PYTHON_PACKAGES
+    LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
+    IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
+        RUN echo "Publishing to pypi.org"
+        RUN REPOSITORY_FLAG = "" # Publish to default repository
+        RUN --secret PYPI_TOKEN test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
+        RUN --secret PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${PYPI_TOKEN} \
+            --verbose \
+            dist/* \
+            ${REPOSITORY_FLAG}
+    ELSE
+        RUN echo "Publishing to test.pypi.org"
+        RUN --secret TEST_PYPI_TOKEN test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
+        RUN --secret TEST_PYPI_TOKEN python3 -m twine upload \
+            --non-interactive \
+            --disable-progress-bar \
+            --skip-existing \
+            -u __token__ -p ${TEST_PYPI_TOKEN} \
+            --verbose \
+            dist/* \
+            ${REPOSITORY_FLAG}
+    END
+
+    RUN echo "Package uploaded to ${REPOSITORY_FLAG}"
+    SAVE ARTIFACT /code/dist AS LOCAL .
+
+all:
+    FROM +publish
+    BUILD +publish
+    RUN echo "Finishing building all for python"
+    SAVE ARTIFACT /code/dist AS LOCAL .
