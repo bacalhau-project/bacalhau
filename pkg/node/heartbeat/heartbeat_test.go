@@ -4,6 +4,7 @@ package heartbeat
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -115,9 +116,8 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 		},
 	}
 
-	for _, tc := range testcases {
-		// Cleanup
-		server.livenessMap.Delete(nodeInfo.NodeID)
+	for i, tc := range testcases {
+		nodeInfo.NodeID = "node-" + strconv.Itoa(i)
 
 		s.T().Run(tc.name, func(t *testing.T) {
 			// Wait for the first heartbeat to be sent
