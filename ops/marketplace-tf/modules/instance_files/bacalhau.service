@@ -1,0 +1,15 @@
+[Unit]
+Description=Bacalhau Daemon
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+User=bacalhau
+Group=bacalhau
+Restart=always
+RestartSec=5s
+${env_vars}
+ExecStart=bacalhau serve ${args}
+
+[Install]
+WantedBy=multi-user.target

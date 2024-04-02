@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -43,9 +44,20 @@ type Callback interface {
 	OnComputeFailure(ctx context.Context, err ComputeError)
 }
 
-///////////////////////////////////
+// ManagementEndpoint is the transport-based interface for compute nodes to
+// register with the requester node, update information and perform heartbeats.
+type ManagementEndpoint interface {
+	// Register registers a compute node with the requester node.
+	Register(context.Context, requests.RegisterRequest) (*requests.RegisterResponse, error)
+	// UpdateInfo sends an update of node info to the requester node
+	UpdateInfo(context.Context, requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error)
+	// UpdateResources updates the resources currently in use by a specific node
+	UpdateResources(context.Context, requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error)
+}
+
+// /////////////////////////////////
 // Endpoint request/response models
-///////////////////////////////////
+// /////////////////////////////////
 
 type RoutingMetadata struct {
 	SourcePeerID string
@@ -121,9 +133,9 @@ type ExecutionLogsResponse struct {
 	ExecutionFinished bool
 }
 
-///////////////////////////////////
+// /////////////////////////////////
 // Callback result models
-///////////////////////////////////
+// /////////////////////////////////
 
 // BidResult is the result of the compute node bidding on a job that is returned
 // to the caller through a Callback.
@@ -131,6 +143,7 @@ type BidResult struct {
 	RoutingMetadata
 	ExecutionMetadata
 	Accepted bool
+	Wait     bool
 	Reason   string
 }
 

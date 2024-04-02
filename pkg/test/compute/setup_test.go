@@ -10,6 +10,8 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -62,7 +64,7 @@ func (s *ComputeSuite) SetupTest() {
 	s.executor = noop_executor.NewNoopExecutor()
 	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
-	s.bidChannel = make(chan compute.BidResult)
+	s.bidChannel = make(chan compute.BidResult, 1)
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
 	s.setupNode()

@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -83,16 +84,24 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 		return bidstrategy.BidStrategyResponse{ShouldBid: shouldBid, ShouldWait: true}, nil
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Wait()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// ensure the test doesn't exit before the go routine has time to make assertions
+	doneWg := sync.WaitGroup{}
+	doneWg.Add(1)
+
+	// ensure the go routine doesn't fire before the bid is made
+	bidSentWg := sync.WaitGroup{}
+	bidSentWg.Add(1)
+
 	expectingResponse := false
 	go func() {
-		defer wg.Done()
+		bidSentWg.Wait()
+		defer func() {
+			s.T().Log("waiting go routine exiting")
+			doneWg.Done()
+		}()
 		select {
 		case result := <-s.bidChannel:
 			s.True(expectingResponse, "received result before it was expected")
@@ -100,6 +109,7 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 			s.Equal(exec.JobID, result.JobID)
 		case <-time.After(2 * time.Second):
 			s.FailNow("did not receive a bid response")
+			return
 		}
 	}()
 
@@ -120,4 +130,6 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 		ShouldBid: shouldBid,
 	})
 
+	bidSentWg.Done()
+	doneWg.Wait()
 }
