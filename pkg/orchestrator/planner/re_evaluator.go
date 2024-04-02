@@ -7,7 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
-// ReEvaluator is a planner implementation that emits events based on the job state.
+// ReEvaluator is a planner implementation that creates a new evaluation
 type ReEvaluator struct {
 	id               string
 	evaluationBroker orchestrator.EvaluationBroker
