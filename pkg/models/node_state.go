@@ -10,6 +10,11 @@ type NodeState struct {
 
 type liveness int
 
+// To add a new state,
+// * add it to the end of the list in the const below
+// * add it to strLivenessArray and typeLivenessMap
+// * add it to the livenessContainer and corresponding NodeStates var.
+// * add it to the All() method in the livenessContainer
 const (
 	unknownState liveness = iota
 	unhealthy
