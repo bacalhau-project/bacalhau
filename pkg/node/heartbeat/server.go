@@ -159,6 +159,9 @@ func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeState) {
 func (h *HeartbeatServer) UpdateNodeInfo(nodeInfo *models.NodeInfo) {
 	if liveness, ok := h.livenessMap.Get(nodeInfo.NodeID); ok {
 		nodeInfo.State = liveness
+	} else {
+		// We've never seen this, so we'll mark it as unknown
+		nodeInfo.State = models.NodeStates.UNKNOWN
 	}
 }
 

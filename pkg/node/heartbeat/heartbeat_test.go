@@ -50,12 +50,6 @@ func (s *HeartbeatTestSuite) TearDownTest() {
 	s.nats.Shutdown()
 }
 
-type testcase struct {
-	name          string
-	heartbeats    []time.Duration
-	expectedState models.NodeState
-}
-
 func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -79,13 +73,21 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 		NodeID: "node1",
 	}
 
+	type testcase struct {
+		name           string
+		includeInitial bool
+		heartbeats     []time.Duration
+		expectedState  models.NodeState
+	}
+
 	testcases := []testcase{
 		// No heartbeats, node should be HEALTHY after the initial connection
-		{name: "simple", heartbeats: []time.Duration{}, expectedState: models.NodeStates.HEALTHY},
+		{name: "simple", includeInitial: true, heartbeats: []time.Duration{}, expectedState: models.NodeStates.HEALTHY},
 
 		// Node should be HEALTHY after the initial connection and a heartbeat but then misses second
 		{
-			name: "unhealhy",
+			name:           "unhealhy",
+			includeInitial: true,
 			heartbeats: []time.Duration{
 				time.Duration(1 * time.Second),
 				time.Duration(15 * time.Second),
@@ -95,40 +97,55 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 
 		// Node should be UNKNOWN after missing schedule
 		{
-			name: "unknown",
+			name:           "unknown",
+			includeInitial: true,
 			heartbeats: []time.Duration{
 				time.Duration(1 * time.Second),
 				time.Duration(30 * time.Second),
 			},
 			expectedState: models.NodeStates.UNKNOWN,
 		},
+
+		// Nodes that have never been seen should be UNKNOWN
+		{
+			name:           "never seen",
+			includeInitial: false,
+			heartbeats:     []time.Duration{},
+			expectedState:  models.NodeStates.UNKNOWN,
+		},
 	}
 
 	for _, tc := range testcases {
-		// Wait for the first heartbeat to be sent
-		client, err := NewClient(s.client, nodeInfo.NodeID, TestTopic)
-		s.Require().NoError(err)
-		defer client.Close(ctx)
+		// Cleanup
+		server.livenessMap.Delete(nodeInfo.NodeID)
 
-		var seq uint64 = 1
-
-		// Send initial connection heartbeat
-		err = client.SendHeartbeat(ctx, seq)
-		s.Require().NoError(err)
-
-		// Wait for the first check frequency to pass before we check the state
-		s.clock.Add(1 * time.Second)
-
-		// Send heartbeats after each duration in the test case
-		for _, duration := range tc.heartbeats {
-			s.clock.Add(duration) // wait for
-			seq += 1
-			err = client.SendHeartbeat(ctx, seq)
+		s.T().Run(tc.name, func(t *testing.T) {
+			// Wait for the first heartbeat to be sent
+			client, err := NewClient(s.client, nodeInfo.NodeID, TestTopic)
 			s.Require().NoError(err)
-		}
+			defer client.Close(ctx)
 
-		server.UpdateNodeInfo(&nodeInfo)
-		s.Require().Equal(nodeInfo.State, tc.expectedState)
+			var seq uint64 = 1
+
+			// Optionally send initial connection heartbeat
+			if tc.includeInitial {
+				err = client.SendHeartbeat(ctx, seq)
+				s.Require().NoError(err)
+			}
+
+			// Wait for the first check frequency to pass before we check the state
+			s.clock.Add(1 * time.Second)
+
+			// Send heartbeats after each duration in the test case
+			for _, duration := range tc.heartbeats {
+				s.clock.Add(duration) // wait for
+				seq += 1
+				err = client.SendHeartbeat(ctx, seq)
+				s.Require().NoError(err)
+			}
+
+			server.UpdateNodeInfo(&nodeInfo)
+			s.Require().Equal(nodeInfo.State, tc.expectedState)
+		})
 	}
-
 }
