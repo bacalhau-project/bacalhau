@@ -210,7 +210,7 @@ func (e *Execution) IsDiscarded() bool {
 // IsRejected returns true if the execution has been rejected.
 func (e *Execution) IsRejected() bool {
 	switch e.ComputeState.StateType {
-	case ExecutionStateAskForBidRejected, ExecutionStateBidRejected:
+	case ExecutionStateAskForBidRejected:
 		return true
 	default:
 		return false
