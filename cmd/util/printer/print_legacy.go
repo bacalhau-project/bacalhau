@@ -266,6 +266,10 @@ To cancel the job, run:
 				continue
 			}
 
+			if event.JobState == nil { // Only look at job state changes
+				continue
+			}
+
 			if !quiet {
 				jet := event.JobState.New // Get the type of the new state
 				wasPrinted := printedEventsTracker[jet]

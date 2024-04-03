@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+	"github.com/samber/lo"
 )
 
 // BatchServiceJobScheduler is a scheduler for:
@@ -58,17 +59,19 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
-	// Retrieve the job deferral history
-	jobDeferralHistory, err := b.jobStore.GetJobHistory(ctx, evaluation.JobID,
+	// Retrieve the job history
+	jobHistory, err := b.jobStore.GetJobHistory(ctx, evaluation.JobID,
 		jobstore.JobHistoryFilterOptions{
-			ExcludeExecutionLevel:     true,
-			ExcludeJobLevel:           true,
-			ExcludeSchedulingDeferral: false,
+			ExcludeExecutionLevel: true,
+			ExcludeJobLevel:       false,
 		})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
+	jobDeferralHistory := lo.Filter(jobHistory, func(event models.JobHistory, index int) bool {
+		return event.SchedulingDeferral != nil
+	})
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)

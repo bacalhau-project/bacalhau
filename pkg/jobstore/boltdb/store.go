@@ -30,7 +30,6 @@ const (
 	BucketJobEvaluations   = "evaluations"
 	BucketJobHistory       = "job_history"
 	BucketExecutionHistory = "execution_history"
-	BucketDeferralHistory  = "deferral_history"
 
 	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
@@ -628,19 +627,6 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
-	if !options.ExcludeSchedulingDeferral {
-		// Get the scheduling deferrals for this JobID
-		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketDeferralHistory).Get(tx, false); err != nil {
-			return nil, err
-		} else {
-			history, err = b.getJobHistoryByPath(bkt, history)
-
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	// Filter out anything before the specified Since time, and anything that doesn't match the
 	// specified ExecutionID or NodeID
 	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
@@ -703,9 +689,6 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 			return err
 		}
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketExecutionHistory)); err != nil {
-			return err
-		}
-		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketDeferralHistory)); err != nil {
 			return err
 		}
 	}
@@ -853,7 +836,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 
 func (b *BoltJobStore) RecordJobDeferral(ctx context.Context, jobID string, waitUntil time.Time, comment string) error {
 	historyEntry := models.JobHistory{
-		Type:  models.JobHistoryTypeJobSchedulingDeferral,
+		Type:  models.JobHistoryTypeJobLevel,
 		JobID: jobID,
 		SchedulingDeferral: &models.SchedulingDeferral{
 			DeferredUntil: waitUntil,
@@ -867,7 +850,7 @@ func (b *BoltJobStore) RecordJobDeferral(ctx context.Context, jobID string, wait
 	}
 
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketDeferralHistory).Get(tx, true); err != nil {
+		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, true); err != nil {
 			return err
 		} else {
 			seq := BucketSequenceString(tx, bkt)

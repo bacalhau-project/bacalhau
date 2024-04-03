@@ -94,6 +94,53 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayAfterRejections() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayMoreAfterMoreRejections() {
+	ctx := context.Background()
+	job, executions, evaluation := mockJob()
+	job.Count = 1
+	// Just one execution, rejected very recently
+	executions = []models.Execution{
+		executions[0],
+	}
+	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidRejected)
+	executions[0].CreateTime = time.Now().UnixNano()
+	history := []models.JobHistory{
+		models.JobHistory{ // But we had a deferral before...
+			Type:        models.JobHistoryTypeJobLevel,
+			JobID:       job.ID,
+			NodeID:      executions[0].NodeID,
+			ExecutionID: executions[0].ID,
+			SchedulingDeferral: &models.SchedulingDeferral{
+				DeferredUntil: time.Now().Add(10 * time.Second),
+			},
+			Time: time.Now(),
+		},
+	}
+
+	// ... so we expect a 20s delay this time
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetJobHistory(gomock.Any(), job.ID, gomock.Any()).Return(history, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+	s.jobStore.EXPECT().RecordJobDeferral(gomock.Any(), job.ID, gomock.Any(), "Deferring rescheduling for 20s")
+
+	// No nodes are suitable, as we're within the retry delay of the last failure
+	nodeInfos := []models.NodeInfo{}
+
+	s.mockNodeSelection(job, nodeInfos, job.Count, 20*time.Second)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		NewEvaluation: &models.Evaluation{
+			JobID:       job.ID,
+			TriggeredBy: models.EvalTriggerDefer,
+			Type:        job.Type,
+			WaitUntil:   time.Now().Add(20 * time.Second),
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldRetryAfterRejectionDelay() {
 	ctx := context.Background()
 	job, executions, evaluation := mockJob()

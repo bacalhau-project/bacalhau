@@ -12,7 +12,6 @@ const (
 	JobHistoryTypeUndefined JobHistoryType = iota
 	JobHistoryTypeJobLevel
 	JobHistoryTypeExecutionLevel
-	JobHistoryTypeJobSchedulingDeferral
 )
 
 func (s JobHistoryType) MarshalText() ([]byte, error) {

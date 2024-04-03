@@ -352,8 +352,6 @@ func ToLegacyJobHistoryType(historyType models.JobHistoryType) model.JobHistoryT
 		return model.JobHistoryTypeExecutionLevel
 	case models.JobHistoryTypeJobLevel:
 		return model.JobHistoryTypeJobLevel
-	case models.JobHistoryTypeJobSchedulingDeferral:
-		return model.JobHistoryTypeJobSchedulingDeferral
 	default:
 		panic(fmt.Sprintf("ToLegacyJobHistoryType: Invalid job history type %d", historyType))
 	}
