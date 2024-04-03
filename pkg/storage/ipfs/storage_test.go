@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -27,16 +26,19 @@ func getIpfsStorage(t *testing.T) *StorageProvider {
 		cm.Cleanup(context.Background())
 	})
 
-	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
+	connection := ipfs.HasIPFS(t)
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, connection)
 	require.NoError(t, err)
 
-	storage, err := NewStorage(node.Client())
+	storage, err := NewStorage(client)
 	require.NoError(t, err)
 
 	return storage
 }
 
 func TestGetVolumeSize(t *testing.T) {
+	ipfs.MustHaveIPFS(t)
+
 	ctx := context.Background()
 	config.SetVolumeSizeRequestTimeout(time.Second * 3)
 
@@ -67,6 +69,8 @@ func TestGetVolumeSize(t *testing.T) {
 }
 
 func TestPrepareStorageRespectsTimeouts(t *testing.T) {
+	ipfs.MustHaveIPFS(t)
+
 	for _, testDuration := range []time.Duration{
 		// 0, // Disable test -- timeouts aren't respected when getting cached files
 		time.Minute,
@@ -94,6 +98,8 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 }
 
 func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
+	ipfs.MustHaveIPFS(t)
+
 	for _, testDuration := range []time.Duration{
 		// 0, // Disable test -- timeouts aren't respected when getting cached files
 		time.Minute,

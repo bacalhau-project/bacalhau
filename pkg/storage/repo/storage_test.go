@@ -13,13 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -27,7 +25,8 @@ import (
 // returns the current testing context
 type StorageSuite struct {
 	suite.Suite
-	RootCmd *cobra.Command
+	RootCmd  *cobra.Command
+	ipfsConn string
 }
 
 func TestStorageSuite(t *testing.T) {
@@ -36,21 +35,21 @@ func TestStorageSuite(t *testing.T) {
 
 // Before each test
 func (s *StorageSuite) SetupTest() {
+	s.ipfsConn = ipfs.MustHaveIPFS(s.T())
 	logger.ConfigureTestLogging(s.T())
 	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
-func getIpfsStorage() (*apicopy.StorageProvider, error) {
+func (s *StorageSuite) getIpfsStorage() (*apicopy.StorageProvider, error) {
 	ctx := context.Background()
-	cm := system.NewCleanupManager()
 
-	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, s.ipfsConn)
 	if err != nil {
 		return nil, err
 
 	}
 
-	cl := ipfs.NewClient(node.Client().API)
+	cl := ipfs.NewClient(client.API)
 	storage, err := apicopy.NewStorage(cl)
 	if err != nil {
 		return nil, err
@@ -60,8 +59,10 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
+	ipfs.MustHaveIPFS(s.T())
+
 	ctx := context.Background()
-	storage, err := getIpfsStorage()
+	storage, err := s.getIpfsStorage()
 	if err != nil {
 		panic(err)
 	}
@@ -87,6 +88,8 @@ func (s *StorageSuite) TestHasStorageLocally() {
 }
 
 func (s *StorageSuite) TestCloneRepo() {
+	ipfs.MustHaveIPFS(s.T())
+
 	// This test will fail when offline - we should build a checker to see if someone
 	// is connected to the internet and skip this test if they are not.
 	// This test will also fail if the URL is not reachable.
@@ -109,7 +112,7 @@ func (s *StorageSuite) TestCloneRepo() {
 
 		hash, err := func() (string, error) {
 			ctx := context.Background()
-			storage, err := getIpfsStorage()
+			storage, err := s.getIpfsStorage()
 			if err != nil {
 				panic(err)
 			}

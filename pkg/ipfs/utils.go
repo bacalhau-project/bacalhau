@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -63,38 +61,6 @@ func ParsePeersString(peers []string) ([]peer.AddrInfo, error) {
 	}
 
 	return res, nil
-}
-
-func copyFile(sourcePath, destinationPath string) error {
-	sourceFile, err := os.Open(sourcePath)
-	if err != nil {
-		return err
-	}
-	defer closer.CloseWithLogOnError(sourcePath, sourceFile)
-
-	sourceInfo, err := sourceFile.Stat()
-	if err != nil {
-		return err
-	}
-
-	destinationFile, err := os.Create(destinationPath)
-	if err != nil {
-		return err
-	}
-	defer closer.CloseWithLogOnError(destinationPath, destinationFile)
-
-	copied, err := io.Copy(destinationFile, sourceFile)
-	if err != nil {
-		return err
-	} else if copied < sourceInfo.Size() {
-		return fmt.Errorf("expected to copy %d bytes but only copied %d", sourceInfo.Size(), copied)
-	}
-
-	if err := destinationFile.Chmod(sourceInfo.Mode()); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg types.IpfsConfig) (*Client, error) {

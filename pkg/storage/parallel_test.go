@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,6 @@ type ParallelStorageSuite struct {
 
 	ctx      context.Context
 	cm       *system.CleanupManager
-	node     *ipfs.Node
 	cid      string
 	provider provider.Provider[storage.Storage]
 }
@@ -40,14 +38,19 @@ func (s *ParallelStorageSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.cm = system.NewCleanupManager()
 
-	// Setup required IPFS node and client
-	node, err := ipfs.NewNodeWithConfig(s.ctx, s.cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(s.T(), err)
-	s.node = node
-	client := s.node.Client()
+	// Setup required IPFS client IFF we have IPFS installed. If not, we will skip the tests
+	// and this setup will not be relevant
+	var err error
+	var client *ipfs.Client
+	conn := ipfs.HasIPFS(s.T())
 
-	s.cid, err = client.Put(s.ctx, "../../testdata/grep_file.txt")
-	require.NoError(s.T(), err)
+	if conn != "" {
+		client, err = ipfs.NewClientUsingRemoteHandler(s.ctx, conn)
+		require.NoError(s.T(), err)
+
+		s.cid, err = client.Put(s.ctx, "../../testdata/grep_file.txt")
+		require.NoError(s.T(), err)
+	}
 
 	s.provider, _ = executor_util.NewStandardStorageProvider(
 		s.ctx,
@@ -60,10 +63,11 @@ func (s *ParallelStorageSuite) SetupSuite() {
 
 func (s *ParallelStorageSuite) TearDownSuite() {
 	s.cm.Cleanup(s.ctx)
-	_ = s.node.Close(s.ctx)
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
+	ipfs.MustHaveIPFS(s.T())
+
 	artifact := &models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceIPFS,
