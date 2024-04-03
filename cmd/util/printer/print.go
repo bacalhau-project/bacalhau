@@ -84,14 +84,19 @@ func PrintJobExecution(
 		if err != nil {
 			return fmt.Errorf("failed getting job executions: %w", err)
 		}
-		cmd.Println("\nJob Results By Node:")
-		for message, nodes := range summariseExecutions(executions.Executions) {
-			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
-			if strings.ContainsRune(message, '\n') {
-				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
-			} else {
-				cmd.Println(message)
+		summary := summariseExecutions(executions.Executions)
+		if len(summary) > 0 {
+			cmd.Println("\nJob Results By Node:")
+			for message, nodes := range summary {
+				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+				if strings.ContainsRune(message, '\n') {
+					cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+				} else {
+					cmd.Println(message)
+				}
 			}
+		} else {
+			cmd.Println()
 		}
 	}
 	if !quiet {
