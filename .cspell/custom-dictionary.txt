@@ -203,6 +203,7 @@ multierror
 multiformats
 Muxed
 mypy
+NATS
 nbconvert
 nemt
 nocheck
