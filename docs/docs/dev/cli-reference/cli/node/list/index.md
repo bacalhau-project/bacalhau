@@ -30,7 +30,7 @@ bacalhau node list [flags]
 
   - Only show nodes with the specified approval status. Valid values are: `approved`, `pending`, `rejected`.
 
-- `--filter-approval`:
+- `--filter-status`:
 
   - Only show nodes with the specified state. Valid values are: `healthy`, `unhealthy`, `unknown`.
 
