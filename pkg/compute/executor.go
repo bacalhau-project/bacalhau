@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -193,14 +192,14 @@ func PrepareRunArguments(
 			},
 		}, func(ctx context.Context) error {
 			log.Ctx(ctx).Info().Str("execution", execution.ID).Msg("cleaning up execution")
-			cleanupErr := new(multierror.Error)
+			var cleanupErr error
 			for _, cleanupFunc := range cleanupFuncs {
 				if err := cleanupFunc(ctx); err != nil {
 					log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).Msg("cleaning up execution")
-					cleanupErr = multierror.Append(cleanupErr, err)
+					cleanupErr = errors.Join(cleanupErr, err)
 				}
 			}
-			return cleanupErr.ErrorOrNil()
+			return cleanupErr
 		}, nil
 }
 

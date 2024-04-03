@@ -1,13 +1,13 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -153,11 +153,11 @@ func (d Deal) IsValid() error {
 		if d.Concurrency > 1 {
 			// Although the requirement is stated as == 0, the default value is
 			// 1, so we just ignore both 1 or 0 for convenience.
-			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
+			err = errors.Join(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
 		}
 	case TargetAny:
 		if d.Concurrency <= 0 {
-			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
+			err = errors.Join(err, fmt.Errorf("concurrency must be >= 1"))
 		}
 	}
 

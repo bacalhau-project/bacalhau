@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -11,11 +12,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
-	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
@@ -35,7 +35,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
 	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
-	if err := multierr.Combine(totalErr, queueErr, jobErr, defaultErr); err != nil {
+	if err := errors.Join(totalErr, queueErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
 
@@ -45,7 +45,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	if createExecutionStore {
 		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
 		if err != nil {
-			return node.ComputeConfig{}, errors.Wrapf(err, "failed to create execution store")
+			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
@@ -85,7 +85,7 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	if createJobStore {
 		jobStore, err = getJobStore(ctx, cfg.JobStore)
 		if err != nil {
-			return node.RequesterConfig{}, errors.Wrapf(err, "failed to create job store")
+			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}
 	}
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
