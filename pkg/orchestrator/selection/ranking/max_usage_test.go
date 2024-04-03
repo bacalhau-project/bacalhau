@@ -108,7 +108,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_MemoryReporting() {
 	job.Task().ResourcesConfig = &models.ResourcesConfig{Memory: "2GB"}
 
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1, "job requires more memory (2.0 GB) than the maximum available (1.0 kB)")
@@ -121,7 +121,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_MultpleReporting() {
 	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3", Memory: "2GB"}
 
 	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
-	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, 0, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3) than the maximum available (1) and more memory (2.0 GB) than the maximum available (1.0 kB)")
