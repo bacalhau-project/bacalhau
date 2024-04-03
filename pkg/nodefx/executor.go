@@ -1,6 +1,7 @@
-package provider
+package nodefx
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,12 +12,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func Executor(cfg map[string][]byte) (executor.ExecutorProvider, error) {
+func ExecutorProviders(cfg *ComputeConfig) (executor.ExecutorProvider, error) {
 	var (
 		provided = make(map[string]executor.Executor)
 		err      error
 	)
-	for name, config := range cfg {
+
+	c := cfg.Providers.Executor
+	for name, config := range c {
 		switch strings.ToLower(name) {
 		case models.EngineDocker:
 			provided[name], err = DockerEngine(config)
@@ -33,8 +36,11 @@ func Executor(cfg map[string][]byte) (executor.ExecutorProvider, error) {
 }
 
 func DockerEngine(cfg []byte) (*docker.Executor, error) {
-	panic("TODO")
-	// return docker.NewExecutor(context.TODO(), nil)
+	var ecfg docker.Config
+	if err := json.Unmarshal(cfg, &ecfg); err != nil {
+		return nil, err
+	}
+	return docker.NewExecutorFromConfig(ecfg)
 }
 
 func WasmEngine(cfg []byte) (*wasm.Executor, error) {

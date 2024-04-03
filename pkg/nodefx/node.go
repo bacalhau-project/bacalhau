@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
@@ -24,15 +26,14 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type NodeConfig struct {
-	NodeID          string
-	Labels          map[string]string
-	TransportConfig *nats_transport.NATSTransportConfig
-	// ComputeConfig    *ComputeConfig
+	NodeID           string
+	Labels           map[string]string
+	TransportConfig  *nats_transport.NATSTransportConfig
+	ComputeConfig    *ComputeConfig
 	RequesterConfig  *RequesterConfig
 	EchoRouterConfig EchoRouterConfig
 	ServerConfig     ServerConfig
@@ -42,6 +43,7 @@ type NodeConfig struct {
 type ServerConfig struct {
 	Address            string
 	Port               uint16
+	Protocol           string
 	AutoCertDomain     string
 	AutoCertCache      string
 	TLSCertificateFile string
@@ -67,17 +69,21 @@ type EchoRouterConfig struct {
 }
 
 type BacalhauNode struct {
-	Transport transport.TransportLayer
-	Server    *Server
+	fx.In
+
+	Transport        *nats_transport.NATSTransport
+	Server           *Server
+	NodeInfoProvider *routing.NodeInfoProvider
+	Compute          *ComputeNode   `optional:"true"`
+	Requester        *RequesterNode `optional:"true"`
 }
 
-func (n *BacalhauNode) Interact() {
+func (n *BacalhauNode) Shutdown() error {
+	return nil
 }
 
-func NewNode(ctx context.Context, cfg *NodeConfig) error {
-	// var bacalhauNode BacalhauNode
-	var requester RequesterNode
-	// var compute ComputeNode
+func NewNode(ctx context.Context, cfg *NodeConfig) (*BacalhauNode, func() error, error) {
+	bacalhauNode := new(BacalhauNode)
 	app := fx.New(
 		fx.Supply(cfg),
 		fx.Provide(NATSS),
@@ -85,28 +91,62 @@ func NewNode(ctx context.Context, cfg *NodeConfig) error {
 
 		// this is essentially the API module, needs a few more endpoints
 		fx.Provide(Authorizer),
-		fx.Provide(NewEchoRouter),            // requires EchoRouterConfig
-		fx.Invoke(NewAPIServer),              // requires echo and ServerConfig
-		fx.Invoke(agent.InitAgentEndpoint),   // requires echo, nodeInfoProvider and DebugInforProviders
-		fx.Invoke(shared.InitSharedEndpoint), // requires nodeID and nodeInforProvider
+		fx.Provide(NewEchoRouter), // requires EchoRouterConfig
+		fx.Provide(NewAPIServer),  // requires echo and ServerConfig
 
 		fx.Provide(NodeInfoProvider),
 
 		ProvideIf(Requester, cfg.RequesterConfig != nil),
-		fx.Populate(&requester),
-		// PopulateIf[RequesterNode](&requester, cfg.RequesterConfig != nil),
-		// ProvideIf(Compute, cfg.ComputeConfig != nil),
-		// PopulateIf[ComputeNode](&compute, cfg.ComputeConfig != nil),
+		ProvideIf(Compute, cfg.ComputeConfig != nil),
 
-		fx.Invoke(RegisterNodeInfoProviderDecorators),
 		fx.Provide(AuthenticatorsProviders),
+		fx.Populate(bacalhauNode),
+
+		// TODO this needs the debug providers from the compute node and requester node
+		fx.Invoke(agent.InitAgentEndpoint),   // requires echo, nodeInfoProvider and DebugInforProviders
+		fx.Invoke(shared.InitSharedEndpoint), // requires nodeID and nodeInforProvider
+		fx.Invoke(RegisterNodeInfoProviderDecorators),
 		fx.Invoke(func(router *echo.Echo, provider authn.Provider) {
 			auth_endpoint.BindEndpoint(context.TODO(), router, provider)
 		}),
-		// fx.Populate(&bacalhauNode),
 	)
 
-	return app.Start(ctx)
+	// ensure the node was constructed as expected.
+	if err := app.Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to build bacalhau node: %w", err)
+	}
+
+	if bacalhauNode.Requester != nil {
+		if err := bacalhauNode.Transport.RegisterComputeCallback(bacalhauNode.Requester.ComputeCallback); err != nil {
+			return nil, nil, fmt.Errorf("registering requester node compute callback: %w", err)
+		}
+	}
+
+	if bacalhauNode.Compute != nil {
+		if err := bacalhauNode.Transport.RegisterComputeEndpoint(bacalhauNode.Compute.LocalEndpoint); err != nil {
+			return nil, nil, fmt.Errorf("registering compute node endpoint: %w", err)
+		}
+		bacalhauNode.NodeInfoProvider.RegisterNodeInfoDecorator(bacalhauNode.Compute.nodeInfoDecorator)
+	}
+
+	var once sync.Once
+	var stopErr error
+	shutdown := func() error {
+		once.Do(func() {
+			stopErr = app.Stop(context.Background())
+			if stopErr != nil {
+				log.Error().Err(stopErr).Msg("failed to shutdown node")
+			}
+		})
+		return stopErr
+	}
+
+	if err := app.Start(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to start bacalhau node: %w", err)
+	}
+
+	return bacalhauNode, shutdown, nil
+
 }
 
 func Authorizer(cfg *NodeConfig) (authz.Authorizer, error) {
@@ -137,6 +177,7 @@ func PopulateIf[T any](instance *T, condition bool) fx.Option {
 }
 
 func NodeInfoProvider(cfg *NodeConfig) (*routing.NodeInfoProvider, error) {
+	// TODO this will miss any labels provided by the compute node I think
 	labelsProvider := models.MergeLabelsInOrder(
 		&node.ConfigLabelsProvider{StaticLabels: cfg.Labels},
 		&node.RuntimeLabelsProvider{},

@@ -15,6 +15,7 @@ type bidStrategyFromExecutor struct {
 
 func NewExecutorSpecificBidStrategy(provider executor.ExecutorProvider) bidstrategy.BidStrategy {
 	return bidstrategy.NewChainedBidStrategy(
+		// TODO this shouldn't have both a semantic and resource strategy executors don't have a resource strat.
 		bidstrategy.WithSemantics(
 			semantic.NewProviderInstalledStrategy[executor.Executor](
 				provider,

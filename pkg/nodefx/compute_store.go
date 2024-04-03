@@ -4,21 +4,35 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/fx"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-func ExecutionStore(cfg *types.JobStoreConfig) (store.ExecutionStore, error) {
-	if err := cfg.Validate(); err != nil {
-		panic(err)
+func ExecutionStore(lc fx.Lifecycle, cfg *ComputeConfig) (store.ExecutionStore, error) {
+	if err := cfg.Store.Validate(); err != nil {
+		return nil, err
 	}
 
-	switch cfg.Type {
+	var store store.ExecutionStore
+	var err error
+	switch cfg.Store.Type {
 	case types.BoltDB:
-		return boltdb.NewStore(context.TODO(), cfg.Path)
+		store, err = boltdb.NewStore(context.TODO(), cfg.Store.Path)
+		if err != nil {
+			return nil, err
+		}
 	default:
+		return nil, fmt.Errorf("unknown JobStore type: %s", cfg.Store.Type)
 	}
 
-	panic(fmt.Errorf("unknown JobStore type: %s", cfg.Type))
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return store.Close(ctx)
+		},
+	})
+
+	return store, nil
 }

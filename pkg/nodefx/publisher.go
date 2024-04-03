@@ -1,4 +1,4 @@
-package provider
+package nodefx
 
 import (
 	"fmt"
@@ -12,12 +12,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 )
 
-func Publisher(cfg map[string][]byte) (publisher.PublisherProvider, error) {
+func PublisherProviders(cfg *ComputeConfig) (publisher.PublisherProvider, error) {
 	var (
 		provided = make(map[string]publisher.Publisher)
 		err      error
 	)
-	for name, config := range cfg {
+	c := cfg.Providers.Publisher
+	for name, config := range c {
 		switch strings.ToLower(name) {
 		case models.PublisherIPFS:
 			provided[name], err = IPFSPublisher(config)

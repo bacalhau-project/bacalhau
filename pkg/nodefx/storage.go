@@ -1,4 +1,4 @@
-package provider
+package nodefx
 
 import (
 	"fmt"
@@ -14,13 +14,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
-func Storage(cfg map[string][]byte) (storage.StorageProvider, error) {
+func StorageProviders(cfg *ComputeConfig) (storage.StorageProvider, error) {
 	var (
 		provided = make(map[string]storage.Storage)
 		err      error
 	)
 
-	for name, config := range cfg {
+	c := cfg.Providers.Storage
+	for name, config := range c {
 		switch strings.ToLower(name) {
 		case models.StorageSourceIPFS:
 			provided[name], err = IPFSStorage(config)

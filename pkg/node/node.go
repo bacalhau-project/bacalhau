@@ -29,6 +29,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -228,7 +229,7 @@ func NewNode(
 		if err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 		}
-		// tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
+		tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
 
 		// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
 		// of node info.

@@ -71,18 +71,43 @@ type RequesterConfig struct {
 }
 
 type RequesterNode struct {
+	Endpoint        requester.Endpoint
+	ComputeCallback compute.Callback
+	EndpointV2      *orchestrator.BaseEndpoint
+	JobStore        jobstore.Store
+	NodeDiscoverer  orchestrator.NodeDiscoverer
+	NodeManager     *manager.NodeManager
+	Scheduler       orchestrator.SchedulerProvider
+}
+
+type RequesterParams struct {
 	fx.In
 	// Visible for testing
-	Endpoint   requester.Endpoint
-	EndpointV2 *orchestrator.BaseEndpoint
-	JobStore   jobstore.Store
+	Endpoint        requester.Endpoint
+	ComputeCallback compute.Callback
+	EndpointV2      *orchestrator.BaseEndpoint
+	JobStore        jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
 	NodeDiscoverer orchestrator.NodeDiscoverer
 	NodeManager    *manager.NodeManager
+	Scheduler      orchestrator.SchedulerProvider
+}
+
+func NewRequesterNode(p RequesterParams) *RequesterNode {
+	return &RequesterNode{
+		Endpoint:        p.Endpoint,
+		ComputeCallback: p.ComputeCallback,
+		EndpointV2:      p.EndpointV2,
+		JobStore:        p.JobStore,
+		NodeDiscoverer:  p.NodeDiscoverer,
+		NodeManager:     p.NodeManager,
+		Scheduler:       p.Scheduler,
+	}
 }
 
 func Requester() fx.Option {
 	return fx.Options(
+		fx.Provide(NewRequesterNode),
 		// TODO can decorate JobStore as interface instead of returning the interface
 		fx.Provide(JobStore),
 		fx.Provide(NodeStore),

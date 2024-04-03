@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -26,8 +27,9 @@ import (
 
 // Server configures a node's public REST API.
 type Server struct {
-	Address string
-	Port    uint16
+	Address  string
+	Port     uint16
+	Protocol string
 
 	TLSCertificateFile string
 	TLSKeyFile         string
@@ -36,10 +38,20 @@ type Server struct {
 	useTLS     bool
 }
 
+func (s *Server) GetURI() *url.URL {
+	interpolated := fmt.Sprintf("%s://%s:%d", s.Protocol, s.Address, s.Port)
+	url, err := url.Parse(interpolated)
+	if err != nil {
+		panic(fmt.Errorf("callback url must parse: %s", interpolated))
+	}
+	return url
+}
+
 func NewAPIServer(lc fx.Lifecycle, cfg *NodeConfig, r *echo.Echo) (*Server, error) {
 	server := &Server{
-		Address: cfg.ServerConfig.Address,
-		Port:    cfg.ServerConfig.Port,
+		Address:  cfg.ServerConfig.Address,
+		Port:     cfg.ServerConfig.Port,
+		Protocol: cfg.ServerConfig.Protocol,
 	}
 
 	var tlsConfig *tls.Config

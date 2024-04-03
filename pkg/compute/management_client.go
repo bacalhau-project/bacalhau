@@ -106,8 +106,10 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to send update info to requester node")
+		return
 	}
 
+	// TODO(forrest): we ignore the error and check the request, which can cause panics
 	if response.Accepted {
 		log.Ctx(ctx).Debug().Msg("update info accepted")
 	} else {
@@ -131,6 +133,14 @@ func (m *ManagementClient) updateResources(ctx context.Context) {
 func (m *ManagementClient) Start(ctx context.Context) {
 	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
 	resourceTicker := time.NewTicker(resourceUpdateFrequencySeconds * time.Second)
+
+	// NB(forrest): we do this on start to avoid needing to wait for the interval
+	// to tick.
+	// TODO we need some type of eager publishing here. Is a send triggered
+	// when a new node connects? Is a send triggered when a new node is approved?
+	// if not, we will be waiting for a while before share info with a node.
+	m.deliverInfo(ctx)
+	m.updateResources(ctx)
 
 	loop := true
 	for loop {

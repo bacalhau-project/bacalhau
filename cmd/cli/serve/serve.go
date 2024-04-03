@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -233,7 +235,7 @@ func serve(cmd *cobra.Command) error {
 		networkConfig.ClusterPeers = libp2pPeers
 	}
 
-	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
+	computeConfig, err := GetComputeConfig(ctx, false)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
@@ -294,9 +296,29 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
+	var ccfg types.ComputeConfig
+	if err := config.ForKey(types.NodeCompute, &ccfg); err != nil {
+		return err
+	}
+
+	dockerEngineConfig, err := json.Marshal(&docker.Config{ID: nodeConfig.NodeID})
+	if err != nil {
+		return err
+	}
+
 	// Create node
+	totalResoureLimit, err := ccfg.Capacity.TotalResourceLimits.ToResources()
+	if err != nil {
+		return err
+	}
+	queuedResourceLimit, err := ccfg.Capacity.QueueResourceLimits.ToResources()
+	if err != nil {
+		return err
+	}
+	totalResoureLimit.CPU = 1
+	queuedResourceLimit.CPU = 2
 	serverVersion := version.Get()
-	if err := nodefx.NewNode(ctx, &nodefx.NodeConfig{
+	bacalhauNode, _, err := nodefx.NewNode(ctx, &nodefx.NodeConfig{
 		NodeID: nodeName,
 		Labels: config.GetStringMapString(types.NodeLabels),
 		TransportConfig: &nats_transport.NATSTransportConfig{
@@ -312,7 +334,20 @@ func serve(cmd *cobra.Command) error {
 			ClusterAdvertisedAddress: networkConfig.ClusterAdvertisedAddress,
 			ClusterPeers:             networkConfig.ClusterPeers,
 		},
-		// ComputeConfig: nil,
+		ComputeConfig: &nodefx.ComputeConfig{
+			Store: &ccfg.ExecutionStore,
+			Providers: nodefx.ProvidersConfig{
+				Executor: map[string][]byte{
+					models.EngineDocker: dockerEngineConfig,
+				},
+				Storage:   nil,
+				Publisher: nil,
+			},
+			Capacity: nodefx.CapacityTrackerConfig{
+				TotalResourceLimits: *totalResoureLimit,
+				QueueResourceLimits: *queuedResourceLimit,
+			},
+		},
 		RequesterConfig: &nodefx.RequesterConfig{
 			Store:                              &rcfg.JobStore,
 			MinBacalhauVersion:                 requesterConfig.MinBacalhauVersion,
@@ -354,6 +389,7 @@ func serve(cmd *cobra.Command) error {
 		ServerConfig: nodefx.ServerConfig{
 			Address:            nodeConfig.HostAddress,
 			Port:               nodeConfig.APIPort,
+			Protocol:           "http",
 			AutoCertDomain:     nodeConfig.RequesterAutoCert,
 			AutoCertCache:      nodeConfig.RequesterAutoCertCache,
 			TLSCertificateFile: nodeConfig.RequesterTLSCertificateFile,
@@ -363,9 +399,11 @@ func serve(cmd *cobra.Command) error {
 			WriteTimeout:       nodeConfig.APIServerConfig.WriteTimeout,
 		},
 		AuthConfig: &nodeConfig.AuthConfig,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
+	_ = bacalhauNode
 	/*
 		standardNode, err := node.NewNode(ctx, nodeConfig)
 		if err != nil {
