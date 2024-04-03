@@ -508,6 +508,22 @@ jobs:
           name: "Setup BACALHAU_ENVIRONMENT environment variable"
           command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
       - run:
+          name: Install IPFS
+          command: |
+            set -x
+            wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz -O /tmp/go-ipfs.tar.gz
+            cd /tmp
+            tar xvfz go-ipfs.tar.gz
+            sudo cp go-ipfs/ipfs /home/circleci/bin/
+            ipfs version
+      - run:
+          name: Configure IPFS daemon
+          command: |
+            ipfs init
+            ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+            ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/9090
+
+      - run:
           name: Test Go
           environment:
             LOG_LEVEL: debug
@@ -517,6 +533,7 @@ jobs:
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH
             go install gotest.tools/gotestsum@v1.8.2
+            ipfs daemon --offline &
             make test-and-report
           no_output_timeout: 20m
 
