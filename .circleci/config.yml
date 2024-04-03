@@ -514,7 +514,7 @@ jobs:
             wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz -O /tmp/go-ipfs.tar.gz
             cd /tmp
             tar xvfz go-ipfs.tar.gz
-            sudo cp go-ipfs/ipfs /home/circleci/bin/
+            sudo cp go-ipfs/ipfs /usr/local/bin/ipfs
             ipfs version
       - run:
           name: Configure IPFS daemon
