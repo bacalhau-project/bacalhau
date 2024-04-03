@@ -6,16 +6,17 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
@@ -149,13 +150,6 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 		ipfsConfig.PrivateInternal = false
 		log.Debug().Msg("disabling ipfs private internal")
 	}
-
-	/*if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
-	}*/
 
 	return ipfsConfig, nil
 }
