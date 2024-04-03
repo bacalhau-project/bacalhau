@@ -183,7 +183,7 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: configuredLabels},
+		&ConfigLabelsProvider{StaticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),

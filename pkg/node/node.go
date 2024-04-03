@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
-	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -29,9 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -197,64 +194,46 @@ func NewNode(
 
 	var transportLayer transport.TransportLayer
 	var tracingInfoStore routing.NodeInfoStore
-	if config.NetworkConfig.Type == models.NetworkTypeNATS {
-		natsConfig := nats_transport.NATSTransportConfig{
-			NodeID:                   config.NodeID,
-			Port:                     config.NetworkConfig.Port,
-			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
-			AuthSecret:               config.NetworkConfig.AuthSecret,
-			Orchestrators:            config.NetworkConfig.Orchestrators,
-			StoreDir:                 config.NetworkConfig.StoreDir,
-			ClusterName:              config.NetworkConfig.ClusterName,
-			ClusterPort:              config.NetworkConfig.ClusterPort,
-			ClusterPeers:             config.NetworkConfig.ClusterPeers,
-			ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
-			IsRequesterNode:          config.IsRequesterNode,
-		}
+	natsConfig := nats_transport.NATSTransportConfig{
+		NodeID:                   config.NodeID,
+		Port:                     config.NetworkConfig.Port,
+		AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
+		AuthSecret:               config.NetworkConfig.AuthSecret,
+		Orchestrators:            config.NetworkConfig.Orchestrators,
+		StoreDir:                 config.NetworkConfig.StoreDir,
+		ClusterName:              config.NetworkConfig.ClusterName,
+		ClusterPort:              config.NetworkConfig.ClusterPort,
+		ClusterPeers:             config.NetworkConfig.ClusterPeers,
+		ClusterAdvertisedAddress: config.NetworkConfig.ClusterAdvertisedAddress,
+		IsRequesterNode:          config.IsRequesterNode,
+	}
 
-		natsTransportLayer, err := nats_transport.NewNATSTransport(ctx, natsConfig)
+	natsTransportLayer, err := nats_transport.NewNATSTransport(ctx, natsConfig)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create NATS transport layer")
+	}
+	transportLayer = natsTransportLayer
+
+	if config.IsRequesterNode {
+		// KV Node Store requires connection info from the NATS server so that it is able
+		// to create its own connection and then subscribe to the node info topic.
+		natsClient, err := nats_transport.CreateClient(ctx, natsTransportLayer.Config)
 		if err != nil {
-			return nil, pkgerrors.Wrap(err, "failed to create NATS transport layer")
+			return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 		}
-		transportLayer = natsTransportLayer
-
-		if config.IsRequesterNode {
-			// KV Node Store requires connection info from the NATS server so that it is able
-			// to create its own connection and then subscribe to the node info topic.
-			natsClient, err := nats_transport.CreateClient(ctx, natsTransportLayer.Config)
-			if err != nil {
-				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
-			}
-			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
-				BucketName: kvstore.DefaultBucketName,
-				Client:     natsClient.Client,
-			})
-			if err != nil {
-				return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
-			}
-			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
-
-			// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
-			// of node info.
-			if err := transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-				return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
-			}
+		nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
+			BucketName: kvstore.DefaultBucketName,
+			Client:     natsClient.Client,
+		})
+		if err != nil {
+			return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 		}
-	} else {
-		tracingInfoStore = tracing.NewNodeStore(
-			inmemory.NewNodeStore(inmemory.NodeStoreParams{
-				TTL: config.NodeInfoStoreTTL,
-			}))
+		// tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
 
-		libp2pConfig := libp2p_transport.Libp2pTransportConfig{
-			Host:           config.NetworkConfig.Libp2pHost,
-			Peers:          config.NetworkConfig.ClusterPeers,
-			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
-			CleanupManager: config.CleanupManager,
-		}
-		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
-		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with libp2p transport")
+		// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
+		// of node info.
+		if err := transportLayer.RegisterNodeInfoConsumer(ctx, nodeInfoStore); err != nil {
+			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
 		}
 	}
 	if err != nil {
@@ -267,7 +246,7 @@ func NewNode(
 	var requesterNode *Requester
 	var computeNode *Compute
 	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: config.Labels},
+		&ConfigLabelsProvider{StaticLabels: config.Labels},
 		&RuntimeLabelsProvider{},
 	)
 

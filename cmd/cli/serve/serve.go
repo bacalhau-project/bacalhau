@@ -9,6 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -17,16 +25,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/nodefx"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/bacalhau-project/bacalhau/webui"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 var DefaultSwarmPort = 1235
@@ -232,7 +238,7 @@ func serve(cmd *cobra.Command) error {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx, isRequesterNode)
+	requesterConfig, err := GetRequesterConfig(ctx, false)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
@@ -283,53 +289,136 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
 	}
+	var rcfg types.RequesterConfig
+	if err := config.ForKey(types.NodeRequester, &rcfg); err != nil {
+		return err
+	}
 
 	// Create node
-	standardNode, err := node.NewNode(ctx, nodeConfig)
-	if err != nil {
-		return fmt.Errorf("error creating node: %w", err)
+	serverVersion := version.Get()
+	if err := nodefx.NewNode(ctx, &nodefx.NodeConfig{
+		NodeID: nodeName,
+		Labels: config.GetStringMapString(types.NodeLabels),
+		TransportConfig: &nats_transport.NATSTransportConfig{
+			NodeID:                   nodeName,
+			Port:                     networkConfig.Port,
+			AdvertisedAddress:        networkConfig.AdvertisedAddress,
+			Orchestrators:            networkConfig.Orchestrators,
+			IsRequesterNode:          true,
+			StoreDir:                 networkConfig.StoreDir,
+			AuthSecret:               networkConfig.AuthSecret,
+			ClusterName:              networkConfig.ClusterName,
+			ClusterPort:              networkConfig.ClusterPort,
+			ClusterAdvertisedAddress: networkConfig.ClusterAdvertisedAddress,
+			ClusterPeers:             networkConfig.ClusterPeers,
+		},
+		// ComputeConfig: nil,
+		RequesterConfig: &nodefx.RequesterConfig{
+			Store:                              &rcfg.JobStore,
+			MinBacalhauVersion:                 requesterConfig.MinBacalhauVersion,
+			NodeRankRandomnessRange:            requesterConfig.NodeRankRandomnessRange,
+			EvalBrokerVisibilityTimeout:        requesterConfig.EvalBrokerVisibilityTimeout,
+			EvalBrokerInitialRetryDelay:        requesterConfig.EvalBrokerInitialRetryDelay,
+			EvalBrokerSubsequentRetryDelay:     requesterConfig.EvalBrokerSubsequentRetryDelay,
+			EvalBrokerMaxRetryCount:            requesterConfig.EvalBrokerMaxRetryCount,
+			WorkerCount:                        requesterConfig.WorkerCount,
+			WorkerEvalDequeueTimeout:           requesterConfig.WorkerEvalDequeueTimeout,
+			WorkerEvalDequeueBaseBackoff:       requesterConfig.WorkerEvalDequeueBaseBackoff,
+			WorkerEvalDequeueMaxBackoff:        requesterConfig.WorkerEvalDequeueMaxBackoff,
+			MinJobExecutionTimeout:             0,
+			JobDefaults:                        requesterConfig.JobDefaults,
+			DefaultPublisher:                   requesterConfig.DefaultPublisher,
+			S3PreSignedURLDisabled:             requesterConfig.S3PreSignedURLDisabled,
+			S3PreSignedURLExpiration:           requesterConfig.S3PreSignedURLExpiration,
+			TranslationEnabled:                 requesterConfig.TranslationEnabled,
+			HousekeepingBackgroundTaskInterval: requesterConfig.HousekeepingBackgroundTaskInterval,
+		},
+		EchoRouterConfig: nodefx.EchoRouterConfig{
+			Headers: map[string]string{
+				apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+				apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+				apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+				apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+				apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+			},
+			EchoMiddlewareConfig: nodefx.EchoMiddlewareConfig{
+				MaxBytesToReadInBody:  "10MB", // nodeConfig.APIServerConfig.MaxBytesToReadInBody,
+				ThrottleLimit:         1000,
+				RequestHandlerTimeout: nodeConfig.APIServerConfig.RequestHandlerTimeout,
+			},
+			TelemetryMiddlewareConfig: nodefx.TelemetryMiddlewareConfig{
+				Logger:   *log.Ctx(ctx),
+				LogLevel: zerolog.DebugLevel,
+			},
+		},
+		ServerConfig: nodefx.ServerConfig{
+			Address:            nodeConfig.HostAddress,
+			Port:               nodeConfig.APIPort,
+			AutoCertDomain:     nodeConfig.RequesterAutoCert,
+			AutoCertCache:      nodeConfig.RequesterAutoCertCache,
+			TLSCertificateFile: nodeConfig.RequesterTLSCertificateFile,
+			TLSKeyFile:         nodeConfig.RequesterTLSKeyFile,
+			ReadHeaderTimeout:  nodeConfig.APIServerConfig.ReadHeaderTimeout,
+			ReadTimeout:        nodeConfig.APIServerConfig.ReadTimeout,
+			WriteTimeout:       nodeConfig.APIServerConfig.WriteTimeout,
+		},
+		AuthConfig: &nodeConfig.AuthConfig,
+	}); err != nil {
+		return err
 	}
+	/*
+		standardNode, err := node.NewNode(ctx, nodeConfig)
+		if err != nil {
+			return fmt.Errorf("error creating node: %w", err)
+		}
+
+	*/
 
 	// Persist the node config after the node is created and its config is valid.
 	if err = persistConfigs(repoDir); err != nil {
 		return fmt.Errorf("error persisting configs: %w", err)
 	}
 
-	// Start node
-	if err := standardNode.Start(ctx); err != nil {
-		return fmt.Errorf("error starting node: %w", err)
-	}
+	/*
+			// Start node
+			if err := standardNode.Start(ctx); err != nil {
+				return fmt.Errorf("error starting node: %w", err)
+			}
 
-	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
-	if err != nil {
-		return err
-	}
-
-	// Start up Dashboard - default: 8483
-	if startWebUI {
-		listenPort, err := config.Get[int](types.NodeWebUIPort)
+		startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 		if err != nil {
 			return err
 		}
 
-		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		go func() {
-			// Specifically leave the host blank. The app will just use whatever
-			// host it is served on and replace the port and path.
-			apiPort := apiURL.Port()
-			apiPath := apiURL.Path
-
-			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+		// Start up Dashboard - default: 8483
+		if startWebUI {
+			listenPort, err := config.Get[int](types.NodeWebUIPort)
 			if err != nil {
-				cmd.PrintErrln(err)
+				return err
 			}
-		}()
-	}
 
-	// only in station logging output
-	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
-		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
-	}
+			apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+			go func() {
+				// Specifically leave the host blank. The app will just use whatever
+				// host it is served on and replace the port and path.
+				apiPort := apiURL.Port()
+				apiPath := apiURL.Path
+
+				err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+				if err != nil {
+					cmd.PrintErrln(err)
+				}
+			}()
+		}
+	*/
+
+	/*
+		// only in station logging output
+		if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
+			cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
+		}
+
+	*/
 
 	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
 	if err != nil {

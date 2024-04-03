@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -16,9 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
-	"github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nats.go"
-	"github.com/rs/zerolog/log"
 )
 
 const NodeInfoSubjectPrefix = "node.info."
@@ -202,6 +203,10 @@ func CreateClient(ctx context.Context, config NATSTransportConfig) (*nats_helper
 		strings.Join(config.Orchestrators, ","),
 		clientOptions...,
 	)
+}
+
+func (t *NATSTransport) Client() *nats_helper.ClientManager {
+	return t.natsClient
 }
 
 func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {

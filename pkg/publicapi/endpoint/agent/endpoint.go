@@ -3,13 +3,15 @@ package agent
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 )
 
 type EndpointParams struct {
@@ -22,6 +24,35 @@ type Endpoint struct {
 	router             *echo.Echo
 	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []model.DebugInfoProvider
+}
+
+/*
+func InitAgentEndpoint(e *echo.Echo, nodeProvider models.NodeInfoProvider, debugProvider []model.DebugInfoProvider) {
+	agent := &Endpoint{
+		nodeInfoProvider:   nodeProvider,
+		debugInfoProviders: debugProvider,
+	}
+	// JSON group
+	g := e.Group("/api/v1/agent")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.GET("/alive", agent.alive)
+	g.GET("/version", agent.version)
+	g.GET("/node", agent.node)
+	g.GET("/debug", agent.debug)
+}
+*/
+
+func InitAgentEndpoint(e *echo.Echo, nodeProvider *routing.NodeInfoProvider) {
+	agent := &Endpoint{
+		nodeInfoProvider: nodeProvider,
+	}
+	// JSON group
+	g := e.Group("/api/v1/agent")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.GET("/alive", agent.alive)
+	g.GET("/version", agent.version)
+	g.GET("/node", agent.node)
+	g.GET("/debug", agent.debug)
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {

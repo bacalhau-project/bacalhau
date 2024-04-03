@@ -48,7 +48,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID),
-		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
+		// jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(params.DefaultPublisher),
 		jobtransform.NewEngineMigrator(),
 		// jobtransform.DockerImageDigest(),
@@ -56,7 +56,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 
 	postTransforms := []jobtransform.PostTransformer{
 		jobtransform.NewWasmStorageSpecConverter(),
-		jobtransform.NewInlineStoragePinner(params.StorageProviders),
+		// jobtransform.NewInlineStoragePinner(params.StorageProviders),
 	}
 
 	return &BaseEndpoint{

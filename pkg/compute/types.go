@@ -4,6 +4,7 @@ package compute
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -53,6 +54,11 @@ type ManagementEndpoint interface {
 	UpdateInfo(context.Context, requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error)
 	// UpdateResources updates the resources currently in use by a specific node
 	UpdateResources(context.Context, requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error)
+}
+
+type BidderI interface {
+	ReturnBidResult(ctx context.Context, state store.LocalExecutionState, response *bidstrategy.BidStrategyResponse)
+	RunBidding(ctx context.Context, request *BidderRequest)
 }
 
 // /////////////////////////////////

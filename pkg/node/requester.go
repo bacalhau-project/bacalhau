@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
@@ -23,7 +25,6 @@ import (
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
@@ -185,24 +186,6 @@ func NewRequesterNode(
 		worker.Start(ctx)
 	}
 
-	// result transformers that are applied to the result before it is returned to the user
-	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
-
-	if !requesterConfig.S3PreSignedURLDisabled {
-		// S3 result signer
-		s3Config, err := s3helper.DefaultAWSConfig()
-		if err != nil {
-			return nil, err
-		}
-		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
-			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
-				AWSConfig: s3Config,
-			}),
-			Expiration: requesterConfig.S3PreSignedURLExpiration,
-		})
-		resultTransformers = append(resultTransformers, resultSigner)
-	}
-
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         nodeID,
 		EvaluationBroker:           evalBroker,
@@ -213,11 +196,6 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
 		DefaultPublisher:           requesterConfig.DefaultPublisher,
 	})
-
-	var translationProvider translation.TranslatorProvider
-	if requesterConfig.TranslationEnabled {
-		translationProvider = translation.NewStandardTranslatorsProvider()
-	}
 
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
@@ -236,6 +214,28 @@ func NewRequesterNode(
 		}
 	}
 
+	// result transformers that are applied to the result before it is returned to the user
+	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
+
+	if !requesterConfig.S3PreSignedURLDisabled {
+		// S3 result signer
+		s3Config, err := s3helper.DefaultAWSConfig()
+		if err != nil {
+			return nil, err
+		}
+		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
+			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
+				AWSConfig: s3Config,
+			}),
+			Expiration: requesterConfig.S3PreSignedURLExpiration,
+		})
+		resultTransformers = append(resultTransformers, resultSigner)
+	}
+
+	var translationProvider translation.TranslatorProvider
+	if requesterConfig.TranslationEnabled {
+		translationProvider = translation.NewStandardTranslatorsProvider()
+	}
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
 		EvaluationBroker:  evalBroker,
@@ -253,6 +253,7 @@ func NewRequesterNode(
 		NodeID:   nodeID,
 		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
 	})
+	housekeeping.Start(ctx)
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{

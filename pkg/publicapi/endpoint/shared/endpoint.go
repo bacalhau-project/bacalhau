@@ -3,11 +3,13 @@ package shared
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
@@ -20,6 +22,32 @@ type Endpoint struct {
 	router           *echo.Echo
 	nodeID           string
 	nodeInfoProvider models.NodeInfoProvider
+}
+
+func InitSharedEndpoint(e *echo.Echo, nodeID string, nodeProvider *routing.NodeInfoProvider) {
+	shared := &Endpoint{
+		nodeID:           nodeID,
+		nodeInfoProvider: nodeProvider,
+	}
+
+	// JSON group
+	g := e.Group("/api/v1")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.GET("/node_info", shared.nodeInfo)
+	g.POST("/version", shared.version)
+	g.GET("/healthz", shared.healthz)
+
+	// Plaintext group
+	pt := e.Group("/api/v1")
+	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
+	pt.GET("/id", shared.id)
+	pt.GET("/livez", shared.livez)
+
+	// Home group
+	// TODO: Could we use this to redirect to latest API?
+	h := e.Group("/")
+	h.Use(middleware.SetContentType(echo.MIMETextPlain))
+	h.GET("", shared.home)
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {

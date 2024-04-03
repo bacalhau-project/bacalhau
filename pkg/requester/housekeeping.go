@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
 )
 
 type HousekeepingParams struct {
@@ -36,15 +37,20 @@ func NewHousekeeping(params HousekeepingParams) *Housekeeping {
 		stopChannel: make(chan struct{}),
 	}
 
-	go h.housekeepingBackgroundTask()
 	return h
 }
 
-func (h *Housekeeping) housekeepingBackgroundTask() {
-	ctx := context.Background()
+func (h *Housekeeping) Start(ctx context.Context) {
+	go h.housekeepingBackgroundTask(ctx)
+}
+
+func (h *Housekeeping) housekeepingBackgroundTask(ctx context.Context) {
 	ticker := time.NewTicker(h.interval)
 	for {
 		select {
+		case <-ctx.Done():
+			// TODO(forrest): [correctness] this needs better start/stop logic
+			h.Stop()
 		case <-ticker.C:
 			jobs, err := h.jobStore.GetInProgressJobs(ctx)
 			if err != nil {

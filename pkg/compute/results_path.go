@@ -1,12 +1,20 @@
 package compute
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
+
+type Results interface {
+	PrepareResultsDir(ctx context.Context, executionID string) (string, error)
+	EnsureResultsDir(ctx context.Context, executionID string) (string, error)
+	Close(ctx context.Context) error
+}
 
 type ResultsPath struct {
 	// where do we copy the results from jobs temporarily?
