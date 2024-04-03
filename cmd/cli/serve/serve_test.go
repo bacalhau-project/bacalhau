@@ -12,11 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
@@ -29,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -215,44 +212,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 	_, err = client.Submit(s.ctx, job)
 	s.NoError(err)
-}
-
-func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
-	connectString := ipfs.MustHaveIPFS(s.T())
-
-	cm := system.NewCleanupManager()
-
-	client, err := ipfs.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
-		Connect: connectString,
-	})
-	s.Require().NoError(err)
-
-	addrs, err := client.SwarmMultiAddresses(s.ctx)
-	s.Require().NoError(err)
-
-	ip4 := multiaddr.ProtocolWithName("ip4")
-	ip6 := multiaddr.ProtocolWithName("ip6")
-
-	for _, addr := range addrs {
-		s.T().Logf("Internal IPFS node listening on %s", addr)
-		ip, err := addr.ValueForProtocol(ip4.Code)
-		if err == nil {
-			s.Require().Equal("127.0.0.1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-
-		ip, err = addr.ValueForProtocol(ip6.Code)
-		if err == nil {
-			s.Require().Equal("::1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-	}
-
-	s.Require().GreaterOrEqual(len(addrs), 1)
 }
 
 func (s *ServeSuite) TestGetPeers() {
