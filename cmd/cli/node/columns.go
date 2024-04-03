@@ -25,8 +25,12 @@ var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 		Value:        func(ni *models.NodeInfo) string { return ni.NodeType.String() },
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "status"},
+		ColumnConfig: table.ColumnConfig{Name: "approval"},
 		Value:        func(ni *models.NodeInfo) string { return ni.Approval.String() },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "status"},
+		Value:        func(ni *models.NodeInfo) string { return ni.State.String() },
 	},
 }
 
