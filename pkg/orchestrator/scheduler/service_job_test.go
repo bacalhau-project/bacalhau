@@ -69,7 +69,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions(
 		*mockNodeInfo(s.T(), nodeIDs[3]),
 		*mockNodeInfo(s.T(), nodeIDs[4]),
 	}
-	s.mockNodeSelection(job, nodeInfos, job.Count, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, job.Count, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -230,7 +230,7 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 		*mockNodeInfo(s.T(), executions[execServiceCanceled].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
-	s.mockNodeSelection(job, nodeInfos, 2, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, 2, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -267,7 +267,7 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TreatCompletedExecutionsAsFai
 		*mockNodeInfo(s.T(), nodeIDs[4]),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
-	s.mockNodeSelection(job, nodeInfos, 2, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, 2, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,

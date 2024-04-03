@@ -135,7 +135,21 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// create new executions if needed
 	if remainingExecutionCount > 0 {
-		newExecs, placementErr := b.createMissingExecs(ctx, remainingExecutionCount, &job, retryDelay, plan)
+		// We need to pass the PREVIOUS retryDelay in here.
+		// On first iteration: no nodes are rejected due to recent failures, as there aren't recent failures anyway. But retryDelay = BaseRetryDelay
+		// On second iteration, RetryDelay after the first, we want to reject nodes that failed within RetryDelay - but on second iteration, retryDelay = BaseRetryDelay * RetryDelayGrowthFactor!
+		// The retryDelay we have computed above is for passing to b.handleRetry and seeing if we can retry; we need to re-compute the retryDelay from the previous deferral for node ranking.
+
+		previousRetryDelay := 0 * time.Second
+		if len(jobDeferralHistory) > 0 {
+			_, previousRetryDelay = b.retryStrategy.ShouldRetry(ctx,
+				orchestrator.RetryRequest{
+					Job:          &job,
+					PastFailures: len(jobDeferralHistory) - 1,
+				})
+		}
+
+		newExecs, placementErr := b.createMissingExecs(ctx, remainingExecutionCount, &job, previousRetryDelay, plan)
 		if placementErr != nil {
 			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
 			return b.planner.Process(ctx, plan)

@@ -79,7 +79,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayAfterRejections() {
 	// No nodes are suitable, as we're within the retry delay of the last failure
 	nodeInfos := []models.NodeInfo{}
 
-	s.mockNodeSelection(job, nodeInfos, job.Count, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, job.Count, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -126,7 +126,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldDelayMoreAfterMoreRejecti
 	// No nodes are suitable, as we're within the retry delay of the last failure
 	nodeInfos := []models.NodeInfo{}
 
-	s.mockNodeSelection(job, nodeInfos, job.Count, 20*time.Second)
+	s.mockNodeSelection(job, nodeInfos, job.Count, 10*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -151,8 +151,20 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldRetryAfterRejectionDelay(
 	}
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateAskForBidRejected)
 	executions[0].CreateTime = time.Now().UnixNano()
+	history := []models.JobHistory{
+		models.JobHistory{ // But we had a deferral before...
+			Type:        models.JobHistoryTypeJobLevel,
+			JobID:       job.ID,
+			NodeID:      executions[0].NodeID,
+			ExecutionID: executions[0].ID,
+			SchedulingDeferral: &models.SchedulingDeferral{
+				DeferredUntil: time.Now().Add(10 * time.Second),
+			},
+			Time: time.Now(),
+		},
+	}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetJobHistory(gomock.Any(), job.ID, gomock.Any()).Return([]models.JobHistory{}, nil)
+	s.jobStore.EXPECT().GetJobHistory(gomock.Any(), job.ID, gomock.Any()).Return(history, nil)
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// One node is suitable, as it's now been long enough since we last tried on there
@@ -188,7 +200,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() 
 		*mockNodeInfo(s.T(), nodeIDs[3]),
 		*mockNodeInfo(s.T(), nodeIDs[4]),
 	}
-	s.mockNodeSelection(job, nodeInfos, job.Count, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, job.Count, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -345,7 +357,7 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 		*mockNodeInfo(s.T(), executions[execCanceled].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
-	s.mockNodeSelection(job, nodeInfos, 1, 10*time.Second)
+	s.mockNodeSelection(job, nodeInfos, 1, 0*time.Second)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
