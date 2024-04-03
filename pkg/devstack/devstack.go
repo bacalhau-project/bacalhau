@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -139,7 +138,7 @@ func Setup(
 
 		var ipfsClient *ipfs.Client
 
-		ipfsConfig, err := getIPFSConfig()
+		ipfsConfig, err := config.GetIPFSConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -509,19 +508,4 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-func getIPFSConfig() (types.IpfsConfig, error) {
-	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
-		return types.IpfsConfig{}, err
-	}
-	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
-	}
-
-	return ipfsConfig, nil
 }

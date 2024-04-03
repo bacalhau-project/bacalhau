@@ -212,7 +212,7 @@ func serve(cmd *cobra.Command) error {
 
 	// Establishing IPFS connection
 	var ipfsClient *ipfs.Client
-	ipfsConfig, err := getIPFSConfig()
+	ipfsConfig, err := config.GetIPFSConfig()
 	if err != nil {
 		return err
 	}

@@ -390,3 +390,12 @@ func setNested(m map[string]interface{}, keys []string, value interface{}) error
 
 	return setNested(nestedMap, keys[1:], value)
 }
+
+// GetIPFSConfig is used by devstack, get and serve commands to get the IPFS configuration
+func GetIPFSConfig() (types.IpfsConfig, error) {
+	var ipfsConfig types.IpfsConfig
+	if err := ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
+		return types.IpfsConfig{}, err
+	}
+	return ipfsConfig, nil
+}

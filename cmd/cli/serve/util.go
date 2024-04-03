@@ -137,21 +137,6 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func getIPFSConfig() (types.IpfsConfig, error) {
-	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
-		return types.IpfsConfig{}, err
-	}
-	// if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-	// 	return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-	// 		configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
-	// 		configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-	// 	)
-	// }
-
-	return ipfsConfig, nil
-}
-
 func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }

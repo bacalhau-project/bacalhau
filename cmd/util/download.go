@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
@@ -40,10 +41,12 @@ func DownloadResultsHandler(
 		return nil
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	ipfsConfig, err := config.GetIPFSConfig()
 	if err != nil {
 		return err
 	}
+
+	downloaderProvider := util.NewStandardDownloaders(cm, ipfsConfig.Connect)
 
 	// check if we don't support downloading the results
 	for _, result := range response.Results {

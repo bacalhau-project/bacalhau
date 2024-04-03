@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -45,27 +44,22 @@ func randomText(t *testing.T) []byte {
 }
 
 func TestIPFSDownload(t *testing.T) {
+	connString := ipfs.MustHaveIPFS(t)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup(ctx)
 	defer cancel()
 
-	server, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, connString)
 	require.NoError(t, err)
 
 	text := randomText(t)
-	cid, err := ipfs.AddTextToNodes(ctx, text, server.Client())
+	cid, err := ipfs.AddTextToNodes(ctx, text, client)
 	require.NoError(t, err)
-
-	swarm, err := server.SwarmAddresses()
-	require.NoError(t, err)
-
-	cfg := configenv.Testing
-	cfg.Node.IPFS.SwarmAddresses = swarm
-	config.Set(cfg)
 
 	outputDir := t.TempDir()
-	ipfsDownloader := NewIPFSDownloader(cm)
+	ipfsDownloader := NewIPFSDownloader(cm, client)
 
 	resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
 		Result: &models.SpecConfig{
@@ -82,32 +76,27 @@ func TestIPFSDownload(t *testing.T) {
 }
 
 func TestDownloadFromPrivateSwarm(t *testing.T) {
+	connString := ipfs.MustHaveIPFS(t)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup(ctx)
 	defer cancel()
 
 	cfg := configenv.Testing
-	cfg.Node.IPFS.PrivateInternal = true
 	cfg.Node.IPFS.SwarmKeyPath = writeSwarmKey(t)
 	config.Set(cfg)
 
-	server, err := ipfs.NewNodeWithConfig(ctx, cm, cfg.Node.IPFS)
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, connString)
 	require.NoError(t, err)
 
 	text := randomText(t)
-	cid, err := ipfs.AddTextToNodes(ctx, text, server.Client())
+	cid, err := ipfs.AddTextToNodes(ctx, text, client)
 	require.NoError(t, err)
-
-	swarm, err := server.SwarmAddresses()
-	require.NoError(t, err)
-
-	cfg.Node.IPFS.SwarmAddresses = swarm
-	config.Set(cfg)
 
 	t.Run("download success with swarm key", func(t *testing.T) {
 		outputDir := t.TempDir()
-		ipfsDownloader := NewIPFSDownloader(cm)
+		ipfsDownloader := NewIPFSDownloader(cm, client)
 
 		resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
 			Result: &models.SpecConfig{
@@ -135,7 +124,7 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 		cTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 
 		outputDir := t.TempDir()
-		ipfsDownloader := NewIPFSDownloader(cm)
+		ipfsDownloader := NewIPFSDownloader(cm, client)
 		resultPath, err := ipfsDownloader.FetchResult(cTimeout, downloader.DownloadItem{
 			Result: &models.SpecConfig{
 				Type: models.StorageSourceIPFS,

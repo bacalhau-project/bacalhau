@@ -9,11 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
+	ipfsdownloader "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/s3signed"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -25,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
 
-	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
 	"github.com/stretchr/testify/require"
@@ -67,26 +64,23 @@ func (ds *DownloaderSuite) SetupTest() {
 		Timeout: downloader.DefaultDownloadTimeout,
 	}
 
-	// Setup ipfs node
-	node, err := ipfs.NewNodeWithConfig(ctx, ds.cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(ds.T(), err)
+	downloaders := map[string]downloader.Downloader{
+		models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
+			HTTPDownloader: http.NewHTTPDownloader(),
+		}),
+	}
 
-	swarm, err := node.SwarmAddresses()
-	require.NoError(ds.T(), err)
+	// Setup ipfs node if one is installed
+	connString := ipfs.HasIPFS(ds.T())
+	if connString != "" {
+		client, err := ipfs.NewClientUsingRemoteHandler(ctx, connString)
+		ds.Require().NoError(err)
+		ds.ipfsClient = client
 
-	cfg := configenv.Testing
-	cfg.Node.IPFS.SwarmAddresses = swarm
-	ds.Require().NoError(config.Set(cfg))
+		downloaders[models.StorageSourceIPFS] = ipfsdownloader.NewIPFSDownloader(ds.cm, ds.ipfsClient)
+	}
 
-	ds.ipfsClient = node.Client()
-	ds.downloadProvider = provider.NewMappedProvider(
-		map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm),
-			models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
-				HTTPDownloader: http.NewHTTPDownloader(),
-			}),
-		},
-	)
+	ds.downloadProvider = provider.NewMappedProvider(downloaders)
 }
 
 func (ds *DownloaderSuite) TearDownSuite() {
@@ -97,6 +91,7 @@ func TestDownloaderSuite(t *testing.T) {
 	helperSuite := s3test.NewTestHelper(t, s3test.HelperSuiteParams{
 		BasePrefix: "integration-tests-downloader",
 	})
+
 	suite.Run(t, &DownloaderSuite{HelperSuite: helperSuite})
 }
 
@@ -180,12 +175,16 @@ func requireFile(ds *DownloaderSuite, expected string, path ...string) {
 	require.Equal(ds.T(), expected, string(contents))
 }
 
-var publishers = map[string]struct {
+type testPublisher struct {
 	publishFn  func(*DownloaderSuite, string) *models.SpecConfig
 	rawMatcher func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string
 	shouldFail bool
-}{
-	models.StorageSourceS3PreSigned: {
+}
+
+func getPublishers(ds *DownloaderSuite) map[string]testPublisher {
+	publishers := make(map[string]testPublisher)
+
+	publishers[models.StorageSourceS3PreSigned] = testPublisher{
 		publishFn: publishToS3,
 		rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
 			dirEntries, err := os.ReadDir(rawParentPath)
@@ -204,26 +203,33 @@ var publishers = map[string]struct {
 			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["PreSignedURL"])
 			return ""
 		},
-	},
-	models.StorageSourceIPFS: {
-		publishFn: publishToIPFS,
-		rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
-			dirEntries, err := os.ReadDir(rawParentPath)
-			ds.Require().NoError(err)
+	}
 
-			for _, entry := range dirEntries {
-				if entry.Name() == result.Params["CID"].(string) {
-					return entry.Name()
-				}
-			}
-			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["CID"])
-			return ""
-		},
-	},
-	models.StorageSourceS3: {
+	publishers[models.StorageSourceS3] = testPublisher{
 		publishFn:  publishToS3Unsigned,
 		shouldFail: true,
-	},
+	}
+
+	ipfsConnect := ipfs.HasIPFS(ds.T())
+	if ipfsConnect != "" {
+		publishers[models.StorageSourceIPFS] = testPublisher{
+			publishFn: publishToIPFS,
+			rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
+				dirEntries, err := os.ReadDir(rawParentPath)
+				ds.Require().NoError(err)
+
+				for _, entry := range dirEntries {
+					if entry.Name() == result.Params["CID"].(string) {
+						return entry.Name()
+					}
+				}
+				require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["CID"])
+				return ""
+			},
+		}
+	}
+
+	return publishers
 }
 
 func (ds *DownloaderSuite) TestNoExpectedResults() {
@@ -248,7 +254,7 @@ func (ds *DownloaderSuite) download(results ...*models.SpecConfig) error {
 
 func (ds *DownloaderSuite) TestSingleOutput() {
 	res := ds.mockOutput("hello.txt")
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.T().Run("TestSingleOutput: "+name, func(t *testing.T) {
 			err := ds.download(publisher.publishFn(ds, res.path))
 			if publisher.shouldFail {
@@ -269,7 +275,7 @@ func (ds *DownloaderSuite) TestSingleRawOutput() {
 	ds.downloadSettings.Raw = true
 	res := ds.mockOutput("hello.txt", "goodbye.txt")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.T().Run("TestSingleRawOutput: "+name, func(t *testing.T) {
 			publishedResult := publisher.publishFn(ds, res.path)
 			err := ds.download(publishedResult)
@@ -295,7 +301,7 @@ func (ds *DownloaderSuite) TestMultiRawOutput() {
 	res := ds.mockOutput("hello.txt")
 	res2 := ds.mockOutput("goodbye.txt")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.T().Run("TestMultiRawOutput: "+name, func(t *testing.T) {
 			publishedResult1 := publisher.publishFn(ds, res.path)
 			publishedResult2 := publisher.publishFn(ds, res2.path)
@@ -327,7 +333,7 @@ func (ds *DownloaderSuite) TestMultiMergedOutput() {
 	res := ds.mockOutput("hello.txt")
 	res2 := ds.mockOutput("goodbye.txt")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.Run("TestMultiMergedOutput: "+name, func() {
 			err := ds.download(
 				publisher.publishFn(ds, res.path),
@@ -348,7 +354,7 @@ func (ds *DownloaderSuite) TestMultiMergeConflictingOutput() {
 	res := ds.mockOutput("same_same.txt")
 	res2 := ds.mockOutput("same_same.txt")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.Run("TestMultiMergeConflictingOutput: "+name, func() {
 			err := ds.download(
 				publisher.publishFn(ds, res.path),
@@ -363,7 +369,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 	path := ds.T().TempDir()
 	ds.mockFile(path, "outputs", "lonely.txt")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.Run("TestOutputWithNoStdFiles: "+name, func() {
 			err := ds.download(
 				publisher.publishFn(ds, path),
@@ -382,7 +388,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 	path := ds.T().TempDir()
 	ds.mockFile(path, "secrets", "private.pem")
 
-	for name, publisher := range publishers {
+	for name, publisher := range getPublishers(ds) {
 		ds.Run("TestCustomVolumeNames: "+name, func() {
 			err := ds.download(
 				publisher.publishFn(ds, path),

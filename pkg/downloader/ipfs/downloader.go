@@ -11,8 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/rs/zerolog/log"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -23,9 +21,10 @@ type Downloader struct {
 	client *ipfs.Client
 }
 
-func NewIPFSDownloader(cm *system.CleanupManager) *Downloader {
+func NewIPFSDownloader(cm *system.CleanupManager, client *ipfs.Client) *Downloader {
 	return &Downloader{
-		cm: cm,
+		cm:     cm,
+		client: client,
 	}
 }
 
@@ -33,59 +32,12 @@ func (d *Downloader) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (d *Downloader) getClient(ctx context.Context) (*ipfs.Client, error) {
-	var cfg types.IpfsConfig
-	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
-		return nil, err
-	}
-
-	if cfg.Connect != "" {
-		log.Ctx(ctx).Debug().Msg("creating ipfs client")
-		client, err := ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
-		if err != nil {
-			return nil, fmt.Errorf("error creating IPFS client: %s", err)
-		}
-
-		if len(cfg.SwarmAddresses) != 0 {
-			maddrs, err := ipfs.ParsePeersString(cfg.SwarmAddresses)
-			if err != nil {
-				return nil, err
-			}
-			client.SwarmConnect(ctx, maddrs)
-		}
-		return client, nil
-	}
-
-	if cfg.Connect == "" {
-		return nil, fmt.Errorf("unable to download from IPFS without a connect address. Specify --ipfs-connect")
-	}
-
-	if d.client == nil {
-		var err error
-
-		d.client, err = ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
-		if err != nil {
-			return nil, fmt.Errorf("error creating IPFS client: %s. Is the node at %s running?", err, cfg.Connect)
-		}
-	}
-
-	return d.client, nil
-}
-
 func (d *Downloader) describeResult(ctx context.Context, result ipfssource.Source) (map[string]string, error) {
-	// NOTE: we have to spin up a temporary IPFS node as we don't
-	// generally have direct access to a remote node's API server.
-	ipfsClient, err := d.getClient(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
 	log.Ctx(ctx).Debug().
 		Str("cid", result.CID).
 		Msg("Describing contents of result CID")
 
-	tree, err := ipfsClient.GetTreeNode(ctx, result.CID)
+	tree, err := d.client.GetTreeNode(ctx, result.CID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,17 +99,12 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		return resultPath, nil
 	}
 
-	ipfsClient, err := d.getClient(ctx)
-	if err != nil {
-		return "", err
-	}
-
 	log.Ctx(ctx).Debug().
 		Str("cid", cid).
 		Str("path", downloadPath).
 		Msg("Downloading result CID")
 
-	err = ipfsClient.Get(ctx, cid, downloadPath)
+	err = d.client.Get(ctx, cid, downloadPath)
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

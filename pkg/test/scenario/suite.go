@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
@@ -20,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -129,7 +129,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	spec := scenario.Spec
 	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
-	stack, cm := s.setupStack(scenario.Stack)
+	stack, _ := s.setupStack(scenario.Stack)
 
 	s.T().Log("Setting up storage")
 	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
@@ -146,7 +146,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Engine()))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
-			Type: model.PublisherIpfs,
+			Type: model.PublisherLocal,
 		}
 	}
 
@@ -200,11 +200,10 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 			OutputDir: resultsDir,
 		}
 
-		ipfsDownloader := ipfs.NewIPFSDownloader(cm)
-		s.Require().NoError(err)
+		httpDownloader := http.NewHTTPDownloader()
 
 		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfsDownloader,
+			models.StorageSourceURL: httpDownloader,
 		})
 
 		err = downloader.DownloadResults(s.Ctx, results.Results, downloaderProvider, downloaderSettings)
