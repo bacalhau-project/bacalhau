@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -262,7 +261,7 @@ func NewRequesterNode(
 
 	// register requester public http apis
 	requesterAPIServer := requester_endpoint.NewEndpoint(requester_endpoint.EndpointParams{
-		Router:             apiServer.Router,
+		// Router:             apiServer.Router,
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
@@ -270,13 +269,13 @@ func NewRequesterNode(
 	})
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
-		Router:       apiServer.Router,
+		// Router:       apiServer.Router,
 		Orchestrator: endpointV2,
 		JobStore:     jobStore,
 		NodeManager:  nodeManager,
 	})
 
-	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)
+	// auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)

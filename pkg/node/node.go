@@ -13,18 +13,15 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -150,43 +147,42 @@ func NewNode(
 		return nil, err
 	}
 
-	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
-	if err != nil {
-		return nil, err
-	}
+	/*
+		authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+		if err != nil {
+			return nil, err
+		}
 
-	signingKey, err := pkgconfig.GetClientPublicKey()
-	if err != nil {
-		return nil, err
-	}
+		signingKey, err := pkgconfig.GetClientPublicKey()
+		if err != nil {
+			return nil, err
+		}
 
-	serverVersion := version.Get()
+		serverVersion := version.Get()
+
+	*/
 	// public http api server
 	serverParams := publicapi.ServerParams{
-		Router:     echo.New(),
-		Address:    config.HostAddress,
-		Port:       config.APIPort,
-		HostID:     config.NodeID,
-		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, config.NodeID),
-		Headers: map[string]string{
-			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
-			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
-			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
-			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
-			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		Router: echo.New(),
+		Config: types.ServerConfig{
+			Address:            config.HostAddress,
+			Port:               config.APIPort,
+			AutoCertDomain:     config.NodeID,
+			AutoCertCache:      config.RequesterAutoCertCache,
+			TLSCertificateFile: config.RequesterTLSCertificateFile,
+			TLSKeyFile:         config.RequesterTLSKeyFile,
 		},
 	}
 
 	// Only allow autocert for requester nodes
 	if config.IsRequesterNode {
-		serverParams.AutoCertDomain = config.RequesterAutoCert
-		serverParams.AutoCertCache = config.RequesterAutoCertCache
-		serverParams.TLSCertificateFile = config.RequesterTLSCertificateFile
-		serverParams.TLSKeyFile = config.RequesterTLSKeyFile
+		serverParams.Config.AutoCertDomain = config.RequesterAutoCert
+		serverParams.Config.AutoCertCache = config.RequesterAutoCertCache
+		serverParams.Config.TLSCertificateFile = config.RequesterTLSCertificateFile
+		serverParams.Config.TLSKeyFile = config.RequesterTLSKeyFile
 	}
 
-	apiServer, err := publicapi.NewAPIServer(serverParams)
+	apiServer, err := publicapi.NewServer(nil, serverParams)
 	if err != nil {
 		return nil, err
 	}
@@ -369,13 +365,13 @@ func NewNode(
 	}
 
 	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
+		// Router:           apiServer.Router,
 		NodeID:           config.NodeID,
 		NodeInfoProvider: nodeInfoProvider,
 	})
 
 	agent.NewEndpoint(agent.EndpointParams{
-		Router:             apiServer.Router,
+		// Router:             apiServer.Router,
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 	})

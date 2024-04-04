@@ -6,15 +6,35 @@ import (
 )
 
 type ComputeConfig struct {
-	Capacity        CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore  JobStoreConfig           `yaml:"ExecutionStore"`
-	JobTimeouts     JobTimeoutConfig         `yaml:"JobTimeouts"`
-	JobSelection    model.JobSelectionPolicy `yaml:"JobSelection"`
-	Queue           QueueConfig              `yaml:"Queue"`
-	Logging         LoggingConfig            `yaml:"Logging"`
-	ManifestCache   DockerCacheConfig        `yaml:"ManifestCache"`
-	LogStreamConfig LogStreamConfig          `yaml:"LogStream"`
-	LocalPublisher  LocalPublisherConfig     `yaml:"LocalPublisher"`
+	Capacity         CapacityConfig           `yaml:"Capacity"`
+	ExecutionStore   JobStoreConfig           `yaml:"ExecutionStore"`
+	JobTimeouts      JobTimeoutConfig         `yaml:"JobTimeouts"`
+	Queue            QueueConfig              `yaml:"Queue"`
+	LoggingSensor    LoggingSensorConfig      `yaml:"Logging"`
+	ManifestCache    DockerCacheConfig        `yaml:"ManifestCache"`
+	LogStreamConfig  LogStreamConfig          `yaml:"LogStream"`
+	LocalPublisher   LocalPublisherConfig     `yaml:"LocalPublisher"`
+	Labels           LabelsConfig             `yaml:"Labels"`
+	Executor         ExecutorConfig           `yaml:"Executor"`
+	BufferedExecutor BufferedExecutorConfig   `yaml:"BufferedExecutor"`
+	JobSelection     JobSelectionPolicyConfig `yaml:"JobSelection"`
+}
+
+type LabelsConfig struct {
+	Labels map[string]string `yaml:"Labels"`
+}
+
+type ExecutorConfig struct {
+	StorageDirectory string `yaml:"StorageDirectory"`
+	ResultsPath      string `yaml:"ResultsPath"`
+}
+
+type BufferedExecutorConfig struct {
+	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
+}
+
+type JobSelectionPolicyConfig struct {
+	Policy model.JobSelectionPolicy `yaml:"Policy"`
 }
 
 type CapacityConfig struct {
@@ -47,7 +67,7 @@ type JobTimeoutConfig struct {
 type QueueConfig struct {
 }
 
-type LoggingConfig struct {
+type LoggingSensorConfig struct {
 	// logging running executions
 	LogRunningExecutionsInterval Duration `yaml:"LogRunningExecutionsInterval"`
 }

@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"time"
 
+	"github.com/BTBurke/k8sresource"
+	"github.com/dustin/go-humanize"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 
@@ -15,24 +18,86 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
+	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/nodefx/server"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 )
 
+// TODO consider providing a viper instance hereinstead of the global one.
+func SupplyConfig() fx.Option {
+	var cfg types.ComputeConfig
+	if err := pkgconfig.ForKey(types.NodeCompute, &cfg); err != nil {
+		panic(err)
+	}
+
+	return fx.Options(
+		// supply all configuration required for a compute node
+		fx.Supply(cfg.Capacity),
+		fx.Supply(cfg.ExecutionStore),
+		fx.Supply(cfg.JobTimeouts),
+		fx.Supply(cfg.Queue),
+		fx.Supply(cfg.LoggingSensor),
+		fx.Supply(cfg.ManifestCache),
+		fx.Supply(cfg.LogStreamConfig),
+		fx.Supply(cfg.LocalPublisher),
+		fx.Supply(cfg.Labels),
+		fx.Supply(cfg.Executor),
+		fx.Supply(cfg.BufferedExecutor),
+		fx.Supply(cfg.JobSelection),
+
+		// decorate/modify any config with default values if none were provided.
+		// TODO write decorators for the rest of the config in need of defaults
+		fx.Decorate(func(cfg types.CapacityConfig) (types.CapacityConfig, error) {
+			if cfg.DefaultJobResourceLimits.CPU == "" {
+				cfg.DefaultJobResourceLimits.CPU = "100m"
+			}
+			if cfg.DefaultJobResourceLimits.Memory == "" {
+				cfg.DefaultJobResourceLimits.Memory = "100Mi"
+			}
+			physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider()
+			physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.TODO())
+			if err != nil {
+				return types.CapacityConfig{}, err
+			}
+			if cfg.TotalResourceLimits.CPU == "" {
+				cpu := k8sresource.NewCPUFromFloat(physicalResources.CPU)
+				cfg.TotalResourceLimits.CPU = cpu.ToString()
+
+			}
+			if cfg.TotalResourceLimits.Memory == "" {
+				ram := humanize.Bytes(physicalResources.Memory)
+				cfg.TotalResourceLimits.Memory = ram
+
+			}
+			if cfg.TotalResourceLimits.GPU == "" {
+				cfg.TotalResourceLimits.GPU = fmt.Sprintf("%d", physicalResources.GPU)
+			}
+			if cfg.TotalResourceLimits.Disk == "" {
+				cfg.TotalResourceLimits.Disk = fmt.Sprintf("%d", physicalResources.Disk)
+			}
+			return cfg, nil
+		}),
+	)
+
+}
+
 var Module = fx.Module("compute",
+	// fx.Invoke(SupplyComputeConfig),
+
 	fx.Provide(NewComputeNode),
 	fx.Provide(ExecutionStore),
 	fx.Provide(StorageProviders),
@@ -49,7 +114,8 @@ var Module = fx.Module("compute",
 		}})
 		return resultPath, nil
 	}),
-	fx.Provide(Executor),
+	fx.Provide(BaseExecutor),
+	fx.Provide(BufferedExecutor),
 	fx.Provide(RunningExecutionsInfoProvider),
 	fx.Provide(UsageCalculator),
 	fx.Provide(LoggingServer),
@@ -149,12 +215,20 @@ type CapacityTrackerResult struct {
 	Enqueued capacity.Tracker `name:"enqueued"`
 }
 
-func CapacityTrackers(cfg node.ComputeConfig) (CapacityTrackerResult, error) {
+func CapacityTrackers(cfg types.CapacityConfig) (CapacityTrackerResult, error) {
+	totalResources, err := cfg.TotalResourceLimits.ToResources()
+	if err != nil {
+		return CapacityTrackerResult{}, err
+	}
+	queuedResources, err := cfg.TotalResourceLimits.ToResources()
+	if err != nil {
+		return CapacityTrackerResult{}, err
+	}
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: cfg.TotalResourceLimits,
+		MaxCapacity: *totalResources,
 	})
 	enqueuedCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: cfg.QueueResourceLimits,
+		MaxCapacity: *queuedResources,
 	})
 
 	return CapacityTrackerResult{
@@ -163,9 +237,11 @@ func CapacityTrackers(cfg node.ComputeConfig) (CapacityTrackerResult, error) {
 	}, nil
 }
 
-type ExecutorParams struct {
+type BufferedExecutorParams struct {
 	fx.In
 
+	NodeID          types.NodeID
+	Config          types.BufferedExecutorConfig
 	ComputeCallback compute.Callback
 	Store           store.ExecutionStore
 	Storages        storage.StorageProvider
@@ -174,30 +250,48 @@ type ExecutorParams struct {
 	ResultsPath     *compute.ResultsPath
 	Running         capacity.Tracker `name:"running"`
 	Enqueued        capacity.Tracker `name:"enqueued"`
+	BaseExecutor    *compute.BaseExecutor
 }
 
-func Executor(cfg node.ComputeConfig, p ExecutorParams) (*compute.ExecutorBuffer, error) {
+type BaseExecutorParams struct {
+	fx.In
+
+	NodeID          types.NodeID
+	Config          types.ExecutorConfig
+	ComputeCallback compute.Callback
+	Store           store.ExecutionStore
+	Storages        storage.StorageProvider
+	Executors       executor.ExecutorProvider
+	Publisher       publisher.PublisherProvider
+	ResultsPath     *compute.ResultsPath
+}
+
+func BaseExecutor(p BaseExecutorParams) (*compute.BaseExecutor, error) {
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
-		ID:       cfg.NodeID,
+		ID:       string(p.NodeID),
 		Callback: p.ComputeCallback,
 		Store:    p.Store,
 		// TODO this needs to be a field
-		StorageDirectory: pkgconfig.GetStoragePath(),
+		StorageDirectory: p.Config.StorageDirectory,
 		Storages:         p.Storages,
 		Executors:        p.Executors,
 		Publishers:       p.Publisher,
 		// TODO this shouldn't even be a thing!!!!
 		FailureInjectionConfig: model.FailureInjectionComputeConfig{IsBadActor: false},
-		ResultsPath:            *p.ResultsPath,
+		// TODO all this to be specified instead of a random tempdir
+		ResultsPath: *p.ResultsPath,
 	})
+	return baseExecutor, nil
+}
 
+func BufferedExecutor(p BufferedExecutorParams) (*compute.ExecutorBuffer, error) {
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
-		ID:                         cfg.NodeID,
-		DelegateExecutor:           baseExecutor,
+		ID:                         string(p.NodeID),
+		DelegateExecutor:           p.BaseExecutor,
 		Callback:                   p.ComputeCallback,
 		RunningCapacityTracker:     p.Running,
 		EnqueuedCapacityTracker:    p.Enqueued,
-		DefaultJobExecutionTimeout: cfg.DefaultJobExecutionTimeout,
+		DefaultJobExecutionTimeout: time.Duration(p.Config.DefaultJobExecutionTimeout),
 	})
 
 	return bufferRunner, nil
@@ -211,11 +305,11 @@ func RunningExecutionsInfoProvider(buffer *compute.ExecutorBuffer) (*sensors.Run
 	return runningInfoProvider, nil
 }
 
-func InitLoggingSensor(lc fx.Lifecycle, cfg node.ComputeConfig, provider *sensors.RunningExecutionsInfoProvider) error {
+func InitLoggingSensor(lc fx.Lifecycle, cfg types.LoggingSensorConfig, provider *sensors.RunningExecutionsInfoProvider) error {
 	if cfg.LogRunningExecutionsInterval > 0 {
 		loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
 			InfoProvider: provider,
-			Interval:     cfg.LogRunningExecutionsInterval,
+			Interval:     time.Duration(cfg.LogRunningExecutionsInterval),
 		})
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
@@ -229,12 +323,16 @@ func InitLoggingSensor(lc fx.Lifecycle, cfg node.ComputeConfig, provider *sensor
 	return nil
 }
 
-func UsageCalculator(cfg node.ComputeConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
+func UsageCalculator(cfg types.CapacityConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
 	// endpoint/frontend
+	defaults, err := cfg.DefaultJobResourceLimits.ToResources()
+	if err != nil {
+		return nil, err
+	}
 	return capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
 			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
-				Defaults: cfg.DefaultJobResourceLimits,
+				Defaults: *defaults,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
 				Storages: storages,
@@ -243,11 +341,11 @@ func UsageCalculator(cfg node.ComputeConfig, storages storage.StorageProvider) (
 	}), nil
 }
 
-func LoggingServer(cfg node.ComputeConfig, executors executor.ExecutorProvider, s store.ExecutionStore) (*logstream.Server, error) {
+func LoggingServer(cfg types.LogStreamConfig, executors executor.ExecutorProvider, s store.ExecutionStore) (*logstream.Server, error) {
 	return logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: s,
 		Executors:      executors,
-		Buffer:         cfg.LogStreamBufferSize,
+		Buffer:         cfg.ChannelBufferSize,
 	}), nil
 }
 
@@ -261,36 +359,42 @@ type NodeDecoratorParams struct {
 	Running   capacity.Tracker `name:"running"`
 }
 
-func NodeDecorator(cfg node.ComputeConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
+func NodeDecorator(cfg types.CapacityConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
+	maxRequirements, err := cfg.JobResourceLimits.ToResources()
+	if err != nil {
+		return nil, err
+	}
 	return compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
 		Executors:          p.Executors,
 		Publisher:          p.Publisher,
 		Storages:           p.Storages,
 		CapacityTracker:    p.Running,
 		ExecutorBuffer:     p.Executor,
-		MaxJobRequirements: cfg.JobResourceLimits,
+		MaxJobRequirements: *maxRequirements,
 	}), nil
 }
 
 type SemanticStrategiesParams struct {
 	fx.In
 
-	Storages  storage.StorageProvider
-	Executors executor.ExecutorProvider
-	Publisher publisher.PublisherProvider
+	Storages       storage.StorageProvider
+	Executors      executor.ExecutorProvider
+	Publisher      publisher.PublisherProvider
+	PolicyConfig   types.JobSelectionPolicyConfig
+	TimeoutsConfig types.JobTimeoutConfig
 }
 
 // TODO allow these to be configured
-func DefaultSemanticStrategies(cfg node.ComputeConfig, p SemanticStrategiesParams) ([]bidstrategy.SemanticBidStrategy, error) {
+func DefaultSemanticStrategies(p SemanticStrategiesParams) ([]bidstrategy.SemanticBidStrategy, error) {
 	return []bidstrategy.SemanticBidStrategy{
-		semantic.NewNetworkingStrategy(cfg.JobSelectionPolicy.AcceptNetworkedJobs),
+		semantic.NewNetworkingStrategy(p.PolicyConfig.Policy.AcceptNetworkedJobs),
 		semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-			MaxJobExecutionTimeout:                cfg.MaxJobExecutionTimeout,
-			MinJobExecutionTimeout:                cfg.MinJobExecutionTimeout,
-			JobExecutionTimeoutClientIDBypassList: cfg.JobExecutionTimeoutClientIDBypassList,
+			MaxJobExecutionTimeout:                time.Duration(p.TimeoutsConfig.MaxJobExecutionTimeout),
+			MinJobExecutionTimeout:                time.Duration(p.TimeoutsConfig.MinJobExecutionTimeout),
+			JobExecutionTimeoutClientIDBypassList: p.TimeoutsConfig.JobExecutionTimeoutClientIDBypassList,
 		}),
 		semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
-			RejectStatelessJobs: cfg.JobSelectionPolicy.RejectStatelessJobs,
+			RejectStatelessJobs: p.PolicyConfig.Policy.RejectStatelessJobs,
 		}),
 		semantic.NewProviderInstalledStrategy(
 			p.Publisher,
@@ -298,14 +402,14 @@ func DefaultSemanticStrategies(cfg node.ComputeConfig, p SemanticStrategiesParam
 		),
 		semantic.NewStorageInstalledBidStrategy(p.Storages),
 		semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-			Locality: cfg.JobSelectionPolicy.Locality,
+			Locality: semantic.JobSelectionDataLocality(p.PolicyConfig.Policy.Locality),
 			Storages: p.Storages,
 		}),
 		semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-			Command: cfg.JobSelectionPolicy.ProbeExec,
+			Command: p.PolicyConfig.Policy.ProbeExec,
 		}),
 		semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-			URL: cfg.JobSelectionPolicy.ProbeHTTP,
+			URL: p.PolicyConfig.Policy.ProbeHTTP,
 		}),
 		executor_util.NewExecutorSpecificBidStrategy(p.Executors),
 	}, nil
@@ -314,16 +418,21 @@ func DefaultSemanticStrategies(cfg node.ComputeConfig, p SemanticStrategiesParam
 type ResourceStrategiesParams struct {
 	fx.In
 
+	Config    types.CapacityConfig
 	Executors executor.ExecutorProvider
 	Running   capacity.Tracker `name:"running"`
 	Enqueued  capacity.Tracker `name:"enqueued"`
 }
 
 // TODO allow these to be configured
-func DefaultResourceStrategies(cfg node.ComputeConfig, p ResourceStrategiesParams) ([]bidstrategy.ResourceBidStrategy, error) {
+func DefaultResourceStrategies(p ResourceStrategiesParams) ([]bidstrategy.ResourceBidStrategy, error) {
+	maxRequirements, err := p.Config.JobResourceLimits.ToResources()
+	if err != nil {
+		return nil, err
+	}
 	return []bidstrategy.ResourceBidStrategy{
 		resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
-			MaxJobRequirements: cfg.JobResourceLimits,
+			MaxJobRequirements: *maxRequirements,
 		}),
 		resource.NewAvailableCapacityStrategy(resource.AvailableCapacityStrategyParams{
 			RunningCapacityTracker:  p.Running,
@@ -336,7 +445,8 @@ func DefaultResourceStrategies(cfg node.ComputeConfig, p ResourceStrategiesParam
 type BidderParams struct {
 	fx.In
 
-	Server     *server.Server
+	NodeID     types.NodeID
+	Server     *publicapi.Server
 	Executor   *compute.ExecutorBuffer
 	Store      store.ExecutionStore
 	Callback   compute.Callback
@@ -346,9 +456,9 @@ type BidderParams struct {
 	ResourceStrategies []bidstrategy.ResourceBidStrategy `group:"resource_strategies"`
 }
 
-func Bidder(cfg node.ComputeConfig, p BidderParams) (compute.Bidder, error) {
+func Bidder(p BidderParams) (compute.Bidder, error) {
 	return compute.NewBidder(compute.BidderParams{
-		NodeID:           cfg.NodeID,
+		NodeID:           string(p.NodeID),
 		SemanticStrategy: p.SemanticStrategies,
 		ResourceStrategy: p.ResourceStrategies,
 		UsageCalculator:  p.Calculator,
@@ -363,6 +473,7 @@ func Bidder(cfg node.ComputeConfig, p BidderParams) (compute.Bidder, error) {
 type BaseEndpointParams struct {
 	fx.In
 
+	NodeID     types.NodeID
 	Store      store.ExecutionStore
 	Calculator capacity.UsageCalculator
 	Bidder     compute.Bidder
@@ -370,9 +481,9 @@ type BaseEndpointParams struct {
 	LogServer  *logstream.Server
 }
 
-func BaseEndpoint(cfg node.ComputeConfig, p BaseEndpointParams) (compute.Endpoint, error) {
+func BaseEndpoint(p BaseEndpointParams) (compute.Endpoint, error) {
 	return compute.NewBaseEndpoint(compute.BaseEndpointParams{
-		ID:              cfg.NodeID,
+		ID:              string(p.NodeID),
 		ExecutionStore:  p.Store,
 		UsageCalculator: p.Calculator,
 		Bidder:          p.Bidder,
@@ -412,12 +523,16 @@ func RegisterComputeEndpoint(p RegisterComputeEndpointParams) error {
 	return nil
 }
 
-func LabelsProvider(cfg node.ComputeConfig) (models.LabelsProvider, error) {
+func LabelsProvider(labelConifg types.LabelsConfig, capacityConifg types.CapacityConfig) (models.LabelsProvider, error) {
 	// Compute Node labels
+	totalLimits, err := capacityConifg.TotalResourceLimits.ToResources()
+	if err != nil {
+		return nil, err
+	}
 	return models.MergeLabelsInOrder(
-		&node.ConfigLabelsProvider{StaticLabels: cfg.Labels},
+		&node.ConfigLabelsProvider{StaticLabels: labelConifg.Labels},
 		&node.RuntimeLabelsProvider{},
-		capacity.NewGPULabelsProvider(cfg.TotalResourceLimits),
+		capacity.NewGPULabelsProvider(*totalLimits),
 		repo_storage.NewLabelsProvider(),
 	), nil
 }
@@ -433,21 +548,21 @@ type ManagementClientParams struct {
 
 func ManagementClient(
 	lc fx.Lifecycle,
-	cfg node.ComputeConfig,
+	id types.NodeID,
 	p ManagementClientParams,
 ) (*compute.ManagementClient, error) {
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
 	repo, _ := pkgconfig.Get[string]("repo")
-	regFilename := fmt.Sprintf("%s.registration.lock", cfg.NodeID)
+	regFilename := fmt.Sprintf("%s.registration.lock", string(id))
 	regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
 
 	// Set up the management client which will attempt to register this node
 	// with the requester node, and then if successful will send regular node
 	// info updates.
 	managementClient := compute.NewManagementClient(compute.ManagementClientParams{
-		NodeID:               cfg.NodeID,
+		NodeID:               string(id),
 		LabelsProvider:       p.LabelProvider,
 		ManagementProxy:      p.Transport.ManagementProxy(),
 		NodeInfoDecorator:    p.NodeDecorator,

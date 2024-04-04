@@ -8,9 +8,12 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -18,12 +21,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/nodefx/server"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -31,10 +34,47 @@ type BacalhauNode struct {
 	fx.In
 
 	Transport        *nats_transport.NATSTransport
-	Server           *server.Server
+	Server           *publicapi.Server
 	NodeInfoProvider *routing.NodeInfoProvider
 	Compute          *compute.ComputeNode     `optional:"true"`
 	Requester        *requester.RequesterNode `optional:"true"`
+}
+
+func getNodeID() (types.NodeID, error) {
+	nodeName, err := pkgconfig.Get[string](types.NodeName)
+	if err != nil {
+		return "", err
+	}
+
+	if nodeName != "" {
+		return types.NodeID(nodeName), nil
+	}
+	nodeNameProviderType, err := pkgconfig.Get[string](types.NodeNameProvider)
+	if err != nil {
+		return "", err
+	}
+
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err = nodeNameProvider.GenerateNodeName(context.TODO())
+	if err != nil {
+		return "", err
+	}
+
+	// set the new name in the config, so it can be used and persisted later.
+	pkgconfig.SetValue(types.NodeName, nodeName)
+	return types.NodeID(nodeName), nil
 }
 
 func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client) (*BacalhauNode, func() error, error) {
@@ -45,7 +85,19 @@ func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client)
 		return nil, nil, err
 	}
 
+	var nodeConfig types.NodeConfig
+	if err := pkgconfig.ForKey(types.Node, &nodeConfig); err != nil {
+		return nil, nil, err
+	}
+
+	log.Ctx(ctx)
 	app := fx.New(
+		fx.RecoverFromPanics(),
+
+		fx.Supply(log.Ctx(ctx)),
+		fx.Supply(nodeConfig.ServerMiddlewareConfig),
+		fx.Supply(nodeConfig.Server),
+		fx.Provide(getNodeID),
 		fx.Module("ipfs",
 			fx.Supply(ipfsClient),
 		),
@@ -83,7 +135,7 @@ func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client)
 		),
 
 		auth.Module,
-		server.Module,
+		publicapi.Module,
 		fx.Module("api",
 			fx.Invoke(agent.InitAgentEndpoint),
 			fx.Invoke(shared.InitSharedEndpoint),
@@ -99,6 +151,7 @@ func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client)
 
 		ProvideIf(ndcfg.IsComputeNode,
 			compute.Module,
+			compute.SupplyConfig(),
 			fx.Supply(ndcfg.ComputeConfig),
 		),
 

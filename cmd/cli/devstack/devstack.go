@@ -255,7 +255,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 	}
 	defer os.Remove(portFileName)
 	firstNode := stack.Nodes[0]
-	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
+	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port()), 10))
 	if err != nil {
 		return fmt.Errorf("error writing out port file: %v: %w", portFileName, err)
 	}

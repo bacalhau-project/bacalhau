@@ -119,15 +119,17 @@ var LocalComputeConfig = types.ComputeConfig{
 		MaxJobExecutionTimeout:                types.Duration(model.NoJobTimeout),
 		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
 	},
-	JobSelection: model.JobSelectionPolicy{
-		Locality:            model.Anywhere,
-		RejectStatelessJobs: false,
-		AcceptNetworkedJobs: false,
-		ProbeHTTP:           "",
-		ProbeExec:           "",
+	JobSelection: types.JobSelectionPolicyConfig{
+		Policy: model.JobSelectionPolicy{
+			Locality:            model.Anywhere,
+			RejectStatelessJobs: false,
+			AcceptNetworkedJobs: false,
+			ProbeHTTP:           "",
+			ProbeExec:           "",
+		},
 	},
 	Queue: types.QueueConfig{},
-	Logging: types.LoggingConfig{
+	LoggingSensor: types.LoggingSensorConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
 	ManifestCache: types.DockerCacheConfig{

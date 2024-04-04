@@ -10,7 +10,12 @@ import (
 	"testing"
 	"time"
 
+	echomiddleware "github.com/labstack/echo/v4/middleware"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -22,22 +27,26 @@ const testMaxBytesToReadInBody = "500B"
 type APIServerTestSuite struct {
 	suite.Suite
 	server *Server
+	router *echo.Echo
 }
 
 func (s *APIServerTestSuite) SetupTest() {
+	e := echo.New()
+	e.Use(
+		echomiddleware.TimeoutWithConfig(echomiddleware.TimeoutConfig{Timeout: testTimeout, ErrorMessage: TimeoutMessage}),
+		echomiddleware.BodyLimit(testMaxBytesToReadInBody),
+		middleware.Authorize(authz.AlwaysAllow),
+	)
+	s.router = e
 	params := ServerParams{
-		Router:  echo.New(),
-		Address: "localhost",
-		Port:    8080,
-		HostID:  "testHostID",
-		Config: *NewConfig(
-			WithRequestHandlerTimeout(testTimeout),
-			WithMaxBytesToReadInBody(testMaxBytesToReadInBody),
-		),
-		Authorizer: authz.AlwaysAllow,
+		Router: e,
+		Config: types.ServerConfig{
+			Address: "localhost",
+			Port:    8080,
+		},
 	}
 	var err error
-	s.server, err = NewAPIServer(params)
+	s.server, err = NewServer(params)
 	assert.NotNil(s.T(), s.server)
 	assert.NoError(s.T(), err)
 }
@@ -77,7 +86,7 @@ func (s *APIServerTestSuite) TestListenAndServe() {
 func (s *APIServerTestSuite) TestTimeout() {
 	// register slow handler
 	endpoint := "/timeout"
-	s.server.Router.GET(endpoint, func(c echo.Context) error {
+	s.router.GET(endpoint, func(c echo.Context) error {
 		time.Sleep(testTimeout + 10*time.Millisecond)
 		return c.String(http.StatusOK, "Ok!")
 	})
@@ -94,7 +103,7 @@ func (s *APIServerTestSuite) TestTimeout() {
 func (s *APIServerTestSuite) TestMaxBodyReader() {
 	// register handler
 	endpoint := "/large"
-	s.server.Router.POST(endpoint, func(c echo.Context) error {
+	s.router.POST(endpoint, func(c echo.Context) error {
 		return c.String(http.StatusOK, "Ok!")
 	})
 

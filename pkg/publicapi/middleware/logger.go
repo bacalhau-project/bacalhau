@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
-func RequestLogger(logger zerolog.Logger, logLevel zerolog.Level) echo.MiddlewareFunc {
+func RequestLogger(logger *zerolog.Logger, logLevel zerolog.Level) echo.MiddlewareFunc {
 	return echomiddelware.RequestLoggerWithConfig(echomiddelware.RequestLoggerConfig{
 		LogMethod:       true,
 		LogURI:          true,
