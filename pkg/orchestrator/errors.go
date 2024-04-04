@@ -2,8 +2,10 @@ package orchestrator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+	"github.com/samber/lo"
 )
 
 // ErrSchedulerNotFound is returned when the scheduler is not found for a given evaluation type
@@ -33,16 +35,22 @@ func NewErrNotEnoughNodes(requestedNodes int, availableNodes []NodeRank) ErrNotE
 }
 
 func (e ErrNotEnoughNodes) Error() string {
-	nodeErrors := ""
-	available := 0
-	for _, rank := range e.AvailableNodes {
-		if rank.MeetsRequirement() {
-			available += 1
+	suitable := lo.CountBy(e.AvailableNodes, func(rank NodeRank) bool { return rank.MeetsRequirement() })
+	reasons := lo.GroupBy(e.AvailableNodes, func(rank NodeRank) string { return rank.Reason })
+
+	var message strings.Builder
+	fmt.Fprint(&message, "not enough nodes to run job. ")
+	fmt.Fprintf(&message, "requested: %d, available: %d, suitable: %d.", e.RequestedNodes, len(e.AvailableNodes), suitable)
+	for reason, nodes := range reasons {
+		fmt.Fprint(&message, "\n• ")
+		if len(nodes) > 1 {
+			fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
 		} else {
-			nodeErrors += fmt.Sprintf("\n\tNode %s: %s", idgen.ShortNodeID(rank.NodeInfo.ID()), rank.Reason)
+			fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
 		}
+		fmt.Fprintf(&message, ": %s", reason)
 	}
-	return fmt.Sprintf("not enough nodes to run job. requested: %d, available: %d. %s", e.RequestedNodes, available, nodeErrors)
+	return message.String()
 }
 
 // ErrNoMatchingNodes is returned when no matching nodes in the network to run a job
