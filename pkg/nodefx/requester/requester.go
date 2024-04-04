@@ -47,7 +47,6 @@ import (
 */
 var Module = fx.Module("requester",
 	fx.Provide(NewRequesterNode),
-	// TODO can decorate JobStore as interface instead of returning the interface
 	fx.Provide(JobStore),
 	fx.Provide(NodeStore),
 	fx.Provide(NodeManager),
