@@ -10,24 +10,25 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
-func JobStore(lc fx.Lifecycle, cfg *NodeConfig) (jobstore.Store, error) {
-	if err := cfg.RequesterConfig.Store.Validate(); err != nil {
+func JobStore(lc fx.Lifecycle, cfg node.RequesterConfig) (jobstore.Store, error) {
+	if err := cfg.JobStoreConfig.Validate(); err != nil {
 		return nil, err
 	}
 
 	var store jobstore.Store
 	var err error
-	switch cfg.RequesterConfig.Store.Type {
+	switch cfg.JobStoreConfig.Type {
 	case types.BoltDB:
-		log.Debug().Str("Path", cfg.RequesterConfig.Store.Path).Msg("creating boltdb backed jobstore")
-		store, err = boltjobstore.NewBoltJobStore(cfg.RequesterConfig.Store.Path)
+		log.Debug().Str("Path", cfg.JobStoreConfig.Path).Msg("creating boltdb backed jobstore")
+		store, err = boltjobstore.NewBoltJobStore(cfg.JobStoreConfig.Path)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", cfg.RequesterConfig.Store.Type)
+		return nil, fmt.Errorf("unknown JobStore type: %s", cfg.JobStoreConfig.Type)
 	}
 
 	lc.Append(fx.Hook{

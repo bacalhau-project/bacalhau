@@ -20,7 +20,11 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -47,21 +51,56 @@ func (s *Server) GetURI() *url.URL {
 	return url
 }
 
-func NewAPIServer(lc fx.Lifecycle, cfg *NodeConfig, r *echo.Echo) (*Server, error) {
+func NewAPIServer(lc fx.Lifecycle, cfg node.NodeConfig, r *echo.Echo) (*Server, error) {
+	authzPolicy, err := policy.FromPathOrDefault(cfg.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	signingKey, err := pkgconfig.GetClientPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	serverVersion := version.Get()
+	// public http api server
+	serverParams := publicapi.ServerParams{
+		Address:    cfg.HostAddress,
+		Port:       cfg.APIPort,
+		HostID:     cfg.NodeID,
+		Config:     cfg.APIServerConfig,
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, cfg.NodeID),
+		Headers: map[string]string{
+			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+			apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+			apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+			apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+		},
+	}
+
+	// Only allow autocert for requester nodes
+	if cfg.IsRequesterNode {
+		serverParams.AutoCertDomain = cfg.RequesterAutoCert
+		serverParams.AutoCertCache = cfg.RequesterAutoCertCache
+		serverParams.TLSCertificateFile = cfg.RequesterTLSCertificateFile
+		serverParams.TLSKeyFile = cfg.RequesterTLSKeyFile
+	}
 	server := &Server{
-		Address:  cfg.ServerConfig.Address,
-		Port:     cfg.ServerConfig.Port,
-		Protocol: cfg.ServerConfig.Protocol,
+		Address: cfg.HostAddress,
+		Port:    cfg.APIPort,
+		// TODO this is mostly unused
+		Protocol: "http",
 	}
 
 	var tlsConfig *tls.Config
-	if cfg.ServerConfig.AutoCertDomain != "" {
-		log.Debug().Msgf("Setting up auto-cert for %s", cfg.ServerConfig.AutoCertDomain)
+	if cfg.RequesterAutoCert != "" {
+		log.Debug().Msgf("Setting up auto-cert for %s", cfg.RequesterAutoCert)
 
 		autoTLSManager := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
-			Cache:      autocert.DirCache(cfg.ServerConfig.AutoCertCache),
-			HostPolicy: autocert.HostWhitelist(cfg.ServerConfig.AutoCertDomain),
+			Cache:      autocert.DirCache(cfg.RequesterAutoCertCache),
+			HostPolicy: autocert.HostWhitelist(cfg.RequesterAutoCert),
 		}
 		tlsConfig = &tls.Config{
 			GetCertificate: autoTLSManager.GetCertificate,
@@ -71,52 +110,52 @@ func NewAPIServer(lc fx.Lifecycle, cfg *NodeConfig, r *echo.Echo) (*Server, erro
 
 		server.useTLS = true
 	} else {
-		server.useTLS = cfg.ServerConfig.TLSCertificateFile != "" && cfg.ServerConfig.TLSKeyFile != ""
+		server.useTLS = cfg.RequesterTLSCertificateFile != "" && cfg.RequesterTLSKeyFile != ""
 	}
 
-	server.TLSCertificateFile = cfg.ServerConfig.TLSCertificateFile
-	server.TLSKeyFile = cfg.ServerConfig.TLSKeyFile
+	server.TLSCertificateFile = cfg.RequesterTLSCertificateFile
+	server.TLSKeyFile = cfg.RequesterTLSKeyFile
 
 	server.httpServer = http.Server{
 		Handler:           r,
-		ReadHeaderTimeout: cfg.ServerConfig.ReadHeaderTimeout,
-		ReadTimeout:       cfg.ServerConfig.ReadTimeout,
-		WriteTimeout:      cfg.ServerConfig.WriteTimeout,
+		ReadHeaderTimeout: cfg.APIServerConfig.ReadHeaderTimeout,
+		ReadTimeout:       cfg.APIServerConfig.ReadTimeout,
+		WriteTimeout:      cfg.APIServerConfig.WriteTimeout,
 		TLSConfig:         tlsConfig,
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			addr := fmt.Sprintf("%s:%d", cfg.ServerConfig.Address, cfg.ServerConfig.Port)
+			addr := fmt.Sprintf("%s:%d", cfg.HostAddress, cfg.APIPort)
 			listener, err := net.Listen("tcp", addr)
 			if err != nil {
 				return err
 			}
 
-			if cfg.ServerConfig.Port == 0 {
+			if cfg.APIPort == 0 {
 				switch addr := listener.Addr().(type) {
 				case *net.TCPAddr:
-					cfg.ServerConfig.Port = uint16(addr.Port)
+					cfg.APIPort = uint16(addr.Port)
 				default:
 					return fmt.Errorf("unknown address %v", addr)
 				}
 			}
 
 			log.Ctx(ctx).Debug().Msgf(
-				"API server listening for host %s on %s...", cfg.ServerConfig.Address, listener.Addr().String())
+				"API server listening for host %s on %s...", cfg.HostAddress, listener.Addr().String())
 
 			go func() {
 				var err error
 
 				if server.useTLS {
-					err = server.httpServer.ServeTLS(listener, cfg.ServerConfig.TLSCertificateFile, cfg.ServerConfig.TLSKeyFile)
+					err = server.httpServer.ServeTLS(listener, cfg.RequesterTLSCertificateFile, cfg.RequesterTLSKeyFile)
 				} else {
 					err = server.httpServer.Serve(listener)
 				}
 
 				if err == http.ErrServerClosed {
 					log.Ctx(ctx).Debug().Msgf(
-						"API server closed for host %s on %s.", cfg.ServerConfig.Address, server.httpServer.Addr)
+						"API server closed for host %s on %s.", cfg.HostAddress, server.httpServer.Addr)
 				} else if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Api server can't run. Cannot serve client requests!")
 				}
@@ -133,7 +172,7 @@ func NewAPIServer(lc fx.Lifecycle, cfg *NodeConfig, r *echo.Echo) (*Server, erro
 	return server, nil
 }
 
-func NewEchoRouter(cfg *NodeConfig, authorizer authz.Authorizer) (*echo.Echo, error) {
+func NewEchoRouter(cfg node.NodeConfig, authorizer authz.Authorizer) (*echo.Echo, error) {
 	instance := echo.New()
 	instance.Validator = publicapi.NewCustomValidator()
 	// TODO: disable debug mode after we implement our own error handler
@@ -162,17 +201,37 @@ func NewEchoRouter(cfg *NodeConfig, authorizer authz.Authorizer) (*echo.Echo, er
 		echomiddelware.Rewrite(migrations),
 	)
 	var mw []echo.MiddlewareFunc
-	mw = append(mw, InitEchoMiddleware(cfg.EchoRouterConfig.EchoMiddlewareConfig)...)
-	mw = append(mw, InitTelemetryMiddleware(cfg.EchoRouterConfig.TelemetryMiddlewareConfig)...)
-	mw = append(mw, InitServerHeadersMiddleware(cfg.EchoRouterConfig.Headers)...)
+	mw = append(mw, InitEchoMiddleware(EchoMiddlewareConfig{
+		MaxBytesToReadInBody:  cfg.APIServerConfig.MaxBytesToReadInBody,
+		ThrottleLimit:         cfg.APIServerConfig.ThrottleLimit,
+		RequestHandlerTimeout: cfg.APIServerConfig.RequestHandlerTimeout,
+	})...)
+	level, err := zerolog.ParseLevel(cfg.APIServerConfig.LogLevel)
+	logger := log.Logger
+	if err != nil {
+		return nil, err
+	}
+	mw = append(mw, InitTelemetryMiddleware(TelemetryMiddlewareConfig{
+		Logger:   logger,
+		LogLevel: level,
+	})...)
+
+	serverVersion := version.Get()
+	mw = append(mw, InitServerHeadersMiddleware(map[string]string{
+		apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
+		apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
+		apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
+		apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
+		apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
+	})...)
 	mw = append(mw, InitAuthorizationMiddleware(authorizer)...)
 
 	serverBuildInfo := version.Get()
-	serverVersion, err := semver.NewVersion(serverBuildInfo.GitVersion)
+	serverSemVersion, err := semver.NewVersion(serverBuildInfo.GitVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine server agent version %w", err)
 	}
-	mw = append(mw, middleware.VersionNotifyLogger(&cfg.EchoRouterConfig.TelemetryMiddlewareConfig.Logger, *serverVersion))
+	mw = append(mw, middleware.VersionNotifyLogger(&logger, *serverSemVersion))
 	instance.Use(mw...)
 
 	return instance, nil

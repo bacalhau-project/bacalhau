@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TODO call this a StoreConfig since the compute uses it to store executions, not jobs
 type JobStoreConfig struct {
 	Type StorageType `yaml:"Type"`
 	Path string      `yaml:"Path"`

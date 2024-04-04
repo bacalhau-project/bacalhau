@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
@@ -24,28 +25,36 @@ type Endpoint struct {
 	nodeInfoProvider models.NodeInfoProvider
 }
 
-func InitSharedEndpoint(e *echo.Echo, nodeID string, nodeProvider *routing.NodeInfoProvider) {
+type SharedEndpoingParams struct {
+	fx.In
+
+	NodeID       string `name:"nodeid"`
+	Router       *echo.Echo
+	NodeProvider *routing.NodeInfoProvider
+}
+
+func InitSharedEndpoint(p SharedEndpoingParams) {
 	shared := &Endpoint{
-		nodeID:           nodeID,
-		nodeInfoProvider: nodeProvider,
+		nodeID:           p.NodeID,
+		nodeInfoProvider: p.NodeProvider,
 	}
 
 	// JSON group
-	g := e.Group("/api/v1")
+	g := p.Router.Group("/api/v1")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
 	g.GET("/node_info", shared.nodeInfo)
 	g.POST("/version", shared.version)
 	g.GET("/healthz", shared.healthz)
 
 	// Plaintext group
-	pt := e.Group("/api/v1")
+	pt := p.Router.Group("/api/v1")
 	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
 	pt.GET("/id", shared.id)
 	pt.GET("/livez", shared.livez)
 
 	// Home group
 	// TODO: Could we use this to redirect to latest API?
-	h := e.Group("/")
+	h := p.Router.Group("/")
 	h.Use(middleware.SetContentType(echo.MIMETextPlain))
 	h.GET("", shared.home)
 }

@@ -1,26 +1,30 @@
 package nodefx
 
 import (
-	"fmt"
-	"strings"
-
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
-	s3storage "github.com/bacalhau-project/bacalhau/pkg/storage/s3"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
-func StorageProviders(cfg *ComputeConfig) (storage.StorageProvider, error) {
-	var (
-		provided = make(map[string]storage.Storage)
-		err      error
+func StorageProviders(cfg node.ComputeConfig, client ipfs.Client) (storage.StorageProvider, error) {
+	pr, err := executor_util.NewStandardStorageProvider(
+		executor_util.StandardStorageProviderOptions{
+			API:                   client,
+			AllowListedLocalPaths: cfg.AllowListedLocalPaths,
+		},
 	)
+	if err != nil {
+		return nil, err
+	}
+	// TODO(forrest): yet another provider providing providers
+	return provider.NewConfiguredProvider(pr, cfg.DisabledFeatures.Storages), err
 
-	c := cfg.Providers.Storage
+}
+
+// NB(forrest) a very rough idea on how we can support pluggable providers
+/*
 	for name, config := range c {
 		switch strings.ToLower(name) {
 		case models.StorageSourceIPFS:
@@ -62,3 +66,4 @@ func S3Storage(cfg []byte) (*s3storage.StorageProvider, error) {
 func LocalStorage(cfg []byte) (*localdirectory.StorageProvider, error) {
 	panic("TODO")
 }
+*/

@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -26,28 +27,22 @@ type Endpoint struct {
 	debugInfoProviders []model.DebugInfoProvider
 }
 
-/*
-func InitAgentEndpoint(e *echo.Echo, nodeProvider models.NodeInfoProvider, debugProvider []model.DebugInfoProvider) {
-	agent := &Endpoint{
-		nodeInfoProvider:   nodeProvider,
-		debugInfoProviders: debugProvider,
-	}
-	// JSON group
-	g := e.Group("/api/v1/agent")
-	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
-	g.GET("/alive", agent.alive)
-	g.GET("/version", agent.version)
-	g.GET("/node", agent.node)
-	g.GET("/debug", agent.debug)
-}
-*/
+type AgentEndpointParams struct {
+	fx.In
 
-func InitAgentEndpoint(e *echo.Echo, nodeProvider *routing.NodeInfoProvider) {
+	Router                  *echo.Echo
+	NodeProvider            *routing.NodeInfoProvider
+	RequesterDebugProviders []model.DebugInfoProvider `optional:"true" name:"requester_debug_providers"`
+	ComputeDebugProviders   []model.DebugInfoProvider `optional:"true" name:"compute_debug_providers"`
+}
+
+func InitAgentEndpoint(p AgentEndpointParams) {
 	agent := &Endpoint{
-		nodeInfoProvider: nodeProvider,
+		nodeInfoProvider:   p.NodeProvider,
+		debugInfoProviders: append(p.ComputeDebugProviders, p.RequesterDebugProviders...),
 	}
 	// JSON group
-	g := e.Group("/api/v1/agent")
+	g := p.Router.Group("/api/v1/agent")
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
 	g.GET("/alive", agent.alive)
 	g.GET("/version", agent.version)

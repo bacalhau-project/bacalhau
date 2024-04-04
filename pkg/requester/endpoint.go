@@ -22,12 +22,13 @@ import (
 )
 
 type BaseEndpointParams struct {
-	ID                         string
-	EvaluationBroker           orchestrator.EvaluationBroker
-	Store                      jobstore.Store
-	EventEmitter               orchestrator.EventEmitter
-	ComputeEndpoint            compute.Endpoint
-	StorageProviders           storage.StorageProvider
+	ID               string
+	EvaluationBroker orchestrator.EvaluationBroker
+	Store            jobstore.Store
+	EventEmitter     orchestrator.EventEmitter
+	ComputeEndpoint  compute.Endpoint
+	StorageProviders storage.StorageProvider
+	// TODO this field is never set
 	MinJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
 	DefaultPublisher           string

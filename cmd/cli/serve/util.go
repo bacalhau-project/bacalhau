@@ -7,15 +7,16 @@ import (
 	"path/filepath"
 	"time"
 
+	pkgerrors "github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/spf13/viper"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	pkgerrors "github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -74,7 +75,9 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
 		LocalPublisher:               cfg.LocalPublisher,
+		ExecutionStoreConfig:         cfg.ExecutionStore,
 	})
+
 }
 
 func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.RequesterConfig, error) {
@@ -118,6 +121,7 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 		TranslationEnabled:             cfg.TranslationEnabled,
 		JobStore:                       jobStore,
+		JobStoreConfig:                 cfg.JobStore,
 		DefaultPublisher:               cfg.DefaultPublisher,
 	})
 }

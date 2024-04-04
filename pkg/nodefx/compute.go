@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
@@ -20,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -32,50 +30,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 )
-
-type ComputeConfig struct {
-	Store                        *types.JobStoreConfig
-	Providers                    ProvidersConfig
-	Capacity                     CapacityTrackerConfig
-	DefaultJobExecutionTimeout   time.Duration
-	LogRunningExecutionsInterval time.Duration
-	// used for calculator, not really a capacity thing as previously used in legacy config
-	DefaultJobResourceLimits models.Resources
-	// logging server config
-	LogStreamBufferSize int // How many messages to buffer in the log stream channel
-
-	// used by node decorator
-	JobResourceLimits models.Resources
-
-	// semantic bid strat config
-	JobSelectionPolicy node.JobSelectionPolicy
-	// MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
-	// lower timeout requirements will not be bid on.
-	// semantic bid strat config
-	MinJobExecutionTimeout time.Duration
-	// MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
-	// higher timeout requirements will not be bid on.
-	// semantic bid strat config
-	MaxJobExecutionTimeout time.Duration
-	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
-	// check.
-	// semantic bid strat config
-	JobExecutionTimeoutClientIDBypassList []string
-
-	// used for label providing.. listed as capacity config :/ none of this shit make any sense
-	TotalResourceLimits models.Resources
-}
-
-type CapacityTrackerConfig struct {
-	TotalResourceLimits models.Resources
-	QueueResourceLimits models.Resources
-}
-
-type ProvidersConfig struct {
-	Executor  map[string][]byte
-	Storage   map[string][]byte
-	Publisher map[string][]byte
-}
 
 type ComputeNodeParams struct {
 	fx.In
@@ -93,7 +47,7 @@ type ComputeNodeParams struct {
 
 	NodeInfoDecorator  models.NodeInfoDecorator
 	AutoLabelsProvider models.LabelsProvider
-	DebugInfoProviders []model.DebugInfoProvider
+	DebugInfoProviders []model.DebugInfoProvider `name:"compute_debug_providers"`
 }
 
 type ComputeNode struct {
@@ -109,10 +63,6 @@ type ComputeNode struct {
 	nodeInfoDecorator  models.NodeInfoDecorator
 	autoLabelsProvider models.LabelsProvider
 	debugInfoProviders []model.DebugInfoProvider
-}
-
-func (n *ComputeNode) DebugInfoProviders() []model.DebugInfoProvider {
-	return n.debugInfoProviders
 }
 
 func NewComputeNode(lc fx.Lifecycle, p ComputeNodeParams) *ComputeNode {
@@ -142,15 +92,6 @@ func NewComputeNode(lc fx.Lifecycle, p ComputeNodeParams) *ComputeNode {
 }
 
 func Compute() fx.Option {
-	// TODO do this as a part of starting the node
-	/*
-
-		startup := compute.NewStartup(executionStore, bufferRunner)
-		startupErr := startup.Execute(ctx)
-		if startupErr != nil {
-			return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
-		}
-	*/
 	// TODO do this after the compute and requester nodes have been created
 	// there is a similar thing on the requester nodes, these are all collected and
 	// used in the shared api endpoint
@@ -162,9 +103,6 @@ func Compute() fx.Option {
 		}
 	*/
 	return fx.Options(
-		fx.Provide(func(cfg *NodeConfig) *ComputeConfig {
-			return cfg.ComputeConfig
-		}),
 		fx.Provide(NewComputeNode),
 		fx.Provide(ExecutionStore),
 		fx.Provide(StorageProviders),
@@ -200,7 +138,12 @@ func Compute() fx.Option {
 			),
 		),
 		fx.Provide(Bidder),
-		fx.Provide(DebugInfoProvider),
+		fx.Provide(
+			fx.Annotate(
+				ComputeDebugInfoProviders,
+				fx.ResultTags(`name:"compute_debug_providers"`),
+			),
+		),
 		fx.Provide(BaseEndpoint),
 		fx.Provide(LabelsProvider),
 		fx.Provide(ManagementClient),
@@ -217,12 +160,12 @@ type CapacityTrackerResult struct {
 	Enqueued capacity.Tracker `name:"enqueued"`
 }
 
-func CapacityTrackers(cfg *ComputeConfig) (CapacityTrackerResult, error) {
+func CapacityTrackers(cfg node.ComputeConfig) (CapacityTrackerResult, error) {
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: cfg.Capacity.TotalResourceLimits,
+		MaxCapacity: cfg.TotalResourceLimits,
 	})
 	enqueuedCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: cfg.Capacity.QueueResourceLimits,
+		MaxCapacity: cfg.QueueResourceLimits,
 	})
 
 	return CapacityTrackerResult{
@@ -244,7 +187,7 @@ type ExecutorParams struct {
 	Enqueued        capacity.Tracker `name:"enqueued"`
 }
 
-func Executor(cfg *NodeConfig, p ExecutorParams) (*compute.ExecutorBuffer, error) {
+func Executor(cfg node.ComputeConfig, p ExecutorParams) (*compute.ExecutorBuffer, error) {
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:       cfg.NodeID,
 		Callback: p.ComputeCallback,
@@ -265,7 +208,7 @@ func Executor(cfg *NodeConfig, p ExecutorParams) (*compute.ExecutorBuffer, error
 		Callback:                   p.ComputeCallback,
 		RunningCapacityTracker:     p.Running,
 		EnqueuedCapacityTracker:    p.Enqueued,
-		DefaultJobExecutionTimeout: cfg.ComputeConfig.DefaultJobExecutionTimeout,
+		DefaultJobExecutionTimeout: cfg.DefaultJobExecutionTimeout,
 	})
 
 	return bufferRunner, nil
@@ -279,7 +222,7 @@ func RunningExecutionsInfoProvider(buffer *compute.ExecutorBuffer) (*sensors.Run
 	return runningInfoProvider, nil
 }
 
-func InitLoggingSensor(lc fx.Lifecycle, cfg *ComputeConfig, provider *sensors.RunningExecutionsInfoProvider) error {
+func InitLoggingSensor(lc fx.Lifecycle, cfg node.ComputeConfig, provider *sensors.RunningExecutionsInfoProvider) error {
 	if cfg.LogRunningExecutionsInterval > 0 {
 		loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
 			InfoProvider: provider,
@@ -297,7 +240,7 @@ func InitLoggingSensor(lc fx.Lifecycle, cfg *ComputeConfig, provider *sensors.Ru
 	return nil
 }
 
-func UsageCalculator(cfg *ComputeConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
+func UsageCalculator(cfg node.ComputeConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
 	// endpoint/frontend
 	return capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
@@ -311,7 +254,7 @@ func UsageCalculator(cfg *ComputeConfig, storages storage.StorageProvider) (capa
 	}), nil
 }
 
-func LoggingServer(cfg *ComputeConfig, executors executor.ExecutorProvider, s store.ExecutionStore) (*logstream.Server, error) {
+func LoggingServer(cfg node.ComputeConfig, executors executor.ExecutorProvider, s store.ExecutionStore) (*logstream.Server, error) {
 	return logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: s,
 		Executors:      executors,
@@ -329,7 +272,7 @@ type NodeDecoratorParams struct {
 	Running   capacity.Tracker `name:"running"`
 }
 
-func NodeDecorator(cfg *ComputeConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
+func NodeDecorator(cfg node.ComputeConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
 	return compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
 		Executors:          p.Executors,
 		Publisher:          p.Publisher,
@@ -349,7 +292,7 @@ type SemanticStrategiesParams struct {
 }
 
 // TODO allow these to be configured
-func DefaultSemanticStrategies(cfg *ComputeConfig, p SemanticStrategiesParams) ([]bidstrategy.SemanticBidStrategy, error) {
+func DefaultSemanticStrategies(cfg node.ComputeConfig, p SemanticStrategiesParams) ([]bidstrategy.SemanticBidStrategy, error) {
 	return []bidstrategy.SemanticBidStrategy{
 		semantic.NewNetworkingStrategy(cfg.JobSelectionPolicy.AcceptNetworkedJobs),
 		semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
@@ -388,7 +331,7 @@ type ResourceStrategiesParams struct {
 }
 
 // TODO allow these to be configured
-func DefaultResourceStrategies(cfg *ComputeConfig, p ResourceStrategiesParams) ([]bidstrategy.ResourceBidStrategy, error) {
+func DefaultResourceStrategies(cfg node.ComputeConfig, p ResourceStrategiesParams) ([]bidstrategy.ResourceBidStrategy, error) {
 	return []bidstrategy.ResourceBidStrategy{
 		resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
 			MaxJobRequirements: cfg.JobResourceLimits,
@@ -414,7 +357,7 @@ type BidderParams struct {
 	ResourceStrategies []bidstrategy.ResourceBidStrategy `group:"resource_strategies"`
 }
 
-func Bidder(cfg *NodeConfig, p BidderParams) (compute.Bidder, error) {
+func Bidder(cfg node.ComputeConfig, p BidderParams) (compute.Bidder, error) {
 	return compute.NewBidder(compute.BidderParams{
 		NodeID:           cfg.NodeID,
 		SemanticStrategy: p.SemanticStrategies,
@@ -438,7 +381,7 @@ type BaseEndpointParams struct {
 	LogServer  *logstream.Server
 }
 
-func BaseEndpoint(cfg *NodeConfig, p BaseEndpointParams) (compute.Endpoint, error) {
+func BaseEndpoint(cfg node.ComputeConfig, p BaseEndpointParams) (compute.Endpoint, error) {
 	return compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              cfg.NodeID,
 		ExecutionStore:  p.Store,
@@ -449,7 +392,7 @@ func BaseEndpoint(cfg *NodeConfig, p BaseEndpointParams) (compute.Endpoint, erro
 	}), nil
 }
 
-func DebugInfoProvider(
+func ComputeDebugInfoProviders(
 	sensor *sensors.RunningExecutionsInfoProvider,
 	store store.ExecutionStore,
 ) ([]model.DebugInfoProvider, error) {
@@ -460,28 +403,32 @@ func DebugInfoProvider(
 	}, nil
 }
 
-func RegisterComputeEndpoint(
-	router *echo.Echo,
-	bidder compute.Bidder,
-	store store.ExecutionStore,
-	debugProviders []model.DebugInfoProvider,
-) error {
+type RegisterComputeEndpointParams struct {
+	fx.In
+
+	Router         *echo.Echo
+	Bidder         compute.Bidder
+	Store          store.ExecutionStore
+	DebugProviders []model.DebugInfoProvider `name:"compute_debug_providers"`
+}
+
+func RegisterComputeEndpoint(p RegisterComputeEndpointParams) error {
 	// register compute public http apis
 	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
-		Router:             router,
-		Bidder:             bidder,
-		Store:              store,
-		DebugInfoProviders: debugProviders,
+		Router:             p.Router,
+		Bidder:             p.Bidder,
+		Store:              p.Store,
+		DebugInfoProviders: p.DebugProviders,
 	})
 	return nil
 }
 
-func LabelsProvider(cfg *NodeConfig) (models.LabelsProvider, error) {
+func LabelsProvider(cfg node.ComputeConfig) (models.LabelsProvider, error) {
 	// Compute Node labels
 	return models.MergeLabelsInOrder(
 		&node.ConfigLabelsProvider{StaticLabels: cfg.Labels},
 		&node.RuntimeLabelsProvider{},
-		capacity.NewGPULabelsProvider(cfg.ComputeConfig.TotalResourceLimits),
+		capacity.NewGPULabelsProvider(cfg.TotalResourceLimits),
 		repo_storage.NewLabelsProvider(),
 	), nil
 }
@@ -497,7 +444,7 @@ type ManagementClientParams struct {
 
 func ManagementClient(
 	lc fx.Lifecycle,
-	cfg *NodeConfig,
+	cfg node.ComputeConfig,
 	p ManagementClientParams,
 ) (*compute.ManagementClient, error) {
 

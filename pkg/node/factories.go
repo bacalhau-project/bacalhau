@@ -52,8 +52,6 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
 		pr, err := executor_util.NewStandardStorageProvider(
-			ctx,
-			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
@@ -70,8 +68,6 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
-				ctx,
-				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},

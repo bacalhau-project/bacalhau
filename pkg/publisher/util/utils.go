@@ -27,7 +27,7 @@ func NewPublisherProvider(
 	localConfig *types.LocalPublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(cl)
 	if err != nil {
 		return nil, err
 	}
@@ -47,18 +47,34 @@ func NewPublisherProvider(
 	}), nil
 }
 
+func BetterConfigureS3Publisher(dir string) (*s3.Publisher, error) {
+	cfg, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+		AWSConfig: cfg,
+	})
+	return s3.NewPublisher(s3.PublisherParams{
+		LocalDir:       dir,
+		ClientProvider: clientProvider,
+	}), nil
+}
+
 func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
 	if err != nil {
 		return nil, err
 	}
 
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to clean up S3 publisher directory: %w", err)
-		}
-		return nil
-	})
+	if cm != nil {
+		cm.RegisterCallback(func() error {
+			if err := os.RemoveAll(dir); err != nil {
+				return fmt.Errorf("unable to clean up S3 publisher directory: %w", err)
+			}
+			return nil
+		})
+	}
 
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {

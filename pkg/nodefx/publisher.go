@@ -1,49 +1,62 @@
 package nodefx
 
 import (
+	"context"
 	"fmt"
-	"strings"
+	"os"
 
+	"go.uber.org/fx"
+
+	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 )
 
-func PublisherProviders(cfg *ComputeConfig) (publisher.PublisherProvider, error) {
-	var (
-		provided = make(map[string]publisher.Publisher)
-		err      error
-	)
-	c := cfg.Providers.Publisher
-	for name, config := range c {
-		switch strings.ToLower(name) {
-		case models.PublisherIPFS:
-			provided[name], err = IPFSPublisher(config)
-		case models.PublisherS3:
-			provided[name], err = S3Publisher(config)
-		case models.PublisherLocal:
-			provided[name], err = LocalPublisher(config)
-		default:
-			return nil, fmt.Errorf("unknown publisher provider: %s", name)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("registering %s publisher: %w", name, err)
-		}
+func PublisherProviders(lc fx.Lifecycle, cfg node.ComputeConfig, client ipfs_client.Client) (publisher.PublisherProvider, error) {
+	noopPublisher := noop.NewNoopPublisher()
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(client)
+	if err != nil {
+		return nil, err
 	}
-	return provider.NewMappedProvider(provided), nil
-}
 
-func IPFSPublisher(cfg []byte) (*ipfs.IPFSPublisher, error) {
-	panic("TODO")
-}
+	s3Dir, err := os.MkdirTemp(pkgconfig.GetStoragePath(), "bacalhau-s3-publisher")
+	s3Publisher, err := util.BetterConfigureS3Publisher(s3Dir)
+	if err != nil {
+		return nil, err
+	}
 
-func S3Publisher(cfg []byte) (*s3.Publisher, error) {
-	panic("TODO")
-}
+	localPublisher := local.BetterNewLocalPublisher(cfg.LocalPublisher.Directory, cfg.LocalPublisher.Address, cfg.LocalPublisher.Port)
 
-func LocalPublisher(cfg []byte) (*local.Publisher, error) {
-	panic("TODO")
+	pr := provider.NewMappedProvider(map[string]publisher.Publisher{
+		// TODO use an fx decorator
+		models.PublisherNoop:  tracing.Wrap(noopPublisher),
+		models.PublisherIPFS:  tracing.Wrap(ipfsPublisher),
+		models.PublisherS3:    tracing.Wrap(s3Publisher),
+		models.PublisherLocal: tracing.Wrap(localPublisher),
+	})
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// this will stop when the context is cancled
+			localPublisher.Start(ctx)
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if err := os.RemoveAll(s3Dir); err != nil {
+				return fmt.Errorf("unable to clean up S3 publisher directory [%s]: %w", s3Dir, err)
+			}
+			return nil
+		},
+	})
+
+	return provider.NewConfiguredProvider(pr, cfg.DisabledFeatures.Publishers), nil
+
 }

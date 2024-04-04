@@ -75,6 +75,8 @@ type ComputeConfigParams struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	ExecutionStoreConfig types.JobStoreConfig
 }
 
 type ComputeConfig struct {
@@ -119,6 +121,12 @@ type ComputeConfig struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	NodeID                string
+	Labels                map[string]string
+	ExecutionStoreConfig  types.JobStoreConfig
+	AllowListedLocalPaths []string
+	DisabledFeatures      FeatureConfig
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -204,6 +212,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		BidResourceStrategy:          params.BidResourceStrategy,
 		ExecutionStore:               params.ExecutionStore,
 		LocalPublisher:               params.LocalPublisher,
+		ExecutionStoreConfig:         params.ExecutionStoreConfig,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {

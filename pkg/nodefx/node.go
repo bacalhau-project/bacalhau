@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
@@ -16,57 +16,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
-
-type NodeConfig struct {
-	NodeID           string
-	Labels           map[string]string
-	TransportConfig  *nats_transport.NATSTransportConfig
-	ComputeConfig    *ComputeConfig
-	RequesterConfig  *RequesterConfig
-	EchoRouterConfig EchoRouterConfig
-	ServerConfig     ServerConfig
-	AuthConfig       *types.AuthConfig
-}
-
-type ServerConfig struct {
-	Address            string
-	Port               uint16
-	Protocol           string
-	AutoCertDomain     string
-	AutoCertCache      string
-	TLSCertificateFile string
-	TLSKeyFile         string
-
-	// These are TCP connection deadlines and not HTTP timeouts. They don't control the time it takes for our handlers
-	// to complete. Deadlines operate on the connection, so our server will fail to return a result only after
-	// the handlers try to access connection properties
-	// ReadHeaderTimeout is the amount of time allowed to read request headers
-	ReadHeaderTimeout time.Duration
-	// ReadTimeout is the maximum duration for reading the entire request, including the body
-	ReadTimeout time.Duration
-	// WriteTimeout is the maximum duration before timing out writes of the response.
-	// It doesn't cancel the context and doesn't stop handlers from running even after failing the request.
-	// It is for added safety and should be a bit longer than the request handler timeout for better error handling.
-	WriteTimeout time.Duration
-}
-
-type EchoRouterConfig struct {
-	Headers                   map[string]string
-	EchoMiddlewareConfig      EchoMiddlewareConfig
-	TelemetryMiddlewareConfig TelemetryMiddlewareConfig
-}
 
 type BacalhauNode struct {
 	fx.In
@@ -78,33 +40,64 @@ type BacalhauNode struct {
 	Requester        *RequesterNode `optional:"true"`
 }
 
-func (n *BacalhauNode) Shutdown() error {
-	return nil
-}
-
-func NewNode(ctx context.Context, cfg *NodeConfig) (*BacalhauNode, func() error, error) {
+func NewNode(ctx context.Context, cfg node.NodeConfig, ipfsClient ipfs.Client) (*BacalhauNode, func() error, error) {
 	bacalhauNode := new(BacalhauNode)
+
+	err := mergo.Merge(&cfg.APIServerConfig, publicapi.DefaultConfig())
+	if err != nil {
+		return nil, nil, err
+	}
+
 	app := fx.New(
+		// TODO: create a client conditionally, and the right way using fx lifecycle
+		fx.Supply(ipfsClient),
+		// node config nats config, and IPFS config
 		fx.Supply(cfg),
+		fx.Supply(nats_transport.NATSTransportConfig{
+			NodeID:                   cfg.NodeID,
+			Port:                     cfg.NetworkConfig.Port,
+			AdvertisedAddress:        cfg.NetworkConfig.AdvertisedAddress,
+			AuthSecret:               cfg.NetworkConfig.AuthSecret,
+			Orchestrators:            cfg.NetworkConfig.Orchestrators,
+			StoreDir:                 cfg.NetworkConfig.StoreDir,
+			ClusterName:              cfg.NetworkConfig.ClusterName,
+			ClusterPort:              cfg.NetworkConfig.ClusterPort,
+			ClusterPeers:             cfg.NetworkConfig.ClusterPeers,
+			ClusterAdvertisedAddress: cfg.NetworkConfig.ClusterAdvertisedAddress,
+			IsRequesterNode:          cfg.IsRequesterNode,
+		}),
 		fx.Provide(NATSS),
-		fx.Supply(cfg.NodeID),
 
 		// this is essentially the API module, needs a few more endpoints
 		fx.Provide(Authorizer),
-		fx.Provide(NewEchoRouter), // requires EchoRouterConfig
-		fx.Provide(NewAPIServer),  // requires echo and ServerConfig
+		fx.Provide(NewEchoRouter),
+		fx.Provide(NewAPIServer),
 
 		fx.Provide(NodeInfoProvider),
 
-		ProvideIf(Requester, cfg.RequesterConfig != nil),
-		ProvideIf(Compute, cfg.ComputeConfig != nil),
+		SupplyIf(cfg.RequesterNodeConfig, cfg.IsRequesterNode),
+		ProvideIf(Requester, cfg.IsRequesterNode),
+
+		SupplyIf(cfg.ComputeConfig, cfg.IsComputeNode),
+		ProvideIf(Compute, cfg.IsComputeNode),
 
 		fx.Provide(AuthenticatorsProviders),
 		fx.Populate(bacalhauNode),
 
 		// TODO this needs the debug providers from the compute node and requester node
-		fx.Invoke(agent.InitAgentEndpoint),   // requires echo, nodeInfoProvider and DebugInforProviders
+		fx.Invoke(agent.InitAgentEndpoint), // requires echo, nodeInfoProvider and DebugInforProviders
+
+		// this is supplied as a string, which is only needed by InitSharedEndpoint
+		fx.Provide(
+			fx.Annotate(
+				func() string {
+					return cfg.NodeID
+				},
+				fx.ResultTags(`name:"nodeid"`),
+			),
+		),
 		fx.Invoke(shared.InitSharedEndpoint), // requires nodeID and nodeInforProvider
+
 		fx.Invoke(RegisterNodeInfoProviderDecorators),
 		fx.Invoke(func(router *echo.Echo, provider authn.Provider) {
 			auth_endpoint.BindEndpoint(context.TODO(), router, provider)
@@ -149,7 +142,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*BacalhauNode, func() error,
 
 }
 
-func Authorizer(cfg *NodeConfig) (authz.Authorizer, error) {
+func Authorizer(cfg node.NodeConfig) (authz.Authorizer, error) {
 	authzPolicy, err := policy.FromPathOrDefault(cfg.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err
@@ -169,6 +162,13 @@ func ProvideIf(constructor func() fx.Option, condition bool) fx.Option {
 	return fx.Options()
 }
 
+func SupplyIf(instance interface{}, condition bool) fx.Option {
+	if condition {
+		return fx.Supply(instance)
+	}
+	return fx.Options()
+}
+
 func PopulateIf[T any](instance *T, condition bool) fx.Option {
 	if condition {
 		fx.Populate(instance)
@@ -176,7 +176,7 @@ func PopulateIf[T any](instance *T, condition bool) fx.Option {
 	return fx.Options()
 }
 
-func NodeInfoProvider(cfg *NodeConfig) (*routing.NodeInfoProvider, error) {
+func NodeInfoProvider(cfg node.NodeConfig) (*routing.NodeInfoProvider, error) {
 	// TODO this will miss any labels provided by the compute node I think
 	labelsProvider := models.MergeLabelsInOrder(
 		&node.ConfigLabelsProvider{StaticLabels: cfg.Labels},
@@ -195,7 +195,7 @@ func RegisterNodeInfoProviderDecorators(transport *nats_transport.NATSTransport,
 	provider.RegisterNodeInfoDecorator(transport.NodeInfoDecorator())
 }
 
-func AuthenticatorsProviders(cfg *NodeConfig) (authn.Provider, error) {
+func AuthenticatorsProviders(cfg node.NodeConfig) (authn.Provider, error) {
 	var allErr error
 	privKey, allErr := pkgconfig.GetClientPrivateKey()
 	if allErr != nil {

@@ -15,10 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -56,7 +57,6 @@ func (s *ExecutorTestSuite) SetupTest() {
 	})
 
 	s.executor, err = NewExecutor(
-		context.Background(),
 		"bacalhau-executor-unit-test",
 	)
 	require.NoError(s.T(), err)

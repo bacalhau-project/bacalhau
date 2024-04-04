@@ -2,14 +2,12 @@ package nodefx
 
 import (
 	"context"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -17,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
@@ -36,39 +35,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 )
-
-type RequesterConfig struct {
-	Store *types.JobStoreConfig
-
-	// TODO these are only used by the node rank, might deserve it's own config?
-	MinBacalhauVersion      models.BuildVersionInfo
-	NodeRankRandomnessRange int
-
-	// evaluation broker config
-	EvalBrokerVisibilityTimeout    time.Duration
-	EvalBrokerInitialRetryDelay    time.Duration
-	EvalBrokerSubsequentRetryDelay time.Duration
-	EvalBrokerMaxRetryCount        int
-
-	// worker config
-	WorkerCount                  int
-	WorkerEvalDequeueTimeout     time.Duration
-	WorkerEvalDequeueBaseBackoff time.Duration
-	WorkerEvalDequeueMaxBackoff  time.Duration
-
-	// v1 endpoint
-	MinJobExecutionTimeout time.Duration
-	JobDefaults            transformer.JobDefaults
-	// mixed base endpoint config
-	DefaultPublisher string
-	// only v2
-	S3PreSignedURLDisabled   bool
-	S3PreSignedURLExpiration time.Duration
-	TranslationEnabled       bool // Should the orchestrator attempt to translate jobs?
-
-	// housekeeping
-	HousekeepingBackgroundTaskInterval time.Duration
-}
 
 type RequesterNode struct {
 	Endpoint        requester.Endpoint
@@ -133,6 +99,13 @@ func Requester() fx.Option {
 		fx.Provide(EndpointV2),
 		fx.Provide(Housekeeping),
 		fx.Provide(RequesterAPI),
+		fx.Provide(
+			fx.Annotate(
+				RequesterDebugInfoProviders,
+				fx.ResultTags(`name:"requester_debug_providers"`),
+			),
+		),
+
 		fx.Invoke(OrchestratorAPI),
 
 		fx.Invoke(RegisterEventConsumerHandlers),
@@ -143,7 +116,7 @@ func Requester() fx.Option {
 
 }
 
-func TracerContextProvider(lc fx.Lifecycle, cfg *NodeConfig) (*eventhandler.TracerContextProvider, error) {
+func TracerContextProvider(lc fx.Lifecycle, cfg node.RequesterConfig) (*eventhandler.TracerContextProvider, error) {
 	provider := eventhandler.NewTracerContextProvider(cfg.NodeID)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
@@ -192,7 +165,7 @@ func NodeDiscoverer(store *kvstore.NodeStore) (orchestrator.NodeDiscoverer, erro
 	return discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{Store: store}), nil
 }
 
-func NodeRanker(store jobstore.Store, cfg *NodeConfig) (orchestrator.NodeRanker, error) {
+func NodeRanker(store jobstore.Store, cfg node.RequesterConfig) (orchestrator.NodeRanker, error) {
 	ranker := ranking.NewChain()
 	ranker.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
@@ -201,11 +174,11 @@ func NodeRanker(store jobstore.Store, cfg *NodeConfig) (orchestrator.NodeRanker,
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
-		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: cfg.RequesterConfig.MinBacalhauVersion}),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: cfg.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: store}),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: cfg.RequesterConfig.NodeRankRandomnessRange,
+			RandomnessRange: cfg.NodeRankRandomnessRange,
 		}),
 	)
 	return ranker, nil
@@ -222,12 +195,12 @@ func NodeSelector(
 	}), nil
 }
 
-func EvaluationBroker(lc fx.Lifecycle, cfg *NodeConfig) (orchestrator.EvaluationBroker, error) {
+func EvaluationBroker(lc fx.Lifecycle, cfg node.RequesterConfig) (orchestrator.EvaluationBroker, error) {
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
-		VisibilityTimeout:    cfg.RequesterConfig.EvalBrokerVisibilityTimeout,
-		InitialRetryDelay:    cfg.RequesterConfig.EvalBrokerInitialRetryDelay,
-		SubsequentRetryDelay: cfg.RequesterConfig.EvalBrokerSubsequentRetryDelay,
-		MaxReceiveCount:      cfg.RequesterConfig.EvalBrokerMaxRetryCount,
+		VisibilityTimeout:    cfg.EvalBrokerVisibilityTimeout,
+		InitialRetryDelay:    cfg.EvalBrokerInitialRetryDelay,
+		SubsequentRetryDelay: cfg.EvalBrokerSubsequentRetryDelay,
+		MaxReceiveCount:      cfg.EvalBrokerMaxRetryCount,
 	})
 	if err != nil {
 		return nil, err
@@ -247,7 +220,7 @@ func EvaluationBroker(lc fx.Lifecycle, cfg *NodeConfig) (orchestrator.Evaluation
 }
 
 func Planner(
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	transport *nats_transport.NATSTransport,
 	store jobstore.Store,
 	eventEmitter orchestrator.EventEmitter,
@@ -289,7 +262,7 @@ func RetryStrategy() (orchestrator.RetryStrategy, error) {
 
 func SchedulerProvider(
 	lc fx.Lifecycle,
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	store jobstore.Store,
 	planner orchestrator.Planner,
 	nodeSelector orchestrator.NodeSelector,
@@ -316,15 +289,15 @@ func SchedulerProvider(
 			NodeSelector: nodeSelector,
 		}),
 	})
-	workers := make([]*orchestrator.Worker, 0, cfg.RequesterConfig.WorkerCount)
-	for i := 1; i <= cfg.RequesterConfig.WorkerCount; i++ {
+	workers := make([]*orchestrator.Worker, 0, cfg.WorkerCount)
+	for i := 1; i <= cfg.WorkerCount; i++ {
 		// log.Debug().Msgf("Starting worker %d", i)
 		// worker config the polls from the broker
 		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
 			SchedulerProvider:     schedulerProvider,
 			EvaluationBroker:      broker,
-			DequeueTimeout:        cfg.RequesterConfig.WorkerEvalDequeueTimeout,
-			DequeueFailureBackoff: backoff.NewExponential(cfg.RequesterConfig.WorkerEvalDequeueBaseBackoff, cfg.RequesterConfig.WorkerEvalDequeueMaxBackoff),
+			DequeueTimeout:        cfg.WorkerEvalDequeueTimeout,
+			DequeueFailureBackoff: backoff.NewExponential(cfg.WorkerEvalDequeueBaseBackoff, cfg.WorkerEvalDequeueMaxBackoff),
 		})
 		workers = append(workers, worker)
 	}
@@ -348,7 +321,7 @@ func SchedulerProvider(
 }
 
 func EndpointV1(
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	transport *nats_transport.NATSTransport,
 	broker orchestrator.EvaluationBroker,
 	eventEmitter orchestrator.EventEmitter,
@@ -360,25 +333,37 @@ func EndpointV1(
 		Store:                      store,
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            transport.ComputeProxy(),
-		MinJobExecutionTimeout:     cfg.RequesterConfig.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: cfg.RequesterConfig.JobDefaults.ExecutionTimeout,
-		DefaultPublisher:           cfg.RequesterConfig.DefaultPublisher,
+		DefaultJobExecutionTimeout: cfg.JobDefaults.ExecutionTimeout,
+		DefaultPublisher:           cfg.DefaultPublisher,
 	}), nil
 }
 
-func RequesterAPI(
-	router *echo.Echo,
-	endpointV1 requester.Endpoint,
+func RequesterDebugInfoProviders(
 	discoverer orchestrator.NodeDiscoverer,
-	store jobstore.Store,
+) ([]model.DebugInfoProvider, error) {
+	return []model.DebugInfoProvider{discovery.NewDebugInfoProvider(discoverer)}, nil
+}
+
+type RequesterAPIParams struct {
+	fx.In
+
+	Router         *echo.Echo
+	EndpointV1     requester.Endpoint
+	Discoverer     orchestrator.NodeDiscoverer
+	Store          jobstore.Store
+	DebugProviders []model.DebugInfoProvider `name:"requester_debug_providers"`
+}
+
+func RequesterAPI(
+	p RequesterAPIParams,
 ) (*requester_endpoint.Endpoint, error) {
 	// register requester public http apis
 	requesterAPIServer := requester_endpoint.NewEndpoint(requester_endpoint.EndpointParams{
-		Router:             router,
-		Requester:          endpointV1,
-		JobStore:           store,
-		NodeDiscoverer:     discoverer,
-		DebugInfoProviders: []model.DebugInfoProvider{discovery.NewDebugInfoProvider(discoverer)},
+		Router:             p.Router,
+		Requester:          p.EndpointV1,
+		JobStore:           p.Store,
+		NodeDiscoverer:     p.Discoverer,
+		DebugInfoProviders: p.DebugProviders,
 	})
 	return requesterAPIServer, nil
 }
@@ -398,7 +383,7 @@ func OrchestratorAPI(
 }
 
 func EndpointV2(
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	transport *nats_transport.NATSTransport,
 	broker orchestrator.EvaluationBroker,
 	eventEmitter orchestrator.EventEmitter,
@@ -408,15 +393,15 @@ func EndpointV2(
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
-		transformer.DefaultsApplier(cfg.RequesterConfig.JobDefaults),
+		transformer.DefaultsApplier(cfg.JobDefaults),
 		transformer.RequesterInfo(cfg.NodeID),
 		// transformer.NewInlineStoragePinner(storageProvider),
 	}
 
-	if cfg.RequesterConfig.DefaultPublisher != "" {
+	if cfg.DefaultPublisher != "" {
 		// parse the publisher to generate a models.SpecConfig and add it to each job
 		// which is without a publisher
-		config, err := job.ParsePublisherString(cfg.RequesterConfig.DefaultPublisher)
+		config, err := job.ParsePublisherString(cfg.DefaultPublisher)
 		if err == nil {
 			jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 		}
@@ -425,7 +410,7 @@ func EndpointV2(
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
-	if !cfg.RequesterConfig.S3PreSignedURLDisabled {
+	if !cfg.S3PreSignedURLDisabled {
 		// S3 result signer
 		s3Config, err := s3helper.DefaultAWSConfig()
 		if err != nil {
@@ -435,13 +420,13 @@ func EndpointV2(
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
 			}),
-			Expiration: cfg.RequesterConfig.S3PreSignedURLExpiration,
+			Expiration: cfg.S3PreSignedURLExpiration,
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
 	var translationProvider translation.TranslatorProvider
-	if cfg.RequesterConfig.TranslationEnabled {
+	if cfg.TranslationEnabled {
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
@@ -461,7 +446,7 @@ func EndpointV2(
 
 func Housekeeping(
 	lc fx.Lifecycle,
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	endpoint requester.Endpoint,
 	store jobstore.Store,
 ) (*requester.Housekeeping, error) {
@@ -469,7 +454,7 @@ func Housekeeping(
 		Endpoint: endpoint,
 		JobStore: store,
 		NodeID:   cfg.NodeID,
-		Interval: cfg.RequesterConfig.HousekeepingBackgroundTaskInterval,
+		Interval: cfg.HousekeepingBackgroundTaskInterval,
 	})
 
 	lc.Append(fx.Hook{
@@ -500,7 +485,7 @@ func EventTracer(lc fx.Lifecycle) (*eventhandler.Tracer, error) {
 }
 
 func RegisterEventConsumerHandlers(
-	cfg *NodeConfig,
+	cfg node.RequesterConfig,
 	tracer *eventhandler.Tracer,
 	handler *eventhandler.ChainedJobEventHandler,
 	provider *eventhandler.TracerContextProvider,

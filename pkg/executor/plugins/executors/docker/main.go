@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -24,14 +23,12 @@ var HandshakeConfig = plugin.HandshakeConfig{
 }
 
 func main() { // Create an hclog.Logger
-	ctx := context.Background()
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "docker-plugin",
 		Output: os.Stderr,
 		Level:  hclog.Trace,
 	})
 	dockerExecutor, err := docker.NewExecutor(
-		ctx,
 		"bacalhau-pluggable-executor-docker",
 	)
 	if err != nil {

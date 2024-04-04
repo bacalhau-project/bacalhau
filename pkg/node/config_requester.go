@@ -5,9 +5,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -16,6 +18,7 @@ import (
 )
 
 type RequesterConfigParams struct {
+	NodeID      string
 	JobDefaults transformer.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
@@ -48,7 +51,8 @@ type RequesterConfigParams struct {
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
 
-	JobStore jobstore.Store
+	JobStore       jobstore.Store
+	JobStoreConfig types.JobStoreConfig
 
 	DefaultPublisher string
 }

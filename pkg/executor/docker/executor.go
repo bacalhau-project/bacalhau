@@ -58,12 +58,7 @@ type Config struct {
 	ID string `json:"ID"`
 }
 
-func NewExecutorFromConfig(cfg Config) (*Executor, error) {
-	return NewExecutor(context.TODO(), cfg.ID)
-}
-
 func NewExecutor(
-	_ context.Context,
 	id string,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()

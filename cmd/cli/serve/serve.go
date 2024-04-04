@@ -2,7 +2,6 @@ package serve
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,8 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -22,19 +19,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 var DefaultSwarmPort = 1235
@@ -280,6 +273,14 @@ func serve(cmd *cobra.Command) error {
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
+	// both the requester and compute nodes have a dependency on the NodeID, this is
+	// done so each module may accept its respective configs and not the whole thing.
+	nodeConfig.RequesterNodeConfig.NodeID = nodeName
+	nodeConfig.ComputeConfig.NodeID = nodeName
+	// this is duplicated here because the compute node shouldn't require a NodeConfig to build itself
+	nodeConfig.ComputeConfig.Labels = nodeConfig.Labels
+	nodeConfig.ComputeConfig.AllowListedLocalPaths = allowedListLocalPaths
+	nodeConfig.DisabledFeatures = featureConfig
 
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
@@ -291,115 +292,9 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSCertificateFile = cert
 		nodeConfig.RequesterTLSKeyFile = key
 	}
-	var rcfg types.RequesterConfig
-	if err := config.ForKey(types.NodeRequester, &rcfg); err != nil {
-		return err
-	}
-
-	var ccfg types.ComputeConfig
-	if err := config.ForKey(types.NodeCompute, &ccfg); err != nil {
-		return err
-	}
-
-	dockerEngineConfig, err := json.Marshal(&docker.Config{ID: nodeConfig.NodeID})
-	if err != nil {
-		return err
-	}
 
 	// Create node
-	totalResoureLimit, err := ccfg.Capacity.TotalResourceLimits.ToResources()
-	if err != nil {
-		return err
-	}
-	queuedResourceLimit, err := ccfg.Capacity.QueueResourceLimits.ToResources()
-	if err != nil {
-		return err
-	}
-	totalResoureLimit.CPU = 1
-	queuedResourceLimit.CPU = 2
-	serverVersion := version.Get()
-	bacalhauNode, _, err := nodefx.NewNode(ctx, &nodefx.NodeConfig{
-		NodeID: nodeName,
-		Labels: config.GetStringMapString(types.NodeLabels),
-		TransportConfig: &nats_transport.NATSTransportConfig{
-			NodeID:                   nodeName,
-			Port:                     networkConfig.Port,
-			AdvertisedAddress:        networkConfig.AdvertisedAddress,
-			Orchestrators:            networkConfig.Orchestrators,
-			IsRequesterNode:          true,
-			StoreDir:                 networkConfig.StoreDir,
-			AuthSecret:               networkConfig.AuthSecret,
-			ClusterName:              networkConfig.ClusterName,
-			ClusterPort:              networkConfig.ClusterPort,
-			ClusterAdvertisedAddress: networkConfig.ClusterAdvertisedAddress,
-			ClusterPeers:             networkConfig.ClusterPeers,
-		},
-		ComputeConfig: &nodefx.ComputeConfig{
-			Store: &ccfg.ExecutionStore,
-			Providers: nodefx.ProvidersConfig{
-				Executor: map[string][]byte{
-					models.EngineDocker: dockerEngineConfig,
-				},
-				Storage:   nil,
-				Publisher: nil,
-			},
-			Capacity: nodefx.CapacityTrackerConfig{
-				TotalResourceLimits: *totalResoureLimit,
-				QueueResourceLimits: *queuedResourceLimit,
-			},
-		},
-		RequesterConfig: &nodefx.RequesterConfig{
-			Store:                              &rcfg.JobStore,
-			MinBacalhauVersion:                 requesterConfig.MinBacalhauVersion,
-			NodeRankRandomnessRange:            requesterConfig.NodeRankRandomnessRange,
-			EvalBrokerVisibilityTimeout:        requesterConfig.EvalBrokerVisibilityTimeout,
-			EvalBrokerInitialRetryDelay:        requesterConfig.EvalBrokerInitialRetryDelay,
-			EvalBrokerSubsequentRetryDelay:     requesterConfig.EvalBrokerSubsequentRetryDelay,
-			EvalBrokerMaxRetryCount:            requesterConfig.EvalBrokerMaxRetryCount,
-			WorkerCount:                        requesterConfig.WorkerCount,
-			WorkerEvalDequeueTimeout:           requesterConfig.WorkerEvalDequeueTimeout,
-			WorkerEvalDequeueBaseBackoff:       requesterConfig.WorkerEvalDequeueBaseBackoff,
-			WorkerEvalDequeueMaxBackoff:        requesterConfig.WorkerEvalDequeueMaxBackoff,
-			MinJobExecutionTimeout:             0,
-			JobDefaults:                        requesterConfig.JobDefaults,
-			DefaultPublisher:                   requesterConfig.DefaultPublisher,
-			S3PreSignedURLDisabled:             requesterConfig.S3PreSignedURLDisabled,
-			S3PreSignedURLExpiration:           requesterConfig.S3PreSignedURLExpiration,
-			TranslationEnabled:                 requesterConfig.TranslationEnabled,
-			HousekeepingBackgroundTaskInterval: requesterConfig.HousekeepingBackgroundTaskInterval,
-		},
-		EchoRouterConfig: nodefx.EchoRouterConfig{
-			Headers: map[string]string{
-				apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
-				apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
-				apimodels.HTTPHeaderBacalhauBuildDate:  serverVersion.BuildDate.UTC().String(),
-				apimodels.HTTPHeaderBacalhauBuildOS:    serverVersion.GOOS,
-				apimodels.HTTPHeaderBacalhauArch:       serverVersion.GOARCH,
-			},
-			EchoMiddlewareConfig: nodefx.EchoMiddlewareConfig{
-				MaxBytesToReadInBody:  "10MB", // nodeConfig.APIServerConfig.MaxBytesToReadInBody,
-				ThrottleLimit:         1000,
-				RequestHandlerTimeout: nodeConfig.APIServerConfig.RequestHandlerTimeout,
-			},
-			TelemetryMiddlewareConfig: nodefx.TelemetryMiddlewareConfig{
-				Logger:   *log.Ctx(ctx),
-				LogLevel: zerolog.DebugLevel,
-			},
-		},
-		ServerConfig: nodefx.ServerConfig{
-			Address:            nodeConfig.HostAddress,
-			Port:               nodeConfig.APIPort,
-			Protocol:           "http",
-			AutoCertDomain:     nodeConfig.RequesterAutoCert,
-			AutoCertCache:      nodeConfig.RequesterAutoCertCache,
-			TLSCertificateFile: nodeConfig.RequesterTLSCertificateFile,
-			TLSKeyFile:         nodeConfig.RequesterTLSKeyFile,
-			ReadHeaderTimeout:  nodeConfig.APIServerConfig.ReadHeaderTimeout,
-			ReadTimeout:        nodeConfig.APIServerConfig.ReadTimeout,
-			WriteTimeout:       nodeConfig.APIServerConfig.WriteTimeout,
-		},
-		AuthConfig: &nodeConfig.AuthConfig,
-	})
+	bacalhauNode, _, err := nodefx.NewNode(ctx, nodeConfig, ipfsClient)
 	if err != nil {
 		return err
 	}
