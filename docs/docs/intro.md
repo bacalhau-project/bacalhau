@@ -24,7 +24,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 🚨 Bacalhau provides a **complete and permanent audit log** of exactly what happened, so you can be confident that your jobs are being executed securely.
 
-🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
+🔐 You can run [private workloads](/setting-up/networking-instructions/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
 💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source.
 
