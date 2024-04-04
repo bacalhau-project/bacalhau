@@ -11,11 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/bad"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -69,12 +71,8 @@ func PrintJobExecution(
 	quiet := runtimeSettings.PrintJobIDOnly
 
 	jobErr := waitForJobAndPrintResultsToUser(ctx, cmd, jobID, quiet, client)
-	if jobErr != nil {
-		if jobErr.Error() == PrintoutCanceledButRunningNormally {
-			return nil
-		} else {
-			cmd.PrintErrf("\nError submitting job: %s", jobErr)
-		}
+	if jobErr != nil && jobErr.Error() == PrintoutCanceledButRunningNormally {
+		return nil
 	}
 
 	if runtimeSettings.PrintNodeDetails || jobErr != nil {
@@ -84,19 +82,41 @@ func PrintJobExecution(
 		if err != nil {
 			return fmt.Errorf("failed getting job executions: %w", err)
 		}
+
+		// There are some cases to consider here:
+		//
+		// 1. The job error is just the final execution error, and the execution
+		// error is the same for all executions:
+		//   -> Just print the error once, and don't bother listing the nodes.
+		//
+		// 2. The job error is one of the execution errors, but the execution
+		// errors differ per node.
+		//   -> Don't print the job error, just print the execution summary.
+		//
+		// 3. The job error is not one of the execution errors.
+		//   -> Print both the job error and the execution summary.
 		summary := summariseExecutions(executions.Executions)
-		if len(summary) > 0 {
-			cmd.Println("\nJob Results By Node:")
-			for message, nodes := range summary {
-				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+		_, jobErrIsExecutionErr := summary[jobErr.Error()]
+		if len(summary) == 1 || !jobErrIsExecutionErr {
+			cmd.Println()
+			util.PrintErr(cmd, bad.ToError(jobErr))
+		}
+
+		if len(summary) > 1 || !jobErrIsExecutionErr {
+			cmd.Println("\nJob results:")
+			for message, runs := range summary {
+				nodes := len(lo.Uniq(runs))
+				if len(runs) > 1 {
+					cmd.Printf("• %d runs on %d nodes: ", len(runs), nodes)
+				} else {
+					cmd.Printf("• Node %s: ", runs[0])
+				}
 				if strings.ContainsRune(message, '\n') {
-					cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+					cmd.Printf("\n\t%s", strings.Join(strings.Split(message, "\n"), "\n\t"))
 				} else {
 					cmd.Println(message)
 				}
 			}
-		} else {
-			cmd.Println()
 		}
 	}
 	if !quiet {
