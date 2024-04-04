@@ -1,4 +1,4 @@
-package nodefx
+package server
 
 import (
 	"context"
@@ -27,6 +27,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
+)
+
+var Module = fx.Module("server",
+	fx.Provide(NewAPIServer),
+	fx.Provide(NewEchoRouter),
 )
 
 // Server configures a node's public REST API.

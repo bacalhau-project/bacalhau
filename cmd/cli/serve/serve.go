@@ -28,6 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/webui"
 )
 
 var DefaultSwarmPort = 1235
@@ -293,65 +294,47 @@ func serve(cmd *cobra.Command) error {
 		nodeConfig.RequesterTLSKeyFile = key
 	}
 
-	// Create node
-	bacalhauNode, _, err := nodefx.NewNode(ctx, nodeConfig, ipfsClient)
+	// Create and start bacalhau node
+	standardNode, _, err := nodefx.NewNode(ctx, nodeConfig, ipfsClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating node: %w", err)
 	}
-	_ = bacalhauNode
-	/*
-		standardNode, err := node.NewNode(ctx, nodeConfig)
-		if err != nil {
-			return fmt.Errorf("error creating node: %w", err)
-		}
-
-	*/
 
 	// Persist the node config after the node is created and its config is valid.
 	if err = persistConfigs(repoDir); err != nil {
 		return fmt.Errorf("error persisting configs: %w", err)
 	}
 
-	/*
-			// Start node
-			if err := standardNode.Start(ctx); err != nil {
-				return fmt.Errorf("error starting node: %w", err)
-			}
+	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
+	if err != nil {
+		return err
+	}
 
-		startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
+	// Start up Dashboard - default: 8483
+	if startWebUI {
+		listenPort, err := config.Get[int](types.NodeWebUIPort)
 		if err != nil {
 			return err
 		}
 
-		// Start up Dashboard - default: 8483
-		if startWebUI {
-			listenPort, err := config.Get[int](types.NodeWebUIPort)
+		apiURL := standardNode.Server.GetURI().JoinPath("api", "v1")
+		go func() {
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			apiPort := apiURL.Port()
+			apiPath := apiURL.Path
+
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
 			if err != nil {
-				return err
+				cmd.PrintErrln(err)
 			}
+		}()
+	}
 
-			apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-			go func() {
-				// Specifically leave the host blank. The app will just use whatever
-				// host it is served on and replace the port and path.
-				apiPort := apiURL.Port()
-				apiPath := apiURL.Path
-
-				err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
-				if err != nil {
-					cmd.PrintErrln(err)
-				}
-			}()
-		}
-	*/
-
-	/*
-		// only in station logging output
-		if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
-			cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
-		}
-
-	*/
+	// only in station logging output
+	if config.GetLogMode() == logger.LogModeStation && standardNode.Compute != nil {
+		cmd.Printf("API: %s\n", standardNode.Server.GetURI().JoinPath("/api/v1/compute/debug"))
+	}
 
 	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
 	if err != nil {

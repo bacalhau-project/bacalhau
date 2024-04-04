@@ -1,4 +1,4 @@
-package nodefx
+package requester
 
 import (
 	"context"
@@ -36,6 +36,56 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 )
 
+// Module contains all dependencies required for a requester node.
+/* TODO: this can be further modularized into the parts that make up a requester node, such as:
+- Control Plane(?)
+	- Scheduler
+	- Orchestrator
+	- Planner
+- API
+- Node Manager
+*/
+var Module = fx.Module("requester",
+	fx.Provide(NewRequesterNode),
+	// TODO can decorate JobStore as interface instead of returning the interface
+	fx.Provide(JobStore),
+	fx.Provide(NodeStore),
+	fx.Provide(NodeManager),
+	fx.Provide(TracerContextProvider),
+	fx.Provide(JobEventHandler),
+	fx.Provide(EventEmitter),
+	fx.Provide(EventTracer),
+	fx.Provide(NodeDiscoverer),
+	fx.Provide(NodeRanker),
+	fx.Provide(NodeSelector),
+	fx.Provide(EvaluationBroker),
+	fx.Provide(Planner),
+	fx.Provide(RetryStrategy),
+	fx.Provide(SchedulerProvider),
+	fx.Provide(
+		fx.Annotate(
+			EndpointV1,
+			fx.As(new(requester.Endpoint)),
+			fx.As(new(compute.Callback)),
+		),
+	),
+	fx.Provide(EndpointV2),
+	fx.Provide(Housekeeping),
+	fx.Provide(RequesterAPI),
+	fx.Provide(
+		fx.Annotate(
+			RequesterDebugInfoProviders,
+			fx.ResultTags(`name:"requester_debug_providers"`),
+		),
+	),
+
+	fx.Invoke(OrchestratorAPI),
+	fx.Invoke(RegisterEventConsumerHandlers),
+	fx.Invoke(RegisterTransportComputeCallback),
+	fx.Invoke(RegisterTransportNodeManager),
+	fx.Invoke(PopulateNodeManagerStore),
+)
+
 type RequesterNode struct {
 	Endpoint        requester.Endpoint
 	ComputeCallback compute.Callback
@@ -69,51 +119,6 @@ func NewRequesterNode(p RequesterParams) *RequesterNode {
 		NodeManager:     p.NodeManager,
 		Scheduler:       p.Scheduler,
 	}
-}
-
-func Requester() fx.Option {
-	return fx.Options(
-		fx.Provide(NewRequesterNode),
-		// TODO can decorate JobStore as interface instead of returning the interface
-		fx.Provide(JobStore),
-		fx.Provide(NodeStore),
-		fx.Provide(NodeManager),
-		fx.Provide(TracerContextProvider),
-		fx.Provide(JobEventHandler),
-		fx.Provide(EventEmitter),
-		fx.Provide(EventTracer),
-		fx.Provide(NodeDiscoverer),
-		fx.Provide(NodeRanker),
-		fx.Provide(NodeSelector),
-		fx.Provide(EvaluationBroker),
-		fx.Provide(Planner),
-		fx.Provide(RetryStrategy),
-		fx.Provide(SchedulerProvider),
-		fx.Provide(
-			fx.Annotate(
-				EndpointV1,
-				fx.As(new(requester.Endpoint)),
-				fx.As(new(compute.Callback)),
-			),
-		),
-		fx.Provide(EndpointV2),
-		fx.Provide(Housekeeping),
-		fx.Provide(RequesterAPI),
-		fx.Provide(
-			fx.Annotate(
-				RequesterDebugInfoProviders,
-				fx.ResultTags(`name:"requester_debug_providers"`),
-			),
-		),
-
-		fx.Invoke(OrchestratorAPI),
-
-		fx.Invoke(RegisterEventConsumerHandlers),
-		fx.Invoke(RegisterTransportComputeCallback),
-		fx.Invoke(RegisterTransportNodeManager),
-		fx.Invoke(PopulateNodeManagerStore),
-	)
-
 }
 
 func TracerContextProvider(lc fx.Lifecycle, cfg node.RequesterConfig) (*eventhandler.TracerContextProvider, error) {

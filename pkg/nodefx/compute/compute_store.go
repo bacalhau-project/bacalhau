@@ -1,4 +1,4 @@
-package nodefx
+package compute
 
 import (
 	"context"

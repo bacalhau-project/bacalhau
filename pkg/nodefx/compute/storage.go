@@ -1,4 +1,4 @@
-package nodefx
+package compute
 
 import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"

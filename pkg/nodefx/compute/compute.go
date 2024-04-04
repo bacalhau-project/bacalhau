@@ -1,4 +1,4 @@
-package nodefx
+package compute
 
 import (
 	"context"
@@ -25,10 +25,61 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/nodefx/server"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+)
+
+var Module = fx.Module("compute",
+	fx.Provide(NewComputeNode),
+	fx.Provide(ExecutionStore),
+	fx.Provide(StorageProviders),
+	fx.Provide(ExecutorProviders),
+	fx.Provide(PublisherProviders),
+	fx.Provide(CapacityTrackers),
+	fx.Provide(func(lc fx.Lifecycle) (*compute.ResultsPath, error) {
+		resultPath, err := compute.NewResultsPath()
+		if err != nil {
+			return nil, fmt.Errorf("creating compute node result path: %w", err)
+		}
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error {
+			return resultPath.Close()
+		}})
+		return resultPath, nil
+	}),
+	fx.Provide(Executor),
+	fx.Provide(RunningExecutionsInfoProvider),
+	fx.Provide(UsageCalculator),
+	fx.Provide(LoggingServer),
+	fx.Provide(NodeDecorator),
+	// could be a bidder module
+	fx.Provide(
+		fx.Annotate(
+			DefaultSemanticStrategies,
+			fx.ResultTags(`group:"semantic_strategies"`),
+		),
+	),
+	fx.Provide(
+		fx.Annotate(
+			DefaultResourceStrategies,
+			fx.ResultTags(`group:"resource_strategies"`),
+		),
+	),
+	fx.Provide(Bidder),
+	fx.Provide(
+		fx.Annotate(
+			ComputeDebugInfoProviders,
+			fx.ResultTags(`name:"compute_debug_providers"`),
+		),
+	),
+	fx.Provide(BaseEndpoint),
+	fx.Provide(LabelsProvider),
+	fx.Provide(ManagementClient),
+
+	fx.Invoke(InitLoggingSensor),
+	fx.Invoke(RegisterComputeEndpoint),
 )
 
 type ComputeNodeParams struct {
@@ -60,7 +111,7 @@ type ComputeNode struct {
 	ManagementClient   *compute.ManagementClient
 	LocalEndpoint      compute.Endpoint
 
-	nodeInfoDecorator  models.NodeInfoDecorator
+	NodeInfoDecorator  models.NodeInfoDecorator
 	autoLabelsProvider models.LabelsProvider
 	debugInfoProviders []model.DebugInfoProvider
 }
@@ -75,7 +126,7 @@ func NewComputeNode(lc fx.Lifecycle, p ComputeNodeParams) *ComputeNode {
 		Executor:           p.Executor,
 		Bidder:             p.Bidder,
 		ManagementClient:   p.ManagementClient,
-		nodeInfoDecorator:  p.NodeInfoDecorator,
+		NodeInfoDecorator:  p.NodeInfoDecorator,
 		autoLabelsProvider: p.AutoLabelsProvider,
 		debugInfoProviders: p.DebugInfoProviders,
 	}
@@ -89,68 +140,6 @@ func NewComputeNode(lc fx.Lifecycle, p ComputeNodeParams) *ComputeNode {
 	}})
 
 	return n
-}
-
-func Compute() fx.Option {
-	// TODO do this after the compute and requester nodes have been created
-	// there is a similar thing on the requester nodes, these are all collected and
-	// used in the shared api endpoint
-	/*
-		// register debug info providers for the /debug endpoint
-		debugInfoProviders := []model.DebugInfoProvider{
-			runningInfoProvider,
-			sensors.NewCompletedJobs(executionStore),
-		}
-	*/
-	return fx.Options(
-		fx.Provide(NewComputeNode),
-		fx.Provide(ExecutionStore),
-		fx.Provide(StorageProviders),
-		fx.Provide(ExecutorProviders),
-		fx.Provide(PublisherProviders),
-		fx.Provide(CapacityTrackers),
-		fx.Provide(func(lc fx.Lifecycle) (*compute.ResultsPath, error) {
-			resultPath, err := compute.NewResultsPath()
-			if err != nil {
-				return nil, fmt.Errorf("creating compute node result path: %w", err)
-			}
-			lc.Append(fx.Hook{OnStop: func(ctx context.Context) error {
-				return resultPath.Close()
-			}})
-			return resultPath, nil
-		}),
-		fx.Provide(Executor),
-		fx.Provide(RunningExecutionsInfoProvider),
-		fx.Provide(UsageCalculator),
-		fx.Provide(LoggingServer),
-		fx.Provide(NodeDecorator),
-		// could be a bidder module
-		fx.Provide(
-			fx.Annotate(
-				DefaultSemanticStrategies,
-				fx.ResultTags(`group:"semantic_strategies"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
-				DefaultResourceStrategies,
-				fx.ResultTags(`group:"resource_strategies"`),
-			),
-		),
-		fx.Provide(Bidder),
-		fx.Provide(
-			fx.Annotate(
-				ComputeDebugInfoProviders,
-				fx.ResultTags(`name:"compute_debug_providers"`),
-			),
-		),
-		fx.Provide(BaseEndpoint),
-		fx.Provide(LabelsProvider),
-		fx.Provide(ManagementClient),
-
-		fx.Invoke(InitLoggingSensor),
-		fx.Invoke(RegisterComputeEndpoint),
-	)
 }
 
 type CapacityTrackerResult struct {
@@ -347,7 +336,7 @@ func DefaultResourceStrategies(cfg node.ComputeConfig, p ResourceStrategiesParam
 type BidderParams struct {
 	fx.In
 
-	Server     *Server
+	Server     *server.Server
 	Executor   *compute.ExecutorBuffer
 	Store      store.ExecutionStore
 	Callback   compute.Callback
