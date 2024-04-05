@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
 
@@ -196,39 +195,39 @@ func (j *Job) Copy() *Job {
 
 // Validate is used to check a job for reasonable configuration
 func (j *Job) Validate() error {
-	mErr := new(multierror.Error)
+	var mErr error
 
 	// Validate the job ID
 	if validate.IsBlank(j.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing job ID"))
+		mErr = errors.Join(mErr, errors.New("missing job ID"))
 	} else if validate.ContainsSpaces(j.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a space"))
+		mErr = errors.Join(mErr, errors.New("job ID contains a space"))
 	} else if validate.ContainsNull(j.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a null character"))
+		mErr = errors.Join(mErr, errors.New("job ID contains a null character"))
 	}
 
 	// Validate the job name
 	if validate.IsBlank(j.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing job name"))
+		mErr = errors.Join(mErr, errors.New("missing job name"))
 	} else if validate.ContainsNull(j.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("job Name contains a null character"))
+		mErr = errors.Join(mErr, errors.New("job Name contains a null character"))
 	}
 
 	// Validate the job namespace
 	if validate.IsBlank(j.Namespace) {
-		mErr.Errors = append(mErr.Errors, errors.New("job must be in a namespace"))
+		mErr = errors.Join(mErr, errors.New("job must be in a namespace"))
 	}
 
-	mErr = multierror.Append(mErr, j.ValidateSubmission())
+	mErr = errors.Join(mErr, j.ValidateSubmission())
 
 	// Validate the task group
 	for _, task := range j.Tasks {
 		if err := task.Validate(); err != nil {
 			outer := fmt.Errorf("task %s validation failed: %v", task.Name, err)
-			mErr.Errors = append(mErr.Errors, outer)
+			mErr = errors.Join(mErr, outer)
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // ValidateSubmission is used to check a job for reasonable configuration when it is submitted.
@@ -237,26 +236,26 @@ func (j *Job) ValidateSubmission() error {
 	if j == nil {
 		return errors.New("empty/nil job")
 	}
-	var mErr multierror.Error
 
+	var mErr error
 	switch j.Type {
 	case JobTypeService, JobTypeBatch, JobTypeDaemon, JobTypeOps:
 	case "":
-		mErr.Errors = append(mErr.Errors, errors.New("missing job type"))
+		mErr = errors.Join(mErr, errors.New("missing job type"))
 	default:
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid job type: %q", j.Type))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid job type: %q", j.Type))
 	}
 
 	if j.Count < 0 {
-		mErr.Errors = append(mErr.Errors, errors.New("job count must be >= 0"))
+		mErr = errors.Join(mErr, errors.New("job count must be >= 0"))
 	}
 	if len(j.Tasks) == 0 {
-		mErr.Errors = append(mErr.Errors, errors.New("missing job tasks"))
+		mErr = errors.Join(mErr, errors.New("missing job tasks"))
 	}
 	for idx, constr := range j.Constraints {
 		if err := constr.Validate(); err != nil {
 			outer := fmt.Errorf("constraint %d validation failed: %s", idx+1, err)
-			mErr.Errors = append(mErr.Errors, outer)
+			mErr = errors.Join(mErr, outer)
 		}
 	}
 
@@ -264,11 +263,11 @@ func (j *Job) ValidateSubmission() error {
 	for _, task := range j.Tasks {
 		if err := task.ValidateSubmission(); err != nil {
 			outer := fmt.Errorf("task %s validation failed: %v", task.Name, err)
-			mErr.Errors = append(mErr.Errors, outer)
+			mErr = errors.Join(mErr, outer)
 		}
 	}
 
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // SanitizeSubmission is used to sanitize a job for reasonable configuration when it is submitted.

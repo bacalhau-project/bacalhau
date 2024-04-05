@@ -1,10 +1,10 @@
 package logger
 
 import (
+	"errors"
 	"io"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 )
@@ -59,7 +59,7 @@ func (b *bufferingLogWriter) writeLogs(w io.Writer) error {
 	var errs error
 	for _, line := range b.buffer {
 		if _, err := w.Write(line); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 	return errs

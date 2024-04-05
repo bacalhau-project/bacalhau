@@ -2,12 +2,12 @@ package discovery
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 )
 
@@ -41,7 +41,7 @@ func (c *Chain) chainDiscovery(
 	uniqueNodes := make(map[string]models.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
 		nodeInfos, discoverErr := getNodes(discoverer)
-		err = multierr.Append(err, errors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
+		err = errors.Join(err, pkgerrors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
 		currentNodesCount := len(uniqueNodes)
 		for _, nodeInfo := range nodeInfos {
 			if _, ok := uniqueNodes[nodeInfo.ID()]; !ok {

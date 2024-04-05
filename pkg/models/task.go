@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
 
@@ -104,52 +103,52 @@ func (t *Task) Copy() *Task {
 
 // Validate is used to check a job for reasonable configuration
 func (t *Task) Validate() error {
-	mErr := new(multierror.Error)
-	mErr = multierror.Append(mErr, t.ValidateSubmission())
+	var mErr error
+	mErr = errors.Join(mErr, t.ValidateSubmission())
 
 	if err := t.Timeouts.Validate(); err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
 	}
 	if err := t.ResourcesConfig.Validate(); err != nil {
-		mErr = multierror.Append(mErr, fmt.Errorf("task resources validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("task resources validation failed: %v", err))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // ValidateSubmission is used to check a task for reasonable configuration when it is submitted.
 // It is a subset of Validate that does not check fields with defaults, such as timeouts and resources.
 func (t *Task) ValidateSubmission() error {
-	var mErr multierror.Error
+	var mErr error
 	if validate.IsBlank(t.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing task name"))
+		mErr = errors.Join(mErr, errors.New("missing task name"))
 	} else if validate.ContainsNull(t.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("task name contains null character"))
+		mErr = errors.Join(mErr, errors.New("task name contains null character"))
 	}
 	if err := t.Engine.Validate(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("engine validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("engine validation failed: %v", err))
 	}
 	if err := t.Publisher.ValidateAllowBlank(); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("publisher validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("publisher validation failed: %v", err))
 	}
 	if err := ValidateSlice(t.InputSources); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("artifact validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("artifact validation failed: %v", err))
 	}
 	if err := ValidateSlice(t.ResultPaths); err != nil {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("output validation failed: %v", err))
 	}
 	if len(t.ResultPaths) > 0 && t.Publisher.IsEmpty() {
-		mErr.Errors = append(mErr.Errors, errors.New("publisher must be set if result paths are set"))
+		mErr = errors.Join(mErr, errors.New("publisher must be set if result paths are set"))
 	}
 
 	seenInputAliases := make(map[string]bool)
 	for _, input := range t.InputSources {
 		if input.Alias != "" && seenInputAliases[input.Alias] {
-			mErr.Errors = append(mErr.Errors, fmt.Errorf("input source with alias %s already exist", input.Alias))
+			mErr = errors.Join(mErr, fmt.Errorf("input source with alias %s already exist", input.Alias))
 		}
 		seenInputAliases[input.Alias] = true
 	}
 
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // ToBuilder returns a new task builder with the same values as the task
