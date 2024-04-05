@@ -1,5 +1,5 @@
 ---
-sidebar_label: Job Specification
+sidebar_label: Fundamentals
 sidebar_position: 0
 ---
 

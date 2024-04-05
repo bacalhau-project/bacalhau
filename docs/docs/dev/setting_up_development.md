@@ -1,6 +1,7 @@
 ---
-sidebar_label: Setting Up Your Development Environment
+sidebar_label: Setting Up Dev Environment
 ---
+# How to set up your development environment
 
 If you are looking to develop on the project, this page will help you get started.
 

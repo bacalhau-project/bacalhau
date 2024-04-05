@@ -1,4 +1,4 @@
-# Debugging Locally
+# Local Debugging
 
 Useful tricks for debugging bacalhau when developing it locally.
 

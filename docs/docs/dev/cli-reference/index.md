@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'All commands'
+sidebar_label: 'CLI guide'
 sidebar_position: 7
 ---
 

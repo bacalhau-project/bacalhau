@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Running-Jupyter-Notebook"
+sidebar_label: "Deploy Jupyter Notebook"
 sidebar_position: 3
 ---
 # Running Jupyter Notebooks on Bacalhau

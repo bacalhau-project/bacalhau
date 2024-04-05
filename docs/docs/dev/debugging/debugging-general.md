@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Debugging Fundamentals'
+sidebar_label: 'Fundamentals'
 sidebar_position: 1
 description: 'How to troubleshoot and debug failed Bacalhau jobs'
 ---

@@ -1,5 +1,5 @@
 ---
-sidebar_label: Agent
+sidebar_label: Agents
 ---
 
 # Agent API Documentation

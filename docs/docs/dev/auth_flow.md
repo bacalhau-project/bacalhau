@@ -1,4 +1,4 @@
-# Authorization and authentication flow
+# Authorization/authentication flow
 
 Bacalhau authenticates and authorizes users in a multi-step flow.
 

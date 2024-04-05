@@ -34,7 +34,7 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Setting Up',
+      label: 'How-to Guides',
       link: {
         type: 'generated-index',
         title: 'Setting Up',
@@ -50,7 +50,7 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Advanced Guides',
+      label: 'References',
       link: {
         type: 'generated-index',
         title: 'Advanced Guides',
