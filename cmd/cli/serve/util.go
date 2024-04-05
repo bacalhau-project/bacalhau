@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -145,11 +145,10 @@ func getIPFSConfig() (types.IpfsConfig, error) {
 	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
 		return types.IpfsConfig{}, err
 	}
+
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
+		ipfsConfig.PrivateInternal = false
+		log.Debug().Msg("disabling ipfs private internal")
 	}
 
 	return ipfsConfig, nil
