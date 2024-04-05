@@ -834,7 +834,7 @@ Flags:
       --concurrency int                  How many nodes should run the job (default 1)
       --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
       --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
-      --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+      --do-not-track                     When true the job will not be tracked
       --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
       --download                         Should we download the results once the job is complete?
       --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
@@ -925,7 +925,7 @@ bacalhau exec [jobtype] [flags]
 ```shell
 Flags:
       --code string             Specifies the file, or directory of code to send with the request
-      --do-not-track            When true the job will not be tracked(?) TODO BETTER DEFINITION
+      --do-not-track            When true the job will not be tracked
       --dry-run                 Do not submit the job, but instead print out what will be submitted
   -e, --env strings             The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
   -f, --follow                  When specified will follow the output from the job as it runs
@@ -1941,7 +1941,7 @@ Flags:
       --concurrency int                  How many nodes should run the job (default 1)
       --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
       --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
-      --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+      --do-not-track                     When true the job will not be tracked
       --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
       --download                         Should we download the results once the job is complete?
       --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)

@@ -72,17 +72,17 @@ Finally, endpoints (such as vaults) can also be used to provide secure access to
 Bacalhau can be used for a variety of data processing workloads, including machine learning, data analytics, and scientific computing. It is well-suited for workloads that require processing large amounts of data in a distributed and parallelized manner.
 
 ### Use Cases
-Once you have more than 10 devices generating or storing around 100GB of data, you're likely to face challenges with processing that data efficiently. Traditional computing approaches may struggle to handle such large volumes, and that's where distributed computing solutions like Bacalhau can be extremely useful. Bacalhau can be used in various industries, including security, web serving, financial services, IoT, Edge, Fog, and multi-cloud. Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [molecular dynamics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
+Once you have more than 10 devices generating or storing around 100GB of data, you're likely to face challenges with processing that data efficiently. Traditional computing approaches may struggle to handle such large volumes, and that's where distributed computing solutions like Bacalhau can be extremely useful. Bacalhau can be used in various industries, including security, web serving, financial services, IoT, Edge, Fog, and multi-cloud. Bacalhau shines when it comes to data-intensive applications like [Data Engineering](./category/data-engineering), [Model Training](./category/model-training/), [Model Inference](./category/model-inference/), [Molecular Dynamics](./category/molecular-dynamics/)
 
 Here are some example tutorials on how you can process your data with Bacalhau:
-- [Stable Diffusion AI](https://docs.bacalhau.org/examples/model-inference/stable-diffusion-gpu/)
-- [Generate Realistic Images using StyleGAN3 and Bacalhau](https://docs.bacalhau.org/examples/model-inference/StyleGAN3/)
-- [Object Detection with YOLOv5 on Bacalhau](https://docs.bacalhau.org/examples/model-inference/object-detection-yolo5/)
-- [Running Genomics on Bacalhau](https://docs.bacalhau.org/examples/miscellaneous/Genomics/)
-- [Training Pytorch Model with Bacalhau](https://docs.bacalhau.org/examples/model-training/Training-Pytorch-Model/)
+1. [Stable Diffusion AI](./examples/model-inference/stable-diffusion-gpu/)
+1. [Generate Realistic Images using StyleGAN3 and Bacalhau](./examples/model-inference/StyleGAN3/)
+1. [Object Detection with YOLOv5 on Bacalhau](./examples/model-inference/object-detection-yolo5/)
+1. [Running Genomics on Bacalhau](./examples/molecular-dynamics/Genomics/)
+1. [Training Pytorch Model with Bacalhau](./examples/model-training/Training-Pytorch-Model/)
 
 :::info
-For more tutorials, visit our [example page](https://docs.bacalhau.org/examples/)
+For more tutorials, visit our [example page](./examples/)
 :::
 
 ## Community
@@ -91,10 +91,10 @@ Bacalhau has a very friendly community and we are always happy to help you get s
 
 - [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions) – ask anything about the project, give feedback or answer questions that will help other users.
 - [Join the Slack Community](https://bit.ly/bacalhau-project-slack) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
-- [Contributing](https://docs.bacalhau.org/community/ways-to-contribute) – learn how to contribute to the Bacalhau project.
+- [Contributing](./community/ways-to-contribute.md) – learn how to contribute to the Bacalhau project.
 
 ## Next Steps
 
-👉 Continue with [Bacalhau Getting Started guide](https://docs.bacalhau.org/getting-started/installation) to learn how to install and run a job with the Bacalhau client.
+👉 Continue with [Bacalhau Getting Started guide](./getting-started/installation.md) to learn how to install and run a job with the Bacalhau client.
 
-👉 Or jump directly to try out the different [Examples](/docs/examples/index.md) that showcases Bacalhau abilities.
+👉 Or jump directly to try out the different [Examples](./examples/) that showcases Bacalhau abilities.

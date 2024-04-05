@@ -151,7 +151,7 @@ You can use the `bacalhau docker run` [command](../dev/cli-reference/all-flags.m
                  --concurrency int                  How many nodes should run the job (default 1)
                  --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
                  --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
-                 --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+                 --do-not-track                     When true the job will not be tracked
                  --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
                  --download                         Should we download the results once the job is complete?
                  --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
@@ -210,7 +210,7 @@ You can also use the `bacalhau wasm run` [command](../dev/cli-reference/all-flag
                     --concurrency int                  How many nodes should run the job (default 1)
                     --cpu string                       Job CPU cores (e.g. 500m, 2, 8).
                     --disk string                      Job Disk requirement (e.g. 500Gb, 2Tb, 8Tb).
-                    --do-not-track                     When true the job will not be tracked(?) TODO BETTER DEFINITION
+                    --do-not-track                     When true the job will not be tracked
                     --domain stringArray               Domain(s) that the job needs to access (for HTTP networking)
                     --download                         Should we download the results once the job is complete?
                     --download-timeout-secs duration   Timeout duration for IPFS downloads. (default 5m0s)
