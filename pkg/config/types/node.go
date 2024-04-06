@@ -10,6 +10,11 @@ import (
 
 type NodeID string
 
+type NodeKind struct {
+	IsRequester bool
+	IsCompute   bool
+}
+
 type NodeConfig struct {
 	Name                   string                 `yaml:"Name"`
 	NameProvider           string                 `yaml:"NameProvider"`

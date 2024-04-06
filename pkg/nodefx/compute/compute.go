@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -37,67 +38,9 @@ import (
 	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 )
 
-// TODO consider providing a viper instance hereinstead of the global one.
-func SupplyConfig() fx.Option {
-	var cfg types.ComputeConfig
-	if err := pkgconfig.ForKey(types.NodeCompute, &cfg); err != nil {
-		panic(err)
-	}
-
-	return fx.Options(
-		// supply all configuration required for a compute node
-		fx.Supply(cfg.Capacity),
-		fx.Supply(cfg.ExecutionStore),
-		fx.Supply(cfg.JobTimeouts),
-		fx.Supply(cfg.Queue),
-		fx.Supply(cfg.LoggingSensor),
-		fx.Supply(cfg.ManifestCache),
-		fx.Supply(cfg.LogStreamConfig),
-		fx.Supply(cfg.LocalPublisher),
-		fx.Supply(cfg.Labels),
-		fx.Supply(cfg.Executor),
-		fx.Supply(cfg.BufferedExecutor),
-		fx.Supply(cfg.JobSelection),
-
-		// decorate/modify any config with default values if none were provided.
-		// TODO write decorators for the rest of the config in need of defaults
-		fx.Decorate(func(cfg types.CapacityConfig) (types.CapacityConfig, error) {
-			if cfg.DefaultJobResourceLimits.CPU == "" {
-				cfg.DefaultJobResourceLimits.CPU = "100m"
-			}
-			if cfg.DefaultJobResourceLimits.Memory == "" {
-				cfg.DefaultJobResourceLimits.Memory = "100Mi"
-			}
-			physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider()
-			physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.TODO())
-			if err != nil {
-				return types.CapacityConfig{}, err
-			}
-			if cfg.TotalResourceLimits.CPU == "" {
-				cpu := k8sresource.NewCPUFromFloat(physicalResources.CPU)
-				cfg.TotalResourceLimits.CPU = cpu.ToString()
-
-			}
-			if cfg.TotalResourceLimits.Memory == "" {
-				ram := humanize.Bytes(physicalResources.Memory)
-				cfg.TotalResourceLimits.Memory = ram
-
-			}
-			if cfg.TotalResourceLimits.GPU == "" {
-				cfg.TotalResourceLimits.GPU = fmt.Sprintf("%d", physicalResources.GPU)
-			}
-			if cfg.TotalResourceLimits.Disk == "" {
-				cfg.TotalResourceLimits.Disk = fmt.Sprintf("%d", physicalResources.Disk)
-			}
-			return cfg, nil
-		}),
-	)
-
-}
-
 var Module = fx.Module("compute",
-	// fx.Invoke(SupplyComputeConfig),
-
+	fx.Provide(LoadConfig),
+	fx.Decorate(DecorateCapacityConfig),
 	fx.Provide(NewComputeNode),
 	fx.Provide(ExecutionStore),
 	fx.Provide(StorageProviders),
@@ -147,6 +90,85 @@ var Module = fx.Module("compute",
 	fx.Invoke(InitLoggingSensor),
 	fx.Invoke(RegisterComputeEndpoint),
 )
+
+type ConfigResult struct {
+	fx.Out
+
+	Capacity           *types.CapacityConfig
+	ExecutionStore     types.JobStoreConfig `name:"execution_store_config"`
+	JobTimeouts        types.JobTimeoutConfig
+	Queue              types.QueueConfig
+	LoggingSensor      types.LoggingSensorConfig
+	ManifestCache      types.DockerCacheConfig
+	LogStreamConfig    types.LogStreamConfig
+	LocalPublisher     types.LocalPublisherConfig
+	Labels             types.LabelsConfig
+	Executor           types.ExecutorConfig
+	BufferedExecutor   types.BufferedExecutorConfig
+	JobSelection       types.JobSelectionPolicyConfig
+	StorageProviders   types.StorageProvidersConfig
+	ExecutorProviders  types.ExecutorProvidersConfig
+	PublisherProviders types.PublisherProvidersConfig
+}
+
+func DecorateCapacityConfig(cfg *types.CapacityConfig) (*types.CapacityConfig, error) {
+	// decorate/modify any config with default values if none were provided.
+	// TODO write decorators for the rest of the config in need of defaults
+	if cfg.DefaultJobResourceLimits.CPU == "" {
+		cfg.DefaultJobResourceLimits.CPU = "100m"
+	}
+	if cfg.DefaultJobResourceLimits.Memory == "" {
+		cfg.DefaultJobResourceLimits.Memory = "100Mi"
+	}
+	physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider()
+	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	if cfg.TotalResourceLimits.CPU == "" {
+		cpu := k8sresource.NewCPUFromFloat(physicalResources.CPU)
+		cfg.TotalResourceLimits.CPU = cpu.ToString()
+
+	}
+	if cfg.TotalResourceLimits.Memory == "" {
+		ram := humanize.Bytes(physicalResources.Memory)
+		cfg.TotalResourceLimits.Memory = ram
+
+	}
+	if cfg.TotalResourceLimits.GPU == "" {
+		cfg.TotalResourceLimits.GPU = fmt.Sprintf("%d", physicalResources.GPU)
+	}
+	if cfg.TotalResourceLimits.Disk == "" {
+		cfg.TotalResourceLimits.Disk = fmt.Sprintf("%d", physicalResources.Disk)
+	}
+	return cfg, nil
+
+}
+
+func LoadConfig(c *configfx.Config) (ConfigResult, error) {
+	var cfg types.ComputeConfig
+	if err := c.ForKey(types.NodeCompute, &cfg); err != nil {
+		return ConfigResult{}, err
+	}
+
+	return ConfigResult{
+		Capacity:           &cfg.Capacity,
+		ExecutionStore:     cfg.ExecutionStore,
+		JobTimeouts:        cfg.JobTimeouts,
+		Queue:              cfg.Queue,
+		LoggingSensor:      cfg.LoggingSensor,
+		ManifestCache:      cfg.ManifestCache,
+		LogStreamConfig:    cfg.LogStreamConfig,
+		LocalPublisher:     cfg.LocalPublisher,
+		Labels:             cfg.Labels,
+		Executor:           cfg.Executor,
+		BufferedExecutor:   cfg.BufferedExecutor,
+		JobSelection:       cfg.JobSelection,
+		StorageProviders:   cfg.StorageProviders,
+		ExecutorProviders:  cfg.ExecutorProviders,
+		PublisherProviders: cfg.PublisherProviders,
+	}, nil
+}
 
 type ComputeNodeParams struct {
 	fx.In
@@ -215,7 +237,7 @@ type CapacityTrackerResult struct {
 	Enqueued capacity.Tracker `name:"enqueued"`
 }
 
-func CapacityTrackers(cfg types.CapacityConfig) (CapacityTrackerResult, error) {
+func CapacityTrackers(cfg *types.CapacityConfig) (CapacityTrackerResult, error) {
 	totalResources, err := cfg.TotalResourceLimits.ToResources()
 	if err != nil {
 		return CapacityTrackerResult{}, err
@@ -323,7 +345,7 @@ func InitLoggingSensor(lc fx.Lifecycle, cfg types.LoggingSensorConfig, provider 
 	return nil
 }
 
-func UsageCalculator(cfg types.CapacityConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
+func UsageCalculator(cfg *types.CapacityConfig, storages storage.StorageProvider) (capacity.UsageCalculator, error) {
 	// endpoint/frontend
 	defaults, err := cfg.DefaultJobResourceLimits.ToResources()
 	if err != nil {
@@ -359,7 +381,7 @@ type NodeDecoratorParams struct {
 	Running   capacity.Tracker `name:"running"`
 }
 
-func NodeDecorator(cfg types.CapacityConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
+func NodeDecorator(cfg *types.CapacityConfig, p NodeDecoratorParams) (models.NodeInfoDecorator, error) {
 	maxRequirements, err := cfg.JobResourceLimits.ToResources()
 	if err != nil {
 		return nil, err
@@ -418,7 +440,7 @@ func DefaultSemanticStrategies(p SemanticStrategiesParams) ([]bidstrategy.Semant
 type ResourceStrategiesParams struct {
 	fx.In
 
-	Config    types.CapacityConfig
+	Config    *types.CapacityConfig
 	Executors executor.ExecutorProvider
 	Running   capacity.Tracker `name:"running"`
 	Enqueued  capacity.Tracker `name:"enqueued"`
@@ -523,7 +545,7 @@ func RegisterComputeEndpoint(p RegisterComputeEndpointParams) error {
 	return nil
 }
 
-func LabelsProvider(labelConifg types.LabelsConfig, capacityConifg types.CapacityConfig) (models.LabelsProvider, error) {
+func LabelsProvider(labelConifg types.LabelsConfig, capacityConifg *types.CapacityConfig) (models.LabelsProvider, error) {
 	// Compute Node labels
 	totalLimits, err := capacityConifg.TotalResourceLimits.ToResources()
 	if err != nil {

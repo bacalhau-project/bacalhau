@@ -6,18 +6,21 @@ import (
 )
 
 type ComputeConfig struct {
-	Capacity         CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore   JobStoreConfig           `yaml:"ExecutionStore"`
-	JobTimeouts      JobTimeoutConfig         `yaml:"JobTimeouts"`
-	Queue            QueueConfig              `yaml:"Queue"`
-	LoggingSensor    LoggingSensorConfig      `yaml:"Logging"`
-	ManifestCache    DockerCacheConfig        `yaml:"ManifestCache"`
-	LogStreamConfig  LogStreamConfig          `yaml:"LogStream"`
-	LocalPublisher   LocalPublisherConfig     `yaml:"LocalPublisher"`
-	Labels           LabelsConfig             `yaml:"Labels"`
-	Executor         ExecutorConfig           `yaml:"Executor"`
-	BufferedExecutor BufferedExecutorConfig   `yaml:"BufferedExecutor"`
-	JobSelection     JobSelectionPolicyConfig `yaml:"JobSelection"`
+	Capacity           CapacityConfig           `yaml:"Capacity"`
+	ExecutionStore     JobStoreConfig           `yaml:"ExecutionStore"`
+	JobTimeouts        JobTimeoutConfig         `yaml:"JobTimeouts"`
+	Queue              QueueConfig              `yaml:"Queue"`
+	LoggingSensor      LoggingSensorConfig      `yaml:"Logging"`
+	ManifestCache      DockerCacheConfig        `yaml:"ManifestCache"`
+	LogStreamConfig    LogStreamConfig          `yaml:"LogStream"`
+	LocalPublisher     LocalPublisherConfig     `yaml:"LocalPublisher"`
+	Labels             LabelsConfig             `yaml:"Labels"`
+	Executor           ExecutorConfig           `yaml:"Executor"`
+	BufferedExecutor   BufferedExecutorConfig   `yaml:"BufferedExecutor"`
+	JobSelection       JobSelectionPolicyConfig `yaml:"JobSelection"`
+	StorageProviders   StorageProvidersConfig   `yaml:"StorageProviders"`
+	ExecutorProviders  ExecutorProvidersConfig  `yaml:"ExecutorProviders"`
+	PublisherProviders PublisherProvidersConfig `yaml:"PublisherProviders"`
 }
 
 type LabelsConfig struct {
@@ -75,6 +78,20 @@ type LoggingSensorConfig struct {
 type LogStreamConfig struct {
 	// How many messages to buffer in the log stream channel, per stream
 	ChannelBufferSize int `yaml:"ChannelBufferSize"`
+}
+
+type StorageProvidersConfig struct {
+	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
+	Disabled              []string `yaml:"Disabled"`
+}
+
+type ExecutorProvidersConfig struct {
+	Disabled []string `yaml:"Disabled"`
+}
+
+type PublisherProvidersConfig struct {
+	Local    LocalPublisherConfig `yaml:"Local"`
+	Disabled []string             `yaml:"Disabled"`
 }
 
 type LocalPublisherConfig struct {

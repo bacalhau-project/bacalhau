@@ -1,14 +1,14 @@
 package compute
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
-func StorageProviders(cfg node.ComputeConfig, client ipfs.Client) (storage.StorageProvider, error) {
+func StorageProviders(cfg types.StorageProvidersConfig, client ipfs.Client) (storage.StorageProvider, error) {
 	pr, err := executor_util.NewStandardStorageProvider(
 		executor_util.StandardStorageProviderOptions{
 			API:                   client,
@@ -18,8 +18,8 @@ func StorageProviders(cfg node.ComputeConfig, client ipfs.Client) (storage.Stora
 	if err != nil {
 		return nil, err
 	}
-	// TODO(forrest): yet another provider providing providers
-	return provider.NewConfiguredProvider(pr, cfg.DisabledFeatures.Storages), err
+	// NB(forrest): yet another provider providing providers
+	return provider.NewConfiguredProvider(pr, cfg.Disabled), err
 
 }
 

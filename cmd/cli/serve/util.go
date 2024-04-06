@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -98,8 +99,8 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 		},
-		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
-		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
+		HousekeepingBackgroundTaskInterval: time.Duration(cfg.Housekeeping.HousekeepingBackgroundTaskInterval),
+		NodeRankRandomnessRange:            cfg.NodeRanker.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               cfg.OverAskForBidsFactor,
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality:            semantic.JobSelectionDataLocality(cfg.JobSelectionPolicy.Locality),
@@ -119,19 +120,23 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
 		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
-		TranslationEnabled:             cfg.TranslationEnabled,
+		TranslationEnabled:             cfg.Translation.TranslationEnabled,
 		JobStore:                       jobStore,
 		JobStoreConfig:                 cfg.JobStore,
-		DefaultPublisher:               cfg.DefaultPublisher,
+		DefaultPublisher:               cfg.JobDefaults.DefaultPublisher,
 	})
 }
 
-func getNodeType() (requester, compute bool, err error) {
+func getNodeType(c *configfx.Config) (requester, compute bool, err error) {
 	requester = false
 	compute = false
 	err = nil
 
-	nodeType := viper.GetStringSlice(types.NodeType)
+	var nodeType []string
+	err = c.ForKey(types.NodeType, &nodeType)
+	if err != nil {
+		return false, false, err
+	}
 	for _, nodeType := range nodeType {
 		if nodeType == "compute" {
 			compute = true
@@ -144,9 +149,9 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func getIPFSConfig() (types.IpfsConfig, error) {
+func getIPFSConfig(c *configfx.Config) (types.IpfsConfig, error) {
 	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
+	if err := c.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
 		return types.IpfsConfig{}, err
 	}
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
@@ -201,17 +206,17 @@ func getAllowListedLocalPathsConfig() []string {
 	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
 }
 
-func getTransportType() (string, error) {
+func getTransportType(c *configfx.Config) (string, error) {
 	var networkCfg types.NetworkConfig
-	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+	if err := c.ForKey(types.NodeNetwork, &networkCfg); err != nil {
 		return "", err
 	}
 	return networkCfg.Type, nil
 }
 
-func getNetworkConfig() (node.NetworkConfig, error) {
+func getNetworkConfig(c *configfx.Config) (node.NetworkConfig, error) {
 	var networkCfg types.NetworkConfig
-	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
+	if err := c.ForKey(types.NodeNetwork, &networkCfg); err != nil {
 		return node.NetworkConfig{}, err
 	}
 
@@ -297,7 +302,7 @@ func getNodeID(ctx context.Context) (string, error) {
 // this will only write values that must not change between invocations,
 // such as the job store path and node name,
 // and only if they are not already set in the config file.
-func persistConfigs(repoPath string) error {
+func persistConfigs(cfg *configfx.Config, repoPath string) error {
 	resolvedConfig, err := config.GetConfig()
 	if err != nil {
 		return fmt.Errorf("error getting config: %w", err)

@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -21,14 +22,14 @@ type EndpointParams struct {
 
 type Endpoint struct {
 	router           *echo.Echo
-	nodeID           string
+	nodeID           types.NodeID
 	nodeInfoProvider models.NodeInfoProvider
 }
 
 type SharedEndpoingParams struct {
 	fx.In
 
-	NodeID       string `name:"nodeid"`
+	NodeID       types.NodeID
 	Router       *echo.Echo
 	NodeProvider *routing.NodeInfoProvider
 }
@@ -62,7 +63,7 @@ func InitSharedEndpoint(p SharedEndpoingParams) {
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
 		router:           params.Router,
-		nodeID:           params.NodeID,
+		nodeID:           types.NodeID(params.NodeID),
 		nodeInfoProvider: params.NodeInfoProvider,
 	}
 
@@ -98,7 +99,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/id [get]
 func (e *Endpoint) id(c echo.Context) error {
-	return c.String(http.StatusOK, e.nodeID)
+	return c.String(http.StatusOK, string(e.nodeID))
 }
 
 // nodeInfo godoc

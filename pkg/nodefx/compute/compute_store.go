@@ -9,24 +9,29 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
-func ExecutionStore(lc fx.Lifecycle, cfg node.ComputeConfig) (store.ExecutionStore, error) {
-	if err := cfg.ExecutionStoreConfig.Validate(); err != nil {
+type ExecutionStoreParams struct {
+	fx.In
+
+	Config types.JobStoreConfig `name:"execution_store_config"`
+}
+
+func ExecutionStore(lc fx.Lifecycle, p ExecutionStoreParams) (store.ExecutionStore, error) {
+	if err := p.Config.Validate(); err != nil {
 		return nil, err
 	}
 
 	var store store.ExecutionStore
 	var err error
-	switch cfg.ExecutionStoreConfig.Type {
+	switch p.Config.Type {
 	case types.BoltDB:
-		store, err = boltdb.NewStore(context.TODO(), cfg.ExecutionStoreConfig.Path)
+		store, err = boltdb.NewStore(context.TODO(), p.Config.Path)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", cfg.ExecutionStoreConfig.Type)
+		return nil, fmt.Errorf("unknown JobStore type: %s", p.Config.Type)
 	}
 
 	lc.Append(fx.Hook{

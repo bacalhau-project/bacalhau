@@ -2,16 +2,26 @@ package repo
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -23,6 +33,18 @@ const (
 	UpdateCheckStatePath = "update.json"
 )
 
+type Repo interface {
+	Init(v ...*viper.Viper) error
+	Open(v ...*viper.Viper) error
+	Config() (*configfx.Config, error)
+	WriteRunInfo(ctx context.Context, summary string) (string, error)
+	Path() (string, error)
+	Exists() (bool, error)
+	Version() (int, error)
+}
+
+var _ Repo = (*FsRepo)(nil)
+
 type FsRepoParams struct {
 	Path       string
 	Migrations *MigrationManager
@@ -31,6 +53,7 @@ type FsRepoParams struct {
 type FsRepo struct {
 	path       string
 	Migrations *MigrationManager
+	config     *configfx.Config
 }
 
 func NewFS(params FsRepoParams) (*FsRepo, error) {
@@ -83,7 +106,7 @@ func (fsr *FsRepo) Version() (int, error) {
 	return fsr.readVersion()
 }
 
-func (fsr *FsRepo) Init() error {
+func (fsr *FsRepo) Init(v ...*viper.Viper) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -97,7 +120,15 @@ func (fsr *FsRepo) Init() error {
 		return err
 	}
 
-	cfg, err := config.Init(fsr.path)
+	// TODO consider passing the config in to repo init
+	c := configfx.New()
+	if len(v) > 1 {
+		panic("too many vipers")
+	}
+	if len(v) == 1 {
+		c = configfx.NewWithViper(v[0])
+	}
+	cfg, err := c.Init(fsr.path)
 	if err != nil {
 		return err
 	}
@@ -108,10 +139,11 @@ func (fsr *FsRepo) Init() error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
+	fsr.config = c
 	return fsr.writeVersion(RepoVersion3)
 }
 
-func (fsr *FsRepo) Open() error {
+func (fsr *FsRepo) Open(v ...*viper.Viper) error {
 	// if the repo does not exist we cannot open it.
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -125,11 +157,20 @@ func (fsr *FsRepo) Open() error {
 		}
 	}
 
+	// TODO consider passing the config in to repo init
+	c := configfx.New()
+	if len(v) > 1 {
+		panic("too many vipers")
+	}
+	if len(v) == 1 {
+		c = configfx.NewWithViper(v[0])
+	}
 	// load the configuration for the repo.
-	cfg, err := config.Load(fsr.path)
+	cfg, err := c.Load(fsr.path)
 	if err != nil {
 		return err
 	}
+	fsr.config = c
 
 	// ensure the loaded config has valid fields as they pertain to the filesystem
 	// e.g. user key and libp2p files exists, storage paths exist, etc.
@@ -139,20 +180,80 @@ func (fsr *FsRepo) Open() error {
 
 	// derive an installationID from the client ID loaded from the repo.
 	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID()
+		ID, _ := fsr.GetClientID()
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		config.SetIntallationID(uuidFromUserID.String())
+		c.SetValue(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
 	if cfg.Update.CheckStatePath == "" {
 		cfg.Update.CheckStatePath = filepath.Join(fsr.path, UpdateCheckStatePath)
-		config.SetUpdateCheckStatePath(cfg.Update.CheckStatePath)
+		c.SetValue(types.UpdateCheckStatePath, cfg.Update.CheckStatePath)
 	}
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
+	return nil
+}
+
+func (fsr *FsRepo) Config() (*configfx.Config, error) {
+	if fsr.config == nil {
+		return nil, fmt.Errorf("repo doesn't have config developer error")
+	}
+	return fsr.config, nil
+}
+
+// WritePersistedConfigs will write certain values from the resolved config to the persisted config.
+// These include fields for configurations that must not change between version updates, such as the
+// execution store and job store paths, in case we change their default values in future updates.
+func (fsr *FsRepo) WritePersistedConfigs() error {
+	// a viper config instance that is only based on the config file.
+	name := fsr.config.Viper().Get(types.NodeName)
+	_ = name
+	resolvedCfg, err := fsr.config.Current()
+	if err != nil {
+		return err
+	}
+	configFilePath := filepath.Join(fsr.path, configfx.ConfigFileName)
+	viperWriter := viper.New()
+	viperWriter.SetTypeByDefaultValue(true)
+	viperWriter.SetConfigFile(configFilePath)
+
+	// read existing config if it exists.
+	if err := viperWriter.ReadInConfig(); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	var fileCfg types.BacalhauConfig
+	if err := viperWriter.Unmarshal(&fileCfg, configfx.DecoderHook); err != nil {
+		return err
+	}
+
+	// check if any of the values that we want to write are not set in the config file.
+	var doWrite bool
+	var logMessage strings.Builder
+	set := func(key string, value interface{}) {
+		viperWriter.Set(key, value)
+		logMessage.WriteString(fmt.Sprintf("\n%s:\t%v", key, value))
+		doWrite = true
+	}
+	emptyStoreConfig := types.JobStoreConfig{}
+	if fileCfg.Node.Compute.ExecutionStore == emptyStoreConfig {
+		set(types.NodeComputeExecutionStore, resolvedCfg.Node.Compute.ExecutionStore)
+	}
+	if fileCfg.Node.Requester.JobStore == emptyStoreConfig {
+		set(types.NodeRequesterJobStore, resolvedCfg.Node.Requester.JobStore)
+	}
+	if fileCfg.Node.Name == "" && resolvedCfg.Node.Name != "" {
+		set(types.NodeName, resolvedCfg.Node.Name)
+	}
+	if doWrite {
+		log.Info().Msgf("Writing to config file %s:%s", configFilePath, logMessage.String())
+		return viperWriter.WriteConfig()
+	}
 	return nil
 }
 
@@ -209,4 +310,82 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 			writePath = userDir
 		}
 	*/
+}
+
+// loadClientID loads a hash identifying a user based on their ID key.
+func (fsr *FsRepo) GetClientID() (string, error) {
+	key, err := fsr.loadUserIDKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to load user ID key: %w", err)
+	}
+
+	return convertToClientID(&key.PublicKey), nil
+}
+
+const (
+	sigHash = crypto.SHA256 // hash function to use for sign/verify
+)
+
+// convertToClientID converts a public key to a client ID:
+func convertToClientID(key *rsa.PublicKey) string {
+	hash := sigHash.New()
+	hash.Write(key.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes)
+}
+
+func (fsr *FsRepo) GetClientPublicKey() (*rsa.PublicKey, error) {
+	privKey, err := fsr.loadUserIDKey()
+	if err != nil {
+		return nil, err
+	}
+	return &privKey.PublicKey, nil
+}
+
+func (fsr *FsRepo) GetClientPrivateKey() (*rsa.PrivateKey, error) {
+	privKey, err := fsr.loadUserIDKey()
+	if err != nil {
+		return nil, err
+	}
+	return privKey, nil
+}
+
+// loadUserIDKey loads the user ID key from whatever source is configured.
+func (fsr *FsRepo) loadUserIDKey() (*rsa.PrivateKey, error) {
+	keyFile, found := fsr.config.GetString(types.UserKeyPath)
+	if !found {
+		return nil, fmt.Errorf("config error: user-id-key not set")
+	}
+
+	file, err := os.Open(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open user ID key file: %w", err)
+	}
+	defer closer.CloseWithLogOnError("user ID key file", file)
+
+	keyBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read user ID key file: %w", err)
+	}
+
+	keyBlock, _ := pem.Decode(keyBytes)
+	if keyBlock == nil {
+		return nil, fmt.Errorf("failed to decode user ID key file %q", keyFile)
+	}
+
+	// TODO: #3159 Add support for both rsa _and_ ecdsa private keys, see crypto.PrivateKey.
+	//       Since we have access to the private key we can hack it by signing a
+	//       message twice and comparing them, rather than verifying directly.
+	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse user: %w", err)
+	// }
+
+	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
+	}
+
+	return key, nil
 }

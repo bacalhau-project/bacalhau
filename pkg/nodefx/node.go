@@ -5,34 +5,33 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/nodefx/requester"
+	routing2 "github.com/bacalhau-project/bacalhau/pkg/nodefx/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/nodefx/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type BacalhauNode struct {
 	fx.In
 
+	Repo             *repo.FsRepo
 	Transport        *nats_transport.NATSTransport
 	Server           *publicapi.Server
 	NodeInfoProvider *routing.NodeInfoProvider
@@ -40,102 +39,54 @@ type BacalhauNode struct {
 	Requester        *requester.RequesterNode `optional:"true"`
 }
 
-func getNodeID() (types.NodeID, error) {
-	nodeName, err := pkgconfig.Get[string](types.NodeName)
-	if err != nil {
-		return "", err
+func New(ctx context.Context, opts ...Option) (*BacalhauNode, func() error, error) {
+	settings := &Settings{
+		// NB(forrest): if both compute and requester are false this node will be worthless
+		isCompute:   false,
+		isRequester: false,
+		repo:        nil,
+		config:      configfx.New(),
+		options:     make(map[interface{}]fx.Option),
+	}
+	// TODO set default options on the settings, we need a default config for this that we will override.
+	// in the below Options statement
+
+	// apply module options
+	if err := Options(opts...)(settings); err != nil {
+		return nil, nil, fmt.Errorf("applying node options failed: %w", err)
 	}
 
-	if nodeName != "" {
-		return types.NodeID(nodeName), nil
+	// now we have a full set of options to build a node, if no opts... param was provided
+	// these will all be the default, but if opts... were provided we will have overridden the
+	// specified defaults.
+	ctors := make([]fx.Option, 0, len(settings.options))
+	for _, opt := range settings.options {
+		ctors = append(ctors, opt)
 	}
-	nodeNameProviderType, err := pkgconfig.Get[string](types.NodeNameProvider)
-	if err != nil {
-		return "", err
-	}
-
-	nodeNameProviders := map[string]idgen.NodeNameProvider{
-		"hostname": idgen.HostnameProvider{},
-		"aws":      idgen.NewAWSNodeNameProvider(),
-		"gcp":      idgen.NewGCPNodeNameProvider(),
-		"uuid":     idgen.UUIDNodeNameProvider{},
-		"puuid":    idgen.PUUIDNodeNameProvider{},
-	}
-	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
-	if !ok {
-		return "", fmt.Errorf(
-			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	// TODO for now repo is required. But we can provide a "Memrepo" implementation and make it a default
+	// if a file system repo (fsrepo) isn't provided.
+	if settings.repo == nil {
+		panic("repo required")
 	}
 
-	nodeName, err = nodeNameProvider.GenerateNodeName(context.TODO())
-	if err != nil {
-		return "", err
-	}
-
-	// set the new name in the config, so it can be used and persisted later.
-	pkgconfig.SetValue(types.NodeName, nodeName)
-	return types.NodeID(nodeName), nil
-}
-
-func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client) (*BacalhauNode, func() error, error) {
 	bacalhauNode := new(BacalhauNode)
-
-	err := mergo.Merge(&ndcfg.APIServerConfig, publicapi.DefaultConfig())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var nodeConfig types.NodeConfig
-	if err := pkgconfig.ForKey(types.Node, &nodeConfig); err != nil {
-		return nil, nil, err
-	}
-
-	log.Ctx(ctx)
 	app := fx.New(
+		// ensure this never panics
 		fx.RecoverFromPanics(),
 
 		fx.Supply(log.Ctx(ctx)),
-		fx.Supply(nodeConfig.ServerMiddlewareConfig),
-		fx.Supply(nodeConfig.Server),
-		fx.Provide(getNodeID),
-		fx.Module("ipfs",
-			fx.Supply(ipfsClient),
-		),
 
-		fx.Module("config",
-			fx.Supply(ndcfg),
-			fx.Supply(nats_transport.NATSTransportConfig{
-				NodeID:                   ndcfg.NodeID,
-				Port:                     ndcfg.NetworkConfig.Port,
-				AdvertisedAddress:        ndcfg.NetworkConfig.AdvertisedAddress,
-				AuthSecret:               ndcfg.NetworkConfig.AuthSecret,
-				Orchestrators:            ndcfg.NetworkConfig.Orchestrators,
-				StoreDir:                 ndcfg.NetworkConfig.StoreDir,
-				ClusterName:              ndcfg.NetworkConfig.ClusterName,
-				ClusterPort:              ndcfg.NetworkConfig.ClusterPort,
-				ClusterPeers:             ndcfg.NetworkConfig.ClusterPeers,
-				ClusterAdvertisedAddress: ndcfg.NetworkConfig.ClusterAdvertisedAddress,
-				IsRequesterNode:          ndcfg.IsRequesterNode,
-			}),
-			fx.Provide(
-				fx.Annotate(
-					func() string {
-						return ndcfg.NodeID
-					},
-					// this is supplied as a string, which is wrong and only needed by InitSharedEndpoint
-					fx.ResultTags(`name:"nodeid"`),
-				),
-			),
-		),
-
-		fx.Module("transport",
-			fx.Provide(NATSS),
-			fx.Provide(NodeInfoProvider),
-			fx.Invoke(RegisterNodeInfoProviderDecorators),
-		),
-
+		transport.Module,
+		routing2.Module,
 		auth.Module,
 		publicapi.Module,
+
+		fx.Supply(settings.repo),
+		fx.Supply(settings.config),
+
+		fx.Provide(NodeID),
+		fx.Provide(NodeKind),
+
 		fx.Module("api",
 			fx.Invoke(agent.InitAgentEndpoint),
 			fx.Invoke(shared.InitSharedEndpoint),
@@ -144,17 +95,10 @@ func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client)
 			}),
 		),
 
-		ProvideIf(ndcfg.IsRequesterNode,
-			requester.Module,
-			fx.Supply(ndcfg.RequesterNodeConfig),
-		),
+		// apply the specified options
+		fx.Options(ctors...),
 
-		ProvideIf(ndcfg.IsComputeNode,
-			compute.Module,
-			compute.SupplyConfig(),
-			fx.Supply(ndcfg.ComputeConfig),
-		),
-
+		// "build" the bacalhau node instance
 		fx.Populate(bacalhauNode),
 	)
 
@@ -192,32 +136,70 @@ func NewNode(ctx context.Context, ndcfg node.NodeConfig, ipfsClient ipfs.Client)
 		return nil, nil, fmt.Errorf("failed to start bacalhau node: %w", err)
 	}
 
-	return bacalhauNode, shutdown, nil
-
-}
-
-func ProvideIf(condition bool, provider ...fx.Option) fx.Option {
-	if condition {
-		return fx.Options(provider...)
+	if err := bacalhauNode.Repo.WritePersistedConfigs(); err != nil {
+		shutdown()
+		return nil, nil, fmt.Errorf("error writing persisted config: %w", err)
 	}
-	return fx.Options()
+
+	return bacalhauNode, shutdown, nil
 }
 
-func NodeInfoProvider(cfg node.NodeConfig) (*routing.NodeInfoProvider, error) {
-	// TODO this may miss any labels provided by the compute node if they are created dynamically
-	labelsProvider := models.MergeLabelsInOrder(
-		&node.ConfigLabelsProvider{StaticLabels: cfg.Labels},
-		&node.RuntimeLabelsProvider{},
-	)
-	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
-		NodeID:              cfg.NodeID,
-		LabelsProvider:      labelsProvider,
-		BacalhauVersion:     *version.Get(),
-		DefaultNodeApproval: models.NodeApprovals.APPROVED,
-	})
-	return nodeInfoProvider, nil
+func NodeID(c *configfx.Config) (types.NodeID, error) {
+	var nodeName types.NodeID
+	if err := c.ForKey(types.NodeName, &nodeName); err != nil {
+		return "", err
+	}
+
+	if nodeName != "" {
+		return nodeName, nil
+	}
+	var nameProvider string
+	if err := c.ForKey(types.NodeNameProvider, &nameProvider); err != nil {
+		return "", err
+	}
+
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nameProvider]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nameProvider, lo.Keys(nodeNameProviders))
+	}
+
+	name, err := nodeNameProvider.GenerateNodeName(context.TODO())
+	if err != nil {
+		return "", err
+	}
+
+	// set the new name in the config, so it can be used and persisted later.
+	c.SetValue(types.NodeName, name)
+	return types.NodeID(name), nil
 }
 
-func RegisterNodeInfoProviderDecorators(transport *nats_transport.NATSTransport, provider *routing.NodeInfoProvider) {
-	provider.RegisterNodeInfoDecorator(transport.NodeInfoDecorator())
+func NodeKind(c *configfx.Config) (types.NodeKind, error) {
+	var nodeType []string
+	err := c.ForKey(types.NodeType, &nodeType)
+	if err != nil {
+		return types.NodeKind{}, err
+	}
+	var iscompute bool
+	var isrequester bool
+	for _, nodeType := range nodeType {
+		if nodeType == "compute" {
+			iscompute = true
+		} else if nodeType == "requester" {
+			isrequester = true
+		} else {
+			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
+		}
+	}
+	return types.NodeKind{
+		IsRequester: isrequester,
+		IsCompute:   iscompute,
+	}, nil
 }

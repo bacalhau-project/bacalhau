@@ -8,10 +8,10 @@ import (
 	"go.uber.org/fx"
 
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
@@ -20,7 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 )
 
-func PublisherProviders(lc fx.Lifecycle, cfg node.ComputeConfig, client ipfs_client.Client) (publisher.PublisherProvider, error) {
+func PublisherProviders(lc fx.Lifecycle, cfg types.PublisherProvidersConfig, client ipfs_client.Client) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
 	ipfsPublisher, err := ipfs.NewIPFSPublisher(client)
 	if err != nil {
@@ -33,7 +33,7 @@ func PublisherProviders(lc fx.Lifecycle, cfg node.ComputeConfig, client ipfs_cli
 		return nil, err
 	}
 
-	localPublisher := local.BetterNewLocalPublisher(cfg.LocalPublisher.Directory, cfg.LocalPublisher.Address, cfg.LocalPublisher.Port)
+	localPublisher := local.BetterNewLocalPublisher(cfg.Local.Directory, cfg.Local.Address, cfg.Local.Port)
 
 	pr := provider.NewMappedProvider(map[string]publisher.Publisher{
 		// TODO use an fx decorator
@@ -57,6 +57,6 @@ func PublisherProviders(lc fx.Lifecycle, cfg node.ComputeConfig, client ipfs_cli
 		},
 	})
 
-	return provider.NewConfiguredProvider(pr, cfg.DisabledFeatures.Publishers), nil
+	return provider.NewConfiguredProvider(pr, cfg.Disabled), nil
 
 }

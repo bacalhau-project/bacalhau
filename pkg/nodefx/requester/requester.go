@@ -2,12 +2,15 @@ package requester
 
 import (
 	"context"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -15,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
@@ -46,6 +48,7 @@ import (
 - Node Manager
 */
 var Module = fx.Module("requester",
+	fx.Provide(LoadConfig),
 	fx.Provide(NewRequesterNode),
 	fx.Provide(JobStore),
 	fx.Provide(NodeStore),
@@ -108,6 +111,46 @@ type RequesterParams struct {
 	Scheduler      orchestrator.SchedulerProvider
 }
 
+type ConfigResult struct {
+	fx.Out
+
+	JobDefaults      types.JobDefaults
+	EvaluationBroker types.EvaluationBrokerConfig
+	JobStore         types.JobStoreConfig `name:"job_store_config"`
+	Translation      types.TranslationConfig
+	StorageProvider  types.StorageProviderConfig
+	Metrics          types.MetricsConfig
+	Worker           types.WorkerConfig
+	NodeRanker       types.NodeRankerConfig
+	// JobSelectionPolicy model.JobSelectionPolicy
+	// Housekeeping           types.HousekeepingConfig
+	// FailureInjectionConfig model.FailureInjectionRequesterConfig
+	// TagCache types.DockerCacheConfig
+}
+
+func LoadConfig(c *configfx.Config) (ConfigResult, error) {
+	var cfg types.RequesterConfig
+	if err := c.ForKey(types.NodeRequester, &cfg); err != nil {
+		return ConfigResult{}, err
+	}
+
+	var metricsCfg types.MetricsConfig
+	if err := c.ForKey(types.Metrics, &metricsCfg); err != nil {
+		return ConfigResult{}, err
+	}
+
+	return ConfigResult{
+		JobDefaults:      cfg.JobDefaults,
+		EvaluationBroker: cfg.EvaluationBroker,
+		JobStore:         cfg.JobStore,
+		Translation:      cfg.Translation,
+		StorageProvider:  cfg.StorageProvider,
+		Metrics:          metricsCfg,
+		Worker:           cfg.Worker,
+		NodeRanker:       cfg.NodeRanker,
+	}, nil
+}
+
 func NewRequesterNode(p RequesterParams) *RequesterNode {
 	return &RequesterNode{
 		Endpoint:        p.Endpoint,
@@ -120,8 +163,8 @@ func NewRequesterNode(p RequesterParams) *RequesterNode {
 	}
 }
 
-func TracerContextProvider(lc fx.Lifecycle, cfg node.RequesterConfig) (*eventhandler.TracerContextProvider, error) {
-	provider := eventhandler.NewTracerContextProvider(cfg.NodeID)
+func TracerContextProvider(lc fx.Lifecycle, nodeID types.NodeID) (*eventhandler.TracerContextProvider, error) {
+	provider := eventhandler.NewTracerContextProvider(string(nodeID))
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return provider.Shutdown()
@@ -169,7 +212,7 @@ func NodeDiscoverer(store *kvstore.NodeStore) (orchestrator.NodeDiscoverer, erro
 	return discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{Store: store}), nil
 }
 
-func NodeRanker(store jobstore.Store, cfg node.RequesterConfig) (orchestrator.NodeRanker, error) {
+func NodeRanker(store jobstore.Store, cfg types.NodeRankerConfig) (orchestrator.NodeRanker, error) {
 	ranker := ranking.NewChain()
 	ranker.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
@@ -199,11 +242,11 @@ func NodeSelector(
 	}), nil
 }
 
-func EvaluationBroker(lc fx.Lifecycle, cfg node.RequesterConfig) (orchestrator.EvaluationBroker, error) {
+func EvaluationBroker(lc fx.Lifecycle, cfg types.EvaluationBrokerConfig) (orchestrator.EvaluationBroker, error) {
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
-		VisibilityTimeout:    cfg.EvalBrokerVisibilityTimeout,
-		InitialRetryDelay:    cfg.EvalBrokerInitialRetryDelay,
-		SubsequentRetryDelay: cfg.EvalBrokerSubsequentRetryDelay,
+		VisibilityTimeout:    time.Duration(cfg.EvalBrokerVisibilityTimeout),
+		InitialRetryDelay:    time.Duration(cfg.EvalBrokerInitialRetryDelay),
+		SubsequentRetryDelay: time.Duration(cfg.EvalBrokerSubsequentRetryDelay),
 		MaxReceiveCount:      cfg.EvalBrokerMaxRetryCount,
 	})
 	if err != nil {
@@ -224,7 +267,7 @@ func EvaluationBroker(lc fx.Lifecycle, cfg node.RequesterConfig) (orchestrator.E
 }
 
 func Planner(
-	cfg node.RequesterConfig,
+	nodeID types.NodeID,
 	transport *nats_transport.NATSTransport,
 	store jobstore.Store,
 	eventEmitter orchestrator.EventEmitter,
@@ -238,14 +281,14 @@ func Planner(
 		// planner that forwards the desired state to the compute nodes,
 		// and updates the observed state if the compute node accepts the desired state
 		planner.NewComputeForwarder(planner.ComputeForwarderParams{
-			ID:             cfg.NodeID,
+			ID:             string(nodeID),
 			ComputeService: transport.ComputeProxy(),
 			JobStore:       store,
 		}),
 
 		// planner that publishes events on job completion or failure
 		planner.NewEventEmitter(planner.EventEmitterParams{
-			ID:           cfg.NodeID,
+			ID:           string(nodeID),
 			EventEmitter: eventEmitter,
 		}),
 
@@ -266,7 +309,7 @@ func RetryStrategy() (orchestrator.RetryStrategy, error) {
 
 func SchedulerProvider(
 	lc fx.Lifecycle,
-	cfg node.RequesterConfig,
+	cfg types.WorkerConfig,
 	store jobstore.Store,
 	planner orchestrator.Planner,
 	nodeSelector orchestrator.NodeSelector,
@@ -300,8 +343,8 @@ func SchedulerProvider(
 		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
 			SchedulerProvider:     schedulerProvider,
 			EvaluationBroker:      broker,
-			DequeueTimeout:        cfg.WorkerEvalDequeueTimeout,
-			DequeueFailureBackoff: backoff.NewExponential(cfg.WorkerEvalDequeueBaseBackoff, cfg.WorkerEvalDequeueMaxBackoff),
+			DequeueTimeout:        time.Duration(cfg.WorkerEvalDequeueTimeout),
+			DequeueFailureBackoff: backoff.NewExponential(time.Duration(cfg.WorkerEvalDequeueBaseBackoff), time.Duration(cfg.WorkerEvalDequeueMaxBackoff)),
 		})
 		workers = append(workers, worker)
 	}
@@ -325,19 +368,20 @@ func SchedulerProvider(
 }
 
 func EndpointV1(
-	cfg node.RequesterConfig,
+	nodeID types.NodeID,
+	cfg types.JobDefaults,
 	transport *nats_transport.NATSTransport,
 	broker orchestrator.EvaluationBroker,
 	eventEmitter orchestrator.EventEmitter,
 	store jobstore.Store,
 ) (*requester.BaseEndpoint, error) {
 	return requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         cfg.NodeID,
+		ID:                         string(nodeID),
 		EvaluationBroker:           broker,
 		Store:                      store,
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            transport.ComputeProxy(),
-		DefaultJobExecutionTimeout: cfg.JobDefaults.ExecutionTimeout,
+		DefaultJobExecutionTimeout: time.Duration(cfg.ExecutionTimeout),
 		DefaultPublisher:           cfg.DefaultPublisher,
 	}), nil
 }
@@ -387,7 +431,10 @@ func OrchestratorAPI(
 }
 
 func EndpointV2(
-	cfg node.RequesterConfig,
+	nodeID types.NodeID,
+	jobcfg types.JobDefaults,
+	strgCfg types.StorageProviderConfig,
+	trnslCfg types.TranslationConfig,
 	transport *nats_transport.NATSTransport,
 	broker orchestrator.EvaluationBroker,
 	eventEmitter orchestrator.EventEmitter,
@@ -397,15 +444,15 @@ func EndpointV2(
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
-		transformer.DefaultsApplier(cfg.JobDefaults),
-		transformer.RequesterInfo(cfg.NodeID),
+		transformer.DefaultsApplier(transformer.JobDefaults{ExecutionTimeout: time.Duration(jobcfg.ExecutionTimeout)}),
+		transformer.RequesterInfo(string(nodeID)),
 		// transformer.NewInlineStoragePinner(storageProvider),
 	}
 
-	if cfg.DefaultPublisher != "" {
+	if jobcfg.DefaultPublisher != "" {
 		// parse the publisher to generate a models.SpecConfig and add it to each job
 		// which is without a publisher
-		config, err := job.ParsePublisherString(cfg.DefaultPublisher)
+		config, err := job.ParsePublisherString(jobcfg.DefaultPublisher)
 		if err == nil {
 			jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 		}
@@ -414,7 +461,7 @@ func EndpointV2(
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
-	if !cfg.S3PreSignedURLDisabled {
+	if !strgCfg.S3.PreSignedURLDisabled {
 		// S3 result signer
 		s3Config, err := s3helper.DefaultAWSConfig()
 		if err != nil {
@@ -424,18 +471,18 @@ func EndpointV2(
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
 			}),
-			Expiration: cfg.S3PreSignedURLExpiration,
+			Expiration: time.Duration(strgCfg.S3.PreSignedURLExpiration),
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
 	var translationProvider translation.TranslatorProvider
-	if cfg.TranslationEnabled {
+	if trnslCfg.TranslationEnabled {
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
-		ID:                cfg.NodeID,
+		ID:                string(nodeID),
 		EvaluationBroker:  broker,
 		Store:             store,
 		EventEmitter:      eventEmitter,
@@ -450,15 +497,16 @@ func EndpointV2(
 
 func Housekeeping(
 	lc fx.Lifecycle,
-	cfg node.RequesterConfig,
+	nodeID types.NodeID,
+	cfg types.HousekeepingConfig,
 	endpoint requester.Endpoint,
 	store jobstore.Store,
 ) (*requester.Housekeeping, error) {
 	hk := requester.NewHousekeeping(requester.HousekeepingParams{
 		Endpoint: endpoint,
 		JobStore: store,
-		NodeID:   cfg.NodeID,
-		Interval: cfg.HousekeepingBackgroundTaskInterval,
+		NodeID:   string(nodeID),
+		Interval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
 	})
 
 	lc.Append(fx.Hook{
@@ -474,8 +522,8 @@ func Housekeeping(
 	return hk, nil
 }
 
-func EventTracer(lc fx.Lifecycle) (*eventhandler.Tracer, error) {
-	eventTracer, err := eventhandler.NewTracer()
+func EventTracer(lc fx.Lifecycle, cfg types.MetricsConfig) (*eventhandler.Tracer, error) {
+	eventTracer, err := eventhandler.NewTracer(cfg.EventTracerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -489,14 +537,14 @@ func EventTracer(lc fx.Lifecycle) (*eventhandler.Tracer, error) {
 }
 
 func RegisterEventConsumerHandlers(
-	cfg node.RequesterConfig,
+	nodeID types.NodeID,
 	tracer *eventhandler.Tracer,
 	handler *eventhandler.ChainedJobEventHandler,
 	provider *eventhandler.TracerContextProvider,
 	endpoint *requester_endpoint.Endpoint,
 ) error {
 	// Register event handlers
-	lifecycleEventHandler := system.NewJobLifecycleEventHandler(cfg.NodeID)
+	lifecycleEventHandler := system.NewJobLifecycleEventHandler(string(nodeID))
 	handler.AddHandlers(
 		// add tracing metadata to the context about the read event
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),

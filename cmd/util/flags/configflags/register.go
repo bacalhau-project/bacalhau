@@ -41,6 +41,30 @@ type Definition struct {
 
 // BindFlags binds flags from a command to Viper using the provided definitions.
 // This method should be called in command `PreRun`
+func BindFlagsWithViper(cmd *cobra.Command, v *viper.Viper, register map[string][]Definition) error {
+	for _, defs := range register {
+		for _, def := range defs {
+			// set the default value
+			v.SetDefault(def.ConfigPath, def.DefaultValue)
+
+			// bind the flag to viper
+			if err := v.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
+				return err
+			}
+
+			// Bind environment variables to viper
+			if len(def.EnvironmentVariables) > 0 {
+				if err := v.BindEnv(append([]string{def.ConfigPath}, def.EnvironmentVariables...)...); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// BindFlags binds flags from a command to Viper using the provided definitions.
+// This method should be called in command `PreRun`
 func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
 	for _, defs := range register {
 		for _, def := range defs {

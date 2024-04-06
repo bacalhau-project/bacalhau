@@ -174,9 +174,14 @@ var StagingRequesterConfig = types.RequesterConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
-	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),
-	NodeRankRandomnessRange:            5,
-	OverAskForBidsFactor:               3,
+	Housekeeping: types.HousekeepingConfig{HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second)},
+	NodeRanker: types.NodeRankerConfig{
+		MinBacalhauVersion: models.BuildVersionInfo{
+			Major: "1", Minor: "0", GitVersion: "v1.0.4",
+		},
+		NodeRankRandomnessRange: 5,
+	},
+	OverAskForBidsFactor: 3,
 	FailureInjectionConfig: model.FailureInjectionRequesterConfig{
 		IsBadActor: false,
 	},

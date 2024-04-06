@@ -7,21 +7,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
-func AuthenticatorsProviders(cfg node.NodeConfig) (authn.Provider, error) {
-	var allErr error
-	privKey, allErr := pkgconfig.GetClientPrivateKey()
-	if allErr != nil {
-		return nil, allErr
+func AuthenticatorsProviders(nodeID types.NodeID, r *repo.FsRepo, cfg types.AuthConfig) (authn.Provider, error) {
+	privKey, err := r.GetClientPrivateKey()
+	if err != nil {
+		return nil, err
 	}
 
-	authns := make(map[string]authn.Authenticator, len(cfg.AuthConfig.Methods))
-	for name, authnConfig := range cfg.AuthConfig.Methods {
+	var allErr error
+	authns := make(map[string]authn.Authenticator, len(cfg.Methods))
+	for name, authnConfig := range cfg.Methods {
 		switch authnConfig.Type {
 		case authn.MethodTypeChallenge:
 			methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
@@ -32,9 +32,9 @@ func AuthenticatorsProviders(cfg node.NodeConfig) (authn.Provider, error) {
 
 			authns[name] = challenge.NewAuthenticator(
 				methodPolicy,
-				challenge.NewStringMarshaller(cfg.NodeID),
+				challenge.NewStringMarshaller(string(nodeID)),
 				privKey,
-				cfg.NodeID,
+				string(nodeID),
 			)
 		case authn.MethodTypeAsk:
 			methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
@@ -46,7 +46,7 @@ func AuthenticatorsProviders(cfg node.NodeConfig) (authn.Provider, error) {
 			authns[name] = ask.NewAuthenticator(
 				methodPolicy,
 				privKey,
-				cfg.NodeID,
+				string(nodeID),
 			)
 		default:
 			allErr = errors.Join(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))

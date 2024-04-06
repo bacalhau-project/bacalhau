@@ -7,18 +7,19 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configfx"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -28,7 +29,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/bacalhau-project/bacalhau/webui"
 )
 
 var DefaultSwarmPort = 1235
@@ -118,6 +118,7 @@ func NewCmd() *cobra.Command {
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
+	cmdViper := viper.New()
 
 	serveCmd := &cobra.Command{
 		Use:     "serve",
@@ -148,12 +149,12 @@ func NewCmd() *cobra.Command {
 				return the value of the last flag bound to it. This is why it's important to manage
 				flag binding thoughtfully, ensuring each command's context is respected.
 			*/
-			if err := configflags.BindFlags(cmd, serveFlags); err != nil {
+			if err := configflags.BindFlagsWithViper(cmd, cmdViper, serveFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return serve(cmd)
+			return serve(cmd, cmdViper)
 		},
 	}
 
@@ -165,51 +166,50 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command) error {
+func serve(cmd *cobra.Command, v *viper.Viper) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
-	repoDir, err := config.Get[string]("repo")
+	repoDir, err := cmd.Root().PersistentFlags().GetString("repo")
 	if err != nil {
 		return err
 	}
-	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
+	fsRepo, err := setup.SetupBacalhauRepo(repoDir, v)
+	if err != nil {
+		return err
+	}
+	cfg, err := fsRepo.Config()
 	if err != nil {
 		return err
 	}
 
-	var nodeName string
-	var libp2pHost host.Host
-	var libp2pPeers []string
-	transportType, err := getTransportType()
-	if err != nil {
-		return err
-	}
-	// if the transport type is libp2p, we use the peerID as the node name
-	// even if the user provided one to avoid issues with peer lookups
-	if transportType == models.NetworkTypeLibp2p {
-		libp2pHost, libp2pPeers, err = setupLibp2p()
-		if err != nil {
-			return err
+	/*
+		// if the transport type is libp2p, we use the peerID as the node name
+		// even if the user provided one to avoid issues with peer lookups
+		if transportType == models.NetworkTypeLibp2p {
+			panic("deprecated libp2p")
+				libp2pHost, libp2pPeers, err = setupLibp2p()
+				if err != nil {
+					return err
+				}
+				nodeName = libp2pHost.ID().String()
+
+		} else {
+			nodeName, err = getNodeID(ctx)
+			if err != nil {
+				return err
+			}
 		}
-		nodeName = libp2pHost.ID().String()
-	} else {
-		nodeName, err = getNodeID(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
+	*/
 
 	// configure node type
-	isRequesterNode, isComputeNode, err := getNodeType()
+	isRequesterNode, isComputeNode, err := getNodeType(cfg)
 	if err != nil {
 		return err
 	}
 
 	// Establishing IPFS connection
-	ipfsConfig, err := getIPFSConfig()
+	ipfsConfig, err := getIPFSConfig(cfg)
 	if err != nil {
 		return err
 	}
@@ -219,157 +219,69 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig()
+	standardNode, shutdown, err := nodefx.New(ctx,
+		nodefx.Repo(fsRepo),
+		nodefx.IPFSClient(ipfsClient),
+		nodefx.ComputeNode(isComputeNode),
+		nodefx.RequesterNode(isRequesterNode),
+	)
 	if err != nil {
 		return err
 	}
-
-	if networkConfig.Type == models.NetworkTypeLibp2p {
-		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = libp2pPeers
-	}
-
-	computeConfig, err := GetComputeConfig(ctx, false)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure compute node")
-	}
-
-	requesterConfig, err := GetRequesterConfig(ctx, false)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure requester node")
-	}
-
-	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)
-	if err != nil {
+	defer func() error {
+		if err := shutdown(); err != nil {
+			log.Err(err).Msg("shutdown unsuccessful")
+		}
 		return err
-	}
-
-	authConfig, err := config.Get[types.AuthConfig](types.Auth)
-	if err != nil {
-		return err
-	}
-
-	nodeInfoStoreTTL, err := config.Get[time.Duration](types.NodeNodeInfoStoreTTL)
-	if err != nil {
-		return err
-	}
-
-	allowedListLocalPaths := getAllowListedLocalPathsConfig()
-
-	// Create node config from cmd arguments
-	nodeConfig := node.NodeConfig{
-		NodeID:                nodeName,
-		CleanupManager:        cm,
-		IPFSClient:            ipfsClient,
-		DisabledFeatures:      featureConfig,
-		HostAddress:           config.ServerAPIHost(),
-		APIPort:               config.ServerAPIPort(),
-		ComputeConfig:         computeConfig,
-		RequesterNodeConfig:   requesterConfig,
-		AuthConfig:            authConfig,
-		IsComputeNode:         isComputeNode,
-		IsRequesterNode:       isRequesterNode,
-		Labels:                config.GetStringMapString(types.NodeLabels),
-		AllowListedLocalPaths: allowedListLocalPaths,
-		NodeInfoStoreTTL:      nodeInfoStoreTTL,
-		NetworkConfig:         networkConfig,
-	}
-	// both the requester and compute nodes have a dependency on the NodeID, this is
-	// done so each module may accept its respective configs and not the whole thing.
-	nodeConfig.RequesterNodeConfig.NodeID = nodeName
-	nodeConfig.ComputeConfig.NodeID = nodeName
-	// this is duplicated here because the compute node shouldn't require a NodeConfig to build itself
-	nodeConfig.ComputeConfig.Labels = nodeConfig.Labels
-	nodeConfig.ComputeConfig.AllowListedLocalPaths = allowedListLocalPaths
-	nodeConfig.DisabledFeatures = featureConfig
-
-	if isRequesterNode {
-		// We only want auto TLS for the requester node, but this info doesn't fit well
-		// with the other data in the requesterConfig.
-		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
-		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
-
-		cert, key := config.GetRequesterCertificateSettings()
-		nodeConfig.RequesterTLSCertificateFile = cert
-		nodeConfig.RequesterTLSKeyFile = key
-	}
-
-	// Create and start bacalhau node
-	standardNode, _, err := nodefx.NewNode(ctx, nodeConfig, ipfsClient)
-	if err != nil {
-		return fmt.Errorf("error creating node: %w", err)
-	}
+	}()
 
 	// Persist the node config after the node is created and its config is valid.
-	if err = persistConfigs(repoDir); err != nil {
-		return fmt.Errorf("error persisting configs: %w", err)
-	}
+	/*
+		if err = persistConfigs(cfg, repoDir); err != nil {
+			return fmt.Errorf("error persisting configs: %w", err)
+		}
 
-	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
-	if err != nil {
-		return err
-	}
+	*/
 
-	// Start up Dashboard - default: 8483
-	if startWebUI {
-		listenPort, err := config.Get[int](types.NodeWebUIPort)
+	/*
+		startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 		if err != nil {
 			return err
 		}
 
-		apiURL := standardNode.Server.GetURI().JoinPath("api", "v1")
-		go func() {
-			// Specifically leave the host blank. The app will just use whatever
-			// host it is served on and replace the port and path.
-			apiPort := apiURL.Port()
-			apiPath := apiURL.Path
-
-			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+		// Start up Dashboard - default: 8483
+		if startWebUI {
+			listenPort, err := config.Get[int](types.NodeWebUIPort)
 			if err != nil {
-				cmd.PrintErrln(err)
+				return err
 			}
-		}()
-	}
+
+			apiURL := standardNode.Server.GetURI().JoinPath("api", "v1")
+			go func() {
+				// Specifically leave the host blank. The app will just use whatever
+				// host it is served on and replace the port and path.
+				apiPort := apiURL.Port()
+				apiPath := apiURL.Path
+
+				err := webui.ListenAndServe(ctx, "", apiPort, apiPath, listenPort)
+				if err != nil {
+					cmd.PrintErrln(err)
+				}
+			}()
+		}
+
+	*/
 
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.Compute != nil {
 		cmd.Printf("API: %s\n", standardNode.Server.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
-	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
-	if err != nil {
-		return err
-	}
-	cmd.Println()
-	cmd.Println(connectCmd)
-
-	envVars, err := buildEnvVariables(ctx, &nodeConfig, ipfsConfig)
-	if err != nil {
-		return err
-	}
-	cmd.Println()
-	cmd.Println("To connect to this node from the client, run the following commands in your shell:")
-	cmd.Println(envVars)
-
-	ripath, err := fsRepo.WriteRunInfo(ctx, envVars)
-	if err != nil {
-		return fmt.Errorf("writing run info to repo: %w", err)
-	} else {
-		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
-	}
-	if err != nil {
-		return err
-	}
-
-	cm.RegisterCallback(func() error {
-		return os.Remove(ripath)
-	})
-
 	<-ctx.Done() // block until killed
 	return nil
 }
 
-func setupLibp2p() (libp2pHost host.Host, peers []string, err error) {
+func setupLibp2p(c *configfx.Config) (libp2pHost host.Host, peers []string, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("failed to setup libp2p node. %w", err)

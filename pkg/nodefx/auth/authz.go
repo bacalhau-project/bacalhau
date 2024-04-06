@@ -2,20 +2,20 @@ package auth
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
-func Authorizer(cfg node.NodeConfig) (authz.Authorizer, error) {
-	authzPolicy, err := policy.FromPathOrDefault(cfg.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
+func Authorizer(nodeID types.NodeID, r *repo.FsRepo, cfg types.AuthConfig) (authz.Authorizer, error) {
+	authzPolicy, err := policy.FromPathOrDefault(cfg.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err
 	}
 
-	signingKey, err := pkgconfig.GetClientPublicKey()
+	signingKey, err := r.GetClientPublicKey()
 	if err != nil {
 		return nil, err
 	}
-	return authz.NewPolicyAuthorizer(authzPolicy, signingKey, cfg.NodeID), nil
+	return authz.NewPolicyAuthorizer(authzPolicy, signingKey, string(nodeID)), nil
 }
