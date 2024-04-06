@@ -62,7 +62,7 @@
                             "overrideName": true
                         }
                     },
-                "terminal.integrated.defaultProfile.linux": "zsh",
+                "terminal.integrated.defaultProfile.linux": "zsh"
             },
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
