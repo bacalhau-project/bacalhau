@@ -192,6 +192,7 @@ millicore
 Millicores
 mitchellh
 MNIST
+moby
 modelsutils
 modtidy
 mogrify
@@ -240,6 +241,7 @@ proto
 protobuf
 protoc
 protoimpl
+PTRACE
 publicapi
 pushd
 pyenv
