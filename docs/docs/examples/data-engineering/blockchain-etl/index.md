@@ -479,7 +479,7 @@ sudo geth --datadir /mnt/disks/ethereum/ attach
 
 Once the block sync has started, `eth.syncing` will return values. Before it starts, this value will be `false`.
 
-Note that by default, geth will perform a fast sync, without downloading the full blocks. The `syncmode=flull` flag forces geth to do a full sync. If we didn't do this, then we wouldn't be able to back up the data properly.
+Note that by default, geth will perform a fast sync, without downloading the full blocks. The `syncmode=full` flag forces geth to do a full sync. If we didn't do this, then we wouldn't be able to back up the data properly.
 
 ### Extracting the Data
 
