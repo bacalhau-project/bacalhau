@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
 	docker_sys "github.com/docker/docker/api/types/system"
@@ -134,7 +135,7 @@ func (c TracedClient) DistributionInspect(ctx context.Context, imageID string, a
 	return telemetry.RecordErrorOnSpanTwo[registry.DistributionInspect](span)(c.client.DistributionInspect(ctx, imageID, authToken))
 }
 
-func (c TracedClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (c TracedClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
 	ctx, span := c.span(ctx, "image.pull")
 	// span ends when the io.ReadCloser is closed
 

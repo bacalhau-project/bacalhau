@@ -54,7 +54,7 @@ func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
 		outputBuilder.WriteString(fmt.Sprintf("GitCommit %s\n", v.GitCommit))
 		_, writeErr = cmd.OutOrStdout().Write([]byte(outputBuilder.String()))
 	} else {
-		writeErr = output.OutputOneNonTabular(cmd, oV.OutputOpts, v)
+		writeErr = output.OutputOneNonTabular(cmd, oV.OutputOpts, v) //nolint
 	}
 
 	if writeErr != nil {

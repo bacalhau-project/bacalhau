@@ -127,5 +127,5 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		columns = append(columns, updateMessageColumn)
 	}
 
-	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
+	return output.OutputOne(cmd, columns, oV.OutputOpts, versions) //nolint
 }

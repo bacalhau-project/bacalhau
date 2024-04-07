@@ -144,7 +144,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 			o.printWarnings(cmd, warnings)
 		}
 		outputOps := output.NonTabularOutputOptions{Format: output.YAMLFormat}
-		if err = output.OutputOneNonTabular(cmd, outputOps, j); err != nil {
+		if err = output.OutputOneNonTabular(cmd, outputOps, j); err != nil { //nolint
 			util.Fatal(cmd, fmt.Errorf("failed to write job: %w", err), 1)
 		}
 		return

@@ -129,6 +129,7 @@ groupby
 gserviceaccount
 healthz
 helloworld
+HMAC
 humanid
 icore
 icoreoptions
@@ -240,6 +241,7 @@ oidc
 oltp
 oncommit
 oneof
+OnRunComplete
 organisation
 otel
 otelhttp
@@ -279,6 +281,7 @@ quic
 quickstart
 rabbitmq
 rawoutput
+rcmgr
 rdbms
 reenqueuing
 rego
@@ -365,4 +368,4 @@ yyyymmddhhmm
 zarr
 zerolog
 zidane
-HMAC
+omplete

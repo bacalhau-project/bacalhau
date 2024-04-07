@@ -67,15 +67,15 @@ func handleRequest(msg *nats.Msg, handler *ComputeHandler) {
 
 	switch method {
 	case AskForBid:
-		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.AskForBid)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.AskForBid) //nolint
 	case BidAccepted:
-		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidAccepted)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidAccepted) //nolint
 	case BidRejected:
-		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidRejected)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.BidRejected) //nolint
 	case CancelExecution:
-		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.CancelExecution)
+		processAndRespond(ctx, handler.conn, msg, handler.computeEndpoint.CancelExecution) //nolint
 	case ExecutionLogs:
-		processAndStream(ctx, handler.streamingClient, msg, handler.computeEndpoint.ExecutionLogs)
+		processAndStream(ctx, handler.streamingClient, msg, handler.computeEndpoint.ExecutionLogs) //nolint
 	default:
 		// Noop, not subscribed to this method
 		return

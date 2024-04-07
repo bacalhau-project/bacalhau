@@ -46,7 +46,7 @@ func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) {
 		util.Fatal(cmd, fmt.Errorf("could not get node %s: %w", nodeID, err), 1)
 	}
 
-	if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response.Node); err != nil {
+	if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response.Node); err != nil { //nolint
 		util.Fatal(cmd, fmt.Errorf("failed to write node %s: %w", nodeID, err), 1)
 	}
 }

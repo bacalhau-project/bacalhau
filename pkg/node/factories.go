@@ -62,7 +62,7 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		if err != nil {
 			return nil, err
 		}
-		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err
+		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err //nolint
 	})
 }
 
@@ -79,7 +79,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err //nolint
 		})
 }
 
@@ -112,7 +112,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err //nolint
 		})
 }
 
@@ -130,7 +130,7 @@ func NewStandardPublishersFactory() PublishersFactory {
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err //nolint
 		})
 }
 

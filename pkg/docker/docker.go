@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -354,8 +355,8 @@ func (c *Client) ImageDistribution(
 	return manifest, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {
-	_, _, err := c.ImageInspectWithRaw(ctx, image)
+func (c *Client) PullImage(ctx context.Context, imageName string, dockerCreds config.DockerCredentials) error {
+	_, _, err := c.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
 		// If there is no error, then return immediately as it means we have the docker image
 		// being discussed. No need to pull it.
@@ -368,13 +369,13 @@ func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config
 		return err
 	}
 
-	log.Ctx(ctx).Debug().Str("image", image).Msg("Pulling image as it wasn't found")
+	log.Ctx(ctx).Debug().Str("image", imageName).Msg("Pulling image as it wasn't found")
 
-	pullOptions := types.ImagePullOptions{
-		RegistryAuth: getAuthToken(ctx, image, dockerCreds),
+	pullOptions := image.PullOptions{
+		RegistryAuth: getAuthToken(ctx, imageName, dockerCreds),
 	}
 
-	output, err := c.ImagePull(ctx, image, pullOptions)
+	output, err := c.ImagePull(ctx, imageName, pullOptions)
 	if err != nil {
 		return err
 	}

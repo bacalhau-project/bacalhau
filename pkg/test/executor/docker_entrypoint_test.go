@@ -107,7 +107,7 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(suite.T(), err)
 
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	containers, err := cli.ContainerList(ctx, container.ListOptions{})
 	require.NoError(suite.T(), err, "Error listing containers")
 
 	for _, tag := range suite.imageNames {
@@ -161,7 +161,7 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "TrueTrue - Override only entrypoint",
 			imageSuffix:    "true-true",
-			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n", // cspell:disable-line
 			entrypoint:     overwriteEntrypoint,
 		},
 		{

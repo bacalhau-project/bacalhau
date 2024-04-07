@@ -54,13 +54,13 @@ func (h *CallbackHandler) handle(msg *nats.Msg) {
 
 	switch method {
 	case OnBidComplete:
-		processCallback(ctx, msg, h.callback.OnBidComplete)
+		processCallback(ctx, msg, h.callback.OnBidComplete) //nolint
 	case OnRunComplete:
-		processCallback(ctx, msg, h.callback.OnRunComplete)
+		processCallback(ctx, msg, h.callback.OnRunComplete) //nolint
 	case OnCancelComplete:
-		processCallback(ctx, msg, h.callback.OnCancelComplete)
+		processCallback(ctx, msg, h.callback.OnCancelComplete) //nolint
 	case OnComputeFailure:
-		processCallback(ctx, msg, h.callback.OnComputeFailure)
+		processCallback(ctx, msg, h.callback.OnComputeFailure) //nolint
 	default:
 		// Noop, not subscribed to this method
 		return

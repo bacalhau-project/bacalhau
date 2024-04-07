@@ -117,7 +117,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		WithSysNanotime().
 		WithSysWalltime().
 		WithFS(h.fs)
-	keys := maps.Keys(h.arguments.EnvironmentVariables)
+	keys := maps.Keys(h.arguments.EnvironmentVariables) //nolint
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order

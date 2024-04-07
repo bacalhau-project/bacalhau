@@ -43,7 +43,7 @@ func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) {
 		util.Fatal(cmd, fmt.Errorf("could not get server node: %w", err), 1)
 	}
 
-	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response.NodeInfo)
+	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response.NodeInfo) //nolint
 	if writeErr != nil {
 		util.Fatal(cmd, fmt.Errorf("failed to write node: %w", writeErr), 1)
 	}

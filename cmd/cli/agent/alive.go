@@ -42,7 +42,7 @@ func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) {
 		util.Fatal(cmd, fmt.Errorf("could not get server alive: %w", err), 1)
 	}
 
-	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response)
+	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response) //nolint
 	if writeErr != nil {
 		util.Fatal(cmd, fmt.Errorf("failed to write alive: %w", writeErr), 1)
 	}

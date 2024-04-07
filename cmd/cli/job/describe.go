@@ -73,7 +73,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	}
 
 	if o.OutputOpts.Format != "" {
-		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response); err != nil {
+		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response); err != nil { //nolint
 			util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
 		}
 		return

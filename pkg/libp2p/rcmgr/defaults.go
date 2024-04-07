@@ -2,7 +2,7 @@ package rcmgr
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	"github.com/libp2p/go-libp2p"
+	libp2p "github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
