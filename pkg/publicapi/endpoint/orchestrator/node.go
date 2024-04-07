@@ -148,9 +148,11 @@ func (e *Endpoint) updateNode(c echo.Context) error {
 
 	var action func(context.Context, string, string) (bool, string)
 	if args.Action == string(apimodels.NodeActionApprove) {
-		action = e.nodeManager.Approve
+		action = e.nodeManager.ApproveAction
 	} else if args.Action == string(apimodels.NodeActionReject) {
-		action = e.nodeManager.Reject
+		action = e.nodeManager.RejectAction
+	} else if args.Action == string(apimodels.NodeActionDelete) {
+		action = e.nodeManager.DeleteAction
 	} else {
 		action = func(context.Context, string, string) (bool, string) {
 			return false, "unsupported action"

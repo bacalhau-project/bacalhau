@@ -2,6 +2,7 @@ package copy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,9 +10,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/c2h5oh/datasize"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 )
 
@@ -43,7 +43,7 @@ func CopyOversize(
 
 	srcStorage, err := provider.Get(ctx, srcType)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get %s storage provider", srcType)
+		err = pkgerrors.Wrapf(err, "failed to get %s storage provider", srcType)
 		return false, err
 	}
 
@@ -55,7 +55,7 @@ func CopyOversize(
 
 		size, rerr := srcStorage.GetVolumeSize(ctx, *spec)
 		if rerr != nil {
-			err = errors.Wrapf(rerr, "failed to read spec %v", spec)
+			err = pkgerrors.Wrapf(rerr, "failed to read spec %v", spec)
 			return modified, err
 		}
 		specsizes = append(specsizes, specSize{artifact: spec, size: datasize.ByteSize(size)})
@@ -103,7 +103,7 @@ func Copy(
 ) (models.InputSource, error) {
 	srcStorage, srcErr := provider.Get(ctx, spec.Source.Type)
 	dstStorage, dstErr := provider.Get(ctx, destination)
-	err := multierr.Append(srcErr, dstErr)
+	err := errors.Join(srcErr, dstErr)
 	if err != nil {
 		return models.InputSource{}, err
 	}
@@ -120,7 +120,7 @@ func Copy(
 
 	volume, err := srcStorage.PrepareStorage(ctx, tmpDir, spec)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to prepare %s spec", spec.Source.Type)
+		err = pkgerrors.Wrapf(err, "failed to prepare %s spec", spec.Source.Type)
 		return models.InputSource{}, err
 	}
 	defer srcStorage.CleanupStorage(ctx, spec, volume) //nolint:errcheck
@@ -128,7 +128,7 @@ func Copy(
 	var newSpec models.SpecConfig
 	newSpec, err = dstStorage.Upload(ctx, volume.Source)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to save %s spec to %s", spec.Source.Type, destination)
+		err = pkgerrors.Wrapf(err, "failed to save %s spec to %s", spec.Source.Type, destination)
 	}
 
 	return models.InputSource{

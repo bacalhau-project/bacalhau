@@ -66,7 +66,7 @@ func (s *BaseTLSSuite) SetupTest() {
 	s.Host = s.Node.APIServer.Address //NOTE: 0.0.0.0 will not work because we're testing TLS validation
 	s.Port = s.Node.APIServer.Port
 	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, s.Host, s.Port)
-	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port), clientv2.WithTLS(true))
+	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port), clientv2.WithTLS(true), clientv2.WithInsecureTLS(true))
 }
 
 // After each test

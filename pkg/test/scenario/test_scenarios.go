@@ -229,9 +229,12 @@ func WasmCsvTransform(t testing.TB) Scenario {
 
 func WasmDynamicLink(t testing.TB) Scenario {
 	return Scenario{
-		Inputs: StoredFile(
-			"../../../testdata/wasm/easter/main.wasm",
-			"/inputs",
+		Inputs: ManyStores(
+			StoredText("unused input", "/data"),
+			StoredFile(
+				"../../../testdata/wasm/easter/main.wasm",
+				"/inputs",
+			),
 		),
 		ResultsChecker: FileEquals(
 			downloader.DownloadFilenameStdout,
