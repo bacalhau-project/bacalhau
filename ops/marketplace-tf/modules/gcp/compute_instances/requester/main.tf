@@ -55,7 +55,7 @@ locals {
   bacalhau_env_vars = {
     LOG_LEVEL                   = "debug"
     BACALHAU_NODE_LOGGINGMODE   = "default"
-    BACALHAU_DIR                = "/data"
+    BACALHAU_DIR                = "/bacalhau_repo"
     BACALHAU_ENVIRONMENT        = "local"
     // TODO make this a variable
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
@@ -93,7 +93,6 @@ locals {
   // I am sorry reader, terraform requires this be one line
   bacalhau_install_cmd_content = var.build_config.install_version  != "" ? "release ${var.build_config.install_version}" : var.build_config.install_branch  != "" ? "branch ${var.build_config.install_branch}" : var.build_config.install_commit  != "" ?"commit ${var.build_config.install_commit}" : ""
   bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
-    node_type = "requester"
     bacalhau_version_cmd = local.bacalhau_install_cmd_content
     // Add more arguments as needed
   })
@@ -136,7 +135,7 @@ data "cloudinit_config" "requester_cloud_init" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
+    content = templatefile("${path.module}/../../../cloud-init/requester-cloud-init.yml", {
       bacalhau_install_script_file: base64encode(local.bacalhau_install_script_content)
       bacalhau_config_file        : base64encode(local.requester_config_content)
       bacalhau_service_file       : base64encode(local.bacalhau_service_content)

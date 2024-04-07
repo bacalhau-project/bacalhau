@@ -815,6 +815,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	// update the job state
 	previousState := job.State.StateType
 	job.State.StateType = request.NewState
+	job.State.Message = request.Comment
 	job.Revision++
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 

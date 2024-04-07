@@ -19,7 +19,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"go.uber.org/multierr"
 )
 
 // encodeBody prepares the reader to serve as the request body.
@@ -121,7 +120,7 @@ func DialAsyncResult[In apimodels.Request, Out any](
 			outResult := new(concurrency.AsyncResult[Out])
 			if result.Value != nil {
 				decodeErr := json.NewDecoder(bytes.NewReader(result.Value)).Decode(outResult)
-				outResult.Err = multierr.Combine(outResult.Err, result.Err, decodeErr)
+				outResult.Err = errors.Join(outResult.Err, result.Err, decodeErr)
 			} else {
 				outResult.Err = result.Err
 			}
