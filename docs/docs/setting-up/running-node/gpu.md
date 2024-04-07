@@ -2,6 +2,7 @@
 sidebar_label: 'GPU Support'
 sidebar_position: 160
 description: How to enable GPU support on your Bacalhau node.
+# cspell: ignore nvidia, amd, intel, rocm, xpumanager, xpumd, xpumcli, kfd, dri, nvidia-smi, rocm-smi, xpu-smi
 ---
 
 # GPU Support
