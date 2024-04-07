@@ -34,7 +34,8 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		nodeOverrides[i] = nodeOverride
 	}
 	stack := teststack.Setup(context.TODO(), t,
-		devstack.WithNumberOfHybridNodes(nodeCount),
+		devstack.WithNumberOfHybridNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(2),
 		devstack.WithNodeOverrides(nodeOverrides...),
 	)
 	// for the requester node to pick up the nodeInfo messages

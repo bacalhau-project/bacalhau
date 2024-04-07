@@ -14,6 +14,13 @@ If you are looking to develop on the project, this page will help you get starte
     (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/$USER/.bashrc
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 ```
+- Set environment variables:
+
+```
+export PYTHONVER='3.11.7'
+export GOLANGCILINTVER='v1.51.2'
+export GOLANGVER='1.21'
+```
 - We use asdf to manage our development environment. Install asdf by following the instructions [here](https://asdf-vm.com/#/core-manage-asdf-vm) - `brew install asdf`
 - Add asdf to your .bashrc: `echo -e "\n. $(brew --prefix asdf)/libexec/asdf.sh" >> ~/.bashrc`
 - Install the github client: `brew install gh`
@@ -54,6 +61,7 @@ sudo apt-get update
 
 
 **Useful VSCode launch.json**
+
 ```
 {
   // Use IntelliSense to learn about possible attributes.
@@ -130,9 +138,11 @@ sudo apt-get update
 ```
 
 **Common Errors**
+
 - Using alternatives to `npm` - we have explored using `bun` but `prettier` did not work properly with it.
 
 - We use `pre-commit` to run pre-commit hooks. If you run into an error like the below, it is likely because you are using 3.12+ (which as of the end of 2023, pre-commit does not support).
+
 ```
 [INFO] Installing environment for https://github.com/pre-commit/pre-commit-hooks.
 [INFO] Once installed this environment will be reused.

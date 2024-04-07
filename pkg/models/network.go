@@ -2,13 +2,13 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
 	"strings"
 
 	"github.com/samber/lo"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 )
 
@@ -115,7 +115,7 @@ func (n *NetworkConfig) Copy() *NetworkConfig {
 // otherwise.
 func (n *NetworkConfig) Validate() (err error) {
 	if n.Type < NetworkNone || n.Type > NetworkHTTP {
-		err = multierr.Append(err, fmt.Errorf("invalid networking type %q", n.Type))
+		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
 	for _, domain := range n.Domains {
@@ -125,7 +125,7 @@ func (n *NetworkConfig) Validate() (err error) {
 		if net.ParseIP(domain) != nil {
 			continue
 		}
-		err = multierr.Append(err, fmt.Errorf("invalid domain %q", domain))
+		err = errors.Join(err, fmt.Errorf("invalid domain %q", domain))
 	}
 
 	return

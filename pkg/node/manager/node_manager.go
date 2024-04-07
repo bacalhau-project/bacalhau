@@ -57,8 +57,10 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 			}, nil
 		}
 
+		// Otherwise we'll allow the registration, but let the compute node
+		// that it has already been registered on a previous occasion.
 		return &requests.RegisterResponse{
-			Accepted: false,
+			Accepted: true,
 			Reason:   "node already registered",
 		}, nil
 	}
@@ -187,10 +189,10 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 // Approve is used to approve a node for joining the cluster along with a specific
 // reason for the approval (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
-func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string) (bool, string) {
-	info, err := n.nodeInfo.Get(ctx, nodeID)
+func (n *NodeManager) ApproveAction(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
-		return false, "node not found"
+		return false, err.Error()
 	}
 
 	if info.Approval == models.NodeApprovals.APPROVED {
@@ -210,10 +212,10 @@ func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string)
 // Reject is used to reject a node from joining the cluster along with a specific
 // reason for the rejection (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
-func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) (bool, string) {
-	info, err := n.nodeInfo.Get(ctx, nodeID)
+func (n *NodeManager) RejectAction(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
-		return false, "node not found"
+		return false, err.Error()
 	}
 
 	if info.Approval == models.NodeApprovals.REJECTED {
@@ -225,6 +227,22 @@ func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) 
 
 	if err := n.nodeInfo.Add(ctx, info); err != nil {
 		return false, "failed to save nodeinfo during node rejection"
+	}
+
+	return true, ""
+}
+
+// Reject is used to reject a node from joining the cluster along with a specific
+// reason for the rejection (for audit). The return values denote success and any
+// failure of the operation as a human readable string.
+func (n *NodeManager) DeleteAction(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
+	if err != nil {
+		return false, err.Error()
+	}
+
+	if err := n.nodeInfo.Delete(ctx, info.NodeID); err != nil {
+		return false, fmt.Sprintf("failed to delete nodeinfo: %s", err)
 	}
 
 	return true, ""

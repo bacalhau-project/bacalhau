@@ -2,11 +2,11 @@ package compute
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 )
 
@@ -48,7 +48,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 		return err
 	}
 
-	errs := new(multierror.Error)
+	var errs error
 
 	for idx := range localExecStates {
 		localExecution := localExecStates[idx]
@@ -59,7 +59,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 				// Service and System jobs are long running jobs and so we need to make sure it is running
 				err = s.runExecution(ctx, localExecution)
 				if err != nil {
-					errs = multierror.Append(errs, err)
+					errs = errors.Join(errs, err)
 				}
 			}
 		case model.JobTypeBatch, models.JobTypeOps:
@@ -68,13 +68,13 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 				// side-effects (particularly for ops jobs).
 				err = s.failExecution(ctx, localExecution)
 				if err != nil {
-					errs = multierror.Append(errs, err)
+					errs = errors.Join(errs, err)
 				}
 			}
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (s *Startup) failExecution(ctx context.Context, execution store.LocalExecutionState) error {

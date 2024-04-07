@@ -51,7 +51,7 @@ async function renderWithNumberOfNodes(numberOfNodes: number) {
 
   await waitFor(() => {
     screen
-      .findByDisplayValue(`/${mockNodes[0].PeerInfo.ID}/i`)
+      .findByDisplayValue(`/${mockNodes[0].NodeID}/i`)
       .then((contentRendered) => {
         // Test to see if the content is in the document
         expect(contentRendered).toBeInTheDocument()

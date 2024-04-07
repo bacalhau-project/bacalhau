@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -145,9 +144,9 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(m.InputSource.Alias))
 }
 
-const unknownModuleErrStr = ("unknown WASM module with name %q. " +
+const unknownModuleErrStr = ("could not find WASM module with name %q. " +
 	"expecting a built-in module name (like %q), " +
-	"or the name of a module specified as a job input source. " +
+	"or the Alias of one of the job's InputSources. " +
 	"see also: https://docs.bacalhau.org/getting-started/wasm-workload-onboarding")
 
 func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
@@ -179,7 +178,7 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 	// module, or if the first storage is a WASM module but not the one we were
 	// looking for?
 	for _, s := range loader.storages {
-		if s.InputSource.Source.IsType(models.StorageSourceIPFS) || s.InputSource.Source.IsType(models.StorageSourceURL) {
+		if s.InputSource.Alias == moduleName {
 			return loader.InstantiateRemoteModule(ctx, s)
 		}
 	}

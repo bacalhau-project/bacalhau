@@ -22,15 +22,15 @@ type MaxUsageNodeRankerSuite struct {
 func (s *MaxUsageNodeRankerSuite) SetupSuite() {
 	s.smallPeer = models.NodeInfo{
 		NodeID:          "small",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1, Memory: 1024}},
 	}
 	s.medPeer = models.NodeInfo{
 		NodeID:          "med",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2, Memory: 1024e3}},
 	}
 	s.largePeer = models.NodeInfo{
 		NodeID:          "large",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3}},
+		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3, Memory: 1024e6}},
 	}
 }
 
@@ -73,7 +73,7 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_MedJob() {
 	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
-	assertEquals(s.T(), ranks, "small", -1)
+	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (2) than the maximum available (1)")
 	assertEquals(s.T(), ranks, "med", 10)
 	assertEquals(s.T(), ranks, "large", 10)
 }
@@ -85,8 +85,8 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_LargeJob() {
 	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
-	assertEquals(s.T(), ranks, "small", -1)
-	assertEquals(s.T(), ranks, "med", -1)
+	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3) than the maximum available (1)")
+	assertEquals(s.T(), ranks, "med", -1, "job requires more CPU (3) than the maximum available (2)")
 	assertEquals(s.T(), ranks, "large", 10)
 }
 
@@ -98,9 +98,35 @@ func (s *MaxUsageNodeRankerSuite) TestRankNodes_VeryLargeJob() {
 	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
-	assertEquals(s.T(), ranks, "small", -1)
-	assertEquals(s.T(), ranks, "med", -1)
-	assertEquals(s.T(), ranks, "large", -1)
+	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3.1) than the maximum available (1)")
+	assertEquals(s.T(), ranks, "med", -1, "job requires more CPU (3.1) than the maximum available (2)")
+	assertEquals(s.T(), ranks, "large", -1, "job requires more CPU (3.1) than the maximum available (3)")
+}
+
+func (s *MaxUsageNodeRankerSuite) TestRankNodes_MemoryReporting() {
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{Memory: "2GB"}
+
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	s.NoError(err)
+	s.Equal(len(nodes), len(ranks))
+	assertEquals(s.T(), ranks, "small", -1, "job requires more memory (2.0 GB) than the maximum available (1.0 kB)")
+	assertEquals(s.T(), ranks, "med", -1, "job requires more memory (2.0 GB) than the maximum available (1.0 MB)")
+	assertEquals(s.T(), ranks, "large", -1, "job requires more memory (2.0 GB) than the maximum available (1.0 GB)")
+}
+
+func (s *MaxUsageNodeRankerSuite) TestRankNodes_MultpleReporting() {
+	job := mock.Job()
+	job.Task().ResourcesConfig = &models.ResourcesConfig{CPU: "3", Memory: "2GB"}
+
+	nodes := []models.NodeInfo{s.smallPeer, s.medPeer, s.largePeer}
+	ranks, err := s.MaxUsageNodeRanker.RankNodes(context.Background(), *job, nodes)
+	s.NoError(err)
+	s.Equal(len(nodes), len(ranks))
+	assertEquals(s.T(), ranks, "small", -1, "job requires more CPU (3) than the maximum available (1) and more memory (2.0 GB) than the maximum available (1.0 kB)")
+	assertEquals(s.T(), ranks, "med", -1, "job requires more CPU (3) than the maximum available (2) and more memory (2.0 GB) than the maximum available (1.0 MB)")
+	assertEquals(s.T(), ranks, "large", -1, "job requires more memory (2.0 GB) than the maximum available (1.0 GB)")
 }
 
 func (s *MaxUsageNodeRankerSuite) TestRankNodesUnknownJob() {

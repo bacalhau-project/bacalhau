@@ -122,51 +122,6 @@ func NewComputeNode(
 		},
 	})
 
-	semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
-	if config.BidSemanticStrategy == nil {
-		semanticBidStrat = bidstrategy.WithSemantics(
-			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
-			}),
-			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
-				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
-			}),
-			semantic.NewProviderInstalledStrategy(
-				publishers,
-				func(j *models.Job) string { return j.Task().Publisher.Type },
-			),
-			semantic.NewStorageInstalledBidStrategy(storages),
-			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality: config.JobSelectionPolicy.Locality,
-				Storages: storages,
-			}),
-			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-				Command: config.JobSelectionPolicy.ProbeExec,
-			}),
-			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-				URL: config.JobSelectionPolicy.ProbeHTTP,
-			}),
-			executor_util.NewExecutorSpecificBidStrategy(executors),
-		)
-	}
-
-	resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
-	if config.BidResourceStrategy == nil {
-		resourceBidStrat = bidstrategy.WithResources(
-			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
-				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			resource.NewAvailableCapacityStrategy(ctx, resource.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
-			}),
-			executor_util.NewExecutorSpecificBidStrategy(executors),
-		)
-	}
-
 	// logging server
 	logserver := logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: executionStore,
@@ -184,19 +139,19 @@ func NewComputeNode(
 		MaxJobRequirements: config.JobResourceLimits,
 	})
 
-	bidStrat := bidstrategy.NewChainedBidStrategy(semanticBidStrat, resourceBidStrat)
-	bidder := compute.NewBidder(compute.BidderParams{
-		NodeID:           nodeID,
-		SemanticStrategy: bidStrat,
-		ResourceStrategy: bidStrat,
-		Store:            executionStore,
-		Callback:         computeCallback,
-		Executor:         bufferRunner,
-		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
-		},
-	})
-
+	bidder := NewBidder(config,
+		publishers,
+		storages,
+		executors,
+		runningCapacityTracker,
+		enqueuedCapacityTracker,
+		nodeID,
+		executionStore,
+		computeCallback,
+		bufferRunner,
+		apiServer,
+		capacityCalculator,
+	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              nodeID,
 		ExecutionStore:  executionStore,
@@ -266,6 +221,7 @@ func NewComputeNode(
 		if managementClient != nil {
 			managementClient.Stop()
 		}
+
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}
@@ -288,4 +244,81 @@ func NewComputeNode(
 
 func (c *Compute) Cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
+}
+
+func NewBidder(
+	config ComputeConfig,
+	publishers publisher.PublisherProvider,
+	storages storage.StorageProvider,
+	executors executor.ExecutorProvider,
+	runningCapacityTracker capacity.Tracker,
+	enqueuedCapacityTracker capacity.Tracker,
+	nodeID string,
+	executionStore store.ExecutionStore,
+	computeCallback compute.Callback,
+	bufferRunner *compute.ExecutorBuffer,
+	apiServer *publicapi.Server,
+	calculator capacity.UsageCalculator,
+) compute.Bidder {
+	var semanticBidStrats []bidstrategy.SemanticBidStrategy
+	if config.BidSemanticStrategy == nil {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
+			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
+			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
+				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
+				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+			}),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+			}),
+			semantic.NewProviderInstalledStrategy(
+				publishers,
+				func(j *models.Job) string { return j.Task().Publisher.Type },
+			),
+			semantic.NewStorageInstalledBidStrategy(storages),
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
+			}),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{config.BidSemanticStrategy}
+	}
+
+	var resourceBidStrats []bidstrategy.ResourceBidStrategy
+	if config.BidResourceStrategy == nil {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
+			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
+				MaxJobRequirements: config.JobResourceLimits,
+			}),
+			resource.NewAvailableCapacityStrategy(resource.AvailableCapacityStrategyParams{
+				RunningCapacityTracker:  runningCapacityTracker,
+				EnqueuedCapacityTracker: enqueuedCapacityTracker,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{config.BidResourceStrategy}
+	}
+
+	return compute.NewBidder(compute.BidderParams{
+		NodeID:           nodeID,
+		SemanticStrategy: semanticBidStrats,
+		ResourceStrategy: resourceBidStrats,
+		Store:            executionStore,
+		Callback:         computeCallback,
+		Executor:         bufferRunner,
+		GetApproveURL: func() *url.URL {
+			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
+		},
+		UsageCalculator: calculator,
+	})
 }

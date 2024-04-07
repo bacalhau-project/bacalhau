@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -17,8 +16,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
-	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,9 +38,9 @@ type NATSTransportConfig struct {
 	// StoreDir is the directory where the NATS server will store its data
 	StoreDir string
 
-	// AuthSecret is a secret string that clients must use to connect. It is
-	// only used by NATS servers; clients should supply the auth secret as the
-	// user part of their Orchestrator URL.
+	// AuthSecret is a secret string that clients must use to connect. NATS servers
+	// must supply this config, while clients can also supply it as the user part
+	// of their Orchestrator URL.
 	AuthSecret string
 
 	// Cluster config for requester nodes to connect with each other
@@ -52,38 +51,35 @@ type NATSTransportConfig struct {
 }
 
 func (c *NATSTransportConfig) Validate() error {
-	var mErr *multierror.Error
+	var mErr error
 	if validate.IsBlank(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("missing node ID"))
+		mErr = errors.Join(mErr, errors.New("missing node ID"))
 	} else if validate.ContainsSpaces(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("node ID contains a space"))
+		mErr = errors.Join(mErr, errors.New("node ID contains a space"))
 	} else if validate.ContainsNull(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("node ID contains a null character"))
+		mErr = errors.Join(mErr, errors.New("node ID contains a null character"))
 	} else if strings.ContainsAny(c.NodeID, reservedChars) {
-		mErr = multierror.Append(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
-	}
-
-	if c.AuthSecret == "" {
-		mErr = multierror.Append(mErr, fmt.Errorf("when using NATS, an auth secret must be provided for each node connecting to the cluster"))
+		mErr = errors.Join(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
 	}
 
 	if c.IsRequesterNode {
-		mErr = multierror.Append(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
+		mErr = errors.Join(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
 
 		// if cluster config is set, validate it
 		if c.ClusterName != "" || c.ClusterPort != 0 || c.ClusterAdvertisedAddress != "" || len(c.ClusterPeers) > 0 {
-			mErr = multierror.Append(mErr,
+			mErr = errors.Join(mErr,
 				validate.IsGreaterThanZero(c.ClusterPort, "cluster port %d must be greater than zero", c.ClusterPort))
 		}
 	} else {
 		if validate.IsEmpty(c.Orchestrators) {
-			mErr = multierror.Append(mErr, errors.New("missing orchestrators"))
+			mErr = errors.Join(mErr, errors.New("missing orchestrators"))
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 type NATSTransport struct {
+	Config            NATSTransportConfig
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
 	natsClient        *nats_helper.ClientManager
@@ -144,23 +140,10 @@ func NewNATSTransport(ctx context.Context,
 			return nil, err
 		}
 
-		// Make sure the orchestrator URL contains the auth token so that the
-		// NATS client below can connect
-		serverURL, err := url.Parse(sm.Server.ClientURL())
-		if err != nil {
-			return nil, err
-		}
-		serverURL.User = url.User(config.AuthSecret)
-
-		config.Orchestrators = append(config.Orchestrators, serverURL.String())
+		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
 	}
 
-	// create nats client
-	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
-	nc, err := nats_helper.NewClientManager(ctx, nats_helper.ClientManagerParams{
-		Name:    config.NodeID,
-		Servers: strings.Join(config.Orchestrators, ","),
-	})
+	nc, err := CreateClient(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +180,7 @@ func NewNATSTransport(ctx context.Context,
 		nodeID:            config.NodeID,
 		natsServer:        sm,
 		natsClient:        nc,
+		Config:            config,
 		computeProxy:      computeProxy,
 		callbackProxy:     computeCallback,
 		nodeInfoPubSub:    nodeInfoPubSub,
@@ -205,8 +189,19 @@ func NewNATSTransport(ctx context.Context,
 	}, nil
 }
 
-func (t *NATSTransport) GetConnectionInfo(ctx context.Context) interface{} {
-	return t.natsClient.Client.ConnectedUrl()
+func CreateClient(ctx context.Context, config NATSTransportConfig) (*nats_helper.ClientManager, error) {
+	// create nats client
+	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
+	clientOptions := []nats.Option{
+		nats.Name(config.NodeID),
+	}
+	if config.AuthSecret != "" {
+		clientOptions = append(clientOptions, nats.Token(config.AuthSecret))
+	}
+	return nats_helper.NewClientManager(ctx,
+		strings.Join(config.Orchestrators, ","),
+		clientOptions...,
+	)
 }
 
 func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {
