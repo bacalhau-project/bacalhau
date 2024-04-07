@@ -92,6 +92,7 @@ pip install -r requirements.txt
 Create a new file called `similar-movies.py` and in it paste the following script
 
 
+<!-- cspell: disable -->
 ```python
 %%writefile similar-movies.py
 # Imports
@@ -166,7 +167,7 @@ sliced = evecs[:, :k] # representative data
 top_indexes = top_cosine_similarity(sliced, movie_id, top_n)
 print_similar_movies(movie_data, movie_id, top_indexes)
 ```
-
+<!-- cspell: enable -->
 
 What the similar-movies.py script does
 

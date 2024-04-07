@@ -152,7 +152,7 @@ The callout blocks include:
 
 - **caution**: Use to make the reader aware they need to be careful when acting on some advice.
 
-- **warning**: Use to indicate that there are dangers or consequenses associated with some information or steps.
+- **warning**: Use to indicate that there are dangers or consequences associated with some information or steps.
 
 Here’s a Markdown example of a **tip** callout block.
 

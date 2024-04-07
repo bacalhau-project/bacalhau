@@ -48,7 +48,7 @@ The table below summarizes their score in terms of different requirements. The r
 ![image](../../static/img/landscape/landscape-table.png 'Compute Framework Analysis')
 
 
-**Why is Bachalau not on this list?** This analysis is not a direct comparison between Bacalhau and existing frameworks. Instead, this research aims to help the Bacalhau community to learn more about the benefits and drawbacks of traditional systems.
+**Why is Bacalhau not on this list?** This analysis is not a direct comparison between Bacalhau and existing frameworks. Instead, this research aims to help the Bacalhau community to learn more about the benefits and drawbacks of traditional systems.
 
 ## Code repository
 
