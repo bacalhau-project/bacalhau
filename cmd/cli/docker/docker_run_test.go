@@ -357,11 +357,8 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 				if tcids.err != "" {
-					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
-
-					s.Require().NoErrorf(err, "Error unmarshaling errors. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-					s.Require().Greaterf(firstFatalError.Code, 0, "Expected an error, but none provided. %+v", tcids)
-					s.Require().Contains(firstFatalError.Message, "invalid output volume", "Missed detection of invalid output volume.")
+					s.Require().Error(err)
+					s.Require().Contains(string(out), "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
