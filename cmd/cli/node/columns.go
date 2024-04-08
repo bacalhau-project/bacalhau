@@ -30,7 +30,13 @@ var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "status"},
-		Value:        func(ni *models.NodeInfo) string { return ni.State.String() },
+		Value: func(ni *models.NodeInfo) string {
+			if ni.ComputeNodeInfo != nil {
+				return ni.State.String()
+			}
+
+			return "" // nothing for requester nodes
+		},
 	},
 }
 

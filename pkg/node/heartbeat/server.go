@@ -110,10 +110,6 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 // CheckQueue will check the queue for old heartbeats that might make a node's
 // liveness either unhealthy or unknown, and will update the node's status accordingly.
 func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
-	// We may want to re-enqueue some items, so we'll keep track of them here and
-	// re-enqueue them at the end of the function.
-	requeue := make([]TimestampedHeartbeat, 0)
-
 	// These are the timestamps, below which we'll consider the item in one of those two
 	// states
 	nowStamp := h.clock.Now().UTC().Unix()
@@ -135,11 +131,6 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 		}
 	}
-
-	// Re-enqueue items that we marked as unknown health
-	for idx := range requeue {
-		h.pqueue.Enqueue(requeue[idx], requeue[idx].Timestamp)
-	}
 }
 
 // markNode will mark a node as being in a certain state. This will be used to update the node's
@@ -150,12 +141,6 @@ func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeState) {
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
 func (h *HeartbeatServer) UpdateNodeInfo(nodeInfo *models.NodeInfo) {
-	// Requester node is connected by default
-	if nodeInfo.ComputeNodeInfo == nil {
-		nodeInfo.State = models.NodeStates.CONNECTED
-		return
-	}
-
 	if liveness, ok := h.livenessMap.Get(nodeInfo.NodeID); ok {
 		nodeInfo.State = liveness
 	} else {

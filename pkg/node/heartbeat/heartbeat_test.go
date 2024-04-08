@@ -4,6 +4,7 @@ package heartbeat
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -74,40 +75,43 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 		includeInitial bool
 		heartbeats     []time.Duration
 		expectedState  models.NodeState
+		waitUntil      time.Duration
 	}
 
 	testcases := []testcase{
 		// No heartbeats, node should be HEALTHY after the initial connection
-		{name: "simple", includeInitial: true, heartbeats: []time.Duration{}, expectedState: models.NodeStates.HEALTHY},
+		{name: "simple", includeInitial: true, heartbeats: []time.Duration{}, expectedState: models.NodeStates.CONNECTED, waitUntil: time.Duration(5 * time.Second)},
 
-		// Node should be HEALTHY after the initial connection and a heartbeat but then misses second
+		// Node should be CONNECTED after the initial connection and a heartbeat but then misses second
 		{
-			name:           "unhealhy",
+			name:           "disconnected",
 			includeInitial: true,
 			heartbeats: []time.Duration{
-				time.Duration(1 * time.Second),
-				time.Duration(15 * time.Second),
+				time.Duration(30 * time.Second),
 			},
 			expectedState: models.NodeStates.DISCONNECTED,
+			waitUntil:     time.Duration(30 * time.Second),
 		},
 
-		// Node should be UNKNOWN after missing schedule
+		// Node should be DISCONNECTED after missing schedule
 		{
 			name:           "unknown",
 			includeInitial: true,
 			heartbeats: []time.Duration{
 				time.Duration(1 * time.Second),
-				time.Duration(30 * time.Second),
+				// time.Duration(30 * time.Second),
 			},
 			expectedState: models.NodeStates.DISCONNECTED,
+			waitUntil:     time.Duration(30 * time.Second),
 		},
 
-		// Nodes that have never been seen should be UNKNOWN
+		// Nodes that have never been seen should be DISCONNECTED
 		{
-			name:           "never seen",
+			name:           "never seen (default)",
 			includeInitial: false,
 			heartbeats:     []time.Duration{},
 			expectedState:  models.NodeStates.DISCONNECTED,
+			waitUntil:      time.Duration(10 * time.Second),
 		},
 	}
 
@@ -141,8 +145,10 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 				s.Require().NoError(err)
 			}
 
+			s.clock.Add(tc.waitUntil)
+
 			server.UpdateNodeInfo(&nodeInfo)
-			s.Require().Equal(nodeInfo.State, tc.expectedState)
+			s.Require().Equal(nodeInfo.State, tc.expectedState, fmt.Sprintf("incorrect state in %s", tc.name))
 		})
 	}
 }
