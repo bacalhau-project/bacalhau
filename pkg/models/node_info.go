@@ -84,6 +84,7 @@ type NodeInfo struct {
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
 	Approval        NodeApproval      `json:"Approval"`
+	State           NodeState         `json:"State"`
 }
 
 // ID returns the node ID

@@ -221,7 +221,7 @@ multierror
 multiformats
 Muxed
 mypy
-nats
+NATS
 nbconvert
 nemt
 NOAA

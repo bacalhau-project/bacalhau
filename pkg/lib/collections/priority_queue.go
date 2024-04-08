@@ -20,7 +20,7 @@ var (
 type PriorityQueueInterface[T any] interface {
 	// Enqueue will add the item specified by `data` to the queue with the
 	// the priority given by `priority`.
-	Enqueue(data T, priority int)
+	Enqueue(data T, priority int64)
 
 	// Dequeue returns the next highest priority item, returning both
 	// the data Enqueued previously, and the priority with which it was
@@ -55,7 +55,7 @@ type PriorityQueue[T any] struct {
 // the various dequeue methods
 type QueueItem[T any] struct {
 	Value    T
-	Priority int
+	Priority int64
 }
 
 // MatchingFunction can be used when 'iterating' the priority queue to find
@@ -73,7 +73,7 @@ func NewPriorityQueue[T any]() *PriorityQueue[T] {
 
 // Enqueue will add the item specified by `data` to the queue with the
 // the priority given by `priority`.
-func (pq *PriorityQueue[T]) Enqueue(data T, priority int) {
+func (pq *PriorityQueue[T]) Enqueue(data T, priority int64) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (pq *PriorityQueue[T]) Enqueue(data T, priority int) {
 
 // enqueue is a lock-free version of Enqueue for internal use when a
 // method already has a lock.
-func (pq *PriorityQueue[T]) enqueue(data T, priority int) {
+func (pq *PriorityQueue[T]) enqueue(data T, priority int64) {
 	heap.Push(
 		&pq.internalQueue,
 		&heapItem{
@@ -180,7 +180,7 @@ type queueHeap []*heapItem
 
 type heapItem struct {
 	value    any
-	priority int
+	priority int64
 	index    int // The index for update
 }
 

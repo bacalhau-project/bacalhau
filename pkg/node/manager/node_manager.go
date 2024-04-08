@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
@@ -25,10 +26,12 @@ const (
 type NodeManager struct {
 	nodeInfo    routing.NodeInfoStore
 	resourceMap *concurrency.StripedMap[models.Resources]
+	heartbeats  *heartbeat.HeartbeatServer
 }
 
 type NodeManagerParams struct {
-	NodeInfo routing.NodeInfoStore
+	NodeInfo   routing.NodeInfoStore
+	Heartbeats *heartbeat.HeartbeatServer
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
@@ -37,7 +40,22 @@ func NewNodeManager(params NodeManagerParams) *NodeManager {
 	return &NodeManager{
 		resourceMap: concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
 		nodeInfo:    params.NodeInfo,
+		heartbeats:  params.Heartbeats,
 	}
+}
+
+func (n *NodeManager) Start(ctx context.Context) error {
+	if n.heartbeats != nil {
+		err := n.heartbeats.Start(ctx)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to start heartbeat server")
+			return err
+		}
+	}
+
+	log.Ctx(ctx).Info().Msg("Node manager started")
+
+	return nil
 }
 
 //
@@ -101,7 +119,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		}, nil
 	}
 
-	// TODO(ross): Add a Put endpoint that takes the revision into account
+	// TODO: Add a Put endpoint that takes the revision into account?
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
 	}
@@ -142,10 +160,14 @@ func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	return n.nodeInfo.Add(ctx, nodeInfo)
 }
 
-func (n *NodeManager) addResourcesToInfo(ctx context.Context, info *models.NodeInfo) {
+func (n *NodeManager) addToInfo(ctx context.Context, info *models.NodeInfo) {
 	resources, found := n.resourceMap.Get(info.NodeID)
 	if found && info.ComputeNodeInfo != nil {
 		info.ComputeNodeInfo.AvailableCapacity = resources
+	}
+
+	if n.heartbeats != nil {
+		n.heartbeats.UpdateNodeInfo(info)
 	}
 }
 
@@ -154,7 +176,7 @@ func (n *NodeManager) Get(ctx context.Context, nodeID string) (models.NodeInfo, 
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -163,7 +185,7 @@ func (n *NodeManager) GetByPrefix(ctx context.Context, prefix string) (models.No
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -174,7 +196,7 @@ func (n *NodeManager) List(ctx context.Context, filters ...routing.NodeInfoFilte
 	}
 
 	for i := range items {
-		n.addResourcesToInfo(ctx, &items[i])
+		n.addToInfo(ctx, &items[i])
 	}
 
 	return items, nil

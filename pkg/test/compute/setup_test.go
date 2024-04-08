@@ -119,6 +119,7 @@ func (s *ComputeSuite) setupNode() {
 		callback,
 		nil,                 // until we switch to testing with NATS
 		map[string]string{}, // empty configured labels
+		nil,                 // no heartbeat client
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
