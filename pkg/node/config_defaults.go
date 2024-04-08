@@ -74,6 +74,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
+
+	DefaultApprovalState: models.NodeApprovals.PENDING,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -108,6 +110,8 @@ var TestRequesterConfig = RequesterConfigParams{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
+
+	DefaultApprovalState: models.NodeApprovals.APPROVED,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

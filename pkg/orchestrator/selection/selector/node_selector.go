@@ -2,6 +2,7 @@ package selector
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"github.com/rs/zerolog/log"
@@ -76,6 +77,10 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (
 			nodeInfo.State == models.NodeStates.CONNECTED &&
 			nodeInfo.Approval == models.NodeApprovals.APPROVED
 	})
+
+	if len(nodeIDs) == 0 {
+		return nil, nil, errors.New("unable to find any connected and approved nodes")
+	}
 
 	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
 	if err != nil {
