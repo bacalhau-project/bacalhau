@@ -28,7 +28,6 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	})
 }
 
-//nolint:gocyclo // cyclomatic complexity is high here becomes of the complex sorting logic
 func (e *Endpoint) listNodes(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.ListNodesRequest
@@ -53,35 +52,11 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	}
 
 	// parse order_by
-	var sortFnc func(a, b *models.NodeInfo) int
-	switch args.OrderBy {
-	case "id", "":
-		sortFnc = func(a, b *models.NodeInfo) int { return util.Compare[string]{}.Cmp(a.ID(), b.ID()) }
-	case "type":
-		sortFnc = func(a, b *models.NodeInfo) int { return util.Compare[models.NodeType]{}.Cmp(a.NodeType, b.NodeType) }
-	case "available_cpu":
-		sortFnc = func(a, b *models.NodeInfo) int {
-			return util.Compare[float64]{}.CmpRev(capacity(a).CPU, capacity(b).CPU)
-		}
-	case "available_memory":
-		sortFnc = func(a, b *models.NodeInfo) int {
-			return util.Compare[uint64]{}.CmpRev(capacity(a).Memory, capacity(b).Memory)
-		}
-	case "available_disk":
-		sortFnc = func(a, b *models.NodeInfo) int {
-			return util.Compare[uint64]{}.CmpRev(capacity(a).Disk, capacity(b).Disk)
-		}
-	case "available_gpu":
-		sortFnc = func(a, b *models.NodeInfo) int {
-			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
-		}
-	case "approval", "status":
-		sortFnc = func(a, b *models.NodeInfo) int {
-			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
-		}
-	default:
+	sortFnc := e.getSortFunction(args.OrderBy, capacity)
+	if sortFnc == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
 	}
+
 	if args.Reverse {
 		baseSortFnc := sortFnc
 		sortFnc = func(a, b *models.NodeInfo) int {
@@ -102,12 +77,17 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 		return err
 	}
 
+	args.FilterByApproval = strings.ToUpper(args.FilterByApproval)
 	args.FilterByStatus = strings.ToUpper(args.FilterByStatus)
 
 	// filter nodes, first by status, then by label selectors
 	res := make([]*models.NodeInfo, 0)
 	for i, node := range allNodes {
-		if args.FilterByStatus != "" && args.FilterByStatus != node.Approval.String() {
+		if args.FilterByApproval != "" && args.FilterByApproval != node.Approval.String() {
+			continue
+		}
+
+		if args.FilterByStatus != "" && args.FilterByStatus != node.State.String() {
 			continue
 		}
 
@@ -128,6 +108,41 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	return c.JSON(http.StatusOK, &apimodels.ListNodesResponse{
 		Nodes: res,
 	})
+}
+
+type resourceFunc func(node *models.NodeInfo) *models.Resources
+type sortFunc func(a, b *models.NodeInfo) int
+
+func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFunc {
+	switch orderBy {
+	case "id", "":
+		return func(a, b *models.NodeInfo) int { return util.Compare[string]{}.Cmp(a.ID(), b.ID()) }
+	case "type":
+		return func(a, b *models.NodeInfo) int { return util.Compare[models.NodeType]{}.Cmp(a.NodeType, b.NodeType) }
+	case "available_cpu":
+		return func(a, b *models.NodeInfo) int {
+			return util.Compare[float64]{}.CmpRev(capacity(a).CPU, capacity(b).CPU)
+		}
+	case "available_memory":
+		return func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).Memory, capacity(b).Memory)
+		}
+	case "available_disk":
+		return func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).Disk, capacity(b).Disk)
+		}
+	case "available_gpu":
+		return func(a, b *models.NodeInfo) int {
+			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
+		}
+	case "approval", "status":
+		return func(a, b *models.NodeInfo) int {
+			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
+		}
+	default:
+	}
+
+	return nil
 }
 
 func (e *Endpoint) updateNode(c echo.Context) error {

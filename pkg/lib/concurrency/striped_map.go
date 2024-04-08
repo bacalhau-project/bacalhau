@@ -55,7 +55,6 @@ func (s *StripedMap[T]) Put(key string, value T) {
 
 func (s *StripedMap[T]) Get(key string) (T, bool) {
 	idx := s.hash(key)
-
 	s.locks[idx].RLock()
 	defer s.locks[idx].RUnlock()
 
@@ -65,7 +64,6 @@ func (s *StripedMap[T]) Get(key string) (T, bool) {
 
 func (s *StripedMap[T]) Delete(key string) {
 	idx := s.hash(key)
-
 	_, found := s.Get(key)
 	if !found {
 		// Return early if the key does not exist.
