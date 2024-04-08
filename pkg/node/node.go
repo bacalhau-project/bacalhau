@@ -239,11 +239,10 @@ func NewNode(
 			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
 
 			heartbeatParams := heartbeat.HeartbeatServerParams{
-				Client:             natsClient.Client,
-				Topic:              config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatTopic,
-				CheckFrequency:     config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
-				NodeUnhealthyAfter: config.RequesterNodeConfig.ControlPlaneSettings.NodeUnhealthyAfter.AsTimeDuration(),
-				NodeUnknownAfter:   config.RequesterNodeConfig.ControlPlaneSettings.NodeUnknownAfter.AsTimeDuration(),
+				Client:                natsClient.Client,
+				Topic:                 config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatTopic,
+				CheckFrequency:        config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
+				NodeDisconnectedAfter: config.RequesterNodeConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
 			}
 			heartbeatSvr, err = heartbeat.NewServer(heartbeatParams)
 			if err != nil {

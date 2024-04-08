@@ -16,22 +16,20 @@ import (
 )
 
 type HeartbeatServerParams struct {
-	Client             *nats.Conn
-	Topic              string
-	Clock              clock.Clock
-	CheckFrequency     time.Duration
-	NodeUnhealthyAfter time.Duration
-	NodeUnknownAfter   time.Duration
+	Client                *nats.Conn
+	Topic                 string
+	Clock                 clock.Clock
+	CheckFrequency        time.Duration
+	NodeDisconnectedAfter time.Duration
 }
 
 type HeartbeatServer struct {
-	clock          clock.Clock
-	subscription   *natsPubSub.PubSub[Heartbeat]
-	pqueue         *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
-	livenessMap    *concurrency.StripedMap[models.NodeState]
-	checkFrequency time.Duration
-	unhealthyAfter time.Duration
-	unknownAfter   time.Duration
+	clock             clock.Clock
+	subscription      *natsPubSub.PubSub[Heartbeat]
+	pqueue            *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
+	livenessMap       *concurrency.StripedMap[models.NodeState]
+	checkFrequency    time.Duration
+	disconnectedAfter time.Duration
 }
 
 type TimestampedHeartbeat struct {
@@ -63,13 +61,12 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 	}
 
 	return &HeartbeatServer{
-		clock:          clk,
-		subscription:   subscription,
-		pqueue:         pqueue,
-		livenessMap:    concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
-		checkFrequency: params.CheckFrequency,
-		unhealthyAfter: params.NodeUnhealthyAfter,
-		unknownAfter:   params.NodeUnknownAfter,
+		clock:             clk,
+		subscription:      subscription,
+		pqueue:            pqueue,
+		livenessMap:       concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
+		checkFrequency:    params.CheckFrequency,
+		disconnectedAfter: params.NodeDisconnectedAfter,
 	}, nil
 }
 
@@ -120,13 +117,12 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 	// These are the timestamps, below which we'll consider the item in one of those two
 	// states
 	nowStamp := h.clock.Now().UTC().Unix()
-	unhealthyUnder := nowStamp - int64(h.unhealthyAfter.Seconds())
-	unknownUnder := nowStamp - int64(h.unknownAfter.Seconds())
+	disconnectedUnder := nowStamp - int64(h.disconnectedAfter.Seconds())
 
 	for {
 		// Dequeue anything older than the unknown timestamp
 		item := h.pqueue.DequeueWhere(func(item TimestampedHeartbeat) bool {
-			return item.Timestamp < unhealthyUnder
+			return item.Timestamp < disconnectedUnder
 		})
 
 		// We haven't found anything old enough yet. We can stop the loop and wait
@@ -135,14 +131,8 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 			break
 		}
 
-		if item.Value.Timestamp < unknownUnder {
-			h.markNodeAs(item.Value.NodeID, models.NodeStates.UNKNOWN)
-		} else if item.Value.Timestamp < unhealthyUnder {
-			h.markNodeAs(item.Value.NodeID, models.NodeStates.UNHEALTHY)
-
-			// We will re-enqueue this item so that it can eventually be marked as unknown
-			// or healthy again if we receive a heartbeat from it.
-			requeue = append(requeue, item.Value)
+		if item.Value.Timestamp < disconnectedUnder {
+			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 		}
 	}
 
@@ -160,11 +150,17 @@ func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeState) {
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
 func (h *HeartbeatServer) UpdateNodeInfo(nodeInfo *models.NodeInfo) {
+	// Requester node is connected by default
+	if nodeInfo.ComputeNodeInfo == nil {
+		nodeInfo.State = models.NodeStates.CONNECTED
+		return
+	}
+
 	if liveness, ok := h.livenessMap.Get(nodeInfo.NodeID); ok {
 		nodeInfo.State = liveness
 	} else {
 		// We've never seen this, so we'll mark it as unknown
-		nodeInfo.State = models.NodeStates.UNKNOWN
+		nodeInfo.State = models.NodeStates.DISCONNECTED
 	}
 }
 

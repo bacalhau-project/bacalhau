@@ -10,28 +10,26 @@ type NodeState struct {
 
 type liveness int
 
-// To add a new state,
+// To add a new state (for instance, a state beyond which the node is considered
+// lost) then:
 // * add it to the end of the list in the const below
 // * add it to strLivenessArray and typeLivenessMap
 // * add it to the livenessContainer and corresponding NodeStates var.
 // * add it to the All() method in the livenessContainer
 const (
-	unknownState liveness = iota
-	unhealthy
-	healthy
+	connected liveness = iota
+	disconnected
 )
 
 var (
 	strLivenessArray = [...]string{
-		unknownState: "UNKNOWN",
-		unhealthy:    "UNHEALTHY",
-		healthy:      "HEALTHY",
+		connected:    "CONNECTED",
+		disconnected: "DISCONNECTED",
 	}
 
 	typeLivenessMap = map[string]liveness{
-		"UNKNOWN":   unknownState,
-		"UNHEALTHY": unhealthy,
-		"HEALTHY":   healthy,
+		"CONNECTED":    connected,
+		"DISCONNECTED": disconnected,
 	}
 )
 
@@ -54,14 +52,14 @@ func ParseState(a any) NodeState {
 	case int32:
 		return NodeState{liveness(int(v))}
 	}
-	return NodeState{unknownState}
+	return NodeState{disconnected}
 }
 
 func stringToLiveness(s string) liveness {
 	if v, ok := typeLivenessMap[s]; ok {
 		return v
 	}
-	return unknownState
+	return disconnected
 }
 
 func (t liveness) IsValid() bool {
@@ -69,22 +67,20 @@ func (t liveness) IsValid() bool {
 }
 
 type livenessContainer struct {
-	UNKNOWN   NodeState
-	UNHEALTHY NodeState
-	HEALTHY   NodeState
+	CONNECTED    NodeState
+	DISCONNECTED NodeState
+	HEALTHY      NodeState
 }
 
 var NodeStates = livenessContainer{
-	UNKNOWN:   NodeState{unknownState},
-	UNHEALTHY: NodeState{unhealthy},
-	HEALTHY:   NodeState{healthy},
+	CONNECTED:    NodeState{connected},
+	DISCONNECTED: NodeState{disconnected},
 }
 
 func (c livenessContainer) All() []NodeState {
 	return []NodeState{
-		c.UNKNOWN,
-		c.UNHEALTHY,
-		c.HEALTHY,
+		c.CONNECTED,
+		c.DISCONNECTED,
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 var defaultColumnGroups = []string{"labels", "capacity"}
 var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu", "status"}
 var filterApprovalValues = []string{"approved", "pending", "rejected"}
-var filterStatusValues = []string{"healthy", "unhealthy", "unknown"}
+var filterStatusValues = []string{"connected", "disconnected"}
 
 // ListOptions is a struct to support node command
 type ListOptions struct {

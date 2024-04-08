@@ -58,12 +58,11 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 
 	s.clock = clock.NewMock()
 	server, err := NewServer(HeartbeatServerParams{
-		Clock:              s.clock,
-		Client:             s.client,
-		Topic:              TestTopic,
-		CheckFrequency:     1 * time.Second,
-		NodeUnhealthyAfter: 10 * time.Second,
-		NodeUnknownAfter:   20 * time.Second,
+		Clock:                 s.clock,
+		Client:                s.client,
+		Topic:                 TestTopic,
+		CheckFrequency:        1 * time.Second,
+		NodeDisconnectedAfter: 10 * time.Second,
 	})
 	s.Require().NoError(err)
 
@@ -89,7 +88,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 				time.Duration(1 * time.Second),
 				time.Duration(15 * time.Second),
 			},
-			expectedState: models.NodeStates.UNHEALTHY,
+			expectedState: models.NodeStates.DISCONNECTED,
 		},
 
 		// Node should be UNKNOWN after missing schedule
@@ -100,7 +99,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 				time.Duration(1 * time.Second),
 				time.Duration(30 * time.Second),
 			},
-			expectedState: models.NodeStates.UNKNOWN,
+			expectedState: models.NodeStates.DISCONNECTED,
 		},
 
 		// Nodes that have never been seen should be UNKNOWN
@@ -108,7 +107,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 			name:           "never seen",
 			includeInitial: false,
 			heartbeats:     []time.Duration{},
-			expectedState:  models.NodeStates.UNKNOWN,
+			expectedState:  models.NodeStates.DISCONNECTED,
 		},
 	}
 

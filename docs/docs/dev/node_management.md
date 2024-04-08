@@ -83,9 +83,7 @@ For the requester node, these settings are:
 
 - **Heartbeat** `HeartbeatTopic` - The name of the pubsub topic that heartbeat messages are sent via. Should be the same as the compute node value.
 
-- **Node health** `NodeUnhealthyAfter` - The interval after which the node will be considered unhealthy if a heartbeat has not been received.
-
-- **Node health** `NodeUnknownAfter` - The interval after which the node will be considered unknown if a heartbeat has not been received. This is not additive with `NodeUnhealthyAfter`. Nodes that are unknown may be intentionally disconnected from the network, should not be considered for scheduling, but may reconnect in the future.
+- **Node health** `NodeDisconnectedAfter` - The interval after which the node will be considered disconnected if a heartbeat has not been received.
 
 ## Cluster membership events
 

@@ -201,7 +201,6 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 	ControlPlaneSettings: types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: types.Duration(30 * time.Second),
 		HeartbeatTopic:          "heartbeat",
-		NodeUnhealthyAfter:      types.Duration(30 * time.Second),
-		NodeUnknownAfter:        types.Duration(60 * time.Second),
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
 }
