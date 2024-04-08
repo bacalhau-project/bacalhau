@@ -577,10 +577,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 			if tc.errorCode != 0 {
-				fatalError, err := testutils.FirstFatalError(s.T(), out)
-				s.Require().NoError(err, "Error getting first fatal error")
-
-				s.Require().NotNil(fatalError, "Expected fatal error, but none found")
+				s.Require().NotNil(err, "Expected fatal error, but none found")
 			} else {
 				s.Require().NoError(err, "Error submitting job.")
 
