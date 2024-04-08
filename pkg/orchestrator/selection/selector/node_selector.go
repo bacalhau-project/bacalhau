@@ -70,7 +70,11 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (
 	}
 
 	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {
-		return nodeInfo.NodeType == models.NodeTypeCompute
+		// Filter out nodes that are not compute nodes, or nodes that are not currently
+		// connected or approved. We only want to consider nodes that are ready to run jobs.
+		return nodeInfo.NodeType == models.NodeTypeCompute &&
+			nodeInfo.State == models.NodeStates.CONNECTED &&
+			nodeInfo.Approval == models.NodeApprovals.APPROVED
 	})
 
 	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
