@@ -84,8 +84,11 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	go func(ctx context.Context) {
 		defer func() {
-			_ = h.subscription.Close(ctx) // We're closing down, not much we can do with an error
-			log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
+			if err := h.subscription.Close(ctx); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("Error during heartbeat server shutdown")
+			} else {
+				log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
+			}
 		}()
 
 		ticker := h.clock.Ticker(h.checkFrequency)
