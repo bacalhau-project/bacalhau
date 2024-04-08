@@ -42,7 +42,7 @@ func NewListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List info of network nodes. ",
 		Args:  cobra.NoArgs,
-		Run:   o.run,
+		RunE:  o.run,
 	}
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
@@ -57,7 +57,7 @@ func NewListCmd() *cobra.Command {
 }
 
 // Run executes node command
-func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
+func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 
 	var err error
@@ -65,13 +65,13 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 	if o.Labels != "" {
 		labelRequirements, err = labels.ParseToRequirements(o.Labels)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
+			return fmt.Errorf("could not parse labels: %w", err)
 		}
 	}
 
 	if o.FilterByStatus != "" {
 		if !slices.Contains(filterStatusValues, o.FilterByStatus) {
-			util.Fatal(cmd, fmt.Errorf("cannot use '%s' as filter status value, should be one of: %q", o.FilterByStatus, filterStatusValues), 1)
+			return fmt.Errorf("cannot use '%s' as filter status value, should be one of: %q", o.FilterByStatus, filterStatusValues)
 		}
 	}
 
@@ -86,7 +86,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
+		return fmt.Errorf("failed request: %w", err)
 	}
 
 	columns := alwaysColumns
@@ -95,6 +95,8 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 	}
 
 	if err = output.Output(cmd, columns, o.OutputOptions, response.Nodes); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
+
+	return nil
 }

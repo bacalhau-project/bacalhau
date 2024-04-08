@@ -31,15 +31,11 @@ func NewCmd() *cobra.Command {
 	idCmd := &cobra.Command{
 		Use:   "id",
 		Short: "Show bacalhau node id info",
-		PreRun: func(cmd *cobra.Command, _ []string) {
-			if err := configflags.BindFlags(cmd, idFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			return configflags.BindFlags(cmd, idFlags)
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := id(cmd, outputOpts); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return id(cmd, outputOpts)
 		},
 	}
 

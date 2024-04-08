@@ -55,10 +55,8 @@ func NewCmd() *cobra.Command {
 		Args:     cobra.ExactArgs(1),
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(getFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
-			if err := get(cmd, cmdArgs, OG); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+			return get(cmd, cmdArgs, OG)
 		},
 	}
 
