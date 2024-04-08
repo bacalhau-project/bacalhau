@@ -45,8 +45,6 @@ func NewNodeManager(params NodeManagerParams) *NodeManager {
 }
 
 func (n *NodeManager) Start(ctx context.Context) error {
-	log.Ctx(ctx).Info().Msg("Node manager started")
-
 	if n.heartbeats != nil {
 		err := n.heartbeats.Start(ctx)
 		if err != nil {
@@ -54,6 +52,8 @@ func (n *NodeManager) Start(ctx context.Context) error {
 			return err
 		}
 	}
+
+	log.Ctx(ctx).Info().Msg("Node manager started")
 
 	return nil
 }
