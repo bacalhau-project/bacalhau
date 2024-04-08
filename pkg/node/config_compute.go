@@ -75,6 +75,8 @@ type ComputeConfigParams struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 type ComputeConfig struct {
@@ -119,6 +121,8 @@ type ComputeConfig struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -150,6 +154,20 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {
 			return ComputeConfig{}, pkgerrors.Wrap(err, "creating default local publisher directory")
 		}
+	}
+
+	// Control plan settings defaults
+	if params.ControlPlaneSettings.HeartbeatFrequency == 0 {
+		params.ControlPlaneSettings.HeartbeatFrequency = DefaultComputeConfig.ControlPlaneSettings.HeartbeatFrequency
+	}
+	if params.ControlPlaneSettings.InfoUpdateFrequency == 0 {
+		params.ControlPlaneSettings.InfoUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.InfoUpdateFrequency
+	}
+	if params.ControlPlaneSettings.ResourceUpdateFrequency == 0 {
+		params.ControlPlaneSettings.ResourceUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.ResourceUpdateFrequency
+	}
+	if params.ControlPlaneSettings.HeartbeatTopic == "" {
+		params.ControlPlaneSettings.HeartbeatTopic = DefaultComputeConfig.ControlPlaneSettings.HeartbeatTopic
 	}
 
 	// Get available physical resources in the host
@@ -204,6 +222,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		BidResourceStrategy:          params.BidResourceStrategy,
 		ExecutionStore:               params.ExecutionStore,
 		LocalPublisher:               params.LocalPublisher,
+		ControlPlaneSettings:         params.ControlPlaneSettings,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {

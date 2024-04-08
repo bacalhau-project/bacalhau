@@ -16,15 +16,17 @@ import (
 
 var defaultColumnGroups = []string{"labels", "capacity"}
 var orderByFields = []string{"id", "type", "available_cpu", "available_memory", "available_disk", "available_gpu", "status"}
-var filterStatusValues = []string{"approved", "pending", "rejected"}
+var filterApprovalValues = []string{"approved", "pending", "rejected"}
+var filterStatusValues = []string{"connected", "disconnected"}
 
 // ListOptions is a struct to support node command
 type ListOptions struct {
 	output.OutputOptions
 	cliflags.ListOptions
-	ColumnGroups   []string
-	Labels         string
-	FilterByStatus string
+	ColumnGroups     []string
+	Labels           string
+	FilterByApproval string
+	FilterByStatus   string
 }
 
 // NewListOptions returns initialized Options
@@ -50,6 +52,8 @@ func NewListCmd() *cobra.Command {
 		"Filter nodes by labels. See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more information.")
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
+	nodeCmd.Flags().StringVar(&o.FilterByApproval, "filter-approval", o.FilterByApproval,
+		fmt.Sprintf("Filter nodes by approval. One of: %q", filterApprovalValues))
 	nodeCmd.Flags().StringVar(&o.FilterByStatus, "filter-status", o.FilterByStatus,
 		fmt.Sprintf("Filter nodes by status. One of: %q", filterStatusValues))
 
@@ -69,15 +73,22 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	if o.FilterByApproval != "" {
+		if !slices.Contains(filterApprovalValues, o.FilterByApproval) {
+			return fmt.Errorf("cannot use '%s' as filter-approval value, should be one of: %q", o.FilterByApproval, filterApprovalValues)
+		}
+	}
+
 	if o.FilterByStatus != "" {
 		if !slices.Contains(filterStatusValues, o.FilterByStatus) {
-			return fmt.Errorf("cannot use '%s' as filter status value, should be one of: %q", o.FilterByStatus, filterStatusValues)
+			return fmt.Errorf("cannot use '%s' as filter-status value, should be one of: %q", o.FilterByStatus, filterStatusValues)
 		}
 	}
 
 	response, err := util.GetAPIClientV2(cmd).Nodes().List(ctx, &apimodels.ListNodesRequest{
-		Labels:         labelRequirements,
-		FilterByStatus: o.FilterByStatus,
+		Labels:           labelRequirements,
+		FilterByApproval: o.FilterByApproval,
+		FilterByStatus:   o.FilterByStatus,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,
 			NextToken: o.NextToken,
