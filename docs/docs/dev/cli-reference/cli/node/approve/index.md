@@ -4,7 +4,7 @@ sidebar_label: approve
 
 # Command: `node approve`
 
-The `bacalhau node approve` command offers administrations the ability to approve the cluster membership for a node using its unique identifier.
+The `bacalhau node approve` command offers administrators the ability to approve the cluster membership for a node using its name.
 
 ## Description:
 

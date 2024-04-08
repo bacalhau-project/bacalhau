@@ -2,9 +2,9 @@
 sidebar_label: delete
 ---
 
-# Command: `node approve`
+# Command: `node delete`
 
-The `bacalhau node delete` command offers administrations the ability to remove a node from the cluster using its unique identifier.
+The `bacalhau node delete` command offers administrators the ability to remove a node from the cluster using its name.
 
 ## Description:
 

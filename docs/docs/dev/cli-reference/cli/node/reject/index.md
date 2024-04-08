@@ -4,7 +4,7 @@ sidebar_label: reject
 
 # Command: `node reject`
 
-The `bacalhau node reject` command offers administrations the ability to reject a compute node's request to join the cluster.
+The `bacalhau node reject` command offers administrators the ability to reject a compute node's request to join the cluster.
 
 ## Description:
 

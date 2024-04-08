@@ -109,6 +109,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to send update info to requester node")
+		return
 	}
 
 	if response.Accepted {

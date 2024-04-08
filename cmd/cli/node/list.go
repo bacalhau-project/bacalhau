@@ -75,13 +75,13 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 
 	if o.FilterByApproval != "" {
 		if !slices.Contains(filterApprovalValues, o.FilterByApproval) {
-			return fmt.Errorf("cannot use '%s' as filter approval value, should be one of: %q", o.FilterByApproval, filterApprovalValues)
+			return fmt.Errorf("cannot use '%s' as filter-approval value, should be one of: %q", o.FilterByApproval, filterApprovalValues)
 		}
 	}
 
 	if o.FilterByStatus != "" {
 		if !slices.Contains(filterStatusValues, o.FilterByStatus) {
-			return fmt.Errorf("cannot use '%s' as filter status value, should be one of: %q", o.FilterByStatus, filterStatusValues)
+			return fmt.Errorf("cannot use '%s' as filter-status value, should be one of: %q", o.FilterByStatus, filterStatusValues)
 		}
 	}
 
