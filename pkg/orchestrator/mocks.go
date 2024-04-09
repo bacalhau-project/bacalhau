@@ -368,18 +368,23 @@ func (m *MockNodeSelector) EXPECT() *MockNodeSelectorMockRecorder {
 }
 
 // AllMatchingNodes mocks base method.
-func (m *MockNodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
+func (m *MockNodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job, options ...NodeSelectionOption) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllMatchingNodes", ctx, job)
+	varargs := []any{ctx, job}
+	for _, a := range options {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AllMatchingNodes", varargs...)
 	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AllMatchingNodes indicates an expected call of AllMatchingNodes.
-func (mr *MockNodeSelectorMockRecorder) AllMatchingNodes(ctx, job any) *gomock.Call {
+func (mr *MockNodeSelectorMockRecorder) AllMatchingNodes(ctx, job any, options ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).AllMatchingNodes), ctx, job)
+	varargs := append([]any{ctx, job}, options...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).AllMatchingNodes), varargs...)
 }
 
 // AllNodes mocks base method.
@@ -398,9 +403,13 @@ func (mr *MockNodeSelectorMockRecorder) AllNodes(ctx any) *gomock.Call {
 }
 
 // TopMatchingNodes mocks base method.
-func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int, options ...any) ([]models.NodeInfo, error) {
+func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int, options ...NodeSelectionOption) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopMatchingNodes", ctx, job, desiredCount, options)
+	varargs := []any{ctx, job, desiredCount}
+	for _, a := range options {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "TopMatchingNodes", varargs...)
 	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -409,7 +418,8 @@ func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job
 // TopMatchingNodes indicates an expected call of TopMatchingNodes.
 func (mr *MockNodeSelectorMockRecorder) TopMatchingNodes(ctx, job, desiredCount any, options ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).TopMatchingNodes), ctx, job, desiredCount, options)
+	varargs := append([]any{ctx, job, desiredCount}, options...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).TopMatchingNodes), varargs...)
 }
 
 // MockRetryStrategy is a mock of RetryStrategy interface.
