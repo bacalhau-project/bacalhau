@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -45,7 +44,6 @@ type DockerRunSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRunSuite(t *testing.T) {
-	util.Fatal = util.FakeFatalErrorHandler
 	suite.Run(t, new(DockerRunSuite))
 }
 
@@ -359,11 +357,8 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 				if tcids.err != "" {
-					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
-
-					s.Require().NoErrorf(err, "Error unmarshaling errors. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-					s.Require().Greaterf(firstFatalError.Code, 0, "Expected an error, but none provided. %+v", tcids)
-					s.Require().Contains(firstFatalError.Message, "invalid output volume", "Missed detection of invalid output volume.")
+					s.Require().Error(err)
+					s.Require().Contains(string(out), "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
@@ -579,10 +574,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
 			if tc.errorCode != 0 {
-				fatalError, err := testutils.FirstFatalError(s.T(), out)
-				s.Require().NoError(err, "Error getting first fatal error")
-
-				s.Require().NotNil(fatalError, "Expected fatal error, but none found")
+				s.Require().NotNil(err, "Expected fatal error, but none found")
 			} else {
 				s.Require().NoError(err, "Error submitting job.")
 

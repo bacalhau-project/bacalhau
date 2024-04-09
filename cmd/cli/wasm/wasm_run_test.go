@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -20,7 +19,6 @@ type WasmRunSuite struct {
 }
 
 func TestWasmRunSuite(t *testing.T) {
-	util.Fatal = util.FakeFatalErrorHandler
 	suite.Run(t, new(WasmRunSuite))
 }
 
