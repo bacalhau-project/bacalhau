@@ -75,7 +75,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
-	DefaultApprovalState: models.NodeApprovals.PENDING,
+	DefaultApprovalState: models.NodeApprovals.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{

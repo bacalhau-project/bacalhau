@@ -53,8 +53,9 @@ type RequesterConfigParams struct {
 
 	DefaultPublisher string
 
-	// When new nodes join the cluster, what state do they have? By default, PENDING, but
-	// for tests, APPROVED.
+	// When new nodes join the cluster, what state do they have? By default, APPROVED, and
+	// for tests, APPROVED. We will provide an option to set this to PENDING for production
+	// or for when operators are ready to control node approval.
 	DefaultApprovalState models.NodeApproval
 
 	ControlPlaneSettings types.RequesterControlPlaneConfig
