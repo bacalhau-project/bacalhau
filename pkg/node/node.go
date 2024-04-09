@@ -281,10 +281,7 @@ func NewNode(
 
 	var requesterNode *Requester
 	var computeNode *Compute
-	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: config.Labels},
-		&RuntimeLabelsProvider{},
-	)
+	var labelsProvider models.LabelsProvider
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -351,6 +348,10 @@ func NewNode(
 			}
 		}
 
+		labelsProvider = models.MergeLabelsInOrder(
+			&ConfigLabelsProvider{staticLabels: config.Labels},
+			&RuntimeLabelsProvider{},
+		)
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
@@ -419,6 +420,7 @@ func NewNode(
 			return nil, err
 		}
 
+		labelsProvider = computeNode.labelsProvider
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
