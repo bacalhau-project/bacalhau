@@ -68,7 +68,7 @@ func NewListCmd() *cobra.Command {
 		Long:    listLong,
 		Example: listExample,
 		Args:    cobra.NoArgs,
-		Run:     o.run,
+		RunE:    o.run,
 	}
 
 	listCmd.Flags().StringVar(&o.Labels, "labels", o.Labels,
@@ -113,7 +113,7 @@ var listColumns = []output.TableColumn[*models.Job]{
 	},
 }
 
-func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
+func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 
 	var err error
@@ -121,7 +121,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 	if o.Labels != "" {
 		labelRequirements, err = labels.ParseToRequirements(o.Labels)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
+			return fmt.Errorf("could not parse labels: %w", err)
 		}
 	}
 	response, err := util.GetAPIClientV2(cmd).Jobs().List(ctx, &apimodels.ListJobsRequest{
@@ -134,15 +134,17 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
+		return fmt.Errorf("failed request: %w", err)
 	}
 
 	if err = output.Output(cmd, listColumns, o.OutputOptions, response.Jobs); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
 
 	if response.NextToken != "" {
 		msg := fmt.Sprintf("To fetch more records use `--next-token %s`", response.NextToken)
 		cmd.Printf("\n%s\n", msg)
 	}
+
+	return nil
 }

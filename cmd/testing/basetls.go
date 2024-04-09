@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -26,7 +25,6 @@ type BaseTLSSuite struct {
 // before each test
 func (s *BaseTLSSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	util.Fatal = util.FakeFatalErrorHandler
 
 	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
@@ -71,7 +69,6 @@ func (s *BaseTLSSuite) SetupTest() {
 
 // After each test
 func (s *BaseTLSSuite) TearDownTest() {
-	util.Fatal = util.FakeFatalErrorHandler
 	if s.Node != nil {
 		s.Node.CleanupManager.Cleanup(context.Background())
 	}

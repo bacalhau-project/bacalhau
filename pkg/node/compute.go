@@ -20,6 +20,7 @@ import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -40,7 +41,7 @@ type Compute struct {
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
-	autoLabelsProvider models.LabelsProvider
+	labelsProvider     models.LabelsProvider
 	debugInfoProviders []model.DebugInfoProvider
 }
 
@@ -58,6 +59,7 @@ func NewComputeNode(
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
+	heartbeatClient *heartbeat.HeartbeatClient,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -191,7 +193,7 @@ func NewComputeNode(
 
 	var managementClient *compute.ManagementClient
 	// TODO: When we no longer use libP2P for management, we should remove this
-	// as the managementProxy will always be set.
+	// as the managementProxy will always be set for NATS
 	if managementProxy != nil {
 		// TODO: Make the registration lock folder a config option so that we have it
 		// available and don't have to depend on getting the repo folder.
@@ -202,13 +204,15 @@ func NewComputeNode(
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node
 		// info updates.
-		managementClient = compute.NewManagementClient(compute.ManagementClientParams{
+		managementClient = compute.NewManagementClient(&compute.ManagementClientParams{
 			NodeID:               nodeID,
 			LabelsProvider:       labelsProvider,
 			ManagementProxy:      managementProxy,
 			NodeInfoDecorator:    nodeInfoDecorator,
 			RegistrationFilePath: regFilename,
 			ResourceTracker:      runningCapacityTracker,
+			HeartbeatClient:      heartbeatClient,
+			ControlPlaneSettings: config.ControlPlaneSettings,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
@@ -236,7 +240,7 @@ func NewComputeNode(
 		Bidder:             bidder,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
-		autoLabelsProvider: labelsProvider,
+		labelsProvider:     labelsProvider,
 		debugInfoProviders: debugInfoProviders,
 		ManagementClient:   managementClient,
 	}, nil

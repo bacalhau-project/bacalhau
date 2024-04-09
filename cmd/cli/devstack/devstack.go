@@ -81,15 +81,11 @@ func NewCmd() *cobra.Command {
 		Short:   "Start a cluster of bacalhau nodes for testing and development",
 		Long:    devStackLong,
 		Example: devstackExample,
-		PreRun: func(cmd *cobra.Command, _ []string) {
-			if err := configflags.BindFlags(cmd, devstackFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			return configflags.BindFlags(cmd, devstackFlags)
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := runDevstack(cmd, ODs, IsNoop); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDevstack(cmd, ODs, IsNoop)
 		},
 	}
 

@@ -2,6 +2,7 @@
 sidebar_label: "Oceanography - Data Conversion"
 sidebar_position: 5
 description: "Oceanography data conversion with Bacalhau"
+# cspell:ignore fco2, pco2, uatm, unwtd, xlon, ylat, tmnth, bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y, sortby, dtype, ufunc
 ---
 # Oceanography - Data Conversion
 
@@ -68,13 +69,15 @@ with fsspec.open("./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip", compressio
 ds.info()
 ```
 
-
+<!--- cslint:disable -->
 ```python
 time_slice = slice("2010", "2020") # select a decade
+<!--- cslint:enable -->
 res = ds['sst_ave_unwtd'].sel(tmnth=time_slice).mean(dim='tmnth') # average over time
 res.plot() # plot the result
 
 ```
+<!--- cslint:enable -->
 
 We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have traveled.
 
@@ -98,8 +101,6 @@ For the purposes of this example:
 3. Pinned the data to IPFS
 
 This resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
-
-
 
 ```python
 %%writefile main.py
@@ -184,6 +185,7 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+<!--- cslint:enable -->
 
 ## Setting up Docker Container
 

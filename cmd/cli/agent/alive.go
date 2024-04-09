@@ -28,22 +28,24 @@ func NewAliveCmd() *cobra.Command {
 		Use:   "alive",
 		Short: "Get the agent's liveness and health info.",
 		Args:  cobra.NoArgs,
-		Run:   o.runAlive,
+		RunE:  o.runAlive,
 	}
 	aliveCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return aliveCmd
 }
 
 // Run executes alive command
-func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) {
+func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	response, err := util.GetAPIClientV2(cmd).Agent().Alive(ctx)
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get server alive: %w", err), 1)
+		return fmt.Errorf("could not get server alive: %w", err)
 	}
 
 	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response)
 	if writeErr != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write alive: %w", writeErr), 1)
+		return fmt.Errorf("failed to write alive: %w", writeErr)
 	}
+
+	return nil
 }

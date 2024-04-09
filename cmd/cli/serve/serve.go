@@ -127,7 +127,7 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			/*
 				NB(forrest):
 				(I learned a lot more about viper and cobra than was intended...)
@@ -151,9 +151,7 @@ func NewCmd() *cobra.Command {
 				return the value of the last flag bound to it. This is why it's important to manage
 				flag binding thoughtfully, ensuring each command's context is respected.
 			*/
-			if err := configflags.BindFlags(cmd, serveFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return configflags.BindFlags(cmd, serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return serve(cmd)

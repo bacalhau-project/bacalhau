@@ -54,13 +54,13 @@ func NewDescribeCmd() *cobra.Command {
 		Long:    describeLong,
 		Example: describeExample,
 		Args:    cobra.ExactArgs(1),
-		Run:     o.run,
+		RunE:    o.run,
 	}
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd
 }
 
-func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
+func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := util.GetAPIClientV2(cmd).Jobs().Get(ctx, &apimodels.GetJobRequest{
@@ -69,14 +69,14 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	})
 
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get job %s: %w", jobID, err), 1)
+		return fmt.Errorf("could not get job %s: %w", jobID, err)
 	}
 
 	if o.OutputOpts.Format != "" {
 		if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response); err != nil {
-			util.Fatal(cmd, fmt.Errorf("failed to write job %s: %w", jobID, err), 1)
+			return fmt.Errorf("failed to write job %s: %w", jobID, err)
 		}
-		return
+		return nil
 	}
 
 	job := response.Job
@@ -89,9 +89,11 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) {
 	o.printHeaderData(cmd, job)
 	o.printExecutionsSummary(cmd, executions)
 	if err = o.printExecutions(cmd, executions); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write job executions %s: %w", jobID, err), 1)
+		return fmt.Errorf("failed to write job executions %s: %w", jobID, err)
 	}
 	o.printOutputs(cmd, executions)
+
+	return nil
 }
 
 func (o *DescribeOptions) printHeaderData(cmd *cobra.Command, job *models.Job) {
