@@ -69,7 +69,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 	if o.Labels != "" {
 		labelRequirements, err = labels.ParseToRequirements(o.Labels)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("could not parse labels: %w", err), 1)
+			return fmt.Errorf("could not parse labels: %w", err)
 		}
 	}
 
@@ -97,7 +97,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
+		return fmt.Errorf("failed request: %w", err)
 	}
 
 	columns := alwaysColumns
@@ -106,7 +106,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 	}
 
 	if err = output.Output(cmd, columns, o.OutputOptions, response.Nodes); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
 
 	return nil

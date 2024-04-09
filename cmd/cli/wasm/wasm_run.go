@@ -102,10 +102,8 @@ func newRunCmd() *cobra.Command {
 		Args:     cobra.MinimumNArgs(1),
 		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := runWasm(cmd, args, opts); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runWasm(cmd, args, opts)
 		},
 	}
 
