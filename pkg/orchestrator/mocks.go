@@ -398,18 +398,18 @@ func (mr *MockNodeSelectorMockRecorder) AllNodes(ctx any) *gomock.Call {
 }
 
 // TopMatchingNodes mocks base method.
-func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
+func (m *MockNodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int, options ...any) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopMatchingNodes", ctx, job, desiredCount)
+	ret := m.ctrl.Call(m, "TopMatchingNodes", ctx, job, desiredCount, options)
 	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TopMatchingNodes indicates an expected call of TopMatchingNodes.
-func (mr *MockNodeSelectorMockRecorder) TopMatchingNodes(ctx, job, desiredCount any) *gomock.Call {
+func (mr *MockNodeSelectorMockRecorder) TopMatchingNodes(ctx, job, desiredCount any, options ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).TopMatchingNodes), ctx, job, desiredCount)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMatchingNodes", reflect.TypeOf((*MockNodeSelector)(nil).TopMatchingNodes), ctx, job, desiredCount, options)
 }
 
 // MockRetryStrategy is a mock of RetryStrategy interface.
