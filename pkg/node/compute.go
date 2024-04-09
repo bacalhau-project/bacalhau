@@ -41,7 +41,7 @@ type Compute struct {
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
-	autoLabelsProvider models.LabelsProvider
+	labelsProvider     models.LabelsProvider
 	debugInfoProviders []model.DebugInfoProvider
 }
 
@@ -240,7 +240,7 @@ func NewComputeNode(
 		Bidder:             bidder,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
-		autoLabelsProvider: labelsProvider,
+		labelsProvider:     labelsProvider,
 		debugInfoProviders: debugInfoProviders,
 		ManagementClient:   managementClient,
 	}, nil
