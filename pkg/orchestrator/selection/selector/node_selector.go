@@ -37,8 +37,8 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 
 func (n NodeSelector) AllMatchingNodes(ctx context.Context,
 	job *models.Job,
-	options ...orchestrator.NodeSelectionOption) ([]models.NodeInfo, error) {
-	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job, options...)
+	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
+	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job, constraints)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +49,8 @@ func (n NodeSelector) AllMatchingNodes(ctx context.Context,
 
 func (n NodeSelector) TopMatchingNodes(ctx context.Context,
 	job *models.Job, desiredCount int,
-	options ...orchestrator.NodeSelectionOption) ([]models.NodeInfo, error) {
-	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job, options...)
+	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
+	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job, constraints)
 	if err != nil {
 		return nil, err
 	}
@@ -72,20 +72,10 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context,
 
 func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 	job *models.Job,
-	options ...orchestrator.NodeSelectionOption) (selected, rejected []orchestrator.NodeRank, err error) {
+	constraints *orchestrator.NodeSelectionConstraints) (selected, rejected []orchestrator.NodeRank, err error) {
 	listed, err := n.nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Apply constraints on the state of the nodes we want to select, but allow
-	// the caller to override them.
-	constraints := &orchestrator.NodeSelectionConstraint{
-		RequireApproval:  true,
-		RequireConnected: true,
-	}
-	for _, opt := range options {
-		opt(constraints)
 	}
 
 	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {

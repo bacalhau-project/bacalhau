@@ -87,7 +87,11 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	newExecs := execSet{}
 
 	// Require approval when selecting nodes, but do not require them to be connected.
-	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job, orchestrator.WithApproval(true), orchestrator.WithConnected(false))
+	nodes, err := b.nodeSelector.AllMatchingNodes(
+		ctx,
+		job,
+		&orchestrator.NodeSelectionConstraints{RequireApproval: true, RequireConnected: false},
+	)
 	if err != nil {
 		return newExecs, err
 	}

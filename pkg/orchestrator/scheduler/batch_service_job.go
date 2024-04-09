@@ -158,8 +158,10 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 			ctx,
 			job,
 			len(execs),
-			orchestrator.WithApproval(false),
-			orchestrator.WithConnected(false),
+			&orchestrator.NodeSelectionConstraints{
+				RequireApproval:  false,
+				RequireConnected: false,
+			},
 		)
 		if err != nil {
 			return err

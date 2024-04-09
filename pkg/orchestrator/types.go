@@ -79,21 +79,7 @@ type RetryRequest struct {
 	JobID string
 }
 
-type NodeSelectionConstraint struct {
+type NodeSelectionConstraints struct {
 	RequireConnected bool
 	RequireApproval  bool
-}
-
-type NodeSelectionOption func(*NodeSelectionConstraint)
-
-func WithConnected(required bool) NodeSelectionOption {
-	return func(c *NodeSelectionConstraint) {
-		c.RequireConnected = required
-	}
-}
-
-func WithApproval(required bool) NodeSelectionOption {
-	return func(c *NodeSelectionConstraint) {
-		c.RequireApproval = required
-	}
 }
