@@ -19,7 +19,7 @@ type EventEmitterSuite struct {
 	suite.Suite
 	ctrl  *gomock.Controller
 	ctx   context.Context
-	clock clock.Clock
+	clock *clock.Mock
 }
 
 func TestEventEmitterSuite(t *testing.T) {
@@ -79,19 +79,23 @@ func (s *EventEmitterSuite) TestEmitEventWithNoCallbacks() {
 }
 
 func (s *EventEmitterSuite) TestEmitWithSlowCallback() {
-	e := manager.NewNodeEventEmitter()
+	e := manager.NewNodeEventEmitter(manager.WithClock(s.clock))
 	s.NotNil(e)
 
-	e.RegisterHandler(testSleepyHandler{s})
+	e.RegisterHandler(testSleepyHandler{s.clock})
+
+	go func() {
+		s.clock.Add(10 * time.Second)
+	}()
 
 	err := e.EmitEvent(s.ctx, models.NodeInfo{}, manager.NodeEventRejected)
 	s.Error(err)
 }
 
 type testSleepyHandler struct {
-	s *EventEmitterSuite
+	c *clock.Mock
 }
 
 func (t testSleepyHandler) HandleNodeEvent(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
-	t.s.clock.Sleep(2 * time.Second)
+	t.c.Sleep(2 * time.Second)
 }
