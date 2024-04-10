@@ -153,7 +153,16 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 // placeExecs places the executions
 func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
-		selectedNodes, err := b.nodeSelector.TopMatchingNodes(ctx, job, len(execs))
+		// TODO: Remove the options once we are ready to enforce that only connected/approved nodes can be used
+		selectedNodes, err := b.nodeSelector.TopMatchingNodes(
+			ctx,
+			job,
+			len(execs),
+			&orchestrator.NodeSelectionConstraints{
+				RequireApproval:  false,
+				RequireConnected: false,
+			},
+		)
 		if err != nil {
 			return err
 		}

@@ -24,23 +24,26 @@ const (
 // also provides operations for querying and managing compute
 // node information.
 type NodeManager struct {
-	nodeInfo    routing.NodeInfoStore
-	resourceMap *concurrency.StripedMap[models.Resources]
-	heartbeats  *heartbeat.HeartbeatServer
+	nodeInfo             routing.NodeInfoStore
+	resourceMap          *concurrency.StripedMap[models.Resources]
+	heartbeats           *heartbeat.HeartbeatServer
+	defaultApprovalState models.NodeApproval
 }
 
 type NodeManagerParams struct {
-	NodeInfo   routing.NodeInfoStore
-	Heartbeats *heartbeat.HeartbeatServer
+	NodeInfo             routing.NodeInfoStore
+	Heartbeats           *heartbeat.HeartbeatServer
+	DefaultApprovalState models.NodeApproval
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
 	return &NodeManager{
-		resourceMap: concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
-		nodeInfo:    params.NodeInfo,
-		heartbeats:  params.Heartbeats,
+		resourceMap:          concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
+		nodeInfo:             params.NodeInfo,
+		heartbeats:           params.Heartbeats,
+		defaultApprovalState: params.DefaultApprovalState,
 	}
 }
 
@@ -83,9 +86,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 		}, nil
 	}
 
-	// TODO: We will default to PENDING, but once we start filtering on NodeApprovals.APPROVED we will need to
-	// make a decision on how this is determined.
-	request.Info.Approval = models.NodeApprovals.PENDING
+	request.Info.Approval = n.defaultApprovalState
 
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")

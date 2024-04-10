@@ -298,8 +298,9 @@ func NewNode(
 		// to the network. Provide it with a mechanism to lookup (and enhance)
 		// node info, and a reference to the heartbeat server if running NATS.
 		nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-			NodeInfo:   tracingInfoStore,
-			Heartbeats: heartbeatSvr,
+			NodeInfo:             tracingInfoStore,
+			Heartbeats:           heartbeatSvr,
+			DefaultApprovalState: config.RequesterNodeConfig.DefaultApprovalState,
 		})
 
 		// Start the nodemanager, ensuring it doesn't block the main thread and
