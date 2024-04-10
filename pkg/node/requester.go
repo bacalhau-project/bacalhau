@@ -119,6 +119,15 @@ func NewRequesterNode(
 	}
 	evalBroker.SetEnabled(true)
 
+	// Register the evalbroker callbacks so that it is able to handle node events
+	if nodeManager != nil {
+		nodeManager.Events().RegisterCallback(manager.NodeEventApproved, evalBroker.HandleNodeEvent)
+		nodeManager.Events().RegisterCallback(manager.NodeEventRejected, evalBroker.HandleNodeEvent)
+		nodeManager.Events().RegisterCallback(manager.NodeEventDeleted, evalBroker.HandleNodeEvent)
+		nodeManager.Events().RegisterCallback(manager.NodeEventConnected, evalBroker.HandleNodeEvent)
+		nodeManager.Events().RegisterCallback(manager.NodeEventDisconnected, evalBroker.HandleNodeEvent)
+	}
+
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
 	planners := planner.NewChain(

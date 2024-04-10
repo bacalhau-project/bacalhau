@@ -33,10 +33,12 @@ func (s *EventEmitterSuite) TestNewNodeEventEmitter() {
 	e := manager.NewNodeEventEmitter()
 	s.NotNil(e)
 
-	e.RegisterCallback(manager.NodeEventApproved, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventApproved, event)
-	})
+	e.RegisterCallback(manager.NodeEventApproved,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventApproved, event)
+		},
+	)
 
 	err := e.EmitEvent(s.ctx, models.NodeInfo{}, manager.NodeEventApproved)
 	s.NoError(err)
@@ -46,30 +48,38 @@ func (s *EventEmitterSuite) TestRegisterCallback() {
 	e := manager.NewNodeEventEmitter()
 	s.NotNil(e)
 
-	e.RegisterCallback(manager.NodeEventApproved, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventApproved, event)
-	})
+	e.RegisterCallback(manager.NodeEventApproved,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventApproved, event)
+		},
+	)
 
-	e.RegisterCallback(manager.NodeEventRejected, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventRejected, event)
-	})
+	e.RegisterCallback(manager.NodeEventRejected,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventRejected, event)
+		},
+	)
 }
 
 func (s *EventEmitterSuite) TestEmitEvent() {
 	e := manager.NewNodeEventEmitter()
 	s.NotNil(e)
 
-	e.RegisterCallback(manager.NodeEventApproved, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventApproved, event)
-	})
+	e.RegisterCallback(manager.NodeEventApproved,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventApproved, event)
+		},
+	)
 
-	e.RegisterCallback(manager.NodeEventRejected, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventRejected, event)
-	})
+	e.RegisterCallback(manager.NodeEventRejected,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventRejected, event)
+		},
+	)
 
 	err := e.EmitEvent(s.ctx, models.NodeInfo{}, manager.NodeEventApproved)
 	s.NoError(err)
@@ -90,10 +100,12 @@ func (s *EventEmitterSuite) TestEmitEventWithNoCallbacksForEvent() {
 	e := manager.NewNodeEventEmitter()
 	s.NotNil(e)
 
-	e.RegisterCallback(manager.NodeEventRejected, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.Equal(models.NodeInfo{}, info)
-		s.Equal(manager.NodeEventRejected, event)
-	})
+	e.RegisterCallback(manager.NodeEventRejected,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.Equal(models.NodeInfo{}, info)
+			s.Equal(manager.NodeEventRejected, event)
+		},
+	)
 
 	err := e.EmitEvent(s.ctx, models.NodeInfo{}, manager.NodeEventApproved)
 	s.NoError(err)
@@ -111,9 +123,11 @@ func (s *EventEmitterSuite) TestEmitWithSlowCallback() {
 	e := manager.NewNodeEventEmitter()
 	s.NotNil(e)
 
-	e.RegisterCallback(manager.NodeEventRejected, func(info models.NodeInfo, event manager.NodeEvent) {
-		s.clock.Sleep(2 * time.Second)
-	})
+	e.RegisterCallback(manager.NodeEventRejected,
+		func(ctx context.Context, info models.NodeInfo, event manager.NodeEvent) {
+			s.clock.Sleep(2 * time.Second)
+		},
+	)
 
 	err := e.EmitEvent(s.ctx, models.NodeInfo{}, manager.NodeEventRejected)
 	s.Error(err)

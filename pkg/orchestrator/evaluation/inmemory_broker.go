@@ -20,6 +20,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -814,4 +815,11 @@ func (b *InMemoryBroker) registerMetrics() (metric.Registration, error) {
 		return nil
 	}, orchestrator.EvalBrokerReady, orchestrator.EvalBrokerInflight, orchestrator.EvalBrokerPending,
 		orchestrator.EvalBrokerWaiting, orchestrator.EvalBrokerCancelable)
+}
+
+func (b *InMemoryBroker) HandleNodeEvent(ctx context.Context, info models.NodeInfo, evt manager.NodeEvent) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	log.Ctx(ctx).Debug().Msgf("Received node event %s for node %s", evt.String(), info.NodeID)
 }

@@ -39,7 +39,7 @@ func (n NodeEvent) String() string {
 }
 
 // NodeEventCallback is a function that will be called when an event is emitted.
-type NodeEventCallback func(info models.NodeInfo, event NodeEvent)
+type NodeEventCallback func(ctx context.Context, info models.NodeInfo, event NodeEvent)
 
 type NodeEventEmitterOption func(emitter *NodeEventEmitter)
 
@@ -95,7 +95,7 @@ func (e *NodeEventEmitter) EmitEvent(ctx context.Context, info models.NodeInfo, 
 	for _, callback := range e.callbacks[event] {
 		wg.Add(1)
 		go func(cb NodeEventCallback) {
-			cb(info, event)
+			cb(ctx, info, event)
 			wg.Done()
 		}(callback)
 	}
