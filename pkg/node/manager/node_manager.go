@@ -40,13 +40,17 @@ type NodeManagerParams struct {
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
-	return &NodeManager{
+	mgr := &NodeManager{
 		resourceMap:          concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
 		nodeInfo:             params.NodeInfo,
 		heartbeats:           params.Heartbeats,
 		eventEmitter:         NewNodeEventEmitter(),
 		defaultApprovalState: params.DefaultApprovalState,
 	}
+
+	mgr.heartbeats.AttachCallbacks(mgr.OnNodeConnected, mgr.OnNodeDisconnected)
+
+	return mgr
 }
 
 func (n *NodeManager) Start(ctx context.Context) error {
@@ -221,6 +225,36 @@ func (n *NodeManager) List(ctx context.Context, filters ...routing.NodeInfoFilte
 
 func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 	return n.nodeInfo.Delete(ctx, nodeID)
+}
+
+// ---- When nodes are connected/disconnected ----
+
+func (n *NodeManager) OnNodeConnected(ctx context.Context, nodeID string) {
+	log.Ctx(ctx).Info().Str("nodeID", nodeID).Msg("Node connected")
+
+	info, err := n.Get(ctx, nodeID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly connected node")
+		return
+	}
+
+	if err := n.Events().EmitEvent(ctx, info, NodeEventConnected); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit connection event")
+	}
+}
+
+func (n *NodeManager) OnNodeDisconnected(ctx context.Context, nodeID string) {
+	log.Ctx(ctx).Info().Str("nodeID", nodeID).Msg("Node disconnected")
+
+	info, err := n.Get(ctx, nodeID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly disconnected node")
+		return
+	}
+
+	if err := n.Events().EmitEvent(ctx, info, NodeEventDisconnected); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit disconnection event")
+	}
 }
 
 // ---- Implementation of node actions ----

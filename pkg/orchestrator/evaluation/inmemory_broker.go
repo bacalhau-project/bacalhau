@@ -821,5 +821,5 @@ func (b *InMemoryBroker) HandleNodeEvent(ctx context.Context, info models.NodeIn
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	log.Ctx(ctx).Debug().Msgf("Received node event %s for node %s", evt.String(), info.NodeID)
+	log.Ctx(ctx).Info().Msgf("Received node event %s for node %s", evt.String(), info.NodeID)
 }

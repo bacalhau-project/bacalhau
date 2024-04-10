@@ -69,7 +69,6 @@ func (t liveness) IsValid() bool {
 type livenessContainer struct {
 	CONNECTED    NodeState
 	DISCONNECTED NodeState
-	HEALTHY      NodeState
 }
 
 var NodeStates = livenessContainer{
