@@ -823,3 +823,5 @@ func (b *InMemoryBroker) HandleNodeEvent(ctx context.Context, info models.NodeIn
 
 	log.Ctx(ctx).Info().Msgf("Received node event %s for node %s", evt.String(), info.NodeID)
 }
+
+var _ manager.NodeEventHandler = &InMemoryBroker{}

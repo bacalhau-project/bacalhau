@@ -1,3 +1,4 @@
+//go:generate mockgen --source events.go --destination mocks.go --package manager
 package manager
 
 import (
@@ -48,20 +49,27 @@ func WithClock(clock clock.Clock) NodeEventEmitterOption {
 	}
 }
 
+// NodeEventHandler defines the interface for components which wish to respond to node events
+type NodeEventHandler interface {
+	HandleNodeEvent(ctx context.Context, info models.NodeInfo, event NodeEvent)
+}
+
 // NodeEventEmitter is a struct that will be used to emit events and register callbacks for those events.
 // Events will be emitted by the node manager when a node is approved or rejected, and the expectation
 // is that they will be consumed by the evaluation broker to create new evaluations.
 // It is safe for concurrent use.
 type NodeEventEmitter struct {
-	mu        sync.Mutex
-	callbacks []NodeEventHandler
-	clock     clock.Clock
+	mu          sync.Mutex
+	callbacks   []NodeEventHandler
+	clock       clock.Clock
+	emitTimeout time.Duration
 }
 
 func NewNodeEventEmitter(options ...NodeEventEmitterOption) *NodeEventEmitter {
 	emitter := &NodeEventEmitter{
-		callbacks: make([]NodeEventHandler, 0),
-		clock:     clock.New(),
+		callbacks:   make([]NodeEventHandler, 0),
+		clock:       clock.New(),
+		emitTimeout: 1 * time.Second,
 	}
 
 	for _, option := range options {
@@ -104,16 +112,12 @@ func (e *NodeEventEmitter) EmitEvent(ctx context.Context, info models.NodeInfo, 
 		wg.Wait()
 	}()
 
-	waitDuration := 1 * time.Second
-
-	for {
-		select {
-		case <-completedChan:
-			return nil
-		case <-ctx.Done():
-			return nil
-		case <-e.clock.After(waitDuration):
-			return fmt.Errorf("timed out waiting for %s event callbacks to complete", event.String())
-		}
+	select {
+	case <-completedChan:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-e.clock.After(e.emitTimeout):
+		return fmt.Errorf("timed out waiting for %s event callbacks to complete", event.String())
 	}
 }
