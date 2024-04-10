@@ -1,6 +1,6 @@
 ---
-sidebar_label: "Job setup"
-sidebar_position: 2
+sidebar_label: "Jobs"
+sidebar_position: 0
 ---
 # Networking with Bacalhau
 
