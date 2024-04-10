@@ -42,7 +42,7 @@ func RunTestCase(
 			return []model.StorageSpec{}
 		}
 
-		storageList, stErr := getStorage(ctx, model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
+		storageList, stErr := getStorage(ctx, model.StorageSourceInline)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {

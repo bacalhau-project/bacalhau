@@ -18,7 +18,7 @@ func MustHaveIPFS(t testing.TB) string {
 }
 
 func HasIPFS(t testing.TB) string {
-	possibleConnectString := "/ip4/127.0.0.1/tcp/5001"
+	possibleConnectString := "/ip4/127.0.0.1/tcp/5002"
 	client, err := NewClientUsingRemoteHandler(context.Background(), possibleConnectString)
 	if err == nil && client != nil {
 		return possibleConnectString

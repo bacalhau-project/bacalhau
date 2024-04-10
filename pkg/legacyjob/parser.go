@@ -1,6 +1,7 @@
 package legacyjob
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
@@ -20,7 +22,7 @@ const (
 	ipfsPrefix = "ipfs"
 )
 
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func ParseStorageString(sourceURI, destinationPath string, options map[string]string) (model.StorageSpec, error) {
 	sourceURI = strings.Trim(sourceURI, " '\"")
 	destinationPath = strings.Trim(destinationPath, " '\"")
@@ -44,6 +46,22 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 		res = model.StorageSpec{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           u.String(),
+		}
+	case "inline":
+		inline := inline.NewStorage()
+		specConfig, err := inline.Upload(context.Background(), sourceURI)
+		if err != nil {
+			return model.StorageSpec{}, err
+		}
+
+		fmt.Println("-------------------------")
+		fmt.Printf("%+v\n", specConfig.Params)
+		fmt.Println("-------------------------")
+
+		res = model.StorageSpec{
+			StorageSource: model.StorageSourceInline,
+			URL:           specConfig.Params["URL"].(string),
+			Path:          destinationPath,
 		}
 	case s3Prefix:
 		res = model.StorageSpec{

@@ -20,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -587,6 +586,10 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 	ctx := context.TODO()
 
+	ipfsConn := ipfs.MustHaveIPFS(s.T())
+	ipfsClient, err := ipfs.NewClientUsingRemoteHandler(ctx, ipfsConn)
+	s.Require().NoError(err)
+
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
@@ -604,8 +607,8 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		s.Require().NoError(err)
 	}
 
-	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients([]*node.Node{s.Node})...)
-	s.Require().NoError(err)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, ipfsClient)
+	// s.Require().NoError(err)
 
 	allArgs := []string{
 		"docker", "run",

@@ -106,7 +106,7 @@ func SedFile(t testing.TB) Scenario {
 				model.NewDockerEngineBuilder("ubuntu:latest").
 					WithEntrypoint(
 						"sed",
-						"-n",
+						//"-n",
 						"/38.7[2-4]..,-9.1[3-7]../p",
 						simpleMountPath,
 					).

@@ -72,7 +72,7 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 	clients := stack.IPFSClients()
 	s.Require().GreaterOrEqual(len(clients), 1, "No IPFS clients to upload to?")
 
-	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, stack.IPFSClients()...)
+	storageList, stErr := getStorage(s.Ctx, model.StorageSourceInline)
 	s.Require().NoError(stErr)
 
 	return storageList

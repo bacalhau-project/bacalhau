@@ -4,12 +4,13 @@ import (
 	"context"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 
-	"github.com/rs/zerolog/log"
 	"github.com/vincent-petithory/dataurl"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 )
 
 // A SetupStorage is a function that return a model.StorageSpec representing
@@ -18,7 +19,6 @@ import (
 type SetupStorage func(
 	ctx context.Context,
 	driverName model.StorageSourceType,
-	ipfsClients ...*ipfs.Client,
 ) ([]model.StorageSpec, error)
 
 // StoredText will store the passed string as a file on an IPFS node, and return
@@ -27,43 +27,49 @@ func StoredText(
 	fileContents string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), clients...)
+	return func(ctx context.Context, driverName model.StorageSourceType) ([]model.StorageSpec, error) {
+		storage := inline.NewStorage()
+
+		config := storage.StoreBytes([]byte(fileContents))
+
+		spec, err := legacy.ToLegacyStorageSpec(&config)
 		if err != nil {
 			return nil, err
 		}
-		inputStorageSpecs := []model.StorageSpec{
-			{
-				StorageSource: driverName,
-				CID:           fileCid,
-				Path:          mountPath,
-			},
-		}
-		log.Ctx(ctx).Debug().Msgf("Added file with cid %s", fileCid)
+
+		spec.Path = mountPath
+
+		inputStorageSpecs := []model.StorageSpec{spec}
 		return inputStorageSpecs, nil
 	}
 }
 
-// StoredFile will store the file at the passed path on an IPFS node, and return
-// the file name and CID in the model.StorageSpec.
+// StoredFile will store the file at the passed path inline, and return
+// the file name and content/URL in the model.StorageSpec.
 func StoredFile(
 	filePath string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := ipfs.AddFileToNodes(ctx, filePath, clients...)
+	return func(ctx context.Context, driverName model.StorageSourceType) ([]model.StorageSpec, error) {
+		abspath, err := filepath.Abs(filePath)
 		if err != nil {
 			return nil, err
 		}
-		inputStorageSpecs := []model.StorageSpec{
-			{
-				Name:          fileCid,
-				StorageSource: driverName,
-				CID:           fileCid,
-				Path:          mountPath,
-			},
+
+		storage := inline.NewStorage()
+		specConfig, err := storage.Upload(ctx, abspath)
+		if err != nil {
+			return nil, err
 		}
-		return inputStorageSpecs, nil
+
+		spec, err := legacy.ToLegacyStorageSpec(&specConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		spec.Path = mountPath
+
+		return []model.StorageSpec{spec}, nil
 	}
 }
 
@@ -85,7 +91,7 @@ func URLDownload(
 	urlPath string,
 	mountPath string,
 ) SetupStorage {
-	return func(_ context.Context, _ model.StorageSourceType, _ ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(_ context.Context, _ model.StorageSourceType) ([]model.StorageSpec, error) {
 		finalURL, err := url.JoinPath(server.URL, urlPath)
 		return []model.StorageSpec{
 			{
@@ -101,8 +107,8 @@ func URLDownload(
 // So if there are 5 IPFS nodes configured and PartialAdd is defined with 2,
 // only the first two nodes will have data loaded.
 func PartialAdd(numberOfNodes int, store SetupStorage) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		return store(ctx, driverName, ipfsClients[:numberOfNodes]...)
+	return func(ctx context.Context, driverName model.StorageSourceType) ([]model.StorageSpec, error) {
+		return store(ctx, driverName)
 	}
 }
 
@@ -110,10 +116,10 @@ func PartialAdd(numberOfNodes int, store SetupStorage) SetupStorage {
 // associated with all of them. If any of them fail, the error from the first to
 // fail will be returned.
 func ManyStores(stores ...SetupStorage) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType) ([]model.StorageSpec, error) {
 		specs := []model.StorageSpec{}
 		for _, store := range stores {
-			spec, err := store(ctx, driverName, ipfsClients...)
+			spec, err := store(ctx, driverName)
 			if err != nil {
 				return specs, err
 			}
