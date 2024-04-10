@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -91,7 +92,8 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}
 	}
-	return node.NewRequesterConfigWith(node.RequesterConfigParams{
+
+	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 		},
@@ -120,6 +122,17 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		JobStore:                       jobStore,
 		DefaultPublisher:               cfg.DefaultPublisher,
 	})
+	if err != nil {
+		return node.RequesterConfig{}, err
+	}
+
+	if cfg.ManualNodeApproval {
+		requesterConfig.DefaultApprovalState = models.NodeApprovals.PENDING
+	} else {
+		requesterConfig.DefaultApprovalState = models.NodeApprovals.APPROVED
+	}
+
+	return requesterConfig, nil
 }
 
 func getNodeType() (requester, compute bool, err error) {

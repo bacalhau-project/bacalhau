@@ -85,7 +85,13 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.nodeSelector.AllMatchingNodes(ctx, job)
+
+	// Require approval when selecting nodes, but do not require them to be connected.
+	nodes, err := b.nodeSelector.AllMatchingNodes(
+		ctx,
+		job,
+		&orchestrator.NodeSelectionConstraints{RequireApproval: true, RequireConnected: false},
+	)
 	if err != nil {
 		return newExecs, err
 	}

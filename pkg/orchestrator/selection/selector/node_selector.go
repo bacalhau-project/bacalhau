@@ -2,6 +2,7 @@ package selector
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"github.com/rs/zerolog/log"
@@ -34,8 +35,10 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	return n.nodeDiscoverer.ListNodes(ctx)
 }
 
-func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
-	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job)
+func (n NodeSelector) AllMatchingNodes(ctx context.Context,
+	job *models.Job,
+	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
+	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job, constraints)
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +46,15 @@ func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]
 	nodeInfos := generic.Map(filteredNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
 	return nodeInfos, nil
 }
-func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
-	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job)
+
+func (n NodeSelector) TopMatchingNodes(ctx context.Context,
+	job *models.Job, desiredCount int,
+	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
+	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job, constraints)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(possibleNodes) < desiredCount {
 		// TODO: evaluate if we should run the job if some nodes where found
 		err = orchestrator.NewErrNotEnoughNodes(desiredCount, append(possibleNodes, rejectedNodes...))
@@ -63,15 +70,33 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, des
 	return selectedInfos, nil
 }
 
-func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (selected, rejected []orchestrator.NodeRank, err error) {
+func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
+	job *models.Job,
+	constraints *orchestrator.NodeSelectionConstraints) (selected, rejected []orchestrator.NodeRank, err error) {
 	listed, err := n.nodeDiscoverer.ListNodes(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {
-		return nodeInfo.NodeType == models.NodeTypeCompute
+		if nodeInfo.NodeType != models.NodeTypeCompute {
+			return false
+		}
+
+		if constraints.RequireApproval && nodeInfo.Approval != models.NodeApprovals.APPROVED {
+			return false
+		}
+
+		if constraints.RequireConnected && nodeInfo.State != models.NodeStates.CONNECTED {
+			return false
+		}
+
+		return true
 	})
+
+	if len(nodeIDs) == 0 {
+		return nil, nil, errors.New("unable to find any connected and approved nodes")
+	}
 
 	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
 	if err != nil {

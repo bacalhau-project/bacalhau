@@ -306,6 +306,10 @@ func Setup(
 			}
 		}
 
+		// Set the default approval state from the config provided, either PENDING if the user has
+		// chosen manual approval, or the default otherwise.
+		nodeConfig.RequesterNodeConfig.DefaultApprovalState = stackConfig.RequesterConfig.DefaultApprovalState
+
 		// Create dedicated store paths for each node
 		err = setStorePaths(ctx, fsRepo, &nodeConfig)
 		if err != nil {
