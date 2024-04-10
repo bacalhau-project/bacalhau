@@ -97,12 +97,16 @@ func (e *NodeEventEmitter) EmitEvent(ctx context.Context, info models.NodeInfo, 
 	completedChan := make(chan struct{})
 	wg := sync.WaitGroup{}
 
+	newCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	for _, hlr := range e.callbacks {
 		wg.Add(1)
-		go func(handler NodeEventHandler) {
+		go func(handler NodeEventHandler, ctx context.Context) {
+			defer wg.Done()
+
 			handler.HandleNodeEvent(ctx, info, event)
-			wg.Done()
-		}(hlr)
+		}(hlr, newCtx)
 	}
 
 	// Wait for the waitgroup and then close the channel to signal completion. This allows
