@@ -17,6 +17,9 @@ type NodeEvent int
 const (
 	NodeEventApproved NodeEvent = iota
 	NodeEventRejected
+	NodeEventDeleted
+	NodeEventConnected
+	NodeEventDisconnected
 )
 
 func (n NodeEvent) String() string {
@@ -24,7 +27,14 @@ func (n NodeEvent) String() string {
 		return "NodeEventApproved"
 	} else if n == NodeEventRejected {
 		return "NodeEventRejected"
+	} else if n == NodeEventDeleted {
+		return "NodeEventDeleted"
+	} else if n == NodeEventConnected {
+		return "NodeEventConnected"
+	} else if n == NodeEventDisconnected {
+		return "NodeEventDisconnected"
 	}
+
 	return "UnknownNodeEvent"
 }
 
