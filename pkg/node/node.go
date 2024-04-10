@@ -484,6 +484,7 @@ func NewNode(
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,
+		// TODO(forrest) [correctness]: this code is literally the server, why are we returning nil???!!!
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)
