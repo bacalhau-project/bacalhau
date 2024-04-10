@@ -59,7 +59,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(execNotNeeded, plan)
+		nonTerminalExecs.markStopped(orchestrator.ExecStoppedByJobStopEvent(), plan)
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -71,7 +71,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(execLost, plan)
+	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
 
 	allFailed := existingExecs.filterFailed().union(lost)
 
@@ -137,7 +137,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 
 func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
 	// mark all non-terminal executions as failed
-	nonTerminalExecs.markStopped(jobFailed, plan)
+	nonTerminalExecs.markStopped(plan.Event, plan)
 
 	// mark the job as failed, using the error message of the latest failed execution, if any, or use
 	// the error message passed by the scheduler
@@ -145,7 +145,8 @@ func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet
 	if len(failed) > 0 {
 		latestErr = failed.latest().ComputeState.Message
 	}
-	plan.MarkJobFailed(latestErr)
+	plan.Event.Details["Error"] = latestErr
+	plan.MarkJobFailed(plan.Event)
 }
 
 // compile-time assertion that OpsJobScheduler satisfies the Scheduler interface

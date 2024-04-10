@@ -130,7 +130,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 
 	JobsSubmitted.Inc(ctx, job.MetricAttributes()...)
 
-	err = e.store.CreateJob(ctx, *job)
+	err = e.store.CreateJob(ctx, *job, orchestrator.JobSubmittedEvent())
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			},
 		},
 		NewState: models.JobStateTypeStopped,
-		Comment:  "job canceled by user",
+		Event:    orchestrator.JobStoppedEvent("job canceled by user"),
 	})
 	if err != nil {
 		return CancelJobResult{}, err
@@ -245,7 +245,7 @@ func (e *BaseEndpoint) OnBidComplete(ctx context.Context, response compute.BidRe
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).WithMessage(response.Reason),
 		},
-		Comment: response.Reason,
+		Event: orchestrator.BidResponseFromNodeEvent(response.Reason),
 	}
 
 	if !response.Accepted {
@@ -340,7 +340,7 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(result.Error()),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution failed"),
 		},
-		Comment: result.Err,
+		Event: orchestrator.ExecutionFailedEvent(result.Err),
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to update execution")

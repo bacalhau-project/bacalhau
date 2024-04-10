@@ -64,7 +64,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(execNotNeeded, plan)
+		nonTerminalExecs.markStopped(orchestrator.ExecStoppedByJobStopEvent(), plan)
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -76,7 +76,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(execLost, plan)
+	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
 
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
@@ -90,7 +90,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// Approve/Reject nodes
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
-	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
+	execsByApprovalStatus.toReject.markStopped(orchestrator.ExecStoppedByNodeRejectedEvent(), plan)
 
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
@@ -99,6 +99,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		var placementErr error
 		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
+			plan.Event = orchestrator.JobExhaustedRetriesEvent()
 		} else {
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
@@ -110,7 +111,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// stop executions if we over-subscribed and exceeded the desired number of executions
 	_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
-	overSubscriptions.markStopped(execNotNeeded, plan)
+	overSubscriptions.markStopped(orchestrator.ExecStoppedByOversubscriptionEvent(), plan)
 
 	// Check the job's state and update it accordingly.
 	if desiredRemainingCount <= 0 {
@@ -141,6 +142,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	if len(newExecs) > 0 {
 		err := b.placeExecs(ctx, newExecs, job)
 		if err != nil {
+			plan.Event = orchestrator.JobNotEnoughNodesEvent()
 			return newExecs, err
 		}
 	}
@@ -178,7 +180,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
 	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
 	// mark all non-terminal executions as failed
-	nonTerminalExecs.markStopped(jobFailed, plan)
+	nonTerminalExecs.markStopped(plan.Event, plan)
 
 	// mark the job as failed, using the error message of the latest failed execution, if any, or use
 	// the error message passed by the scheduler
@@ -186,7 +188,8 @@ func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, faile
 	if len(failed) > 0 {
 		latestErr = failed.latest().ComputeState.Message
 	}
-	plan.MarkJobFailed(latestErr)
+	plan.Event.Details["Error"] = latestErr
+	plan.MarkJobFailed(plan.Event)
 }
 
 // compile-time assertion that BatchServiceJobScheduler satisfies the Scheduler interface

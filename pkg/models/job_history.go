@@ -49,5 +49,19 @@ type JobHistory struct {
 	ExecutionState *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
 	NewRevision    uint64                           `json:"NewRevision"`
 	Comment        string                           `json:"Comment,omitempty"`
+	Event          Event                            `json:"Event,omitempty"`
 	Time           time.Time                        `json:"Time"`
+}
+
+func (jh JobHistory) GetTimestamp() time.Time {
+	if !jh.Event.Timestamp.Equal(time.Time{}) {
+		return jh.Event.Timestamp
+	}
+	return jh.Time
+}
+
+type Event struct {
+	Message   string            `json:"Message"`
+	Timestamp time.Time         `json:"Timestamp"`
+	Details   map[string]string `json:"Details"`
 }

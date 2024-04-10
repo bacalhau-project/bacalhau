@@ -193,9 +193,9 @@ func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApproval
 }
 
 // markStopped
-func (set execSet) markStopped(comment string, plan *models.Plan) {
+func (set execSet) markStopped(event models.Event, plan *models.Plan) {
 	for _, exec := range set {
-		plan.AppendStoppedExecution(exec, comment)
+		plan.AppendStoppedExecution(exec, event)
 	}
 }
 

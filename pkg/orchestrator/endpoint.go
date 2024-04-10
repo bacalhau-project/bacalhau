@@ -58,6 +58,10 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 // SubmitJob submits a job to the evaluation broker.
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (*SubmitJobResponse, error) {
 	job := request.Job
+	events := []models.Event{
+		JobSubmittedEvent(),
+	}
+
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
 
@@ -84,14 +88,24 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 				return nil, errors.Wrap(err, "failure converting job to JSON")
 			} else {
 				translatedJob.Meta[models.MetaDerivedFrom] = base64.StdEncoding.EncodeToString(b)
+				events = append(events, JobTranslatedEvent(job, translatedJob))
 			}
 
 			job = translatedJob
 		}
 	}
 
-	if err := e.store.CreateJob(ctx, *job); err != nil {
-		return nil, err
+	for i, event := range events {
+		if i == 0 {
+			if err := e.store.CreateJob(ctx, *job, events[0]); err != nil {
+				return nil, err
+			}
+		} else {
+			req := jobstore.UpdateJobStateRequest{JobID: job.ID, Event: event, NewState: models.JobStateTypePending}
+			if err := e.store.UpdateJobState(ctx, req); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	eval := &models.Evaluation{
@@ -145,7 +159,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			},
 		},
 		NewState: models.JobStateTypeStopped,
-		Comment:  request.Reason,
+		Event:    JobStoppedEvent(request.Reason),
 	})
 	if err != nil {
 		return StopJobResponse{}, err

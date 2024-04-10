@@ -682,7 +682,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 }
 
 // CreateJob creates a new record of a job in the data store
-func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
+func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event models.Event) error {
 	job.State = models.NewJobState(models.JobStateTypePending)
 	job.Revision = 1
 	job.CreateTime = b.clock.Now().UTC().UnixNano()
@@ -693,11 +693,11 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
 		return err
 	}
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		return b.createJob(tx, job)
+		return b.createJob(tx, job, event)
 	})
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
+func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
 	if b.jobExists(tx, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
@@ -758,7 +758,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		}
 	}
 
-	return b.appendJobHistory(tx, job, models.JobStateTypePending, newJobComment)
+	return b.appendJobHistory(tx, job, models.JobStateTypePending, event)
 }
 
 // DeleteJob removes the specified job from the system entirely
@@ -849,7 +849,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	// update the job state
 	previousState := job.State.StateType
 	job.State.StateType = request.NewState
-	job.State.Message = request.Comment
+	job.State.Message = request.Event.Message
 	job.Revision++
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 
@@ -877,10 +877,10 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		}
 	}
 
-	return b.appendJobHistory(tx, job, previousState, request.Comment)
+	return b.appendJobHistory(tx, job, previousState, request.Event)
 }
 
-func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, comment string) error {
+func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:  models.JobHistoryTypeJobLevel,
 		JobID: updateJob.ID,
@@ -889,7 +889,8 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 			New:      updateJob.State.StateType,
 		},
 		NewRevision: updateJob.Revision,
-		Comment:     comment,
+		Comment:     event.Message,
+		Event:       event,
 		Time:        time.Unix(0, updateJob.ModifyTime),
 	}
 	data, err := b.marshaller.Marshal(historyEntry)
@@ -910,7 +911,7 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 }
 
 // CreateExecution creates a record of a new execution
-func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
 	if execution.CreateTime == 0 {
 		execution.CreateTime = b.clock.Now().UTC().UnixNano()
 	}
@@ -928,11 +929,11 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 		return err
 	}
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		return b.createExecution(tx, execution)
+		return b.createExecution(tx, execution, event)
 	})
 }
 
-func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) error {
+func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution, event models.Event) error {
 	if !b.jobExists(tx, execution.JobID) {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
@@ -970,7 +971,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 		}
 	}
 
-	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, "")
+	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, event)
 }
 
 // UpdateExecution updates the state of a single execution by loading from storage,
@@ -1031,11 +1032,11 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
-	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Comment)
+	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Event)
 }
 
 func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
-	previous models.ExecutionStateType, cmt string) error {
+	previous models.ExecutionStateType, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:        models.JobHistoryTypeExecutionLevel,
 		JobID:       updated.JobID,
@@ -1046,7 +1047,8 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 			New:      updated.ComputeState.StateType,
 		},
 		NewRevision: updated.Revision,
-		Comment:     cmt,
+		Comment:     event.Message,
+		Event:       event,
 		Time:        time.Unix(0, updated.ModifyTime),
 	}
 
