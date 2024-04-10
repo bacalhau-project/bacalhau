@@ -102,11 +102,11 @@ func PrintJobExecution(
 	if !quiet {
 		cmd.Println()
 		cmd.Println("To get more details about the run, execute:")
-		cmd.Println("\tbacalhau job describe " + jobID)
+		cmd.Println("\t" + os.Args[0] + " job describe " + jobID)
 
 		cmd.Println()
 		cmd.Println("To get more details about the run executions, execute:")
-		cmd.Println("\tbacalhau job executions " + jobID)
+		cmd.Println("\t" + os.Args[0] + " job executions " + jobID)
 	}
 
 	return nil
