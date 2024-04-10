@@ -7,6 +7,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -65,7 +68,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 	jobID := args[0]
 	response, err := util.GetAPIClientV2(cmd).Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
-		Include: "executions",
+		Include: "executions,history",
 	})
 
 	if err != nil {
@@ -85,12 +88,34 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 		// TODO: #520 rename Executions.Executions to Executions.Items
 		executions = response.Executions.Executions
 	}
+	var history []*models.JobHistory
+	if response.History != nil {
+		history = response.History.History
+	}
 
 	o.printHeaderData(cmd, job)
 	o.printExecutionsSummary(cmd, executions)
+
+	jobHistory := lo.Filter(history, func(entry *models.JobHistory, _ int) bool {
+		return entry.Type == models.JobHistoryTypeJobLevel
+	})
+	if err = o.printHistory(cmd, "Job", jobHistory); err != nil {
+		util.Fatal(cmd, fmt.Errorf("failed to write job history: %w", err), 1)
+	}
+
 	if err = o.printExecutions(cmd, executions); err != nil {
 		return fmt.Errorf("failed to write job executions %s: %w", jobID, err)
 	}
+
+	for _, execution := range executions {
+		executionHistory := lo.Filter[*models.JobHistory](history, func(item *models.JobHistory, index int) bool {
+			return item.ExecutionID == execution.ID
+		})
+		if err = o.printHistory(cmd, "Execution "+idgen.ShortUUID(execution.ID), executionHistory); err != nil {
+			util.Fatal(cmd, fmt.Errorf("failed to write execution history for %s: %w", execution.ID, err), 1)
+		}
+	}
+
 	o.printOutputs(cmd, executions)
 
 	return nil
@@ -154,6 +179,32 @@ func (o *DescribeOptions) printExecutions(cmd *cobra.Command, executions []*mode
 	}
 	output.Bold(cmd, "\nExecutions\n")
 	return output.Output(cmd, executionCols, tableOptions, executions)
+}
+
+func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history []*models.JobHistory) error {
+	if len(history) < 1 {
+		return nil
+	}
+
+	firstTime := history[0].GetTimestamp()
+	timeSinceCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: historyTimeCol.ColumnConfig.Name, WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(h *models.JobHistory) string { return h.GetTimestamp().Sub(firstTime).String() },
+	}
+
+	tableOptions := output.OutputOptions{
+		Format:  output.TableFormat,
+		NoStyle: true,
+	}
+	jobHistoryCols := []output.TableColumn[*models.JobHistory]{
+		timeSinceCol,
+		historyRevisionCol,
+		historyStateCol,
+		historyEventCol,
+		historyDetailsCol,
+	}
+	output.Bold(cmd, fmt.Sprintf("\n%s History\n", label))
+	return output.Output(cmd, jobHistoryCols, tableOptions, history)
 }
 
 func (o *DescribeOptions) printOutputs(cmd *cobra.Command, executions []*models.Execution) {
