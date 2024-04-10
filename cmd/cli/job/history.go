@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -109,16 +110,22 @@ var (
 			return j.ExecutionState.New.String()
 		},
 	}
+	historyTopicCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: len(models.EventTopicExecutionPreparing)},
+		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
+	}
 	historyEventCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 40, WidthMaxEnforcer: text.WrapSoft},
+		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 60, WidthMaxEnforcer: text.WrapSoft},
 		Value:        func(j *models.JobHistory) string { return j.Event.Message },
 	}
 	historyDetailsCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Details", WidthMax: 60, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{Name: "Details", WidthMax: 25, WidthMaxEnforcer: text.WrapText},
 		Value: func(jh *models.JobHistory) string {
-			return strings.Join(lo.MapToSlice(jh.Event.Details, func(key, value string) string {
+			details := lo.MapToSlice(jh.Event.Details, func(key, value string) string {
 				return fmt.Sprintf("%s: %s", key, value)
-			}), "\n")
+			})
+			slices.Sort(details)
+			return strings.Join(details, "\n")
 		},
 	}
 )
@@ -130,6 +137,7 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	historyExecIDCol,
 	historyNodeIDCol,
 	historyStateCol,
+	historyTopicCol,
 	historyEventCol,
 	historyDetailsCol,
 }

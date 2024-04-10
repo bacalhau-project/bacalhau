@@ -60,8 +60,22 @@ func (jh JobHistory) GetTimestamp() time.Time {
 	return jh.Time
 }
 
+type EventTopic string
+
+const (
+	EventTopicJobSubmission EventTopic = "Submission"
+	EventTopicJobScheduling EventTopic = "Scheduling"
+
+	EventTopicExecutionBidding     EventTopic = "Requesting node"
+	EventTopicExecutionDownloading EventTopic = "Downloading inputs"
+	EventTopicExecutionPreparing   EventTopic = "Preparing environment"
+	EventTopicExecutionRunning     EventTopic = "Running execution"
+	EventTopicExecutionPublishing  EventTopic = "Publishing results"
+)
+
 type Event struct {
 	Message   string            `json:"Message"`
+	Topic     EventTopic        `json:"Topic"`
 	Timestamp time.Time         `json:"Timestamp"`
 	Details   map[string]string `json:"Details"`
 }

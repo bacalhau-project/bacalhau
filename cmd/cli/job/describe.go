@@ -200,6 +200,7 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 		timeSinceCol,
 		historyRevisionCol,
 		historyStateCol,
+		historyTopicCol,
 		historyEventCol,
 		historyDetailsCol,
 	}
