@@ -38,9 +38,6 @@ func (n NodeEvent) String() string {
 	return "UnknownNodeEvent"
 }
 
-// NodeEventCallback is a function that will be called when an event is emitted.
-type NodeEventCallback func(ctx context.Context, info models.NodeInfo, event NodeEvent)
-
 type NodeEventEmitterOption func(emitter *NodeEventEmitter)
 
 // WithClock is an option that can be used to set the clock for the NodeEventEmitter. This is useful
@@ -57,13 +54,13 @@ func WithClock(clock clock.Clock) NodeEventEmitterOption {
 // It is safe for concurrent use.
 type NodeEventEmitter struct {
 	mu        sync.Mutex
-	callbacks map[NodeEvent][]NodeEventCallback
+	callbacks []NodeEventHandler
 	clock     clock.Clock
 }
 
 func NewNodeEventEmitter(options ...NodeEventEmitterOption) *NodeEventEmitter {
 	emitter := &NodeEventEmitter{
-		callbacks: make(map[NodeEvent][]NodeEventCallback),
+		callbacks: make([]NodeEventHandler, 0),
 		clock:     clock.New(),
 	}
 
@@ -76,11 +73,11 @@ func NewNodeEventEmitter(options ...NodeEventEmitterOption) *NodeEventEmitter {
 
 // RegisterCallback will register a callback for a specific event and add it to the list
 // of existing callbacks, all of which will be called then that event is emitted.
-func (e *NodeEventEmitter) RegisterCallback(event NodeEvent, callback NodeEventCallback) {
+func (e *NodeEventEmitter) RegisterHandler(callback NodeEventHandler) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.callbacks[event] = append(e.callbacks[event], callback)
+	e.callbacks = append(e.callbacks, callback)
 }
 
 // EmitEvent will emit an event and call all the callbacks registered for that event. These callbacks
@@ -92,12 +89,12 @@ func (e *NodeEventEmitter) EmitEvent(ctx context.Context, info models.NodeInfo, 
 	completedChan := make(chan struct{})
 	wg := sync.WaitGroup{}
 
-	for _, callback := range e.callbacks[event] {
+	for _, hlr := range e.callbacks {
 		wg.Add(1)
-		go func(cb NodeEventCallback) {
-			cb(ctx, info, event)
+		go func(handler NodeEventHandler) {
+			handler.HandleNodeEvent(ctx, info, event)
 			wg.Done()
-		}(callback)
+		}(hlr)
 	}
 
 	// Wait for the waitgroup and then close the channel to signal completion. This allows
