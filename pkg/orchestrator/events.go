@@ -11,7 +11,6 @@ const (
 	jobTranslatedMessage       = "Job tasks translated to new type"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
-	jobNotEnoughNodesMessage   = "Job failed because not enough nodes are suitable to run it"
 
 	execStoppedByJobStopMessage          = "Execution stop requested because job has been stopped"
 	execStoppedByNodeUnhealthyMessage    = "Execution stop requested because node has disappeared"
@@ -21,63 +20,48 @@ const (
 	execFailedMessage                    = "Execution did not complete successfully"
 )
 
-func event(msg string, details map[string]string) models.Event {
+func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
 	return models.Event{
 		Message:   msg,
+		Topic:     topic,
 		Timestamp: time.Now(),
 		Details:   details,
 	}
 }
 
 func JobSubmittedEvent() models.Event {
-	return event(jobSubmittedMessage, map[string]string{})
+	return event(models.EventTopicJobSubmission, jobSubmittedMessage, map[string]string{})
 }
 
 func JobTranslatedEvent(old, new *models.Job) models.Event {
-	return event(jobTranslatedMessage, map[string]string{
+	return event(models.EventTopicJobSubmission, jobTranslatedMessage, map[string]string{
 		"PreviousTaskType": old.Task().Engine.Type,
 		"NewTaskType":      new.Task().Engine.Type,
 	})
 }
 
 func JobStoppedEvent(reason string) models.Event {
-	return event(jobStopRequestedMessage, map[string]string{
+	return event(models.EventTopicJobScheduling, jobStopRequestedMessage, map[string]string{
 		"Reason": reason,
 	})
 }
 
 func JobExhaustedRetriesEvent() models.Event {
-	return event(jobExhaustedRetriesMessage, map[string]string{})
-}
-
-func JobNotEnoughNodesEvent() models.Event {
-	return event(jobNotEnoughNodesMessage, map[string]string{})
+	return event(models.EventTopicJobScheduling, jobExhaustedRetriesMessage, map[string]string{})
 }
 
 func ExecStoppedByJobStopEvent() models.Event {
-	return event(execStoppedByJobStopMessage, map[string]string{})
+	return event(models.EventTopicJobScheduling, execStoppedByJobStopMessage, map[string]string{})
 }
 
 func ExecStoppedByNodeUnhealthyEvent() models.Event {
-	return event(execStoppedByNodeUnhealthyMessage, map[string]string{})
+	return event(models.EventTopicExecutionBidding, execStoppedByNodeUnhealthyMessage, map[string]string{})
 }
 
 func ExecStoppedByNodeRejectedEvent() models.Event {
-	return event(execStoppedByNodeRejectedMessage, map[string]string{})
+	return event(models.EventTopicExecutionBidding, execStoppedByNodeRejectedMessage, map[string]string{})
 }
 
 func ExecStoppedByOversubscriptionEvent() models.Event {
-	return event(execStoppedByOversubscriptionMessage, map[string]string{})
-}
-
-func BidResponseFromNodeEvent(reason string) models.Event {
-	return event(execRejectedByNodeMessage, map[string]string{
-		"Reason": reason,
-	})
-}
-
-func ExecutionFailedEvent(reason string) models.Event {
-	return event(execFailedMessage, map[string]string{
-		"Error": reason,
-	})
+	return event(models.EventTopicJobScheduling, execStoppedByOversubscriptionMessage, map[string]string{})
 }

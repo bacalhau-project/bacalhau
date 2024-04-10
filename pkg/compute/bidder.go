@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -68,7 +69,7 @@ func (b Bidder) ReturnBidResult(
 		},
 		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 		Accepted:          response.ShouldBid,
-		Reason:            response.Reason,
+		Event:             RespondedToBidEvent(response),
 	}
 	b.callback.OnBidComplete(ctx, result)
 }
@@ -107,7 +108,7 @@ func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 		b.callback.OnComputeFailure(ctx, ComputeError{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
-			Err:               err.Error(),
+			Event:             models.EventFromError(models.EventTopicExecutionBidding, err),
 		})
 		return
 	}
@@ -140,18 +141,14 @@ func (b Bidder) handleBidResult(
 			JobID:       execution.JobID,
 		}
 		handleComputeFailure = func(ctx context.Context, err error, reason string) {
-			var errMsg string
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg(reason)
-				errMsg = fmt.Sprintf("%s: %s", reason, err)
-			} else {
-				log.Ctx(ctx).Info().Msg(reason)
-				errMsg = reason
+			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg(reason)
+			if err == nil {
+				err = errors.New(reason)
 			}
 			b.callback.OnComputeFailure(ctx, ComputeError{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
-				Err:               errMsg,
+				Event:             models.EventFromError(models.EventTopicExecutionBidding, err),
 			})
 		}
 		handleBidComplete = func(ctx context.Context, result *bidStrategyResponse) {
@@ -160,7 +157,11 @@ func (b Bidder) handleBidResult(
 				ExecutionMetadata: executionMetadata,
 				Accepted:          result.bid,
 				Wait:              result.wait,
-				Reason:            result.reason,
+				Event: RespondedToBidEvent(&bidstrategy.BidStrategyResponse{
+					ShouldBid:  result.bid,
+					ShouldWait: result.wait,
+					Reason:     result.reason,
+				}),
 			})
 		}
 	)

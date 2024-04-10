@@ -93,21 +93,6 @@ func TestExecSet_Union(t *testing.T) {
 	assert.Equal(t, models.ExecutionStateCompleted, union["exec2"].ComputeState.StateType)
 }
 
-func TestExecSet_Latest(t *testing.T) {
-	now := time.Now()
-	executions := []*models.Execution{
-		{ID: "exec1", ModifyTime: now.UnixNano()},
-		{ID: "exec2", ModifyTime: now.Add(+1 * time.Second).UnixNano()},
-		{ID: "exec3", ModifyTime: now.Add(-1 * time.Second).UnixNano()},
-	}
-
-	set := execSetFromSlice(executions)
-	latest := set.latest()
-
-	assert.NotNil(t, latest)
-	assert.Equal(t, "exec2", latest.ID)
-}
-
 func TestExecSet_CountByState(t *testing.T) {
 	executions := []*models.Execution{
 		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},

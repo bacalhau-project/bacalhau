@@ -141,11 +141,6 @@ func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet
 
 	// mark the job as failed, using the error message of the latest failed execution, if any, or use
 	// the error message passed by the scheduler
-	latestErr := err.Error()
-	if len(failed) > 0 {
-		latestErr = failed.latest().ComputeState.Message
-	}
-	plan.Event.Details["Error"] = latestErr
 	plan.MarkJobFailed(plan.Event)
 }
 

@@ -36,8 +36,6 @@ const (
 	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
 	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
-
-	newJobComment = "Job created"
 )
 
 var SpecKey = []byte("spec")

@@ -51,6 +51,17 @@ type NodeRank struct {
 	NodeInfo models.NodeInfo
 	Rank     int
 	Reason   string
+
+	// Retryable should be true only if the system could defer this job until
+	// later and the rank could change without any human intervention on the
+	// assessed node. I.e. it should only reflect transient things like node
+	// usage, capacity or approval status.
+	//
+	// E.g. if this node is excluded because it does not support a required
+	// feature, this could be fixed if the feature was configured at the other
+	// node, but Retryable should be false because this is unlikely to happen
+	// over the lifetime of the job.
+	Retryable bool
 }
 
 const (

@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -88,7 +89,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 					SourcePeerID: s.ID,
 					TargetPeerID: localExecutionState.RequesterNodeID,
 				},
-				Err: err.Error(),
+				Event: models.EventFromError(models.EventTopicExecutionPreparing, err),
 			})
 		}
 	}()

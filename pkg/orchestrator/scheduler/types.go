@@ -218,17 +218,6 @@ func (set execSet) union(other execSet) execSet {
 	return union
 }
 
-// latest returns the latest execution in the set by the time it was last updated.
-func (set execSet) latest() *models.Execution {
-	var latest *models.Execution
-	for _, exec := range set {
-		if latest == nil || exec.ModifyTime > latest.ModifyTime {
-			latest = exec
-		}
-	}
-	return latest
-}
-
 // countByState counts the number of executions in each state.
 func (set execSet) countByState() map[models.ExecutionStateType]int {
 	counts := map[models.ExecutionStateType]int{}

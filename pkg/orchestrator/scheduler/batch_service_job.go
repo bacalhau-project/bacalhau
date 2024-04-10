@@ -142,7 +142,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	if len(newExecs) > 0 {
 		err := b.placeExecs(ctx, newExecs, job)
 		if err != nil {
-			plan.Event = orchestrator.JobNotEnoughNodesEvent()
+			plan.Event = models.EventFromError(models.EventTopicJobScheduling, err)
 			return newExecs, err
 		}
 	}
@@ -182,13 +182,7 @@ func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, faile
 	// mark all non-terminal executions as failed
 	nonTerminalExecs.markStopped(plan.Event, plan)
 
-	// mark the job as failed, using the error message of the latest failed execution, if any, or use
-	// the error message passed by the scheduler
-	latestErr := err.Error()
-	if len(failed) > 0 {
-		latestErr = failed.latest().ComputeState.Message
-	}
-	plan.Event.Details["Error"] = latestErr
+	// mark the job as failed, use the error message passed by the scheduler
 	plan.MarkJobFailed(plan.Event)
 }
 
