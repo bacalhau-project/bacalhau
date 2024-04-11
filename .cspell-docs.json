@@ -51,6 +51,8 @@
         "HashStrings",
         "UnicodeRef",
         "UUID",
+        "HHMMSS",
+        "Jlcp",
         "/github.com.*/",
         "/\\w+{12,}/",
         "/ipfs://\\w*/",
