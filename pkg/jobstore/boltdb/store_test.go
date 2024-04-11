@@ -45,6 +45,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 
 	jobFixtures := []struct {
 		id              string
+		jobType         string
 		client          string
 		tags            map[string]string
 		jobStates       []models.JobStateType
@@ -53,6 +54,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "110",
 			client:          "client1",
+			jobType:         "batch",
 			tags:            map[string]string{"gpu": "true", "fast": "true"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
@@ -60,6 +62,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "120",
 			client:          "client2",
+			jobType:         "batch",
 			tags:            map[string]string{},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
@@ -67,6 +70,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "130",
 			client:          "client3",
+			jobType:         "batch",
 			tags:            map[string]string{"slow": "true", "max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
@@ -74,6 +78,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "140",
 			client:          "client4",
+			jobType:         "batch",
 			tags:            map[string]string{"max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
@@ -81,6 +86,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "150",
 			client:          "client5",
+			jobType:         "daemon",
 			tags:            map[string]string{"max": "10"},
 			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
@@ -93,6 +99,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			[]string{"bash", "-c", "echo hello"})
 
 		job.ID = fixture.id
+		job.Type = fixture.jobType
 		job.Labels = fixture.tags
 		job.Namespace = fixture.client
 		err := s.store.CreateJob(s.ctx, *job)
@@ -519,10 +526,20 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
-	infos, err := s.store.GetInProgressJobs(s.ctx)
+	infos, err := s.store.GetInProgressJobs(s.ctx, "")
 	s.Require().NoError(err)
 	s.Require().Equal(3, len(infos))
 	s.Require().Equal("130", infos[0].ID)
+
+	infos, err = s.store.GetInProgressJobs(s.ctx, "batch")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(infos))
+	s.Require().Equal("130", infos[0].ID)
+
+	infos, err = s.store.GetInProgressJobs(s.ctx, "daemon")
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(infos))
+	s.Require().Equal("150", infos[0].ID)
 }
 
 func (s *BoltJobstoreTestSuite) TestShortIDs() {
