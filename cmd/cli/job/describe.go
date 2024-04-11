@@ -1,7 +1,9 @@
 package job
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
@@ -88,6 +90,11 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 		// TODO: #520 rename Executions.Executions to Executions.Items
 		executions = response.Executions.Executions
 	}
+	// Show most relevant execution first: sort by time DESC
+	slices.SortFunc(executions, func(a, b *models.Execution) int {
+		return cmp.Compare(b.CreateTime, a.CreateTime)
+	})
+
 	var history []*models.JobHistory
 	if response.History != nil {
 		history = response.History.History
@@ -108,7 +115,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, execution := range executions {
-		executionHistory := lo.Filter[*models.JobHistory](history, func(item *models.JobHistory, index int) bool {
+		executionHistory := lo.Filter(history, func(item *models.JobHistory, _ int) bool {
 			return item.ExecutionID == execution.ID
 		})
 		if err = o.printHistory(cmd, "Execution "+idgen.ShortUUID(execution.ID), executionHistory); err != nil {
