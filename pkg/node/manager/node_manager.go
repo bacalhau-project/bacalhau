@@ -120,6 +120,13 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		}, nil
 	}
 
+	// The NodeInfo we are receiving from the compute node will likely contain an
+	// approval field with an empty string. We don't want to overwrite the approval
+	// held here so we'll set it to whatever we currently have stored. We may want to
+	// remove the Approval and State fields from the version of NodeInfo that the
+	// compute node stores instead.
+	request.Info.Approval = existing.Approval
+
 	// TODO: Add a Put endpoint that takes the revision into account?
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
