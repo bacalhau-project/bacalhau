@@ -56,8 +56,9 @@ type Store interface {
 	GetJobs(ctx context.Context, query JobQuery) (*JobQueryResponse, error)
 
 	// GetInProgressJobs retrieves all jobs that have a state that can be
-	// considered, 'in progress'. Failure generates an error.
-	GetInProgressJobs(ctx context.Context) ([]models.Job, error)
+	// considered, 'in progress'. Failure generates an error. If the jobType
+	// is provided, only active jobs of that type will be returned.
+	GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error)
 
 	// GetJobHistory retrieves the history for the specified job.  The
 	// history returned is filtered by the contents of the provided
