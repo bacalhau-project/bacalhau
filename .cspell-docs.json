@@ -32,6 +32,8 @@
     "ignoreRegExpList": [
         "Urls",
         "saturnia",
+        "HHMMSS",
+        "Jlcp",
         "Niels",
         "TKNG",
         "runc",
