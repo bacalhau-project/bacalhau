@@ -6,12 +6,15 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -32,6 +35,11 @@ var eventsWorthPrinting = map[models.JobStateType]eventStruct{
 	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true},
 	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true},
 }
+
+var (
+	red   = color.New(color.FgRed)
+	green = color.New(color.FgGreen)
+)
 
 type eventStruct struct {
 	Message    string
@@ -72,12 +80,34 @@ func PrintJobExecution(
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			return nil
+		}
+
+		history, err := client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+			JobID:     jobID,
+			EventType: "execution",
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job history: %w", err)
+		}
+
+		historySummary := summariseHistoryEvents(history.History)
+		if len(historySummary) > 0 {
+			for _, event := range historySummary {
+				red.Fprint(cmd.ErrOrStderr(), "\nError: ")
+				cmd.PrintErrln(event.Message)
+
+				if event.Details != nil && event.Details[models.DetailsKeyHint] != "" {
+					green.Fprint(cmd.ErrOrStderr(), "\nHint: ")
+					cmd.PrintErrln(event.Details[models.DetailsKeyHint])
+				}
+			}
 		} else {
-			cmd.PrintErrf("\nError submitting job: %s", jobErr)
+			red.Fprint(cmd.ErrOrStderr(), "\nError: ")
+			cmd.PrintErrln(jobErr)
 		}
 	}
 
-	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+	if runtimeSettings.PrintNodeDetails {
 		executions, err := client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 			JobID: jobID,
 		})
@@ -86,7 +116,7 @@ func PrintJobExecution(
 		}
 		summary := summariseExecutions(executions.Executions)
 		if len(summary) > 0 {
-			cmd.Println("\nJob Results By Node:")
+			cmd.Println("\n\nJob Results By Node:")
 			for message, nodes := range summary {
 				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
 				if strings.ContainsRune(message, '\n') {
@@ -320,4 +350,22 @@ func summariseExecutions(executions []*models.Execution) map[string][]string {
 		}
 	}
 	return results
+}
+
+func summariseHistoryEvents(history []*models.JobHistory) []models.Event {
+	slices.SortFunc(history, func(a, b *models.JobHistory) int {
+		return a.Occurred().Compare(b.Occurred())
+	})
+
+	events := make(map[string]models.Event, len(history))
+	for _, entry := range history {
+		hasDetails := entry.Event.Details != nil
+		failsExecution := hasDetails && entry.Event.Details[models.DetailsKeyFailsExecution] == "true"
+		terminalState := entry.ExecutionState.New.IsTermainl()
+		if (failsExecution || terminalState) && entry.Event.Message != "" {
+			events[entry.Event.Message] = entry.Event
+		}
+	}
+
+	return maps.Values(events)
 }

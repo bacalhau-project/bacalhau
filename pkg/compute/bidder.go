@@ -231,7 +231,7 @@ func (b Bidder) doBidding(
 	// semantically the job cannot run.
 	semanticResponse, err := b.runSemanticBidding(ctx, job)
 	if err != nil {
-		return nil, fmt.Errorf("semantic bidding: %w", err)
+		return nil, err
 	}
 
 	// we shouldn't bid, and we're not waiting, bail.
@@ -242,7 +242,7 @@ func (b Bidder) doBidding(
 	// else the request is semantically biddable or waiting, calculate resource usage and check resource-based bidding.
 	resourceResponse, err := b.runResourceBidding(ctx, job, resourceUsage)
 	if err != nil {
-		return nil, fmt.Errorf("resource bidding: %w", err)
+		return nil, err
 	}
 
 	return &bidStrategyResponse{
@@ -273,19 +273,20 @@ func (b Bidder) runSemanticBidding(
 		// TODO(forrest): this can be parallelized with a wait group, although semantic checks ought to be quick.
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBid(ctx, request)
-		if err != nil {
-			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
-			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
-			// NB: failure here results in a callback to OnComputeFailure
-			return nil, errors.Wrap(err, errMsg)
-		}
-		log.Ctx(ctx).Info().
+
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+			Err(err).
 			Str("Job", request.Job.ID).
-			Str("strategy", strategyType).
-			Bool("bid", resp.ShouldBid).
-			Bool("wait", resp.ShouldWait).
-			Str("reason", resp.Reason).
-			Msgf("bit strategy response")
+			Str("Strategy", strategyType).
+			Bool("Bid", resp.ShouldBid).
+			Bool("Wait", resp.ShouldWait).
+			Str("Reason", resp.Reason).
+			Send()
+
+		if err != nil {
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, err
+		}
 
 		if resp.ShouldWait {
 			shouldWait = true
@@ -333,19 +334,20 @@ func (b Bidder) runResourceBidding(
 	for _, s := range b.resourceStrategy {
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBidBasedOnUsage(ctx, request, *resourceUsage)
-		if err != nil {
-			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
-			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
-			// NB: failure here results in a callback to OnComputeFailure
-			return nil, errors.Wrap(err, errMsg)
-		}
-		log.Ctx(ctx).Info().
+
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+			Err(err).
 			Str("Job", request.Job.ID).
-			Str("strategy", strategyType).
-			Bool("bid", resp.ShouldBid).
-			Bool("wait", resp.ShouldWait).
-			Str("reason", resp.Reason).
-			Msgf("bit strategy response")
+			Str("Strategy", strategyType).
+			Bool("Bid", resp.ShouldBid).
+			Bool("Wait", resp.ShouldWait).
+			Str("Reason", resp.Reason).
+			Send()
+
+		if err != nil {
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, err
+		}
 
 		if resp.ShouldWait {
 			shouldWait = true

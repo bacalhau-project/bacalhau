@@ -37,8 +37,30 @@ import (
 const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
 	`or registry needing authorization`
 
-const DistributionInspectError = `Could not inspect image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
+type DistributionInspectError struct {
+	Image string
+	Creds config.DockerCredentials
+	Err   error
+}
+
+func (die DistributionInspectError) Error() string {
+	return fmt.Sprintf(
+		"Could not inspect image %q - could be due to repo/image not existing, "+
+			"or registry needing authorization: %s",
+		die.Image,
+		die.Err.Error(),
+	)
+}
+
+func (die DistributionInspectError) Hint() string {
+	if !die.Creds.IsValid() {
+		return "If the image is private, supply the node with valid Docker login credentials " +
+			"using the " + config.DockerUsernameEnvVar + " and " + config.DockerPasswordEnvVar +
+			" environment variables"
+	}
+
+	return ""
+}
 
 type Client struct {
 	tracing.TracedClient
@@ -228,7 +250,11 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
+		return nil, DistributionInspectError{
+			Image: image,
+			Creds: dockerCreds,
+			Err:   err,
+		}
 	}
 
 	return distribution.Platforms, nil
@@ -342,7 +368,11 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
+		return nil, DistributionInspectError{
+			Image: image,
+			Creds: creds,
+			Err:   err,
+		}
 	}
 
 	obj := dist.Descriptor.Digest
