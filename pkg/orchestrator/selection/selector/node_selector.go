@@ -16,7 +16,6 @@ import (
 )
 
 type NodeSelectorParams struct {
-	// TODO(forrest) [simplify]: replace this with a nodestore until there is a good reason to add this complexity
 	NodeDiscoverer orchestrator.NodeDiscoverer
 	NodeRanker     orchestrator.NodeRanker
 }
@@ -34,7 +33,7 @@ func NewNodeSelector(params NodeSelectorParams) *NodeSelector {
 }
 
 func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	nodeStates, err := n.nodeDiscoverer.ListNodes(ctx)
+	nodeStates, err := n.nodeDiscoverer.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
 	}
@@ -84,7 +83,7 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context,
 func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 	job *models.Job,
 	constraints *orchestrator.NodeSelectionConstraints) (selected, rejected []orchestrator.NodeRank, err error) {
-	listed, err := n.nodeDiscoverer.ListNodes(ctx)
+	listed, err := n.nodeDiscoverer.List(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

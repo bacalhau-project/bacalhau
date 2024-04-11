@@ -78,13 +78,6 @@ func NewRequesterNode(
 	// The todo here is to simply pass a node store where it's needed instead of this chain wrapping a discoverer wrapping
 	// a store...
 	// compute node discoverer
-	nodeDiscoveryChain := discovery.NewChain(true)
-	nodeDiscoveryChain.Add(
-		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
-			Store: nodeInfoStore,
-		}),
-	)
-
 	log.Ctx(ctx).
 		Info().
 		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
@@ -108,7 +101,7 @@ func NewRequesterNode(
 
 	// node selector
 	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
-		NodeDiscoverer: nodeDiscoveryChain,
+		NodeDiscoverer: nodeInfoStore,
 		NodeRanker:     nodeRankerChain,
 	})
 
@@ -265,7 +258,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
+		discovery.NewDebugInfoProvider(nodeInfoStore),
 	}
 
 	// register requester public http apis
@@ -274,7 +267,7 @@ func NewRequesterNode(
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 	})
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
@@ -334,7 +327,7 @@ func NewRequesterNode(
 		Endpoint:           endpoint,
 		localCallback:      endpoint,
 		EndpointV2:         endpointV2,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
 		nodeManager:        nodeManager,

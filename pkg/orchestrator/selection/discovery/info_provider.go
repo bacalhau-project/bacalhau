@@ -17,7 +17,7 @@ func NewDebugInfoProvider(discoverer orchestrator.NodeDiscoverer) model.DebugInf
 
 // GetDebugInfo implements models.DebugInfoProvider
 func (p *discoveredNodesProvider) GetDebugInfo(ctx context.Context) (info model.DebugInfo, err error) {
-	nodes, err := p.discoverer.ListNodes(ctx)
+	nodes, err := p.discoverer.List(ctx)
 	info.Component = "DiscoveredNodes"
 	info.Info = nodes
 	return info, err
