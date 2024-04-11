@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Job specifications"
+sidebar_label: "Job Specifications"
 sidebar_position: 0
 ---
 # Job specifications

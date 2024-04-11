@@ -1,4 +1,4 @@
-# Authentication and authorization
+# Authentication and Authorization
 
 Bacalhau includes a flexible auth system that supports multiple methods of auth
 that are appropriate for different deployment environments.

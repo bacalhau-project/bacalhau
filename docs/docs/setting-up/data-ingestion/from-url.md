@@ -1,5 +1,5 @@
 ---
-sidebar_label: "From A URL"
+sidebar_label: "From a URL"
 sidebar_position: 1
 ---
 # Copy Data from a URL to a Public Storage
