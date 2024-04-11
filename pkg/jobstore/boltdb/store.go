@@ -535,17 +535,18 @@ func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetEx
 	return state, err
 }
 
-// GetInProgressJobs gets a list of the currently in-progress jobs
-func (b *BoltJobStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
+// GetInProgressJobs gets a list of the currently in-progress jobs, if a job type is supplied then
+// only jobs of that type will be retrieved
+func (b *BoltJobStore) GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error) {
 	var infos []models.Job
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		infos, err = b.getInProgressJobs(tx)
+		infos, err = b.getInProgressJobs(tx, jobType)
 		return
 	})
 	return infos, err
 }
 
-func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
+func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.Job, error) {
 	var infos []models.Job
 	var keys [][]byte
 
@@ -555,7 +556,14 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
 	}
 
 	for _, jobIDKey := range keys {
-		job, err := b.getJob(tx, string(jobIDKey))
+		k, typ := splitInProgressIndexKey(string(jobIDKey))
+		if jobType != "" && jobType != typ {
+			// If the user supplied a job type to filter on, and it doesn't match the job type
+			// then skip this job
+			continue
+		}
+
+		job, err := b.getJob(tx, k)
 		if err != nil {
 			return nil, err
 		}
@@ -563,6 +571,25 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
 	}
 
 	return infos, nil
+}
+
+// splitInProgressIndexKey returns the job type and the job index from
+// the in-progress index key. If no delimiter is found, then this index
+// was created before this feature was implemented, and we are unable
+// to filter on its type so will return "" as the type.
+func splitInProgressIndexKey(key string) (string, string) {
+	parts := strings.Split(key, ":")
+	if len(parts) == 1 {
+		return key, ""
+	}
+
+	k, typ := parts[1], parts[0]
+	return k, typ
+}
+
+// createInProgressIndexKey will create a composite key for the in-progress index
+func createInProgressIndexKey(job *models.Job) string {
+	return fmt.Sprintf("%s:%s", job.Type, job.ID)
 }
 
 // GetJobHistory returns the job (and execution) history for the provided options
@@ -713,7 +740,9 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		}
 	}
 
-	if err = b.inProgressIndex.Add(tx, jobIDKey); err != nil {
+	// Create a composite key for the in progress index
+	jobkey := createInProgressIndexKey(&job)
+	if err = b.inProgressIndex.Add(tx, []byte(jobkey)); err != nil {
 		return err
 	}
 
@@ -760,7 +789,12 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		}
 	}
 
-	if err = b.inProgressIndex.Remove(tx, jobIDKey); err != nil {
+	// We'll remove the job from the in progress index using just it's ID in case
+	// it predates when we switched to composite keys.
+	_ = b.inProgressIndex.Remove(tx, []byte(job.ID))
+
+	compositeKey := createInProgressIndexKey(&job)
+	if err = b.inProgressIndex.Remove(tx, []byte(compositeKey)); err != nil {
 		return err
 	}
 
@@ -831,7 +865,13 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if job.IsTerminal() {
-		err = b.inProgressIndex.Remove(tx, []byte(request.JobID))
+		// Remove the job from the in progress index, first checking for legacy items
+		// and then removing the composite.  Once we are confident no legacy items
+		// are left in the old index we can stick to just the composite
+		_ = b.inProgressIndex.Remove(tx, []byte(job.ID))
+
+		composite := createInProgressIndexKey(&job)
+		err = b.inProgressIndex.Remove(tx, []byte(composite))
 		if err != nil {
 			return err
 		}
