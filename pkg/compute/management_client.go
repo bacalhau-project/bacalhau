@@ -57,11 +57,12 @@ func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 }
 
 func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
-	return m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
+	ni := m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
 		NodeID:   m.nodeID,
 		NodeType: models.NodeTypeCompute,
 		Labels:   m.labelsProvider.GetLabels(ctx),
 	})
+	return ni
 }
 
 // RegisterNode sends a registration request to the requester node. If we successfully
@@ -101,7 +102,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	// We _could_ avoid attempting an update if we are not registered, but
 	// by doing so we will get frequent errors that the node is not
-	// registered.
+	// registered.c
 
 	nodeInfo := m.getNodeInfo(ctx)
 	response, err := m.managementProxy.UpdateInfo(ctx, requests.UpdateInfoRequest{

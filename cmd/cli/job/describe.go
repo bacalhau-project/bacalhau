@@ -134,7 +134,7 @@ func (o *DescribeOptions) printHeaderData(cmd *cobra.Command, job *models.Job) {
 		{Left: "Name", Right: job.Name},
 		{Left: "Namespace", Right: job.Namespace},
 		{Left: "Type", Right: job.Type},
-		{Left: "State", Right: job.State.StateType},
+		{Left: "Liveness", Right: job.State.StateType},
 		{Left: "Message", Right: job.State.Message},
 	} // Job type specific data
 	if job.Type == models.JobTypeBatch || job.Type == models.JobTypeService {

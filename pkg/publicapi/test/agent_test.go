@@ -4,11 +4,7 @@ package test
 
 import (
 	"context"
-	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -36,12 +32,13 @@ func (s *ServerSuite) TestAgentNode() {
 	resp, err := s.client.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeInfo)
+	s.Require().NotNil(resp.NodeState)
 
 	node := s.requesterNode
 	expectedNode, err := node.RequesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
-	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
+	s.Require().Equal(expectedNode, resp.NodeState)
+	// equalNodeInfo(s.T(), expectedNode, *resp.NodeState)
 }
 
 func (s *ServerSuite) TestAgentNodeCompute() {
@@ -49,10 +46,11 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	resp, err := s.computeClient.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeInfo)
+	s.Require().NotNil(resp.NodeState)
 }
 
-func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
+/*
+func equalNodeInfo(t *testing.T, a, b models.NodeState) {
 	require.Equal(t, a.BacalhauVersion, b.BacalhauVersion)
 	require.Equal(t, a.ID(), b.ID())
 	require.Equal(t, a.NodeType, b.NodeType)
@@ -72,3 +70,6 @@ func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
 	require.Equal(t, a.ComputeNodeInfo.RunningExecutions, b.ComputeNodeInfo.RunningExecutions)
 
 }
+
+
+*/

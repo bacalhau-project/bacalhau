@@ -6,14 +6,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type NodeInfoProviderParams struct {
+type NodeStateProviderParams struct {
 	NodeID              string
 	LabelsProvider      models.LabelsProvider
 	BacalhauVersion     models.BuildVersionInfo
 	DefaultNodeApproval models.NodeApproval
 }
 
-type NodeInfoProvider struct {
+type NodeStateProvider struct {
 	nodeID              string
 	labelsProvider      models.LabelsProvider
 	bacalhauVersion     models.BuildVersionInfo
@@ -21,8 +21,8 @@ type NodeInfoProvider struct {
 	defaultNodeApproval models.NodeApproval
 }
 
-func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
-	provider := &NodeInfoProvider{
+func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
+	provider := &NodeStateProvider{
 		nodeID:              params.NodeID,
 		labelsProvider:      params.LabelsProvider,
 		bacalhauVersion:     params.BacalhauVersion,
@@ -39,28 +39,34 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 }
 
 // RegisterNodeInfoDecorator registers a node info decorator with the node info provider.
-func (n *NodeInfoProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoDecorator) {
+func (n *NodeStateProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoDecorator) {
 	n.nodeInfoDecorators = append(n.nodeInfoDecorators, decorator)
 }
 
-func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
-	res := models.NodeInfo{
+func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
+	info := models.NodeInfo{
 		NodeID:          n.nodeID,
 		BacalhauVersion: n.bacalhauVersion,
 		Labels:          n.labelsProvider.GetLabels(ctx),
 		NodeType:        models.NodeTypeRequester,
-		Approval:        n.defaultNodeApproval,
 	}
 	for _, decorator := range n.nodeInfoDecorators {
-		res = decorator.DecorateNodeInfo(ctx, res)
+		info = decorator.DecorateNodeInfo(ctx, info)
 	}
 
-	if !res.Approval.IsValid() {
-		res.Approval = models.NodeApprovals.PENDING
+	state := models.NodeState{
+		Info:     info,
+		Approval: n.defaultNodeApproval,
+		// TODO what is the nodes state here?
+		// Liveness: models.NodeLiveness{},
 	}
 
-	return res
+	if !state.Approval.IsValid() {
+		state.Approval = models.NodeApprovals.PENDING
+	}
+
+	return state
 }
 
 // compile-time interface check
-var _ models.NodeInfoProvider = &NodeInfoProvider{}
+var _ models.NodeStateProvider = &NodeStateProvider{}

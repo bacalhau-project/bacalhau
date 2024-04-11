@@ -7,10 +7,11 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type StoreNodeDiscovererSuite struct {
@@ -34,7 +35,7 @@ func TestStoreNodeDiscovererSuite(t *testing.T) {
 
 func (s *StoreNodeDiscovererSuite) TestListNodes() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", models.EngineDocker)
+	nodeInfo1 := generateNodeState("node1", models.EngineDocker)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// both nodes are returned when asked for docker nodes
@@ -43,20 +44,26 @@ func (s *StoreNodeDiscovererSuite) TestListNodes() {
 
 	peerIDs, err := s.discoverer.ListNodes(context.Background())
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, peerIDs)
+	s.ElementsMatch([]models.NodeState{nodeInfo1}, peerIDs)
 
-	nodeInfo2 := generateNodeInfo("node2", models.EngineDocker, models.EngineWasm)
+	nodeInfo2 := generateNodeState("node2", models.EngineDocker, models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 	// only node2 is returned when asked for noop nodes
 	peerIDs, err = s.discoverer.ListNodes(context.Background())
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
+	s.ElementsMatch([]models.NodeState{nodeInfo1, nodeInfo2}, peerIDs)
 }
 
 func (s *StoreNodeDiscovererSuite) TestListNodes_Empty() {
 	peerIDs, err := s.discoverer.ListNodes(context.Background())
 	s.NoError(err)
 	s.Empty(peerIDs)
+}
+
+func generateNodeState(id string, engines ...string) models.NodeState {
+	return models.NodeState{
+		Info: generateNodeInfo(id, engines...),
+	}
 }
 
 func generateNodeInfo(id string, engines ...string) models.NodeInfo {

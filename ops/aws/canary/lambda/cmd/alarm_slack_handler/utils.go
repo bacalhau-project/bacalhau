@@ -49,9 +49,9 @@ func NewSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload, dashboard
 		Color: color,
 		Fields: []slack.AttachmentField{
 			{"Alarm Description", event.AlarmDescription, false},
-			{"New State Reason", event.NewStateReason, false},
-			{"Old State", event.OldStateValue, true},
-			{"New State", event.NewStateValue, true},
+			{"New Liveness Reason", event.NewStateReason, false},
+			{"Old Liveness", event.OldStateValue, true},
+			{"New Liveness", event.NewStateValue, true},
 		},
 		Actions: []slack.AttachmentAction{
 			{Name: "View Dashboard", Type: "button", Text: "View Dashboard", URL: dashboardUrl},

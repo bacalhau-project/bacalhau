@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 type Chain struct {
@@ -26,8 +27,8 @@ func (c *Chain) Add(discoverer ...orchestrator.NodeDiscoverer) {
 	c.discoverers = append(c.discoverers, discoverer...)
 }
 
-func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeInfo, error) {
+func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeState, error) {
+	return c.chainDiscovery(ctx, "ListNodes", func(r orchestrator.NodeDiscoverer) ([]models.NodeState, error) {
 		return r.ListNodes(ctx)
 	})
 }
@@ -35,17 +36,20 @@ func (c *Chain) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
 func (c *Chain) chainDiscovery(
 	ctx context.Context,
 	caller string,
-	getNodes func(orchestrator.NodeDiscoverer) ([]models.NodeInfo, error),
-) ([]models.NodeInfo, error) {
-	var err error
-	uniqueNodes := make(map[string]models.NodeInfo, 0)
+	getNodes func(orchestrator.NodeDiscoverer) ([]models.NodeState, error),
+) ([]models.NodeState, error) {
+	var (
+		err         error
+		uniqueNodes = make(map[string]models.NodeState, 0)
+	)
+
 	for _, discoverer := range c.discoverers {
-		nodeInfos, discoverErr := getNodes(discoverer)
+		nodeStates, discoverErr := getNodes(discoverer)
 		err = errors.Join(err, pkgerrors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
 		currentNodesCount := len(uniqueNodes)
-		for _, nodeInfo := range nodeInfos {
-			if _, ok := uniqueNodes[nodeInfo.ID()]; !ok {
-				uniqueNodes[nodeInfo.ID()] = nodeInfo
+		for _, nodeState := range nodeStates {
+			if _, ok := uniqueNodes[nodeState.Info.ID()]; !ok {
+				uniqueNodes[nodeState.Info.ID()] = nodeState
 			}
 		}
 		log.Ctx(ctx).Debug().Msgf("[%s] found %d more nodes by %T", caller, len(uniqueNodes)-currentNodesCount, discoverer)

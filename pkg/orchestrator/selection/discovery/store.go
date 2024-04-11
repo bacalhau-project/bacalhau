@@ -23,7 +23,7 @@ func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscover
 }
 
 // ListNodes implements orchestrator.NodeDiscoverer
-func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
+func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeState, error) {
 	return d.store.List(ctx)
 }
 

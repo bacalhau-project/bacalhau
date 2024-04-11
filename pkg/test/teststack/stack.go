@@ -121,7 +121,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 
 		discoveredNodeIDs := make([]string, len(discoveredNodes))
 		for i, discoveredNode := range discoveredNodes {
-			discoveredNodeIDs[i] = discoveredNode.ID()
+			discoveredNodeIDs[i] = discoveredNode.Info.ID()
 		}
 		require.ElementsMatch(t, expectedNodes, discoveredNodeIDs)
 	}

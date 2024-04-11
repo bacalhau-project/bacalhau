@@ -1587,8 +1587,8 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "State": {
-                    "description": "State is the current state of the execution",
+                "Liveness": {
+                    "description": "Liveness is the current state of the execution",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.ExecutionStateType"
@@ -1860,8 +1860,8 @@ const docTemplate = `{
                     "description": "JobID is the unique identifier for the job",
                     "type": "string"
                 },
-                "State": {
-                    "description": "State is the current state of the job",
+                "Liveness": {
+                    "description": "Liveness is the current state of the job",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.JobStateType"
@@ -1921,7 +1921,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "State": {
+                "Liveness": {
                     "description": "The current state of the job",
                     "allOf": [
                         {
@@ -2423,7 +2423,7 @@ const docTemplate = `{
                     "description": "ComputeState observed state of the execution on the compute node",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.State-models_ExecutionStateType"
+                            "$ref": "#/definitions/models.Liveness-models_ExecutionStateType"
                         }
                     ]
                 },
@@ -2435,7 +2435,7 @@ const docTemplate = `{
                     "description": "DesiredState of the execution on the compute node",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.State-models_ExecutionDesiredStateType"
+                            "$ref": "#/definitions/models.Liveness-models_ExecutionDesiredStateType"
                         }
                     ]
                 },
@@ -2669,11 +2669,11 @@ const docTemplate = `{
                     "description": "Revision is a per-job monotonically increasing revision number that is incremented\non each update to the job's state or specification",
                     "type": "integer"
                 },
-                "State": {
-                    "description": "State is the current state of the job.",
+                "Liveness": {
+                    "description": "Liveness is the current state of the job.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.State-models_JobStateType"
+                            "$ref": "#/definitions/models.Liveness-models_JobStateType"
                         }
                     ]
                 },
@@ -2974,7 +2974,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.State-models_ExecutionDesiredStateType": {
+        "models.Liveness-models_ExecutionDesiredStateType": {
             "type": "object",
             "properties": {
                 "Message": {
@@ -2991,7 +2991,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.State-models_ExecutionStateType": {
+        "models.Liveness-models_ExecutionStateType": {
             "type": "object",
             "properties": {
                 "Message": {
@@ -3008,7 +3008,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.State-models_JobStateType": {
+        "models.Liveness-models_JobStateType": {
             "type": "object",
             "properties": {
                 "Message": {

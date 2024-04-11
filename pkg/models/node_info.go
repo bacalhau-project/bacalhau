@@ -38,8 +38,8 @@ func (e *NodeType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
-type NodeInfoProvider interface {
-	GetNodeInfo(ctx context.Context) NodeInfo
+type NodeStateProvider interface {
+	GetNodeState(ctx context.Context) NodeState
 }
 
 type LabelsProvider interface {
@@ -77,14 +77,15 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 // NodeInfo
 // TODO: add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
 type NodeInfo struct {
+	// TODO replace all access on this field with the `ID()` method
 	NodeID          string            `json:"NodeID"`
 	PeerInfo        *peer.AddrInfo    `json:"PeerInfo,omitempty" yaml:",omitempty"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
-	Approval        NodeApproval      `json:"Approval"`
-	State           NodeState         `json:"State"`
+	// Approval        NodeApproval      `json:"Approval"`
+	// Liveness           NodeLiveness         `json:"Liveness"`
 }
 
 // ID returns the node ID

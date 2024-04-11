@@ -76,7 +76,7 @@ type JobState struct {
 	// job due to retries, but there can only be a single active execution per node at any given time.
 	Executions []ExecutionState `json:"Executions"`
 	// State is the current state of the job
-	State JobStateType `json:"State"`
+	State JobStateType `json:"Liveness"`
 	// Version is the version of the job state. It is incremented every time the job state is updated.
 	Version int `json:"Version"`
 	// CreateTime is the time when the job was created.

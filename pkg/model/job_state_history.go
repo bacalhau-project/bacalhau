@@ -36,7 +36,7 @@ type StateChange[StateType any] struct {
 // JobHistory represents a single event in the history of a job. An event can be
 // at the job level, or execution (node) level.
 //
-// {Job,Event}State fields will only be present if the Type field is of
+// {Job,Event}Liveness fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
 	Type             JobHistoryType                   `json:"Type"`

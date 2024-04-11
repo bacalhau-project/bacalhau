@@ -7,22 +7,38 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+// TODO wtf are we even testing here that the chain discoverer respects errors!??
+// remove the chain discoverer and the discoverer interface, using the nodeStore is far simpler.
 
 type ChainedSuite struct {
 	suite.Suite
 	chain   *Chain
-	peerID1 models.NodeInfo
-	peerID2 models.NodeInfo
-	peerID3 models.NodeInfo
+	peerID1 models.NodeState
+	peerID2 models.NodeState
+	peerID3 models.NodeState
 }
 
+const (
+	Peer1 = "peerID1"
+	Peer2 = "peerID2"
+	Peer3 = "peerID3"
+)
+
 func (s *ChainedSuite) SetupSuite() {
-	s.peerID1 = models.NodeInfo{NodeID: "peerID1"}
-	s.peerID2 = models.NodeInfo{NodeID: "peerID2"}
-	s.peerID3 = models.NodeInfo{NodeID: "peerID3"}
+	s.peerID1 = models.NodeState{
+		Info: models.NodeInfo{NodeID: Peer1},
+	}
+	s.peerID1 = models.NodeState{
+		Info: models.NodeInfo{NodeID: Peer2},
+	}
+	s.peerID1 = models.NodeState{
+		Info: models.NodeInfo{NodeID: Peer3},
+	}
 }
 
 func (s *ChainedSuite) SetupTest() {
@@ -40,7 +56,7 @@ func (s *ChainedSuite) TestListNodes() {
 
 	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeState{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestListNodes_Overlap() {
@@ -49,7 +65,7 @@ func (s *ChainedSuite) TestListNodes_Overlap() {
 
 	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeState{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestHandle_Error() {
@@ -68,7 +84,7 @@ func (s *ChainedSuite) TestHandle_IgnoreError() {
 
 	peerIDs, err := s.chain.ListNodes(context.Background())
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]models.NodeState{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 // node discoverer that always returns an error
@@ -78,6 +94,6 @@ func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
 }
 
-func (b *badDiscoverer) ListNodes(context.Context) ([]models.NodeInfo, error) {
+func (b *badDiscoverer) ListNodes(context.Context) ([]models.NodeState, error) {
 	return nil, errors.New("bad discoverer")
 }

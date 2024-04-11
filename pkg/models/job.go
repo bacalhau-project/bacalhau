@@ -101,7 +101,7 @@ type Job struct {
 	Tasks []*Task `json:"Tasks"`
 
 	// State is the current state of the job.
-	State State[JobStateType] `json:"State"`
+	State State[JobStateType] `json:"Liveness"`
 
 	// Version is a per-job monotonically increasing version number that is incremented
 	// on each job specification update.

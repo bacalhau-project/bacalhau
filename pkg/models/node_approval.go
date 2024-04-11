@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// TODO if we ever pass a pointer to this type and use `==` comparison on it we're gonna have a bad time
+// implement an `Equal()` method for this type and default to it.
 type NodeApproval struct {
 	approval
 }
