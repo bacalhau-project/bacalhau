@@ -5,4 +5,7 @@ module.exports = [
     { to: '/setting-up/data-ingestion', from: '/data-ingestion' },
     { to: '/dev/cli-reference', from: '/dev/cli-reference/all-flags' },
     { to: '/setting-up/data-ingestion', from: '/data-ingestion' },
+    { to: '/dev/other-specifications', from: '/setting-up/other-specifications' },
+    { to: '/dev/other-specifications', from: '/setting-up/other-specifications' },
+    { to: '/setting-up/running-node', from: '/dev/running-node' },
 ];
