@@ -58,8 +58,7 @@ const config = {
     ({
       colorMode: {
         defaultMode: "light",
-        disableSwitch: false,
-        respectPrefersColorScheme: true,
+        disableSwitch: true,
       },
       image: "/static/img/logo/Bacalhau-icon.svg",
       navbar: {
@@ -92,9 +91,9 @@ const config = {
       ],
       blog: false,
       algolia: {
-        appId: "15JCWQAGM1",
-        apiKey: "39072848f0a096cfb14729dd0ece6ce7",
-        indexName: "dev_bac",
+        appId: "HFGGX8DXQE",
+        apiKey: "734820f87a6e63beb72aa0680fc0cfdf",
+        indexName: "bacalhau",
       },
       footer: {
         style: "dark",

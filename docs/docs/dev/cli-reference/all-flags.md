@@ -1,6 +1,6 @@
 ---
-sidebar_label: 'All commands'
-sidebar_position: 7
+sidebar_label: 'Overview'
+sidebar_position: 1
 ---
 
 # CLI Commands overview
@@ -60,28 +60,28 @@ Global Flags
 <details>
   <summary>`--api-host string`</summary>
   <div>
-    <div>Determines the host for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_HOST` environment variable is set.
+    <div>Determines the host for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_HOST` environment variable is set.  
          Default: `bootstrap.production.bacalhau.org`</div>
   </div>
 </details>
 <details>
   <summary>`--api-port int`</summary>
   <div>
-    <div>Determines the port for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_PORT` environment variable is active.
+    <div>Determines the port for RESTful communication between the client and server. This flag is ignored if the `BACALHAU_API_PORT` environment variable is active.  
          Default: `1234` </div>
   </div>
 </details>
 <details>
   <summary>`--log-mode logging-mode`</summary>
   <div>
-    <div>Determines the preferred log format. Available log formats are: `default`, `station`, `json`, `combined`, `event`.
+    <div>Determines the preferred log format. Available log formats are: `default`, `station`, `json`, `combined`, `event`.  
          Default: `default`</div>
   </div>
 </details>
 <details>
   <summary>`--repo string`</summary>
   <div>
-    <div>Specifies the path to the bacalhau repository.
+    <div>Specifies the path to the bacalhau repository.  
          Default: `$HOME/.bacalhau`</div>
   </div>
 </details>
@@ -239,7 +239,7 @@ Expected Output:
 }
 ```
 
-## Cancel
+## Cancel 
 
 The `bacalhau cancel` command cancels a job that was previously submitted and stops it running if it has not yet completed.
 
@@ -255,7 +255,7 @@ Flags:
       --quiet   Do not print anything to stdout or stderr
 ```
 
-#### Examples
+#### Examples 
 
 To cancel a previously submitted job, run:
 
@@ -312,10 +312,10 @@ Flags:
       --no-descriptions   disable completion descriptions
 ```
 :::info
-To load completions in your current shell session:
-	`bacalhau completion fish | source`
-To load completions for every new session, execute once:
-	`bacalhau completion fish > ~/.config/fish/completions/bacalhau.fish`
+To load completions in your current shell session:  
+	`bacalhau completion fish | source`  
+To load completions for every new session, execute once:  
+	`bacalhau completion fish > ~/.config/fish/completions/bacalhau.fish`  
 You will need to start a new shell for this setup to take effect.
 :::
 
@@ -334,8 +334,8 @@ Flags:
 ```
 
 :::info
-To load completions in your current shell session:
-	`bacalhau completion powershell | Out-String | Invoke-Expression`
+To load completions in your current shell session:  
+	`bacalhau completion powershell | Out-String | Invoke-Expression`  
 To load completions for every new session, add the output of the above command
 to your powershell profile.
 :::
@@ -355,7 +355,7 @@ Flags:
 
 :::info
 If shell completion is not already enabled in your environment you will need
-to enable it.  You can execute the following once:
+to enable it.  You can execute the following once:  
 	`echo "autoload -U compinit; compinit" >> ~/.zshrc`
 :::
 
@@ -525,7 +525,7 @@ KEY                                                             VALUE
                                                                  VE3wQNSSkxmYoaBPHVAWdjBjDYmMkWvtMZxAf]
  node.clientapi.host                                             bootstrap.production.bacalhau.org
  node.clientapi.port                                             1234
-
+ 
  ...
 ```
 
@@ -554,7 +554,7 @@ Verifying that the parameter was successfully set
 
 ```shell
 bacalhau config list | grep serverapi.port
- node.serverapi.port                                             9999
+ node.serverapi.port                                             9999                                     
 cat ~/.bacalhau/config.yaml
 node:
     serverapi:
@@ -713,7 +713,7 @@ Using a UCAN Invocation object allows you to customize the parameters of job exe
 
 ## Describe
 
-The `bacalhau describe` command provides a full description of a job in YAML format. Short form and long form of the job id are accepted.
+The `bacalhau describe` command provides a full description of a job in YAML format. Short form and long form of the job id are accepted.  
 
 Usage:
 
@@ -744,7 +744,7 @@ bacalhau describe e3f8c209
 3. To describe a job and include all server and local events, run:
 
 ```shell
-bacalhau describe e3f8c209 --include-events
+bacalhau describe e3f8c209 --include-events  
 ```
 
 ## Devstack
@@ -884,7 +884,7 @@ bacalhau docker run \
   dpokidov/imagemagick:7.1.0-47-ubuntu \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
-This command allows you to start a job in a Docker container using the specified image, mount an external CID resource from IPFS inside the container to handle images, and execute a command inside the container to process files.
+This command allows you to start a job in a Docker container using the specified image, mount an external CID resource from IPFS inside the container to handle images, and execute a command inside the container to process files. 
 
 2. To check the job specification before submitting it to the bacalhau network, run:
 
@@ -1002,7 +1002,7 @@ bacalhau get 51225160
 
 ## Help
 
-The `bacalhau help` command provides help for any command in the application.
+The `bacalhau help` command provides help for any command in the application. 
 
 Usage:
 
@@ -1047,7 +1047,7 @@ Usage:
 
 Available Commands:
 
-### describe
+### describe 
 
 ```shell
 bacalhau job describe [id] [flags]
@@ -1113,7 +1113,7 @@ CREATED   MODIFIED  ID          NODE ID   REV.  COMPUTE    DESIRED  COMMENT
 16:46:03  16:46:04  e-03870df5  QmVXwmdZ  6     Completed  Stopped
 ```
 
-2. To get executions with YAML output, run:
+2. To get executions with YAML output, run: 
 
 ```shell
 bacalhau job executions j-4faae6f0-17b3-4a6d-991e-c82a677c7228 --output yaml
@@ -1394,7 +1394,7 @@ This configuration describes a batch job that runs a Docker task. It utilizes th
 
  ```bash
  bacalhau job run job.yaml
-
+ 
  Expected Output:
  Job successfully submitted. Job ID: j-2d0f513a-9eb1-49c2-8bc8-246c6fb41520
    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
@@ -1461,7 +1461,7 @@ Checking job status... (Enter Ctrl+C to exit at any time, your job will continue
 Job Results By Node:
 • Node QmSD38wH:
 	Hello Bacalhau!
-
+	
 To get more details about the run, execute:
 	bacalhau job describe j-3634acc2-c92c-494d-9413-ddd8629d0e74
 To get more details about the run executions, execute:
@@ -1562,7 +1562,7 @@ bacalhau list
 bacalhau list --output json
 ```
 
-## Logs
+## Logs 
 
 The `bacalhau logs` command retrieves the log output (stdout, and stderr) from a job.
 If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
@@ -1578,7 +1578,7 @@ Flags:
   -h, --help     help for logs
 ```
 
-#### Examples
+#### Examples 
 
 1. To follow logs for a previously submitted job, run:
 
@@ -1603,7 +1603,7 @@ bacalhau node [command]
 
 Available Commands:
 
-### describe
+### describe 
 
 ```shell
 bacalhau node describe [id] [flags]
@@ -1617,7 +1617,7 @@ Flags:
       --pretty          Pretty print the output. Only applies to json and yaml output formats.
 ```
 
-#### Examples
+#### Examples 
 
 1. To Describe a Node with the `QmSD38wH` ID, run:
 
@@ -1674,7 +1674,7 @@ Expected Output:
 ### list
 
 ```shell
- bacalhau node list [flags]
+ bacalhau node list [flags] 
 ```
 The `bacalhau node list` command is designed to provide users with a comprehensive list of network nodes along with details based on specified flags.  It supports various filtering, ordering, and output formatting options, allowing users to tailor the output to their needs.
 
@@ -1694,7 +1694,7 @@ Flags:
       --wide                Print full values in the table results without truncation.
 ```
 
-#### Examples
+#### Examples 
 
 1. To retrieve the list of nodes, run:
 
@@ -1776,7 +1776,7 @@ Expected Output:
       "git-lfs": "True",
       "owner": "bacalhau"
     },
-   ...
+   ... 
 ```
 
 ## Serve
@@ -1794,7 +1794,7 @@ Flags:
       --autocert string                                  Specifies a host name for which ACME is used to obtain a TLS Certificate.
                                                          Using this option results in the API serving over HTTPS
       --compute-execution-store-path string              The path used for the compute execution store when using BoltDB
-      --compute-execution-store-type storage-type        The type of store used by the compute node (BoltDB) (default BoltDB)
+      --compute-execution-store-type storage-type        The type of store used by the compute node (BoltDB or InMemory) (default BoltDB)
       --default-job-execution-timeout duration           default value for the execution timeout this compute node will assign to jobs with no timeout requirement defined. (default 10m0s)
       --disable-engine strings                           Engine types to disable
       --disable-storage strings                          Storage types to disable
@@ -1827,14 +1827,14 @@ Flags:
       --port int                                         The port to server on. (default 1234)
       --private-internal-ipfs                            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
       --requester-job-store-path string                  The path used for the requester job store store when using BoltDB
-      --requester-job-store-type storage-type            The type of job store used by the requester node (BoltDB) (default BoltDB)
+      --requester-job-store-type storage-type            The type of job store used by the requester node (BoltDB or InMemory) (default BoltDB)
       --swarm-port int                                   The port to listen on for swarm connections. (default 1235)
       --tlscert string                                   Specifies a TLS certificate file to be used by the requester node
       --tlskey string                                    Specifies a TLS key file matching the certificate to be used by the requester node
       --web-ui                                           Whether to start the web UI alongside the bacalhau node.
 ```
 
-#### Examples
+#### Examples 
 
 1. To Start a private bacalhau requester node, you can run either of these two commands:
 
@@ -1890,7 +1890,7 @@ Flags:
       --output-schema   Output the JSON schema for a Job to stdout then exit
 ```
 
-#### Example
+#### Example 
 
 To Validate the `job.yaml` file, run:
 
@@ -1998,7 +1998,7 @@ bacalhau wasm run <localfile.wasm>
 bacalhau wasm run <cid>
 ```
 
-### validate
+### validate 
 
 ```shell
 bacalhau wasm validate <local.wasm> [--entry-point <string>] [flags]

@@ -8,7 +8,7 @@ sidebar_position: 2
 This page is an introduction to a landscape analysis of general-purpose compute frameworks.
 Its purpose is to map the roughness of existing technologies and serve as an introduction to key concepts for those who are new to the Bacalhau community.
 
-Watch the video below for a short walkthrough and continue to the sections below to learn more about landscape analysis within the compute ecosystem.
+Watch the video below for a short walkthrough and continue to the sections below to learn more about landscape analysis within the compute ecosystem. 
 More content is available on the [full slide deck](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit?usp=sharing) and in the [code repository](https://github.com/winderai/bacalhau-landscape-analysis-benchmarks), where you'll find:
 
 * A description of each technology and how they're positioned in the compute space
@@ -26,7 +26,7 @@ Ultimately, Bacalhau aims to offer efficient distributed computation -- to achie
 The traditional compute landscape counts dozens of frameworks capable of processing generic workloads.
 Some are specifically designed to take advantage of data locality, by bringing the computation close to where data lives. The landscape analysis provided here reviewed a selection of these tools in order to summarize their pros and cons.
 
-> The [full slide deck](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit?usp=sharing) contains a detailed overview of the compute frameworks and include sample code snippets.
+> The [full slide deck](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit?usp=sharing) contains a detailed overview of the compute frameworks and include sample code snippets. 
 
 
 ![image](../../static/img/landscape/landscape.png 'Compute Framework Analysis')

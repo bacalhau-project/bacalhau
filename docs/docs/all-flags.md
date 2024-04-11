@@ -1,5 +1,5 @@
 ---
-sidebar_label: "CLI Reference"
+sidebar_label: 'CLI Reference'
 sidebar_position: 7
 ---
 
@@ -45,7 +45,7 @@ Flags:
 Use "bacalhau [command] --help" for more information about a command.
 ```
 
-## Cancel
+## Cancel 
 
 Cancels a job that was previously submitted and stops it running if it has not yet completed.
 
@@ -60,7 +60,7 @@ Flags:
       --quiet   Do not print anything to stdout or stderr
 ```
 
-#### Examples
+#### Examples 
 
 ```
 Examples:
@@ -111,21 +111,21 @@ An example job in YAML format:
 
 ```yaml
 spec:
-  engine: Docker
-  verifier: Noop
-  publisher: IPFS
-  docker:
-    image: ubuntu
-    entryPoint:
-      - echo
-    parameters:
-      - Hello
-      - World
-  outputs:
-    - name: outputs
-      path: /outputs
+    engine: Docker
+    verifier: Noop
+    publisher: IPFS
+    docker:
+        image: ubuntu
+        entryPoint:
+            - echo
+        parameters:
+            - Hello
+            - World
+    outputs:
+        - name: outputs
+          path: /outputs
 deal:
-  concurrency: 1
+    concurrency: 1
 ```
 
 ### UCAN Invocation format
@@ -283,7 +283,7 @@ Flags:
       --local                            Run the job locally. Docker is required
       --memory string                    Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
       --min-bids int                     Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)
-      --network network-type             Networking capability required by the job (default "nats")
+      --network network-type             Networking capability required by the job (default None)
       --node-details                     Print out details of all nodes (overridden by --id-only).
       --output-dir string                Directory to write the output to.
   -o, --output-volumes strings           name:path of the output data volumes. 'outputs:/outputs' is always added.
@@ -354,7 +354,7 @@ bacalhau list
 bacalhau list --output json
 ```
 
-## Logs
+## Logs 
 
 Retrieves the log output (stdout, and stderr) from a job.
 If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
@@ -370,7 +370,7 @@ Flags:
   -h, --help     help for logs
 ```
 
-#### Examples
+#### Examples 
 
 ```
 Examples:
@@ -380,6 +380,7 @@ Examples:
   # Retrieve the log output with a short ID, but don't follow any newly generated logs
   bacalhau logs ebd9bf2f
 ```
+
 
 ## Run Python
 
@@ -431,6 +432,7 @@ Flags:
       --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
 ```
 
+
 ## Serve
 
 ```
@@ -444,15 +446,15 @@ Examples:
   bacalhau serve
   # or
   bacalhau serve --node-type requester
-
+  
   # Start a private bacalhau hybrid node that acts as both compute and requester
   bacalhau serve --node-type compute --node-type requester
   # or
   bacalhau serve --node-type compute,requester
-
+  
   # Start a private bacalhau node with a persistent local IPFS node
   BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
-
+  
   # Start a public bacalhau requester node
   bacalhau serve --peer env --private-internal-ipfs=false
 

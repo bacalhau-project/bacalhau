@@ -1,5 +1,5 @@
 ---
-sidebar_label: Agent
+sidebar_label: Agents
 ---
 
 # Agent API Documentation
@@ -113,3 +113,4 @@ This API provides detailed information about the node, including its peer ID and
   }
 }
 ```
+

@@ -15,13 +15,13 @@ Bacalhau manages its configuration, metadata, and internal state within a specia
 To customize this location, users can:
 
 1. Set the `BACALHAU_DIR` environment variable to specify their desired path.
-2. Utilize the `--repo` command line flag to specify their desired path.
+2. Utilize the `--repo` command line flag for the `bacalhau serve` command to specify their desired path.
 
 Upon executing a Bacalhau command for the first time, the system will initialize the `.bacalhau` repository. If such a repository already exists, Bacalhau will seamlessly access its contents.
 
 Structure of a Newly Initialized `.bacalhau` Repository
 
-### Below is the structure of a freshly initialized `.bacalhau` repository:
+### Below is the structure of a `.bacalhau` repository:
 
 ```shell
 $ tree ~/.bacalhau
@@ -44,9 +44,9 @@ This repository comprises four directories and seven files:
 
 1. `user_id.pem`:
    - This file houses the Bacalhau node user's cryptographic private key, used for signing requests sent to a Requester Node.
-   - Format: PEM.
+   - Format: `.PEM`
 2. `repo.version`:
-   - Indicates the version of the Bacalhau node's repository.
+   - Indicates the version of the Bacalhau node's repository. Its used by the bacalhau system to maintain itself and should not be modified by users manually.
    - Format: JSON, e.g., `{"Version":1}`.
 3. `libp2p_private_key`:
    - Stores the Bacalhau node's [libp2p](https://libp2p.io/) private key, essential for its network identity. The NodeID of a Bacalhau node is derived from this key.
@@ -105,43 +105,36 @@ simplicity or to maintain backwards compatibility.
 
 ### Environments
 
-- Bacalhau leverages the `BACALHAU_ENVIRONMENT` environment variable to determine the specific environment configuration when initializing a repository. Notably, if a `.bacalhau` repository has already been initialized, the `BACALHAU_ENVIRONMENT` setting will be ignored.
+Bacalhau leverages the `BACALHAU_ENVIRONMENT` environment variable to determine the specific environment configuration when initializing a repository. Notably, if a `.bacalhau` repository has already been initialized, the `BACALHAU_ENVIRONMENT` setting will be ignored.
 
   By default, if the `BACALHAU_ENVIRONMENT` variable is not explicitly set by the user, Bacalhau will adopt the `production` environment settings.
 
   Below is a breakdown of the configurations associated with each environment:
 
-  #### 1. Production (public network)
-
-  - **Environment Variable:** `BACALHAU_ENVIRONMENT=production`
-  - Configurations:
-    - `Node.ClientAPI.Host`: `"bootstrap.production.bacalhau.org"`
-    - `Node.Client.API.Host`: `1234`
-    - *...other configurations specific to this environment...*
-
-  #### 2. Staging (staging network)
-
-  - **Environment Variable:** `BACALHAU_ENVIRONMENT=staging`
-  - Configurations:
-    - `Node.ClientAPI.Host`: `"bootstrap.staging.bacalhau.org"`
-    - `Node.Client.API.Host`: `1234`
-    - *...other configurations specific to this environment...*
-
-  #### 3. Development (development network)
-
-  - **Environment Variable:** `BACALHAU_ENVIRONMENT=development`
-  - Configurations:
-    - `Node.ClientAPI.Host`: `"bootstrap.development.bacalhau.org"`
-    - `Node.Client.API.Host`: `1234`
-    - *...other configurations specific to this environment...*
-
-  #### 4. Local (private or local networks)
-
-  - **Environment Variable:** `BACALHAU_ENVIRONMENT=local`
-  - Configurations:
-    - `Node.ClientAPI.Host`: `"0.0.0.0"`
-    - `Node.Client.API.Host`: `1234`
-    - *...other configurations specific to this environment...*
+1. **Production (demo network)**
+   1. **Environment Variable:** `BACALHAU_ENVIRONMENT=production`
+   2. Configurations:
+      1. `Node.ClientAPI.Host`: `"bootstrap.production.bacalhau.org"`
+      2. `Node.Client.API.Host`: `1234`
+      3. *...other configurations specific to this environment...*
+2. *Staging (staging network)*
+   1. **Environment Variable:** `BACALHAU_ENVIRONMENT=staging`
+   2. Configurations:
+      1. `Node.ClientAPI.Host`: `"bootstrap.staging.bacalhau.org"`
+      2. `Node.Client.API.Host`: `1234`
+      3. *...other configurations specific to this environment...*
+3. **Development (development network)**
+   1. **Environment Variable:** `BACALHAU_ENVIRONMENT=development`
+   2. Configurations:
+      1.    `Node.ClientAPI.Host`: `"bootstrap.development.bacalhau.org"`
+      1.    `Node.Client.API.Host`: `1234`
+      1.    *...other configurations specific to this environment...*
+4. **Local (private or local networks)**
+   1. **Environment Variable:** `BACALHAU_ENVIRONMENT=local`
+   1. Configurations:
+      1. `Node.ClientAPI.Host`: `"0.0.0.0"`
+      1. `Node.Client.API.Host`: `1234`
+      1. *...other configurations specific to this environment...*
 
   ------
 
@@ -152,7 +145,9 @@ simplicity or to maintain backwards compatibility.
 ### How to initialize a Bacalhau Server for a local private network
 
 ```
-$ env BACALHAU_ENVIRONMENT=local ./bin/darwin_arm64/bacalhau serve
+$ export BACALHAU_ENVIRONMENT=local 
+$ bacalhau serve
+
 INF pkg/repo/fs.go:187 > Initializing repo at '/Users/frrist/.bacalhau' for environment 'local'
 ```
 
@@ -160,6 +155,7 @@ INF pkg/repo/fs.go:187 > Initializing repo at '/Users/frrist/.bacalhau' for envi
 
 ```
 $ bacalhau --repo=/path/to/repo serve
+
 INF pkg/repo/fs.go:187 > Initializing repo at '/path/to/repo' for environment 'production'
 ```
 
@@ -168,13 +164,15 @@ Or
 ```
 $ export BACALHAU_DIR=/path/to/repo
 $ bacalhau serve
+
 INF pkg/repo/fs.go:187 > Initializing repo at '/path/to/repo' for environment 'production'
 ```
 
 ### How to start a Bacalhau Server with DEBUG logs
 
 ```
-$ env LOG_LEVEL=debug ./bin/darwin_arm64/bacalhau serve
-DBG pkg/system/environment.go:53 > Defaulting to production environment: os.Args: [./bin/darwin_arm64/bacalhau serve]
+$ export LOG_LEVEL=debug 
+$ bacalhau serve
 
+DBG pkg/system/environment.go:53 > Defaulting to production environment: os.Args: [bacalhau serve]
 ```

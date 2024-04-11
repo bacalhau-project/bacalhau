@@ -96,7 +96,7 @@ Retrieve a list of jobs.
 
 **Parameters**:
   - `namespace`: Specify a namespace to filter the jobs. Use `*` to display jobs from all namespaces.
-  - `labels`: Use label-based criteria to filter jobs. See [Label Filtering](../api) for usage details.
+  - `labels`: Use label-based criteria to filter jobs. See [Label Filtering](../api#label-filtering) for usage details.
   - `limit`: Set the maximum number of jobs to return. Default is set to 10.
   - `next_token`: Utilize this parameter for pagination continuation.
   - `order_by`: Determine the ordering of jobs. Choose between `id` or `create_time` (default is `create_time`).
@@ -184,7 +184,7 @@ curl -X PUT \
           }
         }' \
      127.0.0.1:1234/api/v1/orchestrator/jobs
-
+     
  {
   "JobID": "j-9809ae4b-d4fa-47c6-823b-86c924e60604",
   "EvaluationID": "5dac9fe0-2358-4ec7-bec9-6747dfa2b33e",

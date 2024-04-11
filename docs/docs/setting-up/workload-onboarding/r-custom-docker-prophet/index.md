@@ -5,8 +5,6 @@ sidebar_position: 8
 # Building and Running your Custom R Containers on Bacalhau
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 ## Introduction
 
 This example will walk you through building Time Series Forecasting using [Prophet](https://github.com/facebook/prophet). Prophet is a forecasting procedure implemented in R and Python. It is fast and provides completely automated forecasts that can be tuned by hand by data scientists and analysts.
@@ -115,13 +113,13 @@ Let's have a look at the command below:
 %%bash
 Rscript Saturating-Forecasts.R "example_wp_log_R.csv" "outputs/output0.pdf" "outputs/output1.pdf"
 ```
-This command uses Rscript to execute the script that was created and written to the `Saturating-Forecasts.R` file.
+This command uses Rscript to execute the script that was created and written to the `Saturating-Forecasts.R` file.  
 
 The input parameters provided in this case are the names of input and output files:
 
-`example_wp_log_R.csv` - the example data that was previously downloaded.
+`example_wp_log_R.csv` - the example data that was previously downloaded.   
 
-`outputs/output0.pdf` - the name of the file to save the first forecast plot.
+`outputs/output0.pdf` - the name of the file to save the first forecast plot.  
 
 `outputs/output1.pdf` - the name of the file to save the second forecast plot.
 
@@ -217,6 +215,42 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ```python
 %env JOB_ID={job_id}
+```
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Building and Running your Custom R Containers
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: "ghcr.io/bacalhau-project/examples/r-prophet:0.0.2" 
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - Rscript Saturating-Forecasts.R "/inputs/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
+    InputSources:
+      - Source:
+          Type: "ipfs"
+          Params:
+            CID: "QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt"
+        Target: "/inputs/example_wp_log_R.csv"
+```
+
+The job description should be saved in `.yaml` format, e.g. `job.yaml`, and then run with the command:
+```bash
+bacalhau job run job.yaml
 ```
 
 ## 5. Checking the State of your Jobs

@@ -117,7 +117,7 @@ To run this job, you can use the following command:
 ```bash
 bacalhau job run job.yaml \
   -V "query=SELECT status FROM logs WHERE status LIKE '5__'" \
-  -V "start-time=-5m"
+  -V "start-time=-5m" 
 ```
 
 ### Query S3 Logs
@@ -150,7 +150,7 @@ To run this job, you can use the following command:
 
 ```bash
 bacalhau job run job.yaml  \
-    -V "AccessLogBucket=my-bucket" \
+    -V "AccessLogBucket=my-bucket" \ 
     -V "AWSRegion=us-east-1" \
     -V "AccessLogPrefix=2023-11-19-*"  \
     -V "AccessLogPattern=^[10-12].*"

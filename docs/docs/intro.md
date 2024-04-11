@@ -24,7 +24,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 🚨 Bacalhau provides a **complete and permanent audit log** of exactly what happened, so you can be confident that your jobs are being executed securely.
 
-🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
+🔐 You can run [private workloads](/setting-up/networking-instructions/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
 💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source.
 
@@ -36,9 +36,9 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ## How it works
 
-Bacalhau concists of a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:
+Bacalhau concists of a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes:  
 
-  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.
+  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.  
 
   **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
 
@@ -51,9 +51,9 @@ The goal of the Bacalhau project is to make it easy to perform distributed compu
 ### Data ingestion
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
 
-- [Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)
-- [Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)
-- [Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/data-ingestion/s3)
+- [Copy data from a URL to public storage](/setting-up/data-ingestion/from-url)
+- [Pin Data to public storage](/setting-up/data-ingestion/pin)
+- [Copy Data from S3 Bucket to public storage](/setting-up/data-ingestion/s3)
 
 :::info
 The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data

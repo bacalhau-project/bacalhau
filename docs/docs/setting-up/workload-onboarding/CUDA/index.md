@@ -66,7 +66,7 @@ This example represents a standard C++ program that inefficiently utilizes GPU r
 # View the contents of the CUDA program with vector addition
 !cat inputs/02-cuda-hello-world-faster.cu
 
-# Remove any previous output
+# Remove any previous output 
 !rm -rf outputs/hello
 
 # Measure the time for compilation and execution
@@ -106,10 +106,10 @@ bacalhau docker run \
 `nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu`: Compilation using the nvcc compiler and save it to the outputs directory as hello
 
 Note that there is `;` between the commands:
-  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line.
+  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line. 
 
 `./outputs/hello`: Execution hello binary:
-You can combine compilation and execution commands.
+You can combine compilation and execution commands. 
 
 :::info
 Note that the CUDA version will need to be compatible with the graphics card on the host machine.
@@ -119,6 +119,43 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ```python
 %env JOB_ID={job_id}
+```
+
+### Declarative job description
+
+The same job can be presented in the [declarative](../../../setting-up/jobs/job-specification/job.md) format. In this case, the description will look like this:
+
+```yaml
+name: Run CUDA programs
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: nvidia/cuda:12.2.2-devel-ubuntu22.04
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
+    InputSources:
+    - Target: /inputs
+      Source:
+        Type: urlDownload
+        Params:
+          URL: https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu
+```
+
+The job description should be saved in `.yaml` format, e.g. `cuda.yaml`, and then run with the command:
+```bash
+bacalhau job run cuda.yaml
 ```
 
 ## 3. Checking the State of your Jobs
@@ -158,7 +195,7 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-cat results/stdout
+cat results/stdout 
 ```
 
 ## Support

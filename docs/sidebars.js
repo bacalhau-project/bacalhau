@@ -34,7 +34,7 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Setting Up',
+      label: 'How-to Guides',
       link: {
         type: 'generated-index',
         title: 'Setting Up',
@@ -50,7 +50,7 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Advanced Guides',
+      label: 'References',
       link: {
         type: 'generated-index',
         title: 'Advanced Guides',
@@ -75,17 +75,6 @@ module.exports = {
       },
       collapsed: true,
       items: [
-        {
-          type: 'category',
-          label: 'Case Studies',
-          link: {
-            type: 'generated-index',
-            description: "Case Studies",
-          },
-          items: [
-            'examples/case-studies/duckdb-log-processing/index',
-          ],
-        },
         {
           type: 'category',
           label: 'Data Engineering',
@@ -163,7 +152,6 @@ module.exports = {
       items: [
         'integration/python-sdk',
         'integration/apache-airflow',
-        'integration/amplify',
         'integration/lilypad',
         'integration/wasm-observe'
       ],

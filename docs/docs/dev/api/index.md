@@ -4,11 +4,11 @@ Welcome to the official API documentation for Bacalhau. This guide provides a de
 
 ## Overview
 
-Bacalhau operates on an "API-first" approach, providing an interface for users to interact with the system programmatically.
+Bacalhau operates on an "API-first" approach, providing an interface for users to interact with the system programmatically. 
 
 - **Endpoint Prefix**: All APIs are versioned and prefixed with `/api/v1`.
 - **Default Port**: By default, Bacalhau listens on port `1234`.
-- **API Nodes**:
+- **API Nodes**: 
   - **Orchestrator**: Handles user requests, schedules, and monitors jobs. Majority of Bacalhau's APIs are dedicated to Orchestrator interactions. These are accessible at `/api/v1/orchestrator`.
   - **Compute Nodes**: Acts as worker nodes and executes the jobs. Both Orchestrator and Compute nodes expose some common APIs under `/api/v1/agent` for querying agent info and health status.
 
@@ -16,7 +16,7 @@ Bacalhau operates on an "API-first" approach, providing an interface for users t
 
 ### Label Filtering
 
-Bacalhau supports label filtering on certain endpoints, such as `/api/v1/orchestrator/jobs` and `/api/v1/orchestrator/nodes`. This mechanism works similarly to constraints, letting you narrow down your search based on certain criteria.
+Bacalhau supports label filtering on certain endpoints, such as `/api/v1/orchestrator/jobs` and `/api/v1/orchestrator/nodes`. This mechanism works similarly to constraints, letting you narrow down your search based on certain criteria. 
 
 **Example**:
 ```bash

@@ -22,9 +22,9 @@ Here are few things to note before getting started:
 
 1. **Container Registry**: Ensure that the container is published to a public container registry that is accessible from the Bacalhau network.
 2. **Architecture Compatibility**: Bacalhau supports only images that match the host node's architecture. Typically, most nodes run on `linux/amd64`, so containers in `arm64` format are not able to run.
-3. **Input Flags**:
-The `--input ipfs://...` flag supports only **directories** and does not support CID subpaths.
-The `--input https://...` flag supports only **single files** and does not support URL directories.
+3. **Input Flags**:  
+The `--input ipfs://...` flag supports only **directories** and does not support CID subpaths.  
+The `--input https://...` flag supports only **single files** and does not support URL directories.  
 The `--input s3://...` flag supports S3 keys and prefixes. For example, `s3://bucket/logs-2023-04*` includes all logs for April 2023.
 
 
@@ -169,9 +169,9 @@ do something useful
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-[Copy data from a URL to public storage](../setting-up/data-ingestion/from-url.md)
-[Pin Data to public storage](../setting-up/data-ingestion/pin.md)
-[Copy Data from S3 Bucket to public storage](../setting-up/data-ingestion/s3.md)
+[Copy data from a URL to public storage](../setting-up/data-ingestion/from-url.md)  
+[Pin Data to public storage](../setting-up/data-ingestion/pin.md)  
+[Copy Data from S3 Bucket to public storage](../setting-up/data-ingestion/s3.md)  
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
@@ -218,10 +218,10 @@ ls shards
 outputs:
 
 ```shell
-CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
- 10:26:00  24440f0d  Docker ubuntu echo h...  Verifying
- CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
- 10:26:00  24440f0d  Docker ubuntu echo h...  Published            /ipfs/bafybeiflj3kha...
+CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Verifying                      
+ CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Published            /ipfs/bafybeiflj3kha... 
 11:26:09.107 | INF bacalhau/get.go:67 > Fetching results of job '24440f0d-3c06-46af-9adf-cb524aa43961'...
 11:26:10.528 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
 11:26:13.144 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/Users/phil/source/filecoin-project/docs.bacalhau.org'
@@ -238,7 +238,7 @@ Alternatively, you can run your workload with a publicly accessible http(s) URL,
 $ export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
 $ bacalhau docker run --input ${URL} ${IMAGE} ${CMD}
 
-$ bacalhau list
+$ bacalhau list 
 
 $ bacalhau get JOB_ID
 ```
@@ -265,3 +265,4 @@ This can often be resolved by re-tagging your docker image
 ## Support
 
 If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
+

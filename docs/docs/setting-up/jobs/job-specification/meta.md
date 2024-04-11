@@ -34,7 +34,7 @@ Users can incorporate any arbitrary key-value pairs to convey descriptive inform
 
 Beyond user-defined metadata, Bacalhau automatically injects specific metadata keys for identification and security purposes.
 
-### Bacalhau Auto-Generated Keys:
+### Bacalhau Auto-Generated Keys
 
 - **bacalhau.org/requester.id**: A unique identifier for the orchestrator that handled the job.
 - **bacalhau.org/requester.publicKey**: The public key of the requester, aiding in security and validation.

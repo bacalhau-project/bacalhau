@@ -5,28 +5,50 @@ sidebar_position: 5
 # Molecular Simulation with OpenMM and Bacalhau
 
 
-[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
-
 In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. It is a physic-based library that is useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
 
-## TD;LR
-Running OpenMM m molecular simulation with Bacalhau
+In this example tutorial, our focus will be on running OpenMM molecular simulation with Bacalhau.
+
 
 ## Prerequisite
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](../../../getting-started/installation.md)
 
-## Protein data
+## Running Locally
+
+### Downloading Datasets
 
 We use a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
-You can find more details on this protein at the related [RCSB Protein Data Bank page](https://www.rcsb.org/structure/2dri).
+
 
 ![image.png](./2dri-image.png)
 
 Protein data can be stored in a `.pdb` file, this is a human-readable format. It provides for the description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
-See more information about PDB format [here](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html).
+See more information about PDB format [here](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html). For the original, unprocessed 2DRI dataset, you can download it from the RCSB Protein Data Bank [here](https://www.rcsb.org/structure/2dri).
 
-## Write the script
+
+The relevant code of the processed 2DRI dataset can be found [here](https://github.com/wesfloyd/openmm-test/blob/main/2dri-processed.pdb). Let's print the first 10 lines of the `2dri-processed.pdb` file. The output contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
+
+
+```bash
+%%bash
+head ./dataset/2dri-processed.pdb
+
+Expected Output
+    REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
+    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1 
+    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N  
+    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C  
+    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H  
+    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C  
+    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O  
+    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C  
+    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H  
+    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H  
+```
+
+
+### Writing the Script
 To run the script above all we need is a Python environment with the [OpenMM library](http://docs.openmm.org/latest/userguide/application/01_getting_started.html) installed.
 
 
@@ -117,36 +139,26 @@ with open(output_path, mode="w+") as file:
 print('Simulation complete, file written to disk at: {}'.format(output_path))
 ```
 
-We are printing the first 10 lines of the file. The output contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
-
+### Running the Script
 
 ```bash
 %%bash
-head ./dataset/2dri-processed.pdb
+python run_openmm_simulation.py
 ```
 
-    REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
-    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1
-    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N
-    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C
-    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H
-    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C
-    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O
-    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C
-    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H
-    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H
+## Uploading the Data to IPFS
 
+The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this, you need an account with a pinning service like [Pinata](https://app.pinata.cloud/pinmanager) or [nft.storage](https://nft.storage/docs/how-to/nftup/). Once registered, you can use their UI or API or SDKs to upload files.
 
-## Upload the Data to IPFS
+When you pin your data, you'll get a CID. Copy the CID as it will be used to access your data
 
-The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or nft.storage . Once registered you can use their UI or API or SDKs to upload files.
 
 ## Containerize Script using Docker
 
 To build your own docker container, create a `Dockerfile`, which contains instructions to build your image.
 
-:::tip
-For more information about working with custom containers, see the [custom containers example](https://docs.bacalhau.org/getting-started/docker-workload-onboarding).
+:::info
+See more information on how to containerize your script/app [here](https://docs.docker.com/get-started/02_our_app/)
 :::
 
 
@@ -168,19 +180,19 @@ CMD ["python","run_openmm_simulation.py"]
 
 ### Build the container
 
-We will run `docker build` command to build the container;
+We will run `docker build` command to build the container:
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
-Before running the command replace;
+Before running the command replace:
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+**`hub-user`** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-- **repo-name** with the name of the container, you can name it anything you want
+**`repo-name`** with the name of the container, you can name it anything you want
 
-- **tag** this is not required but you can use the latest tag
+**`tag`** this is not required but you can use the latest tag
 
 In our case, this will be:
 
@@ -204,11 +216,24 @@ Now that we have the data in IPFS and the docker image pushed, we can run a job 
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---input ipfs://bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
---wait \
---id-only \
-ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py
+    --input ipfs://bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
+    --wait \
+    --id-only \
+    ghcr.io/bacalhau-project/examples/openmm:0.3 \
+    -- python run_openmm_simulation.py
 ```
+
+### Structure of the command
+
+Lets look closely at the command above:
+
+`bacalhau docker run`: call to Bacalhau
+
+`bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4`: here we mount the CID of the dataset we uploaded to IPFS to use on the job
+
+`ghcr.io/bacalhau-project/examples/openmm:0.3`: the name and the tag of the image we are using
+
+`python run_openmm_simulation.py`: the script that will be executed inside the container
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
@@ -219,7 +244,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+**Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -227,9 +252,9 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-When it says `Completed`, that means the job is done, and we can get the results.
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+**Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -237,16 +262,14 @@ When it says `Completed`, that means the job is done, and we can get the results
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+**Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory (`results`) and downloaded our job output to be stored in that directory.
 
 
 ```bash
 %%bash
 rm -rf results && mkdir -p results
-bacalhau get ${JOB_ID} # Download the results
+bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
-
-After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 
@@ -255,5 +278,8 @@ To view the file, run the following command:
 
 ```bash
 %%bash
-ls -l results/stdout/
+cat results/outputs/final_state.pdbx
 ```
+
+## Support
+If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
