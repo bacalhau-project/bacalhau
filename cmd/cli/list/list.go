@@ -75,10 +75,8 @@ func NewCmd() *cobra.Command {
 		Example:  listExample,
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := list(cmd, OL); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return list(cmd, OL)
 		},
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
@@ -118,6 +119,12 @@ func (o *DevStackConfig) Validate() error {
 	}
 
 	return errs.ErrorOrNil()
+}
+
+func WithAutoNodeApproval() ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.RequesterConfig.DefaultApprovalState = models.NodeApprovals.APPROVED
+	}
 }
 
 func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {

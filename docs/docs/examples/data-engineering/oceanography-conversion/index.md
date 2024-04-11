@@ -2,6 +2,7 @@
 sidebar_label: "Oceanography - Data Conversion"
 sidebar_position: 5
 description: "Oceanography data conversion with Bacalhau"
+# cspell:ignore fco2, pco2, uatm, unwtd, xlon, ylat, tmnth, bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y, sortby, dtype, ufunc
 ---
 # Oceanography - Data Conversion
 
@@ -69,13 +70,14 @@ with fsspec.open("./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip", compressio
 ds.info()
 ```
 
-
+<!--- cslint:disable -->
 ```python
 time_slice = slice("2010", "2020") # select a decade
 res = ds['sst_ave_unwtd'].sel(tmnth=time_slice).mean(dim='tmnth') # compute the mean for this period
 res.plot() # plot the result
 
 ```
+<!--- cslint:enable -->
 
 We can see that the dataset contains latitude-longitude coordinates, the date, and a series of seawater measurements. Below is a plot of the average sea surface temperature (SST) between 2010 and 2020, where data have been collected by buoys and vessels.
 

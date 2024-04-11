@@ -105,10 +105,8 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Args:     cobra.MinimumNArgs(1),
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
-			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+			return dockerRun(cmd, cmdArgs, opts)
 		},
 	}
 

@@ -1,6 +1,7 @@
 ---
 sidebar_label: "Stable Diffusion Dreambooth"
 sidebar_position: 1
+# cspell: disable-file
 ---
 # Stable Diffusion Dreambooth (Finetuning)
 

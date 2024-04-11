@@ -70,6 +70,10 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 
 		var m *docker.ImageManifest
 		m, ierr = s.client.ImageDistribution(ctx, dockerEngine.Image, config.GetDockerCredentials())
+		if ierr != nil {
+			return bidstrategy.NewBidResponse(false, ierr.Error()), nil
+		}
+
 		if m != nil {
 			manifest = *m
 		}

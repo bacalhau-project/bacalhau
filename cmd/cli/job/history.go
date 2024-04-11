@@ -63,7 +63,7 @@ func NewHistoryCmd() *cobra.Command {
 		Long:    historyLong,
 		Example: historyExample,
 		Args:    cobra.ExactArgs(1),
-		Run:     o.run,
+		RunE:    o.run,
 	}
 
 	nodeCmd.Flags().StringVar(&o.EventType, "event-type", o.EventType,
@@ -123,7 +123,7 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	},
 }
 
-func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
+func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := util.GetAPIClientV2().Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
@@ -139,10 +139,12 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, err, 1)
+		return err
 	}
 
 	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.History); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
+
+	return nil
 }

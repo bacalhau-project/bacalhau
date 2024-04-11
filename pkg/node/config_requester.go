@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
@@ -46,6 +48,17 @@ type RequesterConfigParams struct {
 
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
+
+	JobStore jobstore.Store
+
+	DefaultPublisher string
+
+	// When new nodes join the cluster, what state do they have? By default, APPROVED, and
+	// for tests, APPROVED. We will provide an option to set this to PENDING for production
+	// or for when operators are ready to control node approval.
+	DefaultApprovalState models.NodeApproval
+
+	ControlPlaneSettings types.RequesterControlPlaneConfig
 }
 
 type RequesterConfig struct {

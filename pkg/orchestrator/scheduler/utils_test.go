@@ -122,6 +122,8 @@ func (m PlanMatcher) String() string {
 
 func mockNodeInfo(t *testing.T, nodeID string) *models.NodeInfo {
 	return &models.NodeInfo{
-		NodeID: nodeID,
+		NodeID:   nodeID,
+		Approval: models.NodeApprovals.APPROVED,
+		State:    models.NodeStates.CONNECTED,
 	}
 }

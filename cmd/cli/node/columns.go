@@ -18,11 +18,25 @@ import (
 var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "id"},
-		Value:        func(node *models.NodeInfo) string { return idgen.ShortID(node.ID()) },
+		Value:        func(node *models.NodeInfo) string { return idgen.ShortNodeID(node.ID()) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "type"},
 		Value:        func(ni *models.NodeInfo) string { return ni.NodeType.String() },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "approval"},
+		Value:        func(ni *models.NodeInfo) string { return ni.Approval.String() },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "status"},
+		Value: func(ni *models.NodeInfo) string {
+			if ni.ComputeNodeInfo != nil {
+				return ni.State.String()
+			}
+
+			return "" // nothing for requester nodes
+		},
 	},
 }
 

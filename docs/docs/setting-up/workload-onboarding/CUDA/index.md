@@ -1,6 +1,7 @@
 ---
 sidebar_label: "CUDA"
 sidebar_position: 10
+# cspell: ignore nvcc, cudnn, Bacalhau, timeit, expt, memcpy, devel
 ---
 # Run CUDA programs on Bacalhau
 

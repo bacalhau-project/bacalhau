@@ -84,24 +84,29 @@ func PrintJobExecution(
 		if err != nil {
 			return fmt.Errorf("failed getting job executions: %w", err)
 		}
-		cmd.Println("\nJob Results By Node:")
-		for message, nodes := range summariseExecutions(executions.Executions) {
-			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
-			if strings.ContainsRune(message, '\n') {
-				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
-			} else {
-				cmd.Println(message)
+		summary := summariseExecutions(executions.Executions)
+		if len(summary) > 0 {
+			cmd.Println("\nJob Results By Node:")
+			for message, nodes := range summary {
+				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+				if strings.ContainsRune(message, '\n') {
+					cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+				} else {
+					cmd.Println(message)
+				}
 			}
+		} else {
+			cmd.Println()
 		}
 	}
 	if !quiet {
 		cmd.Println()
 		cmd.Println("To get more details about the run, execute:")
-		cmd.Println("\tbacalhau job describe " + jobID)
+		cmd.Println("\t" + os.Args[0] + " job describe " + jobID)
 
 		cmd.Println()
 		cmd.Println("To get more details about the run executions, execute:")
-		cmd.Println("\tbacalhau job executions " + jobID)
+		cmd.Println("\t" + os.Args[0] + " job executions " + jobID)
 	}
 
 	return nil

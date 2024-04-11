@@ -1,5 +1,6 @@
 ---
 sidebar_label: Docker
+# cspell: ignore myvalue
 ---
 
 # Docker Engine Specification

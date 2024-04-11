@@ -36,7 +36,6 @@ type BaseSuite struct {
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	util.Fatal = util.FakeFatalErrorHandler
 
 	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
@@ -66,7 +65,6 @@ func (s *BaseSuite) SetupTest() {
 
 // After each test
 func (s *BaseSuite) TearDownTest() {
-	util.Fatal = util.FakeFatalErrorHandler
 	if s.Node != nil {
 		s.Node.CleanupManager.Cleanup(context.Background())
 	}

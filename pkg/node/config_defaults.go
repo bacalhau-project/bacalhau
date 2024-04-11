@@ -1,11 +1,14 @@
 package node
 
 import (
+	"path"
 	"runtime"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -27,6 +30,15 @@ var DefaultComputeConfig = ComputeConfigParams{
 
 	LogRunningExecutionsInterval: 10 * time.Second,
 	JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
+	LocalPublisher: types.LocalPublisherConfig{
+		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
+	},
+	ControlPlaneSettings: types.ComputeControlPlaneConfig{
+		InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
+		ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
@@ -56,6 +68,14 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
 	TranslationEnabled: false,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+	},
+
+	DefaultApprovalState: models.NodeApprovals.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -84,6 +104,14 @@ var TestRequesterConfig = RequesterConfigParams{
 
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+	},
+
+	DefaultApprovalState: models.NodeApprovals.APPROVED,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

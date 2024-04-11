@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -196,7 +195,6 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 		{numOfJobs: 1}, // just enough that describe could get screwed up
 	}
 
-	util.Fatal = util.FakeFatalErrorHandler
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
 			func() {
@@ -247,10 +245,8 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 						returnedJobEngineSpec,
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
-					c := &model.TestFatalErrorHandlerContents{}
-					s.Require().NoError(model.JSONUnmarshalWithMax([]byte(out), &c))
 					e := bacerrors.NewJobNotFound(tc.describeIDEdgecase)
-					s.Require().Contains(c.Message, e.GetMessage(), "Job not found error string not found.", err)
+					s.Require().Contains(string(out), e.GetMessage(), "Job not found error string not found.", err)
 				}
 
 			}()
