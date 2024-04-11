@@ -299,7 +299,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		Logger().WithContext(ctx)
 
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
-	topic := models.EventTopicExecutionRunning
+	topic := EventTopicExecutionRunning
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, state, err, topic)
@@ -368,7 +368,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
-		topic = models.EventTopicExecutionPublishing
+		topic = EventTopicExecutionPublishing
 		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID:    execution.ID,
 			ExpectedStates: []store.LocalExecutionStateType{expectedState},

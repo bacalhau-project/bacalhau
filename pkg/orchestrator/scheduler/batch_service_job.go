@@ -142,7 +142,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	if len(newExecs) > 0 {
 		err := b.placeExecs(ctx, newExecs, job)
 		if err != nil {
-			plan.Event = models.EventFromError(models.EventTopicJobScheduling, err)
+			plan.Event = models.EventFromError(orchestrator.EventTopicJobScheduling, err)
 			return newExecs, err
 		}
 	}

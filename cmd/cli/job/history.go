@@ -83,7 +83,7 @@ func NewHistoryCmd() *cobra.Command {
 var (
 	historyTimeCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(time.StampMilli), WidthMaxEnforcer: output.ShortenTime},
-		Value:        func(j *models.JobHistory) string { return j.GetTimestamp().Format(time.StampMilli) },
+		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(time.StampMilli) },
 	}
 	historyLevelCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Level", WidthMax: 15, WidthMaxEnforcer: text.WrapText},
@@ -111,7 +111,7 @@ var (
 		},
 	}
 	historyTopicCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: len(models.EventTopicExecutionPreparing)},
+		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: 15, WidthMaxEnforcer: text.WrapSoft},
 		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
 	}
 	historyEventCol = output.TableColumn[*models.JobHistory]{

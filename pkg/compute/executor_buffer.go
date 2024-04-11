@@ -89,7 +89,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 					SourcePeerID: s.ID,
 					TargetPeerID: localExecutionState.RequesterNodeID,
 				},
-				Event: models.EventFromError(models.EventTopicExecutionPreparing, err),
+				Event: models.EventFromError(EventTopicExecutionPreparing, err),
 			})
 		}
 	}()

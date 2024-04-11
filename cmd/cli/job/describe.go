@@ -193,10 +193,10 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 		return nil
 	}
 
-	firstTime := history[0].GetTimestamp()
+	firstTime := history[0].Occurred()
 	timeSinceCol := output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: historyTimeCol.ColumnConfig.Name, WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(h *models.JobHistory) string { return h.GetTimestamp().Sub(firstTime).String() },
+		Value:        func(h *models.JobHistory) string { return h.Occurred().Sub(firstTime).String() },
 	}
 
 	tableOptions := output.OutputOptions{
