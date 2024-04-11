@@ -45,6 +45,7 @@ type Requester struct {
 	NodeInfoStore      routing.NodeInfoStore
 	NodeDiscoverer     orchestrator.NodeDiscoverer
 	nodeManager        *manager.NodeManager
+	nodeEventListener  *manager.NodeEventListener
 	localCallback      compute.Callback
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []model.DebugInfoProvider
@@ -120,8 +121,11 @@ func NewRequesterNode(
 	evalBroker.SetEnabled(true)
 
 	// Register the evalbroker callbacks so that it is able to handle node events
+	// and create new evaluations as necessary.
+	var nodeEventListener *manager.NodeEventListener
 	if nodeManager != nil {
-		nodeManager.Events().RegisterHandler(evalBroker)
+		nodeEventListener = manager.NewNodeEventListener(evalBroker, jobStore)
+		nodeManager.Events().RegisterHandler(nodeEventListener)
 	}
 
 	// planners that execute the proposed plan by the scheduler
@@ -338,6 +342,7 @@ func NewRequesterNode(
 		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
 		nodeManager:        nodeManager,
+		nodeEventListener:  nodeEventListener,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil

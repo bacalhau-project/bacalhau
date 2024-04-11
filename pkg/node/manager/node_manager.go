@@ -230,8 +230,6 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 // ---- When nodes are connected/disconnected ----
 
 func (n *NodeManager) OnNodeConnected(ctx context.Context, nodeID string) {
-	log.Ctx(ctx).Info().Str("nodeID", nodeID).Msg("Node connected")
-
 	info, err := n.Get(ctx, nodeID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly connected node")
@@ -244,8 +242,6 @@ func (n *NodeManager) OnNodeConnected(ctx context.Context, nodeID string) {
 }
 
 func (n *NodeManager) OnNodeDisconnected(ctx context.Context, nodeID string) {
-	log.Ctx(ctx).Info().Str("nodeID", nodeID).Msg("Node disconnected")
-
 	info, err := n.Get(ctx, nodeID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly disconnected node")
