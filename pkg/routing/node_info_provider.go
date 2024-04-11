@@ -57,8 +57,15 @@ func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
 	state := models.NodeState{
 		Info:     info,
 		Approval: n.defaultNodeApproval,
-		// TODO what is the nodes state here?
-		// Liveness: models.NodeLiveness{},
+		// NB(forrest): we are returning NodeState about ourselves (the Requester)
+		// the concept of a disconnected requester node could only exist from the
+		// perspective of a ComputeNode or another RequesterNode.
+		// We don't support multiple requester nodes nor querying the state of one from a Compute node. (yet)
+		// So we allways say we are connected here.
+
+		// This is all pretty funky and my comment here will hopefully become outdates at some-point and need adjusting,
+		// but for now: "you can tell the requester node is connected because of the way it is".
+		Liveness: models.NodeStates.CONNECTED,
 	}
 
 	if !state.Approval.IsValid() {

@@ -90,8 +90,8 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 	if err := n.store.Add(ctx, models.NodeState{
 		Info:     request.Info,
 		Approval: n.defaultApprovalState,
-		// TODO what is the connection state at this point? I would assume once again it connected?
-		Liveness: models.NodeLiveness{},
+		// NB(forrest): by virtue of a compute node calling this endpoint we can consider it connected
+		Liveness: models.NodeStates.CONNECTED,
 	}); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
@@ -130,7 +130,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		// the nodes approval state is assumed to be approved here, but re-use existing state
 		Approval: existing.Approval,
 		// TODO can we assume the node is connected here?
-		Liveness: models.NodeLiveness{},
+		Liveness: models.NodeStates.CONNECTED,
 	}); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
