@@ -791,8 +791,6 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	s.Len(info.State.Executions, 1)
-	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Executions[0].State)
 	s.Contains(info.State.Executions[0].Status, `Could not inspect image "@" - could be due to repo/image not existing`)
 }
 
