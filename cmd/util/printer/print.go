@@ -15,6 +15,7 @@ import (
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/term"
@@ -107,14 +108,14 @@ func PrintJobExecution(
 		}
 		summary := summariseExecutions(executions.Executions)
 		if len(summary) > 0 {
-			cmd.Println("\n\nJob Results By Node:")
-			for message, nodes := range summary {
-				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
-				if strings.ContainsRune(message, '\n') {
-					cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
-				} else {
-					cmd.Println(message)
+			cmd.Println("\nJob Results By Node:")
+			for message, runs := range summary {
+				nodes := len(lo.Uniq(runs))
+				prefix := fmt.Sprintf("• Node %s: ", runs[0])
+				if len(runs) > 1 {
+					prefix = fmt.Sprintf("• %d runs on %d nodes: ", len(runs), nodes)
 				}
+				printIndentedString(cmd, prefix, strings.Trim(message, "\n"), none, 0)
 			}
 		} else {
 			cmd.Println()
@@ -329,24 +330,33 @@ const (
 	hintPrefix  = "Hint: "
 )
 
-func printEvent(cmd *cobra.Command, event models.Event) {
-	terminalWdith, _, termErr := term.GetSize(int(os.Stderr.Fd()))
-	if termErr != nil || terminalWdith <= 0 {
-		log.Ctx(cmd.Context()).Debug().Err(termErr).Msg("Failed to get terminal size")
-		terminalWdith = math.MaxInt32
-	}
+var terminalWidth int
 
-	printIndentedString(cmd, errorPrefix, event.Message, red, 0, uint(terminalWdith))
+func getTerminalWidth(cmd *cobra.Command) uint {
+	if terminalWidth == 0 {
+		var err error
+		terminalWidth, _, err = term.GetSize(int(os.Stderr.Fd()))
+		if err != nil || terminalWidth <= 0 {
+			log.Ctx(cmd.Context()).Debug().Err(err).Msg("Failed to get terminal size")
+			terminalWidth = math.MaxInt8
+		}
+	}
+	return uint(terminalWidth)
+}
+
+func printEvent(cmd *cobra.Command, event models.Event) {
+	printIndentedString(cmd, errorPrefix, event.Message, red, 0)
 	if event.Details != nil && event.Details[models.DetailsKeyHint] != "" {
-		printIndentedString(cmd, hintPrefix, event.Details[models.DetailsKeyHint], green, uint(len(errorPrefix)), uint(terminalWdith))
+		printIndentedString(cmd, hintPrefix, event.Details[models.DetailsKeyHint], green, uint(len(errorPrefix)))
 	}
 }
 
 func printError(cmd *cobra.Command, err error) {
-	printIndentedString(cmd, errorPrefix, err.Error(), red, 0, math.MaxUint32)
+	printIndentedString(cmd, errorPrefix, err.Error(), red, 0)
 }
 
-func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *color.Color, startIndent, maxWidth uint) {
+func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *color.Color, startIndent uint) {
+	maxWidth := getTerminalWidth(cmd)
 	blockIndent := int(startIndent) + len(prefix)
 	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
 
