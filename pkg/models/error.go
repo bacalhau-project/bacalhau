@@ -56,7 +56,7 @@ type HasDetails interface {
 // refactoring error types without higher-level components needing to be
 // modified – they simply continue to respond to the presence of attributes.
 //
-// This is instead of the sysetm having a centralized set of known error types
+// This is instead of the system having a centralized set of known error types
 // and programming in specific behavior in response to them, which is brittle
 // and requires updating all of the error responses when the types change.
 func EventFromError(topic EventTopic, err error) Event {
