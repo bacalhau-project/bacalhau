@@ -34,25 +34,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
-
-type DistributionInspectError struct {
+type ImageUnavailableError struct {
+	Verb  string
 	Image string
 	Creds config.DockerCredentials
 	Err   error
 }
 
-func (die DistributionInspectError) Error() string {
-	return fmt.Sprintf(
-		"Could not inspect image %q - could be due to repo/image not existing, "+
-			"or registry needing authorization: %s",
+func (die ImageUnavailableError) Error() string {
+	return pkgerrors.Wrapf(die.Err,
+		"Could not %s image %q - could be due to repo/image not existing, "+
+			"or registry needing authorization",
+		die.Verb,
 		die.Image,
-		die.Err.Error(),
-	)
+	).Error()
 }
 
-func (die DistributionInspectError) Hint() string {
+func (die ImageUnavailableError) Hint() string {
 	if !die.Creds.IsValid() {
 		return "If the image is private, supply the node with valid Docker login credentials " +
 			"using the " + config.DockerUsernameEnvVar + " and " + config.DockerPasswordEnvVar +
@@ -60,6 +58,24 @@ func (die DistributionInspectError) Hint() string {
 	}
 
 	return ""
+}
+
+func NewImageInspectError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "inspect",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
+}
+
+func NewImagePullError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "pull",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
 }
 
 type Client struct {
@@ -250,11 +266,7 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, DistributionInspectError{
-			Image: image,
-			Creds: dockerCreds,
-			Err:   err,
-		}
+		return nil, NewImageInspectError(image, dockerCreds, err)
 	}
 
 	return distribution.Platforms, nil
@@ -368,11 +380,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, DistributionInspectError{
-			Image: image,
-			Creds: creds,
-			Err:   err,
-		}
+		return nil, NewImageInspectError(image, creds, err)
 	}
 
 	obj := dist.Descriptor.Digest

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/signal"
 	"slices"
@@ -11,15 +12,17 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"golang.org/x/term"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	libmath "github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -35,11 +38,6 @@ var eventsWorthPrinting = map[models.JobStateType]eventStruct{
 	models.JobStateTypeStopped:   {Message: "Job canceled", IsTerminal: true},
 	models.JobStateTypeCompleted: {Message: "Job finished", IsTerminal: true},
 }
-
-var (
-	red   = color.New(color.FgRed)
-	green = color.New(color.FgGreen)
-)
 
 type eventStruct struct {
 	Message    string
@@ -93,17 +91,10 @@ func PrintJobExecution(
 		historySummary := summariseHistoryEvents(history.History)
 		if len(historySummary) > 0 {
 			for _, event := range historySummary {
-				red.Fprint(cmd.ErrOrStderr(), "\nError: ")
-				cmd.PrintErrln(event.Message)
-
-				if event.Details != nil && event.Details[models.DetailsKeyHint] != "" {
-					green.Fprint(cmd.ErrOrStderr(), "\nHint: ")
-					cmd.PrintErrln(event.Details[models.DetailsKeyHint])
-				}
+				printEvent(cmd, event)
 			}
 		} else {
-			red.Fprint(cmd.ErrOrStderr(), "\nError: ")
-			cmd.PrintErrln(jobErr)
+			printError(cmd, jobErr)
 		}
 	}
 
@@ -209,7 +200,7 @@ To cancel the job, run:
 
 	widestString := len(startMessage)
 	for _, v := range eventsWorthPrinting {
-		widestString = math.Max(widestString, len(v.Message))
+		widestString = libmath.Max(widestString, len(v.Message))
 	}
 
 	spinner, err := NewSpinner(ctx, writer, widestString, false)
@@ -325,6 +316,49 @@ To cancel the job, run:
 	}
 
 	return returnError
+}
+
+var (
+	none  = color.New(color.Reset)
+	red   = color.New(color.FgRed)
+	green = color.New(color.FgGreen)
+)
+
+const (
+	errorPrefix = "Error: "
+	hintPrefix  = "Hint: "
+)
+
+func printEvent(cmd *cobra.Command, event models.Event) {
+	terminalWdith, _, termErr := term.GetSize(int(os.Stderr.Fd()))
+	if termErr != nil || terminalWdith <= 0 {
+		log.Ctx(cmd.Context()).Debug().Err(termErr).Msg("Failed to get terminal size")
+		terminalWdith = math.MaxInt32
+	}
+
+	printIndentedString(cmd, errorPrefix, event.Message, red, 0, uint(terminalWdith))
+	if event.Details != nil && event.Details[models.DetailsKeyHint] != "" {
+		printIndentedString(cmd, hintPrefix, event.Details[models.DetailsKeyHint], green, uint(len(errorPrefix)), uint(terminalWdith))
+	}
+}
+
+func printError(cmd *cobra.Command, err error) {
+	printIndentedString(cmd, errorPrefix, err.Error(), red, 0, math.MaxUint32)
+}
+
+func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *color.Color, startIndent, maxWidth uint) {
+	blockIndent := int(startIndent) + len(prefix)
+	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
+
+	cmd.PrintErrln()
+	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
+	prefixColor.Fprintf(cmd.ErrOrStderr(), prefix)
+	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
+		if i > 0 {
+			cmd.PrintErr(strings.Repeat(" ", blockIndent))
+		}
+		cmd.PrintErrln(line)
+	}
 }
 
 // Groups the executions in the job state, returning a map of printable messages
