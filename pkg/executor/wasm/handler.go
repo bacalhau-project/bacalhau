@@ -64,6 +64,19 @@ type executionHandler struct {
 func (h *executionHandler) run(ctx context.Context) {
 	ActiveExecutions.Inc(ctx)
 	defer func() {
+		if r := recover(); r != nil {
+			h.logger.Error().
+				Str("recover", fmt.Sprintf("%v", r)).
+				Msg("execution recovered from panic")
+
+			// The recover was originally here for a bug we think is now fixed, but given
+			// the propensity for panics in this area, we're being extra-cautious and
+			// ensuring we can handle any future panics that arise.
+			h.result = executor.NewFailedResult(
+				fmt.Sprintf("WASM executor failed with an internal error: %v", r),
+			)
+		}
+
 		ActiveExecutions.Dec(ctx)
 	}()
 
