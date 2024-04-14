@@ -144,7 +144,7 @@ type BidResult struct {
 	ExecutionMetadata
 	Accepted bool
 	Wait     bool
-	Reason   string
+	Event    models.Event
 }
 
 // RunResult Result of a job execution that is returned to the caller through a Callback.
@@ -164,9 +164,9 @@ type CancelResult struct {
 type ComputeError struct {
 	RoutingMetadata
 	ExecutionMetadata
-	Err string
+	Event models.Event
 }
 
 func (e ComputeError) Error() string {
-	return e.Err
+	return e.Event.Message
 }

@@ -68,6 +68,9 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 			NodeInfo: node,
 			Rank:     rank,
 			Reason:   reason,
+			// No logic in here (yet) that will ignore failed executions after e.g. a period of time.
+			// If we introduce that, this should become true.
+			Retryable: false,
 		}
 		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}

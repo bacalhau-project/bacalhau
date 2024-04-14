@@ -360,8 +360,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config.GetDockerCredentials()
 		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, dockerArgs.Image)
-			return container.CreateResponse{}, fmt.Errorf("failed to pull docker image: %w", pullErr)
+			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, dockerCreds, pullErr)
 		}
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
