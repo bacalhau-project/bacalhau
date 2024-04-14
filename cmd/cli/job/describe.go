@@ -193,10 +193,9 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 		return nil
 	}
 
-	firstTime := history[0].Occurred()
-	timeSinceCol := output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: historyTimeCol.ColumnConfig.Name, WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(h *models.JobHistory) string { return h.Occurred().Sub(firstTime).String() },
+	timeCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: historyTimeCol.ColumnConfig.Name, WidthMax: 20, WidthMaxEnforcer: text.WrapText},
+		Value:        func(h *models.JobHistory) string { return h.Occurred().Format(time.DateTime) },
 	}
 
 	tableOptions := output.OutputOptions{
@@ -204,12 +203,11 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 		NoStyle: true,
 	}
 	jobHistoryCols := []output.TableColumn[*models.JobHistory]{
-		timeSinceCol,
+		timeCol,
 		historyRevisionCol,
 		historyStateCol,
 		historyTopicCol,
 		historyEventCol,
-		historyDetailsCol,
 	}
 	output.Bold(cmd, fmt.Sprintf("\n%s History\n", label))
 	return output.Output(cmd, jobHistoryCols, tableOptions, history)

@@ -2,7 +2,6 @@ package compute
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -97,20 +96,20 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 	// There is no point in enqueuing a job that requires more than the total capacity of the node. Such jobs should
 	// have not reached this backend in the first place, and should have been rejected by the frontend when asked to bid
 	if !s.runningCapacity.IsWithinLimits(ctx, *execution.TotalAllocatedResources()) {
-		err = fmt.Errorf("not enough capacity to run job")
+		err = models.NewBaseError("not enough capacity to run job").WithFailsExecution()
 		return err
 	}
 
 	if s.queuedTasks.Contains(execution.ID) {
-		err = fmt.Errorf("execution %s already enqueued", execution.ID)
+		err = models.NewBaseError("execution %s already enqueued", execution.ID)
 		return err
 	}
 	if _, ok := s.running[execution.ID]; ok {
-		err = fmt.Errorf("execution %s already running", execution.ID)
+		err = models.NewBaseError("execution %s already running", execution.ID)
 		return err
 	}
 	if added := s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()); added == nil {
-		err = fmt.Errorf("not enough capacity to enqueue job")
+		err = models.NewBaseError("not enough capacity to enqueue job").WithRetryable()
 		return err
 	} else {
 		// Update the execution to include all the resources that have

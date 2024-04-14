@@ -1,7 +1,6 @@
 package compute
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -9,11 +8,11 @@ import (
 )
 
 const (
-	EventTopicExecutionBidding     models.EventTopic = "Requesting node"
-	EventTopicExecutionDownloading models.EventTopic = "Downloading inputs"
-	EventTopicExecutionPreparing   models.EventTopic = "Preparing environment"
-	EventTopicExecutionRunning     models.EventTopic = "Running execution"
-	EventTopicExecutionPublishing  models.EventTopic = "Publishing results"
+	EventTopicExecutionBidding     models.EventTopic = "Requesting Node"
+	EventTopicExecutionDownloading models.EventTopic = "Downloading Inputs"
+	EventTopicExecutionPreparing   models.EventTopic = "Preparing Environment"
+	EventTopicExecutionRunning     models.EventTopic = "Running Execution"
+	EventTopicExecutionPublishing  models.EventTopic = "Publishing Results"
 )
 
 func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
@@ -26,10 +25,6 @@ func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event
 		Message:   message,
 		Topic:     EventTopicExecutionBidding,
 		Timestamp: time.Now(),
-		Details: map[string]string{
-			models.DetailsKeyIsError:        fmt.Sprint(false),
-			models.DetailsKeyRetryable:      fmt.Sprint(response.ShouldWait),
-			models.DetailsKeyFailsExecution: fmt.Sprint(!response.ShouldBid),
-		},
+		Details:   map[string]string{},
 	}
 }

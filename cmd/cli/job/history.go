@@ -2,14 +2,12 @@ package job
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/samber/lo"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -115,17 +113,34 @@ var (
 		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
 	}
 	historyEventCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 60, WidthMaxEnforcer: text.WrapSoft},
-		Value:        func(j *models.JobHistory) string { return j.Event.Message },
-	}
-	historyDetailsCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Details", WidthMax: 25, WidthMaxEnforcer: text.WrapText},
-		Value: func(jh *models.JobHistory) string {
-			details := lo.MapToSlice(jh.Event.Details, func(key, value string) string {
-				return fmt.Sprintf("%s: %s", key, value)
-			})
-			slices.Sort(details)
-			return strings.Join(details, "\n")
+		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 60, WidthMaxEnforcer: text.WrapText},
+		Value: func(h *models.JobHistory) string {
+			res := h.Event.Message
+
+			if h.Event.Details != nil {
+				// if is error, then the event is in red
+				if h.Event.Details[models.DetailsKeyIsError] == "true" {
+					res = output.RedStr(res)
+				}
+
+				// print hint in green
+				if h.Event.Details[models.DetailsKeyHint] != "" {
+					res += "\n" + fmt.Sprintf(
+						"%s %s", output.BoldStr(output.GreenStr("* Hint:")), h.Event.Details[models.DetailsKeyHint])
+				}
+
+				// print all other details in debug mode
+				if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+					for k, v := range h.Event.Details {
+						// don't print hint and error since they are already represented
+						if k == models.DetailsKeyHint || k == models.DetailsKeyIsError {
+							continue
+						}
+						res += "\n" + fmt.Sprintf("* %s %s", output.BoldStr(k+":"), v)
+					}
+				}
+			}
+			return res
 		},
 	}
 )
@@ -139,7 +154,6 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	historyStateCol,
 	historyTopicCol,
 	historyEventCol,
-	historyDetailsCol,
 }
 
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {

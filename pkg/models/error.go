@@ -1,10 +1,6 @@
 package models
 
-import (
-	"fmt"
-	"maps"
-	"time"
-)
+import "fmt"
 
 const (
 	DetailsKeyIsError        = "IsError"
@@ -14,13 +10,12 @@ const (
 )
 
 type HasHint interface {
-	// A human-readable string that advises the user on how they might solve the
-	// error.
+	// Hint A human-readable string that advises the user on how they might solve the error.
 	Hint() string
 }
 
 type HasRetryable interface {
-	// Whether or not the error could be retried, assuming the same input and
+	// Retryable Whether the error could be retried, assuming the same input and
 	// node configuration; i.e. the error is transient and due to network
 	// capacity or service outage.
 	//
@@ -32,7 +27,7 @@ type HasRetryable interface {
 }
 
 type HasFailsExecution interface {
-	// Whether or not this error means that the associated execution cannot
+	// FailsExecution Whether this error means that the associated execution cannot
 	// continue.
 	//
 	// If a component raises an error with FailsExecution() as true,
@@ -42,44 +37,79 @@ type HasFailsExecution interface {
 }
 
 type HasDetails interface {
-	// An extra set of metadata provided by the error.
+	// Details An extra set of metadata provided by the error.
 	Details() map[string]string
 }
 
-// EventFromError converts an error into an Event tagged with the passed event
-// topic.
-//
-// This method allows errors to implement extra interfaces (above) to do
-// "attribute-based error reporting". The design principle is that errors can
-// report a set of extra flags that have well defined semantics which the system
-// can then respond to with specific behavior. This allows introducing or
-// refactoring error types without higher-level components needing to be
-// modified – they simply continue to respond to the presence of attributes.
-//
-// This is instead of the system having a centralized set of known error types
-// and programming in specific behavior in response to them, which is brittle
-// and requires updating all of the error responses when the types change.
-func EventFromError(topic EventTopic, err error) Event {
-	event := Event{
-		Message:   err.Error(),
-		Timestamp: time.Now(),
-		Topic:     topic,
-		Details:   make(map[string]string, 4), //nolint:gomnd // number of inserts below
-	}
+// BaseError is a custom error type in Go that provides additional fields
+// and methods for more detailed error handling. It implements the error
+// interface, as well as additional interfaces for providing a hint,
+// indicating whether the error is retryable, whether it fails execution,
+// and for providing additional details.
+type BaseError struct {
+	message        string
+	hint           string
+	retryable      bool
+	failsExecution bool
+	details        map[string]string
+}
 
-	if hasDetails, ok := err.(HasDetails); ok {
-		maps.Copy(event.Details, hasDetails.Details())
-	}
-	if hasHint, ok := err.(HasHint); ok {
-		event.Details[DetailsKeyHint] = hasHint.Hint()
-	}
-	if hasRetryable, ok := err.(HasRetryable); ok {
-		event.Details[DetailsKeyRetryable] = fmt.Sprint(hasRetryable.Retryable())
-	}
-	if hasFailsExecution, ok := err.(HasFailsExecution); ok {
-		event.Details[DetailsKeyFailsExecution] = fmt.Sprint(hasFailsExecution.FailsExecution())
-	}
+// NewBaseError is a constructor function that creates a new BaseError with
+// only the message field set.
+func NewBaseError(format string, a ...any) *BaseError {
+	return &BaseError{message: fmt.Sprintf(format, a...)}
+}
 
-	event.Details[DetailsKeyIsError] = fmt.Sprint(true)
-	return event
+// WithHint is a method that sets the hint field of BaseError and returns
+// the BaseError itself for chaining.
+func (e *BaseError) WithHint(hint string) *BaseError {
+	e.hint = hint
+	return e
+}
+
+// WithRetryable is a method that sets the retryable field of BaseError and
+// returns the BaseError itself for chaining.
+func (e *BaseError) WithRetryable() *BaseError {
+	e.retryable = true
+	return e
+}
+
+// WithFailsExecution is a method that sets the failsExecution field of
+// BaseError and returns the BaseError itself for chaining.
+func (e *BaseError) WithFailsExecution() *BaseError {
+	e.failsExecution = true
+	return e
+}
+
+// WithDetails is a method that sets the details field of BaseError and
+// returns the BaseError itself for chaining.
+func (e *BaseError) WithDetails(details map[string]string) *BaseError {
+	e.details = details
+	return e
+}
+
+// Error is a method that returns the message field of BaseError. This
+// method makes BaseError satisfy the error interface.
+func (e *BaseError) Error() string {
+	return e.message
+}
+
+// Hint is a method that returns the hint field of BaseError.
+func (e *BaseError) Hint() string {
+	return e.hint
+}
+
+// Retryable is a method that returns the retryable field of BaseError.
+func (e *BaseError) Retryable() bool {
+	return e.retryable
+}
+
+// FailsExecution is a method that returns the failsExecution field of BaseError.
+func (e *BaseError) FailsExecution() bool {
+	return e.failsExecution
+}
+
+// Details is a method that returns the details field of BaseError.
+func (e *BaseError) Details() map[string]string {
+	return e.details
 }
