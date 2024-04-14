@@ -2,7 +2,6 @@ package planner
 
 import (
 	"context"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -43,9 +42,9 @@ func (s *EventEmitter) Process(ctx context.Context, plan *models.Plan) error {
 		s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 			SourceNodeID: s.id,
 			JobID:        plan.Job.ID,
-			Status:       plan.Comment,
+			Status:       plan.Event.Message,
 			EventName:    eventName,
-			EventTime:    time.Now(),
+			EventTime:    plan.Event.Timestamp,
 		})
 	}
 	return nil

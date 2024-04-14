@@ -34,13 +34,16 @@ func NewErrNotEnoughNodes(requestedNodes int, availableNodes []NodeRank) ErrNotE
 	}
 }
 
+func (e ErrNotEnoughNodes) SuitableNodes() int {
+	return lo.CountBy(e.AvailableNodes, func(rank NodeRank) bool { return rank.MeetsRequirement() })
+}
+
 func (e ErrNotEnoughNodes) Error() string {
-	suitable := lo.CountBy(e.AvailableNodes, func(rank NodeRank) bool { return rank.MeetsRequirement() })
 	reasons := lo.GroupBy(e.AvailableNodes, func(rank NodeRank) string { return rank.Reason })
 
 	var message strings.Builder
 	fmt.Fprint(&message, "not enough nodes to run job. ")
-	fmt.Fprintf(&message, "requested: %d, available: %d, suitable: %d.", e.RequestedNodes, len(e.AvailableNodes), suitable)
+	fmt.Fprintf(&message, "requested: %d, available: %d, suitable: %d.", e.RequestedNodes, len(e.AvailableNodes), e.SuitableNodes())
 	for reason, nodes := range reasons {
 		fmt.Fprint(&message, "\n• ")
 		if len(nodes) > 1 {
@@ -51,6 +54,20 @@ func (e ErrNotEnoughNodes) Error() string {
 		fmt.Fprintf(&message, ": %s", reason)
 	}
 	return message.String()
+}
+
+func (e ErrNotEnoughNodes) Retryable() bool {
+	return lo.ContainsBy(e.AvailableNodes, func(rank NodeRank) bool {
+		return !rank.MeetsRequirement() && rank.Retryable
+	})
+}
+
+func (e ErrNotEnoughNodes) Details() map[string]string {
+	return map[string]string{
+		"NodesRequested": fmt.Sprint(e.RequestedNodes),
+		"NodesAvailable": fmt.Sprint(len(e.AvailableNodes)),
+		"NodesSuitable":  fmt.Sprint(e.SuitableNodes()),
+	}
 }
 
 // ErrNoMatchingNodes is returned when no matching nodes in the network to run a job
