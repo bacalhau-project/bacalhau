@@ -27,6 +27,7 @@ type NodeManager struct {
 	nodeInfo             routing.NodeInfoStore
 	resourceMap          *concurrency.StripedMap[models.Resources]
 	heartbeats           *heartbeat.HeartbeatServer
+	eventEmitter         *NodeEventEmitter
 	defaultApprovalState models.NodeApproval
 }
 
@@ -39,12 +40,17 @@ type NodeManagerParams struct {
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
-	return &NodeManager{
+	mgr := &NodeManager{
 		resourceMap:          concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
 		nodeInfo:             params.NodeInfo,
 		heartbeats:           params.Heartbeats,
+		eventEmitter:         NewNodeEventEmitter(),
 		defaultApprovalState: params.DefaultApprovalState,
 	}
+
+	mgr.heartbeats.AttachCallbacks(mgr.OnNodeConnected, mgr.OnNodeDisconnected)
+
+	return mgr
 }
 
 func (n *NodeManager) Start(ctx context.Context) error {
@@ -59,6 +65,13 @@ func (n *NodeManager) Start(ctx context.Context) error {
 	log.Ctx(ctx).Info().Msg("Node manager started")
 
 	return nil
+}
+
+// Events returns the NodeEventEmitter that is used to emit events and so can be
+// used by external components to register callbacks for those events without needing
+// to expose the emitter itself.
+func (n *NodeManager) Events() *NodeEventEmitter {
+	return n.eventEmitter
 }
 
 //
@@ -90,6 +103,13 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
+	}
+
+	// Handle auto-approval to ensure it fires the event
+	if request.Info.Approval == models.NodeApprovals.APPROVED {
+		if err := n.eventEmitter.EmitEvent(ctx, request.Info, NodeEventApproved); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to emit node approved event")
+		}
 	}
 
 	return &requests.RegisterResponse{
@@ -207,6 +227,32 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 	return n.nodeInfo.Delete(ctx, nodeID)
 }
 
+// ---- When nodes are connected/disconnected ----
+
+func (n *NodeManager) OnNodeConnected(ctx context.Context, nodeID string) {
+	info, err := n.Get(ctx, nodeID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly connected node")
+		return
+	}
+
+	if err := n.Events().EmitEvent(ctx, info, NodeEventConnected); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit connection event")
+	}
+}
+
+func (n *NodeManager) OnNodeDisconnected(ctx context.Context, nodeID string) {
+	info, err := n.Get(ctx, nodeID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get node info for newly disconnected node")
+		return
+	}
+
+	if err := n.Events().EmitEvent(ctx, info, NodeEventDisconnected); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit disconnection event")
+	}
+}
+
 // ---- Implementation of node actions ----
 
 // Approve is used to approve a node for joining the cluster along with a specific
@@ -227,6 +273,10 @@ func (n *NodeManager) ApproveAction(ctx context.Context, nodeID string, reason s
 
 	if err := n.nodeInfo.Add(ctx, info); err != nil {
 		return false, "failed to save nodeinfo during node approval"
+	}
+
+	if err := n.eventEmitter.EmitEvent(ctx, info, NodeEventApproved); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit node approved event")
 	}
 
 	return true, ""
@@ -252,12 +302,14 @@ func (n *NodeManager) RejectAction(ctx context.Context, nodeID string, reason st
 		return false, "failed to save nodeinfo during node rejection"
 	}
 
+	if err := n.eventEmitter.EmitEvent(ctx, info, NodeEventRejected); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit node rejected event")
+	}
+
 	return true, ""
 }
 
-// Reject is used to reject a node from joining the cluster along with a specific
-// reason for the rejection (for audit). The return values denote success and any
-// failure of the operation as a human readable string.
+// DeleteAction is used to remove a node from the cluster.
 func (n *NodeManager) DeleteAction(ctx context.Context, nodeID string, reason string) (bool, string) {
 	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
@@ -266,6 +318,10 @@ func (n *NodeManager) DeleteAction(ctx context.Context, nodeID string, reason st
 
 	if err := n.nodeInfo.Delete(ctx, info.NodeID); err != nil {
 		return false, fmt.Sprintf("failed to delete nodeinfo: %s", err)
+	}
+
+	if err := n.eventEmitter.EmitEvent(ctx, info, NodeEventDeleted); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to emit node deleted event")
 	}
 
 	return true, ""

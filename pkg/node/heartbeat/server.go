@@ -15,6 +15,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 )
 
+type NodeConnectionStateCallback func(ctx context.Context, nodeID string)
+
 type HeartbeatServerParams struct {
 	Client                *nats.Conn
 	Topic                 string
@@ -30,6 +32,8 @@ type HeartbeatServer struct {
 	livenessMap       *concurrency.StripedMap[models.NodeState]
 	checkFrequency    time.Duration
 	disconnectedAfter time.Duration
+	onConnected       NodeConnectionStateCallback
+	onDisconnected    NodeConnectionStateCallback
 }
 
 type TimestampedHeartbeat struct {
@@ -68,6 +72,13 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		checkFrequency:    params.CheckFrequency,
 		disconnectedAfter: params.NodeDisconnectedAfter,
 	}, nil
+}
+
+func (h *HeartbeatServer) AttachCallbacks(
+	onConnected NodeConnectionStateCallback,
+	onDisconnected NodeConnectionStateCallback) {
+	h.onConnected = onConnected
+	h.onDisconnected = onDisconnected
 }
 
 func (h *HeartbeatServer) Start(ctx context.Context) error {
@@ -128,15 +139,31 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 		}
 
 		if item.Value.Timestamp < disconnectedUnder {
-			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
+			h.markNodeAs(ctx, item.Value.NodeID, models.NodeStates.DISCONNECTED)
 		}
 	}
 }
 
 // markNode will mark a node as being in a certain state. This will be used to update the node's
 // info to include the liveness state.
-func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeState) {
+func (h *HeartbeatServer) markNodeAs(ctx context.Context, nodeID string, state models.NodeState) {
+	// Get the current state (if any for this node)
+	current, found := h.livenessMap.Get(nodeID)
+	if found && current == state {
+		return
+	}
+
 	h.livenessMap.Put(nodeID, state)
+
+	if state == models.NodeStates.CONNECTED {
+		if h.onConnected != nil {
+			h.onConnected(ctx, nodeID)
+		}
+	} else if state == models.NodeStates.DISCONNECTED {
+		if h.onDisconnected != nil {
+			h.onDisconnected(ctx, nodeID)
+		}
+	}
 }
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
@@ -173,6 +200,8 @@ func (h *HeartbeatServer) Handle(ctx context.Context, message Heartbeat) error {
 
 	timestamp := h.clock.Now().UTC().Unix()
 
+	h.markNodeAs(ctx, message.NodeID, models.NodeStates.CONNECTED)
+
 	if h.pqueue.Contains(message.NodeID) {
 		// If we think we already have a heartbeat from this node, we'll update the
 		// timestamp of the entry so it is re-prioritized in the queue by dequeuing
@@ -196,8 +225,6 @@ func (h *HeartbeatServer) Handle(ctx context.Context, message Heartbeat) error {
 		// the entry, the lower the timestamp (trending to 0) and the higher the priority.
 		h.pqueue.Enqueue(TimestampedHeartbeat{Heartbeat: message, Timestamp: timestamp}, timestamp)
 	}
-
-	h.markNodeAs(message.NodeID, models.NodeStates.HEALTHY)
 
 	return nil
 }
