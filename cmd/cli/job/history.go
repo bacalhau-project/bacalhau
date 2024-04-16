@@ -7,6 +7,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -63,7 +64,7 @@ func NewHistoryCmd() *cobra.Command {
 		Long:    historyLong,
 		Example: historyExample,
 		Args:    cobra.ExactArgs(1),
-		Run:     o.run,
+		RunE:    o.run,
 	}
 
 	nodeCmd.Flags().StringVar(&o.EventType, "event-type", o.EventType,
@@ -77,53 +78,85 @@ func NewHistoryCmd() *cobra.Command {
 	return nodeCmd
 }
 
-var historyColumns = []output.TableColumn[*models.JobHistory]{
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: 8, WidthMaxEnforcer: output.ShortenTime},
-		Value:        func(j *models.JobHistory) string { return j.Time.Format(time.DateTime) },
-	},
-	{
+var (
+	historyTimeCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(time.StampMilli), WidthMaxEnforcer: output.ShortenTime},
+		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(time.StampMilli) },
+	}
+	historyLevelCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Level", WidthMax: 15, WidthMaxEnforcer: text.WrapText},
 		Value:        func(jwi *models.JobHistory) string { return jwi.Type.String() },
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
-	},
-	{
+	}
+	historyRevisionCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
 		Value:        func(j *models.JobHistory) string { return strconv.FormatUint(j.NewRevision, 10) },
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Previous State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
-		Value: func(j *models.JobHistory) string {
-			if j.Type == models.JobHistoryTypeJobLevel {
-				return j.JobState.Previous.String()
-			}
-			return j.ExecutionState.Previous.String()
-		},
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "New State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
+	}
+	historyExecIDCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
+	}
+	historyNodeIDCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
+	}
+	historyStateCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
 		Value: func(j *models.JobHistory) string {
 			if j.Type == models.JobHistoryTypeJobLevel {
 				return j.JobState.New.String()
 			}
 			return j.ExecutionState.New.String()
 		},
-	},
+	}
+	historyTopicCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: 15, WidthMaxEnforcer: text.WrapSoft},
+		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
+	}
+	historyEventCol = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 60, WidthMaxEnforcer: text.WrapText},
+		Value: func(h *models.JobHistory) string {
+			res := h.Event.Message
 
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Comment", WidthMax: 40, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return j.Comment },
-	},
+			if h.Event.Details != nil {
+				// if is error, then the event is in red
+				if h.Event.Details[models.DetailsKeyIsError] == "true" {
+					res = output.RedStr(res)
+				}
+
+				// print hint in green
+				if h.Event.Details[models.DetailsKeyHint] != "" {
+					res += "\n" + fmt.Sprintf(
+						"%s %s", output.BoldStr(output.GreenStr("* Hint:")), h.Event.Details[models.DetailsKeyHint])
+				}
+
+				// print all other details in debug mode
+				if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+					for k, v := range h.Event.Details {
+						// don't print hint and error since they are already represented
+						if k == models.DetailsKeyHint || k == models.DetailsKeyIsError {
+							continue
+						}
+						res += "\n" + fmt.Sprintf("* %s %s", output.BoldStr(k+":"), v)
+					}
+				}
+			}
+			return res
+		},
+	}
+)
+
+var historyColumns = []output.TableColumn[*models.JobHistory]{
+	historyTimeCol,
+	historyLevelCol,
+	historyRevisionCol,
+	historyExecIDCol,
+	historyNodeIDCol,
+	historyStateCol,
+	historyTopicCol,
+	historyEventCol,
 }
 
-func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
+func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := util.GetAPIClientV2(cmd).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
@@ -139,10 +172,12 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string) {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, err, 1)
+		return err
 	}
 
 	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.History); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
+
+	return nil
 }

@@ -2,6 +2,9 @@ package configflags
 
 import "github.com/bacalhau-project/bacalhau/pkg/config/types"
 
+const ipfsEmbeddedDeprecationMessage = "The embedded IPFS node will be removed in a future version" +
+	"in favour of using --ipfs-connect and a self-hosted IPFS node"
+
 var IPFSFlags = []Definition{
 	{
 		FlagName:             "ipfs-swarm-addrs",
@@ -9,6 +12,8 @@ var IPFSFlags = []Definition{
 		DefaultValue:         Default.Node.IPFS.SwarmAddresses,
 		Description:          "IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
 		EnvironmentVariables: []string{"BACALHAU_IPFS_SWARM_ADDRESSES"},
+		Deprecated:           true,
+		DeprecatedMessage:    ipfsEmbeddedDeprecationMessage,
 	},
 	{
 		FlagName:             "ipfs-swarm-key",
@@ -31,6 +36,8 @@ var IPFSFlags = []Definition{
 			"cannot be used with --ipfs-connect. " +
 			"Use \"--private-internal-ipfs=false\" to disable. " +
 			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
+		Deprecated:        true,
+		DeprecatedMessage: ipfsEmbeddedDeprecationMessage,
 	},
 	{
 		FlagName:             "ipfs-serve-path",
@@ -38,29 +45,39 @@ var IPFSFlags = []Definition{
 		DefaultValue:         Default.Node.IPFS.ServePath,
 		Description:          "path local Ipfs node will persist data to",
 		EnvironmentVariables: []string{"BACALHAU_SERVE_IPFS_PATH"},
+		Deprecated:           true,
+		DeprecatedMessage:    ipfsEmbeddedDeprecationMessage,
 	},
 	{
-		FlagName:     "ipfs-profile",
-		ConfigPath:   types.NodeIPFSProfile,
-		DefaultValue: Default.Node.IPFS.Profile,
-		Description:  "profile for internal IPFS node",
+		FlagName:          "ipfs-profile",
+		ConfigPath:        types.NodeIPFSProfile,
+		DefaultValue:      Default.Node.IPFS.Profile,
+		Description:       "profile for internal IPFS node",
+		Deprecated:        true,
+		DeprecatedMessage: ipfsEmbeddedDeprecationMessage,
 	},
 	{
-		FlagName:     "ipfs-swarm-listen-addresses",
-		ConfigPath:   types.NodeIPFSSwarmListenAddresses,
-		DefaultValue: Default.Node.IPFS.SwarmListenAddresses,
-		Description:  "addresses the internal IPFS node will listen on for swarm connections",
+		FlagName:          "ipfs-swarm-listen-addresses",
+		ConfigPath:        types.NodeIPFSSwarmListenAddresses,
+		DefaultValue:      Default.Node.IPFS.SwarmListenAddresses,
+		Description:       "addresses the internal IPFS node will listen on for swarm connections",
+		Deprecated:        true,
+		DeprecatedMessage: ipfsEmbeddedDeprecationMessage,
 	},
 	{
-		FlagName:     "ipfs-gateway-listen-addresses",
-		ConfigPath:   types.NodeIPFSGatewayListenAddresses,
-		DefaultValue: Default.Node.IPFS.GatewayListenAddresses,
-		Description:  "addresses the internal IPFS node will listen on for gateway connections",
+		FlagName:          "ipfs-gateway-listen-addresses",
+		ConfigPath:        types.NodeIPFSGatewayListenAddresses,
+		DefaultValue:      Default.Node.IPFS.GatewayListenAddresses,
+		Description:       "addresses the internal IPFS node will listen on for gateway connections",
+		Deprecated:        true,
+		DeprecatedMessage: ipfsEmbeddedDeprecationMessage,
 	},
 	{
-		FlagName:     "ipfs-api-listen-addresses",
-		ConfigPath:   types.NodeIPFSAPIListenAddresses,
-		DefaultValue: Default.Node.IPFS.APIListenAddresses,
-		Description:  "addresses the internal IPFS node will listen on for API connections",
+		FlagName:          "ipfs-api-listen-addresses",
+		ConfigPath:        types.NodeIPFSAPIListenAddresses,
+		DefaultValue:      Default.Node.IPFS.APIListenAddresses,
+		Description:       "addresses the internal IPFS node will listen on for API connections",
+		Deprecated:        true,
+		DeprecatedMessage: ipfsEmbeddedDeprecationMessage,
 	},
 }

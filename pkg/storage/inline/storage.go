@@ -29,6 +29,7 @@ package inline
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -37,7 +38,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/c2h5oh/datasize"
 	"github.com/vincent-petithory/dataurl"
-	"go.uber.org/multierr"
 )
 
 // The maximum size that will be stored inline without gzip compression.
@@ -134,7 +134,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
 			Target: spec.Target,
-		}, multierr.Combine(werr, cerr)
+		}, errors.Join(werr, cerr)
 	}
 }
 
@@ -178,6 +178,17 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (models.SpecConfi
 			URL: url,
 		}.ToMap(),
 	}, nil
+}
+
+// StoreBytes returns the passed data embedded as a "data:" URL in a SpecConfig.
+// The input is never compressed.
+func (*InlineStorage) StoreBytes(data []byte) models.SpecConfig {
+	return models.SpecConfig{
+		Type: models.StorageSourceInline,
+		Params: Source{
+			URL: dataurl.EncodeBytes(data),
+		}.ToMap(),
+	}
 }
 
 var _ storage.Storage = (*InlineStorage)(nil)

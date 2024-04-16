@@ -1,14 +1,17 @@
 ---
 sidebar_label: list
 ---
+
 # Command: `node list`
 
 The `bacalhau node list` command is designed to provide users with a comprehensive list of network nodes along with details based on specified flags.
 
 ## Description:
+
 The `list` sub-command under the `bacalhau node` category enumerates information about nodes in the network. It supports various filtering, ordering, and output formatting options, allowing users to tailor the output to their needs.
 
 ## Usage:
+
 ```bash
 bacalhau node list [flags]
 ```
@@ -16,37 +19,56 @@ bacalhau node list [flags]
 ## Flags:
 
 - `-h`, `--help`:
+
   - Show the help message for the `list` command.
 
 - `--hide-header`:
+
   - Do not display the column headers in the output.
 
+- `--filter-approval`:
+
+  - Only show nodes with the specified approval status. Valid values are: `approved`, `pending`, `rejected`.
+
+- `--filter-status`:
+
+  - Only show nodes with the specified state. Valid values are: `healthy`, `unhealthy`, `unknown`.
+
 - `--labels string`:
+
   - Filter nodes based on labels. This follows the filtering format provided by Kubernetes, as shown in their documentation about labels.
 
 - `--limit uint32`:
+
   - Restrict the number of results displayed.
 
 - `--next-token string`:
+
   - Provide the next token for pagination.
 
 - `--no-style`:
+
   - Output the table without any style.
 
 - `--order-by string`:
+
   - Sort the results based on a specific field. Valid sorting fields are: `id`, `type`, `available_cpu`, `available_memory`, `available_disk`, `available_gpu`.
 
 - `--order-reversed`:
+
   - Display the results in reverse order.
 
 - `--output format`:
+
   - Choose the output format. Available options: `table`, `csv`, `json`, `yaml`.
   - Default: `table`.
 
 - `--pretty`:
+
   - Enhance the visual appeal of the output. This is applicable only to `json` and `yaml` formats.
 
 - `--show strings`:
+
   - Determine the column groups to be displayed. Acceptable values are: `labels`, `version`, `features`, `capacity`.
   - Default: `labels`, `capacity`.
 
@@ -56,14 +78,17 @@ bacalhau node list [flags]
 ## Global Flags:
 
 - `--api-host string`:
+
   - Specify the host for client-server communication via REST. This gets ignored if the `BACALHAU_API_HOST` environment variable is defined.
   - Default: `"bootstrap.production.bacalhau.org"`.
 
 - `--api-port int`:
+
   - Specify the port for RESTful communication between client and server. Gets overlooked if the `BACALHAU_API_PORT` environment variable is set.
   - Default: `1234`.
 
 - `--log-mode logging-mode`:
+
   - Choose the desired log format.
   - Options: `'default', 'station', 'json', 'combined', 'event'`.
   - Default: `'default'`.

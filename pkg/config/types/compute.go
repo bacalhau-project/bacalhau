@@ -6,15 +6,16 @@ import (
 )
 
 type ComputeConfig struct {
-	Capacity        CapacityConfig           `yaml:"Capacity"`
-	ExecutionStore  JobStoreConfig           `yaml:"ExecutionStore"`
-	JobTimeouts     JobTimeoutConfig         `yaml:"JobTimeouts"`
-	JobSelection    model.JobSelectionPolicy `yaml:"JobSelection"`
-	Queue           QueueConfig              `yaml:"Queue"`
-	Logging         LoggingConfig            `yaml:"Logging"`
-	ManifestCache   DockerCacheConfig        `yaml:"ManifestCache"`
-	LogStreamConfig LogStreamConfig          `yaml:"LogStream"`
-	LocalPublisher  LocalPublisherConfig     `yaml:"LocalPublisher"`
+	Capacity             CapacityConfig            `yaml:"Capacity"`
+	ExecutionStore       JobStoreConfig            `yaml:"ExecutionStore"`
+	JobTimeouts          JobTimeoutConfig          `yaml:"JobTimeouts"`
+	JobSelection         model.JobSelectionPolicy  `yaml:"JobSelection"`
+	Queue                QueueConfig               `yaml:"Queue"`
+	Logging              LoggingConfig             `yaml:"Logging"`
+	ManifestCache        DockerCacheConfig         `yaml:"ManifestCache"`
+	LogStreamConfig      LogStreamConfig           `yaml:"LogStream"`
+	LocalPublisher       LocalPublisherConfig      `yaml:"LocalPublisher"`
+	ControlPlaneSettings ComputeControlPlaneConfig `yaml:"ClusterTimeouts"`
 }
 
 type CapacityConfig struct {
@@ -61,4 +62,21 @@ type LocalPublisherConfig struct {
 	Address   string `yaml:"Address"`
 	Port      int    `yaml:"Port"`
 	Directory string `yaml:"Directory"`
+}
+
+type ComputeControlPlaneConfig struct {
+	// The frequency with which the compute node will send node info (inc current labels)
+	// to the controlling requester node.
+	InfoUpdateFrequency Duration `yaml:"InfoUpdateFrequency"`
+
+	// How often the compute node will send current resource availability to the requester node.
+	ResourceUpdateFrequency Duration `yaml:"ResourceUpdateFrequency"`
+
+	// How often the compute node will send a heartbeat to the requester node to let it know
+	// that the compute node is still alive. This should be less than the requester's configured
+	// heartbeat timeout to avoid flapping.
+	HeartbeatFrequency Duration `yaml:"HeartbeatFrequency"`
+
+	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
+	HeartbeatTopic string `yaml:"HeartbeatTopic"`
 }

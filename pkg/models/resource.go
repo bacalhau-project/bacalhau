@@ -8,7 +8,6 @@ import (
 
 	"github.com/BTBurke/k8sresource"
 	"github.com/dustin/go-humanize"
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
@@ -70,27 +69,27 @@ func (r *ResourcesConfig) ToResources() (*Resources, error) {
 		return nil, errors.New("missing resources")
 	}
 	r.Normalize()
-	var mErr multierror.Error
+	var mErr error
 	res := &Resources{}
 
 	if r.CPU != "" {
 		cpu, err := k8sresource.NewCPUFromString(r.CPU)
 		if err != nil {
-			mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid CPU value: %s", r.CPU))
+			mErr = errors.Join(mErr, fmt.Errorf("invalid CPU value: %s", r.CPU))
 		}
 		res.CPU = cpu.ToFloat64()
 	}
 	if r.Memory != "" {
 		mem, err := humanize.ParseBytes(r.Memory)
 		if err != nil {
-			mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid memory value: %s", r.Memory))
+			mErr = errors.Join(mErr, fmt.Errorf("invalid memory value: %s", r.Memory))
 		}
 		res.Memory = mem
 	}
 	if r.Disk != "" {
 		disk, err := humanize.ParseBytes(r.Disk)
 		if err != nil {
-			mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid disk value: %s", r.Disk))
+			mErr = errors.Join(mErr, fmt.Errorf("invalid disk value: %s", r.Disk))
 		}
 		res.Disk = disk
 	}
@@ -102,7 +101,7 @@ func (r *ResourcesConfig) ToResources() (*Resources, error) {
 		res.GPU = gpu
 	}
 
-	return res, mErr.ErrorOrNil()
+	return res, mErr
 }
 
 type ResourcesConfigBuilder struct {
@@ -197,9 +196,9 @@ func (r *Resources) Validate() error {
 	if r == nil {
 		return errors.New("missing resources")
 	}
-	var mErr multierror.Error
+	var mErr error
 	if r.CPU < 0 {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid CPU value: %f", r.CPU))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid CPU value: %f", r.CPU))
 	}
 	if len(r.GPUs) > int(r.GPU) {
 		// It's not an error for the GPUs specified to be less than the number
@@ -207,9 +206,9 @@ func (r *Resources) Validate() error {
 		// - the user is requesting "generic GPUs" without specifying more information
 		// - the system knows it has GPUs but no further information about them
 		// But the number should always be at least the length of the GPUs array
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("%d GPUs specified but have details for %d", r.GPU, len(r.GPUs)))
+		mErr = errors.Join(mErr, fmt.Errorf("%d GPUs specified but have details for %d", r.GPU, len(r.GPUs)))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // Merge merges the resources, preferring the current resources

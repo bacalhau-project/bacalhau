@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type ExternalCommandStrategyParams struct {
@@ -34,11 +33,13 @@ func NewExternalCommandStrategy(params ExternalCommandStrategyParams) *ExternalC
 
 const (
 	exitCodeReason = "accept jobs where external command %q returns exit code %d"
+	genericReason  = "accept this job: "
 )
 
 func (s *ExternalCommandStrategy) ShouldBid(
 	ctx context.Context,
-	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+	request bidstrategy.BidStrategyRequest,
+) (bidstrategy.BidStrategyResponse, error) {
 	if s.command == "" {
 		return bidstrategy.NewBidResponse(true, notConfiguredReason), nil
 	}
@@ -64,10 +65,13 @@ func (s *ExternalCommandStrategy) ShouldBid(
 	err = cmd.Run()
 	if err != nil {
 		// we ignore this error because it might be the script exiting 1 on purpose
-		logger.LogStream(ctx, &buf)
 		log.Ctx(ctx).Debug().Err(err).Str("Command", s.command).Msg("We got an error back from a job selection probe exec")
 	}
 
 	exitCode := cmd.ProcessState.ExitCode()
-	return bidstrategy.NewBidResponse(exitCode == 0, exitCodeReason, s.command, exitCode), nil
+	reason := fmt.Sprintf(exitCodeReason, s.command, exitCode)
+	if buf.Len() > 0 {
+		reason = genericReason + strings.TrimSpace(buf.String())
+	}
+	return bidstrategy.NewBidResponse(exitCode == 0, reason), nil
 }

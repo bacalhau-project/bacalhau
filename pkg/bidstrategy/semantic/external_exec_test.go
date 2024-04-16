@@ -30,6 +30,12 @@ func TestJobSelectionExec(t *testing.T) {
 			true,
 			"this node does accept jobs where external command \"exit 0\" returns exit code 0",
 		},
+		{
+			"fail the response and print the output",
+			"echo bad job 1>&2; exit 1",
+			false,
+			"this node does not accept this job: bad job",
+		},
 	}
 
 	for _, test := range testCases {

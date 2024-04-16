@@ -66,8 +66,8 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
-     00:26:44  bf785b4d  Docker dpokidov/imag...  Completed            ipfs://QmQnern37ueHr...
+     CREATED   ID        JOB                       STATE      VERIFIED  PUBLISHED
+     00:26:44  bf785b4d  Docker dpokidov/image...  Completed            ipfs://QmQnern37ueHr...
 
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.

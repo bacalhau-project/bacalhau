@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 // TimeoutConfig is the configuration for timeout related settings,
@@ -35,9 +33,9 @@ func (t *TimeoutConfig) Validate() error {
 	if t == nil {
 		return errors.New("missing timeout config")
 	}
-	var mErr multierror.Error
+	var mErr error
 	if t.ExecutionTimeout < 0 {
-		mErr.Errors = append(mErr.Errors, fmt.Errorf("invalid execution timeout value: %s", t.GetExecutionTimeout()))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid execution timeout value: %s", t.GetExecutionTimeout()))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }

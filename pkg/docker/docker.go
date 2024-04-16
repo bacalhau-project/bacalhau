@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,11 +23,10 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -34,11 +34,49 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
+type ImageUnavailableError struct {
+	Verb  string
+	Image string
+	Creds config.DockerCredentials
+	Err   error
+}
 
-const DistributionInspectError = `Could not inspect image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
+func (die ImageUnavailableError) Error() string {
+	return pkgerrors.Wrapf(die.Err,
+		"Could not %s image %q - could be due to repo/image not existing, "+
+			"or registry needing authorization",
+		die.Verb,
+		die.Image,
+	).Error()
+}
+
+func (die ImageUnavailableError) Hint() string {
+	if !die.Creds.IsValid() {
+		return "If the image is private, supply the node with valid Docker login credentials " +
+			"using the " + config.DockerUsernameEnvVar + " and " + config.DockerPasswordEnvVar +
+			" environment variables"
+	}
+
+	return ""
+}
+
+func NewImageInspectError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "inspect",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
+}
+
+func NewImagePullError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "pull",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
+}
 
 type Client struct {
 	tracing.TracedClient
@@ -111,7 +149,7 @@ func (c *Client) RemoveObjectsWithLabel(ctx context.Context, labelName, labelVal
 
 	containerErr := c.removeContainers(ctx, filterz)
 	networkErr := c.removeNetworks(ctx, filterz)
-	return multierr.Combine(containerErr, networkErr)
+	return errors.Join(containerErr, networkErr)
 }
 
 func (c *Client) FindContainer(ctx context.Context, label string, value string) (string, error) {
@@ -132,7 +170,7 @@ func (c *Client) FindContainer(ctx context.Context, label string, value string) 
 func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.Reader, err error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get container")
+		return nil, nil, pkgerrors.Wrap(err, "failed to get container")
 	}
 
 	logOptions := container.LogsOptions{
@@ -144,7 +182,7 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get container logs")
+		return nil, nil, pkgerrors.Wrap(err, "failed to get container logs")
 	}
 
 	stdoutReader, stdoutWriter := io.Pipe()
@@ -170,11 +208,11 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 func (c *Client) GetOutputStream(ctx context.Context, id string, since string, follow bool) (io.ReadCloser, error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get container")
+		return nil, pkgerrors.Wrap(err, "failed to get container")
 	}
 
 	if !cont.State.Running {
-		return nil, errors.Wrap(err, "cannot get logs when container is not running")
+		return nil, pkgerrors.Wrap(err, "cannot get logs when container is not running")
 	}
 
 	logOptions := container.LogsOptions{
@@ -189,7 +227,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get container logs")
+		return nil, pkgerrors.Wrap(err, "failed to get container logs")
 	}
 
 	return logsReader, nil
@@ -203,7 +241,7 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 		Force:         true,
 	})
 	if err != nil {
-		return errors.WithStack(err)
+		return pkgerrors.WithStack(err)
 	}
 	return nil
 }
@@ -228,7 +266,7 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, DistributionInspectError, image)
+		return nil, NewImageInspectError(image, dockerCreds, err)
 	}
 
 	return distribution.Platforms, nil
@@ -342,7 +380,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, DistributionInspectError, image)
+		return nil, NewImageInspectError(image, creds, err)
 	}
 
 	obj := dist.Descriptor.Digest

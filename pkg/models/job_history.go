@@ -49,5 +49,20 @@ type JobHistory struct {
 	ExecutionState *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
 	NewRevision    uint64                           `json:"NewRevision"`
 	Comment        string                           `json:"Comment,omitempty"`
+	Event          Event                            `json:"Event,omitempty"`
 	Time           time.Time                        `json:"Time"`
+}
+
+// Occurred returns when the action that triggered an update to job history
+// actually occurred.
+//
+// The Time field represents the moment that the JobHistory item was recorded,
+// i.e. it is almost always set to time.Now() when creating the object. This is
+// different to the Event.Timestamp which represents when the source of the
+// history update actually occurred.
+func (jh JobHistory) Occurred() time.Time {
+	if !jh.Event.Timestamp.Equal(time.Time{}) {
+		return jh.Event.Timestamp
+	}
+	return jh.Time
 }

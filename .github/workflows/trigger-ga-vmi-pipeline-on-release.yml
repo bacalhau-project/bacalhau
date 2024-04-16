@@ -1,0 +1,22 @@
+name: Build VMI on Bacalhau Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  handle-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+
+      - name: Trigger VMI Build
+        env:
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/$REPO/dispatches" \
+          -d '{"event_type": "new-version-release", "client_payload": {"release_tag": "${{ github.ref_name }}"} }'

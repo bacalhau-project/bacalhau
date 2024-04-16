@@ -30,7 +30,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 
 	// Create new executions
 	for _, exec := range plan.NewExecutions {
-		err := s.store.CreateExecution(ctx, *exec)
+		err := s.store.CreateExecution(ctx, *exec, plan.Event)
 		if err != nil {
 			return err
 		}
@@ -43,12 +43,13 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			NewValues: models.Execution{
 				DesiredState: models.State[models.ExecutionDesiredStateType]{
 					StateType: u.DesiredState,
-					Message:   u.Comment,
+					Message:   u.Event.Message,
 				},
 			},
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedRevision: u.Execution.Revision,
 			},
+			Event: plan.Event,
 		})
 		if err != nil {
 			return err
@@ -60,7 +61,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 		err := s.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 			JobID:    plan.Job.ID,
 			NewState: plan.DesiredJobState,
-			Comment:  plan.Comment,
+			Event:    plan.Event,
 			Condition: jobstore.UpdateJobCondition{
 				ExpectedRevision: plan.Job.Revision,
 			},
