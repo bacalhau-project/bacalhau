@@ -196,7 +196,7 @@ googleapis-common-protos==1.62.0
     #   opentelemetry-exporter-otlp-proto-http
 grpcio==1.60.1
     # via opentelemetry-exporter-otlp-proto-grpc
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via apache-airflow
 h11==0.14.0
     # via httpcore
