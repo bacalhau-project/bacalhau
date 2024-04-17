@@ -75,6 +75,23 @@ func (s *NodeActionSuite) TestListNodes() {
 	)
 	s.Require().NoError(err)
 	s.Require().Contains(out, "Ok")
+
+	// Delete the node
+	_, out, err = s.ExecuteTestCobraCommand(
+		"node",
+		"delete",
+		nodeID,
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(out, "Ok")
+
+	_, out, err = s.ExecuteTestCobraCommand(
+		"node",
+		"list",
+		"--output", "csv",
+	)
+	s.Require().NoError(err)
+	s.Require().NotContains(out, nodeID)
 }
 
 func getCells(output string, lineNo int) []string {

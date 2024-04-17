@@ -3,14 +3,14 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
-	"go.uber.org/multierr"
+	pkgerrors "github.com/pkg/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -365,24 +365,24 @@ func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runReque
 		} else if t.Authenticate == nil {
 			// We don't have an authenticate method so can't try and get a new
 			// token, so we need to stop here.
-			return errors.Wrap(err, "unauthorized and no authentication is available")
+			return pkgerrors.Wrap(err, "unauthorized and no authentication is available")
 		}
 	}
 
 	// If we don't have a credential yet or the token we had was invalid, run a
 	// new auth flow to get a new token (maybe).
-	if t.Credential == nil || errors.Is(err, apimodels.ErrInvalidToken) {
+	if t.Credential == nil || pkgerrors.Is(err, apimodels.ErrInvalidToken) {
 		var authErr error
 		auth := NewAPI(t.Client).Auth()
 		if t.Credential, err = t.Authenticate(auth); err != nil {
-			authErr = multierr.Append(authErr, errors.Wrap(err, "failed to authorize user"))
+			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "failed to authorize user"))
 			t.Credential = nil // Don't assume Authenticate returned nil
 		}
 
 		// We either failed to get a credential or have a new one. Either way,
 		// persist the result of the call to remove the old credential.
 		if err = t.PersistCredential(t.Credential); err != nil {
-			authErr = multierr.Append(authErr, errors.Wrap(err, "unable to persist new client credential"))
+			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "unable to persist new client credential"))
 		}
 		err = authErr
 	}

@@ -3,7 +3,7 @@ package models
 type PlanExecutionDesiredUpdate struct {
 	Execution    *Execution                `json:"Execution"`
 	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
-	Comment      string                    `json:"Comment,omitempty"`
+	Event        Event                     `json:"Event"`
 }
 
 // Plan holds actions as a result of processing an evaluation by the scheduler.
@@ -17,7 +17,7 @@ type Plan struct {
 	Job *Job `json:"Job,omitempty"`
 
 	DesiredJobState JobStateType `json:"DesiredJobState,omitempty"`
-	Comment         string       `json:"Comment,omitempty"`
+	Event           Event        `json:"Event,omitempty"`
 
 	// NewExecutions holds the executions to be created.
 	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
@@ -43,11 +43,11 @@ func (p *Plan) AppendExecution(execution *Execution) {
 }
 
 // AppendStoppedExecution marks an execution to be stopped.
-func (p *Plan) AppendStoppedExecution(execution *Execution, comment string) {
+func (p *Plan) AppendStoppedExecution(execution *Execution, event Event) {
 	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateStopped,
-		Comment:      comment,
+		Event:        event,
 	}
 	p.UpdatedExecutions[execution.ID] = updateRequest
 }
@@ -87,9 +87,9 @@ func (p *Plan) MarkJobRunningIfEligible() {
 	p.DesiredJobState = JobStateTypeRunning
 }
 
-func (p *Plan) MarkJobFailed(comment string) {
+func (p *Plan) MarkJobFailed(event Event) {
 	p.DesiredJobState = JobStateTypeFailed
-	p.Comment = comment
+	p.Event = event
 
 	p.NewExecutions = []*Execution{}
 	// drop any update that is not stopping an execution

@@ -25,6 +25,13 @@ type RequesterConfig struct {
 
 	TagCache         DockerCacheConfig `yaml:"TagCache"`
 	DefaultPublisher string            `yaml:"DefaultPublisher"`
+
+	ControlPlaneSettings RequesterControlPlaneConfig `yaml:"ControlPlaneSettings"`
+
+	// ManualNodeApproval is a flag that determines if nodes should be manually approved or not.
+	// By default, nodes are auto-approved to simplify upgrades, by setting this property to
+	// true, nodes will need to be manually approved before they are included in node selection.
+	ManualNodeApproval bool `yaml:"ManualNodeApproval"`
 }
 
 type EvaluationBrokerConfig struct {
@@ -52,4 +59,19 @@ type S3StorageProviderConfig struct {
 
 type JobDefaults struct {
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
+}
+
+type RequesterControlPlaneConfig struct {
+	// This setting is the time period after which a compute node is considered to be unresponsive.
+	// If the compute node misses two of these frequencies, it will be marked as unknown.  The compute
+	// node should have a frequency setting less than this one to ensure that it does not keep
+	// switching between unknown and active too frequently.
+	HeartbeatCheckFrequency Duration `yaml:"HeartbeatFrequency"`
+
+	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
+	HeartbeatTopic string `yaml:"HeartbeatTopic"`
+
+	// This is the time period after which a compute node is considered to be disconnected. If the compute
+	// node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
+	NodeDisconnectedAfter Duration `yaml:"NodeDisconnectedAfter"`
 }

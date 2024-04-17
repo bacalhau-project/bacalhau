@@ -75,4 +75,4 @@ If you use self-signed certificates, it is unlikely that any clients will be abl
 
 2. Install the CA certificate file in the system keychain of each machine that needs access to the Bacalhau APIs.
 
-3. Instruct the software librarary you are using not to verify HTTPS requests.
+3. Instruct the software library you are using not to verify HTTPS requests.

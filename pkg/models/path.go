@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/hashicorp/go-multierror"
 )
 
 type ResultPath struct {
@@ -40,12 +39,12 @@ func (p *ResultPath) Validate() error {
 	if p == nil {
 		return errors.New("path is nil")
 	}
-	var mErr multierror.Error
+	var mErr error
 	if validate.IsBlank(p.Path) {
-		mErr.Errors = append(mErr.Errors, errors.New("path is blank"))
+		mErr = errors.Join(mErr, errors.New("path is blank"))
 	}
 	if validate.IsBlank(p.Name) {
-		mErr.Errors = append(mErr.Errors, errors.New("resultpath name is blank"))
+		mErr = errors.Join(mErr, errors.New("resultpath name is blank"))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }

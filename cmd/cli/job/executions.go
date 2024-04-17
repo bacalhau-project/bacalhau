@@ -59,7 +59,7 @@ func NewExecutionCmd() *cobra.Command {
 		Long:    executionLong,
 		Example: executionExample,
 		Args:    cobra.ExactArgs(1),
-		Run:     o.run,
+		RunE:    o.run,
 	}
 
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
@@ -97,7 +97,7 @@ var (
 		Value:        func(e *models.Execution) string { return strconv.FormatUint(e.Revision, 10) },
 	}
 	executionColumnState = output.TableColumn[*models.Execution]{
-		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 17, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return e.ComputeState.StateType.String() },
 	}
 	executionColumnDesired = output.TableColumn[*models.Execution]{
@@ -120,7 +120,7 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 	executionColumnDesired,
 }
 
-func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) {
+func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := util.GetAPIClientV2(cmd).Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
@@ -133,10 +133,12 @@ func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) {
 		},
 	})
 	if err != nil {
-		util.Fatal(cmd, err, 1)
+		return err
 	}
 
 	if err = output.Output(cmd, executionColumns, o.OutputOptions, response.Executions); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to output: %w", err), 1)
+		return fmt.Errorf("failed to output: %w", err)
 	}
+
+	return nil
 }

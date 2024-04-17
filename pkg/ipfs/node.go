@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -9,12 +10,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/kubo/core/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -160,9 +160,9 @@ func (n *Node) Client() Client {
 
 func (n *Node) Close(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("Closing IPFS node %s", n.ID())
-	var errs *multierror.Error
+	var errs error
 	if n.ipfsNode != nil {
-		errs = multierror.Append(errs, n.ipfsNode.Close())
+		errs = errors.Join(errs, n.ipfsNode.Close())
 
 		// We need to make sure we close the repo before we delete the disk contents as this will cause IPFS to print out messages about how
 		// 'flatfs could not store final value of disk usage to file', which is both annoying and can cause test flakes
@@ -170,7 +170,7 @@ func (n *Node) Close(ctx context.Context) error {
 		// that it's supposed to shut down.
 		if n.ipfsNode.Repo != nil {
 			if err := n.ipfsNode.Repo.Close(); err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
+				errs = errors.Join(errs, fmt.Errorf("failed to close repo: %w", err))
 			}
 		}
 	}
@@ -178,10 +178,10 @@ func (n *Node) Close(ctx context.Context) error {
 	// delete repo if user didn't specify a repo path.
 	if n.cfg.ServePath == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
 	}
-	return errs.ErrorOrNil()
+	return errs
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
@@ -285,8 +285,8 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 		}
 
 		cm.RegisterCallback(func() error {
-			if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-				return errors.Wrap(err, "error shutting down IPFS listener")
+			if err := listener.Close(); err != nil && !pkgerrors.Is(err, net.ErrClosed) {
+				return pkgerrors.Wrap(err, "error shutting down IPFS listener")
 			}
 			return nil
 		})
@@ -318,7 +318,7 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 		// NOTE: this is not critical, but we should log for debugging
 		go func(listener manet.Listener) {
 			err := corehttp.Serve(node, manet.NetListener(listener), opts...)
-			if err != nil && !errors.Is(err, net.ErrClosed) {
+			if err != nil && !pkgerrors.Is(err, net.ErrClosed) {
 				log.Warn().Stringer("IPFSNode", node.Identity).Err(err).Msg("failed to serve IPFS API")
 			}
 		}(listener)

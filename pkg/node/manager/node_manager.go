@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
@@ -23,21 +24,41 @@ const (
 // also provides operations for querying and managing compute
 // node information.
 type NodeManager struct {
-	nodeInfo    routing.NodeInfoStore
-	resourceMap *concurrency.StripedMap[models.Resources]
+	nodeInfo             routing.NodeInfoStore
+	resourceMap          *concurrency.StripedMap[models.Resources]
+	heartbeats           *heartbeat.HeartbeatServer
+	defaultApprovalState models.NodeApproval
 }
 
 type NodeManagerParams struct {
-	NodeInfo routing.NodeInfoStore
+	NodeInfo             routing.NodeInfoStore
+	Heartbeats           *heartbeat.HeartbeatServer
+	DefaultApprovalState models.NodeApproval
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
 	return &NodeManager{
-		resourceMap: concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
-		nodeInfo:    params.NodeInfo,
+		resourceMap:          concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
+		nodeInfo:             params.NodeInfo,
+		heartbeats:           params.Heartbeats,
+		defaultApprovalState: params.DefaultApprovalState,
 	}
+}
+
+func (n *NodeManager) Start(ctx context.Context) error {
+	if n.heartbeats != nil {
+		err := n.heartbeats.Start(ctx)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to start heartbeat server")
+			return err
+		}
+	}
+
+	log.Ctx(ctx).Info().Msg("Node manager started")
+
+	return nil
 }
 
 //
@@ -65,9 +86,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 		}, nil
 	}
 
-	// TODO: We will default to PENDING, but once we start filtering on NodeApprovals.APPROVED we will need to
-	// make a decision on how this is determined.
-	request.Info.Approval = models.NodeApprovals.PENDING
+	request.Info.Approval = n.defaultApprovalState
 
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
@@ -101,7 +120,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		}, nil
 	}
 
-	// TODO(ross): Add a Put endpoint that takes the revision into account
+	// TODO: Add a Put endpoint that takes the revision into account?
 	if err := n.nodeInfo.Add(ctx, request.Info); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodeinfo during node registration")
 	}
@@ -142,10 +161,14 @@ func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 	return n.nodeInfo.Add(ctx, nodeInfo)
 }
 
-func (n *NodeManager) addResourcesToInfo(ctx context.Context, info *models.NodeInfo) {
+func (n *NodeManager) addToInfo(ctx context.Context, info *models.NodeInfo) {
 	resources, found := n.resourceMap.Get(info.NodeID)
 	if found && info.ComputeNodeInfo != nil {
 		info.ComputeNodeInfo.AvailableCapacity = resources
+	}
+
+	if n.heartbeats != nil {
+		n.heartbeats.UpdateNodeInfo(info)
 	}
 }
 
@@ -154,7 +177,7 @@ func (n *NodeManager) Get(ctx context.Context, nodeID string) (models.NodeInfo, 
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -163,7 +186,7 @@ func (n *NodeManager) GetByPrefix(ctx context.Context, prefix string) (models.No
 	if err != nil {
 		return models.NodeInfo{}, err
 	}
-	n.addResourcesToInfo(ctx, &info)
+	n.addToInfo(ctx, &info)
 	return info, nil
 }
 
@@ -174,7 +197,7 @@ func (n *NodeManager) List(ctx context.Context, filters ...routing.NodeInfoFilte
 	}
 
 	for i := range items {
-		n.addResourcesToInfo(ctx, &items[i])
+		n.addToInfo(ctx, &items[i])
 	}
 
 	return items, nil
@@ -189,7 +212,7 @@ func (n *NodeManager) Delete(ctx context.Context, nodeID string) error {
 // Approve is used to approve a node for joining the cluster along with a specific
 // reason for the approval (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
-func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string) (bool, string) {
+func (n *NodeManager) ApproveAction(ctx context.Context, nodeID string, reason string) (bool, string) {
 	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
 		return false, err.Error()
@@ -212,7 +235,7 @@ func (n *NodeManager) Approve(ctx context.Context, nodeID string, reason string)
 // Reject is used to reject a node from joining the cluster along with a specific
 // reason for the rejection (for audit). The return values denote success and any
 // failure of the operation as a human readable string.
-func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) (bool, string) {
+func (n *NodeManager) RejectAction(ctx context.Context, nodeID string, reason string) (bool, string) {
 	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
 	if err != nil {
 		return false, err.Error()
@@ -227,6 +250,22 @@ func (n *NodeManager) Reject(ctx context.Context, nodeID string, reason string) 
 
 	if err := n.nodeInfo.Add(ctx, info); err != nil {
 		return false, "failed to save nodeinfo during node rejection"
+	}
+
+	return true, ""
+}
+
+// Reject is used to reject a node from joining the cluster along with a specific
+// reason for the rejection (for audit). The return values denote success and any
+// failure of the operation as a human readable string.
+func (n *NodeManager) DeleteAction(ctx context.Context, nodeID string, reason string) (bool, string) {
+	info, err := n.nodeInfo.GetByPrefix(ctx, nodeID)
+	if err != nil {
+		return false, err.Error()
+	}
+
+	if err := n.nodeInfo.Delete(ctx, info.NodeID); err != nil {
+		return false, fmt.Sprintf("failed to delete nodeinfo: %s", err)
 	}
 
 	return true, ""

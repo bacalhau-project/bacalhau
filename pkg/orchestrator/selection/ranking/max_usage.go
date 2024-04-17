@@ -3,9 +3,11 @@ package ranking
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/dustin/go-humanize"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,19 +38,47 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, node
 				reason = "job requires less resources than are available"
 			} else {
 				rank = orchestrator.RankUnsuitable
-				reason = fmt.Sprintf(
-					"job requires more resources %s than are available per job %s",
-					jobResourceUsage.String(),
-					node.ComputeNodeInfo.MaxJobRequirements.String(),
-				)
+				reason = s.formatReason(*jobResourceUsage, node.ComputeNodeInfo.MaxJobRequirements)
 			}
 		}
 		ranks[i] = orchestrator.NodeRank{
-			NodeInfo: node,
-			Rank:     rank,
-			Reason:   reason,
+			NodeInfo:  node,
+			Rank:      rank,
+			Reason:    reason,
+			Retryable: true,
 		}
 		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
 	return ranks, nil
+}
+
+const perResourceReason = "more %s (%s) than the maximum available (%s)"
+
+func (s *MaxUsageNodeRanker) formatReason(requested, maximum models.Resources) string {
+	reasons := make([]string, 0, 4) //nolint:gomnd  // number of resources
+	if requested.CPU > maximum.CPU {
+		reasons = append(reasons, fmt.Sprintf(perResourceReason, "CPU",
+			fmt.Sprint(requested.CPU),
+			fmt.Sprint(maximum.CPU),
+		))
+	}
+	if requested.Memory > maximum.Memory {
+		reasons = append(reasons, fmt.Sprintf(perResourceReason, "memory",
+			humanize.Bytes(requested.Memory),
+			humanize.Bytes(maximum.Memory),
+		))
+	}
+	if requested.Disk > maximum.Disk {
+		reasons = append(reasons, fmt.Sprintf(perResourceReason, "disk",
+			humanize.Bytes(requested.Disk),
+			humanize.Bytes(maximum.Disk),
+		))
+	}
+	if requested.GPU > maximum.GPU {
+		reasons = append(reasons, fmt.Sprintf(perResourceReason, "GPUs",
+			fmt.Sprint(requested.GPU),
+			fmt.Sprint(maximum.GPU),
+		))
+	}
+	return fmt.Sprintf("job requires %s", strings.Join(reasons, " and "))
 }

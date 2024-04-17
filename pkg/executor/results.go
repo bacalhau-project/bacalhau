@@ -2,6 +2,7 @@ package executor
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
-	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -137,7 +137,7 @@ func WriteJobResults(
 		})
 	}
 
-	err = multierr.Append(err, wg.Wait())
+	err = errors.Join(err, wg.Wait())
 	if err != nil {
 		result.ErrorMsg = err.Error()
 	}

@@ -2,14 +2,14 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
@@ -22,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -54,6 +55,7 @@ type NodeConfig struct {
 	RequesterAutoCertCache      string
 	RequesterTLSCertificateFile string
 	RequesterTLSKeyFile         string
+	RequesterSelfSign           bool
 	DisabledFeatures            FeatureConfig
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
@@ -73,9 +75,9 @@ type NodeConfig struct {
 
 func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
-	var mErr *multierror.Error
-	mErr = multierror.Append(mErr, c.NetworkConfig.Validate())
-	return mErr.ErrorOrNil()
+	var mErr error
+	mErr = errors.Join(mErr, c.NetworkConfig.Validate())
+	return mErr
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -192,13 +194,15 @@ func NewNode(
 	if err != nil {
 		return nil, err
 	}
-
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 
+	var natsConfig *nats_transport.NATSTransportConfig
 	var transportLayer transport.TransportLayer
 	var tracingInfoStore routing.NodeInfoStore
+	var heartbeatSvr *heartbeat.HeartbeatServer
+
 	if config.NetworkConfig.Type == models.NetworkTypeNATS {
-		natsConfig := nats_transport.NATSTransportConfig{
+		natsConfig = &nats_transport.NATSTransportConfig{
 			NodeID:                   config.NodeID,
 			Port:                     config.NetworkConfig.Port,
 			AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
@@ -214,7 +218,7 @@ func NewNode(
 
 		natsTransportLayer, err := nats_transport.NewNATSTransport(ctx, natsConfig)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create NATS transport layer")
+			return nil, pkgerrors.Wrap(err, "failed to create NATS transport layer")
 		}
 		transportLayer = natsTransportLayer
 
@@ -223,21 +227,32 @@ func NewNode(
 			// to create its own connection and then subscribe to the node info topic.
 			natsClient, err := nats_transport.CreateClient(ctx, natsTransportLayer.Config)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create NATS client for node info store")
+				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 				BucketName: kvstore.DefaultBucketName,
 				Client:     natsClient.Client,
 			})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create node info store using NATS transport connection info")
+				return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 			}
 			tracingInfoStore = tracing.NewNodeStore(nodeInfoStore)
+
+			heartbeatParams := heartbeat.HeartbeatServerParams{
+				Client:                natsClient.Client,
+				Topic:                 config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatTopic,
+				CheckFrequency:        config.RequesterNodeConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
+				NodeDisconnectedAfter: config.RequesterNodeConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
+			}
+			heartbeatSvr, err = heartbeat.NewServer(heartbeatParams)
+			if err != nil {
+				return nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
+			}
 
 			// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
 			// of node info.
 			if err := transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-				return nil, errors.Wrap(err, "failed to register node info consumer with nats transport")
+				return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
 			}
 		}
 	} else {
@@ -254,7 +269,7 @@ func NewNode(
 		}
 		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
 		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-			return nil, errors.Wrap(err, "failed to register node info consumer with libp2p transport")
+			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with libp2p transport")
 		}
 	}
 	if err != nil {
@@ -266,10 +281,7 @@ func NewNode(
 
 	var requesterNode *Requester
 	var computeNode *Compute
-	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: config.Labels},
-		&RuntimeLabelsProvider{},
-	)
+	var labelsProvider models.LabelsProvider
 
 	// setup requester node
 	if config.IsRequesterNode {
@@ -283,10 +295,20 @@ func NewNode(
 		)
 
 		// Create a new node manager to keep track of compute nodes connecting
-		// to the network.
+		// to the network. Provide it with a mechanism to lookup (and enhance)
+		// node info, and a reference to the heartbeat server if running NATS.
 		nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-			NodeInfo: tracingInfoStore,
+			NodeInfo:             tracingInfoStore,
+			Heartbeats:           heartbeatSvr,
+			DefaultApprovalState: config.RequesterNodeConfig.DefaultApprovalState,
 		})
+
+		// Start the nodemanager, ensuring it doesn't block the main thread and
+		// that any errors are logged. If we are unable to start the manager
+		// then we should not start the node.
+		if err := nodeManager.Start(ctx); err != nil {
+			return nil, pkgerrors.Wrap(err, "failed to start node manager")
+		}
 
 		// NodeManager node wraps the node manager and implements the routing.NodeInfoStore
 		// interface so that it can return nodes and add the most recent resource information
@@ -327,6 +349,10 @@ func NewNode(
 			}
 		}
 
+		labelsProvider = models.MergeLabelsInOrder(
+			&ConfigLabelsProvider{staticLabels: config.Labels},
+			&RuntimeLabelsProvider{},
+		)
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
@@ -348,6 +374,28 @@ func NewNode(
 			attribute.StringSlice("node_engines", executors.Keys(ctx)),
 		)
 
+		var hbClient *heartbeat.HeartbeatClient
+
+		// We want to provide a heartbeat client to the compute node if we are using NATS.
+		// We can only create a heartbeat client if we have a NATS client, and we can
+		// only do that if the configuration is available. Whilst we support libp2p this
+		// is not always the case.
+		if natsConfig != nil {
+			natsClient, err := nats_transport.CreateClient(ctx, natsConfig)
+			if err != nil {
+				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
+			}
+
+			hbClient, err = heartbeat.NewClient(
+				natsClient.Client,
+				config.NodeID,
+				config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
+			)
+			if err != nil {
+				return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
+			}
+		}
+
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -362,6 +410,7 @@ func NewNode(
 			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
 			config.Labels,
+			hbClient,
 		)
 		if err != nil {
 			return nil, err
@@ -372,6 +421,7 @@ func NewNode(
 			return nil, err
 		}
 
+		labelsProvider = computeNode.labelsProvider
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
@@ -454,18 +504,17 @@ func NewNode(
 			nodeInfoPublisher.Stop(ctx)
 		}
 
-		var errors *multierror.Error
-
+		var err error
 		if transportLayer != nil {
-			errors = multierror.Append(errors, transportLayer.Close(ctx))
+			err = errors.Join(err, transportLayer.Close(ctx))
 		}
 
 		if apiServer != nil {
-			errors = multierror.Append(errors, apiServer.Shutdown(ctx))
+			err = errors.Join(err, apiServer.Shutdown(ctx))
 		}
 
 		cancel()
-		return errors.ErrorOrNil()
+		return err
 	})
 
 	metrics.NodeInfo.Add(ctx, 1,

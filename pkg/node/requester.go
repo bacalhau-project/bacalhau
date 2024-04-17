@@ -80,6 +80,10 @@ func NewRequesterNode(
 		}),
 	)
 
+	log.Ctx(ctx).
+		Info().
+		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
+
 	// compute node ranker
 	nodeRankerChain := ranking.NewChain()
 	nodeRankerChain.Add(

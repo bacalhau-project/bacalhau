@@ -46,7 +46,7 @@ func (h *Housekeeping) housekeepingBackgroundTask() {
 	for {
 		select {
 		case <-ticker.C:
-			jobs, err := h.jobStore.GetInProgressJobs(ctx)
+			jobs, err := h.jobStore.GetInProgressJobs(ctx, "")
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to get in progress jobs")
 				continue

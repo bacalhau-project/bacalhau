@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
-	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
@@ -52,35 +51,35 @@ type NATSTransportConfig struct {
 }
 
 func (c *NATSTransportConfig) Validate() error {
-	var mErr *multierror.Error
+	var mErr error
 	if validate.IsBlank(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("missing node ID"))
+		mErr = errors.Join(mErr, errors.New("missing node ID"))
 	} else if validate.ContainsSpaces(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("node ID contains a space"))
+		mErr = errors.Join(mErr, errors.New("node ID contains a space"))
 	} else if validate.ContainsNull(c.NodeID) {
-		mErr = multierror.Append(mErr, errors.New("node ID contains a null character"))
+		mErr = errors.Join(mErr, errors.New("node ID contains a null character"))
 	} else if strings.ContainsAny(c.NodeID, reservedChars) {
-		mErr = multierror.Append(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
+		mErr = errors.Join(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
 	}
 
 	if c.IsRequesterNode {
-		mErr = multierror.Append(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
+		mErr = errors.Join(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
 
 		// if cluster config is set, validate it
 		if c.ClusterName != "" || c.ClusterPort != 0 || c.ClusterAdvertisedAddress != "" || len(c.ClusterPeers) > 0 {
-			mErr = multierror.Append(mErr,
+			mErr = errors.Join(mErr,
 				validate.IsGreaterThanZero(c.ClusterPort, "cluster port %d must be greater than zero", c.ClusterPort))
 		}
 	} else {
 		if validate.IsEmpty(c.Orchestrators) {
-			mErr = multierror.Append(mErr, errors.New("missing orchestrators"))
+			mErr = errors.Join(mErr, errors.New("missing orchestrators"))
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 type NATSTransport struct {
-	Config            NATSTransportConfig
+	Config            *NATSTransportConfig
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
 	natsClient        *nats_helper.ClientManager
@@ -93,7 +92,7 @@ type NATSTransport struct {
 
 //nolint:funlen
 func NewNATSTransport(ctx context.Context,
-	config NATSTransportConfig) (*NATSTransport, error) {
+	config *NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
@@ -190,7 +189,7 @@ func NewNATSTransport(ctx context.Context,
 	}, nil
 }
 
-func CreateClient(ctx context.Context, config NATSTransportConfig) (*nats_helper.ClientManager, error) {
+func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	clientOptions := []nats.Option{
