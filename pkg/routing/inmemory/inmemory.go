@@ -6,16 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 // TODO: replace the manual and lazy eviction with a more efficient caching library
 type nodeInfoWrapper struct {
-	models.NodeInfo
+	models.NodeState
 	evictAt time.Time
 }
 
@@ -36,48 +36,48 @@ func NewNodeStore(params NodeStoreParams) *NodeStore {
 	}
 }
 
-func (r *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
+func (r *NodeStore) Add(ctx context.Context, state models.NodeState) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	// add or update the node info
-	nodeID := nodeInfo.ID()
+	nodeID := state.Info.ID()
 	r.nodeInfoMap[nodeID] = nodeInfoWrapper{
-		NodeInfo: nodeInfo,
-		evictAt:  time.Now().Add(r.ttl),
+		NodeState: state,
+		evictAt:   time.Now().Add(r.ttl),
 	}
 
-	log.Ctx(ctx).Trace().Msgf("Added node info %+v", nodeInfo)
+	log.Ctx(ctx).Trace().Msgf("Added node state %+v", state)
 	return nil
 }
 
-func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, error) {
+func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[nodeID]
 	if !ok {
-		return models.NodeInfo{}, routing.NewErrNodeNotFound(nodeID)
+		return models.NodeState{}, routing.NewErrNodeNotFound(nodeID)
 	}
 	if time.Now().After(infoWrapper.evictAt) {
 		go r.evict(ctx, infoWrapper)
-		return models.NodeInfo{}, routing.NewErrNodeNotFound(nodeID)
+		return models.NodeState{}, routing.NewErrNodeNotFound(nodeID)
 	}
-	return infoWrapper.NodeInfo, nil
+	return infoWrapper.NodeState, nil
 }
 
-func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error) {
+func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeState, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	nodeInfo, err := r.Get(ctx, prefix)
+	state, err := r.Get(ctx, prefix)
 
 	// we found a node with the exact ID
 	if err == nil {
-		return nodeInfo, nil
+		return state, nil
 	}
 	// return the error if it's not a node not found error
 	var errNotFound routing.ErrNodeNotFound
 	if !errors.As(err, &errNotFound) {
-		return models.NodeInfo{}, err
+		return models.NodeState{}, err
 	}
 
 	// look for a node with the prefix. if there are multiple nodes with the same prefix, return ErrMultipleNodesFound error
@@ -96,14 +96,14 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	}
 
 	if len(nodeIDsWithPrefix) == 0 {
-		return models.NodeInfo{}, routing.NewErrNodeNotFound(prefix)
+		return models.NodeState{}, routing.NewErrNodeNotFound(prefix)
 	}
 
 	if len(nodeIDsWithPrefix) > 1 {
-		return models.NodeInfo{}, routing.NewErrMultipleNodesFound(prefix, nodeIDsWithPrefix)
+		return models.NodeState{}, routing.NewErrMultipleNodesFound(prefix, nodeIDsWithPrefix)
 	}
 
-	return r.nodeInfoMap[nodeIDsWithPrefix[0]].NodeInfo, nil
+	return r.nodeInfoMap[nodeIDsWithPrefix[0]].NodeState, nil
 }
 
 func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
@@ -113,40 +113,40 @@ func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo
 	if !ok {
 		return peer.AddrInfo{}, nil
 	}
-	if infoWrapper.PeerInfo != nil && len(infoWrapper.PeerInfo.Addrs) > 0 {
-		return *infoWrapper.PeerInfo, nil
+	if infoWrapper.Info.PeerInfo != nil && len(infoWrapper.Info.PeerInfo.Addrs) > 0 {
+		return *infoWrapper.Info.PeerInfo, nil
 	}
 	return peer.AddrInfo{}, nil
 }
 
-func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
+func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	megaFilter := func(info models.NodeInfo) bool {
+	megaFilter := func(state models.NodeState) bool {
 		for _, filter := range filters {
-			if !filter(info) {
+			if !filter(state) {
 				return false
 			}
 		}
 		return true
 	}
 
-	var nodeInfos []models.NodeInfo
+	var nodeStates []models.NodeState
 	var toEvict []nodeInfoWrapper
-	for _, nodeInfo := range r.nodeInfoMap {
-		if time.Now().After(nodeInfo.evictAt) {
-			toEvict = append(toEvict, nodeInfo)
+	for _, nodeState := range r.nodeInfoMap {
+		if time.Now().After(nodeState.evictAt) {
+			toEvict = append(toEvict, nodeState)
 		} else {
-			if megaFilter(nodeInfo.NodeInfo) {
-				nodeInfos = append(nodeInfos, nodeInfo.NodeInfo)
+			if megaFilter(nodeState.NodeState) {
+				nodeStates = append(nodeStates, nodeState.NodeState)
 			}
 		}
 	}
 	if len(toEvict) > 0 {
 		go r.evict(ctx, toEvict...)
 	}
-	return nodeInfos, nil
+	return nodeStates, nil
 }
 
 func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {
@@ -155,13 +155,13 @@ func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {
 	return r.doDelete(ctx, nodeID)
 }
 
-func (r *NodeStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapper) {
+func (r *NodeStore) evict(ctx context.Context, stateWrappers ...nodeInfoWrapper) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, infoWrapper := range infoWrappers {
-		nodeID := infoWrapper.ID()
+	for _, stateWrapper := range stateWrappers {
+		nodeID := stateWrapper.Info.ID()
 		nodeInfo, ok := r.nodeInfoMap[nodeID]
-		if !ok || nodeInfo.evictAt != infoWrapper.evictAt {
+		if !ok || nodeInfo.evictAt != stateWrapper.evictAt {
 			return // node info already evicted or has been updated since it was scheduled for eviction
 		}
 		err := r.doDelete(ctx, nodeID)

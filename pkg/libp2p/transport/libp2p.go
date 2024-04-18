@@ -6,6 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/multiformats/go-multiaddr"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -18,12 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
-	"github.com/multiformats/go-multiaddr"
 )
 
 const NodeInfoTopic = "bacalhau-node-info"
@@ -46,7 +47,7 @@ type Libp2pTransport struct {
 	Host              host.Host
 	computeProxy      *bprotocol.ComputeProxy
 	callbackProxy     *bprotocol.CallbackProxy
-	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
+	nodeInfoPubSub    pubsub.PubSub[models.NodeState]
 	nodeInfoDecorator models.NodeInfoDecorator
 }
 
@@ -71,7 +72,7 @@ func NewLibp2pTransport(ctx context.Context,
 	}
 
 	// PubSub to publish node info to the network
-	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeInfo](libp2p.PubSubParams{
+	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeState](libp2p.PubSubParams{
 		Host:      libp2pHost,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
@@ -129,8 +130,8 @@ func NewLibp2pTransport(ctx context.Context,
 
 func (t *Libp2pTransport) RegisterNodeInfoConsumer(ctx context.Context, nodeInfoStore routing.NodeInfoStore) error {
 	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeState](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeState](nodeInfoStore.Add))
 
 	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
@@ -181,7 +182,7 @@ func (t *Libp2pTransport) ManagementProxy() compute.ManagementEndpoint {
 }
 
 // NodeInfoPubSub returns the node info pubsub.
-func (t *Libp2pTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeInfo] {
+func (t *Libp2pTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeState] {
 	return t.nodeInfoPubSub
 }
 
