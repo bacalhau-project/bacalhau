@@ -263,7 +263,7 @@ func Setup(
 			NodeID:              nodeID,
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			HostAddress:         "127.0.0.1",
+			HostAddress:         "0.0.0.0",
 			APIPort:             apiPort,
 			ComputeConfig:       stackConfig.ComputeConfig,
 			RequesterNodeConfig: stackConfig.RequesterConfig,
