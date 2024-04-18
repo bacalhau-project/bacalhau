@@ -102,7 +102,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	// We _could_ avoid attempting an update if we are not registered, but
 	// by doing so we will get frequent errors that the node is not
-	// registered.c
+	// registered.
 
 	nodeInfo := m.getNodeInfo(ctx)
 	response, err := m.managementProxy.UpdateInfo(ctx, requests.UpdateInfoRequest{

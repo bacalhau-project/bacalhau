@@ -37,7 +37,7 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
 	}
-	// extract slice of models.NodeInfo from slice of routing.NodeLiveness
+	// extract slice of models.NodeInfo from slice of routing.NodeConnectionState
 	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
 	for _, ns := range nodeStates {
 		nodeInfos = append(nodeInfos, ns.Info)
@@ -97,11 +97,11 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 			return false
 		}
 
-		if constraints.RequireApproval && nodeState.Approval != models.NodeApprovals.APPROVED {
+		if constraints.RequireApproval && nodeState.Membership != models.NodeMembership.APPROVED {
 			return false
 		}
 
-		if constraints.RequireConnected && nodeState.Liveness != models.NodeStates.CONNECTED {
+		if constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
 			return false
 		}
 

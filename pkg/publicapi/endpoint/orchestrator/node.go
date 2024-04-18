@@ -83,11 +83,11 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	// filter nodes, first by status, then by label selectors
 	res := make([]*models.NodeState, 0)
 	for i, node := range allNodes {
-		if args.FilterByApproval != "" && args.FilterByApproval != node.Approval.String() {
+		if args.FilterByApproval != "" && args.FilterByApproval != node.Membership.String() {
 			continue
 		}
 
-		if args.FilterByStatus != "" && args.FilterByStatus != node.Liveness.String() {
+		if args.FilterByStatus != "" && args.FilterByStatus != node.Connection.String() {
 			continue
 		}
 
@@ -139,7 +139,7 @@ func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFu
 		}
 	case "approval", "status":
 		return func(a, b *models.NodeState) int {
-			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
+			return util.Compare[string]{}.Cmp(a.Membership.String(), b.Membership.String())
 		}
 	default:
 	}

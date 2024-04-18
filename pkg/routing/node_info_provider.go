@@ -10,7 +10,7 @@ type NodeStateProviderParams struct {
 	NodeID              string
 	LabelsProvider      models.LabelsProvider
 	BacalhauVersion     models.BuildVersionInfo
-	DefaultNodeApproval models.NodeApproval
+	DefaultNodeApproval models.NodeMembershipState
 }
 
 type NodeStateProvider struct {
@@ -18,7 +18,7 @@ type NodeStateProvider struct {
 	labelsProvider      models.LabelsProvider
 	bacalhauVersion     models.BuildVersionInfo
 	nodeInfoDecorators  []models.NodeInfoDecorator
-	defaultNodeApproval models.NodeApproval
+	defaultNodeApproval models.NodeMembershipState
 }
 
 func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
@@ -32,7 +32,7 @@ func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
 
 	// If we were not given a default approval, we default to PENDING
 	if !provider.defaultNodeApproval.IsValid() {
-		provider.defaultNodeApproval = models.NodeApprovals.PENDING
+		provider.defaultNodeApproval = models.NodeMembership.PENDING
 	}
 
 	return provider
@@ -55,8 +55,8 @@ func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
 	}
 
 	state := models.NodeState{
-		Info:     info,
-		Approval: n.defaultNodeApproval,
+		Info:       info,
+		Membership: n.defaultNodeApproval,
 		// NB(forrest): we are returning NodeState about ourselves (the Requester)
 		// the concept of a disconnected requester node could only exist from the
 		// perspective of a ComputeNode or another RequesterNode.
@@ -65,11 +65,11 @@ func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
 
 		// This is all pretty funky and my comment here will hopefully become outdates at some-point and need adjusting,
 		// but for now: "you can tell the requester node is connected because of the way it is".
-		Liveness: models.NodeStates.CONNECTED,
+		Connection: models.NodeStates.CONNECTED,
 	}
 
-	if !state.Approval.IsValid() {
-		state.Approval = models.NodeApprovals.PENDING
+	if !state.Membership.IsValid() {
+		state.Membership = models.NodeMembership.PENDING
 	}
 
 	return state

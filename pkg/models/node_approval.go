@@ -6,93 +6,93 @@ import (
 
 // TODO if we ever pass a pointer to this type and use `==` comparison on it we're gonna have a bad time
 // implement an `Equal()` method for this type and default to it.
-type NodeApproval struct {
-	approval
+type NodeMembershipState struct {
+	membership
 }
 
-type approval int
+type membership int
 
 const (
-	unknown approval = iota
+	unknown membership = iota
 	pending
 	approved
 	rejected
 )
 
 var (
-	strApprovalArray = [...]string{
+	strMembershipArray = [...]string{
 		pending:  "PENDING",
 		approved: "APPROVED",
 		rejected: "REJECTED",
 	}
 
-	typeApprovalMap = map[string]approval{
+	typeMembershipMap = map[string]membership{
 		"PENDING":  pending,
 		"APPROVED": approved,
 		"REJECTED": rejected,
 	}
 )
 
-func (t approval) String() string {
-	return strApprovalArray[t]
+func (t membership) String() string {
+	return strMembershipArray[t]
 }
 
-func Parse(a any) NodeApproval {
+func Parse(a any) NodeMembershipState {
 	switch v := a.(type) {
-	case NodeApproval:
+	case NodeMembershipState:
 		return v
 	case string:
-		return NodeApproval{stringToApproval(v)}
+		return NodeMembershipState{stringToApproval(v)}
 	case fmt.Stringer:
-		return NodeApproval{stringToApproval(v.String())}
+		return NodeMembershipState{stringToApproval(v.String())}
 	case int:
-		return NodeApproval{approval(v)}
+		return NodeMembershipState{membership(v)}
 	case int64:
-		return NodeApproval{approval(int(v))}
+		return NodeMembershipState{membership(int(v))}
 	case int32:
-		return NodeApproval{approval(int(v))}
+		return NodeMembershipState{membership(int(v))}
 	}
-	return NodeApproval{unknown}
+	return NodeMembershipState{unknown}
 }
 
-func stringToApproval(s string) approval {
-	if v, ok := typeApprovalMap[s]; ok {
+func stringToApproval(s string) membership {
+	if v, ok := typeMembershipMap[s]; ok {
 		return v
 	}
 	return unknown
 }
 
-func (t approval) IsValid() bool {
-	return t >= approval(1) && t <= approval(len(strApprovalArray))
+func (t membership) IsValid() bool {
+	return t >= membership(1) && t <= membership(len(strMembershipArray))
 }
 
-type approvalsContainer struct {
-	UNKNOWN  NodeApproval
-	PENDING  NodeApproval
-	APPROVED NodeApproval
-	REJECTED NodeApproval
+type membershipContainer struct {
+	UNKNOWN  NodeMembershipState
+	PENDING  NodeMembershipState
+	APPROVED NodeMembershipState
+	REJECTED NodeMembershipState
 }
 
-var NodeApprovals = approvalsContainer{
-	UNKNOWN:  NodeApproval{unknown},
-	PENDING:  NodeApproval{pending},
-	APPROVED: NodeApproval{approved},
-	REJECTED: NodeApproval{rejected},
+var NodeMembership = membershipContainer{
+	UNKNOWN:  NodeMembershipState{unknown},
+	PENDING:  NodeMembershipState{pending},
+	APPROVED: NodeMembershipState{approved},
+	REJECTED: NodeMembershipState{rejected},
 }
 
-func (c approvalsContainer) All() []NodeApproval {
-	return []NodeApproval{
+func (c membershipContainer) All() []NodeMembershipState {
+	return []NodeMembershipState{
 		c.PENDING,
 		c.APPROVED,
 		c.REJECTED,
 	}
 }
 
-func (t NodeApproval) MarshalJSON() ([]byte, error) {
+func (t NodeMembershipState) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.String() + `"`), nil
 }
 
-func (t *NodeApproval) UnmarshalJSON(b []byte) error {
+func (t *NodeMembershipState) UnmarshalJSON(b []byte) error {
 	val := string(trimQuotes(b))
 	*t = Parse(val)
 	return nil

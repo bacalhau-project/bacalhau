@@ -96,7 +96,7 @@ type JobWithInfo struct {
 	// Job info
 	Job Job `json:"Job"`
 	// The current state of the job
-	State JobState `json:"Liveness"`
+	State JobState `json:"State"`
 	// History of changes to the job state. Not always populated in the job description
 	History []JobHistory `json:"History,omitempty"`
 }

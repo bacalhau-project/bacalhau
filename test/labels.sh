@@ -14,7 +14,6 @@ run_test() {
         subject bacalhau node list --output=json
     done
 
-    echo "STDOUT: $stdout"
     assert_equal 1 $(jq -rcM length <<< $stdout)
     assert_not_equal 0 $(jq -rcM '.[0].Info.Labels | length' <<< $stdout)
     assert_equal false $(jq -rcM '.[0].Info.Labels["Operating-System"] == null' <<< $stdout)

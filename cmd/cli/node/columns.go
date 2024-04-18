@@ -27,13 +27,13 @@ var alwaysColumns = []output.TableColumn[*models.NodeState]{
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "approval"},
-		Value:        func(ni *models.NodeState) string { return ni.Approval.String() },
+		Value:        func(ni *models.NodeState) string { return ni.Membership.String() },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "status"},
 		Value: func(ni *models.NodeState) string {
 			if ni.Info.ComputeNodeInfo != nil {
-				return ni.Liveness.String()
+				return ni.Connection.String()
 			}
 
 			return "" // nothing for requester nodes

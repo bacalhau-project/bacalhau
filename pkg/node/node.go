@@ -431,7 +431,7 @@ func NewNode(
 		NodeID:              config.NodeID,
 		LabelsProvider:      labelsProvider,
 		BacalhauVersion:     *version.Get(),
-		DefaultNodeApproval: models.NodeApprovals.APPROVED,
+		DefaultNodeApproval: models.NodeMembership.APPROVED,
 	})
 	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
 	if computeNode != nil {
@@ -472,7 +472,7 @@ func NewNode(
 		if config.IsRequesterNode {
 			nodeState := nodeInfoProvider.GetNodeState(ctx)
 			// TODO what is the liveness here? We are adding ourselves so I assume connected?
-			nodeState.Approval = models.NodeApprovals.APPROVED
+			nodeState.Membership = models.NodeMembership.APPROVED
 			if err := tracingInfoStore.Add(ctx, nodeState); err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("failed to add requester node to the node store")
 				return nil, fmt.Errorf("registering node to the node store: %w", err)

@@ -75,7 +75,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 		name           string
 		includeInitial bool
 		heartbeats     []time.Duration
-		expectedState  models.NodeLiveness
+		expectedState  models.NodeConnectionState
 		waitUntil      time.Duration
 	}
 
@@ -149,7 +149,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 			s.clock.Add(tc.waitUntil)
 
 			server.UpdateNodeInfo(&nodeState)
-			s.Require().Equal(nodeState.Liveness, tc.expectedState, fmt.Sprintf("incorrect state in %s", tc.name))
+			s.Require().Equal(nodeState.Connection, tc.expectedState, fmt.Sprintf("incorrect state in %s", tc.name))
 		})
 	}
 }

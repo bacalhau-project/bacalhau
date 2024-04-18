@@ -6,14 +6,15 @@ import (
 	"slices"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -134,7 +135,7 @@ func (o *DescribeOptions) printHeaderData(cmd *cobra.Command, job *models.Job) {
 		{Left: "Name", Right: job.Name},
 		{Left: "Namespace", Right: job.Namespace},
 		{Left: "Type", Right: job.Type},
-		{Left: "Liveness", Right: job.State.StateType},
+		{Left: "State", Right: job.State.StateType},
 		{Left: "Message", Right: job.State.Message},
 	} // Job type specific data
 	if job.Type == models.JobTypeBatch || job.Type == models.JobTypeService {

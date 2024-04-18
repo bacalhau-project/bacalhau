@@ -113,7 +113,7 @@ type ExecutionState struct {
 	// Compute node reference for this job execution
 	ComputeReference string `json:"ComputeReference"`
 	// State is the current state of the execution
-	State ExecutionStateType `json:"Liveness"`
+	State ExecutionStateType `json:"State"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
 	// DesiredState is the desired state of the execution

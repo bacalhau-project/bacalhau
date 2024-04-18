@@ -28,13 +28,13 @@ type NodeManager struct {
 	store                routing.NodeInfoStore
 	resourceMap          *concurrency.StripedMap[models.Resources]
 	heartbeats           *heartbeat.HeartbeatServer
-	defaultApprovalState models.NodeApproval
+	defaultApprovalState models.NodeMembershipState
 }
 
 type NodeManagerParams struct {
 	NodeInfo             routing.NodeInfoStore
 	Heartbeats           *heartbeat.HeartbeatServer
-	DefaultApprovalState models.NodeApproval
+	DefaultApprovalState models.NodeMembershipState
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
@@ -72,7 +72,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 	existing, err := n.store.Get(ctx, request.Info.NodeID)
 	if err == nil {
 		// If we have already seen this node and rejected it, then let the node know
-		if existing.Approval == models.NodeApprovals.REJECTED {
+		if existing.Membership == models.NodeMembership.REJECTED {
 			return &requests.RegisterResponse{
 				Accepted: false,
 				Reason:   "node has been rejected",
@@ -88,10 +88,10 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 	}
 
 	if err := n.store.Add(ctx, models.NodeState{
-		Info:     request.Info,
-		Approval: n.defaultApprovalState,
+		Info:       request.Info,
+		Membership: n.defaultApprovalState,
 		// NB(forrest): by virtue of a compute node calling this endpoint we can consider it connected
-		Liveness: models.NodeStates.CONNECTED,
+		Connection: models.NodeStates.CONNECTED,
 	}); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
@@ -117,7 +117,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		return nil, errors.Wrap(err, "failed to get nodestate during node registration")
 	}
 
-	if existing.Approval == models.NodeApprovals.REJECTED {
+	if existing.Membership == models.NodeMembership.REJECTED {
 		return &requests.UpdateInfoResponse{
 			Accepted: false,
 			Reason:   "node registration rejected",
@@ -128,9 +128,9 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 	if err := n.store.Add(ctx, models.NodeState{
 		Info: request.Info,
 		// the nodes approval state is assumed to be approved here, but re-use existing state
-		Approval: existing.Approval,
+		Membership: existing.Membership,
 		// TODO can we assume the node is connected here?
-		Liveness: models.NodeStates.CONNECTED,
+		Connection: models.NodeStates.CONNECTED,
 	}); err != nil {
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
@@ -149,7 +149,7 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 		return nil, fmt.Errorf("unable to update resources for missing node: %s", request.NodeID)
 	}
 
-	if existing.Approval == models.NodeApprovals.REJECTED {
+	if existing.Membership == models.NodeMembership.REJECTED {
 		log.Ctx(ctx).Debug().Msg("not updating resources for rejected node ")
 		return &requests.UpdateResourcesResponse{}, nil
 	}
@@ -228,11 +228,11 @@ func (n *NodeManager) ApproveAction(ctx context.Context, nodeID string, reason s
 		return false, err.Error()
 	}
 
-	if state.Approval == models.NodeApprovals.APPROVED {
+	if state.Membership == models.NodeMembership.APPROVED {
 		return false, "node already approved"
 	}
 
-	state.Approval = models.NodeApprovals.APPROVED
+	state.Membership = models.NodeMembership.APPROVED
 	log.Ctx(ctx).Info().Str("reason", reason).Msgf("node %s approved", nodeID)
 
 	if err := n.store.Add(ctx, state); err != nil {
@@ -251,11 +251,11 @@ func (n *NodeManager) RejectAction(ctx context.Context, nodeID string, reason st
 		return false, err.Error()
 	}
 
-	if state.Approval == models.NodeApprovals.REJECTED {
+	if state.Membership == models.NodeMembership.REJECTED {
 		return false, "node already rejected"
 	}
 
-	state.Approval = models.NodeApprovals.REJECTED
+	state.Membership = models.NodeMembership.REJECTED
 	log.Ctx(ctx).Info().Str("reason", reason).Msgf("node %s rejected", nodeID)
 
 	if err := n.store.Add(ctx, state); err != nil {
