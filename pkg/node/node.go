@@ -55,7 +55,6 @@ type NodeConfig struct {
 	RequesterAutoCertCache      string
 	RequesterTLSCertificateFile string
 	RequesterTLSKeyFile         string
-	RequesterSelfSign           bool
 	DisabledFeatures            FeatureConfig
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
@@ -194,6 +193,7 @@ func NewNode(
 	if err != nil {
 		return nil, err
 	}
+
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 
 	var natsConfig *nats_transport.NATSTransportConfig

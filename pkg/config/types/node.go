@@ -100,10 +100,6 @@ type TLSConfiguration struct {
 	// ServerKey is the TLS server key to match the certificate to allow the
 	// requester to server TLS.
 	ServerKey string `yaml:"ServerKey"`
-
-	// SelfSignedCert will auto-generate a self-signed certificate for the
-	// requester node if TLS certificates have not been provided.
-	SelfSigned bool `yaml:"SelfSigned"`
 }
 
 type Libp2pConfig struct {

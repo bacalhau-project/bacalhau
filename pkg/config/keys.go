@@ -5,14 +5,16 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 
 	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 // GetClientPublicKeyString returns a base64-encoding of the user's public ID key:
@@ -93,7 +95,36 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("config error: user-id-key not set")
 	}
 
-	return baccrypto.LoadPKCS1KeyFile(keyFile)
+	file, err := os.Open(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open user ID key file: %w", err)
+	}
+	defer closer.CloseWithLogOnError("user ID key file", file)
+
+	keyBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read user ID key file: %w", err)
+	}
+
+	keyBlock, _ := pem.Decode(keyBytes)
+	if keyBlock == nil {
+		return nil, fmt.Errorf("failed to decode user ID key file %q", keyFile)
+	}
+
+	// TODO: #3159 Add support for both rsa _and_ ecdsa private keys, see crypto.PrivateKey.
+	//       Since we have access to the private key we can hack it by signing a
+	//       message twice and comparing them, rather than verifying directly.
+	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse user: %w", err)
+	// }
+
+	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
+	}
+
+	return key, nil
 }
 
 func GetLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {

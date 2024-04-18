@@ -4,7 +4,6 @@ package serve_test
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,7 +38,7 @@ import (
 )
 
 const maxServeTime = 15 * time.Second
-const maxTestTime = 15 * time.Second
+const maxTestTime = 10 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -50,7 +49,6 @@ type ServeSuite struct {
 	ipfsPort int
 	ctx      context.Context
 	repoPath string
-	protocol string
 }
 
 func TestServeSuite(t *testing.T) {
@@ -63,7 +61,6 @@ func (s *ServeSuite) SetupTest() {
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
 	s.repoPath = repoPath
-	s.protocol = "http"
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -110,6 +107,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
+
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
@@ -134,7 +132,6 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	}()
 
 	t := time.NewTicker(50 * time.Millisecond)
-
 	defer t.Stop()
 	for {
 		select {
@@ -145,9 +142,8 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 				return 0, errs.Wait()
 			}
 			s.FailNow("Server did not start in time")
-
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -161,15 +157,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, http.StatusServiceUnavailable, err
 	}
 	req.Header.Set("Accept", "application/json")
-	client := http.DefaultClient
-	if strings.HasPrefix(URL, "https") {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
@@ -178,15 +166,15 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
-
 	}
+
 	return responseText, resp.StatusCode, nil
 }
+
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
 	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
-
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
@@ -197,7 +185,6 @@ func (s *ServeSuite) TestAPIPrintedForComputeNode() {
 	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
-
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
@@ -209,10 +196,8 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, err := s.serve("--node-type", "requester,compute")
-	s.Require().NoError(err)
+	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
-
 	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
@@ -311,12 +296,6 @@ func (s *ServeSuite) TestGetPeers() {
 	s.Require().Error(err)
 }
 
-func (s *ServeSuite) TestSelfSignedRequester() {
-	s.protocol = "https"
-	_, err := s.serve("--node-type", "requester", "--self-signed")
-	s.Require().NoError(err)
-}
-
 // Begin WebUI Tests
 func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
@@ -324,7 +303,6 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 
 	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
 	_ = content
-
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
