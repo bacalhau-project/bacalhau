@@ -3,6 +3,7 @@
 package cmdtesting
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -28,6 +29,8 @@ func (s *TLSSuite) TestTLSWithInsecureFlag() {
 }
 
 func (s *TLSSuite) TestTLSWithCACert() {
-	_, _, err := s.ExecuteTestCobraCommand("list", "--tls", "--cacert", s.TempCACertFilePath)
+	cacertFilepath, err := filepath.Abs("../../testdata/certs/dev-ca.crt")
+	s.Require().NoError(err)
+	_, _, err = s.ExecuteTestCobraCommand("list", "--tls", "--cacert", cacertFilepath)
 	s.Require().NoError(err, "failed to execute Cobra Command")
 }
