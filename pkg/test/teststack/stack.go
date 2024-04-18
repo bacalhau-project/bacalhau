@@ -111,7 +111,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 		}
 
 		expectedNodes := stack.GetNodeIds()
-		discoveredNodes, err := node.RequesterNode.NodeDiscoverer.ListNodes(ctx)
+		discoveredNodes, err := node.RequesterNode.NodeDiscoverer.List(ctx)
 		require.NoError(t, err)
 
 		if len(discoveredNodes) < len(expectedNodes) {
@@ -121,7 +121,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 
 		discoveredNodeIDs := make([]string, len(discoveredNodes))
 		for i, discoveredNode := range discoveredNodes {
-			discoveredNodeIDs[i] = discoveredNode.ID()
+			discoveredNodeIDs[i] = discoveredNode.Info.ID()
 		}
 		require.ElementsMatch(t, expectedNodes, discoveredNodeIDs)
 	}

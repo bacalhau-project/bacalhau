@@ -1,8 +1,9 @@
 package apimodels
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type GetNodeRequest struct {
@@ -12,7 +13,7 @@ type GetNodeRequest struct {
 
 type GetNodeResponse struct {
 	BaseGetResponse
-	Node *models.NodeInfo
+	Node *models.NodeState
 }
 
 type ListNodesRequest struct {
@@ -43,7 +44,7 @@ func (o *ListNodesRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListNodesResponse struct {
 	BaseListResponse
-	Nodes []*models.NodeInfo
+	Nodes []*models.NodeState
 }
 
 type PutNodeRequest struct {

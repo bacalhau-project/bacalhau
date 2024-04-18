@@ -19,12 +19,12 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	if c.Param("id") == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing node id")
 	}
-	job, err := e.nodeManager.GetByPrefix(ctx, c.Param("id"))
+	nodeState, err := e.nodeManager.GetByPrefix(ctx, c.Param("id"))
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, apimodels.GetNodeResponse{
-		Node: &job,
+		Node: &nodeState,
 	})
 }
 
@@ -44,9 +44,9 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 		return err
 	}
 
-	capacity := func(node *models.NodeInfo) *models.Resources {
-		if node.ComputeNodeInfo != nil {
-			return &node.ComputeNodeInfo.AvailableCapacity
+	capacity := func(node *models.NodeState) *models.Resources {
+		if node.Info.ComputeNodeInfo != nil {
+			return &node.Info.ComputeNodeInfo.AvailableCapacity
 		}
 		return &models.Resources{}
 	}
@@ -59,7 +59,7 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 
 	if args.Reverse {
 		baseSortFnc := sortFnc
-		sortFnc = func(a, b *models.NodeInfo) int {
+		sortFnc = func(a, b *models.NodeState) int {
 			x := baseSortFnc(a, b)
 			if x == -1 {
 				return 1
@@ -81,17 +81,17 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	args.FilterByStatus = strings.ToUpper(args.FilterByStatus)
 
 	// filter nodes, first by status, then by label selectors
-	res := make([]*models.NodeInfo, 0)
+	res := make([]*models.NodeState, 0)
 	for i, node := range allNodes {
-		if args.FilterByApproval != "" && args.FilterByApproval != node.Approval.String() {
+		if args.FilterByApproval != "" && args.FilterByApproval != node.Membership.String() {
 			continue
 		}
 
-		if args.FilterByStatus != "" && args.FilterByStatus != node.State.String() {
+		if args.FilterByStatus != "" && args.FilterByStatus != node.Connection.String() {
 			continue
 		}
 
-		if selector.Matches(labels.Set(node.Labels)) {
+		if selector.Matches(labels.Set(node.Info.Labels)) {
 			res = append(res, &allNodes[i])
 		}
 	}
@@ -110,34 +110,36 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	})
 }
 
-type resourceFunc func(node *models.NodeInfo) *models.Resources
-type sortFunc func(a, b *models.NodeInfo) int
+type resourceFunc func(node *models.NodeState) *models.Resources
+type sortFunc func(a, b *models.NodeState) int
 
 func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFunc {
 	switch orderBy {
 	case "id", "":
-		return func(a, b *models.NodeInfo) int { return util.Compare[string]{}.Cmp(a.ID(), b.ID()) }
+		return func(a, b *models.NodeState) int { return util.Compare[string]{}.Cmp(a.Info.ID(), b.Info.ID()) }
 	case "type":
-		return func(a, b *models.NodeInfo) int { return util.Compare[models.NodeType]{}.Cmp(a.NodeType, b.NodeType) }
+		return func(a, b *models.NodeState) int {
+			return util.Compare[models.NodeType]{}.Cmp(a.Info.NodeType, b.Info.NodeType)
+		}
 	case "available_cpu":
-		return func(a, b *models.NodeInfo) int {
+		return func(a, b *models.NodeState) int {
 			return util.Compare[float64]{}.CmpRev(capacity(a).CPU, capacity(b).CPU)
 		}
 	case "available_memory":
-		return func(a, b *models.NodeInfo) int {
+		return func(a, b *models.NodeState) int {
 			return util.Compare[uint64]{}.CmpRev(capacity(a).Memory, capacity(b).Memory)
 		}
 	case "available_disk":
-		return func(a, b *models.NodeInfo) int {
+		return func(a, b *models.NodeState) int {
 			return util.Compare[uint64]{}.CmpRev(capacity(a).Disk, capacity(b).Disk)
 		}
 	case "available_gpu":
-		return func(a, b *models.NodeInfo) int {
+		return func(a, b *models.NodeState) int {
 			return util.Compare[uint64]{}.CmpRev(capacity(a).GPU, capacity(b).GPU)
 		}
 	case "approval", "status":
-		return func(a, b *models.NodeInfo) int {
-			return util.Compare[string]{}.Cmp(a.Approval.String(), b.Approval.String())
+		return func(a, b *models.NodeState) int {
+			return util.Compare[string]{}.Cmp(a.Membership.String(), b.Membership.String())
 		}
 	default:
 	}

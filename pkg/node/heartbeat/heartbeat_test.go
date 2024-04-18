@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
 	"github.com/nats-io/nats-server/v2/server"
 	natsserver "github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
@@ -74,7 +75,7 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 		name           string
 		includeInitial bool
 		heartbeats     []time.Duration
-		expectedState  models.NodeState
+		expectedState  models.NodeConnectionState
 		waitUntil      time.Duration
 	}
 
@@ -116,13 +117,13 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 	}
 
 	for i, tc := range testcases {
-		nodeInfo := models.NodeInfo{
-			NodeID: "node-" + strconv.Itoa(i),
+		nodeState := models.NodeState{
+			Info: models.NodeInfo{NodeID: "node-" + strconv.Itoa(i)},
 		}
 
 		s.T().Run(tc.name, func(t *testing.T) {
 			// Wait for the first heartbeat to be sent
-			client, err := NewClient(s.client, nodeInfo.NodeID, TestTopic)
+			client, err := NewClient(s.client, nodeState.Info.NodeID, TestTopic)
 			s.Require().NoError(err)
 			defer client.Close(ctx)
 
@@ -147,8 +148,8 @@ func (s *HeartbeatTestSuite) TestSendHeartbeat() {
 
 			s.clock.Add(tc.waitUntil)
 
-			server.UpdateNodeInfo(&nodeInfo)
-			s.Require().Equal(nodeInfo.State, tc.expectedState, fmt.Sprintf("incorrect state in %s", tc.name))
+			server.UpdateNodeInfo(&nodeState)
+			s.Require().Equal(nodeState.Connection, tc.expectedState, fmt.Sprintf("incorrect state in %s", tc.name))
 		})
 	}
 }

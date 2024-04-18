@@ -2831,7 +2831,7 @@ const docTemplate = `{
         "models.NodeInfo": {
             "type": "object",
             "properties": {
-                "Approval": {
+                "Membership": {
                     "$ref": "#/definitions/models.NodeApproval"
                 },
                 "BacalhauVersion": {
