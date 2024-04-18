@@ -45,11 +45,11 @@ job_requirements() {
   local environment="$2"
   local ROOT=$(git rev-parse --show-toplevel)
   local Engine=$(echo "$json_input" | jq -r '.Engine | ascii_downcase')
-  local InputSources=$(echo "$json_input" | jq -r '.InputSources | ascii_downcase')
-  local Publisher=$(echo "$json_input" | jq -r '.Publisher | ascii_downcase')
-  local count=$(echo "$json_input" | jq -r '.count')
+  local StorageSources=$(echo "$json_input" | jq -r '.StorageSources | ascii_downcase')
+  local Publishers=$(echo "$json_input" | jq -r '.Publishers | ascii_downcase')
+  local count=$(echo "$json_input" | jq -r '.Count')
 
-  # echo "Testing with Engine=$Engine, InputSources=$InputSources, Publisher=$Publisher, count=$count"
+  # echo "Testing with Engine=$Engine, StorageSources=$StorageSources, Publishers=$Publishers, count=$count"
 
   case "$environment" in
     production)
@@ -85,96 +85,97 @@ job_requirements() {
 
   for (( i = 0; i < total_nodes; i++ )); do
     local engine_match=$(echo "$metadata" | jq -r ".[$i].ComputeNodeInfo.ExecutionEngines[] | ascii_downcase | select(. == \"$Engine\")")
-    local publisher_match=$(echo "$metadata" | jq -r ".[$i].ComputeNodeInfo.Publishers[] | ascii_downcase | select(. == \"$Publisher\")")
-    local source_match=$(echo "$metadata" | jq -r ".[$i].ComputeNodeInfo.StorageSources[] | ascii_downcase | select(. == \"$InputSources\")")
+    local publisher_match=$(echo "$metadata" | jq -r ".[$i].ComputeNodeInfo.Publishers[] | ascii_downcase | select(. == \"$Publishers\")")
+    local source_match=$(echo "$metadata" | jq -r ".[$i].ComputeNodeInfo.StorageSources[] | ascii_downcase | select(. == \"$StorageSources\")")
 
-    # echo "Node $i: Engine match=$engine_match, Publisher match=$publisher_match, Input Source match=$source_match"
+    # echo "Node $i: Engine match=$engine_match, Publishers match=$publisher_match, Input Source match=$source_match"
 
     if [[ -n "$engine_match" ]] && 
-       ([[ -z "$Publisher" ]] || [[ -n "$publisher_match" ]]) && 
-       ([[ -z "$InputSources" ]] || [[ -n "$source_match" ]]); then
+       ([[ -z "$Publishers" ]] || [[ -n "$publisher_match" ]]) && 
+       ([[ -z "$StorageSources" ]] || [[ -n "$source_match" ]]); then
       ((match_count++))
     fi
   done
 
   # echo "Total matches found: $match_count"
   if [[ "$match_count" -ge "$count" ]]; then
-    echo "true"
     return 0
   else
-    echo "false"
     return 1
   fi
 }
 
 generate_jobspec() {
-  jq_installed=$(command -v jq)
-  if [ -z "$jq_installed" ]; then
-    echo "jq is required but it's not installed. Please install jq to use this script."
-    exit 1
-  fi
-  # The first argument is a JSON string
-  local json_input="$1"
-  echo "$json_input"
-  # Extract values from JSON string
-  local engine=$(echo "$json_input" | jq -r ".Engine")
-  local storage_sources=$(echo "$json_input" | jq -r ".StorageSources")
-  local publishers=$(echo "$json_input" | jq -r ".Publishers")
-  local count=$(echo "$json_input" | jq -r ".Count")
-  local ROOT=$(git rev-parse --show-toplevel)
-  local PATH=$ROOT/test/jobs
-  # Set the Name field for the jobspec
-  local name="${engine} Job With StorageSource:${storage_sources} and Publisher:${publishers}"
-  
-  # Initialize JSON with base fields
-  local jobspec_json=$(jq -n \
-    --arg name "$name" \
-    --arg count "$count" \
-    '{
-      "Name": $name,
-      "Type": "batch",
-      "Namespace": "default",
-      "Count": ($count | tonumber),
-      "Tasks": []
+    local json_input="$1"
+
+    # Verify jq installation and set absolute path
+    local jq_path=$(command -v jq)
+    if [[ -z "$jq_path" ]]; then
+        echo "jq is required but not installed or not found in PATH."
+        return 1  # Exit the function with an error status
+    fi
+
+    # Extract values using jq
+    local engine=$(echo "$json_input" | $jq_path -r '.Engine')
+    local storage_sources=$(echo "$json_input" | $jq_path -r '.StorageSources // empty')
+    local publishers=$(echo "$json_input" | $jq_path -r '.Publishers // empty')
+    local count=$(echo "$json_input" | $jq_path -r '.Count // 1')
+    local ROOT=$(git rev-parse --show-toplevel)
+    local job_path="$ROOT/test/jobs"
+
+    # Define the job name
+    local name="${engine} Job With StorageSource:${storage_sources} and Publisher:${publishers}"
+
+    # Initialize jobspec JSON
+    local jobspec_json=$($jq_path -n --arg name "$name" --arg count "$count" '{
+        "Name": $name,
+        "Type": "batch",
+        "Namespace": "default",
+        "Count": ($count | tonumber),
+        "Tasks": [{
+          "Name": "main"
+          }]
     }')
 
-  # Determine the engine index
-  local engine_index
-  if [[ -n "$storage_sources" && -n "$publishers" ]]; then
-    engine_index=2
-  elif [[ -n "$storage_sources" && -z "$publishers" ]]; then
-    engine_index=0
-  elif [[ -z "$storage_sources" && -n "$publishers" ]]; then
-    engine_index=1
-  else
-    engine_index=3
-  fi
+    # Determine the engine index based on the presence of storage sources and publishers
+    local engine_index
+    if [[ -n "$storage_sources" && -n "$publishers" ]]; then
+        engine_index=2  # Both are present
+    elif [[ -n "$storage_sources" && -z "$publishers" ]]; then
+        engine_index=0  # Only storage sources are present
+    elif [[ -z "$storage_sources" && -n "$publishers" ]]; then
+        engine_index=1  # Only publishers are present
+    else
+        engine_index=3  # Neither is present
+    fi
 
-  # Fetch the appropriate engine JSON
-  local engine_json=$(jq -c ".[$engine_index].Engine" $PATH/templates/engines.json)
+    # Fetch the appropriate engine configuration from a JSON file
+    local engine_json=$($jq_path -c ".[$engine_index].Engine" "$job_path/templates/engines.json")
+    if [[ -z "$engine_json" ]]; then
+        echo "Failed to fetch engine configuration."
+        return 1
+    fi
 
-  # Add engine JSON to the jobspec and include task name "main"
-  jobspec_json=$(echo "$jobspec_json" | jq --argjson engine "$engine_json" \
-    '.Tasks[0] = {"Name": "main", "Engine": $engine}')
+    # Incorporate the engine configuration into the jobspec
+    jobspec_json=$(echo "$jobspec_json" | $jq_path --argjson engine "$engine_json" '.Tasks[0].Engine = $engine')
 
-  # Handle input sources
-  if [[ -n "$storage_sources" ]]; then
-    local input_sources_json=$(jq -c ".[] | select(.InputSources[].Source.Type == \"$storage_sources\") | .InputSources" $PATH/templates/input_sources.json)
-    jobspec_json=$(echo "$jobspec_json" | jq --argjson inputs "$input_sources_json" '.Tasks[0].InputSources = $inputs')
-  fi
+    # Handle input sources
+    if [[ -n "$storage_sources" ]]; then
+        local input_sources_json=$($jq_path -c ".[] | select(.InputSources[].Source.Type == \"$storage_sources\") | .InputSources" "$job_path/templates/input_sources.json")
+        jobspec_json=$(echo "$jobspec_json" | $jq_path --argjson inputs "$input_sources_json" '.Tasks[0].InputSources = $inputs')
+    fi
 
-  # Handle publishers
-  if [[ -n "$publishers" ]]; then
-    local publisher_json=$(jq -c ".[] | select(.Publisher.Type == \"$publishers\")" $PATH/templates/publishers.json)
-    jobspec_json=$(echo "$jobspec_json" | jq --argjson pub "$publisher_json.Publisher" '.Tasks[0].Publisher = $pub')
-    jobspec_json=$(echo "$jobspec_json" | jq --argjson paths "$publisher_json.ResultPaths" '.Tasks[0].ResultPaths = $paths')
-  fi
+    # Handle publishers
+    if [[ -n "$publishers" ]]; then
+        local publisher_json=$($jq_path -c ".[] | select(.Publisher.Type == \"$publishers\") | .Publisher" "$job_path/templates/publishers.json")
+        local result_paths_json=$($jq_path -c ".[] | select(.Publisher.Type == \"$publishers\") | .ResultPaths" "$job_path/templates/publishers.json")
+        jobspec_json=$(echo "$jobspec_json" | $jq_path --argjson pub "$publisher_json" --argjson paths "$result_paths_json" '.Tasks[0].Publisher = $pub | .Tasks[0].ResultPaths = $paths')
+    fi
 
-  # Define filename based on parameters
-  local filename="Engine${engine}_StorageSources${storage_sources}_Publishers${publishers}_Count${count}.json"
-
-  # Output the complete jobspec JSON to a file
-  echo "$jobspec_json" | jq . > "$PATH/specs/$filename"
+    # Define filename and save jobspec to a file
+    local filename="$job_path/specs/Engine${engine}_StorageSources${storage_sources}_Publishers${publishers}_Count${count}.json"
+    echo "$jobspec_json" | $jq_path . > "$filename"
+    echo "Generated jobspec file: $filename"
 }
 
 before_all() {

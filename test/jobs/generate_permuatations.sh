@@ -3,7 +3,7 @@
 # Define the arrays for Executor, StorageSources, and Publishers
 # add "WASM" later when templates are ready
 executors=("docker")
-storageSources=("" "urldownload" "inline" "repoclone" "repoclonelfs" "s3" "ipfs")
+storageSources=("" "urlDownload" "repoClone" "repoCloneLFS" "s3" "ipfs")
 publishers=("" "ipfs" "s3")
 
 # Begin the JSON array
