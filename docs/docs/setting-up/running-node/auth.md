@@ -1,10 +1,10 @@
 ---
-sidebar_label: 'Authentication and authorization'
+sidebar_label: 'Access Management'
 sidebar_position: 160
-description: How to configure authentication and authorization on your Bacalhau node.
+description: How to manage access on your Bacalhau node.
 ---
 
-# Authentication and authorization
+# Access Management
 
 Bacalhau includes a flexible auth system that supports multiple methods of auth
 that are appropriate for different deployment environments.
