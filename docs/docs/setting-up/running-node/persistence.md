@@ -1,7 +1,7 @@
 ---
-sidebar_label: 'Configuring node persistence'
+sidebar_label: 'Node Persistence'
 sidebar_position: 180
-title: 'Configuring node persistence'
+title: 'Node Persistence'
 description: How to configure compute/requester persistence
 ---
 
