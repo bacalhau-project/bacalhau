@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
@@ -31,10 +31,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
@@ -45,35 +42,31 @@ func NewRootCmd() *cobra.Command {
 		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
 	}
+	// TODO(forrest) [correctness]: this might be how we can pass config values into the child methods of this command.
+	cfg := config.New(config.ForEnvironment())
 	RootCmd := &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Compute over data",
 		Long:  `Compute over data`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			repoDir, err := config.Get[string]("repo")
-			if err != nil {
-				util.Fatal(cmd, fmt.Errorf("failed to read --repo value: %w", err), 1)
-			}
-			if repoDir == "" {
-				// this error indicates `defaultRepo` was unable to find a default location and the user
-				// didn't provide on.
-				util.Fatal(cmd, fmt.Errorf("bacalhau repo not set, please use BACALHAU_DIR or --repo"), 1)
-			}
-			if _, err := setup.SetupBacalhauRepo(repoDir); err != nil {
-				util.Fatal(cmd, fmt.Errorf("failed to initialize bacalhau repo at '%s': %w", repoDir, err), 1)
-			}
-
-			if err := configflags.BindFlags(cmd, rootFlags); err != nil {
+			// TODO(forrest) [correctness]: we need a way to bind these flags to the config in the child commands
+			// of the root method so that when the config is loaded it either uses the values provided to these flag
+			// or in the event they are not present, it uses the default value, or value found in the config file.
+			if err := configflags.BindFlagsWithViper(cmd, cfg.Viper(), rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 
-			// If a CA certificate was provided, it must be a file that exists. If it does not
-			// exist we should not continue.
-			if caCert, err := config.Get[string](types.NodeClientAPIClientTLSCACert); err == nil && caCert != "" {
-				if _, err := os.Stat(caCert); os.IsNotExist(err) {
-					util.Fatal(cmd, fmt.Errorf("CA certificate file '%s' does not exist", caCert), 1)
+			// TODO(forrest) [refactor]: decide how we want to handle this case
+			// ideally it comes via a validate method during configuration initialization
+			/*
+				// If a CA certificate was provided, it must be a file that exists. If it does not
+				// exist we should not continue.
+				if caCert, err := config.Get[string](types.NodeClientAPIClientTLSCACert); err == nil && caCert != "" {
+					if _, err := os.Stat(caCert); os.IsNotExist(err) {
+						util.Fatal(cmd, fmt.Errorf("CA certificate file '%s' does not exist", caCert), 1)
+					}
 				}
-			}
+			*/
 
 			ctx := cmd.Context()
 
@@ -110,12 +103,18 @@ func NewRootCmd() *cobra.Command {
 			"BACALHAU_DIR or --repo must be set to initialize a node.\n\n", err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
-	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
-		util.Fatal(RootCmd, err, 1)
-	}
-	if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
-		util.Fatal(RootCmd, err, 1)
-	}
+
+	// TODO(forrest) [refactor]: I think we can safely remove this since the defaultRepo() method
+	// checks BACALHAU_DIR env var and uses it if present. We should no longer need to bind
+	// the repo flag to viper since we will be accessing its value from the cobra command when it is needed.
+	/*
+		if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+			util.Fatal(RootCmd, err, 1)
+		}
+		if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
+			util.Fatal(RootCmd, err, 1)
+		}
+	*/
 
 	if err := configflags.RegisterFlags(RootCmd, rootFlags); err != nil {
 		panic(err)
@@ -165,7 +164,7 @@ func NewRootCmd() *cobra.Command {
 	// ====== Run a server
 
 	// Serve commands
-	RootCmd.AddCommand(serve.NewCmd())
+	RootCmd.AddCommand(serve.NewCmd(cfg))
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
 

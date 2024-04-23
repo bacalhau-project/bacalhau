@@ -1,17 +1,19 @@
 package config
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 const (
+	ConfigFileName = "config.yaml"
+	ConfigFileMode = 0666
+
 	environmentVariablePrefix = "BACALHAU"
 	inferConfigTypes          = true
 	automaticEnvVar           = true
@@ -40,67 +42,46 @@ const (
 var (
 	ComputeExecutionsStorePath = filepath.Join(ComputeStorePath, "executions.db")
 	OrchestratorJobStorePath   = filepath.Join(OrchestratorStorePath, "jobs.db")
-)
 
-var (
 	environmentVariableReplace = strings.NewReplacer(".", "_")
 	DecoderHook                = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
-const (
-	ConfigFileName = "config.yaml"
-	ConfigFileMode = 0666
-)
-
-func Init(path string) (types.BacalhauConfig, error) {
-	// initialize the configuration with default values.
-	return initConfig(path,
-		WithDefaultConfig(getDefaultConfig(path)),
-	)
+type Config struct {
+	viper *viper.Viper
+	def   types.BacalhauConfig
 }
 
-func Load(path string) (types.BacalhauConfig, error) {
-	return initConfig(path,
-		WithDefaultConfig(getDefaultConfig(path)),
+func New(cfg types.BacalhauConfig) *Config {
+	c := &Config{viper: viper.New(), def: cfg}
+	c.SetDefault(cfg)
+	return c
+}
+
+func (c *Config) Init(path string) (types.BacalhauConfig, error) {
+	// initialize the configuration with default values.
+	return c.initConfig(path) // WithDefaultConfig(getDefaultConfig(path)),
+
+}
+
+func (c *Config) Load(path string) (types.BacalhauConfig, error) {
+	return c.initConfig(path,
+		// WithDefaultConfig(getDefaultConfig(path)),
 		WithFileHandler(ReadConfigHandler),
 	)
 }
 
-func getDefaultConfig(path string) types.BacalhauConfig {
-	// derive the default config for the specified environment.
-	defaultConfig := ForEnvironment()
-
-	// set default values for path dependent config.
-	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
-	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
-	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
-	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Node.Compute.ExecutionStore.Path = filepath.Join(path, ComputeExecutionsStorePath)
-	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
-	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
-	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
-
-	// We default to the folder which contains the job store, and add
-	// a subfolder for the network store.
-	defaultConfig.Node.Network.StoreDir = filepath.Join(
-		filepath.Dir(defaultConfig.Node.Requester.JobStore.Path),
-		NetworkTransportStore,
-	)
-
-	return defaultConfig
-}
-
-type Params struct {
+type params struct {
 	FileName      string
-	FileHandler   func(fileName string) error
+	FileHandler   func(v *viper.Viper, fileName string) error
 	DefaultConfig types.BacalhauConfig
 }
 
-func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
-	params := &Params{
+func (c *Config) initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
+	params := &params{
 		FileName:      ConfigFileName,
 		FileHandler:   NoopConfigHandler,
-		DefaultConfig: ForEnvironment(),
+		DefaultConfig: c.def,
 	}
 
 	for _, opt := range opts {
@@ -108,24 +89,22 @@ func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 	}
 
 	configFile := filepath.Join(path, params.FileName)
-	viper.SetConfigFile(configFile)
-	viper.SetEnvPrefix(environmentVariablePrefix)
-	viper.SetTypeByDefaultValue(inferConfigTypes)
-	viper.SetEnvKeyReplacer(environmentVariableReplace)
-	if err := SetDefault(params.DefaultConfig); err != nil {
-		return types.BacalhauConfig{}, nil
-	}
+	c.viper.SetConfigFile(configFile)
+	c.viper.SetEnvPrefix(environmentVariablePrefix)
+	c.viper.SetTypeByDefaultValue(inferConfigTypes)
+	c.viper.SetEnvKeyReplacer(environmentVariableReplace)
+	c.SetDefault(params.DefaultConfig)
 
-	if err := params.FileHandler(configFile); err != nil {
+	if err := params.FileHandler(c.viper, configFile); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 
 	if automaticEnvVar {
-		viper.AutomaticEnv()
+		c.viper.AutomaticEnv()
 	}
 
 	var out types.BacalhauConfig
-	if err := viper.Unmarshal(&out, DecoderHook); err != nil {
+	if err := c.viper.Unmarshal(&out, DecoderHook); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 
@@ -133,19 +112,54 @@ func initConfig(path string, opts ...Option) (types.BacalhauConfig, error) {
 }
 
 // Reset clears all configuration, useful for testing.
-func Reset() {
-	viper.Reset()
+func (c *Config) Reset() {
+	c.viper = viper.New()
 }
 
-// Getenv wraps os.Getenv and retrieves the value of the environment variable named by the config key.
-// It returns the value, which will be empty if the variable is not present.
-func Getenv(key string) string {
-	return os.Getenv(KeyAsEnvVar(key))
+// SetDefault sets the default value for the configuration.
+// Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
+func (c *Config) SetDefault(config types.BacalhauConfig) {
+	types.SetDefaults(config, types.WithViper(c.viper))
 }
 
-// KeyAsEnvVar returns the environment variable corresponding to a config key
-func KeyAsEnvVar(key string) string {
-	return strings.ToUpper(
-		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
-	)
+func (c *Config) Current() (types.BacalhauConfig, error) {
+	out := new(types.BacalhauConfig)
+	if err := c.viper.Unmarshal(&out, DecoderHook); err != nil {
+		return types.BacalhauConfig{}, err
+	}
+	return *out, nil
+
+}
+
+func (c *Config) Viper() *viper.Viper {
+	return c.viper
+}
+
+// SetValue sets the configuration value.
+// This value won't be persisted in the config file.
+// Will be used instead of values obtained via flags, config file, ENV, default.
+func (c *Config) SetValue(key string, value interface{}) {
+	c.viper.Set(key, value)
+}
+
+func (c *Config) GetString(key string) (string, bool) {
+	out := c.viper.GetString(key)
+	if out == "" {
+		return out, false
+	}
+	return out, true
+}
+
+// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
+// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
+// nested sub-keys are correctly populated into the cfg structure.
+//
+// Parameters:
+//   - key: The configuration key to retrieve values for.
+//   - cfg: The structure into which the configuration values will be unmarshaled.
+//
+// Returns:
+//   - An error if any occurred during unmarshaling; otherwise, nil.
+func (c *Config) ForKey(key string, cfg interface{}) error {
+	return unmarshalCompositeKey(c.viper, key, cfg)
 }

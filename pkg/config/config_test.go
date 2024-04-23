@@ -1,62 +1,60 @@
 //go:build unit || !integration
 
-package config
+package config_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func TestConfig(t *testing.T) {
-	// Cleanup viper settings after each test
-	defer Reset()
-
 	// Testing Set and Get
 	t.Run("SetAndGetHappyPath", func(t *testing.T) {
 		expectedConfig := configenv.Testing
-		err := Set(expectedConfig)
-		assert.NoError(t, err)
+		cfg, err := config.New(expectedConfig)
+		require.NoError(t, err)
 
 		var out types.NodeConfig
-		err = ForKey(types.Node, &out)
+		err = cfg.ForKey(types.Node, &out)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node, out)
 
-		retrieved, err := Get[string](types.NodeServerAPIHost)
+		var retrieved string
+		err = cfg.ForKey(types.NodeServerAPIHost, &retrieved)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
 	})
 	t.Run("SetAndGetAdvance", func(t *testing.T) {
 		expectedConfig := configenv.Testing
 		expectedConfig.Node.IPFS.SwarmAddresses = []string{"1", "2", "3", "4", "5"}
-		err := Set(expectedConfig)
+		cfg, err := config.New(expectedConfig)
 		assert.NoError(t, err)
 
 		var out types.IpfsConfig
-		err = ForKey(types.NodeIPFS, &out)
+		err = cfg.ForKey(types.NodeIPFS, &out)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node.IPFS, out)
 
 		var node types.NodeConfig
-		err = ForKey(types.Node, &node)
+		err = cfg.ForKey(types.Node, &node)
 		assert.Equal(t, expectedConfig.Node, node)
 		assert.NoError(t, err)
 
 		var invalidNode types.NodeConfig
-		err = ForKey("INVALID", &invalidNode)
+		err = cfg.ForKey("INVALID", &invalidNode)
 		assert.Error(t, err)
 	})
 
 	// Testing KeyAsEnvVar
 	t.Run("KeyAsEnvVar", func(t *testing.T) {
-		assert.Equal(t, "BACALHAU_NODE_SERVERAPI_HOST", KeyAsEnvVar(types.NodeServerAPIHost))
+		assert.Equal(t, "BACALHAU_NODE_SERVERAPI_HOST", config.KeyAsEnvVar(types.NodeServerAPIHost))
 	})
 
 	// Testing Init
@@ -70,24 +68,21 @@ func TestConfig(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				defer Reset()
-
-				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
-				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
 				expected := configenv.Testing
+				cfg, err := config.New(expected)
+				require.NoError(t, err)
 
 				configPath := t.TempDir()
-
-				_, err := Init(configPath)
+				_, err = cfg.Init(configPath)
 				require.NoError(t, err)
 
 				var out types.NodeConfig
-				err = ForKey(types.Node, &out)
+				err = cfg.ForKey(types.Node, &out)
 				assert.NoError(t, err)
 				assert.Equal(t, expected.Node.Requester, out.Requester)
 
 				var retrieved types.RequesterConfig
-				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
+				require.NoError(t, cfg.ForKey(types.NodeRequester, &retrieved))
 				assert.Equal(t, expected.Node.Requester, retrieved)
 			})
 		}
@@ -104,19 +99,16 @@ func TestConfig(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				defer Reset()
-				// First, set up an expected configuration and save it using Init.
-				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
-				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
 				expected := configenv.Testing
 				configPath := t.TempDir()
-				expected.Node.Requester.JobStore.Path = filepath.Join(configPath, OrchestratorJobStorePath)
+				expected.Node.Requester.JobStore.Path = filepath.Join(configPath, config.OrchestratorJobStorePath)
+				cfg, err := config.New(expected)
 
-				_, err := Init(configPath)
+				_, err = cfg.Init(configPath)
 				require.NoError(t, err)
 
 				// Now, try to load the configuration we just saved.
-				loadedConfig, err := Load(configPath)
+				loadedConfig, err := cfg.Load(configPath)
 				require.NoError(t, err)
 
 				// After loading, compare the loaded configuration with the expected configuration.
@@ -124,12 +116,12 @@ func TestConfig(t *testing.T) {
 
 				// Further, test specific parts:
 				var out types.NodeConfig
-				err = ForKey(types.Node, &out)
+				err = cfg.ForKey(types.Node, &out)
 				assert.NoError(t, err)
 				assert.Equal(t, expected.Node.Requester, out.Requester)
 
 				var retrieved types.RequesterConfig
-				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
+				require.NoError(t, cfg.ForKey(types.NodeRequester, &retrieved))
 				assert.Equal(t, expected.Node.Requester, retrieved)
 			})
 		}

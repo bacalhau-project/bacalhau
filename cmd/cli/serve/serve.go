@@ -10,6 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -25,12 +32,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var DefaultSwarmPort = 1235
@@ -96,7 +97,7 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	return peers, nil
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"local_publisher":       configflags.LocalPublisherFlags,
 		"publishing":            configflags.PublishingFlags,
@@ -121,39 +122,19 @@ func NewCmd() *cobra.Command {
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 
+	// cfg := config.New(config.ForEnvironment())
+
 	serveCmd := &cobra.Command{
 		Use:     "serve",
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			/*
-				NB(forrest):
-				(I learned a lot more about viper and cobra than was intended...)
-
-				Binding flags in the PreRun phase is crucial to ensure that Viper binds only
-				to the flags specific to the current command being executed. This helps prevent
-				potential issues with overlapping flag names or default values from other commands.
-				An example of an overlapping flagset is the libp2p flags, shared here and in the id command.
-				By binding in PreRun, we maintain a clean separation between flag registration
-				and its binding to configuration. It ensures that each command's flags are
-				independently managed, avoiding interference or unexpected behavior from shared
-				flag names across multiple commands.
-
-				It's essential to understand the nature of Viper when working with Cobra commands.
-				At its core, Viper functions as a flat namespace key-value store for configuration
-				settings. It doesn't inherently respect or understand Cobra's command hierarchy or
-				nuances. When multiple commands have overlapping flag names and modify the same
-				configuration key in Viper, there's potential for confusion. For example, if two
-				commands both use a "peer" flag, which value should Viper return and how does it
-				know if the flag changes? Since Viper doesn't recognize the context of commands, it will
-				return the value of the last flag bound to it. This is why it's important to manage
-				flag binding thoughtfully, ensuring each command's context is respected.
-			*/
-			return configflags.BindFlags(cmd, serveFlags)
+			// bind flags for this command to the viper instance used to configure bacalhau from command flags.
+			return configflags.BindFlagsWithViper(cmd, cfg.Viper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return serve(cmd)
+			return serve(cmd, cfg)
 		},
 	}
 
@@ -164,16 +145,15 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command) error {
+func serve(cmd *cobra.Command, cfg *config.Config) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	// load the repo and its config file, reading in the values, flags and env vars will override values in config.
-	repoDir, err := config.Get[string]("repo")
+	repoDir, err := cmd.Root().PersistentFlags().GetString("repo")
 	if err != nil {
 		return err
 	}
-	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
+	fsRepo, err := setup.SetupBacalhauRepo(repoDir, cfg)
 	if err != nil {
 		return err
 	}

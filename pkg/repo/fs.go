@@ -2,7 +2,12 @@ package repo
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,7 +16,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -26,11 +33,13 @@ const (
 type FsRepoParams struct {
 	Path       string
 	Migrations *MigrationManager
+	Config     *config.Config
 }
 
 type FsRepo struct {
 	path       string
 	Migrations *MigrationManager
+	config     *config.Config
 }
 
 func NewFS(params FsRepoParams) (*FsRepo, error) {
@@ -42,6 +51,7 @@ func NewFS(params FsRepoParams) (*FsRepo, error) {
 	return &FsRepo{
 		path:       expandedPath,
 		Migrations: params.Migrations,
+		config:     params.Config,
 	}, nil
 }
 
@@ -97,7 +107,7 @@ func (fsr *FsRepo) Init() error {
 		return err
 	}
 
-	cfg, err := config.Init(fsr.path)
+	cfg, err := fsr.config.Init(fsr.path)
 	if err != nil {
 		return err
 	}
@@ -126,7 +136,7 @@ func (fsr *FsRepo) Open() error {
 	}
 
 	// load the configuration for the repo.
-	cfg, err := config.Load(fsr.path)
+	cfg, err := fsr.config.Load(fsr.path)
 	if err != nil {
 		return err
 	}
@@ -139,15 +149,15 @@ func (fsr *FsRepo) Open() error {
 
 	// derive an installationID from the client ID loaded from the repo.
 	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID()
+		ID, _ := fsr.GetClientID()
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		config.SetIntallationID(uuidFromUserID.String())
+		fsr.config.SetValue(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
 	if cfg.Update.CheckStatePath == "" {
 		cfg.Update.CheckStatePath = filepath.Join(fsr.path, UpdateCheckStatePath)
-		config.SetUpdateCheckStatePath(cfg.Update.CheckStatePath)
+		fsr.config.SetValue(types.UpdateCheckStatePath, cfg.Update.CheckStatePath)
 	}
 
 	// TODO this should be a part of the config.
@@ -209,4 +219,82 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 			writePath = userDir
 		}
 	*/
+}
+
+// loadClientID loads a hash identifying a user based on their ID key.
+func (fsr *FsRepo) GetClientID() (string, error) {
+	key, err := fsr.loadUserIDKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to load user ID key: %w", err)
+	}
+
+	return convertToClientID(&key.PublicKey), nil
+}
+
+const (
+	sigHash = crypto.SHA256 // hash function to use for sign/verify
+)
+
+// convertToClientID converts a public key to a client ID:
+func convertToClientID(key *rsa.PublicKey) string {
+	hash := sigHash.New()
+	hash.Write(key.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes)
+}
+
+func (fsr *FsRepo) GetClientPublicKey() (*rsa.PublicKey, error) {
+	privKey, err := fsr.loadUserIDKey()
+	if err != nil {
+		return nil, err
+	}
+	return &privKey.PublicKey, nil
+}
+
+func (fsr *FsRepo) GetClientPrivateKey() (*rsa.PrivateKey, error) {
+	privKey, err := fsr.loadUserIDKey()
+	if err != nil {
+		return nil, err
+	}
+	return privKey, nil
+}
+
+// loadUserIDKey loads the user ID key from whatever source is configured.
+func (fsr *FsRepo) loadUserIDKey() (*rsa.PrivateKey, error) {
+	keyFile, found := fsr.config.GetString(types.UserKeyPath)
+	if !found {
+		return nil, fmt.Errorf("config error: user-id-key not set")
+	}
+
+	file, err := os.Open(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open user ID key file: %w", err)
+	}
+	defer closer.CloseWithLogOnError("user ID key file", file)
+
+	keyBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read user ID key file: %w", err)
+	}
+
+	keyBlock, _ := pem.Decode(keyBytes)
+	if keyBlock == nil {
+		return nil, fmt.Errorf("failed to decode user ID key file %q", keyFile)
+	}
+
+	// TODO: #3159 Add support for both rsa _and_ ecdsa private keys, see crypto.PrivateKey.
+	//       Since we have access to the private key we can hack it by signing a
+	//       message twice and comparing them, rather than verifying directly.
+	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse user: %w", err)
+	// }
+
+	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
+	}
+
+	return key, nil
 }
