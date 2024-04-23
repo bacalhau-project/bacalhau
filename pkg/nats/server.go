@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const ReadyForConnectionsTimeout = 5 * time.Second
@@ -24,7 +25,7 @@ type ServerManager struct {
 }
 
 // NewServerManager is a helper function to create a NATS server with a given options
-func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerManager, error) {
+func NewServerManager(params ServerManagerParams) (*ServerManager, error) {
 	opts := params.Options
 
 	// If the port we want to use is already running (or the port is in use) then bail
@@ -45,7 +46,7 @@ func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerM
 	if !ns.ReadyForConnections(params.ConnectionTimeout) {
 		return nil, fmt.Errorf("could not start nats server on time")
 	}
-	log.Ctx(ctx).Info().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
+	log.Info().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
 	return &ServerManager{
 		Server: ns,
 	}, err

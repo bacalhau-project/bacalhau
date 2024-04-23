@@ -9,17 +9,27 @@ type ComputeConfig struct {
 	Capacity             CapacityConfig            `yaml:"Capacity"`
 	ExecutionStore       JobStoreConfig            `yaml:"ExecutionStore"`
 	JobTimeouts          JobTimeoutConfig          `yaml:"JobTimeouts"`
-	JobSelection         model.JobSelectionPolicy  `yaml:"JobSelection"`
+	JobSelection         JobSelectionPolicyConfig  `yaml:"JobSelection"`
 	Queue                QueueConfig               `yaml:"Queue"`
 	Logging              LoggingConfig             `yaml:"Logging"`
 	ManifestCache        DockerCacheConfig         `yaml:"ManifestCache"`
 	LogStreamConfig      LogStreamConfig           `yaml:"LogStream"`
 	LocalPublisher       LocalPublisherConfig      `yaml:"LocalPublisher"`
 	ControlPlaneSettings ComputeControlPlaneConfig `yaml:"ClusterTimeouts"`
+
+	Executor           ExecutorConfig           `yaml:"Executor"`
+	BufferedExecutor   BufferedExecutorConfig   `yaml:"BufferedExecutor"`
+	Labels             LabelsConfig             `yaml:"Labels"`
+	StorageProviders   StorageProvidersConfig   `yaml:"StorageProviders"`
+	ExecutorProviders  ExecutorProvidersConfig  `yaml:"ExecutorProviders"`
+	PublisherProviders PublisherProvidersConfig `yaml:"PublisherProviders"`
 }
 
 type CapacityConfig struct {
 	IgnorePhysicalResourceLimits bool `yaml:"IgnorePhysicalResourceLimits"`
+
+	// TODO(forrest) [refactor]: the models.ResourceConfig type should be defined in this package, not the models package
+
 	// Total amount of resource the system can be using at one time in aggregate for all jobs.
 	TotalResourceLimits models.ResourcesConfig `yaml:"TotalResourceLimits"`
 	// Per job amount of resource the system can be using at one time.
@@ -79,4 +89,36 @@ type ComputeControlPlaneConfig struct {
 
 	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
 	HeartbeatTopic string `yaml:"HeartbeatTopic"`
+}
+
+type JobSelectionPolicyConfig struct {
+	// TODO(forrest) [refactor]: this type should be defined in this package, not the model package
+	Policy model.JobSelectionPolicy `yaml:"Policy"`
+}
+
+type BufferedExecutorConfig struct {
+	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
+}
+
+type ExecutorConfig struct {
+	StorageDirectory string `yaml:"StorageDirectory"`
+	ResultsPath      string `yaml:"ResultsPath"`
+}
+
+type LabelsConfig struct {
+	Labels map[string]string `yaml:"Labels"`
+}
+
+type StorageProvidersConfig struct {
+	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
+	Disabled              []string `yaml:"Disabled"`
+}
+
+type ExecutorProvidersConfig struct {
+	Disabled []string `yaml:"Disabled"`
+}
+
+type PublisherProvidersConfig struct {
+	Local    LocalPublisherConfig `yaml:"Local"`
+	Disabled []string             `yaml:"Disabled"`
 }

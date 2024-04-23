@@ -21,7 +21,7 @@ const (
 	allAddresses      = "0.0.0.0"
 )
 
-func NewLocalPublisherServer(ctx context.Context, directory string, port int) *LocalPublisherServer {
+func NewLocalPublisherServer(directory string, port int) *LocalPublisherServer {
 	return &LocalPublisherServer{
 		rootDirectory: directory,
 		address:       allAddresses, // we listen on all addresses

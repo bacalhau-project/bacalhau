@@ -55,7 +55,6 @@ type Executor struct {
 }
 
 func NewExecutor(
-	_ context.Context,
 	id string,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()

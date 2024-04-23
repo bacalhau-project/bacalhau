@@ -8,13 +8,20 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
+type NodeKind struct {
+	Requester bool `yaml:"Requester"`
+	Compute   bool `yaml:"Compute"`
+}
+
 type NodeConfig struct {
-	Name         string       `yaml:"Name"`
-	NameProvider string       `yaml:"NameProvider"`
-	ClientAPI    APIConfig    `yaml:"ClientAPI"`
-	ServerAPI    APIConfig    `yaml:"ServerAPI"`
-	Libp2p       Libp2pConfig `yaml:"Libp2P"`
-	IPFS         IpfsConfig   `yaml:"IPFS"`
+	Name                   string                 `yaml:"Name"`
+	NameProvider           string                 `yaml:"NameProvider"`
+	ClientAPI              APIConfig              `yaml:"ClientAPI"`
+	ServerAPI              APIConfig              `yaml:"ServerAPI"`
+	ServerMiddlewareConfig ServerMiddlewareConfig ` yaml:"ServerMiddleware"`
+	Server                 ServerConfig           `yaml:"Server"`
+	Libp2p                 Libp2pConfig           `yaml:"Libp2P"`
+	IPFS                   IpfsConfig             `yaml:"IPFS"`
 
 	Compute   ComputeConfig   `yaml:"Compute"`
 	Requester RequesterConfig `yaml:"Requester"`
@@ -33,7 +40,8 @@ type NodeConfig struct {
 
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
-	Type []string `yaml:"Type"`
+	// TODO(forrest) [refactor]: change this name to Kind
+	Type NodeKind `yaml:"Type"`
 	// Local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed
@@ -47,6 +55,29 @@ type NodeConfig struct {
 	Network NetworkConfig `yaml:"Network"`
 
 	StrictVersionMatch bool `yaml:"StrictVersionMatch"`
+}
+
+type ServerMiddlewareConfig struct {
+	// Header to be included in each response from the server.
+	Headers map[string]string `yaml:"Headers"`
+	// ReadTimeout is the maximum duration for reading the entire request, including the body
+	ReadTimeout Duration `yaml:"ReadTimeout"`
+	// This represents maximum duration for handlers to complete, or else fail the request with 503 error code.
+	RequestHandlerTimeout Duration `yaml:"RequestHandlerTimeout"`
+	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
+	MaxBytesToReadInBody string `yaml:"MaxBytesToReadInBody"`
+	// ThrottleLimit is the maximum number of requests per second
+	ThrottleLimit int `yaml:"ThrottleLimit"`
+	// LogLevel is the minimum log level to log requests
+	LogLevel string `yaml:"LogLevel"`
+
+	// Migrations migrates old endpoint to new versioned ones
+	// TODO remove when we deprecate old API versions
+	Migrations map[string]string `yaml:"Migrations"`
+
+	// enable debug mode to get clearer error messages
+	// TODO: disable debug mode after we implement our own error handler
+	Debug bool `yaml:"Debug"`
 }
 
 type APIConfig struct {

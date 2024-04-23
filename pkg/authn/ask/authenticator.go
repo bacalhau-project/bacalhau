@@ -5,11 +5,13 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 )
 
 type policyData struct {
@@ -84,7 +86,7 @@ func (authenticator askAuthenticator) IsInstalled(ctx context.Context) (bool, er
 func (authenticator askAuthenticator) Requirement() authn.Requirement {
 	params := lo.Must(authenticator.Schema(context.TODO()))
 	return authn.Requirement{
-		Type:   authn.MethodTypeAsk,
+		Type:   types.AuthnMethodTypeAsk,
 		Params: (*json.RawMessage)(&params),
 	}
 }

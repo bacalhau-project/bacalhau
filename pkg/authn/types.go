@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 )
 
@@ -34,23 +35,12 @@ func Error(err error) (Authentication, error) {
 	return Failed(err.Error()), err
 }
 
-type MethodType string
-
-const (
-	// An authentication method that provides a challenge string that the user
-	// must sign using their private key.
-	MethodTypeChallenge MethodType = "challenge"
-
-	// An authentication method that asks the user to supply some credentials.
-	MethodTypeAsk MethodType = "ask"
-)
-
 // Requirement represents information about how to authenticate using a
 // configured method.
 type Requirement struct {
 	// The type of the method, informing the user agent how to prepare an
 	// authentication response.
-	Type MethodType `json:"type"`
+	Type types.AuthnMethodType `json:"type"`
 	// Parameters specific to this authentication type. For example, a list of
 	// required information, or minimum acceptable key sizes.
 	Params *json.RawMessage `json:"params"`

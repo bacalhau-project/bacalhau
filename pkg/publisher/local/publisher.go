@@ -8,13 +8,14 @@ import (
 	"os"
 	"path"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Publisher struct {
@@ -25,18 +26,20 @@ type Publisher struct {
 	server        *LocalPublisherServer
 }
 
-func NewLocalPublisher(ctx context.Context, directory string, host string, port int) *Publisher {
+func NewLocalPublisher(directory, host string, port int) *Publisher {
 	p := &Publisher{
 		baseDirectory: directory,
-		host:          ResolveAddress(ctx, host),
+		host:          ResolveAddress(host),
 		port:          port,
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
-
-	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.port)
-	go p.server.Run(ctx)
+	p.server = NewLocalPublisherServer(p.baseDirectory, p.port)
 
 	return p
+}
+
+func (p *Publisher) Start(ctx context.Context) {
+	go p.server.Run(ctx)
 }
 
 // IsInstalled checks if the publisher is installed and it determines
@@ -93,14 +96,14 @@ func (p *Publisher) PublishResult(
 
 var _ publisher.Publisher = (*Publisher)(nil)
 
-func ResolveAddress(ctx context.Context, address string) string {
+func ResolveAddress(address string) string {
 	addressType, ok := network.AddressTypeFromString(address)
 	if ok {
 		addrs, err := network.GetNetworkAddress(addressType, network.AllAddresses)
 		if err == nil && len(addrs) > 0 {
 			return addrs[0]
 		} else {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to resolve network address by type, using 127.0.0.1")
+			log.Error().Err(err).Msg("failed to resolve network address by type, using 127.0.0.1")
 			return "127.0.0.1"
 		}
 	}

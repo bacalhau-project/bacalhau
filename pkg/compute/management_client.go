@@ -42,7 +42,7 @@ type ManagementClient struct {
 	settings          types.ComputeControlPlaneConfig
 }
 
-func NewManagementClient(params *ManagementClientParams) *ManagementClient {
+func NewManagementClient(params ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
 		done:              make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,

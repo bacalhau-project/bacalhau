@@ -1,6 +1,15 @@
 package types
 
-import "github.com/bacalhau-project/bacalhau/pkg/authn"
+type AuthnMethodType string
+
+const (
+	// An authentication method that provides a challenge string that the user
+	// must sign using their private key.
+	AuthnMethodTypeChallenge AuthnMethodType = "challenge"
+
+	// An authentication method that asks the user to supply some credentials.
+	AuthnMethodTypeAsk AuthnMethodType = "ask"
+)
 
 // AuthenticationConfig is config for a specific named authentication method,
 // specifying the type of authentication and the path to a policy file that
@@ -8,8 +17,8 @@ import "github.com/bacalhau-project/bacalhau/pkg/authn"
 // a certain interface beyond the default – see the documentation on that type
 // for more info.
 type AuthenticatorConfig struct {
-	Type       authn.MethodType `yaml:"Type"`
-	PolicyPath string           `yaml:"PolicyPath,omitempty"`
+	Type       AuthnMethodType `yaml:"Type"`
+	PolicyPath string          `yaml:"PolicyPath,omitempty"`
 }
 
 // AuthConfig is config that controls user authentication and authorization.

@@ -3,8 +3,9 @@ package nats
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/nats-io/nats.go"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ClientManager struct {
@@ -12,7 +13,7 @@ type ClientManager struct {
 }
 
 // NewClientManager is a helper function to create a NATS client connection with a given name and servers string
-func NewClientManager(ctx context.Context, servers string, options ...nats.Option) (*ClientManager, error) {
+func NewClientManager(servers string, options ...nats.Option) (*ClientManager, error) {
 	nc, err := nats.Connect(servers, options...)
 	if err != nil {
 		return nil, err

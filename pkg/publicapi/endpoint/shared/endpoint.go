@@ -4,10 +4,13 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/fx"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -19,14 +22,48 @@ type EndpointParams struct {
 
 type Endpoint struct {
 	router            *echo.Echo
-	nodeID            string
+	nodeID            types.NodeID
 	nodeStateProvider models.NodeStateProvider
+}
+
+type SharedEndpoingParams struct {
+	fx.In
+
+	NodeID       types.NodeID
+	Router       *echo.Echo
+	NodeProvider *routing.NodeStateProvider
+}
+
+func InitSharedEndpoint(p SharedEndpoingParams) {
+	shared := &Endpoint{
+		nodeID:            p.NodeID,
+		nodeStateProvider: p.NodeProvider,
+	}
+
+	// JSON group
+	g := p.Router.Group("/api/v1")
+	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
+	g.GET("/node_info", shared.nodeInfo)
+	g.POST("/version", shared.version)
+	g.GET("/healthz", shared.healthz)
+
+	// Plaintext group
+	pt := p.Router.Group("/api/v1")
+	pt.Use(middleware.SetContentType(echo.MIMETextPlain))
+	pt.GET("/id", shared.id)
+	pt.GET("/livez", shared.livez)
+
+	// Home group
+	// TODO: Could we use this to redirect to latest API?
+	h := p.Router.Group("/")
+	h.Use(middleware.SetContentType(echo.MIMETextPlain))
+	h.GET("", shared.home)
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
 		router:            params.Router,
-		nodeID:            params.NodeID,
+		nodeID:            types.NodeID(params.NodeID),
 		nodeStateProvider: params.NodeStateProvider,
 	}
 
@@ -62,7 +99,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/id [get]
 func (e *Endpoint) id(c echo.Context) error {
-	return c.String(http.StatusOK, e.nodeID)
+	return c.String(http.StatusOK, string(e.nodeID))
 }
 
 // nodeInfo godoc

@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
@@ -52,8 +53,6 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
 		pr, err := executor_util.NewStandardStorageProvider(
-			ctx,
-			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
@@ -70,8 +69,6 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
-				ctx,
-				nodeConfig.CleanupManager,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},
@@ -146,7 +143,7 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
 				switch authnConfig.Type {
-				case authn.MethodTypeChallenge:
+				case types.AuthnMethodTypeChallenge:
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
 					if err != nil {
 						allErr = errors.Join(allErr, err)
@@ -159,7 +156,7 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 						privKey,
 						nodeConfig.NodeID,
 					)
-				case authn.MethodTypeAsk:
+				case types.AuthnMethodTypeAsk:
 					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
 					if err != nil {
 						allErr = errors.Join(allErr, err)

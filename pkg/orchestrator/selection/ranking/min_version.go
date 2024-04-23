@@ -3,23 +3,25 @@ package ranking
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/rs/zerolog/log"
 )
 
-var developmentVersion = models.BuildVersionInfo{
+var developmentVersion = types.BuildVersionInfo{
 	Major: "0", Minor: "0", GitVersion: version.DevelopmentGitVersion,
 }
 
-var nilVersion = models.BuildVersionInfo{}
+var nilVersion = types.BuildVersionInfo{}
 
 type MinVersionNodeRankerParams struct {
-	MinVersion models.BuildVersionInfo
+	MinVersion types.BuildVersionInfo
 }
 type MinVersionNodeRanker struct {
-	minVersion models.BuildVersionInfo
+	minVersion types.BuildVersionInfo
 }
 
 func NewMinVersionNodeRanker(params MinVersionNodeRankerParams) *MinVersionNodeRanker {
@@ -35,7 +37,7 @@ func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, no
 		reason := "Bacalhau version compatible"
 		// TODO: nodes discovered through identity protocol will have nil version
 		//  this is a temporary fix to avoid filtering them out until we no longer depend on identity protocol for node discovery in our tests.
-		if s.match(node.BacalhauVersion, nilVersion) {
+		if s.match(nilVersion, node.BacalhauVersion) {
 			rank = orchestrator.RankPossible
 			reason = "Bacalhau version unknown"
 		} else if !s.isCompatibleVersion(node.BacalhauVersion) {
@@ -55,7 +57,7 @@ func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, no
 
 func (s *MinVersionNodeRanker) isCompatibleVersion(nodeVersion models.BuildVersionInfo) bool {
 	// we assume development version is always latest and compatible
-	if s.match(nodeVersion, developmentVersion) {
+	if s.match(developmentVersion, nodeVersion) {
 		return true
 	}
 
@@ -72,6 +74,6 @@ func (s *MinVersionNodeRanker) isCompatibleVersion(nodeVersion models.BuildVersi
 }
 
 // match return true if versions are equal. We only compare Major, Minor and GitVersion
-func (s *MinVersionNodeRanker) match(v1, v2 models.BuildVersionInfo) bool {
+func (s *MinVersionNodeRanker) match(v1 types.BuildVersionInfo, v2 models.BuildVersionInfo) bool {
 	return v1.Major == v2.Major && v1.Minor == v2.Minor && v1.GitVersion == v2.GitVersion
 }

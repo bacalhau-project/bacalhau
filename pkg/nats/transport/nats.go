@@ -9,8 +9,11 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -21,6 +24,35 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 )
+
+var Module = fx.Module("nats",
+	fx.Provide(LoadConfig),
+	fx.Provide(NewNATSTransport),
+)
+
+func LoadConfig(nodeID types.NodeID, nodeKind types.NodeKind, c *config.Config) (NATSTransportConfig, error) {
+	var networkConfig types.NetworkConfig
+	if err := c.ForKey(types.NodeNetwork, &networkConfig); err != nil {
+		return NATSTransportConfig{}, err
+	}
+	var clusterConfig types.NetworkClusterConfig
+	if err := c.ForKey(types.NodeNetworkCluster, &clusterConfig); err != nil {
+		return NATSTransportConfig{}, err
+	}
+	return NATSTransportConfig{
+		NodeID:                   string(nodeID),
+		IsRequesterNode:          nodeKind.Requester,
+		Port:                     networkConfig.Port,
+		AdvertisedAddress:        networkConfig.AdvertisedAddress,
+		AuthSecret:               networkConfig.AuthSecret,
+		Orchestrators:            networkConfig.Orchestrators,
+		StoreDir:                 networkConfig.StoreDir,
+		ClusterName:              clusterConfig.Name,
+		ClusterPort:              clusterConfig.Port,
+		ClusterPeers:             clusterConfig.Peers,
+		ClusterAdvertisedAddress: clusterConfig.AdvertisedAddress,
+	}, nil
+}
 
 const NodeInfoSubjectPrefix = "node.info."
 
@@ -92,14 +124,14 @@ type NATSTransport struct {
 }
 
 //nolint:funlen
-func NewNATSTransport(ctx context.Context,
-	config *NATSTransportConfig) (*NATSTransport, error) {
+func NewNATSTransport(config *NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
 	}
 
 	var sm *nats_helper.ServerManager
+	// TODO(forrest) [refactor]: make this a different function and provider
 	if config.IsRequesterNode {
 		var err error
 
@@ -134,7 +166,7 @@ func NewNATSTransport(ctx context.Context,
 		}
 
 		log.Debug().Msgf("Creating NATS server with options: %+v", serverOpts)
-		sm, err = nats_helper.NewServerManager(ctx, nats_helper.ServerManagerParams{
+		sm, err = nats_helper.NewServerManager(nats_helper.ServerManagerParams{
 			Options: serverOpts,
 		})
 		if err != nil {
@@ -144,7 +176,7 @@ func NewNATSTransport(ctx context.Context,
 		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
 	}
 
-	nc, err := CreateClient(ctx, config)
+	nc, err := CreateClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +222,11 @@ func NewNATSTransport(ctx context.Context,
 	}, nil
 }
 
-func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
+func (t *NATSTransport) Client() *nats_helper.ClientManager {
+	return t.natsClient
+}
+
+func CreateClient(config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	clientOptions := []nats.Option{
@@ -199,7 +235,7 @@ func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helpe
 	if config.AuthSecret != "" {
 		clientOptions = append(clientOptions, nats.Token(config.AuthSecret))
 	}
-	return nats_helper.NewClientManager(ctx,
+	return nats_helper.NewClientManager(
 		strings.Join(config.Orchestrators, ","),
 		clientOptions...,
 	)

@@ -136,12 +136,16 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	return requesterConfig, nil
 }
 
-func getNodeType() (requester, compute bool, err error) {
+func getNodeType(c *config.Config) (requester, compute bool, err error) {
 	requester = false
 	compute = false
 	err = nil
 
-	nodeType := viper.GetStringSlice(types.NodeType)
+	var nodeType []string
+	err = c.ForKey(types.NodeType, &nodeType)
+	if err != nil {
+		return false, false, err
+	}
 	for _, nodeType := range nodeType {
 		if nodeType == "compute" {
 			compute = true
@@ -154,9 +158,9 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func getIPFSConfig() (types.IpfsConfig, error) {
+func getIPFSConfig(c *config.Config) (types.IpfsConfig, error) {
 	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
+	if err := c.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
 		return types.IpfsConfig{}, err
 	}
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {

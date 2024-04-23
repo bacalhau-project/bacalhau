@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/choose"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
@@ -20,9 +21,9 @@ import (
 type responder = func(request *json.RawMessage) (response []byte, err error)
 
 func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HTTPCredential, error) {
-	supportedMethods := map[authn.MethodType]responder{
-		authn.MethodTypeChallenge: challenge.Respond,
-		authn.MethodTypeAsk:       askResponder(cmd),
+	supportedMethods := map[types.AuthnMethodType]responder{
+		types.AuthnMethodTypeChallenge: challenge.Respond,
+		types.AuthnMethodTypeAsk:       askResponder(cmd),
 	}
 
 	methods, err := auth.Methods(cmd.Context(), &apimodels.ListAuthnMethodsRequest{})

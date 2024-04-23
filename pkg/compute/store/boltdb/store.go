@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 )
 
 const (
@@ -124,6 +125,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 
 	// Populate the state counter for the
 	store.starting.Add(1)
+	// TODO(forrest) [refactor] move this into a different method that may be called by uber fx.
 	go store.populateStateCounter(ctx)
 
 	return store, nil

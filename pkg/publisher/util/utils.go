@@ -47,6 +47,20 @@ func NewPublisherProvider(
 	}), nil
 }
 
+func ConfigureS3Publisher(dir string) (*s3.Publisher, error) {
+	cfg, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+		AWSConfig: cfg,
+	})
+	return s3.NewPublisher(s3.PublisherParams{
+		LocalDir:       dir,
+		ClientProvider: clientProvider,
+	}), nil
+}
+
 func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
 	if err != nil {
