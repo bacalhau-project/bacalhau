@@ -2,6 +2,7 @@
 
 package types
 
+const ID = "ID"
 const Node = "Node"
 const NodeName = "Node.Name"
 const NodeNameProvider = "Node.NameProvider"

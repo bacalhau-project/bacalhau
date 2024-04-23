@@ -1,8 +1,11 @@
 package types
 
+type NodeID string
+
 //go:generate go run gen_paths/generate.go
 //go:generate go run gen_viper/generate.go
 type BacalhauConfig struct {
+	ID      NodeID        `yaml:"ID"`
 	Node    NodeConfig    `yaml:"Node"`
 	User    UserConfig    `yaml:"User"`
 	Metrics MetricsConfig `yaml:"Metrics"`
