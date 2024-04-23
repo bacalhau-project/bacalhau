@@ -40,7 +40,7 @@ Alternatively, you can set the `Node.IPFS.Connect` property in the Bacalhau conf
 
 ### S3
 
-To get data from an S3 source, you need to either make the data public or specify the necessary credentials in your job. See the [S3 source specification](../other-specifications/sources/s3.md#credential-requirements) for more details. See an example of a command in the imperative approach specifying details to get input data from the S3 storage:
+To get data from an S3 source, you need to either make the data public or specify the necessary credentials in your job. See the [S3 source specification](../../dev/other-specifications/sources/s3.md#credential-requirements) for more details. See an example of a command in the imperative approach specifying details to get input data from the S3 storage:
 
 ```bash
 bacalhau docker run -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=http://s3.example.com,opt=region=us-east-1 ubuntu ...
@@ -79,7 +79,7 @@ bacalhau get $JOB_ID --ipfs-swarm-key ./path/to/swarm.key
 ```
 ### S3
 
-To upload the result of your job to the S3 storage, you will need to provide a name and key for the S3 bucket. See the [S3 publisher specification](../other-specifications/publishers/s3.md) page for more details. See an example of a command in the imperative approach specifying details to publish results in S3:
+To upload the result of your job to the S3 storage, you will need to provide a name and key for the S3 bucket. See the [S3 publisher specification](../../dev/other-specifications/publishers/s3.md) page for more details. See an example of a command in the imperative approach specifying details to publish results in S3:
 
 ```bash
 bacalhau docker run -p s3://bucket/key,opt=endpoint=http://s3.example.com,opt=region=us-east-1 ubuntu ...

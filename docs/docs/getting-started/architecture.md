@@ -262,15 +262,15 @@ When a job is submitted to a requester node, it selects compute nodes that are c
 
 ### Job execution
 
-The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification](../setting-up/other-specifications/engines/docker.md) to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification](../setting-up/other-specifications/engines/wasm.md).
+The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification](../dev/other-specifications/engines/docker.md) to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification](../dev/other-specifications/engines/wasm.md).
 
 ### Results publishing
 
 When the Compute node completes the job, it publishes the results to **S3's remote storage**, **IPFS**.
 
-Bacalhau's seamless integration with IPFS ensures that users have a decentralized option for publishing their task results, enhancing accessibility and resilience while reducing dependence on a single point of failure. View [IPFS Publisher Specification](../setting-up/other-specifications/publishers/ipfs.md) to get the detailed information.
+Bacalhau's seamless integration with IPFS ensures that users have a decentralized option for publishing their task results, enhancing accessibility and resilience while reducing dependence on a single point of failure. View [IPFS Publisher Specification](../dev/other-specifications/publishers/ipfs.md) to get the detailed information.
 
-Bacalhau's S3 Publisher provides users with a secure and efficient method to publish task results to any S3-compatible storage service. This publisher supports not just AWS S3, but other S3-compatible services offered by cloud providers like Google Cloud Storage and Azure Blob Storage, as well as open-source options like MinIO. View [S3Publisher Specification](../setting-up/other-specifications/publishers/s3.md) to get the detailed information.
+Bacalhau's S3 Publisher provides users with a secure and efficient method to publish task results to any S3-compatible storage service. This publisher supports not just AWS S3, but other S3-compatible services offered by cloud providers like Google Cloud Storage and Azure Blob Storage, as well as open-source options like MinIO. View [S3Publisher Specification](../dev/other-specifications/publishers/s3.md) to get the detailed information.
 
 ## Chapter 3 - Returning Information
 

@@ -479,7 +479,7 @@ Fetch results published by all executions for the defined job. Applicable only f
 
 **Example**:
 
-Result of a job that used the [S3 Publisher](../../setting-up/other-specifications/publishers/s3):
+Result of a job that used the [S3 Publisher](../other-specifications/publishers/s3):
 ```bash
 curl 127.0.0.1:1234/api/v1/orchestrator/jobs/j-479d160f-f9ab-4e32-aec9-a45554126450/results
 {
