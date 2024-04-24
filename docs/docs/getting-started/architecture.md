@@ -90,13 +90,13 @@ You can create jobs in the Bacalhau network using various [job types](../setting
   <div>
     <div>
         Prepare data with Bacalhau by [copying from URLs](../setting-up/data-ingestion/from-url.md),
-       [pinning to public storage](../setting-up/data-ingestion/pin.md), or [copying from an S3 bucket](../setting-up/data-ingestion/s3.md). Mount data anywhere for Bacalhau to run against. Refer to [IPFS](../setting-up/other-specifications/sources/ipfs.md), [Local](../setting-up/other-specifications/sources/local.md), [S3](../setting-up/other-specifications/sources/s3.md), and [URL](../setting-up/other-specifications/sources/url.md) Source Specifications for data source usage.
+       [pinning to public storage](../setting-up/data-ingestion/pin.md), or [copying from an S3 bucket](../setting-up/data-ingestion/s3.md). Mount data anywhere for Bacalhau to run against. Refer to [IPFS](../dev/other-specifications/sources/ipfs.md), [Local](../dev/other-specifications/sources/local.md), [S3](../dev/other-specifications/sources/s3.md), and [URL](../dev/other-specifications/sources/url.md) Source Specifications for data source usage.
 
         Optimize workflows without completely redesigning them. Run arbitrary tasks using Docker containers and WebAssembly images. Follow the Onboarding guides for [Docker](../getting-started/docker-workload-onboarding.md) and [WebAssembly](../getting-started/wasm-workload-onboarding.md) workloads.
 
         Explore GPU workload support with Bacalhau. Learn how to run GPU workloads using the Bacalhau client in the [GPU Workloads](../getting-started/resources.md#gpu-setup) section. Integrate Python applications with Bacalhau using the [Bacalhau Python SDK](../integration/python-sdk.md).
 
-        For node operation, refer to the [Running a Node](../setting-up/running-node/quick-start.md) section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster](../setting-up/networking-instructions/private-cluster.md) for performing tasks without connecting to the main Bacalhau network.
+        For node operation, refer to the [Running a Node](../setting-up/running-node/quick-start-docker.md) section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster](../setting-up/networking-instructions/private-cluster.md) for performing tasks without connecting to the main Bacalhau network.
     </div>
   </div>
 </details>
