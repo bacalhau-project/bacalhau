@@ -85,7 +85,8 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	response, err := util.GetAPIClientV2(cmd).Nodes().List(ctx, &apimodels.ListNodesRequest{
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Nodes().List(ctx, &apimodels.ListNodesRequest{
 		Labels:           labelRequirements,
 		FilterByApproval: o.FilterByApproval,
 		FilterByStatus:   o.FilterByStatus,

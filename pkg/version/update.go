@@ -1,5 +1,6 @@
 package version
 
+/*
 import (
 	"context"
 	"encoding/json"
@@ -219,3 +220,6 @@ func writeNewLastCheckTime() error {
 
 	return nil
 }
+
+
+*/

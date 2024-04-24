@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -173,7 +174,8 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 
 func list(cmd *cobra.Command, OL *ListOptions) error {
 	ctx := cmd.Context()
-	jobs, err := util.GetAPIClient(ctx).List(
+	// TODO(forrest) [fixme]
+	jobs, err := util.GetAPIClient(nil).List(
 		ctx,
 		OL.IDFilter,
 		OL.IncludeTags,

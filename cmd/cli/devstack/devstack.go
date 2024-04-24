@@ -1,27 +1,12 @@
 package devstack
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/samber/lo"
-
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
-
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"github.com/spf13/cobra"
@@ -153,130 +138,134 @@ func NewCmd() *cobra.Command {
 
 //nolint:gocyclo,funlen
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool) error {
-	ctx := cmd.Context()
+	panic("fix me")
+	/*
+		ctx := cmd.Context()
 
-	cm := util.GetCleanupManager(ctx)
+		cm := util.GetCleanupManager(ctx)
 
-	repoPath := ODs.ConfigurationRepo
-	if repoPath == "" {
-		// We need to clean up the repo when the node shuts down, but we can ONLY
-		// do this because we know it is a temporary directory. Do not delete the
-		// configured repo if `--stack-repo` was specified
-		repoPath, _ = os.MkdirTemp("", "")
+		repoPath := ODs.ConfigurationRepo
+		if repoPath == "" {
+			// We need to clean up the repo when the node shuts down, but we can ONLY
+			// do this because we know it is a temporary directory. Do not delete the
+			// configured repo if `--stack-repo` was specified
+			repoPath, _ = os.MkdirTemp("", "")
 
-		// If we don't set the repo value in config, readers will be given
-		// a different path to the one we've just created. Presumably a default.
-		config.SetValue("repo", repoPath)
-		defer os.RemoveAll(repoPath)
-	}
-
-	fsRepo, err := setup.SetupBacalhauRepo(repoPath)
-	if err != nil {
-		return err
-	}
-
-	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
-		flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
-		return fmt.Errorf("unset %s in your environment "+
-			"and/or --%s from your flags "+
-			"and/or %s from your config "+
-			"to run devstack",
-			strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
-			flag.FlagName,
-			flag.ConfigPath,
-		)
-	} else if err != nil {
-		return err
-	}
-
-	cm.RegisterCallback(telemetry.Cleanup)
-
-	config.DevstackSetShouldPrintInfo()
-
-	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
-	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
-
-	if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
-		_, err := os.Stat(portFileName)
-		if err == nil {
-			return fmt.Errorf("found file %s - Devstack likely already running", portFileName)
+			// If we don't set the repo value in config, readers will be given
+			// a different path to the one we've just created. Presumably a default.
+			config.SetValue("repo", repoPath)
+			defer os.RemoveAll(repoPath)
 		}
-		_, err = os.Stat(pidFileName)
-		if err == nil {
-			return fmt.Errorf("found file %s - Devstack likely already running", pidFileName)
+
+		fsRepo, err := setup.SetupBacalhauRepo(repoPath)
+		if err != nil {
+			return err
 		}
-	}
 
-	computeConfig, err := serve.GetComputeConfig(ctx, true)
-	if err != nil {
-		return err
-	}
+		// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
+		if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
+			flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
+			return fmt.Errorf("unset %s in your environment "+
+				"and/or --%s from your flags "+
+				"and/or %s from your config "+
+				"to run devstack",
+				strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
+				flag.FlagName,
+				flag.ConfigPath,
+			)
+		} else if err != nil {
+			return err
+		}
 
-	requesterConfig, err := serve.GetRequesterConfig(ctx, true)
-	if err != nil {
-		return err
-	}
+		cm.RegisterCallback(telemetry.Cleanup)
 
-	options := append(ODs.Options(),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
-	)
-	if IsNoop {
-		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
-	} else if ODs.ExecutorPlugins {
-		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
-	} else {
-		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
-	}
+		config.DevstackSetShouldPrintInfo()
 
-	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
-	cert, key := config.GetRequesterCertificateSettings()
-	options = append(options, devstack.WithSelfSignedCertificate(cert, key))
+		portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
+		pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
 
-	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
-	if err != nil {
-		return err
-	}
-
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsRepo, cm)
-	if err != nil {
-		return fmt.Errorf("failed to print node info: %w", err)
-	}
-	cmd.Println(nodeInfoOutput)
-
-	f, err := os.Create(portFileName)
-	if err != nil {
-		return fmt.Errorf("error writing out port file to %v: %w", portFileName, err)
-	}
-	defer os.Remove(portFileName)
-	firstNode := stack.Nodes[0]
-	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
-	if err != nil {
-		return fmt.Errorf("error writing out port file: %v: %w", portFileName, err)
-	}
-
-	fPid, err := os.Create(pidFileName)
-	if err != nil {
-		return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err)
-	}
-	defer os.Remove(pidFileName)
-
-	_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
-	if err != nil {
-		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
-	}
-
-	if config.GetLogMode() == logger.LogModeStation {
-		for _, node := range stack.Nodes {
-			if node.IsComputeNode() {
-				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
+		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
+			_, err := os.Stat(portFileName)
+			if err == nil {
+				return fmt.Errorf("found file %s - Devstack likely already running", portFileName)
+			}
+			_, err = os.Stat(pidFileName)
+			if err == nil {
+				return fmt.Errorf("found file %s - Devstack likely already running", pidFileName)
 			}
 		}
-	}
 
-	<-ctx.Done() // block until killed
+		computeConfig, err := serve.GetComputeConfig(ctx, true)
+		if err != nil {
+			return err
+		}
 
-	cmd.Println("\nShutting down devstack")
-	return nil
+		requesterConfig, err := serve.GetRequesterConfig(ctx, true)
+		if err != nil {
+			return err
+		}
+
+		options := append(ODs.Options(),
+			devstack.WithComputeConfig(computeConfig),
+			devstack.WithRequesterConfig(requesterConfig),
+		)
+		if IsNoop {
+			options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
+		} else if ODs.ExecutorPlugins {
+			options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
+		} else {
+			options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
+		}
+
+		// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
+		cert, key := config.GetRequesterCertificateSettings()
+		options = append(options, devstack.WithSelfSignedCertificate(cert, key))
+
+		stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
+		if err != nil {
+			return err
+		}
+
+		nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsRepo, cm)
+		if err != nil {
+			return fmt.Errorf("failed to print node info: %w", err)
+		}
+		cmd.Println(nodeInfoOutput)
+
+		f, err := os.Create(portFileName)
+		if err != nil {
+			return fmt.Errorf("error writing out port file to %v: %w", portFileName, err)
+		}
+		defer os.Remove(portFileName)
+		firstNode := stack.Nodes[0]
+		_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
+		if err != nil {
+			return fmt.Errorf("error writing out port file: %v: %w", portFileName, err)
+		}
+
+		fPid, err := os.Create(pidFileName)
+		if err != nil {
+			return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err)
+		}
+		defer os.Remove(pidFileName)
+
+		_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
+		if err != nil {
+			return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
+		}
+
+		if config.GetLogMode() == logger.LogModeStation {
+			for _, node := range stack.Nodes {
+				if node.IsComputeNode() {
+					cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
+				}
+			}
+		}
+
+		<-ctx.Done() // block until killed
+
+		cmd.Println("\nShutting down devstack")
+		return nil
+
+	*/
 }

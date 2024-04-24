@@ -3,9 +3,10 @@ package node
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
 )
 
 type NodeActionCmd struct {
@@ -35,7 +36,8 @@ func (n *NodeActionCmd) run(cmd *cobra.Command, args []string) error {
 
 	nodeID := args[0]
 
-	response, err := util.GetAPIClientV2(cmd).Nodes().Put(ctx, &apimodels.PutNodeRequest{
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Nodes().Put(ctx, &apimodels.PutNodeRequest{
 		NodeID:  nodeID,
 		Action:  n.action,
 		Message: n.message,

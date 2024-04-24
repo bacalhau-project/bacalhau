@@ -78,13 +78,13 @@ type Store struct {
 // as they are tied to the transaction where they are referenced and
 // it would mean later transactions will fail unless they obtain their
 // own reference to the bucket.
-func NewStore(ctx context.Context, dbPath string) (*Store, error) {
+func NewStore(dbPath string) (*Store, error) {
 	store := &Store{
 		marshaller:   marshaller.NewJSONMarshaller(),
 		starting:     sync.WaitGroup{},
 		stateCounter: NewStateCounter(),
 	}
-	log.Ctx(ctx).Debug().Msgf("creating new bbolt database at %s", dbPath)
+	log.Debug().Msgf("creating new bbolt database at %s", dbPath)
 
 	database, err := GetDatabase(dbPath)
 	if err != nil {
@@ -125,8 +125,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 
 	// Populate the state counter for the
 	store.starting.Add(1)
-	// TODO(forrest) [refactor] move this into a different method that may be called by uber fx.
-	go store.populateStateCounter(ctx)
+	go store.populateStateCounter()
 
 	return store, nil
 }
@@ -557,7 +556,7 @@ func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalExecutio
 	return s.stateCounter.Get(state), nil
 }
 
-func (s *Store) populateStateCounter(ctx context.Context) {
+func (s *Store) populateStateCounter() {
 	acc := NewStateCounter()
 
 	err := s.database.View(func(tx *bolt.Tx) (err error) {
@@ -582,14 +581,14 @@ func (s *Store) populateStateCounter(ctx context.Context) {
 	})
 
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to generate state counter for execution store")
+		log.Error().Err(err).Msg("failed to generate state counter for execution store")
 	}
 
 	// As more items may have been added whilst we were running, merge the
 	// statecounter we have generated into the existing one for the store
 	s.stateCounter.Include(acc)
 
-	log.Ctx(ctx).Trace().Msg("finished populating state counter")
+	log.Trace().Msg("finished populating state counter")
 	s.starting.Done()
 }
 

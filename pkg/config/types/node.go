@@ -29,10 +29,7 @@ type NodeConfig struct {
 	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
 	BootstrapAddresses []string `yaml:"BootstrapAddresses"`
 
-	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
-	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
-	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
-	NodeInfoStoreTTL          Duration `yaml:"NodeInfoStoreTTL"`
+	NodeInfoStoreTTL Duration `yaml:"NodeInfoStoreTTL"`
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
@@ -41,7 +38,7 @@ type NodeConfig struct {
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	// TODO(forrest) [refactor]: change this name to Kind
-	Type NodeKind `yaml:"Type"`
+	Type []string `yaml:"Type"`
 	// Local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed

@@ -8,13 +8,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -102,7 +102,7 @@ func (e *Executor) createHTTPGateway(
 	network *models.NetworkConfig,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
+	err := e.client.PullImage(ctx, httpGatewayImage, e.dockerCreds)
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "error pulling gateway image")
 	}
@@ -147,7 +147,7 @@ func (e *Executor) createHTTPGateway(
 			fmt.Sprintf("BACALHAU_JOB_ID=%s", job),
 			fmt.Sprintf("BACALHAU_EXECUTION_ID=%s", executionID),
 		},
-		Healthcheck:     &container.HealthConfig{}, //TODO
+		Healthcheck:     &container.HealthConfig{}, // TODO
 		NetworkDisabled: false,
 		Labels:          e.containerLabels(executionID, job),
 	}, &container.HostConfig{

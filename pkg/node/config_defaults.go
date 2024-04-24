@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -17,7 +15,7 @@ import (
 )
 
 var DefaultComputeConfig = ComputeConfigParams{
-	PhysicalResourcesProvider: compute_system.NewPhysicalCapacityProvider(),
+	PhysicalResourcesProvider: nil,
 	DefaultJobResourceLimits: models.Resources{
 		CPU:    0.1,               // 100m
 		Memory: 100 * 1024 * 1024, // 100Mi
@@ -31,7 +29,7 @@ var DefaultComputeConfig = ComputeConfigParams{
 	LogRunningExecutionsInterval: 10 * time.Second,
 	JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
 	LocalPublisher: types.LocalPublisherConfig{
-		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
+		Directory: path.Join("/tmp", "bacalhau-local-publisher"),
 	},
 	ControlPlaneSettings: types.ComputeControlPlaneConfig{
 		InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd

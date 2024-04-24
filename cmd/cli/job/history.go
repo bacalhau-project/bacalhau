@@ -159,7 +159,8 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2(cmd).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,

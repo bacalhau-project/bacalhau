@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -39,16 +39,19 @@ type s3ObjectSummary struct {
 }
 
 type StorageProviderParams struct {
-	ClientProvider *s3helper.ClientProvider
+	ClientProvider           *s3helper.ClientProvider
+	VolumeSizeRequestTimeout time.Duration
 }
 
 type StorageProvider struct {
-	clientProvider *s3helper.ClientProvider
+	clientProvider           *s3helper.ClientProvider
+	volumeSizeRequestTimeout time.Duration
 }
 
 func NewStorage(params StorageProviderParams) *StorageProvider {
 	return &StorageProvider{
-		clientProvider: params.ClientProvider,
+		clientProvider:           params.ClientProvider,
+		volumeSizeRequestTimeout: params.VolumeSizeRequestTimeout,
 	}
 }
 
@@ -68,7 +71,7 @@ func (s *StorageProvider) HasStorageLocally(_ context.Context, _ models.InputSou
 }
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
-	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout())
+	ctx, cancel := context.WithTimeout(ctx, s.volumeSizeRequestTimeout)
 	defer cancel()
 
 	source, err := s3helper.DecodeSourceSpec(volume.Source)

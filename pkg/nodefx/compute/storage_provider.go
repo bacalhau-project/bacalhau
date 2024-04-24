@@ -1,6 +1,8 @@
 package compute
 
 import (
+	"time"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -16,12 +18,12 @@ import (
 )
 
 func StorageProviders(cfg types.StorageProvidersConfig, client ipfs.Client) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(client)
+	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(client, time.Duration(cfg.VolumeSizeRequestTimeout))
 	if err != nil {
 		return nil, err
 	}
 
-	urlDownloadStorage := urldownload.NewStorage()
+	urlDownloadStorage := urldownload.NewStorage(time.Duration(cfg.DownloadURLRequestTimeout), cfg.DownloadURLRequestRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +35,7 @@ func StorageProviders(cfg types.StorageProvidersConfig, client ipfs.Client) (sto
 
 	inlineStorage := inline.NewStorage()
 
-	s3Storage, err := executor_util.ConfigureS3StorageProvider()
+	s3Storage, err := executor_util.ConfigureS3StorageProvider(time.Duration(cfg.VolumeSizeRequestTimeout))
 	if err != nil {
 		return nil, err
 	}

@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 func newDefaultCmd() *cobra.Command {
@@ -21,8 +22,8 @@ func newDefaultCmd() *cobra.Command {
 
 func defaultConfig(cmd *cobra.Command) error {
 	// clear any existing configuration before generating the default.
-	config.Reset()
-	defaultConfig, err := config.Init(cmd.Flag("path").Value.String())
+	c := config.New(config.ForEnvironment())
+	defaultConfig, err := c.Init(cmd.Flag("path").Value.String())
 	if err != nil {
 		return err
 	}

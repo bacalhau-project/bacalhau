@@ -11,7 +11,7 @@ import (
 )
 
 var Module = fx.Module("authz",
-	fx.Provide(LoadConfig),
+	// fx.Provide(LoadConfig),
 	fx.Provide(NewAuthorizer),
 )
 

@@ -32,7 +32,8 @@ var V2Migration = repo.NewMigration(
 		// we load the config to resolve the libp2p node id. Loading the config this way will also
 		// use default values, args and env vars to fill in the config, so we can be sure we are
 		// reading the correct libp2p key in case the user is overriding the default value.
-		resolvedCfg, err := config.Load(repoPath)
+		c := config.New(fileCfg)
+		resolvedCfg, err := c.Load(repoPath)
 		if err != nil {
 			return err
 		}

@@ -112,7 +112,8 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := util.GetAPIClient(ctx)
+	// TODO(forrest) [fixme]
+	apiClient := util.GetAPIClient(nil)
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.

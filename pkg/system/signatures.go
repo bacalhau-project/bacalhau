@@ -7,8 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 const (
@@ -18,12 +16,17 @@ const (
 // SignForClient signs a message with the user's private ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func SignForClient(msg []byte) (string, error) {
-	privKey, err := config.GetClientPrivateKey()
-	if err != nil {
-		return "", err
-	}
+	// TODO(forrest) [fixme]: need to address this before merging
+	return "", nil
+	/*
+		privKey, err := config.GetClientPrivateKey()
+		if err != nil {
+			return "", err
+		}
 
-	return Sign(msg, privKey)
+		return Sign(msg, privKey)
+
+	*/
 }
 
 func Sign(msg []byte, privKey *rsa.PrivateKey) (string, error) {
@@ -42,22 +45,27 @@ func Sign(msg []byte, privKey *rsa.PrivateKey) (string, error) {
 // VerifyForClient verifies a signed message with the user's public ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func VerifyForClient(msg []byte, sig string) (bool, error) {
-	pubKey, err := config.GetClientPublicKey()
-	if err != nil {
-		return false, err
-	}
+	// TODO(forrest) [fixme]: need to address this before merging
+	return true, nil
+	/*
+		pubKey, err := config.GetClientPublicKey()
+		if err != nil {
+			return false, err
+		}
 
-	hash := sigHash.New()
-	hash.Write(msg)
-	hashBytes := hash.Sum(nil)
+		hash := sigHash.New()
+		hash.Write(msg)
+		hashBytes := hash.Sum(nil)
 
-	sigBytes, err := base64.StdEncoding.DecodeString(sig)
-	if err != nil {
-		return false, fmt.Errorf("failed to decode signature: %w", err)
-	}
+		sigBytes, err := base64.StdEncoding.DecodeString(sig)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode signature: %w", err)
+		}
 
-	// A successful verification is indicated by a nil return:
-	return rsa.VerifyPKCS1v15(pubKey, sigHash, hashBytes, sigBytes) == nil, nil
+		// A successful verification is indicated by a nil return:
+		return rsa.VerifyPKCS1v15(pubKey, sigHash, hashBytes, sigBytes) == nil, nil
+
+	*/
 }
 
 // Verify verifies a signed message with the given encoding of a public key.
@@ -84,22 +92,31 @@ func Verify(msg []byte, sig, publicKey string) error {
 // GetClientID returns a hash identifying a user based on their ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func GetClientID() string {
-	clientID, err := config.GetClientID()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load clientID: %s", err))
-	}
+	// TODO(forrest) [fixme]: need to address this before merging
+	return ""
+	/*
+		clientID, err := config.GetClientID()
+		if err != nil {
+			panic(fmt.Sprintf("failed to load clientID: %s", err))
+		}
 
-	return clientID
+		return clientID
+	*/
 }
 
 // GetClientPublicKey returns a base64-encoding of the user's public ID key:
 // NOTE: must be called after InitConfig() or system will panic.
 func GetClientPublicKey() string {
-	pkstr, err := config.GetClientPublicKeyString()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load client public key: %s", err))
-	}
-	return pkstr
+	// TODO(forrest) [fixme]: need to address this before merging
+	return ""
+	/*
+		pkstr, err := config.GetClientPublicKeyString()
+		if err != nil {
+			panic(fmt.Sprintf("failed to load client public key: %s", err))
+		}
+		return pkstr
+
+	*/
 }
 
 // PublicKeyMatchesID returns true if the given base64-encoded public key and

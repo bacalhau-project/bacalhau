@@ -27,7 +27,18 @@ func PublisherProviders(lc fx.Lifecycle, fsr *repo.FsRepo, cfg types.PublisherPr
 		return nil, err
 	}
 
-	s3Dir, err := os.MkdirTemp(fsr.GetStoragePath(), "bacalhau-s3-publisher")
+	// TODO(forrest) [fixme] temp dir is used when no value is provided for the config
+	/*
+
+		func GetStoragePath() string {
+			path := viper.GetString(types.NodeComputeStoragePath)
+			if path == "" {
+				return os.TempDir()
+			}
+			return path
+		}
+	*/
+	s3Dir, err := os.MkdirTemp(os.TempDir(), "bacalhau-s3-publisher")
 	s3Publisher, err := util.ConfigureS3Publisher(s3Dir)
 	if err != nil {
 		return nil, err

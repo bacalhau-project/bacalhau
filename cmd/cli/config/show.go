@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 func newShowCmd() *cobra.Command {
@@ -21,7 +22,9 @@ func newShowCmd() *cobra.Command {
 
 func showConfig(cmd *cobra.Command) error {
 	// clear any existing configuration before generating the current.
-	currentConfig, err := config.Init(cmd.Flag("path").Value.String())
+
+	c := config.New(config.ForEnvironment())
+	currentConfig, err := c.Init(cmd.Flag("path").Value.String())
 	if err != nil {
 		return err
 	}

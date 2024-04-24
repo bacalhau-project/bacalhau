@@ -2,19 +2,12 @@ package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
-	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -81,36 +74,40 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 }
 
 func NewPluginExecutorFactory() ExecutorsFactory {
-	return ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-			pr, err := executor_util.NewPluginExecutorProvider(
-				ctx,
-				nodeConfig.CleanupManager,
-				executor_util.PluginExecutorOptions{
-					Plugins: []executor_util.PluginExecutorManagerConfig{
-						{
-							Name:             models.EngineDocker,
-							Path:             config.GetExecutorPluginsPath(),
-							Command:          "bacalhau-docker-executor",
-							ProtocolVersion:  1,
-							MagicCookieKey:   "EXECUTOR_PLUGIN",
-							MagicCookieValue: "bacalhau_executor",
+	panic("deprecate me")
+	/*
+		return ExecutorsFactoryFunc(
+			func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+				pr, err := executor_util.NewPluginExecutorProvider(
+					ctx,
+					nodeConfig.CleanupManager,
+					executor_util.PluginExecutorOptions{
+						Plugins: []executor_util.PluginExecutorManagerConfig{
+							{
+								Name:             models.EngineDocker,
+								Path:             config.GetExecutorPluginsPath(),
+								Command:          "bacalhau-docker-executor",
+								ProtocolVersion:  1,
+								MagicCookieKey:   "EXECUTOR_PLUGIN",
+								MagicCookieValue: "bacalhau_executor",
+							},
+							{
+								Name:             models.EngineWasm,
+								Path:             config.GetExecutorPluginsPath(),
+								Command:          "bacalhau-wasm-executor",
+								ProtocolVersion:  1,
+								MagicCookieKey:   "EXECUTOR_PLUGIN",
+								MagicCookieValue: "bacalhau_executor",
+							},
 						},
-						{
-							Name:             models.EngineWasm,
-							Path:             config.GetExecutorPluginsPath(),
-							Command:          "bacalhau-wasm-executor",
-							ProtocolVersion:  1,
-							MagicCookieKey:   "EXECUTOR_PLUGIN",
-							MagicCookieValue: "bacalhau_executor",
-						},
-					},
-				})
-			if err != nil {
-				return nil, err
-			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
-		})
+					})
+				if err != nil {
+					return nil, err
+				}
+				return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+			})
+
+	*/
 }
 
 func NewStandardPublishersFactory() PublishersFactory {
@@ -132,48 +129,52 @@ func NewStandardPublishersFactory() PublishersFactory {
 }
 
 func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
-	return AuthenticatorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
-			var allErr error
-			privKey, allErr := config.GetClientPrivateKey()
-			if allErr != nil {
-				return nil, allErr
-			}
-
-			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
-			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
-				switch authnConfig.Type {
-				case types.AuthnMethodTypeChallenge:
-					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
-					if err != nil {
-						allErr = errors.Join(allErr, err)
-						continue
-					}
-
-					authns[name] = challenge.NewAuthenticator(
-						methodPolicy,
-						challenge.NewStringMarshaller(nodeConfig.NodeID),
-						privKey,
-						nodeConfig.NodeID,
-					)
-				case types.AuthnMethodTypeAsk:
-					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
-					if err != nil {
-						allErr = errors.Join(allErr, err)
-						continue
-					}
-
-					authns[name] = ask.NewAuthenticator(
-						methodPolicy,
-						privKey,
-						nodeConfig.NodeID,
-					)
-				default:
-					allErr = errors.Join(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
+	panic("deprecate me")
+	/*
+		return AuthenticatorsFactoryFunc(
+			func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
+				var allErr error
+				privKey, allErr := config.GetClientPrivateKey()
+				if allErr != nil {
+					return nil, allErr
 				}
-			}
 
-			return provider.NewMappedProvider(authns), allErr
-		},
-	)
+				authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
+				for name, authnConfig := range nodeConfig.AuthConfig.Methods {
+					switch authnConfig.Type {
+					case types.AuthnMethodTypeChallenge:
+						methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
+						if err != nil {
+							allErr = errors.Join(allErr, err)
+							continue
+						}
+
+						authns[name] = challenge.NewAuthenticator(
+							methodPolicy,
+							challenge.NewStringMarshaller(nodeConfig.NodeID),
+							privKey,
+							nodeConfig.NodeID,
+						)
+					case types.AuthnMethodTypeAsk:
+						methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
+						if err != nil {
+							allErr = errors.Join(allErr, err)
+							continue
+						}
+
+						authns[name] = ask.NewAuthenticator(
+							methodPolicy,
+							privKey,
+							nodeConfig.NodeID,
+						)
+					default:
+						allErr = errors.Join(allErr, fmt.Errorf("unknown authentication type: %q", authnConfig.Type))
+					}
+				}
+
+				return provider.NewMappedProvider(authns), allErr
+			},
+		)
+
+	*/
 }

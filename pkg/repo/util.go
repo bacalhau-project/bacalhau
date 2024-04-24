@@ -27,19 +27,21 @@ func initRepoFiles(cfg types.BacalhauConfig) error {
 		return fmt.Errorf("failed to create libp2p key: %w", err)
 	}
 
-	if err := initDir(cfg.Node.ExecutorPluginPath); err != nil {
-		return fmt.Errorf("failed to create plugin dir: %w", err)
-	}
+	/*
+		if err := initDir(cfg.Node.ExecutorPluginPath); err != nil {
+			return fmt.Errorf("failed to create plugin dir: %w", err)
+		}
 
-	if err := initDir(cfg.Node.ComputeStoragePath); err != nil {
-		return fmt.Errorf("failed to create executor storage dir: %w", err)
-	}
-	if err := initParentDir(cfg.Node.Compute.ExecutionStore.Path); err != nil {
-		return fmt.Errorf("failed to create executor execution store dir: %w", err)
-	}
-	if err := initParentDir(cfg.Node.Requester.JobStore.Path); err != nil {
-		return fmt.Errorf("failed to create orchestrator job store dir: %w", err)
-	}
+		if err := initDir(cfg.Node.ComputeStoragePath); err != nil {
+			return fmt.Errorf("failed to create executor storage dir: %w", err)
+		}
+		if err := initParentDir(cfg.Node.Compute.ExecutionStore.Path); err != nil {
+			return fmt.Errorf("failed to create executor execution store dir: %w", err)
+		}
+		if err := initParentDir(cfg.Node.Requester.JobStore.Path); err != nil {
+			return fmt.Errorf("failed to create orchestrator job store dir: %w", err)
+		}
+	*/
 
 	return nil
 }
@@ -58,17 +60,21 @@ func validateRepoConfig(cfg types.BacalhauConfig) error {
 		return fmt.Errorf("libp2p key file does not exist at: %q", cfg.User.Libp2pKeyPath)
 	}
 
-	if exists, err := fileExists(cfg.Node.ExecutorPluginPath); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("executor plugin path does not exist at: %q", cfg.Node.ExecutorPluginPath)
-	}
+	/*
+		// TODO(forrest) [refactor]: We don't use pluggable executors so remove this
+				if exists, err := fileExists(cfg.Node.ExecutorPluginPath); err != nil {
+					return err
+				} else if !exists {
+					return fmt.Errorf("executor plugin path does not exist at: %q", cfg.Node.ExecutorPluginPath)
+				}
 
-	if exists, err := fileExists(cfg.Node.ComputeStoragePath); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("compute storage path does not exist at: %q", cfg.Node.ComputeStoragePath)
-	}
+			// TODO(forrest) [refactor]: The creation of this path must be handled by the compute node module, not done as a gloabl requirement
+			if exists, err := fileExists(cfg.Node.ComputeStoragePath); err != nil {
+				return err
+			} else if !exists {
+				return fmt.Errorf("compute storage path does not exist at: %q", cfg.Node.ComputeStoragePath)
+			}
+	*/
 
 	return nil
 }

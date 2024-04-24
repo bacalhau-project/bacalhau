@@ -109,7 +109,8 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	client := util.GetAPIClientV2(cmd)
+	// TODO(forrest) [fixme]
+	client := util.GetAPIClientV2(cmd, nil, nil)
 	resp, err := client.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
 		Job: job,
 	})

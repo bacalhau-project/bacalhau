@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/viper"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/spf13/viper"
 )
 
 func getViper(r repo.FsRepo) (*viper.Viper, error) {
@@ -81,13 +81,17 @@ func haveSameElements(arr1, arr2 []string) bool {
 }
 
 func getLibp2pNodeID() (string, error) {
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return "", err
-	}
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	if err != nil {
-		return "", err
-	}
-	return peerID.String(), nil
+	// TODO(forrest) [fixme]: need to address this before merging
+	return "", nil
+	/*
+		privKey, err := config.GetLibp2pPrivKey()
+		if err != nil {
+			return "", err
+		}
+		peerID, err := peer.IDFromPrivateKey(privKey)
+		if err != nil {
+			return "", err
+		}
+		return peerID.String(), nil
+	*/
 }

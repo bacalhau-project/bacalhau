@@ -6,11 +6,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
 var Production = types.BacalhauConfig{
@@ -25,7 +25,7 @@ var Production = types.BacalhauConfig{
 	Auth: types.AuthConfig{
 		Methods: map[string]types.AuthenticatorConfig{
 			"ClientKey": {
-				Type: authn.MethodTypeChallenge,
+				Type: types.AuthnMethodTypeChallenge,
 			},
 		},
 	},
@@ -40,6 +40,45 @@ var Production = types.BacalhauConfig{
 			Port: 1234,
 			TLS:  types.TLSConfiguration{},
 		},
+		Server: types.ServerConfig{
+			Address:           "0.0.0.0",
+			Port:              1234,
+			ReadHeaderTimeout: types.Duration(5 * time.Second),
+			WriteTimeout:      types.Duration(45 * time.Second),
+		},
+		ServerMiddlewareConfig: types.ServerMiddlewareConfig{
+			Headers: map[string]string{
+				apimodels.HTTPHeaderBacalhauGitVersion: "TODO",
+				apimodels.HTTPHeaderBacalhauGitCommit:  "TODO",
+				apimodels.HTTPHeaderBacalhauBuildDate:  "TODO",
+				apimodels.HTTPHeaderBacalhauBuildOS:    "TODO",
+				apimodels.HTTPHeaderBacalhauArch:       "TODO",
+			},
+			ReadTimeout:           types.Duration(20 * time.Second),
+			RequestHandlerTimeout: types.Duration(30 * time.Second),
+			MaxBytesToReadInBody:  "10MB",
+			ThrottleLimit:         1000,
+			LogLevel:              "error",
+			Migrations: map[string]string{
+				"/peers":                      "/api/v1/peers",
+				"/node_info":                  "/api/v1/node_info",
+				"^/version":                   "/api/v1/version",
+				"/healthz":                    "/api/v1/healthz",
+				"/id":                         "/api/v1/id",
+				"/livez":                      "/api/v1/livez",
+				"/requester/list":             "/api/v1/requester/list",
+				"/requester/nodes":            "/api/v1/requester/nodes",
+				"/requester/states":           "/api/v1/requester/states",
+				"/requester/results":          "/api/v1/requester/results",
+				"/requester/events":           "/api/v1/requester/events",
+				"/requester/submit":           "/api/v1/requester/submit",
+				"/requester/cancel":           "/api/v1/requester/cancel",
+				"/requester/debug":            "/api/v1/requester/debug",
+				"/requester/logs":             "/api/v1/requester/logs",
+				"/requester/websocket/events": "/api/v1/requester/websocket/events",
+			},
+			Debug: true,
+		},
 		Network: types.NetworkConfig{
 			Type: models.NetworkTypeNATS,
 			Port: 4222,
@@ -49,14 +88,11 @@ var Production = types.BacalhauConfig{
 			"/ip4/34.86.254.26/tcp/1235/p2p/QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe",
 			"/ip4/35.245.215.155/tcp/1235/p2p/QmPLPUUjaVE3wQNSSkxmYoaBPHVAWdjBjDYmMkWvtMZxAf",
 		},
-		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
-		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
-		DownloadURLRequestRetries: 3,
-		LoggingMode:               logger.LogModeDefault,
-		Type:                      []string{"requester"},
-		AllowListedLocalPaths:     []string{},
-		Labels:                    map[string]string{},
+		NodeInfoStoreTTL:      types.Duration(10 * time.Minute),
+		LoggingMode:           logger.LogModeDefault,
+		Type:                  []string{"requester"},
+		AllowListedLocalPaths: []string{},
+		Labels:                map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
 			Engines:    []string{},
 			Publishers: []string{},
@@ -136,12 +172,14 @@ var ProductionComputeConfig = types.ComputeConfig{
 		MaxJobExecutionTimeout:                types.Duration(model.NoJobTimeout),
 		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
 	},
-	JobSelection: model.JobSelectionPolicy{
-		Locality:            model.Anywhere,
-		RejectStatelessJobs: false,
-		AcceptNetworkedJobs: false,
-		ProbeHTTP:           "",
-		ProbeExec:           "",
+	JobSelection: types.JobSelectionPolicyConfig{
+		Policy: model.JobSelectionPolicy{
+			Locality:            model.Anywhere,
+			RejectStatelessJobs: false,
+			AcceptNetworkedJobs: false,
+			ProbeHTTP:           "",
+			ProbeExec:           "",
+		},
 	},
 	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
@@ -180,9 +218,9 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
-	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),
-	NodeRankRandomnessRange:            5,
-	OverAskForBidsFactor:               3,
+	Housekeeping:            types.HousekeepingConfig{HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second)},
+	NodeRankRandomnessRange: 5,
+	OverAskForBidsFactor:    3,
 	FailureInjectionConfig: model.FailureInjectionRequesterConfig{
 		IsBadActor: false,
 	},
@@ -211,4 +249,5 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
+	NodeMembership: types.NodeMembershipConfig{AutoApproveNodes: true},
 }

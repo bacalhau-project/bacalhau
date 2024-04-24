@@ -6,7 +6,6 @@ import (
 
 	"github.com/ipfs/kubo/config"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -104,7 +103,8 @@ func withGatewayListenAddresses(addrs ...string) config.Transformer {
 
 func withSwarmListenAddresses(addrs ...string) config.Transformer {
 	// TODO(forrest): deprecate this someday.
-	preferredAddr := bac_config.PreferredAddress()
+	// preferredAddr := bac_config.PreferredAddress()
+	preferredAddr := ""
 	if preferredAddr != "" {
 		return func(c *config.Config) error {
 			c.Addresses.Swarm = []string{fmt.Sprintf("/ip4/%s/tcp/0", preferredAddr)}

@@ -21,5 +21,6 @@ func ExecuteJob(ctx context.Context,
 		return nil, err
 	}
 
-	return GetAPIClient(ctx).Submit(ctx, j)
+	// TODO(forrest) [fixme]
+	return GetAPIClient(nil).Submit(ctx, j)
 }

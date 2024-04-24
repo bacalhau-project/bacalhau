@@ -17,12 +17,12 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
@@ -44,7 +44,9 @@ const (
 
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
-	ID string
+	ID                string
+	dockerCreds       types.DockerCredentialsConfig
+	dockerCacheConfig types.DockerCacheConfig
 
 	// handlers is a map of executionID to its handler.
 	handlers generic.SyncMap[string, *executionHandler]
@@ -56,6 +58,8 @@ type Executor struct {
 
 func NewExecutor(
 	id string,
+	credsCfg types.DockerCredentialsConfig,
+	cacheCfg types.DockerCacheConfig,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -63,10 +67,12 @@ func NewExecutor(
 	}
 
 	de := &Executor{
-		ID:          id,
-		client:      dockerClient,
-		activeFlags: make(map[string]chan struct{}),
-		complete:    make(map[string]chan struct{}),
+		ID:                id,
+		dockerCreds:       credsCfg,
+		dockerCacheConfig: cacheCfg,
+		client:            dockerClient,
+		activeFlags:       make(map[string]chan struct{}),
+		complete:          make(map[string]chan struct{}),
 	}
 
 	return de, nil
@@ -76,9 +82,13 @@ func (e *Executor) Shutdown(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := pkgUtil.NewDetachedContext(ctx)
-	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
-		return nil
-	}
+	// TODO(forrest) [refactor]: ShouldKeepStack corresponds to random env var called KEEP_STACK
+	// leave this commented out and remove after review
+	/*
+		if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
+			return nil
+		}
+	*/
 
 	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
@@ -96,7 +106,7 @@ func (e *Executor) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	return semantic.NewImagePlatformBidStrategy(e.client).ShouldBid(ctx, request)
+	return semantic.NewImagePlatformBidStrategy(e.client, e.dockerCacheConfig, e.dockerCreds).ShouldBid(ctx, request)
 }
 
 func (e *Executor) ShouldBidBasedOnUsage(
@@ -161,7 +171,6 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		containerID: containerID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
-		keepStack:   config.ShouldKeepStack(),
 		waitCh:      make(chan bool),
 		activeCh:    make(chan bool),
 		running:     atomic.NewBool(false),
@@ -357,9 +366,8 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
-			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, dockerCreds, pullErr)
+		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, e.dockerCreds); pullErr != nil {
+			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, e.dockerCreds, pullErr)
 		}
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

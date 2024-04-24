@@ -55,7 +55,7 @@ func SetupBacalhauRepo(repoDir string, c *config.Config) (*repo.FsRepo, error) {
 	return fsRepo, nil
 }
 
-func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
+func SetupBacalhauRepoForTesting(t testing.TB, c *config.Config) *repo.FsRepo {
 	viper.Reset()
 
 	tmpDir, err := os.MkdirTemp("", "")
@@ -64,12 +64,12 @@ func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
 	}
 
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
-	config.SetValue("repo", path)
+	// config.SetValue("repo", path)
 
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)
-	fsRepo, err := SetupBacalhauRepo(path)
+	fsRepo, err := SetupBacalhauRepo(path, c)
 	if err != nil {
 		t.Fatal(err)
 	}

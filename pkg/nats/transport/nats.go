@@ -112,7 +112,7 @@ func (c *NATSTransportConfig) Validate() error {
 }
 
 type NATSTransport struct {
-	Config            *NATSTransportConfig
+	Config            NATSTransportConfig
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
 	natsClient        *nats_helper.ClientManager
@@ -124,7 +124,7 @@ type NATSTransport struct {
 }
 
 //nolint:funlen
-func NewNATSTransport(config *NATSTransportConfig) (*NATSTransport, error) {
+func NewNATSTransport(config NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
@@ -226,7 +226,7 @@ func (t *NATSTransport) Client() *nats_helper.ClientManager {
 	return t.natsClient
 }
 
-func CreateClient(config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
+func CreateClient(config NATSTransportConfig) (*nats_helper.ClientManager, error) {
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	clientOptions := []nats.Option{

@@ -14,7 +14,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	libp2p_host "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -205,24 +204,28 @@ func (t *Libp2pTransport) Close(ctx context.Context) error {
 }
 
 func newLibp2pPubSub(ctx context.Context, host host.Host) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
-	if err != nil {
-		return nil, err
-	}
+	panic("deprecate me")
+	/*
+		tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
+		if err != nil {
+			return nil, err
+		}
 
-	pgParams := libp2p_pubsub.NewPeerGaterParams(
-		0.33, //nolint:gomnd
-		libp2p_pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
-		libp2p_pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
-	)
+		pgParams := libp2p_pubsub.NewPeerGaterParams(
+			0.33, //nolint:gomnd
+			libp2p_pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
+			libp2p_pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
+		)
 
-	return libp2p_pubsub.NewGossipSub(
-		ctx,
-		host,
-		libp2p_pubsub.WithPeerExchange(true),
-		libp2p_pubsub.WithPeerGater(pgParams),
-		libp2p_pubsub.WithEventTracer(tracer),
-	)
+		return libp2p_pubsub.NewGossipSub(
+			ctx,
+			host,
+			libp2p_pubsub.WithPeerExchange(true),
+			libp2p_pubsub.WithPeerGater(pgParams),
+			libp2p_pubsub.WithEventTracer(tracer),
+		)
+
+	*/
 }
 
 // compile-time interface check

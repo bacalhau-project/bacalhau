@@ -69,7 +69,8 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2(cmd).Jobs().Get(ctx, &apimodels.GetJobRequest{
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
 		Include: "executions,history",
 	})

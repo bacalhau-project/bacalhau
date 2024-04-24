@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 )
 
@@ -19,24 +19,31 @@ const oneDayInSeconds = int64(86400)
 
 var _ bidstrategy.SemanticBidStrategy = (*ImagePlatformBidStrategy)(nil)
 
+// TODO(forrest): [fixme] really... a fucking global with a lock? Gross! Encapsulate this.
+// the TODO here is to create a single ImagePlatformBidStrategy instance and use it in the docker executor
 var ManifestCache cache.Cache[docker.ImageManifest]
 var mu sync.Mutex
 
-func NewImagePlatformBidStrategy(client *docker.Client) *ImagePlatformBidStrategy {
+func NewImagePlatformBidStrategy(
+	client *docker.Client,
+	cacheConfig types.DockerCacheConfig,
+	credsConfig types.DockerCredentialsConfig,
+) *ImagePlatformBidStrategy {
 	mu.Lock()
 	// We will create the local reference to a manifest cache on demand,
 	// ensuring that we lock access to the cache here to avoid race
 	// conditions
 	if ManifestCache == nil {
-		ManifestCache = docker.NewManifestCache()
+		ManifestCache = docker.NewManifestCache(cacheConfig)
 	}
 	mu.Unlock()
 
-	return &ImagePlatformBidStrategy{client: client}
+	return &ImagePlatformBidStrategy{client: client, dockerCreds: credsConfig}
 }
 
 type ImagePlatformBidStrategy struct {
-	client *docker.Client
+	client      *docker.Client
+	dockerCreds types.DockerCredentialsConfig
 }
 
 // ShouldBid implements semantic.SemanticBidStrategy
@@ -62,9 +69,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	if !found {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
-		creds := config.GetDockerCredentials()
-
-		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image, creds)
+		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image, s.dockerCreds)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, err
 		}

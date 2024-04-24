@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -98,7 +99,8 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		}
 		inputJobID = string(byteResult)
 	}
-	j, foundJob, err := util.GetAPIClient(ctx).Get(ctx, inputJobID)
+	// TODO(forrest) [fixme]
+	j, foundJob, err := util.GetAPIClient(nil).Get(ctx, inputJobID)
 
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
@@ -114,7 +116,8 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, legacymodels.EventFilterOptions{})
+		// TODO(forrest) [fixme]
+		jobEvents, err := util.GetAPIClient(nil).GetEvents(ctx, j.Job.Metadata.ID, legacymodels.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}

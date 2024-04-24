@@ -1,6 +1,8 @@
 package id
 
 import (
+	"fmt"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
@@ -8,10 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type IDInfo struct {
@@ -62,25 +60,29 @@ var idColumns = []output.TableColumn[IDInfo]{
 }
 
 func id(cmd *cobra.Command, outputOpts output.OutputOptions) error {
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return err
-	}
-	libp2pCfg, err := config.GetLibp2pConfig()
-	if err != nil {
-		return err
-	}
+	return fmt.Errorf("deprecated")
+	/*
+		privKey, err := config.GetLibp2pPrivKey()
+		if err != nil {
+			return err
+		}
+		libp2pCfg, err := config.GetLibp2pConfig()
+		if err != nil {
+			return err
+		}
 
-	libp2pHost, err := bac_libp2p.NewHost(libp2pCfg.SwarmPort, privKey)
-	if err != nil {
-		return err
-	}
-	defer closer.CloseWithLogOnError("libp2pHost", libp2pHost)
+		libp2pHost, err := bac_libp2p.NewHost(libp2pCfg.SwarmPort, privKey)
+		if err != nil {
+			return err
+		}
+		defer closer.CloseWithLogOnError("libp2pHost", libp2pHost)
 
-	info := IDInfo{
-		ID:       libp2pHost.ID().String(),
-		ClientID: system.GetClientID(),
-	}
+		info := IDInfo{
+			ID:       libp2pHost.ID().String(),
+			ClientID: system.GetClientID(),
+		}
 
-	return output.OutputOne(cmd, idColumns, outputOpts, info)
+		return output.OutputOne(cmd, idColumns, outputOpts, info)
+
+	*/
 }

@@ -2,24 +2,16 @@ package util
 
 import (
 	"context"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -34,49 +26,53 @@ type StandardExecutorOptions struct {
 }
 
 func NewStandardStorageProvider(options StandardStorageProviderOptions) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
-	if err != nil {
-		return nil, err
-	}
+	panic("deprecate me")
+	/*
+		ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
+		if err != nil {
+			return nil, err
+		}
 
-	urlDownloadStorage := urldownload.NewStorage()
-	if err != nil {
-		return nil, err
-	}
+		urlDownloadStorage := urldownload.NewStorage()
+		if err != nil {
+			return nil, err
+		}
 
-	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
-	if err != nil {
-		return nil, err
-	}
+		repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
+		if err != nil {
+			return nil, err
+		}
 
-	inlineStorage := inline.NewStorage()
+		inlineStorage := inline.NewStorage()
 
-	s3Storage, err := ConfigureS3StorageProvider()
-	if err != nil {
-		return nil, err
-	}
+		s3Storage, err := ConfigureS3StorageProvider()
+		if err != nil {
+			return nil, err
+		}
 
-	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
-		AllowedPaths: localdirectory.ParseAllowPaths(options.AllowListedLocalPaths),
-	})
-	if err != nil {
-		return nil, err
-	}
+		localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
+			AllowedPaths: localdirectory.ParseAllowPaths(options.AllowListedLocalPaths),
+		})
+		if err != nil {
+			return nil, err
+		}
 
-	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
+		var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	return provider.NewMappedProvider(map[string]storage.Storage{
-		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
-		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
-		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
-		models.StorageSourceS3:             tracing.Wrap(s3Storage),
-		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
-	}), nil
+		return provider.NewMappedProvider(map[string]storage.Storage{
+			models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+			models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
+			models.StorageSourceInline:         tracing.Wrap(inlineStorage),
+			models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
+			models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
+			models.StorageSourceS3:             tracing.Wrap(s3Storage),
+			models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
+		}), nil
+
+	*/
 }
 
-func ConfigureS3StorageProvider() (*s3.StorageProvider, error) {
+func ConfigureS3StorageProvider(volumeSizeRequestTimeout time.Duration) (*s3.StorageProvider, error) {
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
 		return nil, err
@@ -85,7 +81,8 @@ func ConfigureS3StorageProvider() (*s3.StorageProvider, error) {
 		AWSConfig: cfg,
 	})
 	s3Storage := s3.NewStorage(s3.StorageProviderParams{
-		ClientProvider: clientProvider,
+		ClientProvider:           clientProvider,
+		VolumeSizeRequestTimeout: volumeSizeRequestTimeout,
 	})
 	return s3Storage, nil
 }
@@ -102,20 +99,24 @@ func NewNoopStorageProvider(
 func NewStandardExecutorProvider(
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(executorOptions.DockerID)
-	if err != nil {
-		return nil, err
-	}
+	panic("depreacte me")
+	/*
+		dockerExecutor, err := docker.NewExecutor(executorOptions.DockerID)
+		if err != nil {
+			return nil, err
+		}
 
-	wasmExecutor, err := wasm.NewExecutor()
-	if err != nil {
-		return nil, err
-	}
+		wasmExecutor, err := wasm.NewExecutor()
+		if err != nil {
+			return nil, err
+		}
 
-	return provider.NewMappedProvider(map[string]executor.Executor{
-		models.EngineDocker: dockerExecutor,
-		models.EngineWasm:   wasmExecutor,
-	}), nil
+		return provider.NewMappedProvider(map[string]executor.Executor{
+			models.EngineDocker: dockerExecutor,
+			models.EngineWasm:   wasmExecutor,
+		}), nil
+
+	*/
 }
 
 // return noop executors for all engines

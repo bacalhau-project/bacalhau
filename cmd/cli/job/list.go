@@ -124,7 +124,8 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("could not parse labels: %w", err)
 		}
 	}
-	response, err := util.GetAPIClientV2(cmd).Jobs().List(ctx, &apimodels.ListJobsRequest{
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().List(ctx, &apimodels.ListJobsRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

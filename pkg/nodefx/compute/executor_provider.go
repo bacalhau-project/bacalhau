@@ -11,8 +11,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func ExecutorProviders(nodeID types.NodeID, cfg types.ExecutorProvidersConfig) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(fmt.Sprintf("bacalhau-%s", nodeID))
+func ExecutorProviders(
+	nodeID types.NodeID,
+	exeCfg types.ExecutorProvidersConfig,
+	dockerCredsCfg types.DockerCredentialsConfig,
+	dockerCacheCfg types.DockerCacheConfig,
+) (executor.ExecutorProvider, error) {
+	dockerExecutor, err := docker.NewExecutor(fmt.Sprintf("bacalhau-%s", nodeID), dockerCredsCfg, dockerCacheCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -27,5 +32,5 @@ func ExecutorProviders(nodeID types.NodeID, cfg types.ExecutorProvidersConfig) (
 		models.EngineDocker: dockerExecutor,
 		models.EngineWasm:   wasmExecutor,
 	})
-	return provider.NewConfiguredProvider[executor.Executor](ep, cfg.Disabled), nil
+	return provider.NewConfiguredProvider[executor.Executor](ep, exeCfg.Disabled), nil
 }

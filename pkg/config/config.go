@@ -60,13 +60,14 @@ func New(cfg types.BacalhauConfig) *Config {
 
 func (c *Config) Init(path string) (types.BacalhauConfig, error) {
 	// initialize the configuration with default values.
-	return c.initConfig(path) // WithDefaultConfig(getDefaultConfig(path)),
+	return c.initConfig(path,
+		WithDefaultConfig(getDefaultConfig(path)))
 
 }
 
 func (c *Config) Load(path string) (types.BacalhauConfig, error) {
 	return c.initConfig(path,
-		// WithDefaultConfig(getDefaultConfig(path)),
+		WithDefaultConfig(getDefaultConfig(path)),
 		WithFileHandler(ReadConfigHandler),
 	)
 }

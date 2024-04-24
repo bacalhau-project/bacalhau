@@ -38,7 +38,8 @@ func NewNodeCmd() *cobra.Command {
 // Run executes node command
 func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
-	response, err := util.GetAPIClientV2(cmd).Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	if err != nil {
 		return fmt.Errorf("could not get server node: %w", err)
 	}

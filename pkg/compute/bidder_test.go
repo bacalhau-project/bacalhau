@@ -40,7 +40,7 @@ func TestBidderSuite(t *testing.T) {
 
 func (s *BidderSuite) SetupTest() {
 	ctx := context.Background()
-	execStore, err := boltdb.NewStore(ctx,
+	execStore, err := boltdb.NewStore(
 		filepath.Join(s.T().TempDir(), "bidder-test.db"))
 	s.Require().NoError(err)
 	s.T().Cleanup(func() {

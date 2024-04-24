@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -15,6 +13,9 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
+
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
@@ -164,7 +165,8 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	// TODO(forrest) [fixme]
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(nil))
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {

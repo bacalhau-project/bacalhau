@@ -147,7 +147,8 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Submit the job
-	client := util.GetAPIClientV2(cmd)
+	// TODO(forrest) [fixme]
+	client := util.GetAPIClientV2(cmd, nil, nil)
 	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
 	})

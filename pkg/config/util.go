@@ -2,15 +2,17 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 // TODO(forrest) [refactor]: this behavior belongs in the repo
-/*
 func getDefaultConfig(path string) types.BacalhauConfig {
 	// derive the default config for the specified environment.
 	defaultConfig := ForEnvironment()
@@ -34,7 +36,6 @@ func getDefaultConfig(path string) types.BacalhauConfig {
 
 	return defaultConfig
 }
-*/
 
 // unmarshalCompositeKey takes a key and an output structure to unmarshal into. It gets the
 // composite value associated with the given key and decodes it into the provided output structure.

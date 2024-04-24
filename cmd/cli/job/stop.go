@@ -109,7 +109,8 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := util.GetAPIClientV2(cmd)
+	// TODO(forrest) [fixme]
+	apiClient := util.GetAPIClientV2(cmd, nil, nil)
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.

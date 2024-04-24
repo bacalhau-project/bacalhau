@@ -124,6 +124,8 @@ type ConfigResult struct {
 	Worker           types.WorkerConfig
 	NodeRanker       types.NodeRankerConfig
 	Housekeeping     types.HousekeepingConfig
+	NodeMembership   types.NodeMembershipConfig
+	ControlPlan      types.RequesterControlPlaneConfig
 	// JobSelectionPolicy model.JobSelectionPolicy
 	// FailureInjectionConfig model.FailureInjectionRequesterConfig
 	// TagCache types.DockerCacheConfig
@@ -150,6 +152,8 @@ func LoadConfig(c *config.Config) (ConfigResult, error) {
 		Worker:           cfg.Worker,
 		NodeRanker:       cfg.NodeRanker,
 		Housekeeping:     cfg.Housekeeping,
+		NodeMembership:   cfg.NodeMembership,
+		ControlPlan:      cfg.ControlPlaneSettings,
 	}, nil
 }
 

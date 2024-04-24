@@ -130,6 +130,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
 			case types.StorageType:
 				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
+
 			default:
 				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
 			}

@@ -7,12 +7,14 @@ import (
 	"encoding"
 	"encoding/json"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 //go:embed *.rego
@@ -108,7 +110,7 @@ func (authenticator challengeAuthenticator) Requirement() authn.Requirement {
 
 	params := json.RawMessage(lo.Must(json.Marshal(req)))
 	return authn.Requirement{
-		Type:   authn.MethodTypeChallenge,
+		Type:   types.AuthnMethodTypeChallenge,
 		Params: &params,
 	}
 }

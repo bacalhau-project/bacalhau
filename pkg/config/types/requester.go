@@ -27,8 +27,9 @@ type RequesterConfig struct {
 
 	ControlPlaneSettings RequesterControlPlaneConfig `yaml:"ControlPlaneSettings"`
 
-	Translation TranslationConfig `yaml:"Translation"`
-	NodeRanker  NodeRankerConfig  `yaml:"NodeRanker"`
+	Translation    TranslationConfig    `yaml:"Translation"`
+	NodeRanker     NodeRankerConfig     `yaml:"NodeRanker"`
+	NodeMembership NodeMembershipConfig `yaml:"NodeMembership"`
 }
 
 type EvaluationBrokerConfig struct {

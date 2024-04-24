@@ -37,7 +37,8 @@ func NewAliveCmd() *cobra.Command {
 // Run executes alive command
 func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
-	response, err := util.GetAPIClientV2(cmd).Agent().Alive(ctx)
+	// TODO(forrest) [fixme]
+	response, err := util.GetAPIClientV2(cmd, nil, nil).Agent().Alive(ctx)
 	if err != nil {
 		return fmt.Errorf("could not get server alive: %w", err)
 	}

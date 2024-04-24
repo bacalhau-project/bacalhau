@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/BTBurke/k8sresource"
@@ -111,7 +112,8 @@ func newAutoResourceCmd() *cobra.Command {
 }
 
 func autoConfig(ctx context.Context, settings *autoSettings) error {
-	pp := system.NewPhysicalCapacityProvider()
+	// TODO(forrest) [fixme]
+	pp := system.NewPhysicalCapacityProvider(os.TempDir())
 	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)

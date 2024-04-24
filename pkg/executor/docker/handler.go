@@ -34,7 +34,6 @@ type executionHandler struct {
 	containerID string
 	resultsDir  string
 	limits      executor.OutputLimits
-	keepStack   bool
 
 	//
 	// synchronization
@@ -184,14 +183,18 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 		return fmt.Errorf("failed to kill container (%s): %w", h.containerID, err)
 	}
 
-	// TODO document why this configuration value exists.
-	if !h.keepStack {
-		h.logger.Info().Msg("removing container")
-		if err := h.client.RemoveContainer(ctx, h.containerID); err != nil {
-			return err
+	// TODO(forrest) [refactor]: why do we do this, should be removed as this is just a random env var
+	// will remove when review is okayed.
+	/*
+		if !h.keepStack {
+			h.logger.Info().Msg("removing container")
+			if err := h.client.RemoveContainer(ctx, h.containerID); err != nil {
+				return err
+			}
+			return h.client.RemoveObjectsWithLabel(ctx, labelExecutionID, labelExecutionValue(h.ID, h.executionID))
 		}
-		return h.client.RemoveObjectsWithLabel(ctx, labelExecutionID, labelExecutionValue(h.ID, h.executionID))
-	}
+
+	*/
 	return nil
 }
 

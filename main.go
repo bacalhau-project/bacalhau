@@ -6,12 +6,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/cmd/cli"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
+	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
@@ -38,34 +38,34 @@ import (
 // @externalDocs.description 	Bacalhau Documentation
 // @externalDocs.url			https://docs.bacalhau.org
 
-////	@securityDefinitions.basic	BasicAuth
+// //	@securityDefinitions.basic	BasicAuth
 
-////	@securityDefinitions.apikey	ApiKeyAuth
-////	@in							header
-////	@name						Authorization
-////	@description				Description for what is this security definition being used
+// //	@securityDefinitions.apikey	ApiKeyAuth
+// //	@in							header
+// //	@name						Authorization
+// //	@description				Description for what is this security definition being used
 
 // -- Add authentication to swagger here
-//// 	@securitydefinitions.oauth2.application	OAuth2Application
-//// 	@tokenUrl								https://example.com/oauth/token
-//// 	@scope.write							Grants write access
-//// 	@scope.admin							Grants read and write access to administrative information
+// // 	@securitydefinitions.oauth2.application	OAuth2Application
+// // 	@tokenUrl								https://example.com/oauth/token
+// // 	@scope.write							Grants write access
+// // 	@scope.admin							Grants read and write access to administrative information
 //
-//// 	@securitydefinitions.oauth2.implicit	OAuth2Implicit
-//// 	@authorizationUrl						https://example.com/oauth/authorize
-//// 	@scope.write							Grants write access
-//// 	@scope.admin							Grants read and write access to administrative information
+// // 	@securitydefinitions.oauth2.implicit	OAuth2Implicit
+// // 	@authorizationUrl						https://example.com/oauth/authorize
+// // 	@scope.write							Grants write access
+// // 	@scope.admin							Grants read and write access to administrative information
 //
-//// 	@securitydefinitions.oauth2.password	OAuth2Password
-//// 	@tokenUrl								https://example.com/oauth/token
-//// 	@scope.read								Grants read access
-//// 	@scope.write							Grants write access
-//// 	@scope.admin							Grants read and write access to administrative information
+// // 	@securitydefinitions.oauth2.password	OAuth2Password
+// // 	@tokenUrl								https://example.com/oauth/token
+// // 	@scope.read								Grants read access
+// // 	@scope.write							Grants write access
+// // 	@scope.admin							Grants read and write access to administrative information
 //
-//// 	@securitydefinitions.oauth2.accessCode	OAuth2AccessCode
-//// 	@tokenUrl								https://example.com/oauth/token
-//// 	@authorizationUrl						https://example.com/oauth/authorize
-//// 	@scope.admin							Grants read and write access to administrative information
+// // 	@securitydefinitions.oauth2.accessCode	OAuth2AccessCode
+// // 	@tokenUrl								https://example.com/oauth/token
+// // 	@authorizationUrl						https://example.com/oauth/authorize
+// // 	@scope.admin							Grants read and write access to administrative information
 
 func main() {
 	localCtx, localCancel := context.WithCancel(context.Background())
@@ -77,7 +77,8 @@ func main() {
 
 	_ = godotenv.Load()
 
-	devstackEnvFile := config.DevstackEnvFile()
+	// TODO(forrest) [fixme]
+	devstackEnvFile := ""
 	if _, err := os.Stat(devstackEnvFile); err == nil {
 		log.Debug().Msgf("Loading environment from %s", devstackEnvFile)
 		_ = godotenv.Overload(devstackEnvFile)

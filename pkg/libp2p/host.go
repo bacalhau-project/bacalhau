@@ -15,10 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 const continuouslyConnectPeersLoopDelay = 10 * time.Second
@@ -26,45 +24,49 @@ const continuouslyConnectPeersLoopDelay = 10 * time.Second
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
 func NewHost(port int, privKey crypto.PrivKey, opts ...libp2p.Option) (host.Host, error) {
-	addrs := []string{
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
-		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
-		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", port),
-		fmt.Sprintf("/ip6/::/tcp/%d", port),
-		fmt.Sprintf("/ip6/::/udp/%d/quic", port),
-		fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port),
-	}
+	return nil, fmt.Errorf("deprecated")
+	/*
+		addrs := []string{
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
+			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
+			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", port),
+			fmt.Sprintf("/ip6/::/tcp/%d", port),
+			fmt.Sprintf("/ip6/::/udp/%d/quic", port),
+			fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port),
+		}
 
-	preferredAddress := config.PreferredAddress()
-	if preferredAddress != "" {
-		newAddress := fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)
-		addrs = append(addrs, newAddress)
-	}
+		preferredAddress := config.PreferredAddress()
+		if preferredAddress != "" {
+			newAddress := fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)
+			addrs = append(addrs, newAddress)
+		}
 
-	opts = append(opts, libp2p.ListenAddrStrings(addrs...), libp2p.Identity(privKey))
-	h, err := libp2p.New(opts...)
-	if err != nil {
-		return nil, err
-	}
+		opts = append(opts, libp2p.ListenAddrStrings(addrs...), libp2p.Identity(privKey))
+		h, err := libp2p.New(opts...)
+		if err != nil {
+			return nil, err
+		}
 
-	p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + h.ID().String())
-	if err != nil {
-		return nil, err
-	}
-	addresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
-		return m
-	})
-	p2pAddresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
-		return m.Encapsulate(p2pAddr)
-	})
+		p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + h.ID().String())
+		if err != nil {
+			return nil, err
+		}
+		addresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
+			return m
+		})
+		p2pAddresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
+			return m.Encapsulate(p2pAddr)
+		})
 
-	log.Debug().
-		Stringers("listening-addresses", addresses).
-		Stringers("p2p-addresses", p2pAddresses).
-		Stringer("host-id", h.ID()).
-		Msgf("started libp2p host")
+		log.Debug().
+			Stringers("listening-addresses", addresses).
+			Stringers("p2p-addresses", p2pAddresses).
+			Stringer("host-id", h.ID()).
+			Msgf("started libp2p host")
 
-	return h, err
+		return h, err
+
+	*/
 }
 
 func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, h host.Host, peers []multiaddr.Multiaddr) error {

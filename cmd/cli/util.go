@@ -10,7 +10,7 @@ import (
 
 const defaultBacalhauDir = ".bacalhau"
 
-// defaultRepo determines the appropriate default directory for storing repository data.
+// DefaultRepo determines the appropriate default directory for storing repository data.
 // If a user provides the `--repo` flag the value returned from this function will be overridden.
 // Priority order:
 // 1. If the environment variable BACALHAU_DIR is set, use it.
@@ -18,7 +18,7 @@ const defaultBacalhauDir = ".bacalhau"
 // 2. User-specific configuration directory.
 // 4. The user's home directory.
 // The function returns the chosen directory path or an error if no suitable directory can be determined.
-func defaultRepo() (string, error) {
+func DefaultRepo() (string, error) {
 	if _, set := os.LookupEnv("BACALHAU_DIR"); set {
 		repoDir := os.Getenv("BACALHAU_DIR")
 		if repoDir != "" {

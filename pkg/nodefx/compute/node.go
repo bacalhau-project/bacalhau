@@ -104,6 +104,7 @@ type ConfigResult struct {
 	Queue              types.QueueConfig
 	LoggingSensor      types.LoggingConfig
 	ManifestCache      types.DockerCacheConfig
+	DockerCredentials  types.DockerCredentialsConfig
 	LogStreamConfig    types.LogStreamConfig
 	LocalPublisher     types.LocalPublisherConfig
 	Labels             types.LabelsConfig
@@ -113,9 +114,11 @@ type ConfigResult struct {
 	StorageProviders   types.StorageProvidersConfig
 	ExecutorProviders  types.ExecutorProvidersConfig
 	PublisherProviders types.PublisherProvidersConfig
+	ControlPlane       types.ComputeControlPlaneConfig
 }
 
-func DecorateCapacityConfig(cfg *types.CapacityConfig) (*types.CapacityConfig, error) {
+// TODO provide the CapacityProvider as a param to this and remove the dep on the config
+func DecorateCapacityConfig(cfg *types.CapacityConfig, c *config.Config) (*types.CapacityConfig, error) {
 	// decorate/modify any config with default values if none were provided.
 	// TODO write decorators for the rest of the config in need of defaults
 	if cfg.DefaultJobResourceLimits.CPU == "" {
@@ -124,7 +127,11 @@ func DecorateCapacityConfig(cfg *types.CapacityConfig) (*types.CapacityConfig, e
 	if cfg.DefaultJobResourceLimits.Memory == "" {
 		cfg.DefaultJobResourceLimits.Memory = "100Mi"
 	}
-	physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider()
+	strgPath, found := c.GetString(types.NodeComputeStoragePath)
+	if !found {
+		return nil, fmt.Errorf("%s not configured", types.NodeComputeStoragePath)
+	}
+	physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider(strgPath)
 	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.TODO())
 	if err != nil {
 		return nil, err
@@ -171,6 +178,8 @@ func LoadConfig(c *config.Config) (ConfigResult, error) {
 		StorageProviders:   cfg.StorageProviders,
 		ExecutorProviders:  cfg.ExecutorProviders,
 		PublisherProviders: cfg.PublisherProviders,
+		DockerCredentials:  cfg.DockerCredentials,
+		ControlPlane:       cfg.ControlPlaneSettings,
 	}, nil
 }
 

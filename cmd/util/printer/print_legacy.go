@@ -9,14 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -242,7 +243,8 @@ To cancel the job, run:
 	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, legacymodels.EventFilterOptions{
+		// TODO(forrest) [fixme]
+		jobEvents, err := util.GetAPIClient(nil).GetEvents(ctx, j.Metadata.ID, legacymodels.EventFilterOptions{
 			Since:                 lastSeenTimestamp,
 			ExcludeExecutionLevel: true,
 		})

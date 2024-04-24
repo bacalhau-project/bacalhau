@@ -38,7 +38,8 @@ func NewVersionCmd() *cobra.Command {
 // Run executes version command
 func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
-	serverVersionResponse, err := util.GetAPIClientV2(cmd).Agent().Version(ctx)
+	// TODO(forrest) [fixme]
+	serverVersionResponse, err := util.GetAPIClientV2(cmd, nil, nil).Agent().Version(ctx)
 	if err != nil {
 		return fmt.Errorf("could not get server version: %w", err)
 	}

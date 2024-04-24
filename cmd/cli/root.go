@@ -96,7 +96,7 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 	// ensure the `repo` key always gets a usable default value, warn if it's not.
-	defaultRepo, err := defaultRepo()
+	defaultRepo, err := DefaultRepo()
 	if err != nil {
 		RootCmd.Printf("WARNING: %s\n"+
 			"cannot determine default repo location: "+

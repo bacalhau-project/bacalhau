@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -22,12 +22,14 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	ipfsClient ipfs.Client
+	ipfsClient               ipfs.Client
+	volumeSizeRequestTimeout time.Duration
 }
 
-func NewStorage(cl ipfs.Client) (*StorageProvider, error) {
+func NewStorage(cl ipfs.Client, volumeSizeRequestTimeout time.Duration) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
-		ipfsClient: cl,
+		ipfsClient:               cl,
+		volumeSizeRequestTimeout: volumeSizeRequestTimeout,
 	}
 
 	log.Trace().Msgf("IPFS API Copy driver created with address: %s", cl.APIAddress())
@@ -52,7 +54,7 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 
 	// TODO(forrest) [correctness] this timeout should be passed in as a param or set on the context by the method caller.
 	// for further context on why this is the way it is see: https://github.com/bacalhau-project/bacalhau/pull/1432
-	timeoutDuration := config.GetVolumeSizeRequestTimeout()
+	timeoutDuration := s.volumeSizeRequestTimeout
 	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()
 

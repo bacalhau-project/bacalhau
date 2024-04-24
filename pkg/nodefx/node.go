@@ -80,6 +80,7 @@ func New(ctx context.Context, opts ...Option) (*BacalhauNode, func() error, erro
 		fx.Provide(NodeKind),
 
 		// TODO(forrest) [refactor]: need an option here to either do NATS or Libp2p then decorate the returned type as TransportLayer
+		// or we can simply deprecate libp2p now and avoid all this pain :)
 		nats_transport.Module,
 		routing.Module,
 		authnfx.Module,
@@ -94,6 +95,9 @@ func New(ctx context.Context, opts ...Option) (*BacalhauNode, func() error, erro
 				auth_endpoint.BindEndpoint(context.TODO(), router, provider)
 			}),
 		),
+
+		// apply the specified options: compute, requester, and or ipfs.
+		fx.Options(ctors...),
 
 		// "build" the bacalhau node instance
 		fx.Populate(bacalhauNode),

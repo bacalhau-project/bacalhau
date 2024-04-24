@@ -10,13 +10,19 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -40,6 +46,10 @@ type FsRepo struct {
 	path       string
 	Migrations *MigrationManager
 	config     *config.Config
+
+	exStoreOnce sync.Once
+	exStore     store.ExecutionStore
+	exStoreErr  error
 }
 
 func NewFS(params FsRepoParams) (*FsRepo, error) {
@@ -164,6 +174,108 @@ func (fsr *FsRepo) Open() error {
 	telemetry.SetupFromEnvs()
 
 	return nil
+}
+
+// WritePersistedConfigs will write certain values from the resolved config to the persisted config.
+// These include fields for configurations that must not change between version updates, such as the
+// execution store and job store paths, in case we change their default values in future updates.
+func (fsr *FsRepo) WritePersistedConfigs() error {
+	// a viper config instance that is only based on the config file.
+	name := fsr.config.Viper().Get(types.NodeName)
+	_ = name
+	resolvedCfg, err := fsr.config.Current()
+	if err != nil {
+		return err
+	}
+	configFilePath := filepath.Join(fsr.path, config.ConfigFileName)
+	viperWriter := viper.New()
+	viperWriter.SetTypeByDefaultValue(true)
+	viperWriter.SetConfigFile(configFilePath)
+
+	// read existing config if it exists.
+	if err := viperWriter.ReadInConfig(); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	var fileCfg types.BacalhauConfig
+	if err := viperWriter.Unmarshal(&fileCfg, config.DecoderHook); err != nil {
+		return err
+	}
+
+	// check if any of the values that we want to write are not set in the config file.
+	var doWrite bool
+	var logMessage strings.Builder
+	set := func(key string, value interface{}) {
+		viperWriter.Set(key, value)
+		logMessage.WriteString(fmt.Sprintf("\n%s:\t%v", key, value))
+		doWrite = true
+	}
+	emptyStoreConfig := types.JobStoreConfig{}
+	if fileCfg.Node.Compute.ExecutionStore == emptyStoreConfig {
+		set(types.NodeComputeExecutionStore, resolvedCfg.Node.Compute.ExecutionStore)
+	}
+	if fileCfg.Node.Requester.JobStore == emptyStoreConfig {
+		set(types.NodeRequesterJobStore, resolvedCfg.Node.Requester.JobStore)
+	}
+	if fileCfg.Node.Name == "" && resolvedCfg.Node.Name != "" {
+		set(types.NodeName, resolvedCfg.Node.Name)
+	}
+	if doWrite {
+		log.Info().Msgf("Writing to config file %s:%s", configFilePath, logMessage.String())
+		return viperWriter.WriteConfig()
+	}
+	return nil
+}
+
+func (fsr *FsRepo) ExecutionStore(cfg types.JobStoreConfig) (store.ExecutionStore, error) {
+
+	fsr.exStoreOnce.Do(func() {
+		// TODO(forrest) [refator] we should base this path on the repo, not the config.
+		// Extract the parent directory from the provided path.
+		parentDir := filepath.Dir(cfg.Path)
+
+		// Check if the parent directory exists.
+		parentInfo, err := os.Stat(parentDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Parent directory does not exist, so create it along with any necessary subdirectories.
+				if mkdirErr := os.MkdirAll(parentDir, util.OS_USER_RWX); mkdirErr != nil {
+					fsr.exStoreErr = fmt.Errorf("failed to create execution store directory: %s, error: %v", parentDir, mkdirErr)
+					return
+				}
+			} else {
+				// Some other error occurred when trying to stat the parent directory.
+				fsr.exStoreErr = fmt.Errorf("error checking execution store directory: %s, error: %v", parentDir, err)
+				return
+			}
+		} else if !parentInfo.IsDir() {
+			// The parent path exists but is not a directory (e.g., it's a file), return an error.
+			fsr.exStoreErr = fmt.Errorf("execution store path was a file, expected a directory: %s", parentDir)
+			return
+		}
+
+		var exStore store.ExecutionStore
+		// TODO(forrest) [refactor] the 'type' of the store should be determined by the repo.
+		// The FSRepo can return a store backed by a filesystem, the MemRepo can return
+		// a store held in memory (handy for testing)
+		switch cfg.Type {
+		case types.BoltDB:
+			exStore, err = boltdb.NewStore(cfg.Path)
+			if err != nil {
+				fsr.exStoreErr = err
+				return
+			}
+		default:
+			fsr.exStoreErr = fmt.Errorf("unknown JobStore type: %s", cfg.Type)
+			return
+		}
+
+		fsr.exStore = exStore
+	})
+
+	return fsr.exStore, fsr.exStoreErr
 }
 
 func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString string) (string, error) {

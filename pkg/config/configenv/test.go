@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -24,7 +23,7 @@ var Testing = types.BacalhauConfig{
 	Auth: types.AuthConfig{
 		Methods: map[string]types.AuthenticatorConfig{
 			"ClientKey": {
-				Type: authn.MethodTypeChallenge,
+				Type: types.AuthnMethodTypeChallenge,
 			},
 		},
 	},
@@ -46,14 +45,11 @@ var Testing = types.BacalhauConfig{
 		BootstrapAddresses: []string{
 			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 		},
-		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
-		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
-		DownloadURLRequestRetries: 3,
-		LoggingMode:               logger.LogModeDefault,
-		Type:                      []string{"requester"},
-		AllowListedLocalPaths:     []string{},
-		Labels:                    map[string]string{},
+		NodeInfoStoreTTL:      types.Duration(10 * time.Minute),
+		LoggingMode:           logger.LogModeDefault,
+		Type:                  []string{"requester"},
+		AllowListedLocalPaths: []string{},
+		Labels:                map[string]string{},
 		DisabledFeatures: types.FeatureConfig{
 			Engines:    []string{},
 			Publishers: []string{},
@@ -123,12 +119,14 @@ var TestingComputeConfig = types.ComputeConfig{
 		MaxJobExecutionTimeout:                types.Duration(model.NoJobTimeout),
 		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
 	},
-	JobSelection: model.JobSelectionPolicy{
-		Locality:            model.Anywhere,
-		RejectStatelessJobs: false,
-		AcceptNetworkedJobs: false,
-		ProbeHTTP:           "",
-		ProbeExec:           "",
+	JobSelection: types.JobSelectionPolicyConfig{
+		Policy: model.JobSelectionPolicy{
+			Locality:            model.Anywhere,
+			RejectStatelessJobs: false,
+			AcceptNetworkedJobs: false,
+			ProbeHTTP:           "",
+			ProbeExec:           "",
+		},
 	},
 	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
@@ -167,9 +165,9 @@ var TestingRequesterConfig = types.RequesterConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
-	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),
-	NodeRankRandomnessRange:            5,
-	OverAskForBidsFactor:               3,
+	Housekeeping:            types.HousekeepingConfig{HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second)},
+	NodeRankRandomnessRange: 5,
+	OverAskForBidsFactor:    3,
 	FailureInjectionConfig: model.FailureInjectionRequesterConfig{
 		IsBadActor: false,
 	},

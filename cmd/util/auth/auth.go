@@ -12,18 +12,22 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/choose"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
-type responder = func(request *json.RawMessage) (response []byte, err error)
+type Responder interface {
+	Respond(request *json.RawMessage) ([]byte, error)
+}
 
-func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HTTPCredential, error) {
-	supportedMethods := map[types.AuthnMethodType]responder{
-		types.AuthnMethodTypeChallenge: challenge.Respond,
-		types.AuthnMethodTypeAsk:       askResponder(cmd),
+func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth, r *repo.FsRepo) (*apimodels.HTTPCredential, error) {
+	supportedMethods := map[types.AuthnMethodType]Responder{
+		types.AuthnMethodTypeChallenge: &challenge.Responder{Repo: r},
+		types.AuthnMethodTypeAsk:       &ask.Responder{Cmd: cmd},
 	}
 
 	methods, err := auth.Methods(cmd.Context(), &apimodels.ListAuthnMethodsRequest{})
@@ -40,7 +44,7 @@ func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HT
 	}
 
 	if len(filteredMethods) == 0 {
-		serverTypes := lo.Map(maps.Values(methods.Methods), func(r authn.Requirement, _ int) authn.MethodType { return r.Type })
+		serverTypes := lo.Map(maps.Values(methods.Methods), func(r authn.Requirement, _ int) types.AuthnMethodType { return r.Type })
 		return nil, fmt.Errorf("no common authentication method: client supports %v, server supports %v", clientTypes, serverTypes)
 	}
 
@@ -56,7 +60,7 @@ func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HT
 
 		methodRequirement := methods.Methods[chosenMethodName]
 		methodResponder := supportedMethods[methodRequirement.Type]
-		response, err := methodResponder(methodRequirement.Params)
+		response, err := methodResponder.Respond(methodRequirement.Params)
 		if err != nil {
 			return nil, err
 		}

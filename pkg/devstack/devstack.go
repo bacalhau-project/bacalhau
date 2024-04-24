@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -283,7 +282,7 @@ func Setup(
 			AuthConfig: types.AuthConfig{
 				Methods: map[string]types.AuthenticatorConfig{
 					"ClientKey": {
-						Type: authn.MethodTypeChallenge,
+						Type: types.AuthnMethodTypeChallenge,
 					},
 				},
 			},
@@ -362,7 +361,7 @@ func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.No
 		return fmt.Errorf("failed to create job store: %w", err)
 	}
 
-	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
+	executionStore, err := boltdb.NewStore(filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create execution store: %w", err)
 	}
@@ -411,9 +410,12 @@ func createIPFSNode(ctx context.Context,
 
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
-	if !config.DevstackGetShouldPrintInfo() {
-		return "", nil
-	}
+	/*
+		if !config.DevstackGetShouldPrintInfo() {
+			return "", nil
+		}
+
+	*/
 
 	logString := ""
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)

@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/pkg/errors"
+
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
-	"github.com/pkg/errors"
 )
 
 type tokens map[string]string
@@ -51,10 +50,15 @@ func writeTokens(path string, t tokens) error {
 // there is no credential currently stored, ReadToken will return nil with no
 // error.
 func ReadToken(apiURL string) (*apimodels.HTTPCredential, error) {
-	path, err := config.Get[string](types.AuthTokensPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get token state path")
-	}
+	// TODO(forrest) [fixme]
+	/*
+		path, err := config.Get[string](types.AuthTokensPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get token state path")
+		}
+
+	*/
+	path := ""
 
 	t, err := readTokens(path)
 	if err != nil {
@@ -77,10 +81,14 @@ func ReadToken(apiURL string) (*apimodels.HTTPCredential, error) {
 // Callers may pass nil for the credential which will delete any existing stored
 // token.
 func WriteToken(apiURL string, cred *apimodels.HTTPCredential) error {
-	path, err := config.Get[string](types.AuthTokensPath)
-	if err != nil {
-		return err
-	}
+	// TODO(forrest) [fixme]
+	/*
+		path, err := config.Get[string](types.AuthTokensPath)
+		if err != nil {
+			return err
+		}
+	*/
+	path := ""
 
 	t, err := readTokens(path)
 	if err != nil {

@@ -17,6 +17,7 @@ type ComputeConfig struct {
 	LocalPublisher       LocalPublisherConfig      `yaml:"LocalPublisher"`
 	ControlPlaneSettings ComputeControlPlaneConfig `yaml:"ClusterTimeouts"`
 
+	DockerCredentials  DockerCredentialsConfig  `yaml:"DockerCredentials"`
 	Executor           ExecutorConfig           `yaml:"Executor"`
 	BufferedExecutor   BufferedExecutorConfig   `yaml:"BufferedExecutor"`
 	Labels             LabelsConfig             `yaml:"Labels"`
@@ -110,8 +111,11 @@ type LabelsConfig struct {
 }
 
 type StorageProvidersConfig struct {
-	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
-	Disabled              []string `yaml:"Disabled"`
+	AllowListedLocalPaths     []string `yaml:"AllowListedLocalPaths"`
+	Disabled                  []string `yaml:"Disabled"`
+	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
+	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
+	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
 }
 
 type ExecutorProvidersConfig struct {
@@ -121,4 +125,15 @@ type ExecutorProvidersConfig struct {
 type PublisherProvidersConfig struct {
 	Local    LocalPublisherConfig `yaml:"Local"`
 	Disabled []string             `yaml:"Disabled"`
+}
+
+type DockerCredentialsConfig struct {
+	Username string
+	Password string
+}
+
+// TODO(forrest) [correctness]: not sure I want to enforce this interface on the config this way, although it seems
+// convenient for now
+func (d *DockerCredentialsConfig) IsValid() bool {
+	return d.Username != "" && d.Password != ""
 }

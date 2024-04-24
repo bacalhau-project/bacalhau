@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -35,7 +36,8 @@ func Logs(cmd *cobra.Command, options LogOptions) error {
 		requestedJobID = string(byteResult)
 	}
 
-	apiClient := GetAPIClientV2(cmd)
+	// TODO(forrest) [fixme]
+	apiClient := GetAPIClientV2(cmd, nil, nil)
 	ch, err := apiClient.Jobs().Logs(cmd.Context(), &apimodels.GetLogsRequest{
 		JobID:       options.JobID,
 		ExecutionID: options.ExecutionID,
