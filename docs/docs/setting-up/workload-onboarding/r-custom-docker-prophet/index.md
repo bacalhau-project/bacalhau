@@ -127,7 +127,7 @@ The input parameters provided in this case are the names of input and output fil
 
 ## 2. Running R Prophet on Bacalhau
 
-To use Bacalhau, you need to package your code in an appropriate format. The developers have already pushed a container for you to use, but if you want to build your own, you can follow the steps below. You can view a [dedicated container example](../custom-containers/index.md) in the documentation.
+To use Bacalhau, you need to package your code in an appropriate format. The developers have already pushed a container for you to use, but if you want to build your own, you can follow the steps below. You can view a [dedicated container example](../Container/Custom-Container.md) in the documentation.
 
 ## 3. Containerize Script with Docker
 
