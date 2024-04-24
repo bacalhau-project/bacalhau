@@ -34,7 +34,7 @@ The following parameters are specified by the user.
 
 - **Name** `(string: <optional>)`: A logical name to refer to the job. Defaults to job ID.
 - **Namespace** `(string: "default")`: The namespace in which the job is running. `ClientID` is used as a namespace in the public demo network.
-- **Type** `(string: <required>)`: The type of the job, such as `batch`, `ops`, `daemon` or `service`. You can learn more about the supported jobs types in the [Job Types](/topic-guides/job-types) guide.
+- **Type** `(string: <required>)`: The type of the job, such as `batch`, `ops`, `daemon` or `service`. You can learn more about the supported jobs types in the [Job Types](../job-types.md) guide.
 - **Priority** `(int: 0)`: Determines the scheduling priority.
 - **Count** `(int: <required>)`: Number of replicas to be scheduled. This is only applicable for jobs of type `batch` and `service`.
 - **Meta** <code>(<a href="../job-specification/meta">Meta[]</a>: nil)</code>: Arbitrary metadata associated with the job.
