@@ -68,9 +68,15 @@ func (h *executionHandler) run(ctx context.Context) {
 			h.logger.Error().
 				Str("recover", fmt.Sprintf("%v", r)).
 				Msg("execution recovered from panic")
-			// TODO don't do this.
-			h.result = &models.RunCommandResult{}
+
+			// The recover was originally here for a bug we think is now fixed, but given
+			// the propensity for panics in this area, we're being extra-cautious and
+			// ensuring we can handle any future panics that arise.
+			h.result = executor.NewFailedResult(
+				fmt.Sprintf("WASM executor failed with an internal error: %v", r),
+			)
 		}
+
 		ActiveExecutions.Dec(ctx)
 	}()
 
@@ -167,7 +173,23 @@ func (h *executionHandler) run(ctx context.Context) {
 		return
 	}
 
-	// invoke the function entry point
+	// Calling instance.ExportedFunction with an invalid name returns an item that
+	// is not null. Or rather, the returned item is not null, but something internal
+	// when calling Call() _is_ null, causing a panic.
+	//
+	// To avoid this, we need to check the keys of the definitions map and
+	// see if the entry point is there and if not we will not attempt to look
+	// for it.
+	definitions := instance.ExportedFunctionDefinitions()
+	_, found := definitions[h.arguments.EntryPoint]
+
+	if !found {
+		h.result = executor.NewFailedResult(
+			fmt.Sprintf("unable to find the entrypoint '%s' in the WASM module", h.arguments.EntryPoint),
+		)
+		return
+	}
+
 	entryFunc := instance.ExportedFunction(h.arguments.EntryPoint)
 	h.logger.Info().Msg("running execution")
 

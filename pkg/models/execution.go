@@ -42,6 +42,13 @@ func (s ExecutionStateType) IsUndefined() bool {
 	return s == ExecutionStateUndefined
 }
 
+func (s ExecutionStateType) IsTermainl() bool {
+	return s == ExecutionStateBidRejected ||
+		s == ExecutionStateCompleted ||
+		s == ExecutionStateFailed ||
+		s == ExecutionStateCancelled
+}
+
 type ExecutionDesiredStateType int
 
 const (

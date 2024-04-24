@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,14 +17,24 @@ func NewLoggingPlanner() *LoggingPlanner {
 }
 
 func (s *LoggingPlanner) Process(ctx context.Context, plan *models.Plan) error {
+	dict := zerolog.Dict()
+	for key, value := range plan.Event.Details {
+		dict = dict.Str(key, value)
+	}
+
+	level := zerolog.TraceLevel
+	message := "Job updated"
 	switch plan.DesiredJobState {
 	case models.JobStateTypeCompleted:
-		log.Info().Msgf("Job %s completed successfully", plan.Job.ID)
+		level = zerolog.InfoLevel
+		message = "Job completed successfully"
 	case models.JobStateTypeFailed:
-		log.Error().Msgf("Job %s failed due to `%s`", plan.Job.ID, plan.Comment)
+		level = zerolog.WarnLevel
+		message = "Job failed"
 	default:
 	}
 
+	log.Ctx(ctx).WithLevel(level).Dict("Details", dict).Str("Event", plan.Event.Message).Str("JobID", plan.Job.ID).Msg(message)
 	return nil
 }
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussion
+    url: https://github.com/bacalhau-project/bacalhau/discussions
+    about: Ideal for ideas, feedback, or longer form questions.
+  - name: Chat
+    url: https://bacalhauproject.slack.com
+    about: Ideal for short questions, looking for advice, general conversation, and meeting other Bacalhau users!
