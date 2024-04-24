@@ -44,7 +44,7 @@ func New(ctx context.Context, opts ...Option) (*BacalhauNode, func() error, erro
 		// TODO(forrest) [refactor]: idea here is to use an "in memory repo" as a default, then allow it to be overridden
 		// an in memory repo would be useful for testing.
 		repo:    nil,
-		config:  config.New(config.ForEnvironment()),
+		config:  config.New(),
 		options: make(map[interface{}]fx.Option),
 	}
 	// TODO set default options on the settings, we need a default config for this that we will override.

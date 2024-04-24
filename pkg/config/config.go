@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -48,14 +49,22 @@ var (
 )
 
 type Config struct {
-	viper *viper.Viper
-	def   types.BacalhauConfig
+	viper  *viper.Viper
+	system *viper.Viper
 }
 
-func New(cfg types.BacalhauConfig) *Config {
-	c := &Config{viper: viper.New(), def: cfg}
-	c.SetDefault(cfg)
+func New() *Config {
+	c := &Config{viper: viper.New(), system: viper.New()}
 	return c
+}
+
+func (c *Config) RepoPath() (string, error) {
+	repoPath := c.system.GetString("repo")
+	if repoPath == "" {
+
+		return "", fmt.Errorf("repo path not configured")
+	}
+	return repoPath, nil
 }
 
 func (c *Config) Init(path string) (types.BacalhauConfig, error) {
@@ -82,7 +91,7 @@ func (c *Config) initConfig(path string, opts ...Option) (types.BacalhauConfig, 
 	params := &params{
 		FileName:      ConfigFileName,
 		FileHandler:   NoopConfigHandler,
-		DefaultConfig: c.def,
+		DefaultConfig: ForEnvironment(),
 	}
 
 	for _, opt := range opts {
@@ -134,6 +143,10 @@ func (c *Config) Current() (types.BacalhauConfig, error) {
 
 func (c *Config) Viper() *viper.Viper {
 	return c.viper
+}
+
+func (c *Config) System() *viper.Viper {
+	return c.system
 }
 
 // SetValue sets the configuration value.
