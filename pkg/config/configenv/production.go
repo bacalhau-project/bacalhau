@@ -250,4 +250,13 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
 	NodeMembership: types.NodeMembershipConfig{AutoApproveNodes: true},
+	NodeRanker: types.NodeRankerConfig{
+		MinBacalhauVersion: types.BuildVersionInfo{
+			Major:      "1",
+			Minor:      "0",
+			GitVersion: "v1.0.4",
+			GitCommit:  "",
+		},
+		NodeRankRandomnessRange: 5,
+	},
 }

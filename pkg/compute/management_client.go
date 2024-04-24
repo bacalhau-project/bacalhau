@@ -159,6 +159,12 @@ func (m *ManagementClient) Start(ctx context.Context) {
 		m.heartbeatClient.Close(ctx)
 	}()
 
+	// TODO(forrest) [correctness]: I think we might want to do this on startup
+	// so the subsequent heartbeat call below arrives at the requester node once it
+	// has info for the node sending a heartbeat else it ignores the hb message.
+	// m.deliverInfo(ctx)
+	// m.updateResources(ctx)
+
 	// Send an initial heartbeat when we start up
 	var heartbeatSequence uint64 = 1
 	m.heartbeat(ctx, heartbeatSequence)

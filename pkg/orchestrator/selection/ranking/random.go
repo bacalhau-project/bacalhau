@@ -20,13 +20,13 @@ type RandomNodeRanker struct {
 	randomnessRange *big.Int
 }
 
-func NewRandomNodeRanker(params RandomNodeRankerParams) *RandomNodeRanker {
+func NewRandomNodeRanker(params RandomNodeRankerParams) (*RandomNodeRanker, error) {
 	if params.RandomnessRange <= orchestrator.RankPossible {
-		panic(fmt.Sprintf("randomness range must be >= %d: %d", orchestrator.RankPossible, params.RandomnessRange))
+		return nil, fmt.Errorf("randomness range must be >= %d: %d", orchestrator.RankPossible, params.RandomnessRange)
 	}
 	return &RandomNodeRanker{
 		randomnessRange: big.NewInt(int64(params.RandomnessRange)),
-	}
+	}, nil
 }
 
 func (s *RandomNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {

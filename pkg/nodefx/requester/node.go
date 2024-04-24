@@ -94,7 +94,6 @@ type RequesterNode struct {
 	ComputeCallback compute.Callback
 	EndpointV2      *orchestrator.BaseEndpoint
 	JobStore        jobstore.Store
-	NodeDiscoverer  orchestrator.NodeDiscoverer
 	NodeManager     *manager.NodeManager
 	Scheduler       orchestrator.SchedulerProvider
 }
@@ -106,10 +105,8 @@ type RequesterParams struct {
 	ComputeCallback compute.Callback
 	EndpointV2      *orchestrator.BaseEndpoint
 	JobStore        jobstore.Store
-	// We need a reference to the node info store until libp2p is removed
-	NodeDiscoverer orchestrator.NodeDiscoverer
-	NodeManager    *manager.NodeManager
-	Scheduler      orchestrator.SchedulerProvider
+	NodeManager     *manager.NodeManager
+	Scheduler       orchestrator.SchedulerProvider
 }
 
 type ConfigResult struct {
@@ -163,7 +160,6 @@ func NewRequesterNode(p RequesterParams) *RequesterNode {
 		ComputeCallback: p.ComputeCallback,
 		EndpointV2:      p.EndpointV2,
 		JobStore:        p.JobStore,
-		NodeDiscoverer:  p.NodeDiscoverer,
 		NodeManager:     p.NodeManager,
 		Scheduler:       p.Scheduler,
 	}
@@ -209,7 +205,7 @@ func NodeStore(transport *nats_transport.NATSTransport) (*kvstore.NodeStore, err
 	return nodeInfoStore, nil
 }
 
-func NodeManager(store *kvstore.NodeStore, hbs *heartbeat.HeartbeatServer, cfg types.NodeMembershipConfig) (*manager.NodeManager, error) {
+func NodeManager(lc fx.Lifecycle, store *kvstore.NodeStore, hbs *heartbeat.HeartbeatServer, cfg types.NodeMembershipConfig) (*manager.NodeManager, error) {
 	defaultApproval := models.NodeMembership.PENDING
 	if cfg.AutoApproveNodes {
 		defaultApproval = models.NodeMembership.APPROVED
@@ -219,11 +215,23 @@ func NodeManager(store *kvstore.NodeStore, hbs *heartbeat.HeartbeatServer, cfg t
 		Heartbeats:           hbs,
 		DefaultApprovalState: defaultApproval,
 	})
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return nodeManager.Start(ctx)
+		},
+	})
 	return nodeManager, nil
 }
 
 func NodeRanker(store jobstore.Store, cfg types.NodeRankerConfig) (orchestrator.NodeRanker, error) {
 	ranker := ranking.NewChain()
+	rndmRanker, err := ranking.NewRandomNodeRanker(
+		ranking.RandomNodeRankerParams{RandomnessRange: cfg.NodeRankRandomnessRange},
+	)
+	if err != nil {
+		return nil, err
+	}
 	ranker.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
 		ranking.NewEnginesNodeRanker(),
@@ -234,9 +242,7 @@ func NodeRanker(store jobstore.Store, cfg types.NodeRankerConfig) (orchestrator.
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: cfg.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: store}),
 		// arbitrary rankers
-		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: cfg.NodeRankRandomnessRange,
-		}),
+		rndmRanker,
 	)
 	return ranker, nil
 }
@@ -546,6 +552,9 @@ func HeartbeatServer(p HeartbeatServerParams) (*heartbeat.HeartbeatServer, error
 		CheckFrequency:        time.Duration(p.Config.HeartbeatCheckFrequency),
 		NodeDisconnectedAfter: time.Duration(p.Config.NodeDisconnectedAfter),
 	}
+	// TODO(forrest) [refactor] the heartbeat server can be started here, but we don't do it here because
+	// the NodeManager starts the heartbeat server...weird setup, should probably make them into a single
+	// module.
 	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
