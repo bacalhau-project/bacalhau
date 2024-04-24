@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -51,7 +52,7 @@ func NewStopOptions() *StopOptions {
 	}
 }
 
-func NewStopCmd() *cobra.Command {
+func NewStopCmd(cfg *config.Config) *cobra.Command {
 	o := NewStopOptions()
 
 	stopCmd := &cobra.Command{
@@ -60,7 +61,9 @@ func NewStopCmd() *cobra.Command {
 		Long:    stopLong,
 		Example: stopExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.run(cmd, cfg, args)
+		},
 	}
 
 	stopCmd.PersistentFlags().BoolVar(&o.Quiet, "quiet", o.Quiet,
@@ -69,7 +72,7 @@ func NewStopCmd() *cobra.Command {
 	return stopCmd
 }
 
-func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
+func (o *StopOptions) run(cmd *cobra.Command, cfg *config.Config, cmdArgs []string) error {
 	ctx := cmd.Context()
 
 	if o.Quiet {
@@ -109,8 +112,10 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	// TODO(forrest) [fixme]
-	apiClient := util.GetAPIClientV2(cmd, nil, nil)
+	apiClient, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.

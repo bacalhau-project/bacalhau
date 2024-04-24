@@ -13,6 +13,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -56,7 +57,7 @@ func NewCreateOptions() *CreateOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	OC := NewCreateOptions()
 
 	createCmd := &cobra.Command{
@@ -68,7 +69,7 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return create(cmd, cmdArgs, OC)
+			return create(cmd, cfg, cmdArgs, OC)
 		},
 	}
 
@@ -78,7 +79,7 @@ func NewCmd() *cobra.Command {
 	return createCmd
 }
 
-func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
+func create(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
 	// Custom unmarshaller
@@ -227,14 +228,18 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	executingJob, err := util.ExecuteJob(ctx,
 		j,
+		cfg,
 		OC.RunTimeSettings,
 	)
 	if err != nil {
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	// TODO(forrest) [fixme]
-	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(nil))
+	client, err := util.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, cfg, OC.DownloadFlags, OC.RunTimeSettings, client)
 	if err != nil {
 		return err
 	}

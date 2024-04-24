@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 // AliveOptions is a struct to support alive command
@@ -22,23 +23,28 @@ func NewAliveOptions() *AliveOptions {
 	}
 }
 
-func NewAliveCmd() *cobra.Command {
+func NewAliveCmd(cfg *config.Config) *cobra.Command {
 	o := NewAliveOptions()
 	aliveCmd := &cobra.Command{
 		Use:   "alive",
 		Short: "Get the agent's liveness and health info.",
 		Args:  cobra.NoArgs,
-		RunE:  o.runAlive,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return o.runAlive(cmd, cfg)
+		},
 	}
 	aliveCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return aliveCmd
 }
 
 // Run executes alive command
-func (o *AliveOptions) runAlive(cmd *cobra.Command, _ []string) error {
+func (o *AliveOptions) runAlive(cmd *cobra.Command, cfg *config.Config) error {
 	ctx := cmd.Context()
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Agent().Alive(ctx)
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Agent().Alive(ctx)
 	if err != nil {
 		return fmt.Errorf("could not get server alive: %w", err)
 	}

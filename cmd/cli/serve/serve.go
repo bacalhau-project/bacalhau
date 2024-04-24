@@ -82,6 +82,15 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 }
 
 func NewCmd(cfg *config.Config) *cobra.Command {
+	// define the serve command
+	serveCmd := &cobra.Command{
+		Use:     "serve",
+		Short:   "Start the bacalhau compute node",
+		Long:    serveLong,
+		Example: serveExample,
+	}
+
+	// define flags supported on the serve command
 	serveFlags := map[string][]configflags.Definition{
 		"local_publisher":       configflags.LocalPublisherFlags,
 		"publishing":            configflags.PublishingFlags,
@@ -106,25 +115,26 @@ func NewCmd(cfg *config.Config) *cobra.Command {
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 
-	// cfg := config.New(config.ForEnvironment())
-
-	serveCmd := &cobra.Command{
-		Use:     "serve",
-		Short:   "Start the bacalhau compute node",
-		Long:    serveLong,
-		Example: serveExample,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// bind flags for this command to the viper instance used to configure bacalhau from command flags.
-			return configflags.BindFlagsWithViper(cmd, cfg.Viper(), serveFlags)
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return serve(cmd, cfg)
-		},
-	}
-
+	// register flags on the command
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
+		// a failure here indicates a developer error in defining flags.
 		util.Fatal(serveCmd, err, 1)
 	}
+
+	// bind the server flags to the configuration s.t. we use values in order of precedence based on:
+	// 1. CLI flag.
+	// 2. Environment Variable.
+	// 3. Config File.
+	// 4. Defaults.
+	serveCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		return configflags.BindFlagsWithViper(cmd, cfg.Viper(), serveFlags)
+	}
+
+	// define the run method which accepts the config we created in the above steps.
+	serveCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return serve(cmd, cfg)
+	}
+
 	return serveCmd
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -14,7 +15,7 @@ type NodeActionCmd struct {
 	message string
 }
 
-func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
+func NewActionCmd(cfg *config.Config, action apimodels.NodeAction) *cobra.Command {
 	actionCmd := &NodeActionCmd{
 		action:  string(action),
 		message: "",
@@ -24,20 +25,25 @@ func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
 		Use:   fmt.Sprintf("%s [id]", action),
 		Short: action.Description(),
 		Args:  cobra.ExactArgs(1),
-		RunE:  actionCmd.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actionCmd.run(cmd, cfg, args)
+		},
 	}
 
 	cmd.Flags().StringVarP(&actionCmd.message, "message", "m", "", "Message to include with the action")
 	return cmd
 }
 
-func (n *NodeActionCmd) run(cmd *cobra.Command, args []string) error {
+func (n *NodeActionCmd) run(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 
 	nodeID := args[0]
 
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Nodes().Put(ctx, &apimodels.PutNodeRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Nodes().Put(ctx, &apimodels.PutNodeRequest{
 		NodeID:  nodeID,
 		Action:  n.action,
 		Message: n.message,

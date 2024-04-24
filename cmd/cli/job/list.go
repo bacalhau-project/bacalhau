@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -60,7 +61,7 @@ func NewListOptions() *ListOptions {
 	}
 }
 
-func NewListCmd() *cobra.Command {
+func NewListCmd(cfg *config.Config) *cobra.Command {
 	o := NewListOptions()
 	listCmd := &cobra.Command{
 		Use:     "list",
@@ -68,7 +69,9 @@ func NewListCmd() *cobra.Command {
 		Long:    listLong,
 		Example: listExample,
 		Args:    cobra.NoArgs,
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return o.run(cmd, cfg)
+		},
 	}
 
 	listCmd.Flags().StringVar(&o.Labels, "labels", o.Labels,
@@ -113,7 +116,7 @@ var listColumns = []output.TableColumn[*models.Job]{
 	},
 }
 
-func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
+func (o *ListOptions) run(cmd *cobra.Command, cfg *config.Config) error {
 	ctx := cmd.Context()
 
 	var err error
@@ -124,8 +127,11 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("could not parse labels: %w", err)
 		}
 	}
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().List(ctx, &apimodels.ListJobsRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Jobs().List(ctx, &apimodels.ListJobsRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

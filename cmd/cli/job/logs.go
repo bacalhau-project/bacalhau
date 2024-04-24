@@ -5,6 +5,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -31,7 +32,7 @@ type LogCommandOptions struct {
 	Tail        bool
 }
 
-func NewLogCmd() *cobra.Command {
+func NewLogCmd(cfg *config.Config) *cobra.Command {
 	options := LogCommandOptions{}
 
 	logsCmd := &cobra.Command{
@@ -46,7 +47,7 @@ func NewLogCmd() *cobra.Command {
 				Follow:      options.Follow,
 				Tail:        options.Tail,
 			}
-			return util.Logs(cmd, opts)
+			return util.Logs(cmd, cfg, opts)
 		},
 	}
 

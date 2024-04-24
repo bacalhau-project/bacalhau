@@ -1,12 +1,14 @@
 package node
 
 import (
-	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "node",
 		Short:              "Commands to query and update nodes information.",
@@ -14,17 +16,17 @@ func NewCmd() *cobra.Command {
 		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
 
-	cmd.AddCommand(NewDescribeCmd())
-	cmd.AddCommand(NewListCmd())
+	cmd.AddCommand(NewDescribeCmd(cfg))
+	cmd.AddCommand(NewListCmd(cfg))
 
 	// Approve Action
-	cmd.AddCommand(NewActionCmd(apimodels.NodeActionApprove))
+	cmd.AddCommand(NewActionCmd(cfg, apimodels.NodeActionApprove))
 
 	// Reject Action
-	cmd.AddCommand(NewActionCmd(apimodels.NodeActionReject))
+	cmd.AddCommand(NewActionCmd(cfg, apimodels.NodeActionReject))
 
 	// Reject Action
-	cmd.AddCommand(NewActionCmd(apimodels.NodeActionDelete))
+	cmd.AddCommand(NewActionCmd(cfg, apimodels.NodeActionDelete))
 
 	return cmd
 }

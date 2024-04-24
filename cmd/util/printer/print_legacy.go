@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
@@ -42,6 +43,7 @@ func PrintJobExecutionLegacy(
 	ctx context.Context,
 	j *model.Job,
 	cmd *cobra.Command,
+	cfg *config.Config,
 	downloadSettings *cliflags.DownloaderSettings,
 	runtimeSettings *cliflags.RunTimeSettingsWithDownload,
 	client *client.APIClient,
@@ -84,7 +86,7 @@ func PrintJobExecutionLegacy(
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 
-		return util.Logs(cmd, util.LogOptions{
+		return util.Logs(cmd, cfg, util.LogOptions{
 			JobID:  j.ID(),
 			Follow: true,
 		})
@@ -94,7 +96,7 @@ func PrintJobExecutionLegacy(
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
+	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, cfg, j, quiet)
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			return nil
@@ -138,7 +140,7 @@ func PrintJobExecutionLegacy(
 	}
 
 	if hasResults && runtimeSettings.AutoDownloadResults {
-		if err := util.DownloadResultsHandler(ctx, cmd, j.Metadata.ID, downloadSettings); err != nil {
+		if err := util.DownloadResultsHandler(ctx, cmd, cfg, j.Metadata.ID, downloadSettings); err != nil {
 			return err
 		}
 	}
@@ -150,7 +152,7 @@ func PrintJobExecutionLegacy(
 // triggers SIGINT) then the function will complete and stop outputting to the terminal.
 //
 //nolint:gocyclo,funlen
-func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
+func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, cfg *config.Config, j *model.Job, quiet bool) error {
 	if j == nil || j.Metadata.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
@@ -243,8 +245,11 @@ To cancel the job, run:
 	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
-		// TODO(forrest) [fixme]
-		jobEvents, err := util.GetAPIClient(nil).GetEvents(ctx, j.Metadata.ID, legacymodels.EventFilterOptions{
+		client, err := util.GetAPIClient(cfg)
+		if err != nil {
+			return err
+		}
+		jobEvents, err := client.GetEvents(ctx, j.Metadata.ID, legacymodels.EventFilterOptions{
 			Since:                 lastSeenTimestamp,
 			ExcludeExecutionLevel: true,
 		})

@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -40,7 +41,7 @@ func NewGetOptions() *GetOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	OG := NewGetOptions()
 
 	getFlags := map[string][]configflags.Definition{
@@ -56,7 +57,7 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(getFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return get(cmd, cmdArgs, OG)
+			return get(cmd, cfg, cmdArgs, OG)
 		},
 	}
 
@@ -69,7 +70,7 @@ func NewCmd() *cobra.Command {
 	return getCmd
 }
 
-func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
+func get(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, OG *GetOptions) error {
 	ctx := cmd.Context()
 
 	jobID := cmdArgs[0]
@@ -91,6 +92,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 	err := util.DownloadResultsHandler(
 		ctx,
 		cmd,
+		cfg,
 		jobID,
 		OG.DownloadSettings,
 	)

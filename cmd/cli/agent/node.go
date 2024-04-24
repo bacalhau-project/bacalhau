@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -23,23 +24,28 @@ func NewNodeOptions() *NodeOptions {
 	}
 }
 
-func NewNodeCmd() *cobra.Command {
+func NewNodeCmd(cfg *config.Config) *cobra.Command {
 	o := NewNodeOptions()
 	nodeCmd := &cobra.Command{
 		Use:   "node",
 		Short: "Get the agent's node info.",
 		Args:  cobra.NoArgs,
-		RunE:  o.runNode,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.runNode(cmd, cfg)
+		},
 	}
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }
 
 // Run executes node command
-func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) error {
+func (o *NodeOptions) runNode(cmd *cobra.Command, cfg *config.Config) error {
 	ctx := cmd.Context()
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	if err != nil {
 		return fmt.Errorf("could not get server node: %w", err)
 	}

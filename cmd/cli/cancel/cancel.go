@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -50,7 +51,7 @@ func NewCancelOptions() *CancelOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	cancelOptions := NewCancelOptions()
 
 	cancelCmd := &cobra.Command{
@@ -62,7 +63,7 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return cancel(cmd, cmdArgs, cancelOptions)
+			return cancel(cmd, cfg, cmdArgs, cancelOptions)
 		},
 	}
 
@@ -73,7 +74,7 @@ func NewCmd() *cobra.Command {
 	return cancelCmd
 }
 
-func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error {
+func cancel(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, options *CancelOptions) error {
 	ctx := cmd.Context()
 
 	if options.Quiet {
@@ -112,8 +113,10 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	// TODO(forrest) [fixme]
-	apiClient := util.GetAPIClient(nil)
+	apiClient, err := util.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.

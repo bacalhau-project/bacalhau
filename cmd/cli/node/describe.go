@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -23,23 +24,29 @@ func NewDescribeOptions() *DescribeOptions {
 	}
 }
 
-func NewDescribeCmd() *cobra.Command {
+func NewDescribeCmd(cfg *config.Config) *cobra.Command {
 	o := NewDescribeOptions()
 	nodeCmd := &cobra.Command{
 		Use:   "describe [id]",
 		Short: "Get the info of a node by id.",
 		Args:  cobra.ExactArgs(1),
-		RunE:  o.runDescribe,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.runDescribe(cmd, cfg, args)
+		},
 	}
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }
 
 // Run executes node command
-func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) error {
+func (o *DescribeOptions) runDescribe(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 	nodeID := args[0]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Nodes().Get(ctx, &apimodels.GetNodeRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Nodes().Get(ctx, &apimodels.GetNodeRequest{
 		NodeID: nodeID,
 	})
 	if err != nil {

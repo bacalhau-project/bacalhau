@@ -17,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
@@ -65,12 +66,12 @@ func NewExecOptions() *ExecOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	options := NewExecOptions()
-	return NewCmdWithOptions(options)
+	return NewCmdWithOptions(cfg, options)
 }
 
-func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
+func NewCmdWithOptions(cfg *config.Config, options *ExecOptions) *cobra.Command {
 	execCmd := &cobra.Command{
 		Use:                "exec [jobtype]",
 		Short:              "Execute a specific job type",
@@ -86,7 +87,7 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 			// job types as we will want to use them as keys in template completions.
 			unknownArgs := ExtractUnknownArgs(cmd.Flags(), os.Args[1:])
 
-			return exec(cmd, cmdArgs, unknownArgs, options)
+			return exec(cmd, cfg, cmdArgs, unknownArgs, options)
 		},
 	}
 
@@ -97,7 +98,7 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 	return execCmd
 }
 
-func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *ExecOptions) error {
+func exec(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, unknownArgs []string, options *ExecOptions) error {
 	job, err := PrepareJob(cmd, cmdArgs, unknownArgs, options)
 	if err != nil {
 		return err
@@ -109,8 +110,10 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	// TODO(forrest) [fixme]
-	client := util.GetAPIClientV2(cmd, nil, nil)
+	client, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
 	resp, err := client.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
 		Job: job,
 	})
@@ -118,7 +121,7 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 		return fmt.Errorf("failed request: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(cmd.Context(), resp.JobID, cmd, options.RunTimeSettings, client); err != nil {
+	if err := printer.PrintJobExecution(cmd.Context(), resp.JobID, cmd, cfg, options.RunTimeSettings, client); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

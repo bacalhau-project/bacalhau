@@ -42,8 +42,7 @@ func NewRootCmd() *cobra.Command {
 		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
 	}
-	// TODO(forrest) [correctness]: this might be how we can pass config values into the child methods of this command.
-	cfg := config.New(config.ForEnvironment())
+	cfg := config.New()
 	RootCmd := &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Compute over data",
@@ -104,17 +103,13 @@ func NewRootCmd() *cobra.Command {
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
 
-	// TODO(forrest) [refactor]: I think we can safely remove this since the defaultRepo() method
-	// checks BACALHAU_DIR env var and uses it if present. We should no longer need to bind
-	// the repo flag to viper since we will be accessing its value from the cobra command when it is needed.
-	/*
-		if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
-			util.Fatal(RootCmd, err, 1)
-		}
-		if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
-			util.Fatal(RootCmd, err, 1)
-		}
-	*/
+	// Bind the repo flag to the system configuration
+	if err := cfg.System().BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+		util.Fatal(RootCmd, err, 1)
+	}
+	if err := cfg.System().BindEnv("repo", "BACALHAU_DIR"); err != nil {
+		util.Fatal(RootCmd, err, 1)
+	}
 
 	if err := configflags.RegisterFlags(RootCmd, rootFlags); err != nil {
 		panic(err)
@@ -123,11 +118,11 @@ func NewRootCmd() *cobra.Command {
 	// ====== Start a job
 
 	// Create job from file
-	RootCmd.AddCommand(create.NewCmd())
+	RootCmd.AddCommand(create.NewCmd(cfg))
 
 	// Plumbing commands (advanced usage)
-	RootCmd.AddCommand(docker.NewCmd())
-	RootCmd.AddCommand(wasm.NewCmd())
+	RootCmd.AddCommand(docker.NewCmd(cfg))
+	RootCmd.AddCommand(wasm.NewCmd(cfg))
 
 	RootCmd.AddCommand(validate.NewCmd())
 
@@ -135,41 +130,41 @@ func NewRootCmd() *cobra.Command {
 
 	// ====== Get information or results about a job
 	// Describe a job
-	RootCmd.AddCommand(describe.NewCmd())
+	RootCmd.AddCommand(describe.NewCmd(cfg))
 
 	// Get logs
-	RootCmd.AddCommand(logs.NewCmd())
+	RootCmd.AddCommand(logs.NewCmd(cfg))
 
 	// Get the results of a job
-	RootCmd.AddCommand(get.NewCmd())
+	RootCmd.AddCommand(get.NewCmd(cfg))
 
 	// Cancel a job
-	RootCmd.AddCommand(cancel.NewCmd())
+	RootCmd.AddCommand(cancel.NewCmd(cfg))
 
 	// List jobs
-	RootCmd.AddCommand(list.NewCmd())
+	RootCmd.AddCommand(list.NewCmd(cfg))
 
 	// Register agent subcommands
-	RootCmd.AddCommand(agent.NewCmd())
+	RootCmd.AddCommand(agent.NewCmd(cfg))
 
 	// Register job subcommands
-	RootCmd.AddCommand(job.NewCmd())
+	RootCmd.AddCommand(job.NewCmd(cfg))
 
 	// Register nodes subcommands
-	RootCmd.AddCommand(node.NewCmd())
+	RootCmd.AddCommand(node.NewCmd(cfg))
 
 	// Register exec commands
-	RootCmd.AddCommand(exec.NewCmd())
+	RootCmd.AddCommand(exec.NewCmd(cfg))
 
 	// ====== Run a server
 
 	// Serve commands
 	RootCmd.AddCommand(serve.NewCmd(cfg))
-	RootCmd.AddCommand(id.NewCmd())
+	RootCmd.AddCommand(id.NewCmd(cfg))
 	RootCmd.AddCommand(devstack.NewCmd())
 
 	// config command...obviously
-	RootCmd.AddCommand(configcli.NewCmd())
+	RootCmd.AddCommand(configcli.NewCmd(cfg))
 
 	return RootCmd
 }

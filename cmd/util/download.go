@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -21,13 +22,17 @@ import (
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
+	cfg *config.Config,
 	jobID string,
 	downloadSettings *cliflags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
-	// TODO(forrest) [fixme]
-	response, err := GetAPIClientV2(cmd, nil, nil).Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
+	api, err := GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: jobID,
 	})
 	if err != nil {

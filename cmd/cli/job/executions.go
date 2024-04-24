@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -51,7 +52,7 @@ func NewExecutionOptions() *ExecutionOptions {
 	}
 }
 
-func NewExecutionCmd() *cobra.Command {
+func NewExecutionCmd(cfg *config.Config) *cobra.Command {
 	o := NewExecutionOptions()
 	nodeCmd := &cobra.Command{
 		Use:     "executions [id]",
@@ -59,7 +60,9 @@ func NewExecutionCmd() *cobra.Command {
 		Long:    executionLong,
 		Example: executionExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.run(cmd, cfg, args)
+		},
 	}
 
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
@@ -120,11 +123,14 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 	executionColumnDesired,
 }
 
-func (o *ExecutionOptions) run(cmd *cobra.Command, args []string) error {
+func (o *ExecutionOptions) run(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 		JobID: jobID,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,

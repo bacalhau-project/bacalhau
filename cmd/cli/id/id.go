@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 type IDInfo struct {
@@ -17,7 +18,7 @@ type IDInfo struct {
 	ClientID string `json:"ClientID"`
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	outputOpts := output.OutputOptions{
 		Format: output.JSONFormat,
 	}
@@ -30,10 +31,10 @@ func NewCmd() *cobra.Command {
 		Use:   "id",
 		Short: "Show bacalhau node id info",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			return configflags.BindFlags(cmd, idFlags)
+			return configflags.BindFlagsWithViper(cmd, cfg.Viper(), idFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return id(cmd, outputOpts)
+			return id(cmd, cfg, outputOpts)
 		},
 	}
 
@@ -59,7 +60,7 @@ var idColumns = []output.TableColumn[IDInfo]{
 	},
 }
 
-func id(cmd *cobra.Command, outputOpts output.OutputOptions) error {
+func id(cmd *cobra.Command, cfg *config.Config, outputOpts output.OutputOptions) error {
 	return fmt.Errorf("deprecated")
 	/*
 		privKey, err := config.GetLibp2pPrivKey()
@@ -83,6 +84,5 @@ func id(cmd *cobra.Command, outputOpts output.OutputOptions) error {
 		}
 
 		return output.OutputOne(cmd, idColumns, outputOpts, info)
-
 	*/
 }

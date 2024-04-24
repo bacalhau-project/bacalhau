@@ -10,6 +10,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -52,7 +53,7 @@ func NewRunOptions() *RunOptions {
 	}
 }
 
-func NewRunCmd() *cobra.Command {
+func NewRunCmd(cfg *config.Config) *cobra.Command {
 	o := NewRunOptions()
 
 	runCmd := &cobra.Command{
@@ -61,7 +62,9 @@ func NewRunCmd() *cobra.Command {
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(0),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.run(cmd, cfg, args)
+		},
 	}
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
@@ -77,7 +80,7 @@ func NewRunCmd() *cobra.Command {
 	return runCmd
 }
 
-func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
+func (o *RunOptions) run(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 
 	// read the job spec from stdin or file
@@ -147,8 +150,10 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Submit the job
-	// TODO(forrest) [fixme]
-	client := util.GetAPIClientV2(cmd, nil, nil)
+	client, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
 	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
 	})
@@ -160,7 +165,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, client); err != nil {
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, cfg, o.RunTimeSettings, client); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

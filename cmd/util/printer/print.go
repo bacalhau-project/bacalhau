@@ -23,6 +23,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	libmath "github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -51,6 +52,7 @@ func PrintJobExecution(
 	ctx context.Context,
 	jobID string,
 	cmd *cobra.Command,
+	cfg *config.Config,
 	runtimeSettings *cliflags.RunTimeSettings,
 	client clientv2.API,
 ) error {
@@ -68,7 +70,7 @@ func PrintJobExecution(
 	}
 
 	if runtimeSettings.Follow {
-		return followLogs(cmd, jobID, client)
+		return followLogs(cmd,cfg, jobID, client)
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
@@ -134,7 +136,7 @@ func PrintJobExecution(
 	return nil
 }
 
-func followLogs(cmd *cobra.Command, jobID string, client clientv2.API) error {
+func followLogs(cmd *cobra.Command, cfg *config.Config, jobID string, client clientv2.API) error {
 	cmd.Printf("Job successfully submitted. Job ID: %s\n", jobID)
 	cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
@@ -154,7 +156,7 @@ func followLogs(cmd *cobra.Command, jobID string, client clientv2.API) error {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	return util.Logs(cmd, util.LogOptions{
+	return util.Logs(cmd, cfg,util.LogOptions{
 		JobID:  jobID,
 		Follow: true,
 	})

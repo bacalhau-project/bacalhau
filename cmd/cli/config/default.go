@@ -22,7 +22,7 @@ func newDefaultCmd() *cobra.Command {
 
 func defaultConfig(cmd *cobra.Command) error {
 	// clear any existing configuration before generating the default.
-	c := config.New(config.ForEnvironment())
+	c := config.New()
 	defaultConfig, err := c.Init(cmd.Flag("path").Value.String())
 	if err != nil {
 		return err

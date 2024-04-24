@@ -14,6 +14,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 
@@ -72,7 +73,7 @@ func NewWasmOptions() *WasmRunOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	wasmCmd := &cobra.Command{
 		Use:                "wasm",
 		Short:              "Run and prepare WASM jobs on the network",
@@ -81,14 +82,14 @@ func NewCmd() *cobra.Command {
 	}
 
 	wasmCmd.AddCommand(
-		newRunCmd(),
+		newRunCmd(cfg),
 		newValidateCmd(),
 	)
 
 	return wasmCmd
 }
 
-func newRunCmd() *cobra.Command {
+func newRunCmd(cfg *config.Config) *cobra.Command {
 	opts := NewWasmOptions()
 
 	wasmRunFlags := map[string][]configflags.Definition{
@@ -104,7 +105,7 @@ func newRunCmd() *cobra.Command {
 		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, opts)
+			return runWasm(cmd, cfg, args, opts)
 		},
 	}
 
@@ -137,7 +138,7 @@ func newRunCmd() *cobra.Command {
 	return wasmRunCmd
 }
 
-func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
+func runWasm(cmd *cobra.Command, cfg *config.Config, args []string, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
 	j, err := CreateJob(ctx, args, opts)
@@ -160,13 +161,16 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	executingJob, err := util.ExecuteJob(ctx, j, cfg, opts.RunTimeSettings)
 	if err != nil {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	// TODO(forrest) [fixme]
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(nil))
+	client, err := util.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, cfg, opts.DownloadSettings, opts.RunTimeSettings, client)
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {

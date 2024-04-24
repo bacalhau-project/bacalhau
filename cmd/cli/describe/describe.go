@@ -8,6 +8,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -49,7 +50,7 @@ func NewDescribeOptions() *DescribeOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	OD := NewDescribeOptions()
 
 	describeCmd := &cobra.Command{
@@ -61,7 +62,7 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return describe(cmd, cmdArgs, OD)
+			return describe(cmd, cfg, cmdArgs, OD)
 		},
 	}
 
@@ -81,7 +82,7 @@ func NewCmd() *cobra.Command {
 	return describeCmd
 }
 
-func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
+func describe(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, OD *DescribeOptions) error {
 	ctx := cmd.Context()
 
 	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
@@ -99,9 +100,13 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		}
 		inputJobID = string(byteResult)
 	}
-	// TODO(forrest) [fixme]
-	j, foundJob, err := util.GetAPIClient(nil).Get(ctx, inputJobID)
 
+	client, err := util.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	j, foundJob, err := client.Get(ctx, inputJobID)
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
 			return errResp
@@ -116,8 +121,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		// TODO(forrest) [fixme]
-		jobEvents, err := util.GetAPIClient(nil).GetEvents(ctx, j.Job.Metadata.ID, legacymodels.EventFilterOptions{})
+		jobEvents, err := client.GetEvents(ctx, j.Job.Metadata.ID, legacymodels.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}

@@ -21,7 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-func newSetCmd() *cobra.Command {
+func newSetCmd(cfg *config.Config) *cobra.Command {
 	showCmd := &cobra.Command{
 		Use:      "set",
 		Args:     cobra.MinimumNArgs(2),
@@ -29,7 +29,7 @@ func newSetCmd() *cobra.Command {
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return setConfig(args[0], args[1:]...)
+			return setConfig(cfg.Viper().ConfigFileUsed(), args[0], args[1:]...)
 		},
 	}
 	return showCmd
@@ -61,7 +61,7 @@ func getWriter(configFile string) (*viper.Viper, error) {
 	return viperWriter, nil
 }
 
-func setConfig(key string, values ...string) error {
+func setConfig(configFile string, key string, values ...string) error {
 	// remove all spaces and make lowercase
 	key = sanitizeKey(key)
 
@@ -78,7 +78,6 @@ func setConfig(key string, values ...string) error {
 	}
 
 	// there may me a config file present, we'll write to that if it exists.
-	configFile := viper.ConfigFileUsed()
 	if configFile == "" {
 		// if there isn't a config file, we'll assume we add it to the current repo.
 		configFile = filepath.Join(viper.GetString("repo"), "config.yaml")

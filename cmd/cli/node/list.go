@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -38,13 +39,15 @@ func NewListOptions() *ListOptions {
 	}
 }
 
-func NewListCmd() *cobra.Command {
+func NewListCmd(cfg *config.Config) *cobra.Command {
 	o := NewListOptions()
 	nodeCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List info of network nodes. ",
 		Args:  cobra.NoArgs,
-		RunE:  o.run,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return o.run(cmd, cfg)
+		},
 	}
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
@@ -61,7 +64,7 @@ func NewListCmd() *cobra.Command {
 }
 
 // Run executes node command
-func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
+func (o *ListOptions) run(cmd *cobra.Command, cfg *config.Config) error {
 	ctx := cmd.Context()
 
 	var err error
@@ -86,7 +89,11 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 	}
 
 	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Nodes().List(ctx, &apimodels.ListNodesRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Nodes().List(ctx, &apimodels.ListNodesRequest{
 		Labels:           labelRequirements,
 		FilterByApproval: o.FilterByApproval,
 		FilterByStatus:   o.FilterByStatus,

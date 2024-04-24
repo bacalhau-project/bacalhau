@@ -46,6 +46,7 @@ func CheckVersion(cmd *cobra.Command, args []string) error {
 }
 
 func GetAllVersions(ctx context.Context) (Versions, error) {
+	// TODO(forrest) [refactor]: remove this method, it returns the version for the server which is already handled by the agent command
 	panic("TODO")
 	/*
 		var err error

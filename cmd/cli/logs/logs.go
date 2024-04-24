@@ -2,6 +2,8 @@ package logs
 
 import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -23,8 +25,8 @@ var (
 `))
 )
 
-func NewCmd() *cobra.Command {
-	cmd := job.NewLogCmd()
+func NewCmd(cfg *config.Config) *cobra.Command {
+	cmd := job.NewLogCmd(cfg)
 	cmd.Short = logsShortDesc
 	cmd.Example = logsExample
 	return cmd

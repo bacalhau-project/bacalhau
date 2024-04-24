@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -52,7 +53,7 @@ func NewDescribeOptions() *DescribeOptions {
 	}
 }
 
-func NewDescribeCmd() *cobra.Command {
+func NewDescribeCmd(cfg *config.Config) *cobra.Command {
 	o := NewDescribeOptions()
 	jobCmd := &cobra.Command{
 		Use:     "describe [id]",
@@ -60,17 +61,22 @@ func NewDescribeCmd() *cobra.Command {
 		Long:    describeLong,
 		Example: describeExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.run(cmd, cfg, args)
+		},
 	}
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd
 }
 
-func (o *DescribeOptions) run(cmd *cobra.Command, args []string) error {
+func (o *DescribeOptions) run(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().Get(ctx, &apimodels.GetJobRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
 		Include: "executions,history",
 	})

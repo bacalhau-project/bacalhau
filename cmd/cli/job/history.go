@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -56,7 +57,7 @@ func NewHistoryOptions() *HistoryOptions {
 	}
 }
 
-func NewHistoryCmd() *cobra.Command {
+func NewHistoryCmd(cfg *config.Config) *cobra.Command {
 	o := NewHistoryOptions()
 	nodeCmd := &cobra.Command{
 		Use:     "history [id]",
@@ -64,7 +65,9 @@ func NewHistoryCmd() *cobra.Command {
 		Long:    historyLong,
 		Example: historyExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return o.run(cmd, cfg, args)
+		},
 	}
 
 	nodeCmd.Flags().StringVar(&o.EventType, "event-type", o.EventType,
@@ -156,11 +159,14 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	historyEventCol,
 }
 
-func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {
+func (o *HistoryOptions) run(cmd *cobra.Command, cfg *config.Config, args []string) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	// TODO(forrest) [fixme]
-	response, err := util.GetAPIClientV2(cmd, nil, nil).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+	api, err := util.GetAPIClientV2(cmd, cfg)
+	if err != nil {
+		return err
+	}
+	response, err := api.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,

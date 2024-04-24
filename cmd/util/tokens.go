@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -49,16 +51,11 @@ func writeTokens(path string, t tokens) error {
 // Read the authorization crdential associated with the passed API base URL. If
 // there is no credential currently stored, ReadToken will return nil with no
 // error.
-func ReadToken(apiURL string) (*apimodels.HTTPCredential, error) {
-	// TODO(forrest) [fixme]
-	/*
-		path, err := config.Get[string](types.AuthTokensPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token state path")
-		}
-
-	*/
-	path := ""
+func ReadToken(cfg *config.Config, apiURL string) (*apimodels.HTTPCredential, error) {
+	var path string
+	if err := cfg.ForKey(types.AuthTokensPath, &path); err != nil {
+		return nil, err
+	}
 
 	t, err := readTokens(path)
 	if err != nil {
@@ -80,15 +77,11 @@ func ReadToken(apiURL string) (*apimodels.HTTPCredential, error) {
 // Persistently store the authorization token against the passed API base URL.
 // Callers may pass nil for the credential which will delete any existing stored
 // token.
-func WriteToken(apiURL string, cred *apimodels.HTTPCredential) error {
-	// TODO(forrest) [fixme]
-	/*
-		path, err := config.Get[string](types.AuthTokensPath)
-		if err != nil {
-			return err
-		}
-	*/
-	path := ""
+func WriteToken(apiURL string, cfg *config.Config, cred *apimodels.HTTPCredential) error {
+	var path string
+	if err := cfg.ForKey(types.AuthTokensPath, &path); err != nil {
+		return err
+	}
 
 	t, err := readTokens(path)
 	if err != nil {

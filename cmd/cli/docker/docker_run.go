@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -80,17 +81,17 @@ func NewDockerRunOptions() *DockerRunOptions {
 	}
 }
 
-func NewCmd() *cobra.Command {
+func NewCmd(cfg *config.Config) *cobra.Command {
 	dockerCmd := &cobra.Command{
 		Use:   "docker",
 		Short: "Run a docker job on the network (see run subcommand)",
 	}
 
-	dockerCmd.AddCommand(newDockerRunCmd())
+	dockerCmd.AddCommand(newDockerRunCmd(cfg))
 	return dockerCmd
 }
 
-func newDockerRunCmd() *cobra.Command { //nolint:funlen
+func newDockerRunCmd(cfg *config.Config) *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
 	dockerRunFlags := map[string][]configflags.Definition{
@@ -106,7 +107,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return dockerRun(cmd, cmdArgs, opts)
+			return dockerRun(cmd, cfg, cmdArgs, opts)
 		},
 	}
 
@@ -134,7 +135,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
+func dockerRun(cmd *cobra.Command, cfg *config.Config, cmdArgs []string, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
 	image := cmdArgs[0]
@@ -171,13 +172,16 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	executingJob, err := util.ExecuteJob(ctx, j, cfg, opts.RunTimeSettings)
 	if err != nil {
 		return err
 	}
 
-	// TODO(forrest) [fixme]
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(nil))
+	client, err := util.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, cfg, opts.DownloadSettings, opts.RunTimeSettings, client)
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
