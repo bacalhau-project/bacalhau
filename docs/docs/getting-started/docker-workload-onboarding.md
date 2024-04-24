@@ -13,7 +13,7 @@ This section describes how to migrate a workload based on a Docker container int
 
 :::info
 
-You can check out this example tutorial on [how to work with custom containers in Bacalhau](../setting-up/workload-onboarding/custom-containers/index.md) to see how we used all these steps together.
+You can check out this example tutorial on [how to work with custom containers in Bacalhau](../setting-up/workload-onboarding/Container/Custom-Container.md) to see how we used all these steps together.
 
 :::
 

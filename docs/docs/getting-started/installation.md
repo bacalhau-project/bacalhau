@@ -48,7 +48,7 @@ values={[
     docker pull ghcr.io/bacalhau-project/bacalhau:latest
     ```
     
-    To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../setting-up/workload-onboarding/bacalhau-docker-image/index.md).
+    To run a specific version of Bacalhau using Docker, use the command docker run -it ghcr.io/bacalhau-project/bacalhau:v1.0.3, where "v1.0.3" is the version you want to run; note that the "latest" tag will not re-download the image if you have an older version. For more information on running the Docker image, check out the [Bacalhau docker image example](../setting-up/workload-onboarding/Container/Bacalhau-docker.md).
 </TabItem>
 </Tabs>
 
@@ -80,7 +80,7 @@ values={[
 </TabItem>
 </Tabs>
 
-If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](../setting-up/running-node/quick-start.md#ensure-your-storage-server-is-running) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
+If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](../setting-up/running-node/quick-start-docker.md#ensure-your-storage-server-is-running) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
 
 
 ## Step 2 - Submit a Hello World job

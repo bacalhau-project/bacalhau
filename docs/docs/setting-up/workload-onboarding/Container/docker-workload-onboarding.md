@@ -13,7 +13,7 @@ This section describes how to migrate a workload based on a Docker container int
 
 :::info
 
-You can check out this example tutorial on [how to work with custom containers in Bacalhau](../workload-onboarding/custom-containers/index.md) to see how we used all these steps together.
+You can check out this example tutorial on [how to work with custom containers in Bacalhau](Custom-Container.md) to see how we used all these steps together.
 
 :::
 
@@ -42,7 +42,7 @@ To help provide a safe, secure network for all users, we add the following runti
 
 1. **Limited Ingress/Egress Networking**:
 
-All ingress/egress networking is limited as described in the [networking](../networking-instructions/fundamentals.md) documentation.
+All ingress/egress networking is limited as described in the [networking](../../networking-instructions/fundamentals.md) documentation.
 You won't be able to pull `data/code/weights/` etc. from an external source.
 
 2. **Data Passing with Docker Volumes**:
@@ -73,7 +73,7 @@ We make the assumption that you are reading from a directory called `/inputs`, w
 
 :::info
 
-You can specify which directory the data is written to with the [`--input`](../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
+You can specify which directory the data is written to with the [`--input`](../../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
@@ -85,7 +85,7 @@ We make the assumption that you are writing to a directory called `/outputs`, wh
 
 :::info
 
-You can specify which directory the data is written to with the [`--output-volumes`](../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
+You can specify which directory the data is written to with the [`--output-volumes`](../../../dev/cli-reference/all-flags.md#docker-run) CLI flag.
 
 :::
 
@@ -169,9 +169,9 @@ do something useful
 
 Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-[Copy data from a URL to public storage](../data-ingestion/from-url.md)  
-[Pin Data to public storage](../data-ingestion/pin.md)  
-[Copy Data from S3 Bucket to public storage](../data-ingestion/s3.md)  
+[Copy data from a URL to public storage](../../data-ingestion/from-url.md)  
+[Pin Data to public storage](../../data-ingestion/pin.md)  
+[Copy Data from S3 Bucket to public storage](../../data-ingestion/s3.md)  
 
 :::info
 You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data

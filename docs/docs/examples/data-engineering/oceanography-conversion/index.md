@@ -236,7 +236,7 @@ docker push <hub-user>/<repo-name>:<tag>
 ```
 
 :::tip
-For more information about working with custom containers, see the [custom containers example](../../../setting-up/workload-onboarding/custom-containers/).
+For more information about working with custom containers, see the [custom containers example](../../../setting-up/workload-onboarding/Container/Custom-Container.md).
 :::
 
 ## Running a Bacalhau Job
