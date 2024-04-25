@@ -1,11 +1,11 @@
 ---
-sidebar_label: 'GPU Support'
+sidebar_label: 'GPU Installation'
 sidebar_position: 160
 description: How to enable GPU support on your Bacalhau node.
 # cspell: ignore nvidia, amd, intel, rocm, xpumanager, xpumd, xpumcli, kfd, dri, nvidia-smi, rocm-smi, xpu-smi
 ---
 
-# GPU Support
+# GPU Installation
 
 Bacalhau supports GPUs out of the box and defaults to allowing execution on all GPUs installed on the node.
 
@@ -15,44 +15,32 @@ Bacalhau makes the assumption that you have installed all the necessary drivers 
 
 In general for GPUs from any vendor, the Bacalhau client requires:
 
-* [Docker](https://get.docker.com/)
-* [Permission to access Docker](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
+1. [Docker](https://docs.docker.com/engine/install/)
+1. [Permission to access Docker](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
 
 ### Nvidia
 
-* [Drivers for your GPU](https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html)
-* [NVIDIA Container Toolkit (nvidia-docker2)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
-* `nvidia-smi` installed and functional
+1. [NVIDIA GPU Drivers](https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html)
+2. [NVIDIA Container Toolkit (nvidia-docker2)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+3. Verify installation by [Running a Sample Workload](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html)
+4. `nvidia-smi` installed and functional
 
-You can test whether you have a working GPU setup with the following command:
-
-```bash
-docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
-```
 
 ### AMD
 
-Bacalhau requires AMD drivers to be appropriately installed and access to the
-`rocm-smi` tool.
+1. [AMD GPU drivers](https://www.amd.com/en/support/download/drivers.html)
+1. `rocm-smi` tool installed and functional
 
-You can test whether you have a working GPU setup with the following command,
-which should print details of your GPUs:
+See the [Running ROCm Docker containers](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html) for guidance on how to run Docker workloads on AMD GPU.
 
-```bash
-docker run --rm --device=/dev/kfd --device=/dev/dri --entrypoint=rocm-smi rocm/rocm-terminal
-```
 
 ### Intel
 
-Bacalhau requires appropriate Intel drivers to be installed and access to the
-`xpu-smi` tool.
+1. [Intel GPU drivers](https://www.intel.com/content/www/us/en/download-center/home.html)
+1. `xpu-smi` tool installed and functional
 
-You can test whether you have a working GPU setup with the following command,
-which should print details of your GPUs:
+See the [Running on GPU under docker](https://github.com/Intel-Media-SDK/MediaSDK/wiki/Running-on-GPU-under-docker) for guidance on how to run Docker workloads on Intel GPU.
 
-```bash
-docker run --rm --device=/dev/dri --entrypoint=/bin/bash intel/xpumanager -- -c 'xpumd & sleep 5; xpumcli discovery'
-```
 
 ## GPU Node Configuration
 
