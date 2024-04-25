@@ -34,7 +34,7 @@ func (e Environment) IsKnown() bool {
 	return false
 }
 
-func ForEnvironment() types.BacalhauConfig {
+func forEnvironment() types.BacalhauConfig {
 	env := GetConfigEnvironment()
 	switch env {
 	case EnvironmentProd:

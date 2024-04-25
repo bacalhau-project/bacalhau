@@ -51,7 +51,7 @@ func NewRootCmd() *cobra.Command {
 			// TODO(forrest) [correctness]: we need a way to bind these flags to the config in the child commands
 			// of the root method so that when the config is loaded it either uses the values provided to these flag
 			// or in the event they are not present, it uses the default value, or value found in the config file.
-			if err := configflags.BindFlagsWithViper(cmd, cfg.Viper(), rootFlags); err != nil {
+			if err := configflags.BindFlagsWithViper(cmd, cfg.User(), rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 

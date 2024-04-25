@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
@@ -55,8 +54,8 @@ func SetupBacalhauRepo(repoDir string, c *config.Config) (*repo.FsRepo, error) {
 	return fsRepo, nil
 }
 
-func SetupBacalhauRepoForTesting(t testing.TB, c *config.Config) *repo.FsRepo {
-	viper.Reset()
+func SetupBacalhauRepoForTesting(t testing.TB) *repo.FsRepo {
+	c := config.New()
 
 	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {

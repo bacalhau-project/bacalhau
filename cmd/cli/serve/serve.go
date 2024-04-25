@@ -127,7 +127,7 @@ func NewCmd(cfg *config.Config) *cobra.Command {
 	// 3. Config File.
 	// 4. Defaults.
 	serveCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		return configflags.BindFlagsWithViper(cmd, cfg.Viper(), serveFlags)
+		return configflags.BindFlagsWithViper(cmd, cfg.User(), serveFlags)
 	}
 
 	// define the run method which accepts the config we created in the above steps.

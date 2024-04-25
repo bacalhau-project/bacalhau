@@ -23,11 +23,11 @@ func newDefaultCmd() *cobra.Command {
 func defaultConfig(cmd *cobra.Command) error {
 	// clear any existing configuration before generating the default.
 	c := config.New()
-	defaultConfig, err := c.Init(cmd.Flag("path").Value.String())
+	dcfg, err := c.Current()
 	if err != nil {
 		return err
 	}
-	cfgbytes, err := yaml.Marshal(defaultConfig)
+	cfgbytes, err := yaml.Marshal(dcfg)
 	if err != nil {
 		return err
 	}

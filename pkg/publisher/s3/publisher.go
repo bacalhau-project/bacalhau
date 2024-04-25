@@ -2,20 +2,24 @@ package s3
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
-	"github.com/rs/zerolog/log"
 )
 
 type PublisherParams struct {
-	LocalDir       string
+	Storage        repo.ComputeStorage
 	ClientProvider *s3helper.ClientProvider
 }
 
@@ -23,13 +27,13 @@ type PublisherParams struct {
 var _ publisher.Publisher = (*Publisher)(nil)
 
 type Publisher struct {
-	localDir       string
+	storage        repo.ComputeStorage
 	clientProvider *s3helper.ClientProvider
 }
 
 func NewPublisher(params PublisherParams) *Publisher {
 	return &Publisher{
-		localDir:       params.LocalDir,
+		storage:        params.Storage,
 		clientProvider: params.ClientProvider,
 	}
 }
@@ -59,7 +63,7 @@ func (publisher *Publisher) PublishResult(
 	key := ParsePublishedKey(spec.Key, execution, true)
 
 	// Create a new GZIP writer that writes to the file.
-	targetFile, err := os.CreateTemp(publisher.localDir, "bacalhau-archive-*.tar.gz")
+	targetFile, err := publisher.storage.Create(fmt.Sprintf("bacalhau-archive-%d.tar.gz", time.Now().UTC().Unix()))
 	if err != nil {
 		return models.SpecConfig{}, err
 	}

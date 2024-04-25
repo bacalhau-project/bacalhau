@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 func newSetCmd(cfg *config.Config) *cobra.Command {
@@ -29,23 +30,32 @@ func newSetCmd(cfg *config.Config) *cobra.Command {
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return setConfig(cfg.Viper().ConfigFileUsed(), args[0], args[1:]...)
+			// create or open a repo
+			repoPath, err := cfg.RepoPath()
+			if err != nil {
+				return err
+			}
+			_, err = setup.SetupBacalhauRepo(repoPath, cfg)
+			if err != nil {
+				return err
+			}
+			return setConfig(cfg.User().ConfigFileUsed(), args[0], args[1:]...)
 		},
 	}
 	return showCmd
 }
 
 func currentValue(key string) (interface{}, error) {
-	// get the default viper schema
-	viperSchema := NewViperWithDefaultConfig(config.ForEnvironment())
+	// get the default config schema
+	c := config.New()
 	// get a list of all valid configuration keys, same list as returned by `config list`
-	liveKeys := viperSchema.AllKeys()
+	liveKeys := c.User().AllKeys()
 	if !slices.Contains(liveKeys, key) {
 		return nil, fmt.Errorf("invalid configuration key %q: not found", key)
 	}
 
 	// calling `Get` on this instance will return a default value from the config structure that we can type assert on.
-	return viperSchema.Get(key), nil
+	return c.Get(key), nil
 }
 
 func getWriter(configFile string) (*viper.Viper, error) {

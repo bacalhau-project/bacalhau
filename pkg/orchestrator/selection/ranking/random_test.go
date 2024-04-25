@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/stretchr/testify/suite"
 )
 
 type RandomNodeRankerSuite struct {
@@ -30,7 +31,9 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 			NodeID: "node" + string(rune(i)),
 		})
 	}
-	s.RandomNodeRanker = NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: randomnessRange})
+	var err error
+	s.RandomNodeRanker, err = NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: randomnessRange})
+	s.Require().NoError(err)
 
 	ranks, err := s.RandomNodeRanker.RankNodes(context.Background(), models.Job{}, nodes)
 	s.NoError(err)
@@ -47,19 +50,13 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 }
 
 func (s *RandomNodeRankerSuite) TestRankNodes_NoRandomness() {
-	defer func() {
-		if r := recover(); r == nil {
-			s.Fail("expected panic when randomness range is 0")
-		}
-	}()
-	NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: 0})
+	ranker, err := NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: 0})
+	s.Require().Error(err)
+	s.Require().Nil(ranker)
 }
 
 func (s *RandomNodeRankerSuite) TestRankNodes_NegativeRandomness() {
-	defer func() {
-		if r := recover(); r == nil {
-			s.Fail("expected panic when randomness range is negative")
-		}
-	}()
-	NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: -1})
+	ranker, err := NewRandomNodeRanker(RandomNodeRankerParams{RandomnessRange: -1})
+	s.Require().Error(err)
+	s.Require().Nil(ranker)
 }

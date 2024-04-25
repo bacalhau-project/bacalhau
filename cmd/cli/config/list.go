@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -11,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 func newListCmd(cfg *config.Config) *cobra.Command {
@@ -45,13 +47,12 @@ func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error 
 	if repoPath, err := cfg.RepoPath(); err != nil {
 		cmd.Println("no config file present, showing default config")
 		c := config.New()
-		_, err = c.Init("")
 		if err != nil {
 			return err
 		}
 		toList = c
 	} else {
-		_, err = cfg.Init(repoPath)
+		err = cfg.Load(filepath.Join(repoPath, repo.ConfigFileName))
 		if err != nil {
 			return err
 		}
@@ -63,8 +64,8 @@ func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error 
 		Mode: table.Asc,
 	}}
 	var cfgList []configListEntry
-	for _, k := range toList.Viper().AllKeys() {
-		v := toList.Viper().Get(k)
+	for _, k := range toList.User().AllKeys() {
+		v := toList.User().Get(k)
 		cfgList = append(cfgList, configListEntry{
 			Key:   k,
 			Value: v,

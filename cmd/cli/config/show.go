@@ -1,12 +1,15 @@
 package config
 
 import (
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 func newShowCmd(cfg *config.Config) *cobra.Command {
@@ -25,13 +28,16 @@ func showConfig(cmd *cobra.Command, cfg *config.Config) error {
 	var currentConfig types.BacalhauConfig
 	if repoPath, err := cfg.RepoPath(); err != nil {
 		cmd.Println("no config file present, showing default config")
-		c := config.New()
-		currentConfig, err = c.Init("")
+		currentConfig, err = config.New().Current()
 		if err != nil {
 			return err
 		}
 	} else {
-		currentConfig, err = cfg.Init(repoPath)
+		err = cfg.Load(filepath.Join(repoPath, repo.ConfigFileName))
+		if err != nil {
+			return err
+		}
+		currentConfig, err = cfg.Current()
 		if err != nil {
 			return err
 		}

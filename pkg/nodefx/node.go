@@ -178,7 +178,7 @@ func NodeID(c *config.Config) (types.NodeID, error) {
 	}
 
 	// set the new name in the config, so it can be used and persisted later.
-	c.SetValue(types.NodeName, name)
+	c.Set(types.NodeName, name)
 	return types.NodeID(name), nil
 }
 

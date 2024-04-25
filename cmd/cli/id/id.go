@@ -31,7 +31,7 @@ func NewCmd(cfg *config.Config) *cobra.Command {
 		Use:   "id",
 		Short: "Show bacalhau node id info",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			return configflags.BindFlagsWithViper(cmd, cfg.Viper(), idFlags)
+			return configflags.BindFlagsWithViper(cmd, cfg.User(), idFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return id(cmd, cfg, outputOpts)

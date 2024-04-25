@@ -52,7 +52,12 @@ func GetAPIClient(c *config.Config) (*client.APIClient, error) {
 		apiSheme = "https"
 	}
 
-	if token, err := ReadToken(c, fmt.Sprintf("%s://%s:%d", apiSheme, apiHost, apiPort)); err != nil {
+	var tokenPath string
+	if err := c.ForKey(types.AuthTokensPath, &tokenPath); err != nil {
+		return nil, err
+	}
+
+	if token, err := ReadToken(tokenPath, fmt.Sprintf("%s://%s:%d", apiSheme, apiHost, apiPort)); err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
 	} else if token != nil {
 		apiClient.DefaultHeaders["Authorization"] = token.String()
@@ -111,7 +116,12 @@ func GetAPIClientV2(cmd *cobra.Command, c *config.Config) (clientv2.API, error) 
 		clientv2.WithHeaders(headers),
 	}
 
-	existingAuthToken, err := ReadToken(c, base)
+	var tokenPath string
+	if err := c.ForKey(types.AuthTokensPath, &tokenPath); err != nil {
+		return nil, err
+	}
+
+	existingAuthToken, err := ReadToken(tokenPath, base)
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
 	}
@@ -121,7 +131,7 @@ func GetAPIClientV2(cmd *cobra.Command, c *config.Config) (clientv2.API, error) 
 			Client:     clientv2.NewHTTPClient(base, opts...),
 			Credential: existingAuthToken,
 			PersistCredential: func(cred *apimodels.HTTPCredential) error {
-				return WriteToken(base, c, cred)
+				return WriteToken(tokenPath, base, cred)
 			},
 			Authenticate: func(a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
 				return auth.RunAuthenticationFlow(cmd, a, fsr)

@@ -2,40 +2,12 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
-
-// TODO(forrest) [refactor]: this behavior belongs in the repo
-func getDefaultConfig(path string) types.BacalhauConfig {
-	// derive the default config for the specified environment.
-	defaultConfig := ForEnvironment()
-
-	// set default values for path dependent config.
-	defaultConfig.User.KeyPath = filepath.Join(path, UserPrivateKeyFileName)
-	defaultConfig.User.Libp2pKeyPath = filepath.Join(path, Libp2pPrivateKeyFileName)
-	defaultConfig.Node.ExecutorPluginPath = filepath.Join(path, PluginsPath)
-	defaultConfig.Node.ComputeStoragePath = filepath.Join(path, ComputeStoragesPath)
-	defaultConfig.Node.Compute.ExecutionStore.Path = filepath.Join(path, ComputeExecutionsStorePath)
-	defaultConfig.Node.Requester.JobStore.Path = filepath.Join(path, OrchestratorJobStorePath)
-	defaultConfig.Update.CheckStatePath = filepath.Join(path, UpdateCheckStatePath)
-	defaultConfig.Auth.TokensPath = filepath.Join(path, TokensPath)
-
-	// We default to the folder which contains the job store, and add
-	// a subfolder for the network store.
-	defaultConfig.Node.Network.StoreDir = filepath.Join(
-		filepath.Dir(defaultConfig.Node.Requester.JobStore.Path),
-		NetworkTransportStore,
-	)
-
-	return defaultConfig
-}
 
 // unmarshalCompositeKey takes a key and an output structure to unmarshal into. It gets the
 // composite value associated with the given key and decodes it into the provided output structure.

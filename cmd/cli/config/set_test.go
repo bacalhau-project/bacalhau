@@ -31,7 +31,8 @@ func TestAdditiveSet(t *testing.T) {
 	require.NoError(t, err)
 	viper.Set("repo", repoPath)
 
-	err = setConfig("node.loggingmode", "json")
+	configPath := filepath.Join(repoPath, "config.yaml")
+	err = setConfig(configPath, "node.loggingmode", "json")
 	require.NoError(t, err)
 
 	expected := types.BacalhauConfig{Node: types.NodeConfig{LoggingMode: logger.LogModeJSON}}
@@ -39,7 +40,7 @@ func TestAdditiveSet(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.compute.executionstore.type", "boltdb")
+	err = setConfig(configPath, "node.compute.executionstore.type", "boltdb")
 	require.NoError(t, err)
 
 	expected = types.BacalhauConfig{Node: types.NodeConfig{
@@ -54,7 +55,7 @@ func TestAdditiveSet(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.compute.jobselection.locality", "anywhere")
+	err = setConfig(configPath, "node.compute.jobselection.policy.locality", "anywhere")
 	require.NoError(t, err)
 
 	expected = types.BacalhauConfig{Node: types.NodeConfig{
@@ -63,8 +64,10 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: types.JobSelectionPolicyConfig{
+				Policy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
 			},
 		},
 	}}
@@ -72,7 +75,7 @@ func TestAdditiveSet(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.compute.jobtimeouts.jobnegotiationtimeout", "120s")
+	err = setConfig(configPath, "node.compute.jobtimeouts.jobnegotiationtimeout", "120s")
 	require.NoError(t, err)
 
 	expected = types.BacalhauConfig{Node: types.NodeConfig{
@@ -81,8 +84,10 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: types.JobSelectionPolicyConfig{
+				Policy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),
@@ -93,7 +98,7 @@ func TestAdditiveSet(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.labels", "foo=bar", "bar=buz", "buz=baz")
+	err = setConfig(configPath, "node.labels", "foo=bar", "bar=buz", "buz=baz")
 	require.NoError(t, err)
 
 	expected = types.BacalhauConfig{Node: types.NodeConfig{
@@ -102,8 +107,10 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: types.JobSelectionPolicyConfig{
+				Policy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),
@@ -119,7 +126,7 @@ func TestAdditiveSet(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
-	err = setConfig("node.clientapi.host", "0.0.0.0")
+	err = setConfig(configPath, "node.clientapi.host", "0.0.0.0")
 	require.NoError(t, err)
 
 	expected = types.BacalhauConfig{Node: types.NodeConfig{
@@ -131,8 +138,10 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: types.JobSelectionPolicyConfig{
+				Policy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),
@@ -156,17 +165,18 @@ func TestSetFailure(t *testing.T) {
 	repoPath, err := r.Path()
 	require.NoError(t, err)
 	viper.Set("repo", repoPath)
+	configPath := filepath.Join(repoPath, "config.yaml")
 
 	// fails as there are too many values, we expect 1
-	err = setConfig("node.loggingmode", "json", "jayson", "mayson", "grayson")
+	err = setConfig(configPath, "node.loggingmode", "json", "jayson", "mayson", "grayson")
 	require.Error(t, err)
 
 	// fails as baeson is not a valid type
-	err = setConfig("node.loggingmode", "baeson")
+	err = setConfig(configPath, "node.loggingmode", "baeson")
 	require.Error(t, err)
 
 	// fails as the key isn't a valid config key
-	err = setConfig("not.a.config.key", "porkchop sandwiches")
+	err = setConfig(configPath, "not.a.config.key", "porkchop sandwiches")
 	require.Error(t, err)
 }
 

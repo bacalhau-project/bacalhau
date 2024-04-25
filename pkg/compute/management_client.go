@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 type ManagementClientParams struct {
@@ -21,7 +22,7 @@ type ManagementClientParams struct {
 	ManagementProxy      ManagementEndpoint
 	NodeInfoDecorator    models.NodeInfoDecorator
 	ResourceTracker      capacity.Tracker
-	RegistrationFilePath string
+	Storage              repo.ComputeStorage
 	HeartbeatClient      *heartbeat.HeartbeatClient
 	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
@@ -37,6 +38,7 @@ type ManagementClient struct {
 	nodeID            string
 	nodeInfoDecorator models.NodeInfoDecorator
 	resourceTracker   capacity.Tracker
+	storage           repo.ComputeStorage
 	registrationFile  *RegistrationFile
 	heartbeatClient   *heartbeat.HeartbeatClient
 	settings          types.ComputeControlPlaneConfig
@@ -49,7 +51,8 @@ func NewManagementClient(params ManagementClientParams) *ManagementClient {
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
 		nodeInfoDecorator: params.NodeInfoDecorator,
-		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
+		storage:           params.Storage,
+		registrationFile:  NewRegistrationFile(params.NodeID, params.Storage),
 		resourceTracker:   params.ResourceTracker,
 		heartbeatClient:   params.HeartbeatClient,
 		settings:          params.ControlPlaneSettings,

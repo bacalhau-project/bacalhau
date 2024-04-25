@@ -18,11 +18,10 @@ func TestConfig(t *testing.T) {
 	// Testing Set and Get
 	t.Run("SetAndGetHappyPath", func(t *testing.T) {
 		expectedConfig := configenv.Testing
-		cfg, err := config.New(expectedConfig)
-		require.NoError(t, err)
+		cfg := config.New(config.WithDefaultConfig(expectedConfig))
 
 		var out types.NodeConfig
-		err = cfg.ForKey(types.Node, &out)
+		err := cfg.ForKey(types.Node, &out)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node, out)
 
@@ -34,11 +33,10 @@ func TestConfig(t *testing.T) {
 	t.Run("SetAndGetAdvance", func(t *testing.T) {
 		expectedConfig := configenv.Testing
 		expectedConfig.Node.IPFS.SwarmAddresses = []string{"1", "2", "3", "4", "5"}
-		cfg, err := config.New(expectedConfig)
-		assert.NoError(t, err)
+		cfg := config.New(config.WithDefaultConfig(expectedConfig))
 
 		var out types.IpfsConfig
-		err = cfg.ForKey(types.NodeIPFS, &out)
+		err := cfg.ForKey(types.NodeIPFS, &out)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig.Node.IPFS, out)
 
@@ -69,15 +67,10 @@ func TestConfig(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				expected := configenv.Testing
-				cfg, err := config.New(expected)
-				require.NoError(t, err)
-
-				configPath := t.TempDir()
-				_, err = cfg.Init(configPath)
-				require.NoError(t, err)
+				cfg := config.New(config.WithDefaultConfig(expected))
 
 				var out types.NodeConfig
-				err = cfg.ForKey(types.Node, &out)
+				err := cfg.ForKey(types.Node, &out)
 				assert.NoError(t, err)
 				assert.Equal(t, expected.Node.Requester, out.Requester)
 
@@ -102,13 +95,10 @@ func TestConfig(t *testing.T) {
 				expected := configenv.Testing
 				configPath := t.TempDir()
 				expected.Node.Requester.JobStore.Path = filepath.Join(configPath, config.OrchestratorJobStorePath)
-				cfg, err := config.New(expected)
-
-				_, err = cfg.Init(configPath)
-				require.NoError(t, err)
+				cfg := config.New(config.WithDefaultConfig(expected))
 
 				// Now, try to load the configuration we just saved.
-				loadedConfig, err := cfg.Load(configPath)
+				loadedConfig, err := cfg.Current()
 				require.NoError(t, err)
 
 				// After loading, compare the loaded configuration with the expected configuration.

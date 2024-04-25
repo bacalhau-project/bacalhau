@@ -3,7 +3,6 @@ package compute
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"go.uber.org/fx"
 
@@ -27,19 +26,11 @@ func PublisherProviders(lc fx.Lifecycle, fsr *repo.FsRepo, cfg types.PublisherPr
 		return nil, err
 	}
 
-	// TODO(forrest) [fixme] temp dir is used when no value is provided for the config
-	/*
-
-		func GetStoragePath() string {
-			path := viper.GetString(types.NodeComputeStoragePath)
-			if path == "" {
-				return os.TempDir()
-			}
-			return path
-		}
-	*/
-	s3Dir, err := os.MkdirTemp(os.TempDir(), "bacalhau-s3-publisher")
-	s3Publisher, err := util.ConfigureS3Publisher(s3Dir)
+	strg, err := fsr.ComputeStorage("s3-publisher")
+	if err != nil {
+		return nil, err
+	}
+	s3Publisher, err := util.ConfigureS3Publisher(strg)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +52,8 @@ func PublisherProviders(lc fx.Lifecycle, fsr *repo.FsRepo, cfg types.PublisherPr
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			if err := os.RemoveAll(s3Dir); err != nil {
-				return fmt.Errorf("unable to clean up S3 publisher directory [%s]: %w", s3Dir, err)
+			if err := strg.RemoveAll(); err != nil {
+				return fmt.Errorf("unable to clean up S3 publisher directory [%s]: %w", strg.Root(), err)
 			}
 			return nil
 		},

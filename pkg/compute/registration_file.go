@@ -1,7 +1,11 @@
 package compute
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 const (
@@ -16,9 +20,11 @@ type RegistrationFile struct {
 	path string
 }
 
-func NewRegistrationFile(path string) *RegistrationFile {
+func NewRegistrationFile(prefix string, strg repo.ComputeStorage) *RegistrationFile {
+	regFilename := fmt.Sprintf("%s.registration.lock", prefix)
+	regFilename = filepath.Join(strg.Root(), regFilename)
 	return &RegistrationFile{
-		path: path,
+		path: regFilename,
 	}
 }
 

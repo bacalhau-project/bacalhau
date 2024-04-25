@@ -44,9 +44,15 @@ type Definition struct {
 // BindFlagsWithViper binds flags from a command to Viper using the provided definitions.
 // This method should be called in command `PreRun`
 func BindFlagsWithViper(cmd *cobra.Command, v *viper.Viper, register map[string][]Definition) error {
+	seen := make(map[string]Definition)
 	for _, defs := range register {
 		for _, def := range defs {
 			// set the default value
+			if dup, ok := seen[def.ConfigPath]; ok {
+				return fmt.Errorf("DEVELOPER ERROR: duplicate regsistration of config key %s for flag %s"+
+					" previously registerd on on flag %s", def.ConfigPath, def.FlagName, dup.FlagName)
+			}
+			seen[def.ConfigPath] = def
 			v.SetDefault(def.ConfigPath, def.DefaultValue)
 
 			// bind the flag to viper

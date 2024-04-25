@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/BTBurke/k8sresource"
@@ -16,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 const (
@@ -113,14 +113,28 @@ func newAutoResourceCmd(cfg *config.Config) *cobra.Command {
 }
 
 func autoConfig(ctx context.Context, cfg *config.Config, settings *autoSettings) error {
-	// TODO(forrest) [fixme]
-	pp := system.NewPhysicalCapacityProvider(os.TempDir())
+	// create or open a repo
+	repoPath, err := cfg.RepoPath()
+	if err != nil {
+		return err
+	}
+	fsrepo, err := setup.SetupBacalhauRepo(repoPath, cfg)
+	if err != nil {
+		return err
+	}
+
+	storagePath, err := fsrepo.ComputeStoragePath()
+	if err != nil {
+		return err
+	}
+
+	pp := system.NewPhysicalCapacityProvider(storagePath)
 	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)
 	}
 
-	configFile := cfg.Viper().ConfigFileUsed()
+	configFile := cfg.User().ConfigFileUsed()
 	if err := setResources(configFile, types.NodeComputeCapacityTotalResourceLimits, settings.TotalPercentage, physicalResources); err != nil {
 		return err
 	}

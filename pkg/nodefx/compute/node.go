@@ -118,7 +118,7 @@ type ConfigResult struct {
 }
 
 // TODO provide the CapacityProvider as a param to this and remove the dep on the config
-func DecorateCapacityConfig(cfg *types.CapacityConfig, c *config.Config) (*types.CapacityConfig, error) {
+func DecorateCapacityConfig(cfg *types.CapacityConfig, fs *repo.FsRepo) (*types.CapacityConfig, error) {
 	// decorate/modify any config with default values if none were provided.
 	// TODO write decorators for the rest of the config in need of defaults
 	if cfg.DefaultJobResourceLimits.CPU == "" {
@@ -127,11 +127,13 @@ func DecorateCapacityConfig(cfg *types.CapacityConfig, c *config.Config) (*types
 	if cfg.DefaultJobResourceLimits.Memory == "" {
 		cfg.DefaultJobResourceLimits.Memory = "100Mi"
 	}
-	strgPath, found := c.GetString(types.NodeComputeStoragePath)
-	if !found {
-		return nil, fmt.Errorf("%s not configured", types.NodeComputeStoragePath)
+
+	storagePath, err := fs.ComputeStoragePath()
+	if err != nil {
+		return nil, err
 	}
-	physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider(strgPath)
+
+	physicalResourcesProvider := compute_system.NewPhysicalCapacityProvider(storagePath)
 	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.TODO())
 	if err != nil {
 		return nil, err
@@ -572,6 +574,20 @@ func LabelsProvider(labelConifg types.LabelsConfig, capacityConifg *types.Capaci
 	), nil
 }
 
+func HeartbeatClient(transport *nats_transport.NATSTransport, nodeID types.NodeID, config types.ComputeControlPlaneConfig) (*heartbeat.HeartbeatClient, error) {
+	hbClient, err := heartbeat.NewClient(
+		transport.Client().Client,
+		string(nodeID),
+		config.HeartbeatTopic,
+	)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
+	}
+
+	// NB(forrest): the hbClient is closed by the management client
+	return hbClient, nil
+}
+
 type ManagementClientParams struct {
 	fx.In
 
@@ -585,19 +601,6 @@ type ManagementClientParams struct {
 	HeartbeatClient *heartbeat.HeartbeatClient
 }
 
-func HeartbeatClient(transport *nats_transport.NATSTransport, nodeID types.NodeID, config types.ComputeControlPlaneConfig) (*heartbeat.HeartbeatClient, error) {
-	hbClient, err := heartbeat.NewClient(
-		transport.Client().Client,
-		string(nodeID),
-		config.HeartbeatTopic,
-	)
-	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
-	}
-
-	return hbClient, nil
-}
-
 func ManagementClient(
 	lc fx.Lifecycle,
 	p ManagementClientParams,
@@ -605,6 +608,10 @@ func ManagementClient(
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
+	strg, err := p.Repo.ComputeStorage("management-client")
+	if err != nil {
+		return nil, err
+	}
 	repoPath, err := p.Repo.Path()
 	if err != nil {
 		return nil, err
@@ -621,7 +628,7 @@ func ManagementClient(
 		ManagementProxy:      p.Transport.ManagementProxy(),
 		NodeInfoDecorator:    p.NodeDecorator,
 		ResourceTracker:      p.Running,
-		RegistrationFilePath: regFilename,
+		Storage:              strg,
 		HeartbeatClient:      p.HeartbeatClient,
 		ControlPlaneSettings: p.Config,
 	})

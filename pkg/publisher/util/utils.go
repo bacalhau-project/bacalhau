@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -46,7 +47,7 @@ func NewPublisherProvider(
 	}), nil
 }
 
-func ConfigureS3Publisher(dir string) (*s3.Publisher, error) {
+func ConfigureS3Publisher(strg repo.ComputeStorage) (*s3.Publisher, error) {
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func ConfigureS3Publisher(dir string) (*s3.Publisher, error) {
 		AWSConfig: cfg,
 	})
 	return s3.NewPublisher(s3.PublisherParams{
-		LocalDir:       dir,
+		Storage:        strg,
 		ClientProvider: clientProvider,
 	}), nil
 }

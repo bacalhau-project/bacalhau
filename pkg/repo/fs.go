@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -25,6 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -32,8 +34,27 @@ const (
 	defaultRunInfoFilename = "bacalhau.run"
 	runInfoFilePermissions = 0755
 
+	ConfigFileName = "config.yaml"
+
 	// UpdateCheckStatePath is the update check paths.
 	UpdateCheckStatePath = "update.json"
+
+	// user key paths
+	Libp2pPrivateKeyPath = "libp2p_private_key"
+	UserPrivateKeyPath   = "user_id.pem"
+
+	// auth paths
+	TokensPath = "tokens.json"
+
+	// compute paths
+	ComputeStoragesPath = "executor_storages"
+	ComputeStorePath    = "compute_store"
+	PluginsPath         = "plugins"
+
+	// orchestrator paths
+	OrchestratorStorePath = "orchestrator_store"
+	AutoCertCachePath     = "autocert-cache"
+	NetworkTransportStore = "nats-store"
 )
 
 type FsRepoParams struct {
@@ -47,6 +68,9 @@ type FsRepo struct {
 	Migrations *MigrationManager
 	config     *config.Config
 
+	compStrgs   map[string]ComputeStorage
+	compStrgsMu sync.Mutex
+
 	exStoreOnce sync.Once
 	exStore     store.ExecutionStore
 	exStoreErr  error
@@ -59,6 +83,7 @@ func NewFS(params FsRepoParams) (*FsRepo, error) {
 	}
 
 	return &FsRepo{
+		compStrgs:  make(map[string]ComputeStorage),
 		path:       expandedPath,
 		Migrations: params.Migrations,
 		config:     params.Config,
@@ -110,20 +135,45 @@ func (fsr *FsRepo) Init() error {
 		return fmt.Errorf("cannot init repo: repo already exists")
 	}
 
-	log.Info().Msgf("Initializing repo at '%s' for environment '%s'", fsr.path, config.GetConfigEnvironment())
+	log.Info().Msgf("Initializing repo in %q", fsr.path)
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	cfg, err := fsr.config.Init(fsr.path)
-	if err != nil {
-		return err
+	// check if a config file is already present, even though the repo is uninitialized
+	// users may still place a config file in a repo (we do this for our terraform deployments)
+	// we should attempt to load the config file if it's present.
+	if _, err := os.Stat(fsr.join(ConfigFileName)); err == nil {
+		if err := fsr.config.Load(fsr.join(ConfigFileName)); err != nil {
+			return fmt.Errorf("failed to load config file present in repo: %w", err)
+		}
 	}
 
-	if err := initRepoFiles(cfg); err != nil {
+	// ensure all required paths are present in the config, setting any absent ones to the default.
+	fsr.ensureRepoPathsConfigured()
+
+	// initialize a node name if one is not present
+	if err := fsr.configureNodeName(); err != nil {
+		return fmt.Errorf("failed to initalize repo: %w", err)
+	}
+
+	if err := fsr.WritePersistedConfigs(); err != nil {
+		return fmt.Errorf("failed to persist config: %w", err)
+	}
+
+	// initialize the users private key
+	if err := fsr.initUserKeys(); err != nil {
 		return fmt.Errorf("failed to initialize repo: %w", err)
+	}
+
+	// now load the configuration for the repo since we have written it.
+	// this ensure commands that create a repo then immediately use the config file
+	// have one set in the configuration system
+	err := fsr.config.Load(fsr.join(ConfigFileName))
+	if err != nil {
+		return err
 	}
 
 	// TODO this should be a part of the config.
@@ -146,7 +196,14 @@ func (fsr *FsRepo) Open() error {
 	}
 
 	// load the configuration for the repo.
-	cfg, err := fsr.config.Load(fsr.path)
+	err := fsr.config.Load(fsr.join(ConfigFileName))
+	if err != nil {
+		return err
+	}
+
+	fsr.ensureRepoPathsConfigured()
+
+	cfg, err := fsr.config.Current()
 	if err != nil {
 		return err
 	}
@@ -161,13 +218,13 @@ func (fsr *FsRepo) Open() error {
 	if cfg.User.InstallationID == "" {
 		ID, _ := fsr.GetClientID()
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		fsr.config.SetValue(types.UserInstallationID, uuidFromUserID.String())
+		fsr.config.Set(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
 	if cfg.Update.CheckStatePath == "" {
 		cfg.Update.CheckStatePath = filepath.Join(fsr.path, UpdateCheckStatePath)
-		fsr.config.SetValue(types.UpdateCheckStatePath, cfg.Update.CheckStatePath)
+		fsr.config.Set(types.UpdateCheckStatePath, cfg.Update.CheckStatePath)
 	}
 
 	// TODO this should be a part of the config.
@@ -176,13 +233,15 @@ func (fsr *FsRepo) Open() error {
 	return nil
 }
 
+// join joins path elements with fsr.path
+func (fsr *FsRepo) join(paths ...string) string {
+	return filepath.Join(append([]string{fsr.path}, paths...)...)
+}
+
 // WritePersistedConfigs will write certain values from the resolved config to the persisted config.
 // These include fields for configurations that must not change between version updates, such as the
 // execution store and job store paths, in case we change their default values in future updates.
 func (fsr *FsRepo) WritePersistedConfigs() error {
-	// a viper config instance that is only based on the config file.
-	name := fsr.config.Viper().Get(types.NodeName)
-	_ = name
 	resolvedCfg, err := fsr.config.Current()
 	if err != nil {
 		return err
@@ -229,8 +288,44 @@ func (fsr *FsRepo) WritePersistedConfigs() error {
 	return nil
 }
 
-func (fsr *FsRepo) ExecutionStore(cfg types.JobStoreConfig) (store.ExecutionStore, error) {
+func (fsr *FsRepo) ComputeStoragePath() (string, error) {
+	// TODO(forrest) [refactor]: this is just a path in the repo, the config is always going to be under the repo
+	// so remove the option to configure it and make it a repo field.
+	var cfg types.ComputeStorageConfig
+	if err := fsr.config.ForKey(types.NodeComputeStorage, &cfg); err != nil {
+		return "", fmt.Errorf("failed to read compute storage configuration: %w", err)
+	}
+	return cfg.Path, nil
+}
 
+func (fsr *FsRepo) ComputeStorage(namespace string) (ComputeStorage, error) {
+	fsr.compStrgsMu.Lock()
+	defer fsr.compStrgsMu.Unlock()
+
+	rootStoragePath, err := fsr.ComputeStoragePath()
+	if err != nil {
+		return nil, err
+	}
+
+	if cs, ok := fsr.compStrgs[namespace]; ok {
+		return cs, nil
+	}
+
+	strgPath := fsr.join(rootStoragePath, namespace)
+	if err := os.MkdirAll(strgPath, util.OS_USER_RWX); err != nil {
+		return nil, err
+	}
+
+	cs := &fsCompStrg{
+		namespace: namespace,
+		path:      strgPath,
+	}
+	fsr.compStrgs[namespace] = cs
+
+	return cs, nil
+}
+
+func (fsr *FsRepo) ExecutionStore(cfg types.JobStoreConfig) (store.ExecutionStore, error) {
 	fsr.exStoreOnce.Do(func() {
 		// TODO(forrest) [refator] we should base this path on the repo, not the config.
 		// Extract the parent directory from the provided path.
@@ -311,26 +406,6 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	return runInfoPath, nil
-	// TODO previous behavior put it in these places, we may consider creating a symlink later
-	/*
-		if writeable, _ := filefs.IsWritable("/run"); writeable {
-			writePath = "/run" // Linux
-		} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
-			writePath = "/var/run" // Older Linux
-		} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
-			writePath = "/private/var/run" // MacOS
-		} else {
-			// otherwise write to the user's dir, which should be available on all systems
-			userDir, err := os.UserHomeDir()
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
-				return nil
-			}
-			log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
-				"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
-			writePath = userDir
-		}
-	*/
 }
 
 // loadClientID loads a hash identifying a user based on their ID key.
@@ -409,4 +484,70 @@ func (fsr *FsRepo) loadUserIDKey() (*rsa.PrivateKey, error) {
 	}
 
 	return key, nil
+}
+
+// modifies the config to include keys for accessing repo paths
+func (fsr *FsRepo) ensureRepoPathsConfigured() {
+	fsr.config.SetIfAbsent(types.AuthTokensPath, fsr.join(TokensPath))
+	fsr.config.SetIfAbsent(types.UserKeyPath, fsr.join(UserPrivateKeyPath))
+	fsr.config.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(PluginsPath))
+	fsr.config.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(ComputeStorePath))
+	fsr.config.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(UpdateCheckStatePath))
+	fsr.config.SetIfAbsent(types.NodeServerAutoCertCache, fsr.join(AutoCertCachePath))
+	fsr.config.SetIfAbsent(types.UserLibp2pKeyPath, fsr.join(Libp2pPrivateKeyPath))
+	fsr.config.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(OrchestratorStorePath, NetworkTransportStore))
+
+	fsr.config.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(OrchestratorStorePath, "jobs.db"))
+	fsr.config.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(ComputeStoragesPath, "executions.db"))
+}
+
+// initUserKeys initializes all files required for a valid bacalhau repo.
+func (fsr *FsRepo) initUserKeys() error {
+	if err := initUserIDKey(fsr.config.Get(types.UserKeyPath).(string)); err != nil {
+		return fmt.Errorf("failed to create user key: %w", err)
+	}
+
+	if err := initLibp2pKey(fsr.config.Get(types.UserLibp2pKeyPath).(string)); err != nil {
+		return fmt.Errorf("failed to create libp2p key: %w", err)
+	}
+
+	return nil
+}
+
+// configureNodeName generates a node name if one is not present in the config
+func (fsr *FsRepo) configureNodeName() error {
+	var nodeName types.NodeID
+	if err := fsr.config.ForKey(types.NodeName, &nodeName); err != nil {
+		return err
+	}
+
+	if nodeName != "" {
+		return nil
+	}
+	var nameProvider string
+	if err := fsr.config.ForKey(types.NodeNameProvider, &nameProvider); err != nil {
+		return err
+	}
+
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nameProvider]
+	if !ok {
+		return fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nameProvider, lo.Keys(nodeNameProviders))
+	}
+
+	name, err := nodeNameProvider.GenerateNodeName(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	// set the new name in the config, so it can be used and persisted later.
+	fsr.config.Set(types.NodeName, name)
+	return nil
 }

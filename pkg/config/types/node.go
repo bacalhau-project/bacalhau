@@ -33,8 +33,6 @@ type NodeConfig struct {
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
-	ComputeStoragePath string `yaml:"ComputeStoragePath"`
-
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	// TODO(forrest) [refactor]: change this name to Kind

@@ -24,6 +24,11 @@ type ComputeConfig struct {
 	StorageProviders   StorageProvidersConfig   `yaml:"StorageProviders"`
 	ExecutorProviders  ExecutorProvidersConfig  `yaml:"ExecutorProviders"`
 	PublisherProviders PublisherProvidersConfig `yaml:"PublisherProviders"`
+	Storage            ComputeStorageConfig     `yaml:"Storage"`
+}
+
+type ComputeStorageConfig struct {
+	Path string `yaml:"Path"`
 }
 
 type CapacityConfig struct {

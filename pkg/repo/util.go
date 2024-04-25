@@ -17,35 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
-// initRepoFiles initializes all files required for a valid bacalhau repo.
-func initRepoFiles(cfg types.BacalhauConfig) error {
-	if err := initUserIDKey(cfg.User.KeyPath); err != nil {
-		return fmt.Errorf("failed to create user key: %w", err)
-	}
-
-	if err := initLibp2pKey(cfg.User.Libp2pKeyPath); err != nil {
-		return fmt.Errorf("failed to create libp2p key: %w", err)
-	}
-
-	/*
-		if err := initDir(cfg.Node.ExecutorPluginPath); err != nil {
-			return fmt.Errorf("failed to create plugin dir: %w", err)
-		}
-
-		if err := initDir(cfg.Node.ComputeStoragePath); err != nil {
-			return fmt.Errorf("failed to create executor storage dir: %w", err)
-		}
-		if err := initParentDir(cfg.Node.Compute.ExecutionStore.Path); err != nil {
-			return fmt.Errorf("failed to create executor execution store dir: %w", err)
-		}
-		if err := initParentDir(cfg.Node.Requester.JobStore.Path); err != nil {
-			return fmt.Errorf("failed to create orchestrator job store dir: %w", err)
-		}
-	*/
-
-	return nil
-}
-
 // validateRepoConfig ensures all files exist for a valid bacalhau repo.
 func validateRepoConfig(cfg types.BacalhauConfig) error {
 	if exists, err := fileExists(cfg.User.KeyPath); err != nil {
