@@ -41,12 +41,16 @@ func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 	s.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true})
 
-	s.scheduler = NewBatchServiceJobScheduler(BatchServiceJobSchedulerParams{
-		JobStore:      s.jobStore,
-		Planner:       s.planner,
-		NodeSelector:  s.nodeSelector,
-		RetryStrategy: s.retryStrategy,
-	})
+	s.scheduler = NewBatchServiceJobScheduler(
+		s.jobStore,
+		s.planner,
+		s.nodeSelector,
+		s.retryStrategy,
+		orchestrator.NodeSelectionConstraints{
+			RequireConnected: false,
+			RequireApproval:  false,
+		},
+	)
 }
 
 func TestServiceSchedulerTestSuite(t *testing.T) {

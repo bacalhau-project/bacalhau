@@ -16,22 +16,23 @@ import (
 
 // OpsJobScheduler is a scheduler for batch jobs that run until completion
 type OpsJobScheduler struct {
-	jobStore     jobstore.Store
-	planner      orchestrator.Planner
-	nodeSelector orchestrator.NodeSelector
+	jobStore            jobstore.Store
+	planner             orchestrator.Planner
+	nodeSelector        orchestrator.NodeSelector
+	selectorConstraints orchestrator.NodeSelectionConstraints
 }
 
-type OpsJobSchedulerParams struct {
-	JobStore     jobstore.Store
-	Planner      orchestrator.Planner
-	NodeSelector orchestrator.NodeSelector
-}
-
-func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
+func NewOpsJobScheduler(
+	store jobstore.Store,
+	planner orchestrator.Planner,
+	selector orchestrator.NodeSelector,
+	constraints orchestrator.NodeSelectionConstraints,
+) *OpsJobScheduler {
 	return &OpsJobScheduler{
-		jobStore:     params.JobStore,
-		planner:      params.Planner,
-		nodeSelector: params.NodeSelector,
+		jobStore:            store,
+		planner:             planner,
+		nodeSelector:        selector,
+		selectorConstraints: constraints,
 	}
 }
 
@@ -107,7 +108,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 		ctx,
 		job, &orchestrator.NodeSelectionConstraints{
 			RequireApproval:  true,
-			RequireConnected: false,
+			RequireConnected: true,
 		})
 	if err != nil {
 		return newExecs, err

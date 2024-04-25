@@ -18,19 +18,20 @@ type DaemonJobScheduler struct {
 	jobStore     jobstore.Store
 	planner      orchestrator.Planner
 	nodeSelector orchestrator.NodeSelector
+	constraints  orchestrator.NodeSelectionConstraints
 }
 
-type DaemonJobSchedulerParams struct {
-	JobStore     jobstore.Store
-	Planner      orchestrator.Planner
-	NodeSelector orchestrator.NodeSelector
-}
-
-func NewDaemonJobScheduler(params DaemonJobSchedulerParams) *DaemonJobScheduler {
+func NewDaemonJobScheduler(
+	store jobstore.Store,
+	planner orchestrator.Planner,
+	selector orchestrator.NodeSelector,
+	constraints orchestrator.NodeSelectionConstraints,
+) *DaemonJobScheduler {
 	return &DaemonJobScheduler{
-		jobStore:     params.JobStore,
-		planner:      params.Planner,
-		nodeSelector: params.NodeSelector,
+		jobStore:     store,
+		planner:      planner,
+		nodeSelector: selector,
+		constraints:  constraints,
 	}
 }
 
@@ -86,11 +87,11 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
 
-	// Require approval when selecting nodes, but do not require them to be connected.
+	// Require nodes to be approved and connected to schedule work.
 	nodes, err := b.nodeSelector.AllMatchingNodes(
 		ctx,
 		job,
-		&orchestrator.NodeSelectionConstraints{RequireApproval: true, RequireConnected: false},
+		&orchestrator.NodeSelectionConstraints{RequireApproval: true, RequireConnected: true},
 	)
 	if err != nil {
 		return newExecs, err

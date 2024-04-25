@@ -30,11 +30,15 @@ func (s *OpsJobSchedulerTestSuite) SetupTest() {
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 
-	s.scheduler = NewOpsJobScheduler(OpsJobSchedulerParams{
-		JobStore:     s.jobStore,
-		Planner:      s.planner,
-		NodeSelector: s.nodeSelector,
-	})
+	s.scheduler = NewOpsJobScheduler(
+		s.jobStore,
+		s.planner,
+		s.nodeSelector,
+		orchestrator.NodeSelectionConstraints{
+			RequireConnected: false,
+			RequireApproval:  false,
+		},
+	)
 }
 
 func TestOpsJobSchedulerTestSuite(t *testing.T) {

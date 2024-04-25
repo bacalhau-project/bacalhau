@@ -18,25 +18,26 @@ import (
 // - batch jobs that run until completion on N number of nodes
 // - service jobs than run until stopped on N number of nodes
 type BatchServiceJobScheduler struct {
-	jobStore      jobstore.Store
-	planner       orchestrator.Planner
-	nodeSelector  orchestrator.NodeSelector
-	retryStrategy orchestrator.RetryStrategy
+	jobStore            jobstore.Store
+	planner             orchestrator.Planner
+	nodeSelector        orchestrator.NodeSelector
+	retryStrategy       orchestrator.RetryStrategy
+	selectorConstraints orchestrator.NodeSelectionConstraints
 }
 
-type BatchServiceJobSchedulerParams struct {
-	JobStore      jobstore.Store
-	Planner       orchestrator.Planner
-	NodeSelector  orchestrator.NodeSelector
-	RetryStrategy orchestrator.RetryStrategy
-}
-
-func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchServiceJobScheduler {
+func NewBatchServiceJobScheduler(
+	store jobstore.Store,
+	planner orchestrator.Planner,
+	selector orchestrator.NodeSelector,
+	strategy orchestrator.RetryStrategy,
+	constraints orchestrator.NodeSelectionConstraints,
+) *BatchServiceJobScheduler {
 	return &BatchServiceJobScheduler{
-		jobStore:      params.JobStore,
-		planner:       params.Planner,
-		nodeSelector:  params.NodeSelector,
-		retryStrategy: params.RetryStrategy,
+		jobStore:            store,
+		planner:             planner,
+		nodeSelector:        selector,
+		retryStrategy:       strategy,
+		selectorConstraints: constraints,
 	}
 }
 
@@ -155,15 +156,11 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 // placeExecs places the executions
 func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
-		// TODO: Remove the options once we are ready to enforce that only connected/approved nodes can be used
 		selectedNodes, err := b.nodeSelector.TopMatchingNodes(
 			ctx,
 			job,
 			len(execs),
-			&orchestrator.NodeSelectionConstraints{
-				RequireApproval:  false,
-				RequireConnected: false,
-			},
+			&b.selectorConstraints,
 		)
 		if err != nil {
 			return err
