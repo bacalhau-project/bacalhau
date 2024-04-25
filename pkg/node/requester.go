@@ -145,41 +145,24 @@ func NewRequesterNode(
 		retryStrategy = retryStrategyChain
 	}
 
-	// TODO(forrest): [refactor] the selector constraints ought to be a parameter to the node selector.
 	// node selector
-	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
-		NodeDiscoverer: nodeInfoStore,
-		NodeRanker:     nodeRankerChain,
-	})
-	// selector constraints: require nodes be online and approved to schedule
-	selectorConstraints := orchestrator.NodeSelectionConstraints{
-		RequireConnected: true,
-		RequireApproval:  true,
-	}
+	nodeSelector := selector.NewNodeSelector(
+		nodeInfoStore,
+		nodeRankerChain,
+		// selector constraints: require nodes be online and approved to schedule
+		orchestrator.NodeSelectionConstraints{
+			RequireConnected: true,
+			RequireApproval:  true,
+		},
+	)
 
 	// scheduler provider
-	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(
-		jobStore,
-		planners,
-		nodeSelector,
-		retryStrategy,
-		selectorConstraints,
-	)
+	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(jobStore, planners, nodeSelector, retryStrategy)
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
 		models.JobTypeService: batchServiceJobScheduler,
-		models.JobTypeOps: scheduler.NewOpsJobScheduler(
-			jobStore,
-			planners,
-			nodeSelector,
-			selectorConstraints,
-		),
-		models.JobTypeDaemon: scheduler.NewDaemonJobScheduler(
-			jobStore,
-			planners,
-			nodeSelector,
-			selectorConstraints,
-		),
+		models.JobTypeOps:     scheduler.NewOpsJobScheduler(jobStore, planners, nodeSelector),
+		models.JobTypeDaemon:  scheduler.NewDaemonJobScheduler(jobStore, planners, nodeSelector),
 	})
 
 	workers := make([]*orchestrator.Worker, 0, requesterConfig.WorkerCount)

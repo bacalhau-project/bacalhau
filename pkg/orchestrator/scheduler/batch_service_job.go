@@ -18,11 +18,10 @@ import (
 // - batch jobs that run until completion on N number of nodes
 // - service jobs than run until stopped on N number of nodes
 type BatchServiceJobScheduler struct {
-	jobStore            jobstore.Store
-	planner             orchestrator.Planner
-	nodeSelector        orchestrator.NodeSelector
-	retryStrategy       orchestrator.RetryStrategy
-	selectorConstraints orchestrator.NodeSelectionConstraints
+	jobStore      jobstore.Store
+	planner       orchestrator.Planner
+	selector      orchestrator.NodeSelector
+	retryStrategy orchestrator.RetryStrategy
 }
 
 func NewBatchServiceJobScheduler(
@@ -30,14 +29,12 @@ func NewBatchServiceJobScheduler(
 	planner orchestrator.Planner,
 	selector orchestrator.NodeSelector,
 	strategy orchestrator.RetryStrategy,
-	constraints orchestrator.NodeSelectionConstraints,
 ) *BatchServiceJobScheduler {
 	return &BatchServiceJobScheduler{
-		jobStore:            store,
-		planner:             planner,
-		nodeSelector:        selector,
-		retryStrategy:       strategy,
-		selectorConstraints: constraints,
+		jobStore:      store,
+		planner:       planner,
+		selector:      selector,
+		retryStrategy: strategy,
 	}
 }
 
@@ -70,7 +67,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	}
 
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
@@ -156,12 +153,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 // placeExecs places the executions
 func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
-		selectedNodes, err := b.nodeSelector.TopMatchingNodes(
-			ctx,
-			job,
-			len(execs),
-			&b.selectorConstraints,
-		)
+		selectedNodes, err := b.selector.TopMatchingNodes(ctx, job, len(execs))
 		if err != nil {
 			return err
 		}
@@ -175,7 +167,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
+	// TODO(walid): allow scheduling retries in a later time if don't find nodes instead of failing the job
 	// mark all non-terminal executions as failed
 	nonTerminalExecs.markStopped(plan.Event, plan)
 

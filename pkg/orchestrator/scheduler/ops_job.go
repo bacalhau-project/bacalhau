@@ -16,23 +16,20 @@ import (
 
 // OpsJobScheduler is a scheduler for batch jobs that run until completion
 type OpsJobScheduler struct {
-	jobStore            jobstore.Store
-	planner             orchestrator.Planner
-	nodeSelector        orchestrator.NodeSelector
-	selectorConstraints orchestrator.NodeSelectionConstraints
+	jobStore jobstore.Store
+	planner  orchestrator.Planner
+	selector orchestrator.NodeSelector
 }
 
 func NewOpsJobScheduler(
 	store jobstore.Store,
 	planner orchestrator.Planner,
 	selector orchestrator.NodeSelector,
-	constraints orchestrator.NodeSelectionConstraints,
 ) *OpsJobScheduler {
 	return &OpsJobScheduler{
-		jobStore:            store,
-		planner:             planner,
-		nodeSelector:        selector,
-		selectorConstraints: constraints,
+		jobStore: store,
+		planner:  planner,
+		selector: selector,
 	}
 }
 
@@ -65,7 +62,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	}
 
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
@@ -104,12 +101,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.nodeSelector.AllMatchingNodes(
-		ctx,
-		job, &orchestrator.NodeSelectionConstraints{
-			RequireApproval:  true,
-			RequireConnected: true,
-		})
+	nodes, err := b.selector.AllMatchingNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}
