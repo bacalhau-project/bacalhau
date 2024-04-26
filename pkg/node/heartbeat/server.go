@@ -27,7 +27,7 @@ type HeartbeatServer struct {
 	clock             clock.Clock
 	subscription      *natsPubSub.PubSub[Heartbeat]
 	pqueue            *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
-	livenessMap       *concurrency.StripedMap[models.NodeState]
+	livenessMap       *concurrency.StripedMap[models.NodeConnectionState]
 	checkFrequency    time.Duration
 	disconnectedAfter time.Duration
 }
@@ -64,7 +64,7 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		clock:             clk,
 		subscription:      subscription,
 		pqueue:            pqueue,
-		livenessMap:       concurrency.NewStripedMap[models.NodeState](0), // no particular stripe count for now
+		livenessMap:       concurrency.NewStripedMap[models.NodeConnectionState](0), // no particular stripe count for now
 		checkFrequency:    params.CheckFrequency,
 		disconnectedAfter: params.NodeDisconnectedAfter,
 	}, nil
@@ -135,22 +135,22 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 
 // markNode will mark a node as being in a certain state. This will be used to update the node's
 // info to include the liveness state.
-func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeState) {
+func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeConnectionState) {
 	h.livenessMap.Put(nodeID, state)
 }
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
-func (h *HeartbeatServer) UpdateNodeInfo(nodeInfo *models.NodeInfo) {
-	if liveness, ok := h.livenessMap.Get(nodeInfo.NodeID); ok {
-		nodeInfo.State = liveness
+func (h *HeartbeatServer) UpdateNodeInfo(state *models.NodeState) {
+	if liveness, ok := h.livenessMap.Get(state.Info.NodeID); ok {
+		state.Connection = liveness
 	} else {
 		// We've never seen this, so we'll mark it as unknown
-		nodeInfo.State = models.NodeStates.DISCONNECTED
+		state.Connection = models.NodeStates.DISCONNECTED
 	}
 }
 
 // FilterNodeInfos will return only those NodeInfos that have the requested liveness
-func (h *HeartbeatServer) FilterNodeInfos(nodeInfos []*models.NodeInfo, state models.NodeState) []*models.NodeInfo {
+func (h *HeartbeatServer) FilterNodeInfos(nodeInfos []*models.NodeInfo, state models.NodeConnectionState) []*models.NodeInfo {
 	result := make([]*models.NodeInfo, 0)
 	for _, nodeInfo := range nodeInfos {
 		if liveness, ok := h.livenessMap.Get(nodeInfo.NodeID); ok {

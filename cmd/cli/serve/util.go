@@ -7,16 +7,17 @@ import (
 	"path/filepath"
 	"time"
 
+	pkgerrors "github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/spf13/viper"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	pkgerrors "github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -127,9 +128,9 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	}
 
 	if cfg.ManualNodeApproval {
-		requesterConfig.DefaultApprovalState = models.NodeApprovals.PENDING
+		requesterConfig.DefaultApprovalState = models.NodeMembership.PENDING
 	} else {
-		requesterConfig.DefaultApprovalState = models.NodeApprovals.APPROVED
+		requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
 	}
 
 	return requesterConfig, nil
