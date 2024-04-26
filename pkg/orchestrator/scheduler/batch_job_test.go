@@ -6,14 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -69,11 +70,11 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() 
 
 	// we need 3 executions. discover enough nodes
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
-		*mockNodeInfo(s.T(), nodeIDs[2]),
-		*mockNodeInfo(s.T(), nodeIDs[3]),
-		*mockNodeInfo(s.T(), nodeIDs[4]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[2]),
+		*fakeNodeInfo(s.T(), nodeIDs[3]),
+		*fakeNodeInfo(s.T(), nodeIDs[4]),
 	}
 	s.mockNodeSelection(job, nodeInfos, job.Count)
 
@@ -97,8 +98,8 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execBidAccepted].NodeID),
+		*fakeNodeInfo(s.T(), executions[execAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execBidAccepted].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -125,9 +126,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[0].NodeID),
-		*mockNodeInfo(s.T(), executions[1].NodeID),
-		*mockNodeInfo(s.T(), executions[2].NodeID),
+		*fakeNodeInfo(s.T(), executions[0].NodeID),
+		*fakeNodeInfo(s.T(), executions[1].NodeID),
+		*fakeNodeInfo(s.T(), executions[2].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -151,8 +152,8 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execBidAccepted].NodeID),
+		*fakeNodeInfo(s.T(), executions[execAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execBidAccepted].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
@@ -172,8 +173,8 @@ func (s *BatchJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 
 	// we need 3 executions. discover fewer nodes
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
 	}
 	s.mockNodeSelection(job, nodeInfos, job.Count)
 
@@ -221,8 +222,8 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 
 	// mock node discoverer to exclude the node in BidAccepted state
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execCanceled].NodeID),
+		*fakeNodeInfo(s.T(), executions[execAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execCanceled].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 	s.mockNodeSelection(job, nodeInfos, 1)
@@ -285,8 +286,8 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 
 	// mark askForBid exec as lost so we attempt to retry
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execBidAccepted].NodeID),
-		*mockNodeInfo(s.T(), executions[execCompleted].NodeID),
+		*fakeNodeInfo(s.T(), executions[execBidAccepted].NodeID),
+		*fakeNodeInfo(s.T(), executions[execCompleted].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -303,10 +304,20 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 }
 
 func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
+	constraints := &orchestrator.NodeSelectionConstraints{
+		RequireApproval:  false,
+		RequireConnected: false,
+	}
+
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount, constraints).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nodeInfos, nil)
+		s.nodeSelector.EXPECT().TopMatchingNodes(
+			gomock.Any(),
+			job,
+			desiredCount,
+			constraints,
+		).Return(nodeInfos, nil)
 	}
 }
 

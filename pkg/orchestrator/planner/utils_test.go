@@ -29,12 +29,12 @@ func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate
 	update1 := &models.PlanExecutionDesiredUpdate{
 		Execution:    execution1,
 		DesiredState: models.ExecutionDesiredStateRunning,
-		Comment:      "update 1",
+		Event:        models.Event{Message: "update 1"},
 	}
 	update2 := &models.PlanExecutionDesiredUpdate{
 		Execution:    execution2,
 		DesiredState: models.ExecutionDesiredStateStopped,
-		Comment:      "update 2",
+		Event:        models.Event{Message: "update 2"},
 	}
 	plan.UpdatedExecutions[execution1.ID] = update1
 	plan.UpdatedExecutions[execution2.ID] = update2
@@ -78,7 +78,7 @@ func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params
 func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanExecutionDesiredUpdate) *UpdateExecutionMatcher {
 	return NewUpdateExecutionMatcher(t, update.Execution, UpdateExecutionMatcherParams{
 		NewDesiredState:     update.DesiredState,
-		DesiredStateComment: update.Comment,
+		DesiredStateComment: update.Event.Message,
 		ExpectedRevision:    update.Execution.Revision,
 	})
 }
@@ -119,13 +119,13 @@ type UpdateJobMatcher struct {
 	t                *testing.T
 	job              *models.Job
 	newState         models.JobStateType
-	comment          string
+	event            models.Event
 	expectedRevision uint64
 }
 
 type UpdateJobMatcherParams struct {
 	NewState         models.JobStateType
-	Comment          string
+	Event            models.Event
 	ExpectedRevision uint64
 }
 
@@ -134,7 +134,7 @@ func NewUpdateJobMatcher(t *testing.T, job *models.Job, params UpdateJobMatcherP
 		t:                t,
 		job:              job,
 		newState:         params.NewState,
-		comment:          params.Comment,
+		event:            params.Event,
 		expectedRevision: params.ExpectedRevision,
 	}
 }
@@ -142,7 +142,7 @@ func NewUpdateJobMatcher(t *testing.T, job *models.Job, params UpdateJobMatcherP
 func NewUpdateJobMatcherFromPlanUpdate(t *testing.T, plan *models.Plan) *UpdateJobMatcher {
 	return NewUpdateJobMatcher(t, plan.Job, UpdateJobMatcherParams{
 		NewState:         plan.DesiredJobState,
-		Comment:          plan.Comment,
+		Event:            plan.Event,
 		ExpectedRevision: plan.Job.Revision,
 	})
 }
@@ -157,7 +157,7 @@ func (m *UpdateJobMatcher) Matches(x interface{}) bool {
 	expectedRequest := jobstore.UpdateJobStateRequest{
 		JobID:    m.job.ID,
 		NewState: m.newState,
-		Comment:  m.comment,
+		Event:    m.event,
 		Condition: jobstore.UpdateJobCondition{
 			ExpectedRevision: m.expectedRevision,
 		},

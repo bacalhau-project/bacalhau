@@ -29,24 +29,26 @@ func NewDescribeCmd() *cobra.Command {
 		Use:   "describe [id]",
 		Short: "Get the info of a node by id.",
 		Args:  cobra.ExactArgs(1),
-		Run:   o.runDescribe,
+		RunE:  o.runDescribe,
 	}
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }
 
 // Run executes node command
-func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) {
+func (o *DescribeOptions) runDescribe(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	nodeID := args[0]
 	response, err := util.GetAPIClientV2(cmd).Nodes().Get(ctx, &apimodels.GetNodeRequest{
 		NodeID: nodeID,
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get node %s: %w", nodeID, err), 1)
+		return fmt.Errorf("could not get node %s: %w", nodeID, err)
 	}
 
 	if err = output.OutputOneNonTabular(cmd, o.OutputOpts, response.Node); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write node %s: %w", nodeID, err), 1)
+		return fmt.Errorf("failed to write node %s: %w", nodeID, err)
 	}
+
+	return nil
 }

@@ -20,7 +20,7 @@ func TestPriorityQueueSuite(t *testing.T) {
 func (s *PriorityQueueSuite) TestSimple() {
 	type testcase struct {
 		v string
-		p int
+		p int64
 	}
 	inputs := []testcase{
 		{"B", 2}, {"A", 3}, {"C", 1}, {"A", 3}, {"C", 1}, {"B", 2},
@@ -31,7 +31,34 @@ func (s *PriorityQueueSuite) TestSimple() {
 
 	pq := collections.NewPriorityQueue[string]()
 	for _, tc := range inputs {
-		pq.Enqueue(tc.v, tc.p)
+		pq.Enqueue(tc.v, int64(tc.p))
+	}
+
+	for _, tc := range expected {
+		qitem := pq.Dequeue()
+		s.Require().NotNil(qitem)
+		s.Require().Equal(tc.v, qitem.Value)
+		s.Require().Equal(tc.p, qitem.Priority)
+	}
+
+	s.Require().True(pq.IsEmpty())
+}
+
+func (s *PriorityQueueSuite) TestSimpleMin() {
+	type testcase struct {
+		v string
+		p int64
+	}
+	inputs := []testcase{
+		{"B", -2}, {"A", -3}, {"C", -1}, {"A", -3}, {"C", -1}, {"B", -2},
+	}
+	expected := []testcase{
+		{"C", -1}, {"C", -1}, {"B", -2}, {"B", -2}, {"A", -3}, {"A", -3},
+	}
+
+	pq := collections.NewPriorityQueue[string]()
+	for _, tc := range inputs {
+		pq.Enqueue(tc.v, int64(tc.p))
 	}
 
 	for _, tc := range expected {
@@ -69,7 +96,7 @@ func (s *PriorityQueueSuite) TestDequeueWhere() {
 
 	s.Require().NotNil(qitem)
 	s.Require().Equal("B", qitem.Value)
-	s.Require().Equal(3, qitem.Priority)
+	s.Require().Equal(int64(3), qitem.Priority)
 	s.Require().Equal(count-1, pq.Len())
 
 }

@@ -64,9 +64,10 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes 
 			}
 		}
 		ranks[i] = orchestrator.NodeRank{
-			NodeInfo: node,
-			Rank:     rank,
-			Reason:   reason,
+			NodeInfo:  node,
+			Rank:      rank,
+			Reason:    reason,
+			Retryable: false,
 		}
 		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}

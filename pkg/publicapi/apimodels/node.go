@@ -1,8 +1,9 @@
 package apimodels
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type GetNodeRequest struct {
@@ -12,13 +13,14 @@ type GetNodeRequest struct {
 
 type GetNodeResponse struct {
 	BaseGetResponse
-	Node *models.NodeInfo
+	Node *models.NodeState
 }
 
 type ListNodesRequest struct {
 	BaseListRequest
-	Labels         []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
-	FilterByStatus string               `query:"filter-status"`
+	Labels           []labels.Requirement `query:"-"` // don't auto bind as it requires special handling
+	FilterByApproval string               `query:"filter-approval"`
+	FilterByStatus   string               `query:"filter-status"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -27,6 +29,10 @@ func (o *ListNodesRequest) ToHTTPRequest() *HTTPRequest {
 
 	for _, v := range o.Labels {
 		r.Params.Add("labels", v.String())
+	}
+
+	if o.FilterByApproval != "" {
+		r.Params.Add("filter-approval", o.FilterByApproval)
 	}
 
 	if o.FilterByStatus != "" {
@@ -38,7 +44,7 @@ func (o *ListNodesRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListNodesResponse struct {
 	BaseListResponse
-	Nodes []*models.NodeInfo
+	Nodes []*models.NodeState
 }
 
 type PutNodeRequest struct {

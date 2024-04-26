@@ -193,9 +193,9 @@ func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApproval
 }
 
 // markStopped
-func (set execSet) markStopped(comment string, plan *models.Plan) {
+func (set execSet) markStopped(event models.Event, plan *models.Plan) {
 	for _, exec := range set {
-		plan.AppendStoppedExecution(exec, comment)
+		plan.AppendStoppedExecution(exec, event)
 	}
 }
 
@@ -216,17 +216,6 @@ func (set execSet) union(other execSet) execSet {
 		union[exec.ID] = exec
 	}
 	return union
-}
-
-// latest returns the latest execution in the set by the time it was last updated.
-func (set execSet) latest() *models.Execution {
-	var latest *models.Execution
-	for _, exec := range set {
-		if latest == nil || exec.ModifyTime > latest.ModifyTime {
-			latest = exec
-		}
-	}
-	return latest
 }
 
 // countByState counts the number of executions in each state.

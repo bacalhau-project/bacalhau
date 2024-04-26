@@ -6,13 +6,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 )
 
 type OpsJobSchedulerTestSuite struct {
@@ -48,9 +49,9 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
-		*mockNodeInfo(s.T(), nodeIDs[2]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[2]),
 	}
 	s.mockNodeSelection(job, nodeInfos)
 
@@ -93,7 +94,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealt
 
 	// mock node discoverer to exclude the first node
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[1].NodeID),
+		*fakeNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -118,7 +119,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
 
 	// mock node discoverer to exclude the first node
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[1].NodeID),
+		*fakeNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -167,7 +168,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 }
 
 func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo) {
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return(nodeInfos, nil)
 }
 
 func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {

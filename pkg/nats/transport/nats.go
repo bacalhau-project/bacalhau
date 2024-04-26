@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -16,9 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
-	"github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nats.go"
-	"github.com/rs/zerolog/log"
 )
 
 const NodeInfoSubjectPrefix = "node.info."
@@ -79,20 +80,20 @@ func (c *NATSTransportConfig) Validate() error {
 }
 
 type NATSTransport struct {
-	Config            NATSTransportConfig
+	Config            *NATSTransportConfig
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
 	natsClient        *nats_helper.ClientManager
 	computeProxy      compute.Endpoint
 	callbackProxy     compute.Callback
-	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
+	nodeInfoPubSub    pubsub.PubSub[models.NodeState]
 	nodeInfoDecorator models.NodeInfoDecorator
 	managementProxy   compute.ManagementEndpoint
 }
 
 //nolint:funlen
 func NewNATSTransport(ctx context.Context,
-	config NATSTransportConfig) (*NATSTransport, error) {
+	config *NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating nats transport config. %w", err)
@@ -149,7 +150,7 @@ func NewNATSTransport(ctx context.Context,
 	}
 
 	// PubSub to publish and consume node info messages
-	nodeInfoPubSub, err := nats_pubsub.NewPubSub[models.NodeInfo](nats_pubsub.PubSubParams{
+	nodeInfoPubSub, err := nats_pubsub.NewPubSub[models.NodeState](nats_pubsub.PubSubParams{
 		Conn:                nc.Client,
 		Subject:             NodeInfoSubjectPrefix + config.NodeID,
 		SubscriptionSubject: NodeInfoSubjectPrefix + "*",
@@ -189,7 +190,7 @@ func NewNATSTransport(ctx context.Context,
 	}, nil
 }
 
-func CreateClient(ctx context.Context, config NATSTransportConfig) (*nats_helper.ClientManager, error) {
+func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	clientOptions := []nats.Option{
@@ -206,8 +207,8 @@ func CreateClient(ctx context.Context, config NATSTransportConfig) (*nats_helper
 
 func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {
 	// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](infostore.Add))
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeState](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeState](infostore.Add))
 	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
 
@@ -256,7 +257,7 @@ func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
 }
 
 // NodeInfoPubSub returns the node info pubsub.
-func (t *NATSTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeInfo] {
+func (t *NATSTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeState] {
 	return t.nodeInfoPubSub
 }
 

@@ -5,11 +5,9 @@ package create_test
 import (
 	"context"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -139,14 +137,5 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 
 	commandReturnValue := <-commandChan
 
-	errorOutputMap := make(map[string]interface{})
-	for _, o := range strings.Split(commandReturnValue.out, "\n") {
-		err := marshaller.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
-		if err != nil {
-			continue
-		}
-	}
-
-	require.Contains(s.T(), errorOutputMap["Message"], "the job provided is invalid", "Output message should error properly.")
-	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
+	require.Contains(s.T(), commandReturnValue.out, "the job provided is invalid", "Output message should error properly.")
 }

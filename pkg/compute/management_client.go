@@ -9,13 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
-)
-
-const (
-	infoUpdateFrequencyMinutes     = 5
-	resourceUpdateFrequencySeconds = 30
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 )
 
 type ManagementClientParams struct {
@@ -23,8 +20,10 @@ type ManagementClientParams struct {
 	LabelsProvider       models.LabelsProvider
 	ManagementProxy      ManagementEndpoint
 	NodeInfoDecorator    models.NodeInfoDecorator
-	RegistrationFilePath string
 	ResourceTracker      capacity.Tracker
+	RegistrationFilePath string
+	HeartbeatClient      *heartbeat.HeartbeatClient
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 // ManagementClient is used to call management functions with
@@ -32,33 +31,38 @@ type ManagementClientParams struct {
 // it will periodically send an update to the requester node with
 // the latest node info for this node.
 type ManagementClient struct {
-	closeChannel      chan struct{}
+	done              chan struct{}
 	labelsProvider    models.LabelsProvider
 	managementProxy   ManagementEndpoint
 	nodeID            string
 	nodeInfoDecorator models.NodeInfoDecorator
-	registrationFile  *RegistrationFile
 	resourceTracker   capacity.Tracker
+	registrationFile  *RegistrationFile
+	heartbeatClient   *heartbeat.HeartbeatClient
+	settings          types.ComputeControlPlaneConfig
 }
 
-func NewManagementClient(params ManagementClientParams) *ManagementClient {
+func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		closeChannel:      make(chan struct{}, 1),
+		done:              make(chan struct{}, 1),
 		labelsProvider:    params.LabelsProvider,
 		managementProxy:   params.ManagementProxy,
 		nodeID:            params.NodeID,
 		nodeInfoDecorator: params.NodeInfoDecorator,
 		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
 		resourceTracker:   params.ResourceTracker,
+		heartbeatClient:   params.HeartbeatClient,
+		settings:          params.ControlPlaneSettings,
 	}
 }
 
 func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
-	return m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
+	ni := m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
 		NodeID:   m.nodeID,
 		NodeType: models.NodeTypeCompute,
 		Labels:   m.labelsProvider.GetLabels(ctx),
 	})
+	return ni
 }
 
 // RegisterNode sends a registration request to the requester node. If we successfully
@@ -106,6 +110,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to send update info to requester node")
+		return
 	}
 
 	if response.Accepted {
@@ -124,36 +129,62 @@ func (m *ManagementClient) updateResources(ctx context.Context) {
 		Resources: resources,
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to send resource update to requester node")
+		log.Ctx(ctx).Warn().Err(err).Msg("failed to send resource update to requester node")
+	}
+}
+
+func (m *ManagementClient) heartbeat(ctx context.Context, seq uint64) {
+	if err := m.heartbeatClient.SendHeartbeat(ctx, seq); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("heartbeat failed sending sequence %d", seq)
 	}
 }
 
 func (m *ManagementClient) Start(ctx context.Context) {
-	infoTicker := time.NewTicker(infoUpdateFrequencyMinutes * time.Minute)
-	resourceTicker := time.NewTicker(resourceUpdateFrequencySeconds * time.Second)
+	infoTicker := time.NewTicker(m.settings.InfoUpdateFrequency.AsTimeDuration())
+	resourceTicker := time.NewTicker(m.settings.ResourceUpdateFrequency.AsTimeDuration())
 
-	loop := true
-	for loop {
+	// The heartbeat ticker will be used to send heartbeats to the requester node and
+	// should be configured to be about half of the heartbeat frequency of the requester node
+	// to ensure that the requester node does not consider this node as dead. If the server
+	// heartbeat frequency is 30 seconds, the client heartbeat frequency should be configured to
+	// fire more than once in that 30 seconds.
+	heartbeatTicker := time.NewTicker(m.settings.HeartbeatFrequency.AsTimeDuration())
+
+	defer func() {
+		heartbeatTicker.Stop()
+		resourceTicker.Stop()
+		infoTicker.Stop()
+
+		// Close the heartbeat client and it's resources
+		m.heartbeatClient.Close(ctx)
+	}()
+
+	// Send an initial heartbeat when we start up
+	var heartbeatSequence uint64 = 1
+	m.heartbeat(ctx, heartbeatSequence)
+
+	for {
 		select {
 		case <-ctx.Done():
-			loop = false
-		case <-m.closeChannel:
-			loop = false
+			return
+		case <-m.done:
+			return
 		case <-infoTicker.C:
 			// Send the latest node info to the requester node
 			m.deliverInfo(ctx)
 		case <-resourceTicker.C:
 			// Send the latest resource info
 			m.updateResources(ctx)
+		case <-heartbeatTicker.C:
+			// Send a heartbeat to the requester node
+			heartbeatSequence += 1
+			m.heartbeat(ctx, heartbeatSequence)
 		}
 	}
-
-	resourceTicker.Stop()
-	infoTicker.Stop()
 }
 
 func (m *ManagementClient) Stop() {
-	if m.closeChannel != nil {
-		m.closeChannel <- struct{}{}
+	if m.done != nil {
+		m.done <- struct{}{}
 	}
 }
