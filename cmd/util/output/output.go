@@ -22,6 +22,8 @@ const (
 
 const (
 	bold  = "\033[1m"
+	red   = "\033[31m"
+	green = "\033[32m"
 	reset = "\033[0m"
 )
 
@@ -145,6 +147,21 @@ func KeyValue(cmd *cobra.Command, data []collections.Pair[string, any]) {
 // Bold prints the given string in bold
 func Bold(cmd *cobra.Command, s string) {
 	cmd.Print(bold + s + reset)
+}
+
+// BoldStr returns the given string in bold
+func BoldStr(s any) string {
+	return bold + fmt.Sprint(s) + reset
+}
+
+// RedStr returns the given string in red
+func RedStr(s any) string {
+	return red + fmt.Sprint(s) + reset
+}
+
+// GreenStr returns the given string in green
+func GreenStr(s any) string {
+	return green + fmt.Sprint(s) + reset
 }
 
 func OutputOneNonTabular[T any](cmd *cobra.Command, options NonTabularOutputOptions, item T) error {

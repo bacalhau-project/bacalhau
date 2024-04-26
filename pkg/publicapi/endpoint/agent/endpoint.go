@@ -3,31 +3,32 @@ package agent
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 )
 
 type EndpointParams struct {
 	Router             *echo.Echo
-	NodeInfoProvider   models.NodeInfoProvider
+	NodeStateProvider  models.NodeStateProvider
 	DebugInfoProviders []model.DebugInfoProvider
 }
 
 type Endpoint struct {
 	router             *echo.Echo
-	nodeInfoProvider   models.NodeInfoProvider
+	nodeStateProvider  models.NodeStateProvider
 	debugInfoProviders []model.DebugInfoProvider
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
 		router:             params.Router,
-		nodeInfoProvider:   params.NodeInfoProvider,
+		nodeStateProvider:  params.NodeStateProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 	}
 
@@ -80,9 +81,9 @@ func (e *Endpoint) version(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/node [get]
 func (e *Endpoint) node(c echo.Context) error {
-	nodeInfo := e.nodeInfoProvider.GetNodeInfo(c.Request().Context())
+	nodeState := e.nodeStateProvider.GetNodeState(c.Request().Context())
 	return c.JSON(http.StatusOK, apimodels.GetAgentNodeResponse{
-		NodeInfo: &nodeInfo,
+		NodeState: &nodeState,
 	})
 }
 
