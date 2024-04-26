@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'
+      - "**.md"
 
 jobs:
   trigger-circleci:
@@ -16,19 +16,12 @@ jobs:
       - name: Trigger CircleCI Pipeline
         run: .circleci/trigger_pipeline.sh
         env:
-          BRANCH: ${{ github.head_ref }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-
-  check-circleci:
-    runs-on: ubuntu-latest
-    needs: trigger-circleci
-    steps:
-      - name: Wait for CircleCI tests
-        # You would need a script or action here that waits for the CircleCI tests to complete
 
   auto-merge:
     runs-on: ubuntu-latest
-    needs: check-circleci
+    needs: trigger-circleci
     steps:
       - name: Auto merge PR
         uses: actions/github-script@v3
