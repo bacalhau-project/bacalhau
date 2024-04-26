@@ -4,11 +4,7 @@ package test
 
 import (
 	"context"
-	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -36,12 +32,15 @@ func (s *ServerSuite) TestAgentNode() {
 	resp, err := s.client.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeInfo)
+	s.Require().NotNil(resp.NodeState)
 
-	node := s.requesterNode
-	expectedNode, err := node.RequesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
+	requesterNode := s.requesterNode
+	// NB(forrest): we are only asserting NodeInfos are equal (which excludes approvals and liveness from NodeState)
+	// because we are asking the requester's NodeInfoStore for the NodeState it contains on itself (s.requesterNode.ID)
+	// and since the requester doesn't send heartbeat messages to itself it will consider itself disconnected
+	expectedNode, err := requesterNode.RequesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
-	equalNodeInfo(s.T(), expectedNode, *resp.NodeInfo)
+	s.Require().Equal(expectedNode.Info, resp.Info)
 }
 
 func (s *ServerSuite) TestAgentNodeCompute() {
@@ -49,26 +48,5 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	resp, err := s.computeClient.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeInfo)
-}
-
-func equalNodeInfo(t *testing.T, a, b models.NodeInfo) {
-	require.Equal(t, a.BacalhauVersion, b.BacalhauVersion)
-	require.Equal(t, a.ID(), b.ID())
-	require.Equal(t, a.NodeType, b.NodeType)
-	require.Equal(t, a.Labels, b.Labels)
-
-	if a.ComputeNodeInfo == nil {
-		require.Nil(t, b.ComputeNodeInfo)
-		return
-	}
-	require.ElementsMatch(t, a.ComputeNodeInfo.ExecutionEngines, b.ComputeNodeInfo.ExecutionEngines)
-	require.ElementsMatch(t, a.ComputeNodeInfo.Publishers, b.ComputeNodeInfo.Publishers)
-	require.ElementsMatch(t, a.ComputeNodeInfo.StorageSources, b.ComputeNodeInfo.StorageSources)
-	require.Equal(t, a.ComputeNodeInfo.MaxCapacity, b.ComputeNodeInfo.MaxCapacity)
-	require.Equal(t, a.ComputeNodeInfo.AvailableCapacity, b.ComputeNodeInfo.AvailableCapacity)
-	require.Equal(t, a.ComputeNodeInfo.MaxJobRequirements, b.ComputeNodeInfo.MaxJobRequirements)
-	require.Equal(t, a.ComputeNodeInfo.RunningExecutions, b.ComputeNodeInfo.RunningExecutions)
-	require.Equal(t, a.ComputeNodeInfo.RunningExecutions, b.ComputeNodeInfo.RunningExecutions)
-
+	s.Require().NotNil(resp.NodeState)
 }
