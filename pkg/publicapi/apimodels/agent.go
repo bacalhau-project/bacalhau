@@ -28,5 +28,5 @@ type GetAgentNodeRequest struct {
 
 type GetAgentNodeResponse struct {
 	BaseGetResponse
-	*models.NodeInfo
+	*models.NodeState
 }

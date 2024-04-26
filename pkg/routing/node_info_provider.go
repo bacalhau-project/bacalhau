@@ -6,23 +6,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type NodeInfoProviderParams struct {
+type NodeStateProviderParams struct {
 	NodeID              string
 	LabelsProvider      models.LabelsProvider
 	BacalhauVersion     models.BuildVersionInfo
-	DefaultNodeApproval models.NodeApproval
+	DefaultNodeApproval models.NodeMembershipState
 }
 
-type NodeInfoProvider struct {
+type NodeStateProvider struct {
 	nodeID              string
 	labelsProvider      models.LabelsProvider
 	bacalhauVersion     models.BuildVersionInfo
 	nodeInfoDecorators  []models.NodeInfoDecorator
-	defaultNodeApproval models.NodeApproval
+	defaultNodeApproval models.NodeMembershipState
 }
 
-func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
-	provider := &NodeInfoProvider{
+func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
+	provider := &NodeStateProvider{
 		nodeID:              params.NodeID,
 		labelsProvider:      params.LabelsProvider,
 		bacalhauVersion:     params.BacalhauVersion,
@@ -32,35 +32,48 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 
 	// If we were not given a default approval, we default to PENDING
 	if !provider.defaultNodeApproval.IsValid() {
-		provider.defaultNodeApproval = models.NodeApprovals.PENDING
+		provider.defaultNodeApproval = models.NodeMembership.PENDING
 	}
 
 	return provider
 }
 
 // RegisterNodeInfoDecorator registers a node info decorator with the node info provider.
-func (n *NodeInfoProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoDecorator) {
+func (n *NodeStateProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoDecorator) {
 	n.nodeInfoDecorators = append(n.nodeInfoDecorators, decorator)
 }
 
-func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
-	res := models.NodeInfo{
+func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
+	info := models.NodeInfo{
 		NodeID:          n.nodeID,
 		BacalhauVersion: n.bacalhauVersion,
 		Labels:          n.labelsProvider.GetLabels(ctx),
 		NodeType:        models.NodeTypeRequester,
-		Approval:        n.defaultNodeApproval,
 	}
 	for _, decorator := range n.nodeInfoDecorators {
-		res = decorator.DecorateNodeInfo(ctx, res)
+		info = decorator.DecorateNodeInfo(ctx, info)
 	}
 
-	if !res.Approval.IsValid() {
-		res.Approval = models.NodeApprovals.PENDING
+	state := models.NodeState{
+		Info:       info,
+		Membership: n.defaultNodeApproval,
+		// NB(forrest): we are returning NodeState about ourselves (the Requester)
+		// the concept of a disconnected requester node could only exist from the
+		// perspective of a ComputeNode or another RequesterNode.
+		// We don't support multiple requester nodes nor querying the state of one from a Compute node. (yet)
+		// So we allways say we are connected here.
+
+		// This is all pretty funky and my comment here will hopefully become outdates at some-point and need adjusting,
+		// but for now: "you can tell the requester node is connected because of the way it is".
+		Connection: models.NodeStates.CONNECTED,
 	}
 
-	return res
+	if !state.Membership.IsValid() {
+		state.Membership = models.NodeMembership.PENDING
+	}
+
+	return state
 }
 
 // compile-time interface check
-var _ models.NodeInfoProvider = &NodeInfoProvider{}
+var _ models.NodeStateProvider = &NodeStateProvider{}
