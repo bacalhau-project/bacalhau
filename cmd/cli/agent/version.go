@@ -29,18 +29,18 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Get the agent version.",
 		Args:  cobra.NoArgs,
-		Run:   oV.runVersion,
+		RunE:  oV.runVersion,
 	}
 	versionCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&oV.OutputOpts))
 	return versionCmd
 }
 
 // Run executes version command
-func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
+func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	serverVersionResponse, err := util.GetAPIClientV2().Agent().Version(ctx)
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get server version: %w", err), 1)
+		return fmt.Errorf("could not get server version: %w", err)
 	}
 
 	v := serverVersionResponse.BuildVersionInfo
@@ -58,6 +58,8 @@ func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) {
 	}
 
 	if writeErr != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write version: %w", writeErr), 1)
+		return fmt.Errorf("failed to write version: %w", writeErr)
 	}
+
+	return nil
 }

@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Pinning data"
+sidebar_label: "Pinning Data"
 sidebar_position: 2
 description: "How to pin data to public storage"
 ---

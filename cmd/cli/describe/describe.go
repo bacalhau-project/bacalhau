@@ -59,10 +59,8 @@ func NewCmd() *cobra.Command {
 		Args:     cobra.ExactArgs(1),
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
-		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
-			if err := describe(cmd, cmdArgs, OD); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+			return describe(cmd, cmdArgs, OD)
 		},
 	}
 

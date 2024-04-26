@@ -9,10 +9,12 @@ import (
 )
 
 type NodeConfig struct {
-	ClientAPI APIConfig    `yaml:"ClientAPI"`
-	ServerAPI APIConfig    `yaml:"ServerAPI"`
-	Libp2p    Libp2pConfig `yaml:"Libp2P"`
-	IPFS      IpfsConfig   `yaml:"IPFS"`
+	Name         string       `yaml:"Name"`
+	NameProvider string       `yaml:"NameProvider"`
+	ClientAPI    APIConfig    `yaml:"ClientAPI"`
+	ServerAPI    APIConfig    `yaml:"ServerAPI"`
+	Libp2p       Libp2pConfig `yaml:"Libp2P"`
+	IPFS         IpfsConfig   `yaml:"IPFS"`
 
 	Compute   ComputeConfig   `yaml:"Compute"`
 	Requester RequesterConfig `yaml:"Requester"`
@@ -97,7 +99,11 @@ type TLSConfiguration struct {
 
 	// ServerKey is the TLS server key to match the certificate to allow the
 	// requester to server TLS.
-	ServerKey string `yaml:"ServerTLSKey"`
+	ServerKey string `yaml:"ServerKey"`
+
+	// SelfSignedCert will auto-generate a self-signed certificate for the
+	// requester node if TLS certificates have not been provided.
+	SelfSigned bool `yaml:"SelfSigned"`
 }
 
 type Libp2pConfig struct {
@@ -151,7 +157,9 @@ type NetworkConfig struct {
 	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
 	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
+	AuthSecret        string               `yaml:"AuthSecret"`
 	Orchestrators     []string             `yaml:"Orchestrators"`
+	StoreDir          string               `yaml:"StoreDir"`
 	Cluster           NetworkClusterConfig `yaml:"Cluster"`
 }
 

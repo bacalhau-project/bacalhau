@@ -37,6 +37,7 @@ func (s *ServerSuite) SetupSuite() {
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()),
+		devstack.WithAutoNodeApproval(),
 	)
 
 	s.requesterNode = stack.Nodes[0]

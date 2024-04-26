@@ -78,3 +78,8 @@ func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
 type RetryRequest struct {
 	JobID string
 }
+
+type NodeSelectionConstraints struct {
+	RequireConnected bool
+	RequireApproval  bool
+}

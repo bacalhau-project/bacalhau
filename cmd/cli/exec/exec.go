@@ -69,15 +69,13 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		PreRunE:            hook.RemoteCmdPreRunHooks,
 		PostRunE:           hook.RemoteCmdPostRunHooks,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// Find the unknown arguments from the original args.  We only want to find the
 			// flags that are unknown. We will only support the long form for custom
 			// job types as we will want to use them as keys in template completions.
 			unknownArgs := ExtractUnknownArgs(cmd.Flags(), os.Args[1:])
 
-			if err := exec(cmd, cmdArgs, unknownArgs, options); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return exec(cmd, cmdArgs, unknownArgs, options)
 		},
 	}
 

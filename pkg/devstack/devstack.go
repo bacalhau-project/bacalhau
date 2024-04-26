@@ -4,26 +4,31 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 const (
@@ -46,6 +51,7 @@ type DevStackOptions struct {
 	ExecutorPlugins            bool   // when true pluggable executors will be used.
 	ConfigurationRepo          string // A custom config repo
 	NetworkType                string
+	AuthSecret                 string
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
@@ -64,6 +70,7 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
 		WithNetworkType(o.NetworkType),
+		WithAuthSecret(o.AuthSecret),
 	}
 	return opts
 }
@@ -112,7 +119,7 @@ func Setup(
 	if stackConfig.NetworkType == "" {
 		networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
 		if !ok {
-			networkType = models.NetworkTypeLibp2p
+			networkType = models.NetworkTypeNATS
 		}
 		stackConfig.NetworkType = networkType
 	}
@@ -135,6 +142,7 @@ func Setup(
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
+
 			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
 			// connecting/joining topics, when using multiple addresses for a single host.
 			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
@@ -154,9 +162,8 @@ func Setup(
 			const startSwarmPort = 4222 // 4222 is the default NATS port
 			swarmPort = startSwarmPort + i
 		} else {
-			swarmPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
+			if swarmPort, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for swarm port")
 			}
 		}
 		clusterConfig := node.NetworkConfig{
@@ -164,6 +171,7 @@ func Setup(
 			Orchestrators: orchestratorAddrs,
 			Port:          swarmPort,
 			ClusterPeers:  clusterPeersAddrs,
+			AuthSecret:    stackConfig.AuthSecret,
 		}
 
 		if stackConfig.NetworkType == models.NetworkTypeNATS {
@@ -172,17 +180,17 @@ func Setup(
 				const startClusterPort = 6222
 				clusterPort = startClusterPort + i
 			} else {
-				clusterPort, err = freeport.GetFreePort()
-				if err != nil {
-					return nil, err
+				if clusterPort, err = network.GetFreePort(); err != nil {
+					return nil, errors.Wrap(err, "failed to get free port for cluster port")
 				}
 			}
 
 			if isRequesterNode {
+				repoPath, _ := fsRepo.Path()
+				clusterConfig.StoreDir = filepath.Join(repoPath, "nats-storage")
 				clusterConfig.ClusterName = "devstack"
 				clusterConfig.ClusterPort = clusterPort
 				orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", swarmPort))
-				clusterPeersAddrs = append(clusterPeersAddrs, fmt.Sprintf("127.0.0.1:%d", clusterPort))
 			}
 		} else {
 			if i == 0 {
@@ -239,6 +247,18 @@ func Setup(
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
+		if isComputeNode {
+			// We have multiple process on the same machine, all wanting to listen on a HTTP port
+			// and so we will give each compute node a random open port to listen on.
+			fport, err := network.GetFreePort()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for local publisher")
+			}
+
+			stackConfig.ComputeConfig.LocalPublisher.Port = fport
+			stackConfig.ComputeConfig.LocalPublisher.Address = "127.0.0.1" //nolint:gomnd
+		}
+
 		nodeConfig := node.NodeConfig{
 			NodeID:              nodeID,
 			IPFSClient:          ipfsNode.Client(),
@@ -258,7 +278,6 @@ func Setup(
 			DisabledFeatures:          stackConfig.DisabledFeatures,
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
-			FsRepo:                    fsRepo,
 			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
 			NetworkConfig:             clusterConfig,
 			AuthConfig: types.AuthConfig{
@@ -287,6 +306,16 @@ func Setup(
 			}
 		}
 
+		// Set the default approval state from the config provided, either PENDING if the user has
+		// chosen manual approval, or the default otherwise.
+		nodeConfig.RequesterNodeConfig.DefaultApprovalState = stackConfig.RequesterConfig.DefaultApprovalState
+
+		// Create dedicated store paths for each node
+		err = setStorePaths(ctx, fsRepo, &nodeConfig)
+		if err != nil {
+			return nil, err
+		}
+
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
@@ -312,6 +341,36 @@ func Setup(
 		Nodes:          nodes,
 		PublicIPFSMode: stackConfig.PublicIPFSMode,
 	}, nil
+}
+
+func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.NodeConfig) error {
+	nodeID := nodeConfig.NodeID
+	repoPath, err := fsRepo.Path()
+	if err != nil {
+		return err
+	}
+	orchestratorStoreRootPath := filepath.Join(repoPath, config.OrchestratorStorePath)
+	computeStoreRootPath := filepath.Join(repoPath, config.ComputeStorePath)
+	if err := os.MkdirAll(orchestratorStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("failed to create orchestrator store root path: %w", err)
+	}
+	if err := os.MkdirAll(computeStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("failed to create compute store root path: %w", err)
+	}
+	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorStoreRootPath, fmt.Sprintf("jobstore-%s.db", nodeID)))
+	if err != nil {
+		return fmt.Errorf("failed to create job store: %w", err)
+	}
+
+	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
+	if err != nil {
+		return fmt.Errorf("failed to create execution store: %w", err)
+	}
+
+	nodeConfig.RequesterNodeConfig.JobStore = jobStore
+	nodeConfig.ComputeConfig.ExecutionStore = executionStore
+
+	return nil
 }
 
 func createLibp2pHost(ctx context.Context, cm *system.CleanupManager, port int) (host.Host, error) {
@@ -361,12 +420,6 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, c
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
 	var devstackPeerAddrs []string
-
-	// TODO remove this it's wrong and never printed, nothing sets the env vars its printing
-	logString += `
------------------------------------------
------------------------------------------
-`
 
 	requesterOnlyNodes := 0
 	computeOnlyNodes := 0

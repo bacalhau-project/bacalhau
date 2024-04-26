@@ -1,5 +1,5 @@
 ---
-sidebar_label: "csv-to-avro-or-parquet"
+sidebar_label: "Convert CSV to Parquet or Avro"
 sidebar_position: 2
 ---
 # Convert CSV To Parquet Or Avro

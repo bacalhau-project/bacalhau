@@ -42,17 +42,17 @@ func TestDaemonJobSchedulerTestSuite(t *testing.T) {
 
 func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	ctx := context.Background()
-	job, executions, evaluation := mockDaemonJob()
-	executions = []models.Execution{}
+	job, _, evaluation := mockDaemonJob()
+	executions := []models.Execution{}
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	nodeInfos := []models.NodeInfo{
 		*mockNodeInfo(s.T(), nodeIDs[0]),
 		*mockNodeInfo(s.T(), nodeIDs[1]),
 		*mockNodeInfo(s.T(), nodeIDs[2]),
 	}
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any()).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any(), gomock.Any()).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:               evaluation,
@@ -76,8 +76,8 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsCompleted() 
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted) // Simulate a completed execution
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateCompleted) // Simulate a completed execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any()).Return([]models.NodeInfo{}, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), gomock.Any(), gomock.Any()).Return([]models.NodeInfo{}, nil)
 
 	// Noop plan
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
@@ -93,14 +93,14 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhe
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock node discoverer to exclude the first node
 	nodeInfos := []models.NodeInfo{
 		*mockNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:         evaluation,
@@ -122,14 +122,14 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsFailed() {
 	executions[0].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted) // running, but lost node
 	executions[1].ComputeState = models.NewExecutionState(models.ExecutionStateFailed)      // failed execution
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	// mock node discoverer to exclude the first node
 	nodeInfos := []models.NodeInfo{
 		*mockNodeInfo(s.T(), executions[1].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return(nodeInfos, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -146,7 +146,7 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNon
 	job, executions, evaluation := mockDaemonJob()
 	job.State = models.NewJobState(models.JobStateTypeStopped) // Simulate a canceled job
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
@@ -161,11 +161,11 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNon
 
 func (s *DaemonJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	ctx := context.Background()
-	job, executions, evaluation := mockDaemonJob()
-	executions = []models.Execution{} // no executions yet
+	job, _, evaluation := mockDaemonJob()
+	executions := []models.Execution{} // no executions yet
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), job.ID).Return(executions, nil)
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return([]models.NodeInfo{}, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return([]models.NodeInfo{}, nil)
 
 	// Noop plan
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{

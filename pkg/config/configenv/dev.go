@@ -29,6 +29,7 @@ var Development = types.BacalhauConfig{
 		},
 	},
 	Node: types.NodeConfig{
+		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
 			Host: "bootstrap.development.bacalhau.org",
 			Port: 1234,
@@ -39,12 +40,8 @@ var Development = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeLibp2p,
+			Type: models.NetworkTypeNATS,
 			Port: 4222,
-			Cluster: types.NetworkClusterConfig{
-				Name: "global",
-				Port: 6222,
-			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.86.177.175/tcp/1235/p2p/QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu",
@@ -150,6 +147,16 @@ var DevelopmentComputeConfig = types.ComputeConfig{
 	LogStreamConfig: types.LogStreamConfig{
 		ChannelBufferSize: 10,
 	},
+	LocalPublisher: types.LocalPublisherConfig{
+		Address: "127.0.0.1",
+		Port:    6001,
+	},
+	ControlPlaneSettings: types.ComputeControlPlaneConfig{
+		InfoUpdateFrequency:     types.Duration(60 * time.Second),
+		ResourceUpdateFrequency: types.Duration(30 * time.Second),
+		HeartbeatFrequency:      types.Duration(15 * time.Second),
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var DevelopmentRequesterConfig = types.RequesterConfig{
@@ -190,5 +197,10 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		S3: types.S3StorageProviderConfig{
 			PreSignedURLExpiration: types.Duration(30 * time.Minute),
 		},
+	},
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second),
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
 }

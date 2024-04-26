@@ -61,7 +61,7 @@ func NewRunCmd() *cobra.Command {
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(0),
-		Run:     o.run,
+		RunE:    o.run,
 	}
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
@@ -77,7 +77,7 @@ func NewRunCmd() *cobra.Command {
 	return runCmd
 }
 
-func (o *RunOptions) run(cmd *cobra.Command, args []string) {
+func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
 	// read the job spec from stdin or file
@@ -86,23 +86,23 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
 		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("unknown error reading from file or stdin: %w", err), 1)
+			return fmt.Errorf("unknown error reading from file or stdin: %w", err)
 		}
 	} else {
 		var fileContent *os.File
 		fileContent, err = os.Open(args[0])
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("error opening file: %w", err), 1)
+			return fmt.Errorf("error opening file: %w", err)
 		}
 		defer fileContent.Close()
 
 		byteResult, err = io.ReadAll(fileContent)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("error reading file: %w", err), 1)
+			return fmt.Errorf("error reading file: %w", err)
 		}
 	}
 	if len(byteResult) == 0 {
-		util.Fatal(cmd, errors.New(userstrings.JobSpecBad), 1)
+		return errors.New(userstrings.JobSpecBad)
 	}
 
 	if !o.NoTemplate {
@@ -111,13 +111,11 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 			EnvPattern:   o.TemplateEnvVarsPattern,
 		})
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("failed to create template parser: %w", err), 1)
-			return
+			return fmt.Errorf("failed to create template parser: %w", err)
 		}
 		byteResult, err = parser.ParseBytes(byteResult)
 		if err != nil {
-			util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
-			return
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 	}
 
@@ -126,16 +124,14 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	var j *models.Job
 	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
-		return
+		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
 	// Normalize and validate the job spec
 	j.Normalize()
 	err = j.ValidateSubmission()
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), 1)
-		return
+		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
 	if o.RunTimeSettings.DryRun {
@@ -145,9 +141,9 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 		}
 		outputOps := output.NonTabularOutputOptions{Format: output.YAMLFormat}
 		if err = output.OutputOneNonTabular(cmd, outputOps, j); err != nil {
-			util.Fatal(cmd, fmt.Errorf("failed to write job: %w", err), 1)
+			return fmt.Errorf("failed to write job: %w", err)
 		}
-		return
+		return nil
 	}
 
 	// Submit the job
@@ -156,8 +152,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 		Job: j,
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed request: %w", err), 1)
-		return
+		return fmt.Errorf("failed request: %w", err)
 	}
 
 	if o.ShowWarnings && len(resp.Warnings) > 0 {
@@ -165,9 +160,10 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) {
 	}
 
 	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, client); err != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to print job execution: %w", err), 1)
-		return
+		return fmt.Errorf("failed to print job execution: %w", err)
 	}
+
+	return nil
 }
 
 func (o *RunOptions) printWarnings(cmd *cobra.Command, warnings []string) {

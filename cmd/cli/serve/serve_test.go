@@ -4,6 +4,7 @@ package serve_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
@@ -22,6 +22,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -38,7 +39,7 @@ import (
 )
 
 const maxServeTime = 15 * time.Second
-const maxTestTime = 10 * time.Second
+const maxTestTime = 15 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -49,6 +50,7 @@ type ServeSuite struct {
 	ipfsPort int
 	ctx      context.Context
 	repoPath string
+	protocol string
 }
 
 func TestServeSuite(t *testing.T) {
@@ -61,6 +63,7 @@ func (s *ServeSuite) SetupTest() {
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
 	s.repoPath = repoPath
+	s.protocol = "http"
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -89,7 +92,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		}
 	}
 
-	bigPort, err := freeport.GetFreePort()
+	bigPort, err := network.GetFreePort()
 	s.Require().NoError(err)
 	port := uint16(bigPort)
 
@@ -107,14 +110,15 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
-
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
+	s.T().Cleanup(func() {
+		cancel()
+	})
 
-	s.T().Cleanup(cancel)
 	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
 		if returnError {
@@ -124,17 +128,26 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		return nil
 	})
 
-	t := time.NewTicker(10 * time.Millisecond)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- errs.Wait()
+	}()
+
+	t := time.NewTicker(50 * time.Millisecond)
+
 	defer t.Stop()
 	for {
 		select {
+		case e := <-errCh:
+			s.FailNow("Server raised an error during startup: %s", e)
 		case <-ctx.Done():
 			if returnError {
 				return 0, errs.Wait()
 			}
 			s.FailNow("Server did not start in time")
+
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -148,7 +161,15 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 		return nil, http.StatusServiceUnavailable, err
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	client := http.DefaultClient
+	if strings.HasPrefix(URL, "https") {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, http.StatusServiceUnavailable, err
 	}
@@ -157,15 +178,15 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
-	}
 
+	}
 	return responseText, resp.StatusCode, nil
 }
-
 func (s *ServeSuite) TestHealthcheck() {
 	port, _ := s.serve()
 	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
 	s.Require().NoError(err)
+
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
@@ -173,9 +194,10 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
+
 	s.Require().Contains(actualUrl, expectedURL)
 }
 
@@ -187,8 +209,10 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
+	port, err := s.serve("--node-type", "requester,compute")
+	s.Require().NoError(err)
 	client := client.NewAPIClient(client.NoTLS, "localhost", port)
+
 	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
 
@@ -287,6 +311,12 @@ func (s *ServeSuite) TestGetPeers() {
 	s.Require().Error(err)
 }
 
+func (s *ServeSuite) TestSelfSignedRequester() {
+	s.protocol = "https"
+	_, err := s.serve("--node-type", "requester", "--self-signed")
+	s.Require().NoError(err)
+}
+
 // Begin WebUI Tests
 func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
@@ -294,12 +324,13 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 
 	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
 	_ = content
+
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
 func (s *ServeSuite) Test200ForRoot() {
-	webUIPort, err := freeport.GetFreePort()
+	webUIPort, err := network.GetFreePort()
 	if err != nil {
 		s.T().Fatal(err, "Could not get port for web-ui")
 	}

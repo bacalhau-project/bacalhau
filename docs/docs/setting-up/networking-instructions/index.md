@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Networking"
-sidebar_position: 1
+sidebar_position: 5
 ---
 # Networking with Bacalhau
 

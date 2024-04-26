@@ -3,6 +3,8 @@ package serve
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -12,19 +14,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -94,6 +98,8 @@ func GetPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"local_publisher":       configflags.LocalPublisherFlags,
+		"publishing":            configflags.PublishingFlags,
 		"requester-tls":         configflags.RequesterTLSFlags,
 		"server-api":            configflags.ServerAPIFlags,
 		"network":               configflags.NetworkFlags,
@@ -110,6 +116,7 @@ func NewCmd() *cobra.Command {
 		"requester-store":       configflags.RequesterJobStorageFlags,
 		"web-ui":                configflags.WebUIFlags,
 		"node-info-store":       configflags.NodeInfoStoreFlags,
+		"node-name":             configflags.NodeNameFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
@@ -119,7 +126,7 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			/*
 				NB(forrest):
 				(I learned a lot more about viper and cobra than was intended...)
@@ -143,21 +150,16 @@ func NewCmd() *cobra.Command {
 				return the value of the last flag bound to it. This is why it's important to manage
 				flag binding thoughtfully, ensuring each command's context is respected.
 			*/
-			if err := configflags.BindFlags(cmd, serveFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return configflags.BindFlags(cmd, serveFlags)
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return serve(cmd)
 		},
 	}
 
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
-
 	return serveCmd
 }
 
@@ -171,19 +173,33 @@ func serve(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	fsRepo, err := repo.NewFS(repoDir)
+	fsRepo, err := setup.SetupBacalhauRepo(repoDir)
 	if err != nil {
-		return err
-	}
-	if err := fsRepo.Open(); err != nil {
 		return err
 	}
 
-	nodeID, err := getNodeID()
+	var nodeName string
+	var libp2pHost host.Host
+	var libp2pPeers []string
+	transportType, err := getTransportType()
 	if err != nil {
 		return err
 	}
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
+	// if the transport type is libp2p, we use the peerID as the node name
+	// even if the user provided one to avoid issues with peer lookups
+	if transportType == models.NetworkTypeLibp2p {
+		libp2pHost, libp2pPeers, err = setupLibp2p()
+		if err != nil {
+			return err
+		}
+		nodeName = libp2pHost.ID().String()
+	} else {
+		nodeName, err = getNodeID(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
 	isRequesterNode, isComputeNode, err := getNodeType()
@@ -208,22 +224,18 @@ func serve(cmd *cobra.Command) error {
 	}
 
 	if networkConfig.Type == models.NetworkTypeLibp2p {
-		libp2pHost, peers, err := setupLibp2p()
-		if err != nil {
-			return err
-		}
 		networkConfig.Libp2pHost = libp2pHost
-		networkConfig.ClusterPeers = peers
+		networkConfig.ClusterPeers = libp2pPeers
 	}
 
-	computeConfig, err := GetComputeConfig()
+	computeConfig, err := GetComputeConfig(ctx, isComputeNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig()
+	requesterConfig, err := GetRequesterConfig(ctx, isRequesterNode)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
 	featureConfig, err := config.Get[node.FeatureConfig](types.NodeDisabledFeatures)
@@ -245,7 +257,7 @@ func serve(cmd *cobra.Command) error {
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		NodeID:                nodeID,
+		NodeID:                nodeName,
 		CleanupManager:        cm,
 		IPFSClient:            ipfsClient,
 		DisabledFeatures:      featureConfig,
@@ -256,35 +268,41 @@ func serve(cmd *cobra.Command) error {
 		AuthConfig:            authConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
+		RequesterSelfSign:     config.GetRequesterSelfSign(),
 		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
-		FsRepo:                fsRepo,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
-
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
-
-		cert, key := config.GetRequesterCertificateSettings()
-		nodeConfig.RequesterTLSCertificateFile = cert
-		nodeConfig.RequesterTLSKeyFile = key
+		// If there are configuration values for autocert we should return and let autocert
+		// do what it does later on in the setup.
+		if nodeConfig.RequesterAutoCert == "" {
+			cert, key, err := GetTLSCertificate(ctx, &nodeConfig)
+			if err != nil {
+				return err
+			}
+			nodeConfig.RequesterTLSCertificateFile = cert
+			nodeConfig.RequesterTLSKeyFile = key
+		}
 	}
-
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
 	}
-
+	// Persist the node config after the node is created and its config is valid.
+	if err = persistConfigs(repoDir); err != nil {
+		return fmt.Errorf("error persisting configs: %w", err)
+	}
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
 	}
-
 	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 	if err != nil {
 		return err
@@ -310,7 +328,6 @@ func serve(cmd *cobra.Command) error {
 			}
 		}()
 	}
-
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
@@ -337,14 +354,9 @@ func serve(cmd *cobra.Command) error {
 	} else {
 		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 	}
-	if err != nil {
-		return err
-	}
-
 	cm.RegisterCallback(func() error {
 		return os.Remove(ripath)
 	})
-
 	<-ctx.Done() // block until killed
 	return nil
 }
@@ -381,20 +393,6 @@ func setupLibp2p() (libp2pHost host.Host, peers []string, err error) {
 	return
 }
 
-func getNodeID() (string, error) {
-	// for now, use libp2p host ID as node ID, regardless of using NATS or Libp2p
-	// TODO: allow users to specify node ID
-	privKey, err := config.GetLibp2pPrivKey()
-	if err != nil {
-		return "", err
-	}
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	if err != nil {
-		return "", err
-	}
-	return peerID.String(), nil
-}
-
 func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
 	headerB := strings.Builder{}
 	cmdB := strings.Builder{}
@@ -411,16 +409,12 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 
 		switch nodeConfig.NetworkConfig.Type {
 		case models.NetworkTypeNATS:
-			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
-			if advertisedAddr == "" {
-				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
-			}
+			advertisedAddr := getPublicNATSOrchestratorURL(nodeConfig)
 
 			headerB.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
-
 			cmdB.WriteString(fmt.Sprintf("%s=%s ",
 				configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
-				advertisedAddr,
+				advertisedAddr.String(),
 			))
 
 		case models.NetworkTypeLibp2p:
@@ -482,15 +476,10 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 
 		switch nodeConfig.NetworkConfig.Type {
 		case models.NetworkTypeNATS:
-			advertisedAddr := nodeConfig.NetworkConfig.AdvertisedAddress
-			if advertisedAddr == "" {
-				advertisedAddr = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
-			}
-
 			envVarBuilder.WriteString(fmt.Sprintf(
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-				advertisedAddr,
+				getPublicNATSOrchestratorURL(nodeConfig).String(),
 			))
 		case models.NetworkTypeLibp2p:
 			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodeConfig.NetworkConfig.Libp2pHost.ID().String())
@@ -521,6 +510,19 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 	}
 
 	return envVarBuilder.String(), nil
+}
+
+func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
+	orchestrator := &url.URL{
+		Scheme: "nats",
+		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
+	}
+
+	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
+		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
+	}
+
+	return orchestrator
 }
 
 // pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list
@@ -556,4 +558,48 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	})
 
 	return addresses[0]
+}
+func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig) (string, string, error) {
+	cert, key := config.GetRequesterCertificateSettings()
+	if cert != "" && key != "" {
+		return cert, key, nil
+	}
+	if cert != "" && key == "" {
+		return "", "", fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
+	}
+	if cert == "" && key != "" {
+		return "", "", fmt.Errorf("invalid config: private key specified without corresponding TLS certificate")
+	}
+	if !nodeConfig.RequesterSelfSign {
+		return "", "", nil
+	}
+	log.Ctx(ctx).Info().Msg("Generating self-signed certificate")
+	var err error
+	// If the user has not specified a private key, use their client key
+	if key == "" {
+		key, err = config.Get[string](types.UserKeyPath)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to create temporary server certificate")
+	}
+	defer closer.CloseWithLogOnError(certFile.Name(), certFile)
+
+	var ips []net.IP = nil
+	if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
+		ips = append(ips, ip)
+	}
+
+	if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
+		return "", "", err
+	} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
+		return "", "", errors.Wrap(err, "failed to generate server certificate")
+	} else if err = caCert.MarshalCertficate(certFile); err != nil {
+		return "", "", errors.Wrap(err, "failed to write server certificate")
+	}
+	cert = certFile.Name()
+	return cert, key, nil
 }
