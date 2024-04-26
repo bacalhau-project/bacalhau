@@ -4,19 +4,26 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
+	"golang.org/x/term"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	libmath "github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -72,12 +79,27 @@ func PrintJobExecution(
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			return nil
+		}
+
+		history, err := client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+			JobID:     jobID,
+			EventType: "execution",
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job history: %w", err)
+		}
+
+		historySummary := summariseHistoryEvents(history.History)
+		if len(historySummary) > 0 {
+			for _, event := range historySummary {
+				printEvent(cmd, event)
+			}
 		} else {
-			cmd.PrintErrf("\nError submitting job: %s", jobErr)
+			printError(cmd, jobErr)
 		}
 	}
 
-	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+	if runtimeSettings.PrintNodeDetails {
 		executions, err := client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 			JobID: jobID,
 		})
@@ -87,13 +109,13 @@ func PrintJobExecution(
 		summary := summariseExecutions(executions.Executions)
 		if len(summary) > 0 {
 			cmd.Println("\nJob Results By Node:")
-			for message, nodes := range summary {
-				cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
-				if strings.ContainsRune(message, '\n') {
-					cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
-				} else {
-					cmd.Println(message)
+			for message, runs := range summary {
+				nodes := len(lo.Uniq(runs))
+				prefix := fmt.Sprintf("• Node %s: ", runs[0])
+				if len(runs) > 1 {
+					prefix = fmt.Sprintf("• %d runs on %d nodes: ", len(runs), nodes)
 				}
+				printIndentedString(cmd, prefix, strings.Trim(message, "\n"), none, 0)
 			}
 		} else {
 			cmd.Println()
@@ -179,7 +201,7 @@ To cancel the job, run:
 
 	widestString := len(startMessage)
 	for _, v := range eventsWorthPrinting {
-		widestString = math.Max(widestString, len(v.Message))
+		widestString = libmath.Max(widestString, len(v.Message))
 	}
 
 	spinner, err := NewSpinner(ctx, writer, widestString, false)
@@ -297,6 +319,58 @@ To cancel the job, run:
 	return returnError
 }
 
+var (
+	none  = color.New(color.Reset)
+	red   = color.New(color.FgRed)
+	green = color.New(color.FgGreen)
+)
+
+const (
+	errorPrefix = "Error: "
+	hintPrefix  = "Hint: "
+)
+
+var terminalWidth int
+
+func getTerminalWidth(cmd *cobra.Command) uint {
+	if terminalWidth == 0 {
+		var err error
+		terminalWidth, _, err = term.GetSize(int(os.Stderr.Fd()))
+		if err != nil || terminalWidth <= 0 {
+			log.Ctx(cmd.Context()).Debug().Err(err).Msg("Failed to get terminal size")
+			terminalWidth = math.MaxInt8
+		}
+	}
+	return uint(terminalWidth)
+}
+
+func printEvent(cmd *cobra.Command, event models.Event) {
+	printIndentedString(cmd, errorPrefix, event.Message, red, 0)
+	if event.Details != nil && event.Details[models.DetailsKeyHint] != "" {
+		printIndentedString(cmd, hintPrefix, event.Details[models.DetailsKeyHint], green, uint(len(errorPrefix)))
+	}
+}
+
+func printError(cmd *cobra.Command, err error) {
+	printIndentedString(cmd, errorPrefix, err.Error(), red, 0)
+}
+
+func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *color.Color, startIndent uint) {
+	maxWidth := getTerminalWidth(cmd)
+	blockIndent := int(startIndent) + len(prefix)
+	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
+
+	cmd.PrintErrln()
+	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
+	prefixColor.Fprintf(cmd.ErrOrStderr(), prefix)
+	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
+		if i > 0 {
+			cmd.PrintErr(strings.Repeat(" ", blockIndent))
+		}
+		cmd.PrintErrln(line)
+	}
+}
+
 // Groups the executions in the job state, returning a map of printable messages
 // to node(s) that generated that message.
 func summariseExecutions(executions []*models.Execution) map[string][]string {
@@ -320,4 +394,22 @@ func summariseExecutions(executions []*models.Execution) map[string][]string {
 		}
 	}
 	return results
+}
+
+func summariseHistoryEvents(history []*models.JobHistory) []models.Event {
+	slices.SortFunc(history, func(a, b *models.JobHistory) int {
+		return a.Occurred().Compare(b.Occurred())
+	})
+
+	events := make(map[string]models.Event, len(history))
+	for _, entry := range history {
+		hasDetails := entry.Event.Details != nil
+		failsExecution := hasDetails && entry.Event.Details[models.DetailsKeyFailsExecution] == "true"
+		terminalState := entry.ExecutionState.New.IsTermainl()
+		if (failsExecution || terminalState) && entry.Event.Message != "" {
+			events[entry.Event.Message] = entry.Event
+		}
+	}
+
+	return maps.Values(events)
 }

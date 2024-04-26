@@ -141,7 +141,6 @@ func (suite *ComputeForwarderSuite) mockUpdateExecution(plan *models.Plan, id st
 	update := &models.PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: desiredState,
-		Comment:      "update",
 	}
 	plan.UpdatedExecutions[execution.ID] = update
 	return update

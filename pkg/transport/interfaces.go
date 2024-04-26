@@ -23,7 +23,7 @@ type TransportLayer interface {
 
 	// NodeInfoPubSub enables compute nodes to publish their info and capabilities
 	// to orchestrator nodes for job matching and discovery.
-	NodeInfoPubSub() pubsub.PubSub[models.NodeInfo]
+	NodeInfoPubSub() pubsub.PubSub[models.NodeState]
 
 	// NodeInfoDecorator enables transport layer to enrich node info with data
 	// required for request routing

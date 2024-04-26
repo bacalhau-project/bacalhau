@@ -97,7 +97,7 @@ var (
 		Value:        func(e *models.Execution) string { return strconv.FormatUint(e.Revision, 10) },
 	}
 	executionColumnState = output.TableColumn[*models.Execution]{
-		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 17, WidthMaxEnforcer: text.WrapText},
 		Value:        func(e *models.Execution) string { return e.ComputeState.StateType.String() },
 	}
 	executionColumnDesired = output.TableColumn[*models.Execution]{

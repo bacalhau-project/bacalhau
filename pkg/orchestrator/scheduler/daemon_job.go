@@ -58,7 +58,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(execNotNeeded, plan)
+		nonTerminalExecs.markStopped(orchestrator.ExecStoppedByJobStopEvent(), plan)
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -70,7 +70,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	_, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(execLost, plan)
+	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
 
 	// Look for new matching nodes and create new executions every time we evaluate the job
 	_, err = b.createMissingExecs(ctx, &job, plan, existingExecs)

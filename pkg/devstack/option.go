@@ -124,7 +124,7 @@ func (o *DevStackConfig) Validate() error {
 
 func WithAutoNodeApproval() ConfigOption {
 	return func(cfg *DevStackConfig) {
-		cfg.RequesterConfig.DefaultApprovalState = models.NodeApprovals.APPROVED
+		cfg.RequesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
 	}
 }
 

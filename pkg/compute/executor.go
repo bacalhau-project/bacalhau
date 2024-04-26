@@ -299,10 +299,10 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		Logger().WithContext(ctx)
 
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
-	operation := "Running"
+	topic := EventTopicExecutionRunning
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, state, err, operation)
+			e.handleFailure(ctx, state, err, topic)
 		}
 		dur := stopwatch()
 		log.Ctx(ctx).Debug().
@@ -368,7 +368,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
-		operation = "Publishing"
+		topic = EventTopicExecutionPublishing
 		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID:    execution.ID,
 			ExpectedStates: []store.LocalExecutionStateType{expectedState},
@@ -474,9 +474,10 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, topic models.EventTopic) {
+	log.Ctx(ctx).Warn().Err(err).Msgf("%s failed", topic)
+
 	execution := state.Execution
-	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,
 		NewState:    store.ExecutionStateFailed,
@@ -492,7 +493,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecu
 				SourcePeerID: e.ID,
 				TargetPeerID: state.RequesterNodeID,
 			},
-			Err: err.Error(),
+			Event: models.EventFromError(topic, err),
 		})
 	}
 }

@@ -42,9 +42,10 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, node
 			}
 		}
 		ranks[i] = orchestrator.NodeRank{
-			NodeInfo: node,
-			Rank:     rank,
-			Reason:   reason,
+			NodeInfo:  node,
+			Rank:      rank,
+			Reason:    reason,
+			Retryable: true,
 		}
 		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
