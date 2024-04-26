@@ -130,6 +130,11 @@ func ShouldKeepStack() bool {
 	return os.Getenv("KEEP_STACK") != ""
 }
 
+const (
+	DockerUsernameEnvVar = "DOCKER_USERNAME"
+	DockerPasswordEnvVar = "DOCKER_PASSWORD"
+)
+
 type DockerCredentials struct {
 	Username string
 	Password string
@@ -141,8 +146,8 @@ func (d *DockerCredentials) IsValid() bool {
 
 func GetDockerCredentials() DockerCredentials {
 	return DockerCredentials{
-		Username: os.Getenv("DOCKER_USERNAME"),
-		Password: os.Getenv("DOCKER_PASSWORD"),
+		Username: os.Getenv(DockerUsernameEnvVar),
+		Password: os.Getenv(DockerPasswordEnvVar),
 	}
 }
 

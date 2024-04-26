@@ -427,11 +427,11 @@ func NewNode(
 
 	// Create a node info provider for LibP2P, and specify the default node approval state
 	// of Approved to avoid confusion as approval state is not used for this transport type.
-	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
+	nodeInfoProvider := routing.NewNodeStateProvider(routing.NodeStateProviderParams{
 		NodeID:              config.NodeID,
 		LabelsProvider:      labelsProvider,
 		BacalhauVersion:     *version.Get(),
-		DefaultNodeApproval: models.NodeApprovals.APPROVED,
+		DefaultNodeApproval: models.NodeMembership.APPROVED,
 	})
 	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
 	if computeNode != nil {
@@ -439,14 +439,14 @@ func NewNode(
 	}
 
 	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           config.NodeID,
-		NodeInfoProvider: nodeInfoProvider,
+		Router:            apiServer.Router,
+		NodeID:            config.NodeID,
+		NodeStateProvider: nodeInfoProvider,
 	})
 
 	agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
-		NodeInfoProvider:   nodeInfoProvider,
+		NodeStateProvider:  nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 	})
 
@@ -463,18 +463,19 @@ func NewNode(
 		// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
 		// TODO(forrest) [fixme] we should fix this to make it less racy in testing
 		nodeInfoPublisher = routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-			PubSub:           transportLayer.NodeInfoPubSub(),
-			NodeInfoProvider: nodeInfoProvider,
-			IntervalConfig:   nodeInfoPublisherInterval,
+			PubSub:            transportLayer.NodeInfoPubSub(),
+			NodeStateProvider: nodeInfoProvider,
+			IntervalConfig:    nodeInfoPublisherInterval,
 		})
 	} else {
 		// We want to register the current requester node to the node store
 		if config.IsRequesterNode {
-			nodeInfo := nodeInfoProvider.GetNodeInfo(ctx)
-			nodeInfo.Approval = models.NodeApprovals.APPROVED
-			err := tracingInfoStore.Add(ctx, nodeInfo)
-			if err != nil {
+			nodeState := nodeInfoProvider.GetNodeState(ctx)
+			// TODO what is the liveness here? We are adding ourselves so I assume connected?
+			nodeState.Membership = models.NodeMembership.APPROVED
+			if err := tracingInfoStore.Add(ctx, nodeState); err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("failed to add requester node to the node store")
+				return nil, fmt.Errorf("registering node to the node store: %w", err)
 			}
 		}
 	}

@@ -75,7 +75,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
-	DefaultApprovalState: models.NodeApprovals.APPROVED,
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -111,7 +111,7 @@ var TestRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
-	DefaultApprovalState: models.NodeApprovals.APPROVED,
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -68,7 +69,7 @@ func (b Bidder) ReturnBidResult(
 		},
 		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 		Accepted:          response.ShouldBid,
-		Reason:            response.Reason,
+		Event:             RespondedToBidEvent(response),
 	}
 	b.callback.OnBidComplete(ctx, result)
 }
@@ -107,7 +108,7 @@ func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 		b.callback.OnComputeFailure(ctx, ComputeError{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
-			Err:               err.Error(),
+			Event:             models.EventFromError(EventTopicExecutionBidding, err),
 		})
 		return
 	}
@@ -140,18 +141,14 @@ func (b Bidder) handleBidResult(
 			JobID:       execution.JobID,
 		}
 		handleComputeFailure = func(ctx context.Context, err error, reason string) {
-			var errMsg string
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg(reason)
-				errMsg = fmt.Sprintf("%s: %s", reason, err)
-			} else {
-				log.Ctx(ctx).Info().Msg(reason)
-				errMsg = reason
+			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg(reason)
+			if err == nil {
+				err = errors.New(reason)
 			}
 			b.callback.OnComputeFailure(ctx, ComputeError{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
-				Err:               errMsg,
+				Event:             models.EventFromError(EventTopicExecutionBidding, err),
 			})
 		}
 		handleBidComplete = func(ctx context.Context, result *bidStrategyResponse) {
@@ -160,7 +157,11 @@ func (b Bidder) handleBidResult(
 				ExecutionMetadata: executionMetadata,
 				Accepted:          result.bid,
 				Wait:              result.wait,
-				Reason:            result.reason,
+				Event: RespondedToBidEvent(&bidstrategy.BidStrategyResponse{
+					ShouldBid:  result.bid,
+					ShouldWait: result.wait,
+					Reason:     result.reason,
+				}),
 			})
 		}
 	)
@@ -230,7 +231,7 @@ func (b Bidder) doBidding(
 	// semantically the job cannot run.
 	semanticResponse, err := b.runSemanticBidding(ctx, job)
 	if err != nil {
-		return nil, fmt.Errorf("semantic bidding: %w", err)
+		return nil, err
 	}
 
 	// we shouldn't bid, and we're not waiting, bail.
@@ -241,7 +242,7 @@ func (b Bidder) doBidding(
 	// else the request is semantically biddable or waiting, calculate resource usage and check resource-based bidding.
 	resourceResponse, err := b.runResourceBidding(ctx, job, resourceUsage)
 	if err != nil {
-		return nil, fmt.Errorf("resource bidding: %w", err)
+		return nil, err
 	}
 
 	return &bidStrategyResponse{
@@ -272,19 +273,20 @@ func (b Bidder) runSemanticBidding(
 		// TODO(forrest): this can be parallelized with a wait group, although semantic checks ought to be quick.
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBid(ctx, request)
-		if err != nil {
-			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
-			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
-			// NB: failure here results in a callback to OnComputeFailure
-			return nil, errors.Wrap(err, errMsg)
-		}
-		log.Ctx(ctx).Info().
+
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+			Err(err).
 			Str("Job", request.Job.ID).
-			Str("strategy", strategyType).
-			Bool("bid", resp.ShouldBid).
-			Bool("wait", resp.ShouldWait).
-			Str("reason", resp.Reason).
-			Msgf("bit strategy response")
+			Str("Strategy", strategyType).
+			Bool("Bid", resp.ShouldBid).
+			Bool("Wait", resp.ShouldWait).
+			Str("Reason", resp.Reason).
+			Send()
+
+		if err != nil {
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, err
+		}
 
 		if resp.ShouldWait {
 			shouldWait = true
@@ -332,19 +334,20 @@ func (b Bidder) runResourceBidding(
 	for _, s := range b.resourceStrategy {
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBidBasedOnUsage(ctx, request, *resourceUsage)
-		if err != nil {
-			errMsg := fmt.Sprintf("bid strategy: %s failed", strategyType)
-			log.Ctx(ctx).Error().Err(err).Msgf(errMsg)
-			// NB: failure here results in a callback to OnComputeFailure
-			return nil, errors.Wrap(err, errMsg)
-		}
-		log.Ctx(ctx).Info().
+
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+			Err(err).
 			Str("Job", request.Job.ID).
-			Str("strategy", strategyType).
-			Bool("bid", resp.ShouldBid).
-			Bool("wait", resp.ShouldWait).
-			Str("reason", resp.Reason).
-			Msgf("bit strategy response")
+			Str("Strategy", strategyType).
+			Bool("Bid", resp.ShouldBid).
+			Bool("Wait", resp.ShouldWait).
+			Str("Reason", resp.Reason).
+			Send()
+
+		if err != nil {
+			// NB: failure here results in a callback to OnComputeFailure
+			return nil, err
+		}
 
 		if resp.ShouldWait {
 			shouldWait = true

@@ -69,31 +69,31 @@ func (mr *MockStoreMockRecorder) CreateEvaluation(ctx, eval any) *gomock.Call {
 }
 
 // CreateExecution mocks base method.
-func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
+	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateExecution indicates an expected call of CreateExecution.
-func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution any) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution, event any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution, event)
 }
 
 // CreateJob mocks base method.
-func (m *MockStore) CreateJob(ctx context.Context, j models.Job) error {
+func (m *MockStore) CreateJob(ctx context.Context, j models.Job, event models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJob", ctx, j)
+	ret := m.ctrl.Call(m, "CreateJob", ctx, j, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateJob indicates an expected call of CreateJob.
-func (mr *MockStoreMockRecorder) CreateJob(ctx, j any) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateJob(ctx, j, event any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j, event)
 }
 
 // DeleteEvaluation mocks base method.

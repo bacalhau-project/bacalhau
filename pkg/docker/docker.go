@@ -34,11 +34,49 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
+type ImageUnavailableError struct {
+	Verb  string
+	Image string
+	Creds config.DockerCredentials
+	Err   error
+}
 
-const DistributionInspectError = `Could not inspect image %q - could be due to repo/image not existing, ` +
-	`or registry needing authorization`
+func (die ImageUnavailableError) Error() string {
+	return pkgerrors.Wrapf(die.Err,
+		"Could not %s image %q - could be due to repo/image not existing, "+
+			"or registry needing authorization",
+		die.Verb,
+		die.Image,
+	).Error()
+}
+
+func (die ImageUnavailableError) Hint() string {
+	if !die.Creds.IsValid() {
+		return "If the image is private, supply the node with valid Docker login credentials " +
+			"using the " + config.DockerUsernameEnvVar + " and " + config.DockerPasswordEnvVar +
+			" environment variables"
+	}
+
+	return ""
+}
+
+func NewImageInspectError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "inspect",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
+}
+
+func NewImagePullError(image string, creds config.DockerCredentials, err error) error {
+	return ImageUnavailableError{
+		Verb:  "pull",
+		Image: image,
+		Creds: creds,
+		Err:   err,
+	}
+}
 
 type Client struct {
 	tracing.TracedClient
@@ -228,7 +266,7 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
+		return nil, NewImageInspectError(image, dockerCreds, err)
 	}
 
 	return distribution.Platforms, nil
@@ -342,7 +380,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, DistributionInspectError, image)
+		return nil, NewImageInspectError(image, creds, err)
 	}
 
 	obj := dist.Descriptor.Digest

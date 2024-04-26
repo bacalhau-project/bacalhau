@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
@@ -23,7 +25,6 @@ import (
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
@@ -72,14 +73,11 @@ func NewRequesterNode(
 
 	jobStore := requesterConfig.JobStore
 
+	// TODO(forrest) [simplify]: given the current state of the code this interface obfuscates what is happening here,
+	// there isn't any "node discovery" happening here, we are simply listing a node store.
+	// The todo here is to simply pass a node store where it's needed instead of this chain wrapping a discoverer wrapping
+	// a store...
 	// compute node discoverer
-	nodeDiscoveryChain := discovery.NewChain(true)
-	nodeDiscoveryChain.Add(
-		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
-			Store: nodeInfoStore,
-		}),
-	)
-
 	log.Ctx(ctx).
 		Info().
 		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
@@ -103,7 +101,7 @@ func NewRequesterNode(
 
 	// node selector
 	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
-		NodeDiscoverer: nodeDiscoveryChain,
+		NodeDiscoverer: nodeInfoStore,
 		NodeRanker:     nodeRankerChain,
 	})
 
@@ -260,7 +258,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
+		discovery.NewDebugInfoProvider(nodeInfoStore),
 	}
 
 	// register requester public http apis
@@ -269,7 +267,7 @@ func NewRequesterNode(
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 	})
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
@@ -329,7 +327,7 @@ func NewRequesterNode(
 		Endpoint:           endpoint,
 		localCallback:      endpoint,
 		EndpointV2:         endpointV2,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
 		nodeManager:        nodeManager,

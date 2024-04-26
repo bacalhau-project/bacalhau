@@ -32,9 +32,9 @@ func (s *PlanTestSuite) TestNewPlan() {
 }
 
 func (s *PlanTestSuite) TestMarkJobFailed() {
-	s.plan.MarkJobFailed("Test failure")
+	s.plan.MarkJobFailed(models.Event{Message: "Test failure"})
 	s.Equal(models.JobStateTypeFailed, s.plan.DesiredJobState)
-	s.Equal("Test failure", s.plan.Comment)
+	s.Equal("Test failure", s.plan.Event.Message)
 }
 
 func (s *PlanTestSuite) TestMarkJobRunningIfApplicable() {

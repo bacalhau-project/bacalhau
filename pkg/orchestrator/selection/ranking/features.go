@@ -94,9 +94,10 @@ func (s *featureNodeRanker) RankNodes(
 	for i, node := range nodes {
 		rank, reason := s.rankNode(ctx, node, requiredKeys)
 		ranks[i] = orchestrator.NodeRank{
-			NodeInfo: node,
-			Rank:     rank,
-			Reason:   reason,
+			NodeInfo:  node,
+			Rank:      rank,
+			Reason:    reason,
+			Retryable: false,
 		}
 		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
