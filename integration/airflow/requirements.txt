@@ -112,7 +112,7 @@ connexion[flask]==2.14.2
     #   connexion
 cron-descriptor==1.4.3
     # via apache-airflow
-croniter==2.0.1
+croniter==2.0.2
     # via apache-airflow
 cryptography==41.0.7
     # via
@@ -158,7 +158,7 @@ flask==2.2.5
     #   flask-session
     #   flask-sqlalchemy
     #   flask-wtf
-flask-appbuilder==4.3.10
+flask-appbuilder==4.4.1
     # via apache-airflow
 flask-babel==2.0.0
     # via flask-appbuilder
@@ -172,7 +172,7 @@ flask-login==0.6.3
     # via
     #   apache-airflow
     #   flask-appbuilder
-flask-session==0.6.0
+flask-session==0.5.0
     # via apache-airflow
 flask-sqlalchemy==2.5.1
     # via flask-appbuilder
@@ -525,7 +525,7 @@ uc-micro-py==1.0.3
     # via linkify-it-py
 unicodecsv==0.14.1
     # via apache-airflow
-universal-pathlib==0.2.1
+universal-pathlib==0.2.2
     # via apache-airflow
 urllib3==2.2.1
     # via
