@@ -1,0 +1,34 @@
+name: Trigger on Label
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  trigger-workflows:
+    if: github.event.label.name == 'ok-to-test'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install yq
+        run: sudo snap install yq
+
+      - name: Check if labeler is authorized
+        id: check-authorization
+        run: |
+          LABELER=$(jq --raw-output .sender.login "$GITHUB_EVENT_PATH")
+          APPROVERS=$(yq e '.approvers[]' OWNERS)
+          if echo "$APPROVERS" | grep -Fxq "$LABELER"; then
+            echo "::set-output name=authorized::true"
+          else
+            echo "::set-output name=authorized::false"
+          fi
+
+      - name: Dispatch event
+        if: steps.check-authorization.outputs.authorized == 'true'
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: ok-to-test
