@@ -9,7 +9,6 @@ export default {
 }
 
 export const fullDataGenerator = (numberToGenerate: number): Node[] => {
-  // Create a list of 10 jobs
   const jobs: Node[] = []
   for (let i = 0; i < numberToGenerate; i += 1) {
     jobs.push(generateMockNode())
