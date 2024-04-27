@@ -3,30 +3,31 @@ package shared
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
-	Router           *echo.Echo
-	NodeID           string
-	NodeInfoProvider models.NodeInfoProvider
+	Router            *echo.Echo
+	NodeID            string
+	NodeStateProvider models.NodeStateProvider
 }
 
 type Endpoint struct {
-	router           *echo.Echo
-	nodeID           string
-	nodeInfoProvider models.NodeInfoProvider
+	router            *echo.Echo
+	nodeID            string
+	nodeStateProvider models.NodeStateProvider
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
-		router:           params.Router,
-		nodeID:           params.NodeID,
-		nodeInfoProvider: params.NodeInfoProvider,
+		router:            params.Router,
+		nodeID:            params.NodeID,
+		nodeStateProvider: params.NodeStateProvider,
 	}
 
 	// JSON group
@@ -74,7 +75,7 @@ func (e *Endpoint) id(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/node_info [get]
 func (e *Endpoint) nodeInfo(c echo.Context) error {
-	return c.JSON(http.StatusOK, e.nodeInfoProvider.GetNodeInfo(c.Request().Context()))
+	return c.JSON(http.StatusOK, e.nodeStateProvider.GetNodeState(c.Request().Context()))
 }
 
 // version godoc

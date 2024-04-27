@@ -3,6 +3,7 @@ package selector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/rs/zerolog/log"
@@ -32,7 +33,16 @@ func NewNodeSelector(params NodeSelectorParams) *NodeSelector {
 }
 
 func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	return n.nodeDiscoverer.ListNodes(ctx)
+	nodeStates, err := n.nodeDiscoverer.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
+	}
+	// extract slice of models.NodeInfo from slice of routing.NodeConnectionState
+	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
+	for _, ns := range nodeStates {
+		nodeInfos = append(nodeInfos, ns.Info)
+	}
+	return nodeInfos, nil
 }
 
 func (n NodeSelector) AllMatchingNodes(ctx context.Context,
@@ -73,32 +83,42 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context,
 func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 	job *models.Job,
 	constraints *orchestrator.NodeSelectionConstraints) (selected, rejected []orchestrator.NodeRank, err error) {
-	listed, err := n.nodeDiscoverer.ListNodes(ctx)
+	listed, err := n.nodeDiscoverer.List(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {
-		if nodeInfo.NodeType != models.NodeTypeCompute {
+	// filter node states to return a slice of nodes that are:
+	// - compute nodes
+	// - approved to executor jobs
+	// - connected (alive)
+	nodeStates := lo.Filter(listed, func(nodeState models.NodeState, index int) bool {
+		if nodeState.Info.NodeType != models.NodeTypeCompute {
 			return false
 		}
 
-		if constraints.RequireApproval && nodeInfo.Approval != models.NodeApprovals.APPROVED {
+		if constraints.RequireApproval && nodeState.Membership != models.NodeMembership.APPROVED {
 			return false
 		}
 
-		if constraints.RequireConnected && nodeInfo.State != models.NodeStates.CONNECTED {
+		if constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
 			return false
 		}
 
 		return true
 	})
 
-	if len(nodeIDs) == 0 {
+	if len(nodeStates) == 0 {
 		return nil, nil, errors.New("unable to find any connected and approved nodes")
 	}
 
-	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
+	// extract the nodeInfo from the slice of node states for ranking
+	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
+	for _, ns := range nodeStates {
+		nodeInfos = append(nodeInfos, ns.Info)
+	}
+
+	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeInfos)
 	if err != nil {
 		return nil, nil, err
 	}

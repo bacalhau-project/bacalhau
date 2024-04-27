@@ -17,7 +17,7 @@ import (
 //	@Router		/api/v1/requester/nodes [get]
 func (s *Endpoint) nodes(c echo.Context) error {
 	ctx := c.Request().Context()
-	nodes, err := s.nodeDiscoverer.ListNodes(ctx)
+	nodes, err := s.nodeDiscoverer.List(ctx)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
