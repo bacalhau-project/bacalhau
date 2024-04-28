@@ -4,7 +4,8 @@
 # add "WASM" later when templates are ready
 executors=("docker")
 storageSources=("" "urlDownload" "repoClone" "repoCloneLFS" "s3" "ipfs")
-publishers=("" "ipfs" "s3")
+publishers=("" "ipfs")
+# publishers=("" "ipfs" "s3")
 
 # Begin the JSON array
 echo "[" > permutations.json

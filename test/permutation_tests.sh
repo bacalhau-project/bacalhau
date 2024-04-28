@@ -17,7 +17,6 @@ jq -c '.[]' "$PERMUTATIONS_FILE" | while read -r permutation; do
 
   # Evaluate the result of the function call
   if [ $result -eq 0 ]; then
-    # echo "Requirements met for configuration: $json_input"
     filename=$(generate_jobspec "$permutation")
     # Ensure that all filesystem buffers are flushed
     # Check if cue command is available
@@ -28,18 +27,27 @@ jq -c '.[]' "$PERMUTATIONS_FILE" | while read -r permutation; do
         # If cue is not installed, assume the file is valid
         valid="yes"
     fi
-    echo $GENERATE_JOBSPECS/$filename
     # Check if the output is empty
     if [[ -z "$valid" ]]; then
-        echo "Valid jobspec file: $filename"
         create_client "$CLUSTER"
         job_id=$(bacalhau job run --id-only $GENERATE_JOBSPECS/$filename)
-        bacalhau get $job_id > /dev/null 2>&1
-        subject cat job-*/output_custom/output.txt
+        extracted_id=$(echo $job_id | awk -F'-' '{print $1"-"$2}')
+        publishers=$(echo $json_input | jq -r '.Publishers')
+
+        if [[ -z "$publishers" ]]; then
+            # Handle the case when Publishers is empty
+            subject bacalhau job logs $extracted_id
+            continue
+        else
+            # Handle the case when Publishers is not empty
+            bacalhau get $job_id > /dev/null 2>&1
+            subject cat job-$extracted_id/output_custom/output.txt
+        fi
+
+        echo $GENERATE_JOBSPECS/$filename
         assert_equal 0 $status
         assert_match "hello" $(echo $stdout)
         assert_equal '' $stderr
-        extracted_id=$(echo $job_id | awk -F'-' '{print $1"-"$2}')
         rm -rf job-$extracted_id
     else
         echo "Invalid jobspec file: $filename"

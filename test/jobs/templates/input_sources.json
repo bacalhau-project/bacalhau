@@ -19,7 +19,7 @@
         "Source": {
           "Type": "s3",
           "Params": {
-            "Bucket": "s3://bacalhau-hello",
+            "Bucket": "bacalhau-hello",
             "Key": "hello.txt",
             "Region": "ca-central-1"
           }

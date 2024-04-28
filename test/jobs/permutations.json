@@ -3,71 +3,47 @@
 ,
 {"Engine":"docker", "StorageSources":"", "Publishers":"ipfs", "Count":1}
 ,
-{"Engine":"docker", "StorageSources":"", "Publishers":"s3", "Count":1}
-,
 {"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"ipfs", "Count":1}
-,
-{"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"s3", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"repoClone", "Publishers":"", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"repoClone", "Publishers":"ipfs", "Count":1}
 ,
-{"Engine":"docker", "StorageSources":"repoClone", "Publishers":"s3", "Count":1}
-,
 {"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"ipfs", "Count":1}
-,
-{"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"s3", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"s3", "Publishers":"", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"s3", "Publishers":"ipfs", "Count":1}
 ,
-{"Engine":"docker", "StorageSources":"s3", "Publishers":"s3", "Count":1}
-,
 {"Engine":"docker", "StorageSources":"ipfs", "Publishers":"", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"ipfs", "Publishers":"ipfs", "Count":1}
-,
-{"Engine":"docker", "StorageSources":"ipfs", "Publishers":"s3", "Count":1}
 ,
 {"Engine":"docker", "StorageSources":"", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"", "Publishers":"ipfs", "Count":2}
 ,
-{"Engine":"docker", "StorageSources":"", "Publishers":"s3", "Count":2}
-,
 {"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"ipfs", "Count":2}
-,
-{"Engine":"docker", "StorageSources":"urlDownload", "Publishers":"s3", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"repoClone", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"repoClone", "Publishers":"ipfs", "Count":2}
 ,
-{"Engine":"docker", "StorageSources":"repoClone", "Publishers":"s3", "Count":2}
-,
 {"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"ipfs", "Count":2}
-,
-{"Engine":"docker", "StorageSources":"repoCloneLFS", "Publishers":"s3", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"s3", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"s3", "Publishers":"ipfs", "Count":2}
 ,
-{"Engine":"docker", "StorageSources":"s3", "Publishers":"s3", "Count":2}
-,
 {"Engine":"docker", "StorageSources":"ipfs", "Publishers":"", "Count":2}
 ,
 {"Engine":"docker", "StorageSources":"ipfs", "Publishers":"ipfs", "Count":2}
-,
-{"Engine":"docker", "StorageSources":"ipfs", "Publishers":"s3", "Count":2}
 ]

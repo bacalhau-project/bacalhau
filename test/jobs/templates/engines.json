@@ -34,7 +34,7 @@
       ],
       "Parameters": [
         "-c",
-        "cat $(find /input_custom -type f -name 'hello.txt') > /output_custom/output.txt"
+        "cat $(find /input_custom /inputs -type f -name 'hello.txt') > /output_custom/output.txt"
       ]
     }
   }},

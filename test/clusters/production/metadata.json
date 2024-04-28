@@ -21,7 +21,6 @@
         "Publishers": [
           "noop",
           "ipfs",
-          "s3",
           "local"
         ],
         "StorageSources": [
@@ -82,7 +81,6 @@
         ],
         "Publishers": [
           "ipfs",
-          "s3",
           "local",
           "noop"
         ],
@@ -175,8 +173,7 @@
         "Publishers": [
           "local",
           "noop",
-          "ipfs",
-          "s3"
+          "ipfs"
         ],
         "StorageSources": [
           "ipfs",
@@ -267,7 +264,6 @@
         "Publishers": [
           "noop",
           "ipfs",
-          "s3",
           "local"
         ],
         "StorageSources": [
@@ -329,8 +325,7 @@
         "Publishers": [
           "local",
           "noop",
-          "ipfs",
-          "s3"
+          "ipfs"
         ],
         "StorageSources": [
           "inline",
