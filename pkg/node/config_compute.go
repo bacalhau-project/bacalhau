@@ -2,12 +2,12 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -75,6 +75,8 @@ type ComputeConfigParams struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 type ComputeConfig struct {
@@ -119,6 +121,8 @@ type ComputeConfig struct {
 	ExecutionStore store.ExecutionStore
 
 	LocalPublisher types.LocalPublisherConfig
+
+	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
 func NewComputeConfigWithDefaults() (ComputeConfig, error) {
@@ -148,8 +152,22 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	if params.LocalPublisher.Directory == "" {
 		params.LocalPublisher.Directory = DefaultComputeConfig.LocalPublisher.Directory
 		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {
-			return ComputeConfig{}, errors.Wrap(err, "creating default local publisher directory")
+			return ComputeConfig{}, pkgerrors.Wrap(err, "creating default local publisher directory")
 		}
+	}
+
+	// Control plan settings defaults
+	if params.ControlPlaneSettings.HeartbeatFrequency == 0 {
+		params.ControlPlaneSettings.HeartbeatFrequency = DefaultComputeConfig.ControlPlaneSettings.HeartbeatFrequency
+	}
+	if params.ControlPlaneSettings.InfoUpdateFrequency == 0 {
+		params.ControlPlaneSettings.InfoUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.InfoUpdateFrequency
+	}
+	if params.ControlPlaneSettings.ResourceUpdateFrequency == 0 {
+		params.ControlPlaneSettings.ResourceUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.ResourceUpdateFrequency
+	}
+	if params.ControlPlaneSettings.HeartbeatTopic == "" {
+		params.ControlPlaneSettings.HeartbeatTopic = DefaultComputeConfig.ControlPlaneSettings.HeartbeatTopic
 	}
 
 	// Get available physical resources in the host
@@ -204,6 +222,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		BidResourceStrategy:          params.BidResourceStrategy,
 		ExecutionStore:               params.ExecutionStore,
 		LocalPublisher:               params.LocalPublisher,
+		ControlPlaneSettings:         params.ControlPlaneSettings,
 	}
 
 	if err := validateConfig(config, physicalResources); err != nil {
@@ -214,31 +233,31 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 }
 
 func validateConfig(config ComputeConfig, physicalResources models.Resources) error {
-	var errors *multierror.Error
+	var err error
 
 	if !config.IgnorePhysicalResourceLimits && !config.TotalResourceLimits.LessThanEq(physicalResources) {
-		errors = multierror.Append(errors,
+		err = errors.Join(err,
 			fmt.Errorf("total resource limits %+v exceed physical resources %+v",
 				config.TotalResourceLimits, physicalResources))
 	}
 
 	if !config.JobResourceLimits.LessThanEq(config.TotalResourceLimits) {
-		errors = multierror.Append(errors,
+		err = errors.Join(err,
 			fmt.Errorf("job resource limits %+v exceed total resource limits %+v",
 				config.JobResourceLimits, config.TotalResourceLimits))
 	}
 
 	if !config.JobResourceLimits.LessThanEq(config.QueueResourceLimits) {
-		errors = multierror.Append(errors,
+		err = errors.Join(err,
 			fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
 				config.JobResourceLimits, config.QueueResourceLimits))
 	}
 
 	if !config.DefaultJobResourceLimits.LessThanEq(config.JobResourceLimits) {
-		errors = multierror.Append(errors,
+		err = errors.Join(err,
 			fmt.Errorf("default job resource limits %+v exceed job resource limits %+v",
 				config.DefaultJobResourceLimits, config.JobResourceLimits))
 	}
 
-	return errors.ErrorOrNil()
+	return err
 }

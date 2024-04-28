@@ -20,6 +20,7 @@ import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -40,7 +41,7 @@ type Compute struct {
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
-	autoLabelsProvider models.LabelsProvider
+	labelsProvider     models.LabelsProvider
 	debugInfoProviders []model.DebugInfoProvider
 }
 
@@ -58,6 +59,7 @@ func NewComputeNode(
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
+	heartbeatClient *heartbeat.HeartbeatClient,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -122,51 +124,6 @@ func NewComputeNode(
 		},
 	})
 
-	semanticBidStrat := bidstrategy.WithSemantics(config.BidSemanticStrategy)
-	if config.BidSemanticStrategy == nil {
-		semanticBidStrat = bidstrategy.WithSemantics(
-			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
-			}),
-			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
-				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
-			}),
-			semantic.NewProviderInstalledStrategy(
-				publishers,
-				func(j *models.Job) string { return j.Task().Publisher.Type },
-			),
-			semantic.NewStorageInstalledBidStrategy(storages),
-			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality: config.JobSelectionPolicy.Locality,
-				Storages: storages,
-			}),
-			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-				Command: config.JobSelectionPolicy.ProbeExec,
-			}),
-			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-				URL: config.JobSelectionPolicy.ProbeHTTP,
-			}),
-			executor_util.NewExecutorSpecificBidStrategy(executors),
-		)
-	}
-
-	resourceBidStrat := bidstrategy.WithResources(config.BidResourceStrategy)
-	if config.BidResourceStrategy == nil {
-		resourceBidStrat = bidstrategy.WithResources(
-			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
-				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			resource.NewAvailableCapacityStrategy(ctx, resource.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
-			}),
-			executor_util.NewExecutorSpecificBidStrategy(executors),
-		)
-	}
-
 	// logging server
 	logserver := logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: executionStore,
@@ -184,19 +141,19 @@ func NewComputeNode(
 		MaxJobRequirements: config.JobResourceLimits,
 	})
 
-	bidStrat := bidstrategy.NewChainedBidStrategy(semanticBidStrat, resourceBidStrat)
-	bidder := compute.NewBidder(compute.BidderParams{
-		NodeID:           nodeID,
-		SemanticStrategy: bidStrat,
-		ResourceStrategy: bidStrat,
-		Store:            executionStore,
-		Callback:         computeCallback,
-		Executor:         bufferRunner,
-		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
-		},
-	})
-
+	bidder := NewBidder(config,
+		publishers,
+		storages,
+		executors,
+		runningCapacityTracker,
+		enqueuedCapacityTracker,
+		nodeID,
+		executionStore,
+		computeCallback,
+		bufferRunner,
+		apiServer,
+		capacityCalculator,
+	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              nodeID,
 		ExecutionStore:  executionStore,
@@ -236,7 +193,7 @@ func NewComputeNode(
 
 	var managementClient *compute.ManagementClient
 	// TODO: When we no longer use libP2P for management, we should remove this
-	// as the managementProxy will always be set.
+	// as the managementProxy will always be set for NATS
 	if managementProxy != nil {
 		// TODO: Make the registration lock folder a config option so that we have it
 		// available and don't have to depend on getting the repo folder.
@@ -247,13 +204,15 @@ func NewComputeNode(
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node
 		// info updates.
-		managementClient = compute.NewManagementClient(compute.ManagementClientParams{
+		managementClient = compute.NewManagementClient(&compute.ManagementClientParams{
 			NodeID:               nodeID,
 			LabelsProvider:       labelsProvider,
 			ManagementProxy:      managementProxy,
 			NodeInfoDecorator:    nodeInfoDecorator,
 			RegistrationFilePath: regFilename,
 			ResourceTracker:      runningCapacityTracker,
+			HeartbeatClient:      heartbeatClient,
+			ControlPlaneSettings: config.ControlPlaneSettings,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
@@ -266,6 +225,7 @@ func NewComputeNode(
 		if managementClient != nil {
 			managementClient.Stop()
 		}
+
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}
@@ -280,7 +240,7 @@ func NewComputeNode(
 		Bidder:             bidder,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
-		autoLabelsProvider: labelsProvider,
+		labelsProvider:     labelsProvider,
 		debugInfoProviders: debugInfoProviders,
 		ManagementClient:   managementClient,
 	}, nil
@@ -288,4 +248,81 @@ func NewComputeNode(
 
 func (c *Compute) Cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
+}
+
+func NewBidder(
+	config ComputeConfig,
+	publishers publisher.PublisherProvider,
+	storages storage.StorageProvider,
+	executors executor.ExecutorProvider,
+	runningCapacityTracker capacity.Tracker,
+	enqueuedCapacityTracker capacity.Tracker,
+	nodeID string,
+	executionStore store.ExecutionStore,
+	computeCallback compute.Callback,
+	bufferRunner *compute.ExecutorBuffer,
+	apiServer *publicapi.Server,
+	calculator capacity.UsageCalculator,
+) compute.Bidder {
+	var semanticBidStrats []bidstrategy.SemanticBidStrategy
+	if config.BidSemanticStrategy == nil {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
+			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
+			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
+				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
+				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+			}),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+			}),
+			semantic.NewProviderInstalledStrategy(
+				publishers,
+				func(j *models.Job) string { return j.Task().Publisher.Type },
+			),
+			semantic.NewStorageInstalledBidStrategy(storages),
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
+			}),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{config.BidSemanticStrategy}
+	}
+
+	var resourceBidStrats []bidstrategy.ResourceBidStrategy
+	if config.BidResourceStrategy == nil {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
+			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
+				MaxJobRequirements: config.JobResourceLimits,
+			}),
+			resource.NewAvailableCapacityStrategy(resource.AvailableCapacityStrategyParams{
+				RunningCapacityTracker:  runningCapacityTracker,
+				EnqueuedCapacityTracker: enqueuedCapacityTracker,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{config.BidResourceStrategy}
+	}
+
+	return compute.NewBidder(compute.BidderParams{
+		NodeID:           nodeID,
+		SemanticStrategy: semanticBidStrats,
+		ResourceStrategy: resourceBidStrats,
+		Store:            executionStore,
+		Callback:         computeCallback,
+		Executor:         bufferRunner,
+		GetApproveURL: func() *url.URL {
+			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
+		},
+		UsageCalculator: calculator,
+	})
 }

@@ -7,18 +7,13 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type ClientManagerParams struct {
-	Name    string
-	Servers string
-}
-
 type ClientManager struct {
 	Client *nats.Conn
 }
 
 // NewClientManager is a helper function to create a NATS client connection with a given name and servers string
-func NewClientManager(ctx context.Context, params ClientManagerParams) (*ClientManager, error) {
-	nc, err := nats.Connect(params.Servers, nats.Name(params.Name))
+func NewClientManager(ctx context.Context, servers string, options ...nats.Option) (*ClientManager, error) {
+	nc, err := nats.Connect(servers, options...)
 	if err != nil {
 		return nil, err
 	}

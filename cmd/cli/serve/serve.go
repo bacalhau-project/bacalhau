@@ -3,6 +3,7 @@ package serve
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -20,11 +22,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -122,7 +126,7 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			/*
 				NB(forrest):
 				(I learned a lot more about viper and cobra than was intended...)
@@ -146,21 +150,16 @@ func NewCmd() *cobra.Command {
 				return the value of the last flag bound to it. This is why it's important to manage
 				flag binding thoughtfully, ensuring each command's context is respected.
 			*/
-			if err := configflags.BindFlags(cmd, serveFlags); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return configflags.BindFlags(cmd, serveFlags)
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return serve(cmd)
 		},
 	}
 
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
-
 	return serveCmd
 }
 
@@ -219,7 +218,7 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(nodeName)
+	networkConfig, err := getNetworkConfig()
 	if err != nil {
 		return err
 	}
@@ -269,39 +268,41 @@ func serve(cmd *cobra.Command) error {
 		AuthConfig:            authConfig,
 		IsComputeNode:         isComputeNode,
 		IsRequesterNode:       isRequesterNode,
+		RequesterSelfSign:     config.GetRequesterSelfSign(),
 		Labels:                config.GetStringMapString(types.NodeLabels),
 		AllowListedLocalPaths: allowedListLocalPaths,
 		NodeInfoStoreTTL:      nodeInfoStoreTTL,
 		NetworkConfig:         networkConfig,
 	}
-
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
 		nodeConfig.RequesterAutoCert = config.ServerAutoCertDomain()
 		nodeConfig.RequesterAutoCertCache = config.GetAutoCertCachePath()
-
-		cert, key := config.GetRequesterCertificateSettings()
-		nodeConfig.RequesterTLSCertificateFile = cert
-		nodeConfig.RequesterTLSKeyFile = key
+		// If there are configuration values for autocert we should return and let autocert
+		// do what it does later on in the setup.
+		if nodeConfig.RequesterAutoCert == "" {
+			cert, key, err := GetTLSCertificate(ctx, &nodeConfig)
+			if err != nil {
+				return err
+			}
+			nodeConfig.RequesterTLSCertificateFile = cert
+			nodeConfig.RequesterTLSKeyFile = key
+		}
 	}
-
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
 	}
-
 	// Persist the node config after the node is created and its config is valid.
 	if err = persistConfigs(repoDir); err != nil {
 		return fmt.Errorf("error persisting configs: %w", err)
 	}
-
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
 		return fmt.Errorf("error starting node: %w", err)
 	}
-
 	startWebUI, err := config.Get[bool](types.NodeWebUIEnabled)
 	if err != nil {
 		return err
@@ -327,7 +328,6 @@ func serve(cmd *cobra.Command) error {
 			}
 		}()
 	}
-
 	// only in station logging output
 	if config.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
@@ -354,14 +354,9 @@ func serve(cmd *cobra.Command) error {
 	} else {
 		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 	}
-	if err != nil {
-		return err
-	}
-
 	cm.RegisterCallback(func() error {
 		return os.Remove(ripath)
 	})
-
 	<-ctx.Done() // block until killed
 	return nil
 }
@@ -523,13 +518,6 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
 	}
 
-	// Only display the secret if the user did not set it explicitly.
-	// Else, they should already know it!
-	secret, err := config.Get[string](types.NodeNetworkAuthSecret)
-	if err == nil && secret == "" && nodeConfig.NetworkConfig.AuthSecret != "" {
-		orchestrator.User = url.User(nodeConfig.NetworkConfig.AuthSecret)
-	}
-
 	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
 		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
 	}
@@ -570,4 +558,48 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	})
 
 	return addresses[0]
+}
+func GetTLSCertificate(ctx context.Context, nodeConfig *node.NodeConfig) (string, string, error) {
+	cert, key := config.GetRequesterCertificateSettings()
+	if cert != "" && key != "" {
+		return cert, key, nil
+	}
+	if cert != "" && key == "" {
+		return "", "", fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
+	}
+	if cert == "" && key != "" {
+		return "", "", fmt.Errorf("invalid config: private key specified without corresponding TLS certificate")
+	}
+	if !nodeConfig.RequesterSelfSign {
+		return "", "", nil
+	}
+	log.Ctx(ctx).Info().Msg("Generating self-signed certificate")
+	var err error
+	// If the user has not specified a private key, use their client key
+	if key == "" {
+		key, err = config.Get[string](types.UserKeyPath)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to create temporary server certificate")
+	}
+	defer closer.CloseWithLogOnError(certFile.Name(), certFile)
+
+	var ips []net.IP = nil
+	if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
+		ips = append(ips, ip)
+	}
+
+	if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
+		return "", "", err
+	} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
+		return "", "", errors.Wrap(err, "failed to generate server certificate")
+	} else if err = caCert.MarshalCertficate(certFile); err != nil {
+		return "", "", errors.Wrap(err, "failed to write server certificate")
+	}
+	cert = certFile.Name()
+	return cert, key, nil
 }

@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -67,7 +68,7 @@ func (s *ComputeSuite) setupNode() {
 
 	s.executor = noop_executor.NewNoopExecutor()
 	s.publisher = noop_publisher.NewNoopPublisher()
-	s.bidChannel = make(chan compute.BidResult)
+	s.bidChannel = make(chan compute.BidResult, 1)
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
 
@@ -118,6 +119,7 @@ func (s *ComputeSuite) setupNode() {
 		callback,
 		nil,                 // until we switch to testing with NATS
 		map[string]string{}, // empty configured labels
+		nil,                 // no heartbeat client
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

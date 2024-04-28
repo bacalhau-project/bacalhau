@@ -23,7 +23,7 @@ type TransportLayer interface {
 
 	// NodeInfoPubSub enables compute nodes to publish their info and capabilities
 	// to orchestrator nodes for job matching and discovery.
-	NodeInfoPubSub() pubsub.PubSub[models.NodeInfo]
+	NodeInfoPubSub() pubsub.PubSub[models.NodeState]
 
 	// NodeInfoDecorator enables transport layer to enrich node info with data
 	// required for request routing
@@ -31,10 +31,6 @@ type TransportLayer interface {
 
 	// DebugInfoProviders enables transport layer to provide meaningful debug info to operators
 	DebugInfoProviders() []model.DebugInfoProvider
-
-	// GetConnectionInfo retrieves information relevant to the transport layer for those that
-	// require it.
-	GetConnectionInfo(ctx context.Context) interface{}
 
 	// RegisterNodeInfoConsumer registers a node info consumer with the transport layer
 	RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error

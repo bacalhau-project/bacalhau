@@ -2,21 +2,22 @@ package serve
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"time"
+
+	pkgerrors "github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-	"github.com/spf13/viper"
-	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -25,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -40,7 +40,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
 	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
-	if err := multierr.Combine(totalErr, queueErr, jobErr, defaultErr); err != nil {
+	if err := errors.Join(totalErr, queueErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
 
@@ -50,7 +50,7 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	if createExecutionStore {
 		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
 		if err != nil {
-			return node.ComputeConfig{}, errors.Wrapf(err, "failed to create execution store")
+			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
@@ -90,10 +90,11 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	if createJobStore {
 		jobStore, err = getJobStore(ctx, cfg.JobStore)
 		if err != nil {
-			return node.RequesterConfig{}, errors.Wrapf(err, "failed to create job store")
+			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}
 	}
-	return node.NewRequesterConfigWith(node.RequesterConfigParams{
+
+	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 		},
@@ -122,6 +123,17 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		JobStore:                       jobStore,
 		DefaultPublisher:               cfg.DefaultPublisher,
 	})
+	if err != nil {
+		return node.RequesterConfig{}, err
+	}
+
+	if cfg.ManualNodeApproval {
+		requesterConfig.DefaultApprovalState = models.NodeMembership.PENDING
+	} else {
+		requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
+	}
+
+	return requesterConfig, nil
 }
 
 func getNodeType() (requester, compute bool, err error) {
@@ -207,36 +219,10 @@ func getTransportType() (string, error) {
 	return networkCfg.Type, nil
 }
 
-func getNetworkConfig(nodeID string) (node.NetworkConfig, error) {
+func getNetworkConfig() (node.NetworkConfig, error) {
 	var networkCfg types.NetworkConfig
 	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
 		return node.NetworkConfig{}, err
-	}
-
-	if networkCfg.AuthSecret == "" {
-		// Generate an auth token using the user's client key. It should not be
-		// possible to compute this value by anyone other than the NATS server, and
-		// should be stable across restarts of the node.
-		secret, err := nats.CreateAuthSecret(nodeID)
-		if err != nil {
-			return node.NetworkConfig{}, err
-		}
-		networkCfg.AuthSecret = secret //nolint: gosec
-	} else {
-		// If the user supplied an auth secret and some orchestrator(s), assume
-		// they are passing a auth secret to be used as a client. Attach the
-		// secret to the orchestrator urls, ignoring any which have one already.
-		for index, orchestrator := range networkCfg.Orchestrators {
-			orchestratorURL, err := url.Parse(orchestrator)
-			if err != nil {
-				return node.NetworkConfig{}, err
-			}
-
-			if orchestratorURL.User == nil {
-				orchestratorURL.User = url.User(networkCfg.AuthSecret)
-			}
-			networkCfg.Orchestrators[index] = orchestratorURL.String()
-		}
 	}
 
 	return node.NetworkConfig{

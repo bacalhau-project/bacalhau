@@ -16,7 +16,7 @@ The [Bacalhau YouTube channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNC
 
 Subscribe to the [Bacalhau newsletter](https://bacalhau.substack.com/) for official project updates sent straight to your inbox.
 
-Also, our blog contains product updates, company news, and educational content on how you can leverage Bacalhau and the Compute over Data ecosytem [Bacalhau Blog](https://bacalhau.substack.com/).
+Also, our blog contains product updates, company news, and educational content on how you can leverage Bacalhau and the Compute over Data ecosystem [Bacalhau Blog](https://bacalhau.substack.com/).
 
 ## Twitter
 

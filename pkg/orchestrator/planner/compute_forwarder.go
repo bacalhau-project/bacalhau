@@ -67,7 +67,7 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 			if observedState == models.ExecutionStateAskForBidAccepted {
 				s.doNotifyBidRejected(ctx, u.Execution)
 			} else if !u.Execution.IsTerminalComputeState() {
-				s.notifyCancel(ctx, u.Comment, u.Execution)
+				s.notifyCancel(ctx, u.Event.Message, u.Execution)
 			}
 		}
 	}

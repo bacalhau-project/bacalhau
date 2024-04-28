@@ -49,6 +49,9 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.I
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
+
+	// TODO(forrest) [correctness] this timeout should be passed in as a param or set on the context by the method caller.
+	// for further context on why this is the way it is see: https://github.com/bacalhau-project/bacalhau/pull/1432
 	timeoutDuration := config.GetVolumeSizeRequestTimeout()
 	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()

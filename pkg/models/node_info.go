@@ -38,8 +38,8 @@ func (e *NodeType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
-type NodeInfoProvider interface {
-	GetNodeInfo(ctx context.Context) NodeInfo
+type NodeStateProvider interface {
+	GetNodeState(ctx context.Context) NodeState
 }
 
 type LabelsProvider interface {
@@ -74,16 +74,17 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 	return nodeInfo
 }
 
-// NodeInfo
-// TODO: add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
+// NodeInfo contains metadata about a node on the network. Compute nodes share their NodeInfo with Requester nodes
+// to further its view of the networks conditions. ComputeNodeInfo is non-nil iff the NodeType is NodeTypeCompute.
+// TODO(walid): add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
 type NodeInfo struct {
+	// TODO replace all access on this field with the `ID()` method
 	NodeID          string            `json:"NodeID"`
 	PeerInfo        *peer.AddrInfo    `json:"PeerInfo,omitempty" yaml:",omitempty"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
-	Approval        NodeApproval      `json:"Approval"`
 }
 
 // ID returns the node ID
@@ -101,6 +102,8 @@ func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
 }
 
+// ComputeNodeInfo contains metadata about the current state and abilities of a compute node. Compute Nodes share
+// this state with Requester nodes by including it in the NodeInfo they share across the network.
 type ComputeNodeInfo struct {
 	ExecutionEngines   []string  `json:"ExecutionEngines"`
 	Publishers         []string  `json:"Publishers"`

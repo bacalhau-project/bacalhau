@@ -115,7 +115,7 @@ func send[Q managementRequest, R managementResponse](
 
 	respMsg, err := conn.Request(subject, data, requestTimeout)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error sending request to subject %s", subject)
+		log.Ctx(ctx).Warn().Err(err).Msgf("error sending request to subject %s", subject)
 		return nil, err
 	}
 

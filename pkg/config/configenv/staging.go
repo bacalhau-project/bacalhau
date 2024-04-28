@@ -41,12 +41,8 @@ var Staging = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeLibp2p,
+			Type: models.NetworkTypeNATS,
 			Port: 4222,
-			Cluster: types.NetworkClusterConfig{
-				Name: "global",
-				Port: 6222,
-			},
 		},
 		BootstrapAddresses: []string{
 			"/ip4/34.85.228.65/tcp/1235/p2p/QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv",
@@ -161,6 +157,12 @@ var StagingComputeConfig = types.ComputeConfig{
 		Address: "public",
 		Port:    6001,
 	},
+	ControlPlaneSettings: types.ComputeControlPlaneConfig{
+		InfoUpdateFrequency:     types.Duration(60 * time.Second),
+		ResourceUpdateFrequency: types.Duration(30 * time.Second),
+		HeartbeatFrequency:      types.Duration(15 * time.Second),
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var StagingRequesterConfig = types.RequesterConfig{
@@ -201,5 +203,10 @@ var StagingRequesterConfig = types.RequesterConfig{
 		S3: types.S3StorageProviderConfig{
 			PreSignedURLExpiration: types.Duration(30 * time.Minute),
 		},
+	},
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second),
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
 }

@@ -110,6 +110,9 @@ func GetRequesterCertificateSettings() (string, string) {
 	key := viper.GetString(types.NodeServerAPITLSServerKey)
 	return cert, key
 }
+func GetRequesterSelfSign() bool {
+	return viper.GetBool(types.NodeServerAPITLSSelfSigned)
+}
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -127,6 +130,11 @@ func ShouldKeepStack() bool {
 	return os.Getenv("KEEP_STACK") != ""
 }
 
+const (
+	DockerUsernameEnvVar = "DOCKER_USERNAME"
+	DockerPasswordEnvVar = "DOCKER_PASSWORD"
+)
+
 type DockerCredentials struct {
 	Username string
 	Password string
@@ -138,8 +146,8 @@ func (d *DockerCredentials) IsValid() bool {
 
 func GetDockerCredentials() DockerCredentials {
 	return DockerCredentials{
-		Username: os.Getenv("DOCKER_USERNAME"),
-		Password: os.Getenv("DOCKER_PASSWORD"),
+		Username: os.Getenv(DockerUsernameEnvVar),
+		Password: os.Getenv(DockerPasswordEnvVar),
 	}
 }
 

@@ -1,9 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "target": "ESNext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": false,
+    "skipLibCheck": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
@@ -13,13 +17,16 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "typeRoots": ["node_modules/@types", "src/types"],
-    "types": ["node", "jest", "react", "react-dom"]
-  },
-  "ts-node": {
-    "esm": true
+    "jsx": "react",
+    "noEmit": false,
+    "outDir": "./compiled",
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ],
+    "types": [
+      "vite/client"
+    ]
   },
   "files": ["src/index.tsx"],
   "include": [

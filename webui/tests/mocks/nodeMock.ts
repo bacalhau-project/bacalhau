@@ -38,15 +38,7 @@ export function generateMockNode(): Node {
     .toString()
 
   return {
-    PeerInfo: {
-      ID: id,
-      Addrs: [
-        `${faker.internet.ip()}/udp/${faker.number.int({
-          min: 2048,
-          max: 65535,
-        })}/quic-v1`,
-      ],
-    },
+    NodeID: id,
     NodeType: "Compute",
     Labels: {
       Architecture: `arch-${faker.string.alphanumeric(10)}`,

@@ -80,15 +80,13 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		PreRunE:            hook.RemoteCmdPreRunHooks,
 		PostRunE:           hook.RemoteCmdPostRunHooks,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// Find the unknown arguments from the original args.  We only want to find the
 			// flags that are unknown. We will only support the long form for custom
 			// job types as we will want to use them as keys in template completions.
 			unknownArgs := ExtractUnknownArgs(cmd.Flags(), os.Args[1:])
 
-			if err := exec(cmd, cmdArgs, unknownArgs, options); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return exec(cmd, cmdArgs, unknownArgs, options)
 		},
 	}
 
@@ -307,6 +305,18 @@ func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Jo
 	legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
 	if err != nil {
 		return err
+	}
+
+	if len(legacyOutputs) == 0 {
+		return nil
+	}
+
+	// If we only have the single legacy default output then we will only use it if we have a publisher
+	// configured. If no publisher then we can just return early.
+	if len(legacyOutputs) == 1 && legacyOutputs[0].Name == "outputs" && legacyOutputs[0].Path == "/outputs" {
+		if job.Tasks[0].Publisher == nil {
+			return nil
+		}
 	}
 
 	job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))

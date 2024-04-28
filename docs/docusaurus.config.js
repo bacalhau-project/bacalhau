@@ -58,7 +58,8 @@ const config = {
     ({
       colorMode: {
         defaultMode: "light",
-        disableSwitch: true,
+        disableSwitch: false,
+        respectPrefersColorScheme: true,
       },
       image: "/static/img/logo/Bacalhau-icon.svg",
       navbar: {

@@ -13,6 +13,7 @@
     "@storybook/cli": "^7.6.17",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
+    "@types/json-schema": "^7.0.15",
     "@types/node": "^20.11.17",
     "@typescript-eslint/parser": "^6.21.0",
     "axios": "^1.6.7",
@@ -44,6 +45,7 @@
     "react-svg": "^16.1.33",
     "resolve": "^1.22.8",
     "resolve-url-loader": "^5.0.0",
+    "react-toastify": "^10.0.5",
     "sass": "^1.70.0",
     "semver": "^7.6.0",
     "ts-node": "^10.9.2",
@@ -129,5 +131,5 @@
   "description": "WebUI for Bacalhau",
   "main": "./src/index.tsx",
   "homepage": ".",
-  "packageManager": "yarn@4.1.0"
+  "packageManager": "yarn@4.1.1"
 }

@@ -1,0 +1,41 @@
+@import "../../styles/container";
+@import "../../styles/button";
+@import "../../styles/variables";
+
+.flow {
+    @include container;
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+    min-width: 250px;
+
+    button, input[type=submit], input[type=reset] {
+        @include button;
+    }
+
+    input[type=reset] {
+        background-color: $grey-label;
+        color: $grey-text;
+
+        &:hover {
+            background-color: rgba($grey-label, 0.7);
+        }
+
+        &:active {
+            background-color: rgba($grey-label, 0.8);
+        }
+    }
+
+    h3 {
+        margin: 0;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+
+        li {
+            margin-bottom: 1em;
+        }
+    }
+}

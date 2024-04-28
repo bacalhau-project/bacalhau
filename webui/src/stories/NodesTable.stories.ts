@@ -8,10 +8,9 @@ export default {
   tags: ["autodocs"],
 }
 
-export const fullDataGenerator = (numNodes: number = 10): Node[] => {
-  // Create a list of 10 jobs
+export const fullDataGenerator = (numberToGenerate: number): Node[] => {
   const nodes: Node[] = []
-  for (let i = 0; i < numNodes; i += 1) {
+  for (let i = 0; i < numberToGenerate; i += 1) {
     nodes.push(generateMockNode())
   }
   return nodes
@@ -22,5 +21,5 @@ export const Default = {
 }
 
 export const FullData = {
-    args: { data: fullDataGenerator(10) },
+  args: { data: fullDataGenerator(10) },
 }

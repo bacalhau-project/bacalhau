@@ -2,8 +2,16 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
@@ -17,14 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	"github.com/hashicorp/go-multierror"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/rs/zerolog/log"
 )
 
 const NodeInfoTopic = "bacalhau-node-info"
@@ -37,17 +37,17 @@ type Libp2pTransportConfig struct {
 }
 
 func (c *Libp2pTransportConfig) Validate() error {
-	var mErr *multierror.Error
-	mErr = multierror.Append(mErr, validate.IsNotNil(c.Host, "libp2p host cannot be nil"))
-	mErr = multierror.Append(mErr, validate.IsNotNil(c.CleanupManager, "cleanupManager cannot be nil"))
-	return mErr.ErrorOrNil()
+	return errors.Join(
+		validate.IsNotNil(c.Host, "libp2p host cannot be nil"),
+		validate.IsNotNil(c.CleanupManager, "cleanupManager cannot be nil"),
+	)
 }
 
 type Libp2pTransport struct {
 	Host              host.Host
 	computeProxy      *bprotocol.ComputeProxy
 	callbackProxy     *bprotocol.CallbackProxy
-	nodeInfoPubSub    pubsub.PubSub[models.NodeInfo]
+	nodeInfoPubSub    pubsub.PubSub[models.NodeState]
 	nodeInfoDecorator models.NodeInfoDecorator
 }
 
@@ -72,7 +72,7 @@ func NewLibp2pTransport(ctx context.Context,
 	}
 
 	// PubSub to publish node info to the network
-	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeInfo](libp2p.PubSubParams{
+	nodeInfoPubSub, err := libp2p.NewPubSub[models.NodeState](libp2p.PubSubParams{
 		Host:      libp2pHost,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
@@ -128,15 +128,10 @@ func NewLibp2pTransport(ctx context.Context,
 	}, nil
 }
 
-func (t *Libp2pTransport) GetConnectionInfo(ctx context.Context) interface{} {
-	log.Ctx(ctx).Debug().Msg("libp2p transport get connection info is unsupported")
-	return nil
-}
-
 func (t *Libp2pTransport) RegisterNodeInfoConsumer(ctx context.Context, nodeInfoStore routing.NodeInfoStore) error {
 	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeInfo](nodeInfoStore.Add))
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeState](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeState](nodeInfoStore.Add))
 
 	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
@@ -187,7 +182,7 @@ func (t *Libp2pTransport) ManagementProxy() compute.ManagementEndpoint {
 }
 
 // NodeInfoPubSub returns the node info pubsub.
-func (t *Libp2pTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeInfo] {
+func (t *Libp2pTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeState] {
 	return t.nodeInfoPubSub
 }
 
@@ -203,10 +198,10 @@ func (t *Libp2pTransport) DebugInfoProviders() []model.DebugInfoProvider {
 
 // Close closes the transport layer.
 func (t *Libp2pTransport) Close(ctx context.Context) error {
-	var errors *multierror.Error
-	errors = multierror.Append(errors, t.nodeInfoPubSub.Close(ctx))
-	errors = multierror.Append(errors, t.Host.Close())
-	return errors.ErrorOrNil()
+	return errors.Join(
+		t.nodeInfoPubSub.Close(ctx),
+		t.Host.Close(),
+	)
 }
 
 func newLibp2pPubSub(ctx context.Context, host host.Host) (*libp2p_pubsub.PubSub, error) {

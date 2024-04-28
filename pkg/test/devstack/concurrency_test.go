@@ -29,7 +29,10 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	testCase := scenario.WasmHelloWorld(suite.T())
 	testCase.Stack = &scenario.StackConfig{
-		DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: 3},
+		DevStackOptions: &devstack.DevStackOptions{
+			NumberOfHybridNodes:      1,
+			NumberOfComputeOnlyNodes: 2,
+		},
 	}
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(

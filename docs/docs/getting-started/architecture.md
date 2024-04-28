@@ -1,21 +1,23 @@
 ---
-sidebar_label: 'How Bacalhau Works'
+sidebar_label: "How Bacalhau Works"
 sidebar_position: 1
 ---
 
 # How Bacalhau Works
+
 In this tutorial we will go over the components and the architecture of Bacalhau. You will learn how it is built, what components are used, how you could interact and how you could use Bacalhau.
+
 ## Chapter 1 - Architecture
 
 Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers. The network consists of two types of nodes, which can communicate with each other.
 
-![image](../../static/img/architecture/architecture-overview.webp 'Bacalhau Architecture')
+![image](../../static/img/architecture/architecture-overview.webp "Bacalhau Architecture")
 
 The requester and compute nodes together form a p2p network and use gossiping to discover each other, share information about node capabilities, available resources and health status. Bacalhau is a peer-to-peer network of nodes that enables decentralized communication between computers.
 :::info
-  **Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.
+**Requester Node:** responsible for handling user requests, discovering and ranking compute nodes, forwarding jobs to compute nodes, and monitoring the job lifecycle.
 
-  **Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
+**Compute Node:** responsible for executing jobs and producing results. Different compute nodes can be used for different types of jobs, depending on their capabilities and resources.
 :::
 
 To interact with the Bacalhau network, users can use the Bacalhau CLI (command-line interface) to send requests to a requester node in the network. These requests are sent using the JSON format over HTTP, a widely-used protocol for transmitting data over the internet. Bacalhau's architecture involves two main sections which are the **core components** and **interfaces**.
@@ -26,7 +28,6 @@ To interact with the Bacalhau network, users can use the Bacalhau CLI (command-l
     <div>![image](../../static/img/architecture/System-Components.png 'System-Components')</div>
   </div>
 </details>
-
 
 ### Core Components
 
@@ -78,7 +79,6 @@ The interfaces handle the distribution, execution, storage and publishing of job
   </div>
 </details>
 
-
 ## Chapter 2 - Job cycle
 
 ### Job preparation
@@ -98,6 +98,7 @@ You can create jobs in the Bacalhau network using various [job types](../setting
 
         For node operation, refer to the [Running a Node](../setting-up/running-node/quick-start.md) section for configuring and running a Bacalhau node. If you prefer an isolated environment, explore the [Private Cluster](../setting-up/networking-instructions/private-cluster.md) for performing tasks without connecting to the main Bacalhau network.
     </div>
+
   </div>
 </details>
 
@@ -192,9 +193,9 @@ You can use the `bacalhau docker run` [command](../dev/cli-reference/all-flags.m
              -w, --workdir string                   Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).
         ```
     </div>
+
   </div>
 </details>
-
 
 You can also use the `bacalhau wasm run` [command](../dev/cli-reference/all-flags.md#wasm) to run a job compiled into the (WASM) format. Below, you can find an excerpt of the commands in the Bacalhau CLI:
 
@@ -253,6 +254,7 @@ You can also use the `bacalhau wasm run` [command](../dev/cli-reference/all-flag
                     --wait-timeout-secs int            When using --wait, how many seconds to wait for the job to complete before giving up. (default 600)
         ```
     </div>
+
   </div>
 </details>
 
@@ -262,7 +264,7 @@ When a job is submitted to a requester node, it selects compute nodes that are c
 
 ### Job execution
 
-The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions.  A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification](../setting-up/other-specifications/engines/docker.md) to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification](../setting-up/other-specifications/engines/wasm.md).
+The selected compute node receives the job and starts its execution inside a container. The container can use different executors to work with the data and perform the necessary actions. A job can use the docker executor, WASM executor or a library storage volumes. Use [Docker Engine Specification](../setting-up/other-specifications/engines/docker.md) to view the parameters to configure the Docker Engine. If you want tasks to be executed in a WebAssembly environment, pay attention to [WebAssembly Engine Specification](../setting-up/other-specifications/engines/wasm.md).
 
 ### Results publishing
 
@@ -322,7 +324,6 @@ values={[
 </TabItem>
 </Tabs>
 
-
 ### List of Jobs
 
 <Tabs
@@ -348,7 +349,6 @@ values={[
 
 </TabItem>
 </Tabs>
-
 
 ### Job Executions
 
@@ -376,16 +376,13 @@ values={[
 </TabItem>
 </Tabs>
 
-
 ## Chapter 4 - Monitoring and Management
 
 The Bacalhau client provides the user with tools to monitor and manage the execution of jobs. You can get information about status, progress and decide on next steps.
-View the  [Bacalhau Agent APIs](../dev/api/agent.md) if you want to know the node's health, capabilities, and deployed Bacalhau version.
+View the [Bacalhau Agent APIs](../dev/api/agent.md) if you want to know the node's health, capabilities, and deployed Bacalhau version.
 To get information about the status and characteristics of the nodes in the cluster use [Nodes API Documentation](../dev/api/nodes.md).
 
-
 ### Stop a Job
-
 
 <Tabs
 defaultValue="CLI"
@@ -411,9 +408,7 @@ values={[
 </TabItem>
 </Tabs>
 
-
 ### Job History
-
 
 <Tabs
 defaultValue="CLI"
@@ -439,9 +434,7 @@ values={[
 </TabItem>
 </Tabs>
 
-
 ### Job Logs
-
 
 ```shell
 bacalhau logs [flags] [id]
@@ -450,5 +443,5 @@ bacalhau logs [flags] [id]
 You can use this [command](../dev/cli-reference/all-flags.md#logs-1) to retrieve the log output (stdout, and stderr) from a job. If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
 
 :::info
- To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands](../dev/cli-reference/all-flags.md)
- :::
+To familiarize yourself with all the commands used in Bacalhau, please view [CLI Commands](../dev/cli-reference/all-flags.md)
+:::

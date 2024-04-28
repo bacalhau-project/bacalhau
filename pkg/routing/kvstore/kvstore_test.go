@@ -9,11 +9,13 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server"
 	natsserver "github.com/nats-io/nats-server/v2/test"
+	"github.com/nats-io/nats.go"
+
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
-	"github.com/stretchr/testify/suite"
 )
 
 const TEST_PORT = 8369
@@ -37,11 +39,12 @@ func (s *KVNodeInfoStoreSuite) SetupTest() {
 	opts.StoreDir = s.T().TempDir()
 
 	s.nats = natsserver.RunServer(opts)
-	serverAddress := s.nats.Addr().String()
+	natsClient, err := nats.Connect(s.nats.Addr().String())
+	s.Require().NoError(err)
 
 	s.store, _ = kvstore.NewNodeStore(context.Background(), kvstore.NodeStoreParams{
-		BucketName:     "test_nodes",
-		ConnectionInfo: serverAddress,
+		BucketName: "test_nodes",
+		Client:     natsClient,
 	})
 }
 
@@ -55,19 +58,19 @@ func TestKVNodeInfoStoreSuite(t *testing.T) {
 
 func (s *KVNodeInfoStoreSuite) Test_Get() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// test Get
-	res1, err := s.store.Get(ctx, nodeInfo0.ID())
+	res1, err := s.store.Get(ctx, nodeInfo0.Info.ID())
 	s.NoError(err)
-	s.Equal(nodeInfo0.ID(), res1.ID())
+	s.Equal(nodeInfo0.Info.ID(), res1.Info.ID())
 
-	res2, err := s.store.Get(ctx, nodeInfo1.ID())
+	res2, err := s.store.Get(ctx, nodeInfo1.Info.ID())
 	s.NoError(err)
-	s.Equal(nodeInfo1.ID(), res2.ID())
+	s.Equal(nodeInfo1.Info.ID(), res2.Info.ID())
 }
 
 func (s *KVNodeInfoStoreSuite) Test_GetNotFound() {
@@ -79,7 +82,7 @@ func (s *KVNodeInfoStoreSuite) Test_GetNotFound() {
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_SingleMatch() {
 	ctx := context.Background()
-	nodeInfo := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
+	nodeInfo := generateNodeState(nodeIDs[0], models.EngineDocker)
 	s.NoError(s.store.Add(ctx, nodeInfo))
 
 	res, err := s.store.GetByPrefix(ctx, "QmdZQ7")
@@ -89,8 +92,8 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_SingleMatch() {
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_MultipleMatches() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
@@ -109,7 +112,7 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_Empty() {
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
 	ctx := context.Background()
 
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[1], models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
@@ -119,44 +122,44 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
 
 func (s *KVNodeInfoStoreSuite) Test_List() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// test List
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo0, nodeInfo1}, allNodeInfos)
+	s.ElementsMatch([]models.NodeState{nodeInfo0, nodeInfo1}, allNodeInfos)
 }
 
 func (s *KVNodeInfoStoreSuite) Test_ListWithFilters() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// Match one record
-	filterPartialID := func(node models.NodeInfo) bool {
-		return strings.HasPrefix(node.ID(), string(nodeIDs[0][0:8]))
+	filterPartialID := func(node models.NodeState) bool {
+		return strings.HasPrefix(node.Info.ID(), string(nodeIDs[0][0:8]))
 	}
 	nodes, err := s.store.List(ctx, filterPartialID)
 	s.NoError(err)
 	s.Equal(1, len(nodes))
-	s.Equal(nodeIDs[0], nodes[0].ID())
+	s.Equal(nodeIDs[0], nodes[0].Info.ID())
 
 	// Match all records
-	filterPartialID = func(node models.NodeInfo) bool {
-		return strings.HasPrefix(node.ID(), "Qm")
+	filterPartialID = func(node models.NodeState) bool {
+		return strings.HasPrefix(node.Info.ID(), "Qm")
 	}
 	nodes, err = s.store.List(ctx, filterPartialID)
 	s.NoError(err)
 	s.Equal(2, len(nodes))
 
 	// Match no records
-	filterPartialID = func(node models.NodeInfo) bool {
-		return strings.HasPrefix(node.ID(), "XYZ")
+	filterPartialID = func(node models.NodeState) bool {
+		return strings.HasPrefix(node.Info.ID(), "XYZ")
 	}
 	nodes, err = s.store.List(ctx, filterPartialID)
 	s.NoError(err)
@@ -165,20 +168,20 @@ func (s *KVNodeInfoStoreSuite) Test_ListWithFilters() {
 
 func (s *KVNodeInfoStoreSuite) Test_Delete() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[1], models.EngineDocker, models.EngineWasm)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
+	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineDocker, models.EngineWasm)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
 	// delete first node
-	s.NoError(s.store.Delete(ctx, nodeInfo0.ID()))
+	s.NoError(s.store.Delete(ctx, nodeInfo0.Info.ID()))
 
 	nodes, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, nodes)
+	s.ElementsMatch([]models.NodeState{nodeInfo1}, nodes)
 
 	// delete second node
-	s.NoError(s.store.Delete(ctx, nodeInfo1.ID()))
+	s.NoError(s.store.Delete(ctx, nodeInfo1.Info.ID()))
 
 	nodes, err = s.store.List(ctx)
 	s.NoError(err)
@@ -187,24 +190,30 @@ func (s *KVNodeInfoStoreSuite) Test_Delete() {
 
 func (s *KVNodeInfoStoreSuite) Test_Replace() {
 	ctx := context.Background()
-	nodeInfo0 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineDocker)
+	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	s.NoError(s.store.Add(ctx, nodeInfo0))
 
-	nodeInfo1 := generateNodeInfo(s.T(), nodeIDs[0], models.EngineWasm)
-	nodeInfo1.NodeID = nodeInfo0.NodeID
+	nodeInfo1 := generateNodeState(nodeIDs[0], models.EngineWasm)
+	nodeInfo1.Info.NodeID = nodeInfo0.Info.NodeID
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 
-	res, err := s.store.Get(ctx, nodeInfo0.ID())
+	res, err := s.store.Get(ctx, nodeInfo0.Info.ID())
 	s.NoError(err)
 	s.Equal(nodeInfo1, res)
 
 	// test List
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
-	s.ElementsMatch([]models.NodeInfo{nodeInfo1}, allNodeInfos)
+	s.ElementsMatch([]models.NodeState{nodeInfo1}, allNodeInfos)
 }
 
-func generateNodeInfo(t *testing.T, peerID string, engines ...string) models.NodeInfo {
+func generateNodeState(peerID string, engines ...string) models.NodeState {
+	return models.NodeState{
+		Info: generateNodeInfo(peerID, engines...),
+	}
+}
+
+func generateNodeInfo(peerID string, engines ...string) models.NodeInfo {
 	return models.NodeInfo{
 		NodeID:   peerID,
 		NodeType: models.NodeTypeCompute,
