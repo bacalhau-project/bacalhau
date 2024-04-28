@@ -1,5 +1,6 @@
 import React from "react"
-import { render, screen, act } from "@testing-library/react"
+import { act } from "react"
+import { render, screen } from "@testing-library/react"
 import { server as mswServer } from "../tests/msw/server"
 import App from "./App"
 
@@ -15,9 +16,9 @@ afterAll(() => mswServer.close())
 
 describe("Root Page", () => {
   describe("Static tests", () => {
-    it("should render home page", () => {
+    it("should render home page", async () => {
       const pageTitle = "Jobs Dashboard"
-      act(() => {
+      await act(async () => {
         render(<App />)
       })
 

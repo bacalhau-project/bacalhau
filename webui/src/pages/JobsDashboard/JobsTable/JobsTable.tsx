@@ -1,6 +1,5 @@
 import React, { useContext } from "react"
 import { formatDistanceToNow } from "date-fns"
-import { enUS } from "date-fns/locale"
 import styles from "./JobsTable.module.scss"
 import ProgramSummary from "./ProgramSummary/ProgramSummary"
 import Label from "../../../components/Label/Label"
@@ -19,6 +18,8 @@ interface TableProps {
   data: Job[]
 }
 
+const MAX_TABLE_LENGTH = 10
+
 const labelColorMap: { [key: string]: string } = {
   running: "green",
   warning: "orange",
@@ -31,12 +32,22 @@ const labelColorMap: { [key: string]: string } = {
 }
 
 function parseData(jobs: Job[]): ParsedJobData[] {
-  const ParsedJobDataReturn = jobs.map((job) => {
-    if (!job.Tasks || job.Tasks.length === 0) {
+  if (!jobs) {
+    console.log("No jobs data provided.")
+    return []
+  }
+
+  const ParsedJobDataReturn: ParsedJobData[] = []
+
+  for (var i = 0; i < jobs.length; i++) {
+    if (i > MAX_TABLE_LENGTH) {
+      break
+    }
+    const job = jobs[i]
+    if (! job.Tasks || job.Tasks.length === 0) {
       throw new Error(`Job with ID: ${job.ID} has no tasks.`)
     }
-    // If there are no tasks, return an empty task
-    const firstTask = job.Tasks[0] ?? new Task("--")
+    const firstTask = (job.Tasks && job.Tasks[0]) ?? new Task("--")
     const jobType = job.Type ?? "batch"
     const jobShortID = getShortenedJobID(job.ID)
     const jobName = job.Name
@@ -46,7 +57,7 @@ function parseData(jobs: Job[]): ParsedJobData[] {
     } else {
       job.Name = jobName
     }
-    return {
+    ParsedJobDataReturn.push({
       longId: job.ID,
       name: job.Name,
       createdAt: fromTimestamp(job.CreateTime),
@@ -55,13 +66,14 @@ function parseData(jobs: Job[]): ParsedJobData[] {
       label: createLabelArray(job.Labels),
       status: job.State.StateType,
       action: "Action",
-    }
-  })
+    })
+  }
   return ParsedJobDataReturn
 }
 
 export const JobsTable: React.FC<TableProps> = ({ data }) => {
   const { settings } = useContext(TableSettingsContext)
+
   const parsedData = parseData(data)
 
   return (
@@ -87,7 +99,7 @@ export const JobsTable: React.FC<TableProps> = ({ data }) => {
               )}
               {settings.showCreated && (
                 <td className={styles.dateCreated}>
-                  {formatDistanceToNow(jobData.createdAt, { locale: enUS })}
+                  {formatDistanceToNow(jobData.createdAt)}
                 </td>
               )}
               {settings.showProgram && (

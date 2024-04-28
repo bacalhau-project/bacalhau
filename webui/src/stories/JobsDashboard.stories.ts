@@ -1,11 +1,24 @@
-import { JobsDashboard } from "../pages/JobsDashboard/JobsDashboard"
+import { Meta, StoryObj } from "@storybook/react";
+import { handlers as storybookHandlers } from "../../.storybook/storybookHandlers";
+import { JobsDashboard } from "../pages/JobsDashboard/JobsDashboard";
 
-export default {
+const meta: Meta<typeof JobsDashboard> = {
   component: JobsDashboard,
-  title: "JobsDashboard",
-  tags: ["autodocs"],
-}
+  args: {
+    pageTitle: "Jobs Dashboard",
+  },
+};
 
-export const Default = {
-  args: {},
-}
+export default meta;
+type Story = StoryObj<typeof JobsDashboard>;
+
+export const Simple: Story = {
+  parameters: {
+    msw: {
+      handlers: storybookHandlers,
+    },
+  },
+  args: {
+    pageTitle: "foobaz",
+  },
+};

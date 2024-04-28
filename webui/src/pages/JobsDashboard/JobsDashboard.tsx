@@ -30,18 +30,18 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({
         }
       }).catch(error => {
         if (error instanceof AxiosError) {
-          switch(error.response?.status) {
-          case 401:
-          // User has a bad auth token
-            toast("Your session has expired. Please authenticate again.", {type: "error", toastId: "session-expired"})
-            navigate("/Auth", {state: {prev: location}})
-            break
-          case 403:
-            toast("This page requires authentication. Please authenticate.", {type: "warning", toastId: "auth-required"})
-            navigate("/Auth", {state: {prev: location}})
-            break
-          default:
-            toast(error.response?.statusText, {type: "error"})
+          switch (error.response?.status) {
+            case 401:
+              // User has a bad auth token
+              toast("Your session has expired. Please authenticate again.", { type: "error", toastId: "session-expired" })
+              navigate("/Auth", { state: { prev: location } })
+              break
+            case 403:
+              toast("This page requires authentication. Please authenticate.", { type: "warning", toastId: "auth-required" })
+              navigate("/Auth", { state: { prev: location } })
+              break
+            default:
+              toast(error.response?.statusText, { type: "error" })
           }
         } else {
           console.error(error)
@@ -58,8 +58,4 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({
       </div>
     </Layout>
   )
-}
-
-JobsDashboard.defaultProps = {
-  pageTitle: "Jobs Dashboard",
 }

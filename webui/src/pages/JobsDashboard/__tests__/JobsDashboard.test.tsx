@@ -1,6 +1,7 @@
 import React from "react"
+import { act } from 'react';
 import { MemoryRouter } from "react-router-dom"
-import { screen, render, waitFor, act } from "@testing-library/react"
+import { screen, render, waitFor } from "@testing-library/react"
 import { JobsDashboard } from "../JobsDashboard"
 import { Job } from "../../../helpers/jobInterfaces"
 import { server } from "../../../../tests/msw/server"
@@ -8,17 +9,16 @@ import { setJobs, JOBS_RETURN_LIMIT } from "../../../../tests/msw/handlers"
 import { generateMockJob } from "../../../../tests/mocks/jobMock"
 
 describe("JobsDashboard", () => {
-  it("renders with right title", () => {
+  it("renders with right title", async () => {
     // Create a random string for pageTitle
     const pageTitle = Math.random().toString(36).substring(7)
-    act(() => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <JobsDashboard pageTitle={pageTitle} />
         </MemoryRouter>
       )
     })
-
     expect(screen.getByRole("heading", { level: 1 }).innerHTML).toContain(
       pageTitle
     )

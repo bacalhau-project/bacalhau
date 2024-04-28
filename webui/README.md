@@ -1,54 +1,22 @@
 # Bacalhau WebUI
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). To help develop the WebUI we have built to interact with the Bacalhau network follow the directions below:
+## Dependencies
+You will need to install all the dependencies in the `.tool-versions` file.
+```bash
+asdf install
+```
 
-## Getting Started
+Then install corepack which you'll need for the latest yarn version.
+```bash
+npm install -g corepack
+corepack prepare yarn@latest --activate
+```
 
-First, install dependencies:
-
+## Install all yarn dependencies
 ```bash
 yarn install
 ```
 
-Next, run the development server. The page will reload if you make edits:
-
-```bash
-yarn start
-```
-
-Before committing new code, you will need to lint it by running:
-
-```bash
-yarn run lint
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
-
-```bash
-yarn run build
-```
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-```bash
-yarn run eject
-```
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
 ## Spinning up the Dashboard for Development:
 
