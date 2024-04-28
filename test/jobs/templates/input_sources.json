@@ -1,0 +1,95 @@
+[{
+    "InputSources": [
+      {
+        "Source": {
+          "Type": "ipfs",
+          "Params": {
+            "CID": "QmWfVY9y3xjsixTgbd9AorQxH7VtMpzfx2HaWtsoUYecaX"
+          }
+        },
+        "Target": "/input_custom/hello.txt"
+      }
+    ]
+  },
+  {
+    "InputSources": [
+      {
+        "Alias": "input_custom",
+        "Target": "/input_custom",
+        "Source": {
+          "Type": "s3",
+          "Params": {
+            "Bucket": "bacalhau-hello",
+            "Key": "hello.txt",
+            "Region": "ca-central-1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "InputSources": [
+      {
+        "Alias": "input_custom",
+        "Target": "/input_custom",
+        "Source": {
+          "Type": "noop"
+        }
+      }
+    ]
+  },
+  {
+    "InputSources": [
+      {
+        "Source": {
+          "Type": "localDirectory",
+          "Params": {
+            "SourcePath": "/hello.txt",
+            "ReadWrite": true
+          }
+        },
+        "Target": "/input_custom"
+      }
+    ]
+  },
+  {
+    "InputSources": [
+      {
+        "Source": {
+          "Type": "urlDownload",
+          "Params": {
+            "URL": "https://raw.githubusercontent.com/bacalhau-project/examples/main/scripts/hello.txt"
+          }
+        },
+        "Target": "/input_custom"
+      }
+    ]
+  }
+  ,
+  {
+    "InputSources": [
+      {
+        "Source": {
+          "Type": "repoCloneLFS",
+          "Params": {
+            "Repo": "https://huggingface.co/expanso/hello.git"
+          }
+        },
+        "Target": "/input_custom"
+      }
+    ]
+  }
+  ,
+  {
+    "InputSources": [
+      {
+        "Source": {
+          "Type": "repoClone",
+          "Params": {
+            "Repo": "git://github.com/bacalhau-project/hello.git"
+          }
+        },
+        "Target": "/input_custom"
+      }
+    ]
+  }]

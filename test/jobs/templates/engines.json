@@ -1,0 +1,53 @@
+[
+    {"Engine": {
+    "Type": "docker",
+    "Params": {
+      "Image": "ubuntu:latest",
+      "Entrypoint": [
+        "/bin/bash"
+      ],
+      "Parameters": [
+        "-c",
+        "cat $(find /input_custom -type f -name 'hello.txt')"
+      ]
+    }
+  }},
+  {"Engine": {
+    "Type": "docker",
+    "Params": {
+      "Image": "ubuntu:latest",
+      "Entrypoint": [
+        "/bin/bash"
+      ],
+      "Parameters": [
+        "-c",
+        "echo hello > /output_custom/output.txt"
+      ]
+    }
+  }},
+  {"Engine": {
+    "Type": "docker",
+    "Params": {
+      "Image": "ubuntu:latest",
+      "Entrypoint": [
+        "/bin/bash"
+      ],
+      "Parameters": [
+        "-c",
+        "cat $(find /input_custom /inputs -type f -name 'hello.txt') > /output_custom/output.txt"
+      ]
+    }
+  }},
+  {"Engine": {
+    "Type": "docker",
+    "Params": {
+      "Image": "ubuntu:latest",
+      "Entrypoint": [
+        "/bin/bash"
+      ],
+      "Parameters": [
+        "-c",
+        "echo hello"
+      ]
+    }
+  }}]

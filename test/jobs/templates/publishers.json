@@ -1,0 +1,27 @@
+[{
+    "Publisher": {
+    "Type": "ipfs"
+    },
+    "ResultPaths": [
+      {
+        "Name": "output_custom",
+        "Path": "/output_custom"
+      }
+    ]
+  },
+  {
+    "Publisher": {
+      "Type": "s3",
+      "Params": {
+        "Bucket": "my-task-results",
+        "Key": "*",
+        "Endpoint": "https://s3.us-west-2.amazonaws.com"
+      }
+    },
+    "ResultPaths": [
+      {
+        "Name": "output_custom",
+        "Path": "/output_custom"
+      }
+    ]
+  }]
