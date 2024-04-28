@@ -57,11 +57,12 @@ func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 }
 
 func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
-	return m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
+	ni := m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
 		NodeID:   m.nodeID,
 		NodeType: models.NodeTypeCompute,
 		Labels:   m.labelsProvider.GetLabels(ctx),
 	})
+	return ni
 }
 
 // RegisterNode sends a registration request to the requester node. If we successfully

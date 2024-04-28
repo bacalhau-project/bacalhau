@@ -246,6 +246,8 @@ func (t *testSpan) End(...trace.SpanEndOption) {
 
 func (t *testSpan) AddEvent(string, ...trace.EventOption) {}
 
+func (t *testSpan) AddLink(link trace.Link) {}
+
 func (t *testSpan) IsRecording() bool {
 	return true
 }

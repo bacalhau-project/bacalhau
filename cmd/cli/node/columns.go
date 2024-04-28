@@ -4,35 +4,36 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/c2h5oh/datasize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
-var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
+var alwaysColumns = []output.TableColumn[*models.NodeState]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "id"},
-		Value:        func(node *models.NodeInfo) string { return idgen.ShortNodeID(node.ID()) },
+		Value:        func(node *models.NodeState) string { return idgen.ShortNodeID(node.Info.ID()) },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "type"},
-		Value:        func(ni *models.NodeInfo) string { return ni.NodeType.String() },
+		Value:        func(ni *models.NodeState) string { return ni.Info.NodeType.String() },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "approval"},
-		Value:        func(ni *models.NodeInfo) string { return ni.Approval.String() },
+		Value:        func(ni *models.NodeState) string { return ni.Membership.String() },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "status"},
-		Value: func(ni *models.NodeInfo) string {
-			if ni.ComputeNodeInfo != nil {
-				return ni.State.String()
+		Value: func(ni *models.NodeState) string {
+			if ni.Info.ComputeNodeInfo != nil {
+				return ni.Connection.String()
 			}
 
 			return "" // nothing for requester nodes
@@ -40,12 +41,12 @@ var alwaysColumns = []output.TableColumn[*models.NodeInfo]{
 	},
 }
 
-var toggleColumns = map[string][]output.TableColumn[*models.NodeInfo]{
+var toggleColumns = map[string][]output.TableColumn[*models.NodeState]{
 	"labels": {
 		{
 			ColumnConfig: table.ColumnConfig{Name: "labels", WidthMax: 50, WidthMaxEnforcer: text.WrapSoft},
-			Value: func(ni *models.NodeInfo) string {
-				labels := lo.MapToSlice(ni.Labels, func(key, val string) string { return fmt.Sprintf("%s=%s", key, val) })
+			Value: func(ni *models.NodeState) string {
+				labels := lo.MapToSlice(ni.Info.Labels, func(key, val string) string { return fmt.Sprintf("%s=%s", key, val) })
 				slices.Sort(labels)
 				return strings.Join(labels, " ")
 			},
@@ -54,20 +55,20 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeInfo]{
 	"version": {
 		{
 			ColumnConfig: table.ColumnConfig{Name: "version"},
-			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GitVersion
+			Value: func(ni *models.NodeState) string {
+				return ni.Info.BacalhauVersion.GitVersion
 			},
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "architecture"},
-			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GOARCH
+			Value: func(ni *models.NodeState) string {
+				return ni.Info.BacalhauVersion.GOARCH
 			},
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "os"},
-			Value: func(ni *models.NodeInfo) string {
-				return ni.BacalhauVersion.GOOS
+			Value: func(ni *models.NodeState) string {
+				return ni.Info.BacalhauVersion.GOOS
 			},
 		},
 	},
@@ -123,11 +124,11 @@ func maxLen(val []string) int {
 	return lo.Max(lo.Map[string, int](val, func(item string, index int) int { return len(item) })) + 1
 }
 
-func ifComputeNode(getFromCNInfo func(*models.ComputeNodeInfo) string) func(*models.NodeInfo) string {
-	return func(ni *models.NodeInfo) string {
-		if ni.ComputeNodeInfo == nil {
+func ifComputeNode(getFromCNInfo func(*models.ComputeNodeInfo) string) func(state *models.NodeState) string {
+	return func(ni *models.NodeState) string {
+		if ni.Info.ComputeNodeInfo == nil {
 			return ""
 		}
-		return getFromCNInfo(ni.ComputeNodeInfo)
+		return getFromCNInfo(ni.Info.ComputeNodeInfo)
 	}
 }
