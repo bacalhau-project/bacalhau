@@ -18,6 +18,7 @@ package version
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -100,8 +101,12 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	if oV.ClientOnly {
 		versions.ClientVersion = version.Get()
 	} else {
+		// NB(forrest): since `GetAllVersions` is an API call - in the event the server is un-reachable
+		// we timeout after 3 seconds to avoid waiting on an unavailable server to return its version information.
+		vctx, cancel := context.WithTimeout(ctx, time.Second*3)
+		defer cancel()
 		var err error
-		versions, err = util.GetAllVersions(ctx)
+		versions, err = util.GetAllVersions(vctx)
 		if err != nil {
 			// No error on fail of version check. Just print as much as we can.
 			log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")
