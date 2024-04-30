@@ -1,6 +1,14 @@
 name: Docs
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  repository_dispatch:
+    types: [ok-to-test]
 
 jobs:
   spelling:
