@@ -4,10 +4,12 @@ import "github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 var NetworkFlags = []Definition{
 	{
-		FlagName:     "network",
-		ConfigPath:   types.NodeNetworkType,
-		DefaultValue: Default.Node.Network.Type,
-		Description:  `Inter-node network layer type (e.g. nats, libp2p).`,
+		FlagName:          "network",
+		ConfigPath:        types.NodeNetworkType,
+		DefaultValue:      Default.Node.Network.Type,
+		Description:       `Inter-node network layer type (e.g. nats, libp2p).`,
+		Deprecated:        true,
+		DeprecatedMessage: "The libp2p transport will be deprecated in a future version in favor of NATS",
 	},
 	{
 		FlagName:     "network-port",
