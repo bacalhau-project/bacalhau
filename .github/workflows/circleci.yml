@@ -1,7 +1,7 @@
 name: CircleCI Trigger Action
 on:
   pull_request:
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
@@ -11,6 +11,8 @@ on:
     workflows: ["Dependabot"]
     types:
       - completed
+  repository_dispatch:
+    types: [ok-to-test]
 
 permissions:
   contents: write
