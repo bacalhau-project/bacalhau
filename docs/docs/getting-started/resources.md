@@ -22,18 +22,10 @@ Flag | Default | Description
  `--memory` | 100MB ([source](/)) | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
  `--gpu` | 0 ([source](/)) | Job GPU requirement (e.g. 1).
 
-## WASM Executor
-
-**TBD - research required**
 
 ### How it Works
 
 When you specify hardware requirements, the job will be offered out to the network to see if there are any nodes that can satisfy the requirements. If there are, the job will be scheduled on the node and the executor will be started.
-
-
-**TBD - research required:** If there are no nodes that can satisfy the requirements, the job will wait for a node to become available, until it times out [after 3 minutes](/).
-
-
 
 
 ## GPU Setup
