@@ -1,0 +1,7 @@
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/Prolog-Hello-World/Prolog-Hello-World.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/trivial-python/trivial-python.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/custom-containers/custom-containers.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/python-pandas/python-pandas.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/CUDA/CUDA.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/r-hello-world/r-hello-world.yaml
+bacalhau job run --id-only ../docs/docs/setting-up/workload-onboarding/r-custom-docker-prophet/r-custom-docker-prophet.yaml

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bashtub
 
 # Source the script containing the job_requirements function
 source bin/bacalhau-client.sh
@@ -59,5 +59,5 @@ jq -c '.[]' "$PERMUTATIONS_FILE" | while read -r permutation; do
     echo "Requirements not met for configuration: $json_input"
   fi
 done
-
+rm -rf $GENERATE_JOBSPECS/*.json
 }

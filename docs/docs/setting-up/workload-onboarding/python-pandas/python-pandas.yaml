@@ -1,0 +1,23 @@
+name: Running Pandas
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        WorkingDirectory: "/files"
+        Image: amancevice/pandas
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - python read_csv.py
+    InputSources:
+      - Target: "/files"
+        Source:
+          Type: "s3"
+          Params:
+            Bucket: "bacallhau-python-pandas"
+            Key: "*"
+            Region: "us-east-1"

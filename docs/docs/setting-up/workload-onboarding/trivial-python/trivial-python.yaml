@@ -1,0 +1,21 @@
+name: Running Trivial Python
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: python:3.10-slim
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - python3 /inputs/hello-world.py
+    InputSources:
+      - Target: /inputs
+        Source:
+          Type: urlDownload
+          Params:
+            URL: https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py
+            Path: /inputs/hello-world.py

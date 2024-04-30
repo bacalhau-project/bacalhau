@@ -4,6 +4,8 @@ source bin/bacalhau-client.sh
 
 testcase_can_run_docker_hello_world_external_cluster() {
     create_client "$CLUSTER"
+    subject bacalhau version
+    assert_equal 0 "${status}"
     bacalhau job run --follow $ROOT/testdata/jobs/docker-hello.yaml
     subject bacalhau job run --follow $ROOT/testdata/jobs/docker-hello.yaml
     assert_equal 0 $status

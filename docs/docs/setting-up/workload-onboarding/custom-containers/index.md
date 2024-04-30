@@ -241,3 +241,5 @@ _______________________
 
 ## Support
 If you have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://bacalhauproject.slack.com/ssb/redirect) (**#general** channel).
+
+![Static Badge](https://img.shields.io/badge/Test-Pass-green)

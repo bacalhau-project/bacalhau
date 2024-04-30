@@ -1,0 +1,21 @@
+name: Running a Simple R Script
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: r-base:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c        
+          - Rscript /hello.R
+    InputSources:
+      - Target: "/"
+        Source:
+          Type: urlDownload
+          Params:
+            URL: https://raw.githubusercontent.com/bacalhau-project/examples/main/scripts/hello.R
+            Path: /hello.R
