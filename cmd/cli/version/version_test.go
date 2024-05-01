@@ -18,10 +18,10 @@ package version_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -37,31 +37,61 @@ type VersionSuite struct {
 	cmdtesting.BaseSuite
 }
 
-func (suite *VersionSuite) TestVersionHumanOutput() {
-	_, out, err := suite.ExecuteTestCobraCommand("version")
-	require.NoError(suite.T(), err)
+func (suite *VersionSuite) TestVersion() {
+	suite.T().Run("client only", func(t *testing.T) {
+		t.Run("table output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version")
+			suite.Require().NoError(err)
 
-	require.Contains(suite.T(), out, "CLIENT", "Client version not in output")
-	require.Contains(suite.T(), out, "SERVER", "Server version not in output")
-}
+			suite.Require().Contains(out, "CLIENT", "Client version not in output")
+			suite.Require().NotContains(out, "SERVER", "Server version present in output")
+		})
+		t.Run("json output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.JSONFormat))
+			suite.Require().NoError(err, "Could not request version with json output.")
 
-func (suite *VersionSuite) TestVersionJSONOutput() {
-	_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.JSONFormat))
-	require.NoError(suite.T(), err, "Could not request version with json output.")
+			jsonDoc := &util.Versions{}
+			err = marshaller.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
+			suite.Require().NoError(err, "Could not unmarshall the output into json - %+v", err)
+			suite.Require().NotEmpty(jsonDoc.ClientVersion, "Client version was empty")
+			suite.Require().Empty(jsonDoc.ServerVersion, "Server version was not empty")
+		})
+		t.Run("yaml output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.YAMLFormat))
+			suite.Require().NoError(err, "Could not request version with json output.")
 
-	jsonDoc := &util.Versions{}
-	err = marshaller.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
-	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
-	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
-}
+			yamlDoc := &util.Versions{}
+			err = marshaller.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+			suite.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", err)
+			suite.Require().NotEmpty(yamlDoc.ClientVersion.GitCommit, "Client version was empty.")
+			suite.Require().Empty(yamlDoc.ServerVersion, "Server version was not empty")
+		})
+	})
+	suite.T().Run("server and client", func(t *testing.T) {
+		t.Run("table output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version", "--server")
+			suite.Require().NoError(err)
 
-func (suite *VersionSuite) TestVersionYAMLOutput() {
-	_, out, err := suite.ExecuteTestCobraCommand("version", "--output", string(output.YAMLFormat))
-	require.NoError(suite.T(), err, "Could not request version with json output.")
+			suite.Require().Contains(out, "CLIENT", "Client version not in output")
+			suite.Require().Contains(out, "SERVER", "Server version not in output")
+		})
+		t.Run("json output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version", "--server", "--output", string(output.JSONFormat))
+			suite.Require().NoError(err, "Could not request version with json output.")
 
-	yamlDoc := &util.Versions{}
-	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
-	require.NoError(suite.T(), err, "Could not unmarshall the output into yaml - %+v", err)
-	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
+			jsonDoc := &util.Versions{}
+			err = marshaller.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
+			suite.Require().NoError(err, "Could not unmarshall the output into json - %+v", err)
+			suite.Require().Equal(jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
+		})
+		t.Run("yaml output", func(t *testing.T) {
+			_, out, err := suite.ExecuteTestCobraCommand("version", "--server", "--output", string(output.YAMLFormat))
+			suite.Require().NoError(err, "Could not request version with json output.")
 
+			yamlDoc := &util.Versions{}
+			err = marshaller.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+			suite.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", err)
+			suite.Require().Equal(yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
+		})
+	})
 }

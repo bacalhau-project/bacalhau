@@ -1900,7 +1900,7 @@ bacalhau validate ./job.yaml
 
 ## Version
 
-The `bacalhau version` command allows you to get the client and server version.
+The `bacalhau version` command allows you to get the client and optionally the server version.
 
 Usage:
 ```shell
@@ -1909,7 +1909,7 @@ bacalhau version [flags]
 
 ```shell
 Flags:
-      --client          If true, shows client version only (no server required).
+      --server          If true, queries the server (requester) for its version. (default false)
   -h, --help            help for version
       --hide-header     do not print the column headers.
       --no-style        remove all styling from table output.

@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
@@ -32,12 +32,15 @@ import (
 )
 
 type VersionOptions struct {
-	ClientOnly bool
+	Client     bool
+	Server     bool
 	OutputOpts output.OutputOptions
 }
 
 func NewVersionOptions() *VersionOptions {
 	return &VersionOptions{
+		Client:     true,
+		Server:     false,
 		OutputOpts: output.OutputOptions{Format: output.TableFormat},
 	}
 }
@@ -47,14 +50,25 @@ func NewCmd() *cobra.Command {
 
 	versionCmd := &cobra.Command{
 		Use:    "version",
-		Short:  "Get the client and server version.",
+		Short:  "Get the client and optionally the server (requester) version if specified",
 		Args:   cobra.NoArgs,
 		PreRun: hook.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runVersion(cmd, oV)
 		},
 	}
-	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
+	fset := pflag.NewFlagSet("version", pflag.ContinueOnError)
+
+	// NB(forrest): the client flag remains present for backwards compatibility with the install
+	// script used by https://github.com/bacalhau-project/get.bacalhau.org
+	fset.BoolVar(&oV.Client, "client", oV.Client, "If true, shows client version only (no server required).")
+	// we are marking the client flag as deprecated, it will still function but will be hidden
+	if err := fset.MarkDeprecated("client", "use --server"); err != nil {
+		panic(fmt.Sprintf("DEVELOPER ERROR: %s", err))
+	}
+
+	fset.BoolVar(&oV.Server, "server", oV.Server, "If true, queries the server (requester) for its version.")
+	versionCmd.Flags().AddFlagSet(fset)
 	versionCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&oV.OutputOpts))
 
 	return versionCmd
@@ -97,16 +111,20 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		columns  []output.TableColumn[util.Versions]
 	)
 
-	if oV.ClientOnly {
-		versions.ClientVersion = version.Get()
-	} else {
+	// NB(forrest): the client flag remains present for backwards compatibility with the install
+	// script used by https://github.com/bacalhau-project/get.bacalhau.org
+	if oV.Client == false {
+		oV.Server = true
+	}
+	if oV.Server {
 		var err error
 		versions, err = util.GetAllVersions(ctx)
 		if err != nil {
 			// No error on fail of version check. Just print as much as we can.
-			log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")
+			cmd.PrintErrln("failed to get server version: ", err)
 		}
 	}
+	versions.ClientVersion = version.Get()
 
 	if versions.ClientVersion != nil {
 		columns = append(columns, clientVersionColumn)
