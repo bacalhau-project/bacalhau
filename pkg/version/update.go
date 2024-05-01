@@ -10,15 +10,29 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
-const endpoint = "http://update.bacalhau.org/version"
+const (
+	// the default endpoint used to check for bacalhau version updates.
+	defaultUpdateCheckerEndpoint = "http://update.bacalhau.org/version"
+	// when this environment variable is set bacalhau will use the endpoint specified by it to check for updates.
+	envVarUpdateCheckerEndpoint = "BACALHAU_UPDATE_CHECKER_ENDPOINT"
+)
+
+func getUpdateCheckerEndpoint() string {
+	maybeEp := os.Getenv(envVarUpdateCheckerEndpoint)
+	if maybeEp != "" {
+		return maybeEp
+	}
+	return defaultUpdateCheckerEndpoint
+}
 
 type UpdateCheckResponse struct {
 	Version *models.BuildVersionInfo `json:"version"`
@@ -31,7 +45,7 @@ func CheckForUpdate(
 	clientID string,
 	InstallationID string,
 ) (*UpdateCheckResponse, error) {
-	u, err := url.Parse(endpoint)
+	u, err := url.Parse(getUpdateCheckerEndpoint())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse URL for update host")
 	}
