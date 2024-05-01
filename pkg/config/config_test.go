@@ -35,14 +35,27 @@ func TestConfig(t *testing.T) {
 	})
 	t.Run("SetAndGetAdvance", func(t *testing.T) {
 		expectedConfig := configenv.Testing
-		expectedConfig.Node.IPFS.SwarmAddresses = []string{"1", "2", "3", "4", "5"}
+		expectedConfig.Node.Network = types.NetworkConfig{
+			Type:              "nats",
+			Port:              9999,
+			AdvertisedAddress: "0.0.0.0",
+			AuthSecret:        "password",
+			Orchestrators:     []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"},
+			StoreDir:          "/tmp",
+			Cluster: types.NetworkClusterConfig{
+				Name:              "cluster_name",
+				Port:              88888,
+				AdvertisedAddress: "4.4.4.4,",
+				Peers:             []string{"5.5.5.5", "6.6.6.6"},
+			},
+		}
 		err := Set(expectedConfig)
 		assert.NoError(t, err)
 
-		var out types.IpfsConfig
-		err = ForKey(types.NodeIPFS, &out)
+		var out types.NetworkConfig
+		err = ForKey(types.NodeNetwork, &out)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedConfig.Node.IPFS, out)
+		assert.Equal(t, expectedConfig.Node.Network, out)
 
 		var node types.NodeConfig
 		err = ForKey(types.Node, &node)
