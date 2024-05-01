@@ -3,15 +3,15 @@
 package downloader_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/s3signed"
@@ -21,12 +21,7 @@ import (
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
-
-	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -37,7 +32,6 @@ import (
 type DownloaderSuite struct {
 	*s3test.HelperSuite
 	cm               *system.CleanupManager
-	ipfsClient       ipfs.Client
 	downloadSettings *downloader.DownloaderSettings
 	downloadProvider downloader.DownloaderProvider
 	s3Signer         *s3helper.ResultSigner
@@ -60,28 +54,15 @@ func (ds *DownloaderSuite) SetupTest() {
 		ds.cm.Cleanup(ds.Ctx)
 	})
 
-	ctx, cancel := context.WithCancel(ds.Ctx)
-	ds.T().Cleanup(cancel)
-
 	ds.downloadSettings = &downloader.DownloaderSettings{
 		Timeout: downloader.DefaultDownloadTimeout,
 	}
 
-	// Setup ipfs node
-	node, err := ipfs.NewNodeWithConfig(ctx, ds.cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(ds.T(), err)
-
-	swarm, err := node.SwarmAddresses()
-	require.NoError(ds.T(), err)
-
 	cfg := configenv.Testing
-	cfg.Node.IPFS.SwarmAddresses = swarm
 	ds.Require().NoError(config.Set(cfg))
 
-	ds.ipfsClient = node.Client()
 	ds.downloadProvider = provider.NewMappedProvider(
 		map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm),
 			models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
 				HTTPDownloader: http.NewHTTPDownloader(),
 			}),
@@ -133,18 +114,6 @@ func (ds *DownloaderSuite) mockFile(path ...string) string {
 	content := uuid.NewString()
 	ds.Require().NoError(os.WriteFile(file, []byte(content), 0644))
 	return content
-}
-
-// Publish to IPFS
-func publishToIPFS(ds *DownloaderSuite, dir string) *models.SpecConfig {
-	cid, err := ds.ipfsClient.Put(ds.Ctx, dir)
-	require.NoError(ds.T(), err)
-	return &models.SpecConfig{
-		Type: models.StorageSourceIPFS,
-		Params: ipfssource.Source{
-			CID: cid,
-		}.ToMap(),
-	}
 }
 
 // Publish to S3
@@ -202,21 +171,6 @@ var publishers = map[string]struct {
 				}
 			}
 			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["PreSignedURL"])
-			return ""
-		},
-	},
-	models.StorageSourceIPFS: {
-		publishFn: publishToIPFS,
-		rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
-			dirEntries, err := os.ReadDir(rawParentPath)
-			ds.Require().NoError(err)
-
-			for _, entry := range dirEntries {
-				if entry.Name() == result.Params["CID"].(string) {
-					return entry.Name()
-				}
-			}
-			require.Failf(ds.T(), "Could not find raw file", "Could not find raw file for %s", result.Params["CID"])
 			return ""
 		},
 	},

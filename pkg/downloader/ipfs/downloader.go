@@ -8,81 +8,44 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/ipfs/go-cid"
+
 	"github.com/rs/zerolog/log"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type Downloader struct {
-	cm   *system.CleanupManager
-	node *ipfs.Node // defaults to nil
+	node ipfs.Node // defaults to nil
 }
 
-func NewIPFSDownloader(cm *system.CleanupManager) *Downloader {
+func NewIPFSDownloader(n ipfs.Node) *Downloader {
 	return &Downloader{
-		cm: cm,
+		node: n,
 	}
 }
 
-func (d *Downloader) IsInstalled(context.Context) (bool, error) {
+func (d *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+	_, err := d.node.ID(ctx)
+	if err != nil {
+		return false, nil
+	}
 	return true, nil
 }
 
-func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
-	var cfg types.IpfsConfig
-	if err := bac_config.ForKey(types.NodeIPFS, &cfg); err != nil {
-		return ipfs.Client{}, err
-	}
-
-	if cfg.Connect != "" {
-		log.Ctx(ctx).Debug().Msg("creating ipfs client")
-		client, err := ipfs.NewClientUsingRemoteHandler(ctx, cfg.Connect)
-		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
-		}
-
-		if len(cfg.SwarmAddresses) != 0 {
-			maddrs, err := ipfs.ParsePeersString(cfg.SwarmAddresses)
-			if err != nil {
-				return ipfs.Client{}, err
-			}
-			client.SwarmConnect(ctx, maddrs)
-		}
-		return client, nil
-	}
-
-	log.Ctx(ctx).Debug().Msg("creating ipfs node")
-	if d.node == nil {
-		node, err := ipfs.NewNodeWithConfig(ctx, d.cm, cfg)
-		if err != nil {
-			return ipfs.Client{}, err
-		}
-
-		d.node = node
-	}
-
-	return d.node.Client(), nil
-}
-
 func (d *Downloader) describeResult(ctx context.Context, result ipfssource.Source) (map[string]string, error) {
-	// NOTE: we have to spin up a temporary IPFS node as we don't
-	// generally have direct access to a remote node's API server.
-	ipfsClient, err := d.getClient(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
 	log.Ctx(ctx).Debug().
 		Str("cid", result.CID).
 		Msg("Describing contents of result CID")
 
-	tree, err := ipfsClient.GetTreeNode(ctx, result.CID)
+	c, err := cid.Decode(result.CID)
+	if err != nil {
+		return nil, err
+	}
+	tree, err := d.node.GetTreeNode(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +73,8 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		return "", err
 	}
 
-	cid := sourceSpec.CID
-	resultPath := filepath.Join(item.ParentPath, cid)
+	sourceCid := sourceSpec.CID
+	resultPath := filepath.Join(item.ParentPath, sourceCid)
 	downloadPath := resultPath
 
 	// If we're downloading a single file, we need to find the CID of that file,
@@ -124,7 +87,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 		if !present {
 			return "", fmt.Errorf("failed to find cid for %s", item.SingleFile)
 		}
-		cid = fileCID
+		sourceCid = fileCID
 		downloadPath = filepath.Join(resultPath, item.SingleFile)
 		err = os.MkdirAll(filepath.Dir(downloadPath), downloader.DownloadFolderPerm)
 		if err != nil {
@@ -139,29 +102,33 @@ func (d *Downloader) FetchResult(ctx context.Context, item downloader.DownloadIt
 	if alreadyExists {
 		// We don't want to download the same CID twice
 		log.Ctx(ctx).Debug().
-			Str("CID", cid).
+			Str("CID", sourceCid).
 			Msg("asked to download a CID a second time")
 		return resultPath, nil
 	}
 
-	ipfsClient, err := d.getClient(ctx)
-	if err != nil {
-		return "", err
-	}
-
 	log.Ctx(ctx).Debug().
-		Str("cid", cid).
+		Str("cid", sourceCid).
 		Str("path", downloadPath).
 		Msg("Downloading result CID")
 
-	err = ipfsClient.Get(ctx, cid, downloadPath)
-
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			log.Ctx(ctx).Error().Msg("Timed out while downloading result")
+	{
+		c, err := cid.Decode(sourceCid)
+		if err != nil {
+			return "", err
 		}
-
-		return "", err
+		node, err := d.node.Get(ctx, c)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				log.Ctx(ctx).Error().
+					Stringer("cid", c).
+					Msg("Timed out while downloading result")
+			}
+			return "", err
+		}
+		if err := ipfs.WriteTo(node, downloadPath); err != nil {
+			return "", err
+		}
 	}
 	// we always return the path of the result cid, even if it's a single file
 	return resultPath, nil

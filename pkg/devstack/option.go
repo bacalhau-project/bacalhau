@@ -35,7 +35,6 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
-		PublicIPFSMode:             false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
@@ -67,7 +66,6 @@ type DevStackConfig struct {
 	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
-	PublicIPFSMode             bool   // Use public IPFS nodes
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
@@ -78,6 +76,8 @@ type DevStackConfig struct {
 	TLS                        DevstackTLSSettings
 	NetworkType                string
 	AuthSecret                 string
+
+	IPFSConnect string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -92,7 +92,6 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
 		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
-		Bool("PublicIPFSMode", o.PublicIPFSMode).
 		Bool("ExecutorPlugins", o.ExecutorPlugins).
 		Str("NetworkType", o.NetworkType)
 }
@@ -155,12 +154,6 @@ func WithRequesterConfig(requesterConfig node.RequesterConfig) ConfigOption {
 func WithNumberOfHybridNodes(count int) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NumberOfHybridNodes = count
-	}
-}
-
-func WithPublicIPFSMode(enabled bool) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.PublicIPFSMode = enabled
 	}
 }
 
@@ -239,6 +232,12 @@ func WithNetworkType(typ string) ConfigOption {
 func WithAuthSecret(secret string) ConfigOption {
 	return func(c *DevStackConfig) {
 		c.AuthSecret = secret
+	}
+}
+
+func WithIPFSConnect(apiAddr string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.IPFSConnect = apiAddr
 	}
 }
 

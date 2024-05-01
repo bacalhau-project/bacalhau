@@ -5,44 +5,56 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 
-	files "github.com/ipfs/boxo/files"
-	dag "github.com/ipfs/boxo/ipld/merkledag"
-	ft "github.com/ipfs/boxo/ipld/unixfs"
+	"github.com/ipfs/boxo/files"
 	icorepath "github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	httpapi "github.com/ipfs/kubo/client/rpc"
 	icore "github.com/ipfs/kubo/core/coreiface"
 	icoreoptions "github.com/ipfs/kubo/core/coreiface/options"
-	"github.com/libp2p/go-libp2p/core/peer"
+	ipfsopts "github.com/ipfs/kubo/core/coreiface/options"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
-// Client is a front-end for an ipfs node's API endpoints. You can create
-// Client instances manually by connecting to an ipfs node's API multiaddr using NewClientUsingRemoteHandler,
-// or automatically from an active Node instance using NewClient.
-type Client struct {
+func CIDFromStr(str string) (cid.Cid, error) {
+	c, err := cid.Decode(str)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode CID from %q: %w", str, err)
+	}
+	return c, nil
+}
+
+// WriteTo is a helper method that write the result of a call to Node.Get to a path.
+func WriteTo(n files.Node, path string) error {
+	return files.WriteTo(n, path)
+}
+
+type Node interface {
+	ID(ctx context.Context) (string, error)
+	APIAddress() string
+	Get(ctx context.Context, c cid.Cid) (files.Node, error)
+	Size(ctx context.Context, c cid.Cid) (uint64, error)
+	Has(ctx context.Context, c cid.Cid) (bool, error)
+	Put(ctx context.Context, path string) (cid.Cid, error)
+	GetTreeNode(ctx context.Context, cid cid.Cid) (IPLDTreeNode, error)
+}
+
+var _ Node = (*client)(nil)
+
+type client struct {
 	API  icore.CoreAPI
 	addr string
 }
 
-// NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
-// NOTE: the API address is _not_ the same as the swarm address
-func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, error) {
+func New(apiAddr string) (*client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
 	}
 
 	// This http.Transport is the same that httpapi.NewApi would use if we weren't passing in our own http.Client
@@ -60,149 +72,47 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 		),
 	})
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 
-	client := Client{
+	client := &client{
 		API:  api,
 		addr: apiAddr,
 	}
-
-	id, err := client.ID(ctx)
-	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
-	}
-	log.Ctx(ctx).Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
 	return client, nil
 }
 
-const MagicInternalIPFSAddress = "memory://in-memory-node/"
-
-func NewClient(api icore.CoreAPI) Client {
-	return Client{
-		API:  api,
-		addr: MagicInternalIPFSAddress,
-	}
-}
-
-// ID returns the node's ipfs ID.
-func (cl Client) ID(ctx context.Context) (string, error) {
-	key, err := cl.API.Key().Self(ctx)
+func (c *client) ID(ctx context.Context) (string, error) {
+	key, err := c.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
 	}
-
 	return key.ID().String(), nil
 }
 
-// APIAddress returns Api address that was used to connect to the node.
-func (cl Client) APIAddress() string {
-	return cl.addr
+func (c *client) APIAddress() string {
+	return c.addr
 }
 
-func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error) {
-	id, err := cl.API.Key().Self(ctx)
+func (c *client) Get(ctx context.Context, cid cid.Cid) (files.Node, error) {
+	path := icorepath.FromCid(cid)
+	node, err := c.API.Unixfs().Get(ctx, path)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching node's ipfs id: %w", err)
+		return nil, fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
-	p2pID, err := ma.NewMultiaddr("/p2p/" + id.ID().String())
-	if err != nil {
-		return nil, err
-	}
-
-	addrs, err := cl.API.Swarm().LocalAddrs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching node's swarm addresses: %w", err)
-	}
-
-	addrs = generic.Map(addrs, func(f ma.Multiaddr) ma.Multiaddr {
-		return f.Encapsulate(p2pID)
-	})
-
-	return addrs, nil
+	return node, nil
 }
 
-// SwarmAddresses returns a list of swarm addresses the node has announced.
-func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
-	multiAddresses, err := cl.SwarmMultiAddresses(ctx)
+func (c *client) Put(ctx context.Context, path string) (cid.Cid, error) {
+	st, err := os.Stat(path)
 	if err != nil {
-		return nil, err
+		return cid.Undef, fmt.Errorf("failed to stat file '%s': %w", path, err)
 	}
 
-	if len(multiAddresses) == 0 {
-		return nil, fmt.Errorf("no swarm addresses found")
-	}
-
-	// It's common for callers to this function to use the result to connect to another IPFS node.
-	// This sorts the addresses so IPv4 localhost is first, with the aim of using the localhost connection during tests
-	// and so avoid any unneeded network hops. Other callers to this either sort the list themselves or just output the
-	// full list.
-	multiAddresses = multiaddresses.SortLocalhostFirst(multiAddresses)
-
-	addresses := generic.Map(multiAddresses, func(f ma.Multiaddr) string {
-		return f.String()
-	})
-
-	return addresses, nil
-}
-
-// SwarmConnect establishes concurrent connections to each peer from the provided `peers` list.
-// It spawns a goroutine for each peer connection. In the event of a connection failure,
-// a warning log containing the error and peer details is generated.
-func (cl Client) SwarmConnect(ctx context.Context, peers []peer.AddrInfo) {
-	var wg sync.WaitGroup
-	for _, p := range peers {
-		wg.Add(1)
-		go func(ctx context.Context, p peer.AddrInfo) {
-			defer wg.Done()
-			if err := cl.API.Swarm().Connect(ctx, p); err != nil {
-				log.Ctx(ctx).Warn().Err(err).Stringer("peer", p).Msg("failed to connect to peer")
-			}
-		}(ctx, p)
-	}
-	wg.Wait()
-}
-
-// Get fetches a file or directory from the ipfs network.
-func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
-	// Output path is required to not exist yet:
-	ok, err := system.PathExists(outputPath)
+	node, err := files.NewSerialFile(path, false, st)
 	if err != nil {
-		return fmt.Errorf("unable to check if path %s exists: %w", outputPath, err)
-	}
-	if ok {
-		return fmt.Errorf("output path '%s' already exists", outputPath)
-	}
-
-	path, err := pathFromCIDString(cid)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
-	}
-
-	node, err := cl.API.Unixfs().Get(ctx, path)
-	if err != nil {
-		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
-	}
-
-	if err := files.WriteTo(node, outputPath); err != nil {
-		return fmt.Errorf("failed to write to '%s': %w", outputPath, err)
-	}
-
-	return nil
-}
-
-// Put uploads and pins a file or directory to the ipfs network. Timeouts and
-// cancellation should be handled by passing an appropriate context value.
-func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
-	st, err := os.Stat(inputPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to stat file '%s': %w", inputPath, err)
-	}
-
-	node, err := files.NewSerialFile(inputPath, false, st)
-	if err != nil {
-		return "", fmt.Errorf("failed to create ipfs node: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
 
 	// Pin uploaded file/directory to local storage to prevent deletion by GC.
@@ -210,150 +120,52 @@ func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
 		icoreoptions.Unixfs.Pin(true),
 	}
 
-	ipfsPath, err := cl.API.Unixfs().Add(ctx, node, addOptions...)
+	ipfsPath, err := c.API.Unixfs().Add(ctx, node, addOptions...)
 	if err != nil {
-		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
+		return cid.Undef, fmt.Errorf("failed to add file '%s': %w", path, err)
 	}
 
-	cid := ipfsPath.RootCid().String()
-	return cid, nil
+	return ipfsPath.RootCid(), nil
 }
 
-type IPLDType int
+func (c *client) Size(ctx context.Context, cid cid.Cid) (uint64, error) {
+	path := icorepath.FromCid(cid)
 
-const (
-	IPLDUnknown IPLDType = iota
-	IPLDFile
-	IPLDDirectory
-)
+	node, err := c.API.ResolveNode(ctx, path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+	}
 
-type StatResult struct {
-	Type IPLDType
+	return node.Size()
 }
 
-// Stat returns information about an IPLD CID on the ipfs network.
-func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
-	path, err := pathFromCIDString(cid)
+func (c *client) Has(ctx context.Context, cid cid.Cid) (bool, error) {
+	// TODO(forrest) [correctness]: I am not 100% sure this is right, but here
+	// we create an offline api and then attempt to retrieve content from it
+	// if the node has the content locally this will succeed, if it doesn't this will
+	// fail.
+	offlineAPI, err := c.API.WithOptions(func(settings *ipfsopts.ApiSettings) error {
+		settings.Offline = true
+		settings.FetchBlocks = false
+		return nil
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("unable to create path from CID in call to Stat(): %s", cid))
+		return false, err
 	}
-
-	node, err := cl.API.ResolveNode(ctx, path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+	_, err = offlineAPI.Dag().Get(ctx, cid)
+	if err == nil {
+		return true, nil
 	}
-
-	nodeType, err := getNodeType(node)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get node type: %w", err)
-	}
-
-	return &StatResult{
-		Type: nodeType,
-	}, nil
-}
-
-func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
-	path, err := pathFromCIDString(cid)
-	if err != nil {
-		return 0, errors.Wrap(err, fmt.Sprintf("unable to create path from CID in call to GetCidSize(): %s", cid))
-	}
-
-	stat, err := cl.API.Object().Stat(ctx, path)
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(stat.CumulativeSize), nil
-}
-
-// nodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
-func (cl Client) nodesWithCID(ctx context.Context, cid string) ([]string, error) {
-	path, err := pathFromCIDString(cid)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
-	}
-
-	ch, err := cl.API.Dht().FindProviders(ctx, path)
-	if err != nil {
-		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
-	}
-
-	var res []string
-	for info := range ch {
-		res = append(res, info.ID.String())
-	}
-
-	return res, nil
-}
-
-// HasCID returns true if the node has the given CID locally, whether pinned or not.
-func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
-	id, err := cl.ID(ctx)
-	if err != nil {
-		return false, fmt.Errorf("error fetching node's ipfs id: %w", err)
-	}
-
-	nodes, err := cl.nodesWithCID(ctx, cid)
-	if err != nil {
-		return false, fmt.Errorf("error fetching nodes with cid '%s': %w", cid, err)
-	}
-
-	for _, node := range nodes {
-		if node == id {
-			return true, nil
-		}
-	}
-
 	return false, nil
 }
 
-func (cl Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
-	path, err := pathFromCIDString(cid)
-	if err != nil {
-		return IPLDTreeNode{}, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
-	}
+func (c *client) GetTreeNode(ctx context.Context, cid cid.Cid) (IPLDTreeNode, error) {
+	path := icorepath.FromCid(cid)
 
-	ipldNode, err := cl.API.ResolveNode(ctx, path)
+	ipldNode, err := c.API.ResolveNode(ctx, path)
 	if err != nil {
 		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
 
-	return getTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.API.Dag()), []string{})
-}
-
-func getNodeType(node ipld.Node) (IPLDType, error) {
-	// Taken from go-ipfs/core/commands/files.go:
-	var nodeType IPLDType
-	switch n := node.(type) {
-	case *dag.ProtoNode:
-		d, err := ft.FSNodeFromBytes(n.Data())
-		if err != nil {
-			return IPLDUnknown, err
-		}
-
-		switch d.Type() {
-		case ft.TDirectory, ft.THAMTShard:
-			nodeType = IPLDDirectory
-		case ft.TFile, ft.TMetadata, ft.TRaw:
-			nodeType = IPLDFile
-		default:
-			return IPLDUnknown, fmt.Errorf("unrecognized node type: %s", d.Type())
-		}
-	case *dag.RawNode:
-		nodeType = IPLDFile
-	default:
-		return IPLDUnknown, fmt.Errorf("unrecognized node type: %T", node)
-	}
-
-	return nodeType, nil
-}
-
-func pathFromCIDString(cidString string) (icorepath.Path, error) {
-	cid, err := cid.Decode(cidString)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("unable to decode CID: %s", cidString))
-	}
-
-	return icorepath.FromCid(cid), nil
+	return getTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, c.API.Dag()), []string{})
 }

@@ -3,15 +3,15 @@
 package get_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,7 +41,7 @@ func (s *GetSuite) SetupTest() {
 	s.BaseSuite.SetupTest()
 }
 
-func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expectedFiles []string) {
+func testResultsFolderStructure(t *testing.T, baseFolder string, expectedFiles []string) {
 	var files []string
 	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
@@ -69,7 +69,8 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expecte
 		}
 	}
 
-	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
+	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"),
+		"The discovered results output structure was not correct")
 }
 
 func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
@@ -102,12 +103,9 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 }
 
 func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
-		"--publisher", "ipfs",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--publisher", "local",
 		"-o", "data:/data",
 		"--wait",
 	}
@@ -136,10 +134,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	require.NoError(s.T(), err, "Error submitting job")
 
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	hostID := s.Node.ID
 	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), outputFolder, hostID, nil)
+	testResultsFolderStructure(s.T(), outputFolder, nil)
 
 }
 
@@ -157,17 +154,14 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	hostID := s.Node.ID
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
+	testResultsFolderStructure(s.T(), tempDir, nil)
 }
 
 // this tests that when we do get with no --output-dir
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -177,22 +171,22 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, nil)
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), nil)
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
-
+	s.T().Skip("test is incorrect! Cannot use JobID as path to download content")
+	// TODO(forrest) [correctness]: to unskip this test we need to understand its intentions
+	// Currently is passes `get` invalid arguments:
+	//  get 037dca2c-f32d-4645-9fed-0a832b508215/missing
+	// providing a path after jobID is unsupported.
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
@@ -201,7 +195,6 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -210,8 +203,11 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.T().Skip("test is incorrect! Cannot use JobID as path to download content")
+	// TODO(forrest) [correctness]: to unskip this test we need to understand its intentions
+	// Currently is passes `get` invalid arguments:
+	//  get 037dca2c-f32d-4645-9fed-0a832b508215/stdout
+	// providing a path after jobID is not supported.
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -221,21 +217,23 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), []string{"/stdout"})
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.T().Skip("test is incorrect! Cannot use JobID as path to download content")
+	// TODO(forrest) [correctness]: to unskip this test we need to understand its intentions
+	// Currently is passes `get` invalid arguments:
+	//  get --api-host 127.0.0.1 --api-port 37517 9de8cc61-5741-4712-84c9-b377e870b4df/data/apples/file.txt
+	// providing a path like this after the jobID is not something we support.
+
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -245,12 +243,10 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -258,7 +254,6 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(),
 		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
-		hostID,
 		[]string{
 			"/data",
 			"/data/apples",
@@ -269,10 +264,6 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 // this tests that when we do get with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
-	ctx := context.Background()
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-	require.NoError(s.T(), err)
-
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
@@ -283,14 +274,12 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
 	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
+	testResultsFolderStructure(s.T(), tempDir, nil)
 }

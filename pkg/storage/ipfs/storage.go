@@ -22,10 +22,10 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	ipfsClient ipfs.Client
+	ipfsClient ipfs.Node
 }
 
-func NewStorage(cl ipfs.Client) (*StorageProvider, error) {
+func NewStorage(cl ipfs.Node) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		ipfsClient: cl,
 	}
@@ -44,12 +44,15 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.I
 	if err != nil {
 		return false, err
 	}
-	return s.ipfsClient.HasCID(ctx, source.CID)
+	c, err := ipfs.CIDFromStr(source.CID)
+	if err != nil {
+		return false, err
+	}
+	return s.ipfsClient.Has(ctx, c)
 }
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
-
 	// TODO(forrest) [correctness] this timeout should be passed in as a param or set on the context by the method caller.
 	// for further context on why this is the way it is see: https://github.com/bacalhau-project/bacalhau/pull/1432
 	timeoutDuration := config.GetVolumeSizeRequestTimeout()
@@ -61,7 +64,11 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 		return 0, err
 	}
 
-	size, err := s.ipfsClient.GetCidSize(ctx, source.CID)
+	c, err := ipfs.CIDFromStr(source.CID)
+	if err != nil {
+		return 0, err
+	}
+	size, err := s.ipfsClient.Size(ctx, c)
 	if err != nil {
 		// we failed to find the content before the context timeout
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -81,14 +88,6 @@ func (s *StorageProvider) PrepareStorage(
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
-	}
-	stat, err := s.ipfsClient.Stat(ctx, source.CID)
-	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", source.CID, err)
-	}
-
-	if stat.Type != ipfs.IPLDFile && stat.Type != ipfs.IPLDDirectory {
-		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", source.CID, stat.Type)
 	}
 
 	var volume storage.StorageVolume
@@ -122,7 +121,7 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (models.
 	return models.SpecConfig{
 		Type: models.StorageSourceIPFS,
 		Params: Source{
-			CID: cid,
+			CID: cid.String(),
 		}.ToMap(),
 	}, nil
 }
@@ -138,8 +137,15 @@ func (s *StorageProvider) getFileFromIPFS(ctx context.Context, cid, storageDirec
 		return storage.StorageVolume{}, err
 	}
 	if !ok {
-		err = s.ipfsClient.Get(ctx, cid, outputPath)
+		c, err := ipfs.CIDFromStr(cid)
 		if err != nil {
+			return storage.StorageVolume{}, err
+		}
+		nd, err := s.ipfsClient.Get(ctx, c)
+		if err != nil {
+			return storage.StorageVolume{}, err
+		}
+		if err := ipfs.WriteTo(nd, outputPath); err != nil {
 			return storage.StorageVolume{}, err
 		}
 	}

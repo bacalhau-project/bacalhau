@@ -24,7 +24,6 @@ func DownloadResultsHandler(
 	downloadSettings *cliflags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
-	cm := GetCleanupManager(ctx)
 	response, err := GetAPIClientV2(cmd).Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: jobID,
 	})
@@ -40,7 +39,7 @@ func DownloadResultsHandler(
 		return nil
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	downloaderProvider := util.NewStandardDownloaders()
 	if err != nil {
 		return err
 	}

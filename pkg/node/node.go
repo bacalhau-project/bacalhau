@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -47,7 +46,6 @@ type FeatureConfig struct {
 // Node configuration
 type NodeConfig struct {
 	NodeID                      string
-	IPFSClient                  ipfs.Client
 	CleanupManager              *system.CleanupManager
 	HostAddress                 string
 	APIPort                     uint16
@@ -114,7 +112,6 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	IPFSClient     ipfs.Client
 	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 }
 
@@ -529,7 +526,6 @@ func NewNode(
 		ID:             config.NodeID,
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
-		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
 		Libp2pHost:     config.NetworkConfig.Libp2pHost,

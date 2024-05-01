@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
@@ -136,28 +135,6 @@ func FromLegacyStorageSpec(legacy model.StorageSpec) (*models.SpecConfig, error)
 			Type: models.StorageSourceURL,
 			Params: urldownload.Source{
 				URL: legacy.URL,
-			}.ToMap(),
-		}
-	case model.StorageSourceRepoClone:
-		if legacy.Repo == "" {
-			return nil, errors.New("invalid legacy storage spec - missing Repo")
-		}
-
-		res = &models.SpecConfig{
-			Type: models.StorageSourceRepoClone,
-			Params: repo.Source{
-				Repo: legacy.Repo,
-			}.ToMap(),
-		}
-	case model.StorageSourceRepoCloneLFS:
-		if legacy.Repo == "" {
-			return nil, errors.New("invalid legacy storage spec - missing Repo")
-		}
-
-		res = &models.SpecConfig{
-			Type: models.StorageSourceRepoCloneLFS,
-			Params: repo.Source{
-				Repo: legacy.Repo,
 			}.ToMap(),
 		}
 	case model.StorageSourceInline:

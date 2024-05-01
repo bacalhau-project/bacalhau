@@ -55,7 +55,6 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 			ctx,
 			nodeConfig.CleanupManager,
 			executor_util.StandardStorageProviderOptions{
-				API:                   nodeConfig.IPFSClient,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
@@ -124,7 +123,6 @@ func NewStandardPublishersFactory() PublishersFactory {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
 				nodeConfig.CleanupManager,
-				nodeConfig.IPFSClient,
 				&nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {

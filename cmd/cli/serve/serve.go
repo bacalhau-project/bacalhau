@@ -10,6 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -25,12 +32,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/webui"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
 
 var DefaultSwarmPort = 1235
@@ -53,12 +54,6 @@ var (
 		bacalhau serve --node-type compute --node-type requester
 		# or
 		bacalhau serve --node-type compute,requester
-
-		# Start a private bacalhau node with a persistent local IPFS node
-		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
-
-		# Start a public bacalhau requester node
-		bacalhau serve --peer env --private-internal-ipfs=false
 
 		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
 		bacalhau serve --web-ui --web-ui-port=3000
@@ -207,17 +202,6 @@ func serve(cmd *cobra.Command) error {
 		return err
 	}
 
-	// Establishing IPFS connection
-	ipfsConfig, err := getIPFSConfig()
-	if err != nil {
-		return err
-	}
-
-	ipfsClient, err := SetupIPFSClient(ctx, cm, ipfsConfig)
-	if err != nil {
-		return err
-	}
-
 	networkConfig, err := getNetworkConfig()
 	if err != nil {
 		return err
@@ -259,7 +243,6 @@ func serve(cmd *cobra.Command) error {
 	nodeConfig := node.NodeConfig{
 		NodeID:                nodeName,
 		CleanupManager:        cm,
-		IPFSClient:            ipfsClient,
 		DisabledFeatures:      featureConfig,
 		HostAddress:           config.ServerAPIHost(),
 		APIPort:               config.ServerAPIPort(),
@@ -333,14 +316,14 @@ func serve(cmd *cobra.Command) error {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath("/api/v1/compute/debug"))
 	}
 
-	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
+	connectCmd, err := buildConnectCommand(&nodeConfig)
 	if err != nil {
 		return err
 	}
 	cmd.Println()
 	cmd.Println(connectCmd)
 
-	envVars, err := buildEnvVariables(ctx, &nodeConfig, ipfsConfig)
+	envVars, err := buildEnvVariables(&nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -393,7 +376,7 @@ func setupLibp2p() (libp2pHost host.Host, peers []string, err error) {
 	return
 }
 
-func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+func buildConnectCommand(nodeConfig *node.NodeConfig) (string, error) {
 	headerB := strings.Builder{}
 	cmdB := strings.Builder{}
 	if nodeConfig.IsRequesterNode {
@@ -431,20 +414,6 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 			))
 		}
 
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			cmdB.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
-
-			cmdB.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-				pickP2pAddress(ipfsAddresses).String(),
-			))
-		}
 	} else {
 		if nodeConfig.NetworkConfig.Type == models.NetworkTypeLibp2p {
 			headerB.WriteString("Make sure there's at least one requester node in your network.")
@@ -454,7 +423,7 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 	return headerB.String() + cmdB.String(), nil
 }
 
-func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+func buildEnvVariables(nodeConfig *node.NodeConfig) (string, error) {
 	// build shell variables to connect to this node
 	envVarBuilder := strings.Builder{}
 	envVarBuilder.WriteString(fmt.Sprintf(
@@ -492,19 +461,6 @@ func buildEnvVariables(ctx context.Context, nodeConfig *node.NodeConfig, ipfsCon
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 				peerAddress,
-			))
-		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-				pickP2pAddress(ipfsAddresses).String(),
 			))
 		}
 	}

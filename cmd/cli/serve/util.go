@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -27,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.ComputeConfig, error) {
@@ -154,57 +152,8 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func getIPFSConfig() (types.IpfsConfig, error) {
-	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
-		return types.IpfsConfig{}, err
-	}
-	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
-		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
-			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
-			configflags.FlagNameForKey(types.NodeIPFSConnect, configflags.IPFSFlags...),
-		)
-	}
-
-	return ipfsConfig, nil
-}
-
-func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg types.IpfsConfig) (ipfs.Client, error) {
-	if ipfsCfg.Connect == "" {
-		ipfsNode, err := ipfs.NewNodeWithConfig(ctx, cm, ipfsCfg)
-		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
-		}
-		if ipfsCfg.PrivateInternal {
-			log.Ctx(ctx).Debug().Msgf("ipfs_node_api_port: %d", ipfsNode.APIPort)
-		}
-		cm.RegisterCallbackWithContext(ipfsNode.Close)
-		client := ipfsNode.Client()
-
-		swarmAddresses, err := client.SwarmAddresses(ctx)
-		if err != nil {
-			return ipfs.Client{}, fmt.Errorf("error looking up IPFS addresses: %s", err)
-		}
-
-		log.Ctx(ctx).Debug().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
-		return client, nil
-	}
-
-	client, err := ipfs.NewClientUsingRemoteHandler(ctx, ipfsCfg.Connect)
-	if err != nil {
-		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
-	}
-
-	if len(ipfsCfg.SwarmAddresses) != 0 {
-		maddrs, err := ipfs.ParsePeersString(ipfsCfg.SwarmAddresses)
-		if err != nil {
-			return ipfs.Client{}, err
-		}
-
-		client.SwarmConnect(ctx, maddrs)
-	}
-
-	return client, nil
+func SetupIPFSClient(ipfsCfg types.IpfsConfig) (ipfs.Node, error) {
+	return ipfs.New(ipfsCfg.Connect)
 }
 
 func getAllowListedLocalPathsConfig() []string {

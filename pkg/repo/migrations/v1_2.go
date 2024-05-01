@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -37,22 +36,27 @@ var V1Migration = repo.NewMigration(
 		if !configExist {
 			return nil
 		}
-		v, cfg, err := readConfig(r)
+		// TODO(forrest) [FIXME]
+		v, _, err := readConfig(r)
 		if err != nil {
 			return err
 		}
+		/*
 
-		// this migration removes any IPFS swarm peers or Bootstrap peers that are incorrect from the v1.0.4 upgrade.
-		// if no incorrect values are present they are left as is.
-		doWrite := false
-		if haveSameElements(oldSwarmPeers, cfg.Node.IPFS.SwarmAddresses) {
-			v.Set(types.NodeIPFSSwarmAddresses, []string{})
-			doWrite = true
-		}
-		if haveSameElements(oldBootstrapPeers, cfg.Node.BootstrapAddresses) {
-			v.Set(types.NodeBootstrapAddresses, []string{})
-			doWrite = true
-		}
+			// this migration removes any IPFS swarm peers or Bootstrap peers that are incorrect from the v1.0.4 upgrade.
+			// if no incorrect values are present they are left as is.
+			doWrite := false
+			if haveSameElements(oldSwarmPeers, cfg.Node.IPFS.SwarmAddresses) {
+				v.Set(types.NodeIPFSSwarmAddresses, []string{})
+				doWrite = true
+			}
+			if haveSameElements(oldBootstrapPeers, cfg.Node.BootstrapAddresses) {
+				v.Set(types.NodeBootstrapAddresses, []string{})
+				doWrite = true
+			}
+
+		*/
+		doWrite := true
 
 		if doWrite {
 			return v.WriteConfig()

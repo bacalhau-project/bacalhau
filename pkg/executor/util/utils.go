@@ -7,16 +7,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
@@ -24,7 +21,6 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	API                   ipfs.Client
 	DownloadPath          string
 	AllowListedLocalPaths []string
 }
@@ -38,20 +34,7 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
-	if err != nil {
-		return nil, err
-	}
-
 	urlDownloadStorage := urldownload.NewStorage()
-	if err != nil {
-		return nil, err
-	}
-
-	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
-	if err != nil {
-		return nil, err
-	}
 
 	inlineStorage := inline.NewStorage()
 
@@ -67,14 +50,9 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
-
 	return provider.NewMappedProvider(map[string]storage.Storage{
-		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
 		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
 		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
 		models.StorageSourceS3:             tracing.Wrap(s3Storage),
 		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
 	}), nil

@@ -5,15 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/samber/lo"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
@@ -54,7 +50,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
-		PublicIPFSMode:             false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
@@ -121,10 +116,6 @@ func NewCmd() *cobra.Command {
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
 	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
-		`Connect devstack to public IPFS`,
-	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
 		"File to save CPU profiling to",
@@ -172,21 +163,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, IsNoop bool)
 
 	fsRepo, err := setup.SetupBacalhauRepo(repoPath)
 	if err != nil {
-		return err
-	}
-
-	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if path, err := config.Get[string](types.NodeIPFSServePath); err == nil && path != "" {
-		flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
-		return fmt.Errorf("unset %s in your environment "+
-			"and/or --%s from your flags "+
-			"and/or %s from your config "+
-			"to run devstack",
-			strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
-			flag.FlagName,
-			flag.ConfigPath,
-		)
-	} else if err != nil {
 		return err
 	}
 
