@@ -5,3 +5,4 @@ golang 1.21.8
 pre-commit 3.6.0
 golangci-lint 1.55.2
 earthly 0.8.3
+pnpm 9.0.6
