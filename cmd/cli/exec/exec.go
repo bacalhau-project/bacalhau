@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
@@ -202,9 +201,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	job.Tasks[0].Engine.Params["Arguments"] = cmdArgs[1:]
 
 	// Attach any inputs the user specified to the job spec
-	if err := prepareInputs(options, job); err != nil {
-		return nil, err
-	}
+	job.Tasks[0].InputSources = options.SpecSettings.Inputs.Values()
 
 	// Process --code if anything was specified. In future we may want to try and determine this
 	// ourselves where it is not specified, but it will likely be dependent on job type.
@@ -217,7 +214,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	publisherSpec := options.SpecSettings.Publisher.Value()
 	if publisherSpec != nil {
 		job.Tasks[0].Publisher = &models.SpecConfig{
-			Type:   publisherSpec.Type.String(),
+			Type:   publisherSpec.Type,
 			Params: publisherSpec.Params,
 		}
 	}
@@ -257,25 +254,12 @@ func prepareConstraints(options *ExecOptions, job *models.Job) error {
 	if nodeSelectorRequirements, err := parse.NodeSelector(options.SpecSettings.Selector); err != nil {
 		return err
 	} else {
-		constraints, err := legacy.FromLegacyLabelSelector(nodeSelectorRequirements)
 		if err != nil {
 			return err
 		}
-		job.Constraints = constraints
+		job.Constraints = nodeSelectorRequirements
 	}
 
-	return nil
-}
-
-func prepareInputs(options *ExecOptions, job *models.Job) error {
-	for _, ss := range options.SpecSettings.Inputs.Values() {
-		src, err := legacy.FromLegacyStorageSpecToInputSource(ss)
-		if err != nil {
-			return fmt.Errorf("failed to process input %s: %w", ss.Name, err)
-		}
-
-		job.Tasks[0].InputSources = append(job.Tasks[0].InputSources, src)
-	}
 	return nil
 }
 
@@ -302,37 +286,48 @@ func prepareEnvVars(options *ExecOptions, job *models.Job) error {
 }
 
 func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Job) error {
-	legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
-	if err != nil {
-		return err
+	resultPaths := make([]*models.ResultPath, 0, len(options.SpecSettings.OutputVolumes))
+	for name, path := range options.SpecSettings.OutputVolumes {
+		resultPaths = append(resultPaths, &models.ResultPath{
+			Name: name,
+			Path: path,
+		})
 	}
+	job.Tasks[0].ResultPaths = resultPaths
+	/*
+		legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
+		if err != nil {
+			return err
+		}
 
-	if len(legacyOutputs) == 0 {
-		return nil
-	}
-
-	// If we only have the single legacy default output then we will only use it if we have a publisher
-	// configured. If no publisher then we can just return early.
-	if len(legacyOutputs) == 1 && legacyOutputs[0].Name == "outputs" && legacyOutputs[0].Path == "/outputs" {
-		if job.Tasks[0].Publisher == nil {
+		if len(legacyOutputs) == 0 {
 			return nil
 		}
-	}
 
-	job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
-	for _, output := range legacyOutputs {
-		rp := &models.ResultPath{
-			Name: output.Name,
-			Path: output.Path,
+		// If we only have the single legacy default output then we will only use it if we have a publisher
+		// configured. If no publisher then we can just return early.
+		if len(legacyOutputs) == 1 && legacyOutputs[0].Name == "outputs" && legacyOutputs[0].Path == "/outputs" {
+			if job.Tasks[0].Publisher == nil {
+				return nil
+			}
 		}
 
-		e := rp.Validate()
-		if e != nil {
-			return e
+		job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
+		for _, output := range legacyOutputs {
+			rp := &models.ResultPath{
+				Name: output.Name,
+				Path: output.Path,
+			}
+
+			e := rp.Validate()
+			if e != nil {
+				return e
+			}
+
+			job.Tasks[0].ResultPaths = append(job.Tasks[0].ResultPaths, rp)
 		}
 
-		job.Tasks[0].ResultPaths = append(job.Tasks[0].ResultPaths, rp)
-	}
+	*/
 
 	return nil
 }

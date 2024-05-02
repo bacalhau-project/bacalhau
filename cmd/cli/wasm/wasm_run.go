@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -24,8 +22,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -46,7 +46,7 @@ var (
 
 type WasmRunOptions struct {
 	// parameters and entry modules are arguments
-	ImportModules []model.StorageSpec
+	ImportModules []*models.InputSource
 	Entrypoint    string
 
 	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
@@ -60,7 +60,7 @@ type WasmRunOptions struct {
 
 func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
-		ImportModules:      []model.StorageSpec{},
+		ImportModules:      make([]*models.InputSource, 0),
 		Entrypoint:         "_start",
 		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
 		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
@@ -112,10 +112,6 @@ func newRunCmd() *cobra.Command {
 		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
 			`the 'wget' command, and supports both HTTP and HTTPS.`,
 	)
-	wasmRunCmd.PersistentFlags().VarP(
-		flags.NewIPFSStorageSpecArrayFlag(&opts.ImportModules), "import-module-volumes", "I",
-		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
-	)
 	wasmRunCmd.PersistentFlags().StringVar(
 		&opts.Entrypoint, "entry-point", opts.Entrypoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
@@ -139,19 +135,25 @@ func newRunCmd() *cobra.Command {
 func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
-	j, err := CreateJob(ctx, args, opts)
+	job, err := CreateJobWasm(ctx, args, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	if err := legacy_job.VerifyJob(ctx, j); err != nil {
-		return fmt.Errorf("verifying job: %w", err)
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
+	// TODO(forrest) [refactor]: this options is _almost_ useful. At present it marshals the entire
+	// job spec to yaml, said spec cannot be used with `bacalhau job run` since it contains fields that
+	// users are not permitted to set, like ID, Version, ModifyTime, State, etc.
+	// The solution here is to have a "JobSubmission" type that is different from the actual job spec.
 	if opts.RunTimeSettings.DryRun {
 		// Converting job to yaml
 		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(j)
+		yamlBytes, err = yaml.Marshal(job)
 		if err != nil {
 			return fmt.Errorf("converting job to yaml: %w", err)
 		}
@@ -159,15 +161,32 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	api := util.GetAPIClientV2(cmd)
+	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
-		return fmt.Errorf("executing job: %w", err)
+		return fmt.Errorf("failed to submit job: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	if len(resp.Warnings) > 0 {
+		printWarnings(cmd, resp.Warnings)
+	}
+
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, &opts.RunTimeSettings.RunTimeSettings, api); err != nil {
+		return fmt.Errorf("failed to print job execution: %w", err)
+	}
+
+	return nil
 }
 
-func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
+// TODO(forrest) [refactor]: dedupe from docker_run
+func printWarnings(cmd *cobra.Command, warnings []string) {
+	cmd.Println("Warnings:")
+	for _, warning := range warnings {
+		cmd.Printf("\t* %s\n", warning)
+	}
+}
+
+func CreateJobWasm(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*models.Job, error) {
 	parameters := cmdArgs[1:]
 
 	entryModule, err := parseWasmEntryModule(ctx, cmdArgs[0])
@@ -175,75 +194,87 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, err
 	}
 
-	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeSelectorRequirements, err := parse.NodeSelector(opts.SpecSettings.Selector)
-	if err != nil {
-		return nil, err
-	}
-
-	labels, err := parse.Labels(ctx, opts.SpecSettings.Labels)
-	if err != nil {
-		return nil, err
-	}
-
-	wasmEnvvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
+	envvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
-
-	spec, err := legacy_job.MakeWasmSpec(
-		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		legacy_job.WithResources(
-			opts.ResourceSettings.CPU,
-			opts.ResourceSettings.Memory,
-			opts.ResourceSettings.Disk,
-			opts.ResourceSettings.GPU,
-		),
-		legacy_job.WithNetwork(
-			opts.NetworkingSettings.Network,
-			opts.NetworkingSettings.Domains,
-		),
-		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
-		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		legacy_job.WithOutputs(outputs...),
-		legacy_job.WithAnnotations(labels...),
-		legacy_job.WithNodeSelector(nodeSelectorRequirements),
-		legacy_job.WithDeal(
-			opts.DealSettings.TargetingMode,
-			opts.DealSettings.Concurrency,
-		),
-	)
+	engineSpec, err := models.WasmSpecBuilder(&models.InputSource{
+		Source: entryModule,
+		Alias:  "TODO",
+		Target: "TODO",
+	}).
+		WithEntrypoint(opts.Entrypoint).
+		WithParameters(parameters...).
+		WithEnvironmentVariables(envvar).
+		WithImportModules(opts.ImportModules...).
+		Build()
 	if err != nil {
 		return nil, err
 	}
 
-	// Publisher is now optional
-	p := opts.SpecSettings.Publisher.Value()
-	if p != nil {
-		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = *p
+	// TODO(forrest) [refactor]: this logic is duplicated in docker_run
+	resultPaths := make([]*models.ResultPath, 0, len(opts.SpecSettings.OutputVolumes))
+	for name, path := range opts.SpecSettings.OutputVolumes {
+		resultPaths = append(resultPaths, &models.ResultPath{
+			Name: name,
+			Path: path,
+		})
 	}
 
-	return &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-		Spec:       spec,
-	}, nil
+	task, err := models.NewTaskBuilder().
+		Name("TODO").
+		Engine(engineSpec).
+		Publisher(opts.SpecSettings.Publisher.Value()).
+		ResourcesConfig(&models.ResourcesConfig{
+			CPU:    opts.ResourceSettings.CPU,
+			Memory: opts.ResourceSettings.Memory,
+			Disk:   opts.ResourceSettings.Disk,
+			GPU:    opts.ResourceSettings.GPU,
+		}).
+		InputSources(opts.SpecSettings.Inputs.Values()...).
+		ResultPaths(resultPaths...).
+		Network(&models.NetworkConfig{
+			Type:    opts.NetworkingSettings.Network,
+			Domains: opts.NetworkingSettings.Domains,
+		}).
+		Timeouts(&models.TimeoutConfig{ExecutionTimeout: opts.SpecSettings.Timeout}).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create job: %w", err)
+	}
+
+	labels, err := parse.StringSliceToMap(opts.SpecSettings.Labels)
+	if err != nil {
+		return nil, fmt.Errorf("parseing job labels: %w", err)
+	}
+
+	constraints, err := parse.NodeSelector(opts.SpecSettings.Selector)
+	if err != nil {
+		return nil, fmt.Errorf("parseing job contstrints: %w", err)
+	}
+	job := &models.Job{
+		Name:        "TODO",
+		Namespace:   "TODO",
+		Type:        models.JobTypeBatch,
+		Priority:    0,
+		Count:       opts.DealSettings.Concurrency,
+		Constraints: constraints,
+		Labels:      labels,
+		Tasks:       []*models.Task{task},
+	}
+
+	return job, nil
 }
 
-func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {
+func parseWasmEntryModule(ctx context.Context, in string) (*models.SpecConfig, error) {
+	// TODO(forrest) [refactor]: we need to remove this "feature" of pulling from ipfs.
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(in)
 	if err == nil {
 		// It is a valid CID – proceed to create IPFS context.
 		// TODO(forrest): doesn't this require a name?
-		return &model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           wasmCid.String(),
-		}, nil
+		return models.NewSpecConfig(models.StorageSourceIPFS).
+			WithParam("cid", wasmCid.String()), nil
 	}
 	// Try interpreting this as a path.
 	info, err := os.Stat(in)
@@ -268,11 +299,7 @@ func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, e
 	if err != nil {
 		return nil, err
 	}
-	legacyInlineData, err := legacy.ToLegacyStorageSpec(&inlineData)
-	if err != nil {
-		return nil, err
-	}
-	return &legacyInlineData, nil
+	return &inlineData, nil
 }
 
 func newValidateCmd() *cobra.Command {

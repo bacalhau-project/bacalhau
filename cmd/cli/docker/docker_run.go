@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -15,9 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -61,10 +60,6 @@ type DockerRunOptions struct {
 	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
 
 }
-
-const (
-	DefaultDockerRunWaitSeconds = 600
-)
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
@@ -139,17 +134,30 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 
 	image := cmdArgs[0]
 	parameters := cmdArgs[1:]
-	j, err := CreateJob(ctx, image, parameters, opts)
+	job, err := CreateJobDocker(image, parameters, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	if err := legacy_job.VerifyJob(ctx, j); err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", image)
-		} else {
-			return fmt.Errorf("verifying job: %s", err)
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
+	}
+
+	// TODO(forrest) [refactor]: this options is _almost_ useful. At present it marshals the entire
+	// job spec to yaml, said spec cannot be used with `bacalhau job run` since it contains fields that
+	// users are not permitted to set, like ID, Version, ModifyTime, State, etc.
+	// The solution here is to have a "JobSubmission" type that is different from the actual job spec.
+	if opts.RunTimeSettings.DryRun {
+		// Converting job to yaml
+		var yamlBytes []byte
+		yamlBytes, err = yaml.Marshal(job)
+		if err != nil {
+			return fmt.Errorf("converting job to yaml: %w", err)
 		}
+		cmd.Print(string(yamlBytes))
+		return nil
 	}
 
 	quiet := opts.RunTimeSettings.PrintJobIDOnly
@@ -160,80 +168,93 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		}
 	}
 
-	if opts.RunTimeSettings.DryRun {
-		// Converting job to yaml
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(j)
-		if err != nil {
-			return fmt.Errorf("converting job to yaml: %w", err)
-		}
-		cmd.Print(string(yamlBytes))
-		return nil
-	}
-
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	api := util.GetAPIClientV2(cmd)
+	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to submit job: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	if len(resp.Warnings) > 0 {
+		printWarnings(cmd, resp.Warnings)
+	}
+
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, &opts.RunTimeSettings.RunTimeSettings, api); err != nil {
+		return fmt.Errorf("failed to print job execution: %w", err)
+	}
+
+	return nil
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, image string, parameters []string, opts *DockerRunOptions) (*model.Job, error) {
-	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
+// TODO(forrest) [refactor]: dedupe from wasm_run
+func printWarnings(cmd *cobra.Command, warnings []string) {
+	cmd.Println("Warnings:")
+	for _, warning := range warnings {
+		cmd.Printf("\t* %s\n", warning)
+	}
+}
+
+func CreateJobDocker(image string, parameters []string, opts *DockerRunOptions) (*models.Job, error) {
+	engineSpec, err := models.DockerSpecBuilder(image).
+		WithParameters(parameters...).
+		WithWorkingDirectory(opts.WorkingDirectory).
+		WithEntrypoint(opts.Entrypoint...).
+		WithEnvironmentVariables(opts.SpecSettings.EnvVar...).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	nodeSelectorRequirements, err := parse.NodeSelector(opts.SpecSettings.Selector)
+	// TODO(forrest) [refactor]: this logic is duplicated in wasm_run
+	resultPaths := make([]*models.ResultPath, 0, len(opts.SpecSettings.OutputVolumes))
+	for name, path := range opts.SpecSettings.OutputVolumes {
+		resultPaths = append(resultPaths, &models.ResultPath{
+			Name: name,
+			Path: path,
+		})
+	}
+
+	task, err := models.NewTaskBuilder().
+		Name("TODO").
+		Engine(engineSpec).
+		Publisher(opts.SpecSettings.Publisher.Value()).
+		ResourcesConfig(&models.ResourcesConfig{
+			CPU:    opts.ResourceSettings.CPU,
+			Memory: opts.ResourceSettings.Memory,
+			Disk:   opts.ResourceSettings.Disk,
+			GPU:    opts.ResourceSettings.GPU,
+		}).
+		InputSources(opts.SpecSettings.Inputs.Values()...).
+		ResultPaths(resultPaths...).
+		Network(&models.NetworkConfig{
+			Type:    opts.NetworkingSettings.Network,
+			Domains: opts.NetworkingSettings.Domains,
+		}).
+		Timeouts(&models.TimeoutConfig{ExecutionTimeout: opts.SpecSettings.Timeout}).
+		Build()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	labels, err := parse.Labels(ctx, opts.SpecSettings.Labels)
+	labels, err := parse.StringSliceToMap(opts.SpecSettings.Labels)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parseing job labels: %w", err)
 	}
 
-	spec, err := legacy_job.MakeDockerSpec(
-		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
-		legacy_job.WithResources(
-			opts.ResourceSettings.CPU,
-			opts.ResourceSettings.Memory,
-			opts.ResourceSettings.Disk,
-			opts.ResourceSettings.GPU,
-		),
-		legacy_job.WithNetwork(
-			opts.NetworkingSettings.Network,
-			opts.NetworkingSettings.Domains,
-		),
-		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
-		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		legacy_job.WithOutputs(outputs...),
-		legacy_job.WithAnnotations(labels...),
-		legacy_job.WithNodeSelector(nodeSelectorRequirements),
-		legacy_job.WithDeal(
-			opts.DealSettings.TargetingMode,
-			opts.DealSettings.Concurrency,
-		),
-	)
-
-	// Publisher is optional and we won't provide it if not specified
-	p := opts.SpecSettings.Publisher.Value()
-	if p != nil {
-		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = *p
-	}
-
+	constraints, err := parse.NodeSelector(opts.SpecSettings.Selector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parseing job contstrints: %w", err)
+	}
+	job := &models.Job{
+		Name:        "TODO",
+		Namespace:   "TODO",
+		Type:        models.JobTypeBatch,
+		Priority:    0,
+		Count:       opts.DealSettings.Concurrency,
+		Constraints: constraints,
+		Labels:      labels,
+		Tasks:       []*models.Task{task},
 	}
 
-	return &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-		Spec:       spec,
-	}, nil
+	return job, nil
 }
 
 // dockerImageContainsTag checks if the image contains a tag or a digest

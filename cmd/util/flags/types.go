@@ -7,6 +7,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
@@ -200,24 +202,29 @@ func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mod
 	}
 }
 
-func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
+func parseURLStorageSpec(inputURL string) (*models.InputSource, error) {
 	u, err := urldownload.IsURLSupported(inputURL)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return nil, err
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           u.String(),
-		Path:          "/inputs",
+	sc := models.NewSpecConfig(models.StorageSourceURL)
+	sc.WithParam("url", u.String())
+	return &models.InputSource{
+		Source: sc,
+		Alias:  "TODO",
+		Target: "/inputs",
 	}, nil
 }
 
-func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
-		typeStr:  "url",
+func NewURLStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*models.InputSource] {
+	return &ArrayValueFlag[*models.InputSource]{
+		value:  value,
+		parser: parseURLStorageSpec,
+		stringer: func(i **models.InputSource) string {
+			src := (*i).Source
+			return fmt.Sprintf("%s %v", src.Type, src.Params)
+		},
+		typeStr: "url",
 	}
 }
 
@@ -265,11 +272,11 @@ var (
 	StorageSourcesFlag = ArrayValueFlagFrom(StorageSourceFlag)
 )
 
-func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
-	return &ValueFlag[model.Network]{
+func NetworkFlag(value *models.Network) *ValueFlag[models.Network] {
+	return &ValueFlag[models.Network]{
 		value:    value,
-		parser:   model.ParseNetwork,
-		stringer: func(n *model.Network) string { return n.String() },
+		parser:   models.ParseNetwork,
+		stringer: func(n *models.Network) string { return n.String() },
 		typeStr:  "network-type",
 	}
 }

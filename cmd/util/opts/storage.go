@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -15,7 +15,7 @@ import (
 var _ flag.Value = &StorageOpt{}
 
 type StorageOpt struct {
-	values []model.StorageSpec
+	values []*models.InputSource
 }
 
 func (o *StorageOpt) Set(value string) error {
@@ -70,7 +70,9 @@ func (o *StorageOpt) Set(value string) error {
 			return fmt.Errorf("unpexted key %s in field %s", key, field)
 		}
 	}
-	storageSpec, err := legacy_job.ParseStorageString(sourceURI, destination, options)
+	// TODO(forrest) [correctness]: need to allow aliases to be provided over CLI
+	alias := "TODO"
+	storageSpec, err := models.StorageStringToSpecConfig(sourceURI, destination, alias, options)
 	if err != nil {
 		return err
 	}
@@ -85,12 +87,12 @@ func (o *StorageOpt) Type() string {
 func (o *StorageOpt) String() string {
 	storages := make([]string, 0, len(o.values))
 	for _, storage := range o.values {
-		repr := fmt.Sprintf("%s %s %s", storage.StorageSource, storage.Name, storage.Path)
+		repr := fmt.Sprintf("%s %s %s", storage.Source.Type, storage.Alias, storage.Target)
 		storages = append(storages, repr)
 	}
 	return strings.Join(storages, ", ")
 }
 
-func (o *StorageOpt) Values() []model.StorageSpec {
+func (o *StorageOpt) Values() []*models.InputSource {
 	return o.values
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -35,16 +36,16 @@ func Labels(ctx context.Context, labels []string) ([]string, error) {
 	return jobAnnotations, nil
 }
 
-func NodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error) {
+func NodeSelector(nodeSelector string) ([]*models.LabelSelectorRequirement, error) {
 	selector := strings.TrimSpace(nodeSelector)
 	if len(selector) == 0 {
-		return []model.LabelSelectorRequirement{}, nil
+		return nil, nil
 	}
 	requirements, err := labels.ParseToRequirements(selector)
 	if err != nil {
-		return []model.LabelSelectorRequirement{}, fmt.Errorf("failed to parse node selector: %w", err)
+		return nil, fmt.Errorf("failed to parse node selector: %w", err)
 	}
-	return model.ToLabelSelectorRequirements(requirements...), nil
+	return models.ToLabelSelectorRequirements(requirements...), nil
 }
 
 var DefaultOutputSpec = model.StorageSpec{

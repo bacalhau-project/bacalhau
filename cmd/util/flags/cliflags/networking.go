@@ -4,18 +4,18 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func NewDefaultNetworkingFlagSettings() *NetworkingFlagSettings {
 	return &NetworkingFlagSettings{
-		Network: model.NetworkNone,
+		Network: models.NetworkNone,
 		Domains: []string{},
 	}
 }
 
 type NetworkingFlagSettings struct {
-	Network model.Network
+	Network models.Network
 	Domains []string
 }
 

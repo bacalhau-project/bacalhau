@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
@@ -63,10 +64,10 @@ func (r *LabelSelectorRequirement) Validate() error {
 	return mErr
 }
 
-func ToLabelSelectorRequirements(requirements ...labels.Requirement) []LabelSelectorRequirement {
-	var labelSelectorRequirements []LabelSelectorRequirement
+func ToLabelSelectorRequirements(requirements ...labels.Requirement) []*LabelSelectorRequirement {
+	labelSelectorRequirements := make([]*LabelSelectorRequirement, 0, len(requirements))
 	for _, requirement := range requirements {
-		labelSelectorRequirements = append(labelSelectorRequirements, LabelSelectorRequirement{
+		labelSelectorRequirements = append(labelSelectorRequirements, &LabelSelectorRequirement{
 			Key:      requirement.Key(),
 			Operator: requirement.Operator(),
 			Values:   requirement.Values().List(),

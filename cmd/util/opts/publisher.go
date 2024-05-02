@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -14,7 +14,7 @@ import (
 var _ flag.Value = &PublisherOpt{}
 
 type PublisherOpt struct {
-	value *model.PublisherSpec
+	value *models.SpecConfig
 }
 
 func NewPublisherOpt() PublisherOpt {
@@ -57,8 +57,8 @@ func (o *PublisherOpt) Set(value string) error {
 			return fmt.Errorf("invalid publisher option: %s", field)
 		}
 	}
-	v, err := legacy_job.PublisherStringToPublisherSpec(destinationURI, options)
-	o.value = &v
+	v, err := models.PublisherStringToSpecConfig(destinationURI, options)
+	o.value = v
 	return err
 }
 
@@ -70,10 +70,10 @@ func (o *PublisherOpt) String() string {
 	if o.value == nil {
 		return ""
 	}
-	return o.value.Type.String()
+	return o.value.Type
 }
 
-func (o *PublisherOpt) Value() *model.PublisherSpec {
+func (o *PublisherOpt) Value() *models.SpecConfig {
 	if o.value == nil {
 		return nil
 	}

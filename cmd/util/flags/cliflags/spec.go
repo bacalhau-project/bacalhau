@@ -23,7 +23,7 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 	return &SpecFlagSettings{
 		Publisher:     opts.NewPublisherOpt(),
 		Inputs:        opts.StorageOpt{},
-		OutputVolumes: []string{"outputs:/outputs"},
+		OutputVolumes: map[string]string{},
 		EnvVar:        []string{},
 		Timeout:       int64(model.DefaultJobTimeout.Seconds()),
 		Labels:        []string{},
@@ -35,7 +35,7 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 type SpecFlagSettings struct {
 	Publisher     opts.PublisherOpt // Publisher - publisher.Publisher
 	Inputs        opts.StorageOpt   // Array of inputs
-	OutputVolumes []string          // Array of output volumes in 'name:mount point' form
+	OutputVolumes map[string]string // Map of output volumes in 'name:mount point' form
 	EnvVar        []string          // Array of environment variables
 	Timeout       int64             // Job execution timeout in seconds
 	Labels        []string          // Labels for the job on the Bacalhau network (for searching)
@@ -57,13 +57,13 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		"i",
 		InputUsageMsg,
 	)
-	flags.StringSliceVarP(
+	flags.StringToStringVarP(
 		&settings.OutputVolumes,
 		"output",
 		"o",
 		settings.OutputVolumes,
-		`name:path of the output data volumes. `+
-			`'outputs:/outputs' is always added unless '/outputs' is mapped to a different name.`,
+		`name=path of the output data volumes. `+
+			`'outputs=/outputs' is always added unless '/outputs' is mapped to a different name.`,
 	)
 	flags.StringSliceVarP(
 		&settings.EnvVar,

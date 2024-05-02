@@ -1,10 +1,11 @@
 package utils
 
 import (
-	wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+
+	wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // AllInputSources returns all storage types used by the job spec.
@@ -17,6 +18,8 @@ func AllInputSources(job *models.Job) []*models.InputSource {
 		if task.Engine.Type == models.EngineWasm {
 			wasmEngineSpec, err := wasm.DecodeSpec(task.Engine)
 			if err != nil {
+				// TODO(forrest) [refactor]: using %v here can result in very large outputs
+				// since with wasm it is common to inline the endrymodule as a URL.
 				log.Error().Err(err).Msgf("failed to decode wasm engine spec %+v", task.Engine)
 				continue
 			}
