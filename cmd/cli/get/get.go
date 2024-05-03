@@ -36,18 +36,18 @@ type GetOptions struct {
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		//DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
+		DownloadSettings: cliflags.DefaultDownloaderSettings(),
 	}
 }
 
 func NewCmd() *cobra.Command {
-	OG := NewGetOptions()
+	opts := NewGetOptions()
 
 	getFlags := map[string][]configflags.Definition{
 		"ipfs": configflags.IPFSFlags,
 	}
 
-	getCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:      "get [id]",
 		Short:    "Get the results of a job",
 		Long:     getLong,
@@ -56,17 +56,17 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(getFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return get(cmd, cmdArgs, OG)
+			return get(cmd, cmdArgs, opts)
 		},
 	}
 
-	//getCmd.PersistentFlags().AddFlagSet(cliflags.RegisterDownloadFlags(OG.DownloadSettings))
+	cliflags.RegisterDownloadFlags(cmd, opts.DownloadSettings)
 
-	if err := configflags.RegisterFlags(getCmd, getFlags); err != nil {
-		util.Fatal(getCmd, err, 1)
+	if err := configflags.RegisterFlags(cmd, getFlags); err != nil {
+		util.Fatal(cmd, err, 1)
 	}
 
-	return getCmd
+	return cmd
 }
 
 func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
