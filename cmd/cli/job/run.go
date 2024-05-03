@@ -48,7 +48,7 @@ type RunOptions struct {
 
 func NewRunOptions() *RunOptions {
 	return &RunOptions{
-		RunTimeSettings: cliflags.DefaultRunTimeSettings(),
+		//RunTimeSettings: cliflags.DefaultRunTimeSettings(),
 	}
 }
 
@@ -64,7 +64,7 @@ func NewRunCmd() *cobra.Command {
 		RunE:    o.run,
 	}
 
-	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
+	//runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
 	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
 	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
 		"Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements")

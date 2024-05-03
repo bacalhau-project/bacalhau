@@ -41,25 +41,25 @@ var (
 )
 
 type CreateOptions struct {
-	Filename        string                                // Filename for job (can be .json or .yaml)
-	Concurrency     int                                   // Number of concurrent jobs to run
-	RunTimeSettings *cliflags.RunTimeSettingsWithDownload // Run time settings for execution (e.g. wait, get, etc after submission)
-	DownloadFlags   *cliflags.DownloaderSettings          // Settings for running Download
+	Filename         string                       // Filename for job (can be .json or .yaml)
+	Concurrency      int                          // Number of concurrent jobs to run
+	RunTimeSettings  *cliflags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadSettings *cliflags.DownloaderSettings // Settings for running Download
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
-		Filename:        "",
-		Concurrency:     1,
-		DownloadFlags:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings: cliflags.DefaultRunTimeSettingsWithDownload(),
+		Filename:         "",
+		Concurrency:      1,
+		DownloadSettings: cliflags.DefaultDownloaderSettings(),
+		RunTimeSettings:  cliflags.DefaultRunTimeSettings(),
 	}
 }
 
 func NewCmd() *cobra.Command {
-	OC := NewCreateOptions()
+	opts := NewCreateOptions()
 
-	createCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:      "create",
 		Short:    "Create a job using a json or yaml file.",
 		Long:     createLong,
@@ -68,14 +68,14 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return create(cmd, cmdArgs, OC)
+			return create(cmd, cmdArgs, opts)
 		},
 	}
 
-	createCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(OC.DownloadFlags))
-	createCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(OC.RunTimeSettings))
+	cliflags.RegisterDownloadFlags(cmd, opts.DownloadSettings)
+	cliflags.RegisterRunTimeFlags(cmd, opts.RunTimeSettings)
 
-	return createCmd
+	return cmd
 }
 
 func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
@@ -225,15 +225,12 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx,
-		j,
-		OC.RunTimeSettings,
-	)
+	executingJob, err := util.ExecuteJob(ctx, j)
 	if err != nil {
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx))
+	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadSettings, OC.RunTimeSettings, util.GetAPIClient(ctx))
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -17,6 +18,24 @@ type SpecConfig struct {
 
 	// Params is a map of the config params
 	Params map[string]interface{} `json:"Params,omitempty"`
+}
+
+// DecodeSpecConfig is a generic function that accepts an SpecConfig object.
+// It marshals the SpecConfig Params into JSON and then unmarshal the JSON into a new object of type T.
+// The function returns a pointer to the new object and an error object.
+// If there is any issue during the JSON marshaling or unmarshalling, the function will return an error.
+// TODO the double json marshaling here is inefficient, we can implement explicit per field decoding if required.
+func DecodeSpecConfig[T any](spec *SpecConfig) (*T, error) {
+	params, err := json.Marshal(spec.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	out := new(T)
+	if err := json.Unmarshal(params, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *SpecConfig) MarshalZerologObject(e *zerolog.Event) {

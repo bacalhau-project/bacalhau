@@ -1,6 +1,11 @@
 package cliflags
 
-import "github.com/spf13/pflag"
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
+
+const DefaultRunWaitSeconds = 600
 
 func DefaultRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
@@ -19,25 +24,41 @@ type RunTimeSettings struct {
 	PrintNodeDetails      bool
 	Follow                bool // Follow along with the output of the job
 	DryRun                bool // iff true do not submit the job, but instead print out what will be submitted.
+	AutoDownloadResults   bool // Automatically download the results after finishing
 }
 
-const DefaultRunWaitSeconds = 600
-
-func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
-	flags.BoolVar(&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+func RegisterRunTimeFlags(cmd *cobra.Command, s *RunTimeSettings) {
+	fs := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
+	fs.BoolVar(&s.WaitForJobToFinish, "wait", s.WaitForJobToFinish,
 		`Wait for the job to finish. Use --wait=false to return as soon as the job is submitted.`)
-	flags.IntVar(&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+
+	fs.IntVar(&s.WaitForJobTimeoutSecs, "wait-timeout-secs", s.WaitForJobTimeoutSecs,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
-	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
+
+	fs.BoolVar(&s.PrintJobIDOnly, "id-only", s.PrintJobIDOnly,
 		`Print out only the Job ID on successful submission.`)
-	flags.BoolVar(&settings.PrintNodeDetails, "node-details", settings.PrintNodeDetails,
+
+	fs.BoolVar(&s.PrintNodeDetails, "node-details", s.PrintNodeDetails,
 		`Print out details of all nodes (overridden by --id-only).`)
-	flags.BoolVarP(&settings.Follow, "follow", "f", settings.Follow,
+
+	fs.BoolVarP(&s.Follow, "follow", "f", s.Follow,
 		`When specified will follow the output from the job as it runs`)
-	flags.BoolVar(
-		&settings.DryRun, "dry-run", settings.DryRun,
+
+	fs.BoolVar(&s.DryRun, "dry-run", s.DryRun,
 		`Do not submit the job, but instead print out what will be submitted`)
 
-	return flags
+	fs.BoolVar(&s.AutoDownloadResults, "download", s.AutoDownloadResults,
+		`Download the job once it completes`)
+
+	cmd.Flags().AddFlagSet(fs)
+
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "wait")
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "wait-timeout-secs")
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "id-only")
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "node-details")
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "follow")
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "download")
+
+	cmd.MarkFlagsMutuallyExclusive("id-only", "node-details")
+	cmd.MarkFlagsMutuallyExclusive("id-only", "follow")
 }

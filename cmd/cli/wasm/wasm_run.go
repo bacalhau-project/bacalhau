@@ -9,18 +9,18 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -46,28 +46,25 @@ var (
 
 type WasmRunOptions struct {
 	// parameters and entry modules are arguments
-	ImportModules []*models.InputSource
-	Entrypoint    string
+	ImportModules        []*models.InputSource
+	Entrypoint           string
+	EnvironmentVariables []string
 
-	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
-	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
-	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
-	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
-	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
-	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
-
+	JobSettings      *cliflags.JobSettings
+	TaskSettings     *cliflags.TaskSettings
+	RunTimeSettings  *cliflags.RunTimeSettings
+	DownloadSettings *cliflags.DownloaderSettings
 }
 
 func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
-		ImportModules:      make([]*models.InputSource, 0),
-		Entrypoint:         "_start",
-		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
+		ImportModules:        make([]*models.InputSource, 0),
+		Entrypoint:           "_start",
+		EnvironmentVariables: []string{},
+		JobSettings:          cliflags.DefaultJobSettings(),
+		TaskSettings:         cliflags.DefaultTaskSettings(),
+		DownloadSettings:     cliflags.DefaultDownloaderSettings(),
+		RunTimeSettings:      cliflags.DefaultRunTimeSettings(),
 	}
 }
 
@@ -90,11 +87,12 @@ func NewCmd() *cobra.Command {
 func newRunCmd() *cobra.Command {
 	opts := NewWasmOptions()
 
+	// flags with a corresponding config value via env vars, config file
 	wasmRunFlags := map[string][]configflags.Definition{
 		"ipfs": configflags.IPFSFlags,
 	}
 
-	wasmRunCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:      "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:    "Run a WASM job on the network",
 		Long:     wasmRunLong,
@@ -103,63 +101,56 @@ func newRunCmd() *cobra.Command {
 		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, opts)
+			return run(cmd, args, opts)
 		},
 	}
 
-	wasmRunCmd.PersistentFlags().VarP(
-		flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
+	// register config-based flags.
+	if err := configflags.RegisterFlags(cmd, wasmRunFlags); err != nil {
+		util.Fatal(cmd, err, 1)
+	}
+
+	// register common flags.
+	cliflags.RegisterJobFlags(cmd, opts.JobSettings)
+	cliflags.RegisterTaskFlags(cmd, opts.TaskSettings)
+	cliflags.RegisterDownloadFlags(cmd, opts.DownloadSettings)
+	cliflags.RegisterRunTimeFlags(cmd, opts.RunTimeSettings)
+
+	// register flags unique to wasmt.
+	wasmFlags := pflag.NewFlagSet("wasm", pflag.ContinueOnError)
+	wasmFlags.VarP(flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
 		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
 			`the 'wget' command, and supports both HTTP and HTTPS.`,
 	)
-	wasmRunCmd.PersistentFlags().StringVar(
-		&opts.Entrypoint, "entry-point", opts.Entrypoint,
+	wasmFlags.StringVar(&opts.Entrypoint, "entry-point", opts.Entrypoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
+	wasmFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
+		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
-
-	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
-		util.Fatal(wasmRunCmd, err, 1)
-	}
-
-	return wasmRunCmd
+	return cmd
 }
 
-func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
+func run(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
-	job, err := CreateJobWasm(ctx, args, opts)
+	job, err := build(ctx, args, opts)
 	if err != nil {
-		return fmt.Errorf("creating job: %w", err)
+		return err
 	}
 
-	// Normalize and validate the job spec
-	job.Normalize()
-	if err := job.ValidateSubmission(); err != nil {
-		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
-	}
-
-	// TODO(forrest) [refactor]: this options is _almost_ useful. At present it marshals the entire
-	// job spec to yaml, said spec cannot be used with `bacalhau job run` since it contains fields that
-	// users are not permitted to set, like ID, Version, ModifyTime, State, etc.
-	// The solution here is to have a "JobSubmission" type that is different from the actual job spec.
-	if opts.RunTimeSettings.DryRun {
-		// Converting job to yaml
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(job)
-		if err != nil {
-			return fmt.Errorf("converting job to yaml: %w", err)
+	/*
+		if opts.RunTimeSettings.DryRun {
+			out, err := helpers.JobToYaml(job)
+			if err != nil {
+				return err
+			}
+			cmd.Print(out)
+			return nil
 		}
-		cmd.Print(string(yamlBytes))
-		return nil
-	}
+
+	*/
 
 	api := util.GetAPIClientV2(cmd)
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
@@ -168,99 +159,54 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	}
 
 	if len(resp.Warnings) > 0 {
-		printWarnings(cmd, resp.Warnings)
+		helpers.PrintWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, &opts.RunTimeSettings.RunTimeSettings, api); err != nil {
-		return fmt.Errorf("failed to print job execution: %w", err)
-	}
+	/*
+		if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, opts.RunTimeSettings, api); err != nil {
+			return fmt.Errorf("failed to print job execution: %w", err)
+		}
+
+	*/
 
 	return nil
 }
 
-// TODO(forrest) [refactor]: dedupe from docker_run
-func printWarnings(cmd *cobra.Command, warnings []string) {
-	cmd.Println("Warnings:")
-	for _, warning := range warnings {
-		cmd.Printf("\t* %s\n", warning)
-	}
-}
+func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Job, error) {
+	parameters := args[1:]
+	entryModuleStr := args[0]
 
-func CreateJobWasm(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*models.Job, error) {
-	parameters := cmdArgs[1:]
-
-	entryModule, err := parseWasmEntryModule(ctx, cmdArgs[0])
+	entryModule, err := parseWasmEntryModule(ctx, entryModuleStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading entry module: %w", err)
 	}
 
-	envvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
+	envvar, err := parse.StringSliceToMap(opts.EnvironmentVariables)
 	if err != nil {
-		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
+		return nil, fmt.Errorf("parseing environment variables: %w", err)
 	}
 	engineSpec, err := models.WasmSpecBuilder(&models.InputSource{
 		Source: entryModule,
 		Alias:  "TODO",
 		Target: "TODO",
-	}).
-		WithEntrypoint(opts.Entrypoint).
+	}).WithEntrypoint(opts.Entrypoint).
 		WithParameters(parameters...).
 		WithEnvironmentVariables(envvar).
 		WithImportModules(opts.ImportModules...).
 		Build()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("building wasm engine spec: %w", err)
 	}
 
-	// TODO(forrest) [refactor]: this logic is duplicated in docker_run
-	resultPaths := make([]*models.ResultPath, 0, len(opts.SpecSettings.OutputVolumes))
-	for name, path := range opts.SpecSettings.OutputVolumes {
-		resultPaths = append(resultPaths, &models.ResultPath{
-			Name: name,
-			Path: path,
-		})
-	}
-
-	task, err := models.NewTaskBuilder().
-		Name("TODO").
-		Engine(engineSpec).
-		Publisher(opts.SpecSettings.Publisher.Value()).
-		ResourcesConfig(&models.ResourcesConfig{
-			CPU:    opts.ResourceSettings.CPU,
-			Memory: opts.ResourceSettings.Memory,
-			Disk:   opts.ResourceSettings.Disk,
-			GPU:    opts.ResourceSettings.GPU,
-		}).
-		InputSources(opts.SpecSettings.Inputs.Values()...).
-		ResultPaths(resultPaths...).
-		Network(&models.NetworkConfig{
-			Type:    opts.NetworkingSettings.Network,
-			Domains: opts.NetworkingSettings.Domains,
-		}).
-		Timeouts(&models.TimeoutConfig{ExecutionTimeout: opts.SpecSettings.Timeout}).
-		Build()
+	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create job: %w", err)
+		return nil, fmt.Errorf("building job spec: %w", err)
 	}
 
-	labels, err := parse.StringSliceToMap(opts.SpecSettings.Labels)
-	if err != nil {
-		return nil, fmt.Errorf("parseing job labels: %w", err)
-	}
-
-	constraints, err := parse.NodeSelector(opts.SpecSettings.Selector)
-	if err != nil {
-		return nil, fmt.Errorf("parseing job contstrints: %w", err)
-	}
-	job := &models.Job{
-		Name:        "TODO",
-		Namespace:   "TODO",
-		Type:        models.JobTypeBatch,
-		Priority:    0,
-		Count:       opts.DealSettings.Concurrency,
-		Constraints: constraints,
-		Labels:      labels,
-		Tasks:       []*models.Task{task},
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
 	return job, nil

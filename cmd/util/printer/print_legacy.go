@@ -9,14 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -42,7 +43,7 @@ func PrintJobExecutionLegacy(
 	j *model.Job,
 	cmd *cobra.Command,
 	downloadSettings *cliflags.DownloaderSettings,
-	runtimeSettings *cliflags.RunTimeSettingsWithDownload,
+	runtimeSettings *cliflags.RunTimeSettings,
 	client *client.APIClient,
 ) error {
 	// if we are in --wait=false - print the id then exit

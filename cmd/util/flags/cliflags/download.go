@@ -3,11 +3,13 @@ package cliflags
 import (
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 )
 
-func NewDefaultDownloaderSettings() *DownloaderSettings {
+func DefaultDownloaderSettings() *DownloaderSettings {
 	return &DownloaderSettings{
 		Timeout: downloader.DefaultDownloadTimeout,
 		// we leave this blank so the CLI will auto-create a job folder in pwd
@@ -23,13 +25,14 @@ type DownloaderSettings struct {
 	Raw        bool
 }
 
-func NewDownloadFlags(settings *DownloaderSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Download flags", pflag.ContinueOnError)
-	flags.BoolVar(&settings.Raw, "raw",
-		settings.Raw, "Download raw result CIDs instead of merging multiple CIDs into a single result")
-	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
-		settings.Timeout, "Timeout duration for IPFS downloads.")
-	flags.StringVar(&settings.OutputDir, "output-dir",
-		settings.OutputDir, "Directory to write the output to.")
-	return flags
+func RegisterDownloadFlags(cmd *cobra.Command, s *DownloaderSettings) {
+	fs := pflag.NewFlagSet("Download flags", pflag.ContinueOnError)
+	fs.BoolVar(&s.Raw, "raw", s.Raw,
+		"Download raw result CIDs instead of merging multiple CIDs into a single result")
+	fs.DurationVar(&s.Timeout, "download-timeout-secs", s.Timeout,
+		"Timeout duration for IPFS downloads.")
+	fs.StringVar(&s.OutputDir, "output-dir", s.OutputDir,
+		"Directory to write the output to.")
+
+	cmd.Flags().AddFlagSet(fs)
 }

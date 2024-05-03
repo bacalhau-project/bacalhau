@@ -36,7 +36,7 @@ type GetOptions struct {
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
+		//DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
 	}
 }
 
@@ -60,7 +60,7 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
+	//getCmd.PersistentFlags().AddFlagSet(cliflags.RegisterDownloadFlags(OG.DownloadSettings))
 
 	if err := configflags.RegisterFlags(getCmd, getFlags); err != nil {
 		util.Fatal(getCmd, err, 1)

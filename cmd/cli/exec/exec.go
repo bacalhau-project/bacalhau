@@ -52,14 +52,17 @@ Supported job types:
 )
 
 type ExecOptions struct {
-	SpecSettings    *cliflags.SpecFlagSettings
+	Code string
+
+	JobSettings     *cliflags.JobSettings
+	TaskSettings    *cliflags.TaskSettings
 	RunTimeSettings *cliflags.RunTimeSettings
-	Code            string
 }
 
 func NewExecOptions() *ExecOptions {
 	return &ExecOptions{
-		SpecSettings:    cliflags.NewSpecFlagDefaultSettings(),
+		JobSettings:     cliflags.DefaultJobSettings(),
+		TaskSettings:    cliflags.DefaultTaskSettings(),
 		RunTimeSettings: cliflags.DefaultRunTimeSettings(),
 	}
 }
@@ -70,7 +73,7 @@ func NewCmd() *cobra.Command {
 }
 
 func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
-	execCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:                "exec [jobtype]",
 		Short:              "Execute a specific job type",
 		Long:               getLong,
@@ -89,11 +92,15 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 		},
 	}
 
-	execCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(options.SpecSettings))
-	execCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(options.RunTimeSettings))
-	execCmd.Flags().StringVar(&options.Code, "code", "", "Specifies the file, or directory of code to send with the request")
+	// register common flags.
+	cliflags.RegisterJobFlags(cmd, options.JobSettings)
+	cliflags.RegisterTaskFlags(cmd, options.TaskSettings)
+	cliflags.RegisterRunTimeFlags(cmd, options.RunTimeSettings)
 
-	return execCmd
+	// register exec specific flags
+	cmd.Flags().StringVar(&options.Code, "code", "", "Specifies the file, or directory of code to send with the request")
+
+	return cmd
 }
 
 func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *ExecOptions) error {
@@ -201,7 +208,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	job.Tasks[0].Engine.Params["Arguments"] = cmdArgs[1:]
 
 	// Attach any inputs the user specified to the job spec
-	job.Tasks[0].InputSources = options.SpecSettings.Inputs.Values()
+	job.Tasks[0].InputSources = options.TaskSettings.InputSources.Values()
 
 	// Process --code if anything was specified. In future we may want to try and determine this
 	// ourselves where it is not specified, but it will likely be dependent on job type.
@@ -211,7 +218,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		}
 	}
 
-	publisherSpec := options.SpecSettings.Publisher.Value()
+	publisherSpec := options.TaskSettings.Publisher.Value()
 	if publisherSpec != nil {
 		job.Tasks[0].Publisher = &models.SpecConfig{
 			Type:   publisherSpec.Type,
@@ -219,15 +226,12 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		}
 	}
 
-	// Handle ResultPaths by using the legacy parser and converting.
-	if err := prepareJobOutputs(cmd.Context(), options, job); err != nil {
+	// Handle ResultPaths
+	if err := prepareJobOutputs(options, job); err != nil {
 		return nil, err
 	}
 
-	// Parse labels from flag, we expect key=value for the non-legacy models.Job
-	if err := prepareLabels(options, job); err != nil {
-		return nil, err
-	}
+	job.Labels = options.JobSettings.Labels
 
 	// Constraints for node selection
 	if err := prepareConstraints(options, job); err != nil {
@@ -235,13 +239,11 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	}
 
 	// Environment variables
-	if err := prepareEnvVars(options, job); err != nil {
-		return nil, err
-	}
+	job.Tasks[0].Env = options.TaskSettings.EnvironmentVariables
 
 	// Set the execution timeouts
 	job.Tasks[0].Timeouts = &models.TimeoutConfig{
-		ExecutionTimeout: options.SpecSettings.Timeout,
+		ExecutionTimeout: options.TaskSettings.Timeout,
 	}
 
 	// Unsupported in new job specifications (models.Job)
@@ -251,7 +253,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 }
 
 func prepareConstraints(options *ExecOptions, job *models.Job) error {
-	if nodeSelectorRequirements, err := parse.NodeSelector(options.SpecSettings.Selector); err != nil {
+	if nodeSelectorRequirements, err := parse.NodeSelector(options.JobSettings.Constraints); err != nil {
 		return err
 	} else {
 		if err != nil {
@@ -263,71 +265,15 @@ func prepareConstraints(options *ExecOptions, job *models.Job) error {
 	return nil
 }
 
-func prepareLabels(options *ExecOptions, job *models.Job) error {
-	if len(options.SpecSettings.Labels) > 0 {
-		if labels, err := parse.StringSliceToMap(options.SpecSettings.Labels); err != nil {
-			return err
-		} else {
-			job.Labels = labels
-		}
-	}
-	return nil
-}
-
-func prepareEnvVars(options *ExecOptions, job *models.Job) error {
-	if len(options.SpecSettings.EnvVar) > 0 {
-		if env, err := parse.StringSliceToMap(options.SpecSettings.EnvVar); err != nil {
-			return err
-		} else {
-			job.Tasks[0].Env = env
-		}
-	}
-	return nil
-}
-
-func prepareJobOutputs(ctx context.Context, options *ExecOptions, job *models.Job) error {
-	resultPaths := make([]*models.ResultPath, 0, len(options.SpecSettings.OutputVolumes))
-	for name, path := range options.SpecSettings.OutputVolumes {
+func prepareJobOutputs(options *ExecOptions, job *models.Job) error {
+	resultPaths := make([]*models.ResultPath, 0, len(options.TaskSettings.ResultPaths))
+	for name, path := range options.TaskSettings.ResultPaths {
 		resultPaths = append(resultPaths, &models.ResultPath{
 			Name: name,
 			Path: path,
 		})
 	}
 	job.Tasks[0].ResultPaths = resultPaths
-	/*
-		legacyOutputs, err := parse.JobOutputs(ctx, options.SpecSettings.OutputVolumes)
-		if err != nil {
-			return err
-		}
-
-		if len(legacyOutputs) == 0 {
-			return nil
-		}
-
-		// If we only have the single legacy default output then we will only use it if we have a publisher
-		// configured. If no publisher then we can just return early.
-		if len(legacyOutputs) == 1 && legacyOutputs[0].Name == "outputs" && legacyOutputs[0].Path == "/outputs" {
-			if job.Tasks[0].Publisher == nil {
-				return nil
-			}
-		}
-
-		job.Tasks[0].ResultPaths = make([]*models.ResultPath, 0, len(legacyOutputs))
-		for _, output := range legacyOutputs {
-			rp := &models.ResultPath{
-				Name: output.Name,
-				Path: output.Path,
-			}
-
-			e := rp.Validate()
-			if e != nil {
-				return e
-			}
-
-			job.Tasks[0].ResultPaths = append(job.Tasks[0].ResultPaths, rp)
-		}
-
-	*/
 
 	return nil
 }
