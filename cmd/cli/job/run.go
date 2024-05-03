@@ -48,14 +48,14 @@ type RunOptions struct {
 
 func NewRunOptions() *RunOptions {
 	return &RunOptions{
-		//RunTimeSettings: cliflags.DefaultRunTimeSettings(),
+		RunTimeSettings: cliflags.DefaultRunTimeSettings(),
 	}
 }
 
 func NewRunCmd() *cobra.Command {
 	o := NewRunOptions()
 
-	runCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "run",
 		Short:   "Run a job using a json or yaml file.",
 		Long:    runLong,
@@ -64,17 +64,18 @@ func NewRunCmd() *cobra.Command {
 		RunE:    o.run,
 	}
 
-	//runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
-	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
-	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
+	cliflags.RegisterRunTimeFlags(cmd, o.RunTimeSettings)
+
+	cmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
+	cmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
 		"Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements")
-	runCmd.Flags().StringToStringVarP(&o.TemplateVars, "template-vars", "V", nil,
+	cmd.Flags().StringToStringVarP(&o.TemplateVars, "template-vars", "V", nil,
 		"Replace a placeholder in the job spec with a value. e.g. --template-vars foo=bar")
-	runCmd.Flags().StringVarP(&o.TemplateEnvVarsPattern, "template-envs", "E", "",
+	cmd.Flags().StringVarP(&o.TemplateEnvVarsPattern, "template-envs", "E", "",
 		"Specify a regular expression pattern for selecting environment variables to be included as template variables in the job spec."+
 			"\ne.g. --template-envs \".*\" will include all environment variables.")
 
-	return runCmd
+	return cmd
 }
 
 func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
