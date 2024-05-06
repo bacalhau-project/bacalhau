@@ -74,9 +74,23 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		return err
 	}
 
+	// keep track or existing failed executions, and those that will be marked as failed
+	allFailedExecs := existingExecs.filterFailed()
+
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
+	allFailedExecs = allFailedExecs.union(lost)
+
+	// Mark executions that have exceeded their execution timeout as failed
+	// Only applicable for batch jobs and not service jobs.
+	if !job.IsLongRunning() {
+		timeout := job.Task().Timeouts.GetExecutionTimeout()
+		var timedOut execSet
+		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(timeout)
+		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+		allFailedExecs = allFailedExecs.union(timedOut)
+	}
 
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
@@ -95,16 +109,15 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
 	if remainingExecutionCount > 0 {
-		allFailed := existingExecs.filterFailed().union(lost)
 		var placementErr error
-		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
+		if len(allFailedExecs) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
 			plan.Event = orchestrator.JobExhaustedRetriesEvent()
 		} else {
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
 		if placementErr != nil {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
+			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		}
 	}

@@ -1,14 +1,16 @@
 package orchestrator
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
-	EventTopicJobSubmission models.EventTopic = "Submission"
-	EventTopicJobScheduling models.EventTopic = "Scheduling"
+	EventTopicJobSubmission    models.EventTopic = "Submission"
+	EventTopicJobScheduling    models.EventTopic = "Scheduling"
+	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
 )
 
 const (
@@ -23,6 +25,9 @@ const (
 	execStoppedByOversubscriptionMessage = "Execution stop requested because there are more executions than needed"
 	execRejectedByNodeMessage            = "Node responded to execution run request"
 	execFailedMessage                    = "Execution did not complete successfully"
+
+	executionTimeoutMessage = "Execution timed out"
+	executionTimeoutHint    = "Try increasing the task timeout or reducing the task size"
 )
 
 func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
@@ -61,6 +66,14 @@ func ExecStoppedByJobStopEvent() models.Event {
 
 func ExecStoppedByNodeUnhealthyEvent() models.Event {
 	return event(EventTopicJobScheduling, execStoppedByNodeUnhealthyMessage, map[string]string{})
+}
+
+func ExecStoppedByExecutionTimeoutEvent(timeout time.Duration) models.Event {
+	e := models.NewEvent(EventTopicExecutionTimeout).
+		WithErrorMessage(fmt.Sprintf("%s. Execution took longer than %s", executionTimeoutMessage, timeout)).
+		WithHint(executionTimeoutHint).
+		WithFailsExecution(true)
+	return *e
 }
 
 func ExecStoppedByNodeRejectedEvent() models.Event {

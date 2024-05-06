@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
@@ -134,6 +135,20 @@ func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (he
 		}
 	}
 	return healthy, lost
+}
+
+// filterByExecutionTimeout partitions executions based on their timeout status.
+func (set execSet) filterByExecutionTimeout(timeout time.Duration) (remaining, timedOut execSet) {
+	remaining = make(execSet)
+	timedOut = make(execSet)
+	for _, exec := range set {
+		if exec.HasExecutionExpired(timeout) {
+			timedOut[exec.ID] = exec
+		} else {
+			remaining[exec.ID] = exec
+		}
+	}
+	return remaining, timedOut
 }
 
 // executionsByApprovalStatus represents the different sets of executions based on their approval status.

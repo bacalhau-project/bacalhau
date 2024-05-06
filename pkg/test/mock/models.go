@@ -79,6 +79,7 @@ func Execution() *models.Execution {
 }
 
 func ExecutionForJob(job *models.Job) *models.Execution {
+	now := time.Now().UTC().UnixNano()
 	execution := &models.Execution{
 		JobID:     job.ID,
 		Job:       job,
@@ -91,6 +92,8 @@ func ExecutionForJob(job *models.Job) *models.Execution {
 		DesiredState: models.State[models.ExecutionDesiredStateType]{
 			StateType: models.ExecutionDesiredStatePending,
 		},
+		CreateTime: now,
+		ModifyTime: now,
 	}
 	execution.Normalize()
 	if err := execution.Validate(); err != nil {

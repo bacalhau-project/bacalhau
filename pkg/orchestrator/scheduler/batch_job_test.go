@@ -5,6 +5,7 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -294,6 +295,41 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: evaluation,
 		JobState:   models.JobStateTypeFailed,
+		StoppedExecutions: []string{
+			executions[execAskForBid].ID,
+			executions[execBidAccepted].ID,
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
+	ctx := context.Background()
+	job, executions, evaluation := mockJob()
+	// Set the job type to batch and the timeout to 60 minutes
+	job.Task().Timeouts.ExecutionTimeout = int64((60 * time.Minute).Seconds())
+	// Set the start time of the executions to exceed the timeout
+	for i := range executions {
+		executions[i].ModifyTime = time.Now().Add(-90 * time.Minute).UnixNano()
+	}
+	// override the first execution to be running as well to time it out
+	executions[execAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
+
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+
+	// mock active executions' nodes to be healthy
+	nodeInfos := []models.NodeInfo{
+		*fakeNodeInfo(s.T(), executions[execAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execBidAccepted].NodeID),
+	}
+	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+	s.mockNodeSelection(job, nodeInfos, 2)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation:         evaluation,
+		NewExecutionsNodes: []string{nodeInfos[0].ID(), nodeInfos[1].ID()},
 		StoppedExecutions: []string{
 			executions[execAskForBid].ID,
 			executions[execBidAccepted].ID,

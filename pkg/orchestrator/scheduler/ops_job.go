@@ -69,28 +69,35 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		return err
 	}
 
+	// keep track or existing failed executions, and those that will be marked as failed
+	allFailedExecs := existingExecs.filterFailed()
+
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
+	allFailedExecs = allFailedExecs.union(lost)
 
-	allFailed := existingExecs.filterFailed().union(lost)
+	// Mark executions that have exceeded their execution timeout as failed
+	timeout := job.Task().Timeouts.GetExecutionTimeout()
+	nonTerminalExecs, timedOut := nonTerminalExecs.filterByExecutionTimeout(timeout)
+	timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+	allFailedExecs = allFailedExecs.union(timedOut)
 
-	// Look for matching nodes and create new executions if:
-	// - Ops jobs: this is the first time we are evaluating the job
-	// - Daemon jobs: every time the job is evaluated
+	// Look for matching nodes and create new executions if this is
+	// the first time we are evaluating the job
 	var newExecs execSet
-	if job.Type == models.JobTypeDaemon || len(existingExecs) == 0 {
+	if len(existingExecs) == 0 {
 		newExecs, err = b.createMissingExecs(ctx, &job, plan)
 		if err != nil {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, err)
+			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, err)
 			return b.planner.Process(ctx, plan)
 		}
 	}
 
 	// mark job as completed if there are no more active or new executions
 	if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
-		if len(allFailed) > 0 {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, errors.New(""))
+		if len(allFailedExecs) > 0 {
+			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, errors.New(""))
 		} else {
 			plan.MarkJobCompleted()
 		}

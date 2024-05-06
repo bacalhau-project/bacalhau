@@ -21,6 +21,7 @@ type RequesterConfigParams struct {
 	JobDefaults transformer.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
+	HousekeepingTimeoutBuffer          time.Duration
 	NodeRankRandomnessRange            int
 	OverAskForBidsFactor               uint
 	JobSelectionPolicy                 JobSelectionPolicy

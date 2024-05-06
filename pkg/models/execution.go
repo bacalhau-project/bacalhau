@@ -135,6 +135,12 @@ func (e *Execution) GetModifyTime() time.Time {
 	return time.Unix(0, e.ModifyTime).UTC()
 }
 
+// HasExecutionExpired returns true if the execution has been running longer than
+// the provided timeout duration.
+func (e *Execution) HasExecutionExpired(timeout time.Duration) bool {
+	return e.ComputeState.StateType == ExecutionStateBidAccepted && time.Since(e.GetModifyTime()) > timeout
+}
+
 // Normalize Allocation to ensure fields are initialized to the expectations
 // of this version of Bacalhau. Should be called when restoring persisted
 // Executions or receiving Executions from Bacalhau clients potentially on an
