@@ -2,6 +2,7 @@ package urldownload
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -26,9 +27,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+var (
+	ErrNoContentLengthFound = errors.New("content-length not provided by the server")
+)
+
 // StorageProvider downloads data on request from a URL to a local
 // directory.
-
 type StorageProvider struct {
 	client *retryablehttp.Client
 }
@@ -75,9 +79,39 @@ func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
-	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-	return 0, nil
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.InputSource) (uint64, error) {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return 0, err
+	}
+
+	u, err := IsURLSupported(source.URL)
+	if err != nil {
+		return 0, err
+	}
+
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodHead, u.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := sp.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer closer.DrainAndCloseWithLogOnError(ctx, "response", res.Body)
+
+	if res.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("received non-OK response code %d while fetching size of file download", res.StatusCode)
+	}
+
+	// Ideally if the content size is not provided by server we should try and fetch the file with max size
+	// as the one provided in the storageSpec
+	if res.ContentLength < 0 {
+		return 0, ErrNoContentLengthFound
+	}
+
+	return uint64(res.ContentLength), nil
 }
 
 // PrepareStorage will download the file from the URL
