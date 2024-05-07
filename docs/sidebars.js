@@ -29,7 +29,8 @@ module.exports = {
         'getting-started/architecture',
         'getting-started/docker-workload-onboarding',
         'getting-started/wasm-workload-onboarding',
-        'getting-started/resources'
+        'getting-started/resources',
+        'getting-started/create-private-network'
       ],
     },
     {
