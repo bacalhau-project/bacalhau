@@ -149,7 +149,17 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 	// Submit the job
 	client := util.GetAPIClientV2(cmd)
 	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
-		Job: j,
+		Job: &models.JobSpec{
+			Name:        j.Name,
+			Namespace:   j.Namespace,
+			Type:        j.Type,
+			Priority:    j.Priority,
+			Count:       j.Count,
+			Constraints: j.Constraints,
+			Meta:        j.Meta,
+			Labels:      j.Labels,
+			Tasks:       j.Tasks,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed request: %w", err)

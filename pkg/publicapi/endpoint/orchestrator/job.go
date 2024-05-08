@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -44,7 +45,17 @@ func (e *Endpoint) putJob(c echo.Context) error {
 		return err
 	}
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
-		Job: args.Job,
+		Job: &models.Job{
+			Name:        args.Job.Name,
+			Namespace:   args.Job.Namespace,
+			Type:        args.Job.Type,
+			Priority:    args.Job.Priority,
+			Count:       args.Job.Count,
+			Constraints: args.Job.Constraints,
+			Meta:        args.Job.Meta,
+			Labels:      args.Job.Labels,
+			Tasks:       args.Job.Tasks,
+		},
 	})
 	if err != nil {
 		return err

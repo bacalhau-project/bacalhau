@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
@@ -13,7 +14,17 @@ import (
 func (s *ServerSuite) TestJobOperations() {
 	ctx := context.Background()
 	job := mock.Job()
-	putResponse, err := s.client.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
+	putResponse, err := s.client.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: &models.JobSpec{
+		Name:        job.Name,
+		Namespace:   job.Namespace,
+		Type:        job.Type,
+		Priority:    job.Priority,
+		Count:       job.Count,
+		Constraints: job.Constraints,
+		Meta:        job.Meta,
+		Labels:      job.Labels,
+		Tasks:       job.Tasks,
+	}})
 	s.Require().NoError(err)
 	s.Require().NotNil(putResponse)
 	s.Require().NotEmpty(putResponse.JobID)

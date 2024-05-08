@@ -3,13 +3,14 @@ package apimodels
 import (
 	"strconv"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type PutJobRequest struct {
 	BasePutRequest
-	Job *models.Job `json:"Job"`
+	Job *models.JobSpec `json:"Job"`
 }
 
 // Normalize is used to canonicalize fields in the PutJobRequest.
