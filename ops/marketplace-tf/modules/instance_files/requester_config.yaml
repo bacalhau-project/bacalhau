@@ -1,17 +1,23 @@
 Auth:
-  AccessPolicyPath: "/bacalhau_repo/authz_policy.rego"
+  AccessPolicyPath: /bacalhau_repo/authz_policy.rego
   Methods:
     shared_secret:
       type: ask
-      policypath: "/bacalhau_repo/authn_policy.rego"
+      policypath: /bacalhau_repo/authn_policy.rego
 Node:
   Type:
     - requester
+  ServerAPI:
+    Port: 443
+    TLS:
+      ServerCertificate: /bacalhau_repo/bacalhau_cert.crt
+      ServerKey: /bacalhau_repo/bacalhau_sk.key
   ClientAPI:
-    Host: 0.0.0.0
-    Port: 1234
-    # TLS:
-      # TODO(simon) [fixme]: allow requester to generate its own cert
+    Host: ${requester_ip}
+    Port: 443
+    ClientTLS:
+      UseTLS: true
+      CaCert: /bacalhau_repo/bacalhau_cert.crt
   Network:
     Type: nats
     Port: 4222

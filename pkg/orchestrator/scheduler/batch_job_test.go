@@ -49,12 +49,12 @@ func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 	s.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true})
 
-	s.scheduler = NewBatchServiceJobScheduler(BatchServiceJobSchedulerParams{
-		JobStore:      s.jobStore,
-		Planner:       s.planner,
-		NodeSelector:  s.nodeSelector,
-		RetryStrategy: s.retryStrategy,
-	})
+	s.scheduler = NewBatchServiceJobScheduler(
+		s.jobStore,
+		s.planner,
+		s.nodeSelector,
+		s.retryStrategy,
+	)
 }
 
 func TestBatchSchedulerTestSuite(t *testing.T) {
@@ -304,19 +304,13 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 }
 
 func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
-	constraints := &orchestrator.NodeSelectionConstraints{
-		RequireApproval:  false,
-		RequireConnected: false,
-	}
-
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount, constraints).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
 		s.nodeSelector.EXPECT().TopMatchingNodes(
 			gomock.Any(),
 			job,
 			desiredCount,
-			constraints,
 		).Return(nodeInfos, nil)
 	}
 }
