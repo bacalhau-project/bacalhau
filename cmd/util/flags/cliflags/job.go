@@ -57,6 +57,7 @@ func RegisterJobFlags(cmd *cobra.Command, s *JobSettings) {
 	fs.IntVar(&s.Priority, "priority", s.Priority, PriorityUsageMsg)
 	fs.IntVar(&s.Count, "count", s.Count, CountUsageMsg)
 	fs.StringVar(&s.Constraints, "constraints", s.Constraints, ConstraintsUsageMsg)
+	// TODO make this a slice flag
 	fs.StringToStringVarP(&s.Labels, "label", "l", s.Labels, LabelsUsageMsg)
 
 	cmd.Flags().AddFlagSet(fs)

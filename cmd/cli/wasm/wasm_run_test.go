@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -29,7 +31,7 @@ func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	)
 	s.Require().NoError(err)
 
-	_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
+	_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 }
 
 func (s *WasmRunSuite) TestSpecifyingEnvVars() {
@@ -40,31 +42,28 @@ func (s *WasmRunSuite) TestSpecifyingEnvVars() {
 	)
 	s.Require().NoError(err)
 
-	_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
+	_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 }
 
 func (s *WasmRunSuite) TestNoPublisher() {
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("wasm", "run",
 		"../../../testdata/wasm/env/main.wasm",
-		"-e A=B,C=D",
 	)
 	s.Require().NoError(err)
 
-	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
-	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
+	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
+	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{
+		JobID:   job.ID,
+		Include: "executions",
+	})
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	s.Require().Len(info.State.Executions, 1)
+	s.Require().Len(info.Executions.Executions, 1)
 
-	exec := info.State.Executions[0]
-	result := exec.PublishedResult
-
-	s.Require().Equal("noop", job.Spec.PublisherSpec.Type.String(), "Expected a noop publisher")
-	s.Require().Empty(result.URL, "Did not expect a URL")
-	s.Require().Empty(result.S3, "Did not expect S3 details")
-	s.Require().Empty(result.CID, "Did not expect a CID")
+	s.Require().Equal("", job.Task().Publisher.Type, "Expected empty publisher")
+	s.Require().Empty(job.Task().Publisher.Params)
 }
 
 func (s *WasmRunSuite) TestLocalPublisher() {
@@ -72,22 +71,26 @@ func (s *WasmRunSuite) TestLocalPublisher() {
 	_, out, err := s.ExecuteTestCobraCommand("wasm", "run",
 		"-p", "local",
 		"../../../testdata/wasm/env/main.wasm",
-		"-e A=B,C=D",
 	)
 	s.Require().NoError(err)
 
-	job := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
-	info, _, err := s.Client.Get(ctx, job.Metadata.ID)
+	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
+	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{
+		JobID:   job.ID,
+		Include: "executions",
+	})
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	s.Require().Equal(model.PublisherLocal, job.Spec.PublisherSpec.Type, "Expected a local publisher")
+	s.Require().Equal(models.PublisherLocal, job.Task().Publisher.Type, "Expected a local publisher")
 
-	s.Require().Len(info.State.Executions, 1)
+	s.Require().Len(info.Executions.Executions, 1)
 
-	exec := info.State.Executions[0]
+	exec := info.Executions.Executions[0]
 	result := exec.PublishedResult
-	s.Require().Equal(model.StorageSourceURLDownload, result.StorageSource)
-	s.Require().Contains(result.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
-	s.Require().Contains(result.URL, fmt.Sprintf("%s.tgz", exec.ID().ExecutionID), "URL does not contain expected file")
+	s.Require().Equal(models.StorageSourceURL, result.Type)
+	urlSpec, err := urldownload.DecodeSpec(result)
+	s.Require().NoError(err)
+	s.Require().Contains(urlSpec.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
+	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tgz", exec.ID), "URL does not contain expected file")
 }

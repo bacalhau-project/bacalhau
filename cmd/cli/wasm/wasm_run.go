@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
+	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -116,7 +117,7 @@ func newRunCmd() *cobra.Command {
 	cliflags.RegisterDownloadFlags(cmd, opts.DownloadSettings)
 	cliflags.RegisterRunTimeFlags(cmd, opts.RunTimeSettings)
 
-	// register flags unique to wasmt.
+	// register flags unique to wasm.
 	wasmFlags := pflag.NewFlagSet("wasm", pflag.ContinueOnError)
 	wasmFlags.VarP(flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
 		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
@@ -129,6 +130,8 @@ func newRunCmd() *cobra.Command {
 	wasmFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
 		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
+	cmd.Flags().AddFlagSet(wasmFlags)
+
 	return cmd
 }
 
@@ -140,17 +143,14 @@ func run(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return err
 	}
 
-	/*
-		if opts.RunTimeSettings.DryRun {
-			out, err := helpers.JobToYaml(job)
-			if err != nil {
-				return err
-			}
-			cmd.Print(out)
-			return nil
+	if opts.RunTimeSettings.DryRun {
+		out, err := helpers.JobToYaml(job)
+		if err != nil {
+			return err
 		}
-
-	*/
+		cmd.Print(out)
+		return nil
+	}
 
 	api := util.GetAPIClientV2(cmd)
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
@@ -162,12 +162,9 @@ func run(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		helpers.PrintWarnings(cmd, resp.Warnings)
 	}
 
-	/*
-		if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, opts.RunTimeSettings, api); err != nil {
-			return fmt.Errorf("failed to print job execution: %w", err)
-		}
-
-	*/
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, opts.RunTimeSettings, api); err != nil {
+		return fmt.Errorf("failed to print job execution: %w", err)
+	}
 
 	return nil
 }
