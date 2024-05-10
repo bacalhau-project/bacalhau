@@ -237,39 +237,56 @@ func (s *HousekeepingTestSuite) TestShouldRun() {
 
 func (s *HousekeepingTestSuite) TestStop() {
 	s.housekeeping.Start(context.Background())
+	s.Eventually(func() bool { return s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond)
+
 	s.housekeeping.Stop(context.Background())
 
 	select {
-	case <-s.housekeeping.ctx.Done():
+	case <-s.housekeeping.stopChan:
 		s.True(true)
 	default:
 		s.Fail("context should be cancelled")
 	}
+
+	s.Eventuallyf(func() bool { return !s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond,
+		"Housekeeping should not be running after Stop")
 }
 
 func (s *HousekeepingTestSuite) TestStopWithoutStart() {
-	s.housekeeping.Stop(context.Background())
-	// Check that the context is still nil after calling Stop without Start
-	s.Nil(s.housekeeping.ctx, "Context should be nil if Stop is called before Start")
+	s.housekeeping.Stop(context.Background()) // Expect no panic or error
+
+	select {
+	case <-s.housekeeping.stopChan:
+		s.True(true, "stopChan should be closed")
+	default:
+		s.Fail("stopChan should be closed after Stop is called")
+	}
+
+	s.False(s.housekeeping.IsRunning())
 }
 
 func (s *HousekeepingTestSuite) TestStartMultipleTimes() {
-	s.housekeeping.Start(context.Background())
-	ctx1 := s.housekeeping.ctx
-	s.housekeeping.Start(context.Background())
-	ctx2 := s.housekeeping.ctx
-	// Check that the context does not change when Start is called multiple times
-	s.Equal(ctx1, ctx2, "Context should not change when Start is called multiple times")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.housekeeping.Start(ctx)
+	s.housekeeping.Start(ctx) // no panics
 }
 
 func (s *HousekeepingTestSuite) TestStopMultipleTimes() {
 	s.housekeeping.Start(context.Background())
 	s.housekeeping.Stop(context.Background())
-	ctx1 := s.housekeeping.ctx
-	s.housekeeping.Stop(context.Background())
-	ctx2 := s.housekeeping.ctx
-	// Check that the context does not change when Stop is called multiple times
-	s.Equal(ctx1, ctx2, "Context should not change when Stop is called multiple times")
+	s.housekeeping.Stop(context.Background()) // Second call should gracefully do nothing
+
+	select {
+	case <-s.housekeeping.stopChan:
+		s.True(true, "stopChan should be closed")
+	default:
+		s.Fail("stopChan should remain closed after multiple stops")
+	}
+
+	s.Eventuallyf(func() bool { return !s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond,
+		"Housekeeping should not be running after Stop")
 }
 
 func (s *HousekeepingTestSuite) TestStopRespectsContext() {
@@ -293,19 +310,20 @@ func (s *HousekeepingTestSuite) TestStopRespectsContext() {
 		// If we reach this case, it means that Stop did not respect the context and did not return early
 		s.Fail("Stop did not return early even though the context was done")
 	}
+
+	s.Eventuallyf(func() bool { return !s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond,
+		"Housekeeping should not be running after Stop")
 }
 
 func (s *HousekeepingTestSuite) TestCancelProvidedContext() {
 	ctx, cancel := context.WithCancel(context.Background())
-	s.housekeeping.Start(ctx)
-	cancel()
 
-	select {
-	case <-s.housekeeping.ctx.Done():
-		s.True(true, "Housekeeper should stop when the provided context is cancelled")
-	case <-time.After(1 * time.Second):
-		s.Fail("Housekeeper did not stop within the expected time")
-	}
+	s.housekeeping.Start(ctx)
+	// Eventually the housekeeping should be running
+	s.Eventually(func() bool { return s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond)
+
+	cancel() // Cancel the context
+	s.Eventually(func() bool { return !s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond)
 }
 
 func (s *HousekeepingTestSuite) assertEvaluationEnqueued(job models.Job) {
