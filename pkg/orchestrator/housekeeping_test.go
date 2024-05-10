@@ -61,7 +61,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 		executionState       models.ExecutionStateType
 	}{
 		{
-			name: "TestExpiredExecutionOutsideBuffer",
+			name: "ExpiredExecutionOutsideBuffer",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -69,7 +69,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 1,
 		},
 		{
-			name: "TestExpiredExecutionOutsideBufferOpsJobs",
+			name: "ExpiredExecutionOutsideBufferOpsJobs",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -78,7 +78,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 1,
 		},
 		{
-			name: "TestExpiredExecutionWithinBuffer",
+			name: "ExpiredExecutionWithinBuffer",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredWithinBufferModifyTime),
 			},
@@ -86,7 +86,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 0,
 		},
 		{
-			name: "TestNoExpiredExecutions",
+			name: "NoExpiredExecutions",
 			ModifyTimes: []time.Time{
 				time.Now().Add(notExpiredModifyTime),
 			},
@@ -94,7 +94,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 0,
 		},
 		{
-			name: "TestMultipleExecutionTimeout",
+			name: "MultipleExecutionTimeout",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 				time.Now().Add(expiredOutsideBufferModifyTime),
@@ -104,7 +104,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 		},
 
 		{
-			name: "TestNoopOnTerminalExecutions",
+			name: "NoopOnTerminalExecutions",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -113,7 +113,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 0,
 		},
 		{
-			name: "TestNoopOnServiceJobs",
+			name: "NoopOnServiceJobs",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -122,7 +122,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 0,
 		},
 		{
-			name: "TestNoopOnDaemonJobs",
+			name: "NoopOnDaemonJobs",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -131,7 +131,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 0,
 		},
 		{
-			name: "TestMultipleJobsExecutionTimeout",
+			name: "MultipleJobsExecutionTimeout",
 			ModifyTimes: []time.Time{
 				time.Now().Add(expiredOutsideBufferModifyTime),
 			},
@@ -139,7 +139,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 2,
 		},
 		{
-			name: "TestMultipleJobsMultipleExecutionTimeout",
+			name: "MultipleJobsMultipleExecutionTimeout",
 			ModifyTimes: []time.Time{
 				time.Now().Add(notExpiredModifyTime),
 				time.Now().Add(expiredWithinBufferModifyTime),
