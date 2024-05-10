@@ -139,6 +139,17 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 			expectedEnqueueCount: 2,
 		},
 		{
+			name: "TestMultipleJobsMultipleExecutionTimeout",
+			ModifyTimes: []time.Time{
+				time.Now().Add(notExpiredModifyTime),
+				time.Now().Add(expiredWithinBufferModifyTime),
+				time.Now().Add(expiredOutsideBufferModifyTime),
+				time.Now().Add(expiredOutsideBufferModifyTime),
+			},
+			jobCount:             2,
+			expectedEnqueueCount: 2,
+		},
+		{
 			name:                 "TestNoActiveJobsFound",
 			jobCount:             0,
 			expectedEnqueueCount: 0,
