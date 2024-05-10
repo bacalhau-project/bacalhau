@@ -16,22 +16,20 @@ import (
 
 // OpsJobScheduler is a scheduler for batch jobs that run until completion
 type OpsJobScheduler struct {
-	jobStore     jobstore.Store
-	planner      orchestrator.Planner
-	nodeSelector orchestrator.NodeSelector
+	jobStore jobstore.Store
+	planner  orchestrator.Planner
+	selector orchestrator.NodeSelector
 }
 
-type OpsJobSchedulerParams struct {
-	JobStore     jobstore.Store
-	Planner      orchestrator.Planner
-	NodeSelector orchestrator.NodeSelector
-}
-
-func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
+func NewOpsJobScheduler(
+	store jobstore.Store,
+	planner orchestrator.Planner,
+	selector orchestrator.NodeSelector,
+) *OpsJobScheduler {
 	return &OpsJobScheduler{
-		jobStore:     params.JobStore,
-		planner:      params.Planner,
-		nodeSelector: params.NodeSelector,
+		jobStore: store,
+		planner:  planner,
+		selector: selector,
 	}
 }
 
@@ -64,7 +62,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	}
 
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
@@ -110,12 +108,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.nodeSelector.AllMatchingNodes(
-		ctx,
-		job, &orchestrator.NodeSelectionConstraints{
-			RequireApproval:  true,
-			RequireConnected: false,
-		})
+	nodes, err := b.selector.AllMatchingNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}

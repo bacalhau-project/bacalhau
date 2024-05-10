@@ -31,11 +31,11 @@ func (s *OpsJobSchedulerTestSuite) SetupTest() {
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 
-	s.scheduler = NewOpsJobScheduler(OpsJobSchedulerParams{
-		JobStore:     s.jobStore,
-		Planner:      s.planner,
-		NodeSelector: s.nodeSelector,
-	})
+	s.scheduler = NewOpsJobScheduler(
+		s.jobStore,
+		s.planner,
+		s.nodeSelector,
+	)
 }
 
 func TestOpsJobSchedulerTestSuite(t *testing.T) {
@@ -198,7 +198,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
 }
 
 func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo) {
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
 }
 
 func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {

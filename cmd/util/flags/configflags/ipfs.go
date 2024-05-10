@@ -21,6 +21,8 @@ var IPFSFlags = []Definition{
 		DefaultValue:         Default.Node.IPFS.SwarmKeyPath,
 		Description:          "Optional IPFS swarm key required to connect to a private IPFS swarm",
 		EnvironmentVariables: []string{"BACALHAU_IPFS_SWARM_KEY"},
+		Deprecated:           true,
+		DeprecatedMessage:    ipfsEmbeddedDeprecationMessage,
 	},
 	{
 		FlagName:     "ipfs-connect",
