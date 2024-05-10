@@ -195,7 +195,9 @@ func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions [
 			go func(execution *models.Execution) {
 				defer h.waitGroup.Done()
 				defer func() { <-h.workersSem }() // release semaphore
-				h.handleTimeoutExecutions(ctx, execution)
+				if err := h.handleTimeoutExecutions(ctx, execution); err != nil {
+					log.Ctx(ctx).Err(err).Msgf("failed to handle timeout for execution %s", execution.ID)
+				}
 			}(execution)
 		}
 	}
@@ -203,7 +205,7 @@ func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions [
 
 // handleTimeoutExecutions handles the timeout of an execution
 // TODO: atomic creation and enqueue of evaluations #3972
-func (h *Housekeeping) handleTimeoutExecutions(ctx context.Context, execution *models.Execution) {
+func (h *Housekeeping) handleTimeoutExecutions(ctx context.Context, execution *models.Execution) error {
 	// enqueue evaluation to trigger the scheduler to communicate the cancellation to the compute
 	// node, and schedule a new execution if applicable
 	eval := models.NewEvaluation().
@@ -215,15 +217,14 @@ func (h *Housekeeping) handleTimeoutExecutions(ctx context.Context, execution *m
 
 	err := h.jobStore.CreateEvaluation(ctx, *eval)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("failed to create evaluation %+v", eval)
-		return
+		return fmt.Errorf("failed to create evaluation %+v: %w", eval, err)
 	}
 
 	err = h.evaluationBroker.Enqueue(eval)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("failed to enqueue evaluation %+v", eval)
-		return
+		return fmt.Errorf("failed to enqueue evaluation %+v: %w", eval, err)
 	}
 
 	log.Ctx(ctx).Debug().Msgf("enqueued evaluation for timed-out execution %+v", eval)
+	return nil
 }
