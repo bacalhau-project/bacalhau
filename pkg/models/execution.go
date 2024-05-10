@@ -135,9 +135,9 @@ func (e *Execution) GetModifyTime() time.Time {
 	return time.Unix(0, e.ModifyTime).UTC()
 }
 
-// HasExecutionExpired returns true if the execution has been running longer than
+// IsExpired returns true if the execution has been running longer than
 // the provided timeout duration.
-func (e *Execution) HasExecutionExpired(timeout time.Duration) bool {
+func (e *Execution) IsExpired(timeout time.Duration) bool {
 	return e.ComputeState.StateType == ExecutionStateBidAccepted && time.Since(e.GetModifyTime()) > timeout
 }
 

@@ -187,7 +187,7 @@ func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions [
 		}
 
 		timeoutWithBuffer := execution.Job.Task().Timeouts.GetExecutionTimeout() + h.timeoutBuffer
-		if execution.HasExecutionExpired(timeoutWithBuffer) {
+		if execution.IsExpired(timeoutWithBuffer) {
 			// acquire semaphore to limit the number of concurrent housekeeping tasks
 			h.workersSem <- struct{}{}
 			h.waitGroup.Add(1)

@@ -142,7 +142,7 @@ func (set execSet) filterByExecutionTimeout(timeout time.Duration) (remaining, t
 	remaining = make(execSet)
 	timedOut = make(execSet)
 	for _, exec := range set {
-		if exec.HasExecutionExpired(timeout) {
+		if exec.IsExpired(timeout) {
 			timedOut[exec.ID] = exec
 		} else {
 			remaining[exec.ID] = exec
