@@ -59,7 +59,7 @@ func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 		validate.IsGreaterThanZero(params.TimeoutBuffer, "timeout buffer must be greater than zero"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error validating housekeeping params. %w", err)
+		return nil, fmt.Errorf("error validating housekeeping params: %w", err)
 	}
 
 	h := &Housekeeping{
