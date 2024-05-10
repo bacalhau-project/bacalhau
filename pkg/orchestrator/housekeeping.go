@@ -107,7 +107,6 @@ func (h *Housekeeping) Stop(ctx context.Context) {
 		select {
 		case <-waitGroupDone:
 		case <-ctx.Done():
-			h.waitGroup.Done()
 		}
 	})
 }
