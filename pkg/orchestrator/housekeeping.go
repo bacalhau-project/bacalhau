@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/benbjohnson/clock"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,6 +30,9 @@ type HousekeepingParams struct {
 	// It is better that compute nodes timeout and report the failure before the orchestrator does.
 	// This buffer is added to the execution timeout to allow for this.
 	TimeoutBuffer time.Duration
+	// Clock is the clock used for time-based operations.
+	// If not provided, the system clock is used.
+	Clock clock.Clock
 }
 
 type Housekeeping struct {
@@ -43,11 +47,16 @@ type Housekeeping struct {
 	stopOnce   sync.Once
 	stopChan   chan struct{}
 	running    bool
+	clock      clock.Clock
 }
 
 func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 	if params.Workers == 0 {
 		params.Workers = DefaultHousekeepingWorkers
+	}
+
+	if params.Clock == nil {
+		params.Clock = clock.New()
 	}
 
 	// validate params
@@ -69,6 +78,7 @@ func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 		timeoutBuffer:    params.TimeoutBuffer,
 		workersSem:       make(chan struct{}, params.Workers),
 		stopChan:         make(chan struct{}),
+		clock:            params.Clock,
 	}
 
 	return h, nil
@@ -186,7 +196,8 @@ func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions [
 		}
 
 		timeoutWithBuffer := execution.Job.Task().Timeouts.GetExecutionTimeout() + h.timeoutBuffer
-		if execution.IsExpired(timeoutWithBuffer) {
+		expirationTime := h.clock.Now().Add(-timeoutWithBuffer)
+		if execution.IsExpired(expirationTime) {
 			// acquire semaphore to limit the number of concurrent housekeeping tasks
 			h.workersSem <- struct{}{}
 			h.waitGroup.Add(1)

@@ -225,11 +225,11 @@ func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
 	}
 	execs := execSetFromSlice(executions)
 
-	// Define a timeout of 60 minutes
-	timeout := 60 * time.Minute
+	// Define an expiration timeout of 60 minutes in the past
+	expirationTime := now.Add(-60 * time.Minute)
 
 	// Filter executions by timeout
-	remainingExecs, timedOutExecs := execs.filterByExecutionTimeout(timeout)
+	remainingExecs, timedOutExecs := execs.filterByExecutionTimeout(expirationTime)
 
 	// Check that the executions that have not exceeded the timeout remain in the set
 	assert.Len(t, remainingExecs, 1)

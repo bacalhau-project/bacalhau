@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
@@ -14,6 +15,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
+type BatchServiceJobSchedulerParams struct {
+	JobStore      jobstore.Store
+	Planner       orchestrator.Planner
+	NodeSelector  orchestrator.NodeSelector
+	RetryStrategy orchestrator.RetryStrategy
+	// Clock is the clock used for time-based operations.
+	// If not provided, the system clock is used.
+	Clock clock.Clock
+}
+
 // BatchServiceJobScheduler is a scheduler for:
 // - batch jobs that run until completion on N number of nodes
 // - service jobs than run until stopped on N number of nodes
@@ -22,19 +33,19 @@ type BatchServiceJobScheduler struct {
 	planner       orchestrator.Planner
 	selector      orchestrator.NodeSelector
 	retryStrategy orchestrator.RetryStrategy
+	clock         clock.Clock
 }
 
-func NewBatchServiceJobScheduler(
-	store jobstore.Store,
-	planner orchestrator.Planner,
-	selector orchestrator.NodeSelector,
-	strategy orchestrator.RetryStrategy,
-) *BatchServiceJobScheduler {
+func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchServiceJobScheduler {
+	if params.Clock == nil {
+		params.Clock = clock.New()
+	}
 	return &BatchServiceJobScheduler{
-		jobStore:      store,
-		planner:       planner,
-		selector:      selector,
-		retryStrategy: strategy,
+		jobStore:      params.JobStore,
+		planner:       params.Planner,
+		selector:      params.NodeSelector,
+		retryStrategy: params.RetryStrategy,
+		clock:         params.Clock,
 	}
 }
 
@@ -84,8 +95,9 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// Only applicable for batch jobs and not service jobs.
 	if !job.IsLongRunning() {
 		timeout := job.Task().Timeouts.GetExecutionTimeout()
+		expirationTime := b.clock.Now().Add(-timeout)
 		var timedOut execSet
-		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(timeout)
+		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
 		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
 		allFailedExecs = allFailedExecs.union(timedOut)
 	}

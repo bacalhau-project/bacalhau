@@ -138,11 +138,11 @@ func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (he
 }
 
 // filterByExecutionTimeout partitions executions based on their timeout status.
-func (set execSet) filterByExecutionTimeout(timeout time.Duration) (remaining, timedOut execSet) {
+func (set execSet) filterByExecutionTimeout(expirationTime time.Time) (remaining, timedOut execSet) {
 	remaining = make(execSet)
 	timedOut = make(execSet)
 	for _, exec := range set {
-		if exec.IsExpired(timeout) {
+		if exec.IsExpired(expirationTime) {
 			timedOut[exec.ID] = exec
 		} else {
 			remaining[exec.ID] = exec

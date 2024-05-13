@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
@@ -19,17 +20,27 @@ type OpsJobScheduler struct {
 	jobStore jobstore.Store
 	planner  orchestrator.Planner
 	selector orchestrator.NodeSelector
+	clock    clock.Clock
 }
 
-func NewOpsJobScheduler(
-	store jobstore.Store,
-	planner orchestrator.Planner,
-	selector orchestrator.NodeSelector,
-) *OpsJobScheduler {
+type OpsJobSchedulerParams struct {
+	JobStore     jobstore.Store
+	Planner      orchestrator.Planner
+	NodeSelector orchestrator.NodeSelector
+	// Clock is the clock used for time-based operations.
+	// If not provided, the system clock is used.
+	Clock clock.Clock
+}
+
+func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
+	if params.Clock == nil {
+		params.Clock = clock.New()
+	}
 	return &OpsJobScheduler{
-		jobStore: store,
-		planner:  planner,
-		selector: selector,
+		jobStore: params.JobStore,
+		planner:  params.Planner,
+		selector: params.NodeSelector,
+		clock:    params.Clock,
 	}
 }
 
@@ -77,7 +88,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Mark executions that have exceeded their execution timeout as failed
 	timeout := job.Task().Timeouts.GetExecutionTimeout()
-	nonTerminalExecs, timedOut := nonTerminalExecs.filterByExecutionTimeout(timeout)
+	expirationTime := b.clock.Now().Add(-timeout)
+	nonTerminalExecs, timedOut := nonTerminalExecs.filterByExecutionTimeout(expirationTime)
 	timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
 	allFailedExecs = allFailedExecs.union(timedOut)
 

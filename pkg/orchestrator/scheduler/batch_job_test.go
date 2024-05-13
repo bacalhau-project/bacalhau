@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -36,6 +37,7 @@ var nodeIDs = []string{
 
 type BatchJobSchedulerTestSuite struct {
 	suite.Suite
+	clock         *clock.Mock
 	jobStore      *jobstore.MockStore
 	planner       *orchestrator.MockPlanner
 	nodeSelector  *orchestrator.MockNodeSelector
@@ -45,17 +47,23 @@ type BatchJobSchedulerTestSuite struct {
 
 func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 	s.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true})
 
-	s.scheduler = NewBatchServiceJobScheduler(
-		s.jobStore,
-		s.planner,
-		s.nodeSelector,
-		s.retryStrategy,
-	)
+	s.scheduler = NewBatchServiceJobScheduler(BatchServiceJobSchedulerParams{
+		JobStore:      s.jobStore,
+		Planner:       s.planner,
+		NodeSelector:  s.nodeSelector,
+		RetryStrategy: s.retryStrategy,
+		Clock:         s.clock,
+	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestBatchSchedulerTestSuite(t *testing.T) {
@@ -311,7 +319,7 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
 	job.Task().Timeouts.ExecutionTimeout = int64((60 * time.Minute).Seconds())
 	// Set the start time of the executions to exceed the timeout
 	for i := range executions {
-		executions[i].ModifyTime = time.Now().Add(-90 * time.Minute).UnixNano()
+		executions[i].ModifyTime = s.clock.Now().Add(-90 * time.Minute).UnixNano()
 	}
 	// override the first execution to be running as well to time it out
 	executions[execAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
