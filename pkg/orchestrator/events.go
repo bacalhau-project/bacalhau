@@ -70,7 +70,7 @@ func ExecStoppedByNodeUnhealthyEvent() models.Event {
 
 func ExecStoppedByExecutionTimeoutEvent(timeout time.Duration) models.Event {
 	e := models.NewEvent(EventTopicExecutionTimeout).
-		WithErrorMessage(fmt.Sprintf("%s. Execution took longer than %s", executionTimeoutMessage, timeout)).
+		WithError(fmt.Errorf("%s. Execution took longer than %s", executionTimeoutMessage, timeout)).
 		WithHint(executionTimeoutHint).
 		WithFailsExecution(true)
 	return *e

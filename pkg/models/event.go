@@ -57,12 +57,7 @@ func (e *Event) WithMessage(message string) *Event {
 
 // WithError returns a new Event with the given error.
 func (e *Event) WithError(err error) *Event {
-	return e.WithErrorMessage(err.Error())
-}
-
-// WithErrorMessage returns a new Event with the given error.
-func (e *Event) WithErrorMessage(message string) *Event {
-	e.Message = message
+	e.Message = err.Error()
 	return e.WithDetail(DetailsKeyIsError, "true")
 }
 
