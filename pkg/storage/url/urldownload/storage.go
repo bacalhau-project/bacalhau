@@ -95,7 +95,7 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models
 		return 0, err
 	}
 
-	res, err := sp.client.Do(req)
+	res, err := sp.client.Do(req) //nolint:bodyclose // this is being closed - golangci-lint is wrong again
 	if err != nil {
 		return 0, err
 	}
