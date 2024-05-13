@@ -23,29 +23,27 @@ func TestValidateSuite(t *testing.T) {
 
 func (s *ValidateSuite) TestValidate() {
 	tests := map[string]struct {
-		testFile *testdata.FixtureLegacy
+		testFile *testdata.Fixture
 		valid    bool
 	}{
-		"validJobFile":   {testFile: testdata.YamlJobNoop, valid: true},
-		"InvalidJobFile": {testFile: testdata.YamlJobNoopInvalid, valid: false},
+		"validJobFile":   {testFile: testdata.DockerJobYAML, valid: true},
+		"InvalidJobFile": {testFile: testdata.DockerJobYAMLInvalid, valid: false},
 	}
+
 	for name, test := range tests {
 		s.Run(name, func() {
-			_, out, err := s.ExecuteTestCobraCommand("validate",
-				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
-			)
+			tempFile := test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name))
+			fmt.Println("Testing with file:", tempFile) // Debug: Print the actual temp file path
+
+			_, out, err := s.ExecuteTestCobraCommand("validate", "-f", tempFile)
 
 			if test.valid {
-				require.NoError(s.T(), err)
-				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
+				require.NoError(s.T(), err, "Expected no error for valid input")
+				require.Contains(s.T(), out, "The jobspec is valid", fmt.Sprintf("%s: Jobspec should be valid", name))
 			} else {
-				require.Error(s.T(), err)
-
-				fatalError := string(out)
-				require.Contains(s.T(), fatalError, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(s.T(), fatalError, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Error(s.T(), err, fmt.Sprintf("%s: Expected an error for invalid input", name))
+				require.Contains(s.T(), out, "Validation errors:", fmt.Sprintf("%s: Expected validation errors", name))
 			}
 		})
-
 	}
 }

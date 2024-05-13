@@ -53,6 +53,9 @@ var jobJsonWasmEngineSpec []byte
 //go:embed jobs/docker.yaml
 var dockerJobYAML []byte
 
+//go:embed jobs/docker-invalid.yaml
+var dockerJobYAMLInvalid []byte
+
 //go:embed jobs/docker-output.yaml
 var dockerOutputYAML []byte
 
@@ -87,13 +90,14 @@ var (
 	IPVMTaskWasm       *FixtureLegacy
 	IPVMTaskWithConfig *FixtureLegacy
 
-	DockerJobYAML    *Fixture
-	DockerOutputYAML *Fixture
-	DockerOutputJSON *Fixture
-	DockerS3YAML     *Fixture
-	EmptyJobYAML     *Fixture
-	NoopJobYAML      *Fixture
-	WasmJobYAML      *Fixture
+	DockerJobYAML        *Fixture
+	DockerJobYAMLInvalid *Fixture
+	DockerOutputYAML     *Fixture
+	DockerOutputJSON     *Fixture
+	DockerS3YAML         *Fixture
+	EmptyJobYAML         *Fixture
+	NoopJobYAML          *Fixture
+	WasmJobYAML          *Fixture
 )
 
 func init() {
@@ -117,6 +121,7 @@ func init() {
 	JsonJobWasmEngineSpec = NewLegacySpecFixture(jobJsonWasmEngineSpec)
 
 	DockerJobYAML = NewJobFixture("docker job", dockerJobYAML, false)
+	DockerJobYAMLInvalid = NewJobFixture("docker job invalid", dockerJobYAMLInvalid, true)
 	DockerOutputYAML = NewJobFixture("docker with output yaml", dockerOutputYAML, false)
 	DockerOutputJSON = NewJobFixture("docker with output json", dockerOutputJSON, false)
 	DockerS3YAML = NewJobFixture("docker with s3", dockerS3YAML, false)
