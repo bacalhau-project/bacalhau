@@ -107,6 +107,9 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		s.clock.Add(1 * time.Second)
 		execution := mock.ExecutionForJob(job)
 		execution.ComputeState.StateType = models.ExecutionStateNew
+		// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
+		execution.CreateTime = 0
+		execution.ModifyTime = 0
 		err = s.store.CreateExecution(s.ctx, *execution, models.Event{})
 		s.Require().NoError(err)
 

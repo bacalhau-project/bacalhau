@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -16,10 +17,11 @@ const (
 )
 
 const (
-	EvalTriggerJobRegister     = "job-register"
-	EvalTriggerJobCancel       = "job-cancel"
-	EvalTriggerRetryFailedExec = "exec-failure"
-	EvalTriggerExecUpdate      = "exec-update"
+	EvalTriggerJobRegister = "job-register"
+	EvalTriggerJobCancel   = "job-cancel"
+	EvalTriggerExecFailure = "exec-failure"
+	EvalTriggerExecUpdate  = "exec-update"
+	EvalTriggerExecTimeout = "exec-timeout"
 )
 
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
@@ -59,6 +61,81 @@ type Evaluation struct {
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`
+}
+
+// NewEvaluation creates a new Evaluation.
+func NewEvaluation() *Evaluation {
+	return &Evaluation{
+		ID:         idgen.NewEvaluationID(),
+		Status:     EvalStatusPending,
+		CreateTime: time.Now().UTC().UnixNano(),
+		ModifyTime: time.Now().UTC().UnixNano(),
+	}
+}
+
+// WithJobID sets the JobID of the Evaluation.
+func (e *Evaluation) WithJobID(jobID string) *Evaluation {
+	e.JobID = jobID
+	return e
+}
+
+// WithNamespace sets the Namespace of the Evaluation.
+func (e *Evaluation) WithNamespace(namespace string) *Evaluation {
+	e.Namespace = namespace
+	return e
+}
+
+// WithTriggeredBy sets the TriggeredBy of the Evaluation.
+func (e *Evaluation) WithTriggeredBy(triggeredBy string) *Evaluation {
+	e.TriggeredBy = triggeredBy
+	return e
+}
+
+// WithPriority sets the Priority of the Evaluation.
+func (e *Evaluation) WithPriority(priority int) *Evaluation {
+	e.Priority = priority
+	return e
+}
+
+// WithType sets the Type of the Evaluation.
+func (e *Evaluation) WithType(jobType string) *Evaluation {
+	e.Type = jobType
+	return e
+}
+
+// WithStatus sets the Status of the Evaluation.
+func (e *Evaluation) WithStatus(status string) *Evaluation {
+	e.Status = status
+	return e
+}
+
+// WithComment sets the Comment of the Evaluation.
+func (e *Evaluation) WithComment(comment string) *Evaluation {
+	e.Comment = comment
+	return e
+}
+
+// WithWaitUntil sets the WaitUntil of the Evaluation.
+func (e *Evaluation) WithWaitUntil(waitUntil time.Time) *Evaluation {
+	e.WaitUntil = waitUntil
+	return e
+}
+
+// Normalize ensures that the Evaluation is in a valid state.
+func (e *Evaluation) Normalize() *Evaluation {
+	if e.ID == "" {
+		e.ID = idgen.NewEvaluationID()
+	}
+	if e.Status == "" {
+		e.Status = EvalStatusPending
+	}
+	if e.CreateTime == 0 {
+		e.CreateTime = time.Now().UTC().UnixNano()
+	}
+	if e.ModifyTime == 0 {
+		e.ModifyTime = time.Now().UTC().UnixNano()
+	}
+	return e
 }
 
 // TerminalStatus returns if the current status is terminal and

@@ -20,15 +20,17 @@ type DaemonJobScheduler struct {
 	nodeSelector orchestrator.NodeSelector
 }
 
-func NewDaemonJobScheduler(
-	store jobstore.Store,
-	planner orchestrator.Planner,
-	selector orchestrator.NodeSelector,
-) *DaemonJobScheduler {
+type DaemonJobSchedulerParams struct {
+	JobStore     jobstore.Store
+	Planner      orchestrator.Planner
+	NodeSelector orchestrator.NodeSelector
+}
+
+func NewDaemonJobScheduler(params DaemonJobSchedulerParams) *DaemonJobScheduler {
 	return &DaemonJobScheduler{
-		jobStore:     store,
-		planner:      planner,
-		nodeSelector: selector,
+		jobStore:     params.JobStore,
+		planner:      params.Planner,
+		nodeSelector: params.NodeSelector,
 	}
 }
 
