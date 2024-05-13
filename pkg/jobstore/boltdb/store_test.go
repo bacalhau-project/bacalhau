@@ -690,6 +690,110 @@ func (s *BoltJobstoreTestSuite) TestEvaluations() {
 	s.Require().NoError(err)
 }
 
+// TestTransactionsWithTxContext tests the creation of transactional context
+// and that multiple operations will be committed atomically with the context.
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContext() {
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// Commit the transaction
+	s.Require().NoError(txCtx.Commit())
+
+	// Ensure that the job is now available
+	j, err := s.store.GetJob(s.ctx, job.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(job.ID, j.ID)
+
+	// Ensure that the execution is now available
+	exec, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:      job.ID,
+		IncludeJob: true,
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(exec))
+	s.Require().NotNil(exec[0].Job)
+	s.Require().Equal(job.ID, exec[0].Job.ID)
+
+	// Ensure that the evaluation is now available
+	eval, err := s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(evaluation.ID, eval.ID)
+}
+
+// TestTransactionsWithTxContextRollback tests the creation of transactional context
+// and that multiple operations will be rolled back atomically with the context.
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextRollback() {
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// Rollback the transaction
+	s.Require().NoError(txCtx.Rollback())
+
+	// Ensure that no jobs are returned as the tx is not committed
+	_, err = s.store.GetJob(s.ctx, job.ID)
+	s.Require().Error(err)
+
+	// Ensure that no executions are returned as the tx is not committed
+	_, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
+	s.Require().Error(err)
+
+	// Ensure no evaluation is returned as the tx is not committed
+	_, err = s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().Error(err)
+}
+
+// TestTransactionsWithTxContextCancellation tests the creation of transactional context
+// and that multiple operations will be rolled back atomically with the context cancellation
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
+	ctx, cancel := context.WithCancel(s.ctx)
+	txCtx, err := s.store.BeginTx(ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// cancel the context
+	cancel()
+	<-txCtx.Done()
+
+	// Ensure that no jobs are returned as the tx is not committed
+	_, err = s.store.GetJob(s.ctx, job.ID)
+	s.Require().Error(err)
+
+	// Ensure that no executions are returned as the tx is not committed
+	_, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
+	s.Require().Error(err)
+
+	// Ensure no evaluation is returned as the tx is not committed
+	_, err = s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().Error(err)
+}
+
 func (s *BoltJobstoreTestSuite) parseLabels(selector string) labels.Selector {
 	req, err := labels.ParseToRequirements(selector)
 	s.NoError(err)

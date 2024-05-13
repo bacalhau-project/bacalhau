@@ -135,6 +135,15 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	return store, err
 }
 
+// BeginTx starts a new writable transaction for the store
+func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) {
+	tx, err := b.database.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	return newTxContext(ctx, tx), nil
+}
+
 func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
 	events jobstore.StoreEventType) chan jobstore.WatchEvent {
@@ -690,9 +699,52 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event mode
 	if err != nil {
 		return err
 	}
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.createJob(tx, job, event)
 	})
+}
+
+// update is a helper function that will update the job in the store
+// it accepts a context, an update function and creates a new transaction to
+// perform the update if no transaction is provided in the context
+func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) error) error {
+	var err error
+	var tx *bolt.Tx
+	var managed bool
+
+	// if ctx has a transaction value, then we can use that transaction
+	// and mark it as managed so that we don't try to commit it or rollback in this function
+	var txFound bool
+	tx, txFound = txFromContext(ctx)
+	if txFound {
+		if !tx.Writable() {
+			return fmt.Errorf("readonly transaction provided in context for update operation")
+		}
+		managed = true
+	} else {
+		tx, err = b.database.Begin(true)
+		if err != nil {
+			return err
+		}
+	}
+
+	// always rollback the transaction if we did create it and we're returning an error
+	defer func() {
+		if !managed && err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	err = update(tx)
+	if err != nil {
+		return err
+	}
+
+	// if we created the transaction, then we need to commit it
+	if !managed {
+		err = tx.Commit()
+	}
+	return err
 }
 
 func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
@@ -761,7 +813,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event
 
 // DeleteJob removes the specified job from the system entirely
 func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.deleteJob(tx, jobID)
 	})
 }
@@ -814,7 +866,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 // UpdateJobState updates the current state for a single Job, appending an entry to
 // the history at the same time
 func (b *BoltJobStore) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.updateJobState(tx, request)
 	})
 }
@@ -926,7 +978,7 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 	if err != nil {
 		return err
 	}
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.createExecution(tx, execution, event)
 	})
 }
@@ -975,7 +1027,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution, 
 // UpdateExecution updates the state of a single execution by loading from storage,
 // updating and then writing back in a single transaction
 func (b *BoltJobStore) UpdateExecution(ctx context.Context, request jobstore.UpdateExecutionRequest) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.updateExecution(tx, request)
 	})
 }
@@ -1071,7 +1123,7 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 
 // CreateEvaluation creates a new evaluation
 func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.createEvaluation(tx, eval)
 	})
 }
@@ -1163,7 +1215,7 @@ func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error
 
 // DeleteEvaluation deletes the specified evaluation
 func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.deleteEvaluation(tx, id)
 	})
 }
