@@ -3,6 +3,7 @@ module github.com/bacalhau-project/bacalhau
 go 1.21
 
 require (
+	cuelang.org/go v0.8.2
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/aws/aws-sdk-go-v2 v1.25.1
@@ -25,7 +26,6 @@ require (
 	github.com/hashicorp/go-plugin v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	github.com/imdario/mergo v0.3.16
-	github.com/invopop/jsonschema v0.12.0
 	github.com/ipfs/boxo v0.18.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-ipld-format v0.6.0
@@ -63,9 +63,7 @@ require (
 	github.com/swaggo/swag v1.16.2
 	github.com/tetratelabs/wazero v1.6.0
 	github.com/theckman/yacspin v0.13.12
-	github.com/tidwall/sjson v1.2.5
 	github.com/vincent-petithory/dataurl v1.0.0
-	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.8
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0
 	go.opentelemetry.io/otel v1.26.0
@@ -90,7 +88,7 @@ require (
 )
 
 require (
-	cuelang.org/go v0.8.2 // indirect
+	cuelabs.dev/go/oci/ociregistry v0.0.0-20240314152124-224736b49f2e // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -112,13 +110,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.0 // indirect
-	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cockroachdb/apd/v3 v3.2.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/emicklei/proto v1.10.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
@@ -182,7 +179,9 @@ require (
 	github.com/pion/turn/v2 v2.1.4 // indirect
 	github.com/pion/webrtc/v3 v3.2.23 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/protocolbuffers/txtpbfmt v0.0.0-20230328191034-3462fbc510c0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
@@ -190,7 +189,6 @@ require (
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yashtewari/glob-intersection v0.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
@@ -361,9 +359,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
-	github.com/tidwall/gjson v1.14.4 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
