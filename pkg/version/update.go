@@ -61,6 +61,10 @@ func CheckForUpdate(
 	}
 	q.Set("clientID", clientID)
 	q.Set("InstallationID", InstallationID)
+	if os.Getenv("BACALHAU_UPDATE_CHECKER_TEST") != "" {
+		q.Set("bacalhau_update_checker_test", "true")
+	}
+
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
