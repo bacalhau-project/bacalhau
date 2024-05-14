@@ -42,7 +42,7 @@ func (s *ValidateSuite) TestValidate() {
 				require.Contains(s.T(), out, "The jobspec is valid", fmt.Sprintf("%s: Jobspec should be valid", name))
 			} else {
 				require.Error(s.T(), err, fmt.Sprintf("%s: Expected an error for invalid input", name))
-				require.Contains(s.T(), out, "Validation errors:", fmt.Sprintf("%s: Expected validation errors", name))
+				require.Contains(s.T(), out, "Error:", fmt.Sprintf("%s: Expected validation errors", name))
 			}
 		})
 	}

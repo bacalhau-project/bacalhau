@@ -28,7 +28,10 @@ func NewCmd() *cobra.Command {
 	}
 
 	validateCmd.Flags().StringVarP(&opts.Filename, "filename", "f", "", "File containing the job to validate")
-	validateCmd.MarkFlagRequired("filename")
+	if err := validateCmd.MarkFlagRequired("filename"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	return validateCmd
 }
