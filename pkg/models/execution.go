@@ -135,6 +135,13 @@ func (e *Execution) GetModifyTime() time.Time {
 	return time.Unix(0, e.ModifyTime).UTC()
 }
 
+// IsExpired returns true if the execution is still running beyond the expiration time
+// We return true if the execution is in the bid accepted state (i.e. running)
+// and the modify time is older than the expiration time
+func (e *Execution) IsExpired(expirationTime time.Time) bool {
+	return e.ComputeState.StateType == ExecutionStateBidAccepted && e.GetModifyTime().Before(expirationTime)
+}
+
 // Normalize Allocation to ensure fields are initialized to the expectations
 // of this version of Bacalhau. Should be called when restoring persisted
 // Executions or receiving Executions from Bacalhau clients potentially on an

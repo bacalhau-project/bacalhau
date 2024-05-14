@@ -157,12 +157,25 @@ func NewRequesterNode(
 	)
 
 	// scheduler provider
-	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(jobStore, planners, nodeSelector, retryStrategy)
+	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
+		JobStore:      jobStore,
+		Planner:       planners,
+		NodeSelector:  nodeSelector,
+		RetryStrategy: retryStrategy,
+	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
 		models.JobTypeService: batchServiceJobScheduler,
-		models.JobTypeOps:     scheduler.NewOpsJobScheduler(jobStore, planners, nodeSelector),
-		models.JobTypeDaemon:  scheduler.NewDaemonJobScheduler(jobStore, planners, nodeSelector),
+		models.JobTypeOps: scheduler.NewOpsJobScheduler(scheduler.OpsJobSchedulerParams{
+			JobStore:     jobStore,
+			Planner:      planners,
+			NodeSelector: nodeSelector,
+		}),
+		models.JobTypeDaemon: scheduler.NewDaemonJobScheduler(scheduler.DaemonJobSchedulerParams{
+			JobStore:     jobStore,
+			Planner:      planners,
+			NodeSelector: nodeSelector,
+		}),
 	})
 
 	workers := make([]*orchestrator.Worker, 0, requesterConfig.WorkerCount)
@@ -241,12 +254,16 @@ func NewRequesterNode(
 		ResultTransformer: resultTransformers,
 	})
 
-	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
-		Endpoint: endpoint,
-		JobStore: jobStore,
-		NodeID:   nodeID,
-		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
+	housekeeping, err := orchestrator.NewHousekeeping(orchestrator.HousekeepingParams{
+		EvaluationBroker: evalBroker,
+		JobStore:         jobStore,
+		Interval:         requesterConfig.HousekeepingBackgroundTaskInterval,
+		TimeoutBuffer:    requesterConfig.HousekeepingTimeoutBuffer,
 	})
+	if err != nil {
+		return nil, err
+	}
+	housekeeping.Start(ctx)
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
@@ -293,7 +310,7 @@ func NewRequesterNode(
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
-		housekeeping.Stop()
+		housekeeping.Stop(ctx)
 		for _, worker := range workers {
 			worker.Stop()
 		}
