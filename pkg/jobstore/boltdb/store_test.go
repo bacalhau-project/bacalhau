@@ -4,7 +4,6 @@ package boltjobstore
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -578,7 +577,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
-	ch := s.store.Watch(s.ctx,
+	watcher := s.store.Watch(s.ctx,
 		jobstore.JobWatcher|jobstore.ExecutionWatcher,
 		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
 	)
@@ -595,14 +594,13 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Require().NoError(err)
 
 		// Read an event, it should be a jobcreate
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.CreateEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 
-		var decodedJob models.Job
-		err = json.Unmarshal(ev.Object, &decodedJob)
-		s.Require().NoError(err)
-		s.Require().Equal(decodedJob.ID, job.ID)
+		expectedJob, ok := ev.Object.(models.Job)
+		s.Require().True(ok, "expected object to be a job")
+		s.Require().Equal(expectedJob.ID, job.ID)
 	})
 
 	s.Run("execution create event", func() {
@@ -614,7 +612,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Require().NoError(err)
 
 		// Read an event, it should be a ExecutionForJob Create
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.CreateEvent)
 		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 	})
@@ -629,7 +627,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			Event: models.Event{Message: "event test"},
 		}
 		_ = s.store.UpdateJobState(s.ctx, request)
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})
@@ -645,19 +643,18 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			NewValues: execution,
 			Event:     models.Event{Message: "event test"},
 		})
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
 		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 
-		var decodedExecution models.Execution
-		err := json.Unmarshal(ev.Object, &decodedExecution)
-		s.Require().NoError(err)
-		s.Require().Equal(decodedExecution.ID, execution.ID)
+		expectedExec, ok := ev.Object.(models.Execution)
+		s.Require().True(ok, "expected object to be an execution")
+		s.Require().Equal(expectedExec.ID, execution.ID)
 	})
 
 	s.Run("delete job event", func() {
 		_ = s.store.DeleteJob(s.ctx, job.ID)
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.DeleteEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})

@@ -20,8 +20,7 @@ const (
 )
 
 type HousekeepingParams struct {
-	EvaluationBroker EvaluationBroker
-	JobStore         jobstore.Store
+	JobStore jobstore.Store
 	// Interval is the interval at which housekeeping tasks are run
 	Interval time.Duration
 	// Workers is the maximum number of parallel workers for housekeeping tasks
@@ -36,10 +35,9 @@ type HousekeepingParams struct {
 }
 
 type Housekeeping struct {
-	evaluationBroker EvaluationBroker
-	jobStore         jobstore.Store
-	interval         time.Duration
-	timeoutBuffer    time.Duration
+	jobStore      jobstore.Store
+	interval      time.Duration
+	timeoutBuffer time.Duration
 
 	workersSem chan struct{}
 	waitGroup  sync.WaitGroup
@@ -61,7 +59,6 @@ func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 
 	// validate params
 	err := errors.Join(
-		validate.IsNotNil(params.EvaluationBroker, "evaluation broker cannot be nil"),
 		validate.IsNotNil(params.JobStore, "job store cannot be nil"),
 		validate.IsGreaterThanZero(params.Interval, "interval must be greater than zero"),
 		validate.IsGreaterThanZero(params.Workers, "workers must be greater than zero"),
@@ -72,13 +69,12 @@ func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 	}
 
 	h := &Housekeeping{
-		evaluationBroker: params.EvaluationBroker,
-		jobStore:         params.JobStore,
-		interval:         params.Interval,
-		timeoutBuffer:    params.TimeoutBuffer,
-		workersSem:       make(chan struct{}, params.Workers),
-		stopChan:         make(chan struct{}),
-		clock:            params.Clock,
+		jobStore:      params.JobStore,
+		interval:      params.Interval,
+		timeoutBuffer: params.TimeoutBuffer,
+		workersSem:    make(chan struct{}, params.Workers),
+		stopChan:      make(chan struct{}),
+		clock:         params.Clock,
 	}
 
 	return h, nil
@@ -229,11 +225,6 @@ func (h *Housekeeping) handleTimeoutExecutions(ctx context.Context, execution *m
 	err := h.jobStore.CreateEvaluation(ctx, *eval)
 	if err != nil {
 		return fmt.Errorf("failed to create evaluation %+v: %w", eval, err)
-	}
-
-	err = h.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		return fmt.Errorf("failed to enqueue evaluation %+v: %w", eval, err)
 	}
 
 	log.Ctx(ctx).Debug().Msgf("enqueued evaluation for timed-out execution %+v", eval)
