@@ -5,7 +5,9 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -27,6 +29,7 @@ const (
 
 type ServiceJobSchedulerTestSuite struct {
 	suite.Suite
+	clock         *clock.Mock
 	jobStore      *jobstore.MockStore
 	planner       *orchestrator.MockPlanner
 	nodeSelector  *orchestrator.MockNodeSelector
@@ -36,17 +39,22 @@ type ServiceJobSchedulerTestSuite struct {
 
 func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 	s.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true})
 
-	s.scheduler = NewBatchServiceJobScheduler(
-		s.jobStore,
-		s.planner,
-		s.nodeSelector,
-		s.retryStrategy,
-	)
+	s.scheduler = NewBatchServiceJobScheduler(BatchServiceJobSchedulerParams{
+		JobStore:      s.jobStore,
+		Planner:       s.planner,
+		NodeSelector:  s.nodeSelector,
+		RetryStrategy: s.retryStrategy,
+	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestServiceSchedulerTestSuite(t *testing.T) {

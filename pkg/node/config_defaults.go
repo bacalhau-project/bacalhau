@@ -47,6 +47,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
@@ -83,6 +84,7 @@ var TestRequesterConfig = RequesterConfigParams{
 		ExecutionTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 

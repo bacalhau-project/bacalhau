@@ -51,6 +51,7 @@ type UpdateExecutionMatcher struct {
 	desiredStateComment string
 	expectedState       models.ExecutionStateType
 	expectedRevision    uint64
+	expectedEvent       models.Event
 }
 
 type UpdateExecutionMatcherParams struct {
@@ -60,6 +61,7 @@ type UpdateExecutionMatcherParams struct {
 	DesiredStateComment string
 	ExpectedState       models.ExecutionStateType
 	ExpectedRevision    uint64
+	ExpectedEvent       models.Event
 }
 
 func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params UpdateExecutionMatcherParams) *UpdateExecutionMatcher {
@@ -72,6 +74,7 @@ func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params
 		desiredStateComment: params.DesiredStateComment,
 		expectedState:       params.ExpectedState,
 		expectedRevision:    params.ExpectedRevision,
+		expectedEvent:       params.ExpectedEvent,
 	}
 }
 
@@ -80,6 +83,7 @@ func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanEx
 		NewDesiredState:     update.DesiredState,
 		DesiredStateComment: update.Event.Message,
 		ExpectedRevision:    update.Execution.Revision,
+		ExpectedEvent:       update.Event,
 	})
 }
 
@@ -99,6 +103,7 @@ func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedRevision: m.expectedRevision,
 		},
+		Event: m.expectedEvent,
 	}
 
 	// set expected state if present
