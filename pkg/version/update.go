@@ -61,6 +61,10 @@ func CheckForUpdate(
 	}
 	q.Set("clientID", clientID)
 	q.Set("InstallationID", InstallationID)
+
+	// The BACALHAU_UPDATE_CHECKER_TESTS is an env variable a user can set so that we can track
+	// when the binary is being run by a non-user, to enable easier filtering of queries
+	// to their update server for internal/CI.
 	if os.Getenv("BACALHAU_UPDATE_CHECKER_TEST") != "" {
 		q.Set("bacalhau_update_checker_test", "true")
 	}
