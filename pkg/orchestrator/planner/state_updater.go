@@ -49,7 +49,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedRevision: u.Execution.Revision,
 			},
-			Event: plan.Event,
+			Event: u.Event,
 		})
 		if err != nil {
 			return err

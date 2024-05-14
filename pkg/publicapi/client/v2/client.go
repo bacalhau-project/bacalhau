@@ -310,35 +310,35 @@ type AuthenticatingClient struct {
 
 	// Authenticate will be called when the system should run an authentication
 	// flow using the passed Auth API.
-	Authenticate func(*Auth) (*apimodels.HTTPCredential, error)
+	Authenticate func(context.Context, *Auth) (*apimodels.HTTPCredential, error)
 }
 
 func (t *AuthenticatingClient) Get(ctx context.Context, path string, in apimodels.GetRequest, out apimodels.GetResponse) error {
-	return doRequest(t, in, func(req apimodels.GetRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.GetRequest) error {
 		return t.Client.Get(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) List(ctx context.Context, path string, in apimodels.ListRequest, out apimodels.ListResponse) error {
-	return doRequest(t, in, func(req apimodels.ListRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.ListRequest) error {
 		return t.Client.List(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Post(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Post(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Put(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Put(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Delete(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.Response) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Delete(ctx, path, req, out)
 	})
 }
@@ -349,14 +349,14 @@ func (t *AuthenticatingClient) Dial(
 	in apimodels.Request,
 ) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	var output <-chan *concurrency.AsyncResult[[]byte]
-	err := doRequest(t, in, func(req apimodels.Request) (err error) {
+	err := doRequest(ctx, t, in, func(req apimodels.Request) (err error) {
 		output, err = t.Client.Dial(ctx, path, req)
 		return
 	})
 	return output, err
 }
 
-func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
+func doRequest[R apimodels.Request](ctx context.Context, t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
 	if t.Credential != nil {
 		request.SetCredential(t.Credential)
 		if err = runRequest(request); err == nil {
@@ -374,7 +374,7 @@ func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runReque
 	if t.Credential == nil || pkgerrors.Is(err, apimodels.ErrInvalidToken) {
 		var authErr error
 		auth := NewAPI(t.Client).Auth()
-		if t.Credential, err = t.Authenticate(auth); err != nil {
+		if t.Credential, err = t.Authenticate(ctx, auth); err != nil {
 			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "failed to authorize user"))
 			t.Credential = nil // Don't assume Authenticate returned nil
 		}

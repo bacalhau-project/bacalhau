@@ -149,6 +149,7 @@ data "cloudinit_config" "compute_cloud_init" {
       otel_config_file            : base64encode(local.otel_config_content)
       otel_service_file           : base64encode(local.otel_service_content)
       requester_ip                : var.requester_ip
+      tls_cert_file               : base64encode(var.bacalhau_tls_crt)
     })
   }
 }
