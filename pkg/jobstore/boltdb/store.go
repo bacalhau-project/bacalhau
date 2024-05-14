@@ -141,7 +141,7 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 	if err != nil {
 		return nil, err
 	}
-	return newTxContext(ctx, tx), nil
+	return jobstore.NewTracingContext(newTxContext(ctx, tx)), nil
 }
 
 func (b *BoltJobStore) Watch(ctx context.Context,
