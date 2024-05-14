@@ -3,6 +3,8 @@ package validate
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
@@ -43,8 +45,17 @@ type ValidateOptions struct {
 func Validate(opts *ValidateOptions) error {
 	cueCtx := cuecontext.New()
 
-	buildInstances := load.Instances([]string{"job-schema.cue"}, &load.Config{
-		Dir: "pkg/models",
+	// Get the root directory
+	rootPath, err := getRootPath()
+	if err != nil {
+		return fmt.Errorf("error finding root path: %w", err)
+	}
+
+	// Set the schema path relative to the root directory
+	schemaPath := filepath.Join(rootPath, "pkg/models/job-schema.cue")
+
+	buildInstances := load.Instances([]string{schemaPath}, &load.Config{
+		Dir: rootPath,
 	})
 
 	if len(buildInstances) == 0 {
@@ -82,4 +93,24 @@ func Validate(opts *ValidateOptions) error {
 	}
 
 	return nil
+}
+
+// getRootPath finds the root of the project directory by looking for the go.mod file
+func getRootPath() (string, error) {
+	_, b, _, _ := runtime.Caller(0) //nolint: dogsled
+	basepath := filepath.Dir(b)
+
+	for {
+		if _, err := os.Stat(filepath.Join(basepath, "go.mod")); !os.IsNotExist(err) {
+			return basepath, nil
+		}
+
+		parentDir := filepath.Dir(basepath)
+		if parentDir == basepath {
+			break
+		}
+		basepath = parentDir
+	}
+
+	return "", fmt.Errorf("root path not found")
 }
