@@ -67,9 +67,7 @@ func NewComputeNode(
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
 	})
-	enqueuedCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: config.QueueResourceLimits,
-	})
+	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
 	resultsPath, err := compute.NewResultsPath()
 	if err != nil {
@@ -92,7 +90,7 @@ func NewComputeNode(
 		DelegateExecutor:           baseExecutor,
 		Callback:                   computeCallback,
 		RunningCapacityTracker:     runningCapacityTracker,
-		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
+		EnqueuedUsageTracker:       enqueuedUsageTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
@@ -133,12 +131,13 @@ func NewComputeNode(
 
 	// node info
 	nodeInfoDecorator := compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
-		Executors:          executors,
-		Publisher:          publishers,
-		Storages:           storages,
-		CapacityTracker:    runningCapacityTracker,
-		ExecutorBuffer:     bufferRunner,
-		MaxJobRequirements: config.JobResourceLimits,
+		Executors:              executors,
+		Publisher:              publishers,
+		Storages:               storages,
+		RunningCapacityTracker: runningCapacityTracker,
+		QueueCapacityTracker:   enqueuedUsageTracker,
+		ExecutorBuffer:         bufferRunner,
+		MaxJobRequirements:     config.JobResourceLimits,
 	})
 
 	bidder := NewBidder(config,
@@ -146,7 +145,6 @@ func NewComputeNode(
 		storages,
 		executors,
 		runningCapacityTracker,
-		enqueuedCapacityTracker,
 		nodeID,
 		executionStore,
 		computeCallback,
@@ -256,7 +254,6 @@ func NewBidder(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	runningCapacityTracker capacity.Tracker,
-	enqueuedCapacityTracker capacity.Tracker,
 	nodeID string,
 	executionStore store.ExecutionStore,
 	computeCallback compute.Callback,
@@ -302,10 +299,6 @@ func NewBidder(
 		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
 			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
 				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			resource.NewAvailableCapacityStrategy(resource.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
 			}),
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 		}

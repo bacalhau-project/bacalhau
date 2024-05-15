@@ -416,11 +416,6 @@ Config File:
                    disk: 568 GB
                    gpu: "0"
                    memory: 52 GB
-               queueresourcelimits:
-                   cpu: 15000m
-                   disk: 1.1 TB
-                   gpu: "0"
-                   memory: 103 GB
                totalresourcelimits:
                    cpu: 7500m
                    disk: 568 GB
@@ -450,11 +445,6 @@ Config File:
                    disk: 568 GB
                    gpu: "0"
                    memory: 52 GB
-               queueresourcelimits:
-                   cpu: 50000m
-                   disk: 3.8 TB
-                   gpu: "0"
-                   memory: 344 GB
                totalresourcelimits:
                    cpu: 7500m
                    disk: 568 GB
