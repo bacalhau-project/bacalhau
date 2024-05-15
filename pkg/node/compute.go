@@ -203,14 +203,15 @@ func NewComputeNode(
 		// with the requester node, and then if successful will send regular node
 		// info updates.
 		managementClient = compute.NewManagementClient(&compute.ManagementClientParams{
-			NodeID:               nodeID,
-			LabelsProvider:       labelsProvider,
-			ManagementProxy:      managementProxy,
-			NodeInfoDecorator:    nodeInfoDecorator,
-			RegistrationFilePath: regFilename,
-			ResourceTracker:      runningCapacityTracker,
-			HeartbeatClient:      heartbeatClient,
-			ControlPlaneSettings: config.ControlPlaneSettings,
+			NodeID:                   nodeID,
+			LabelsProvider:           labelsProvider,
+			ManagementProxy:          managementProxy,
+			NodeInfoDecorator:        nodeInfoDecorator,
+			RegistrationFilePath:     regFilename,
+			AvailableCapacityTracker: runningCapacityTracker,
+			QueueUsageTracker:        enqueuedUsageTracker,
+			HeartbeatClient:          heartbeatClient,
+			ControlPlaneSettings:     config.ControlPlaneSettings,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
