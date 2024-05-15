@@ -794,6 +794,33 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
 	s.Require().Error(err)
 }
 
+// TestTransactionsReadDuringWrite tests we can read data that was written in the same transaction
+func (s *BoltJobstoreTestSuite) TestTransactionsReadDuringWrite() {
+	// Create a job outside the transaction
+	oldJob := mock.Job()
+	s.Require().NoError(s.store.CreateJob(s.ctx, *oldJob, models.Event{}))
+
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+
+	// make sure we can read existing data during transaction
+	readOldJob, err := s.store.GetJob(txCtx, oldJob.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(oldJob.ID, readOldJob.ID)
+
+	// make sure we can read uncommitted data during transaction
+	readJob, err := s.store.GetJob(txCtx, job.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(job.ID, readJob.ID)
+
+	// Commit the transaction
+	s.Require().NoError(txCtx.Commit())
+}
+
 func (s *BoltJobstoreTestSuite) parseLabels(selector string) labels.Selector {
 	req, err := labels.ParseToRequirements(selector)
 	s.NoError(err)

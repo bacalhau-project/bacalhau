@@ -172,7 +172,7 @@ func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.Stor
 // return an indicating the error.
 func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error) {
 	var job models.Job
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		job, err = b.getJob(tx, id)
 		return
 	})
@@ -311,7 +311,7 @@ func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
 // GetJobs returns all Jobs that match the provided query
 func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
 	var response *jobstore.JobQueryResponse
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		response, err = b.getJobs(tx, query)
 		return
 	})
@@ -534,7 +534,7 @@ func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery)
 func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
 	var state []models.Execution
 
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		state, err = b.getExecutions(tx, options)
 		return
 	})
@@ -546,7 +546,7 @@ func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetEx
 // only jobs of that type will be retrieved
 func (b *BoltJobStore) GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error) {
 	var infos []models.Job
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		infos, err = b.getInProgressJobs(tx, jobType)
 		return
 	})
@@ -604,7 +604,7 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	var history []models.JobHistory
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
 		return
 	})
@@ -743,6 +743,46 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 	// if we created the transaction, then we need to commit it
 	if !managed {
 		err = tx.Commit()
+	}
+	return err
+}
+
+// view is a helper function that will perform a read-only operation on the store
+// it accepts a context, a view function and creates a new transaction to
+// perform the view if no transaction is provided in the context
+func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) error {
+	var err error
+	var tx *bolt.Tx
+	var managed bool
+
+	// if ctx has a transaction value, then we can use that transaction
+	// and mark it as managed so that we don't try to commit it or rollback in this function
+	var txFound bool
+	tx, txFound = txFromContext(ctx)
+	if txFound {
+		managed = true
+	} else {
+		tx, err = b.database.Begin(false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// always rollback the transaction if we did create it and we're returning an error
+	defer func() {
+		if !managed && err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	err = view(tx)
+	if err != nil {
+		return err
+	}
+
+	// if we created the transaction, then we need to commit it
+	if !managed {
+		err = tx.Rollback()
 	}
 	return err
 }
@@ -1167,7 +1207,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 // GetEvaluation retrieves the specified evaluation
 func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
 	var eval models.Evaluation
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		eval, err = b.getEvaluation(tx, id)
 		return
 	})
