@@ -272,20 +272,16 @@ func (suite *AvailableCapacityNodeRankerSuite) TestRankNodes() {
 				return ranks[i].Rank > ranks[j].Rank
 			})
 
-			prevRank := -1
-			for _, rank := range ranks {
-				suite.Require().GreaterOrEqual(rank.Rank, 0)
-				suite.Require().LessOrEqual(rank.Rank, maxAvailableCapacityRank+maxQueueCapacityRank)
-				if prevRank == -1 {
-					prevRank = rank.Rank
-				} else {
-					if tc.equalCheck {
-						suite.Equal(prevRank, rank.Rank)
-					} else {
-						suite.Greater(prevRank, rank.Rank)
-						prevRank = rank.Rank
-					}
+			rankedNodeIDs := make([]string, len(ranks))
+			for i, r := range ranks {
+				rankedNodeIDs[i] = r.NodeInfo.ID()
+			}
+			if tc.equalCheck {
+				for i := 1; i < len(ranks); i++ {
+					suite.Equal(ranks[0].Rank, ranks[i].Rank, "Ranks are not equal")
 				}
+			} else {
+				suite.Equal(tc.expected, rankedNodeIDs)
 			}
 		})
 	}

@@ -27,8 +27,8 @@ const (
 	defaultGPUWeight    = 0.1 // GPU is given the lowest weight as not all tasks require GPU processing.
 
 	// Rank range constants
-	maxAvailableCapacityRank = 30
-	maxQueueCapacityRank     = 15
+	maxAvailableCapacityRank = 80
+	maxQueueCapacityRank     = 20
 )
 
 // AvailableCapacityNodeRanker ranks nodes based on their available capacity and queue used capacity.
