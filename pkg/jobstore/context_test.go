@@ -34,7 +34,8 @@ func (m mockTxContext) Rollback() error {
 type TracingContextTestSuite struct {
 	suite.Suite
 	originalLogger zerolog.Logger
-	buf            zerolog.ConsoleWriter
+	buf            bytes.Buffer
+	logCtx         context.Context
 }
 
 func (s *TracingContextTestSuite) SetupTest() {
@@ -42,8 +43,8 @@ func (s *TracingContextTestSuite) SetupTest() {
 	s.originalLogger = log.Logger
 
 	// Capture logs in a buffer
-	s.buf = zerolog.ConsoleWriter{Out: &bytes.Buffer{}, TimeFormat: time.RFC3339}
-	log.Logger = log.Output(s.buf)
+	log.Logger = zerolog.New(&s.buf).With().Timestamp().Logger()
+	s.logCtx = log.Logger.WithContext(context.Background())
 }
 
 func (s *TracingContextTestSuite) TearDownTest() {
@@ -53,36 +54,35 @@ func (s *TracingContextTestSuite) TearDownTest() {
 
 func (s *TracingContextTestSuite) TestCommitAndRollbackWithoutDelay() {
 	// Create a new TracingContext
-	ctx := NewTracingContext(newMockTxContext(context.Background()))
+	ctx := NewTracingContext(newMockTxContext(s.logCtx))
 
 	// Test Commit method without delay
 	err := ctx.Commit()
 	assert.NoError(s.T(), err)
-	assert.NotContains(s.T(), s.buf.Out.(*bytes.Buffer).String(), "transaction took longer than")
+	assert.NotContains(s.T(), s.buf.String(), "transaction took longer than")
 
 	// Test Rollback method without delay
 	err = ctx.Rollback()
 	assert.NoError(s.T(), err)
-	assert.NotContains(s.T(), s.buf.Out.(*bytes.Buffer).String(), "transaction took longer than")
+	assert.NotContains(s.T(), s.buf.String(), "transaction took longer than")
 }
 
 func (s *TracingContextTestSuite) TestCommitAndRollbackWithDelay() {
-	// Reset the buffer
-	s.buf.Out.(*bytes.Buffer).Reset()
-
 	// Create a new TracingContext with delay
-	ctx := NewTracingContext(newMockTxContext(context.Background()))
+	ctx := NewTracingContext(newMockTxContext(s.logCtx))
 	time.Sleep(maxTracingDuration + 1*time.Nanosecond) // simulate a delay between creation and commit/rollback
 
 	// Test Commit method with delay
 	err := ctx.Commit()
 	assert.NoError(s.T(), err)
-	assert.Contains(s.T(), s.buf.Out.(*bytes.Buffer).String(), "transaction took longer than")
+	assert.Contains(s.T(), s.buf.String(), "transaction took")
+	assert.Contains(s.T(), s.buf.String(), "to commit")
 
 	// Test Rollback method with delay
 	err = ctx.Rollback()
 	assert.NoError(s.T(), err)
-	assert.Contains(s.T(), s.buf.Out.(*bytes.Buffer).String(), "transaction took longer than")
+	assert.Contains(s.T(), s.buf.String(), "transaction took")
+	assert.Contains(s.T(), s.buf.String(), "to rollback")
 }
 
 func TestTracingContextTestSuite(t *testing.T) {

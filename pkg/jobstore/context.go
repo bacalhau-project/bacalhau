@@ -24,17 +24,21 @@ func NewTracingContext(ctx TxContext) *TracingContext {
 }
 
 func (t TracingContext) Commit() error {
-	if time.Since(t.startTime) > maxTracingDuration {
-		log.Debug().Msgf("transaction took longer than %s to commit", maxTracingDuration.String())
-	}
+	t.logIfSlow("commit")
 	return t.TxContext.Commit()
 }
 
 func (t TracingContext) Rollback() error {
-	if time.Since(t.startTime) > maxTracingDuration {
-		log.Debug().Msgf("transaction took longer than %s to rollback", maxTracingDuration.String())
-	}
+	t.logIfSlow("rollback")
 	return t.TxContext.Rollback()
+}
+
+// logIfSlow logs a debug message if the duration exceeds the threshold
+func (t TracingContext) logIfSlow(action string) {
+	elapsed := time.Since(t.startTime)
+	if elapsed > maxTracingDuration {
+		log.Debug().Msgf("transaction took %s to %s", elapsed.String(), action)
+	}
 }
 
 // compile time check whether the TracingContext implements the TxContext interface
