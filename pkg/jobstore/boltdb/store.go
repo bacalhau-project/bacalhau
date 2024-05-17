@@ -10,18 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -710,17 +711,14 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event mode
 func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) error) error {
 	var err error
 	var tx *bolt.Tx
-	var managed bool
 
-	// if ctx has a transaction value, then we can use that transaction
-	// and mark it as managed so that we don't try to commit it or rollback in this function
-	var txFound bool
-	tx, txFound = txFromContext(ctx)
-	if txFound {
+	// if ctx has a transaction value, then we can use that transaction, otherwise we need to create one
+	var externalTx bool
+	tx, externalTx = txFromContext(ctx)
+	if externalTx {
 		if !tx.Writable() {
 			return fmt.Errorf("readonly transaction provided in context for update operation")
 		}
-		managed = true
 	} else {
 		tx, err = b.database.Begin(true)
 		if err != nil {
@@ -728,9 +726,10 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 		}
 	}
 
-	// always rollback the transaction if we did create it and we're returning an error
+	// always rollback the transaction if there was an error
+	// and the transaction was created internally in this call
 	defer func() {
-		if !managed && err != nil {
+		if !externalTx && err != nil {
 			_ = tx.Rollback()
 		}
 	}()
@@ -740,8 +739,8 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 		return err
 	}
 
-	// if we created the transaction, then we need to commit it
-	if !managed {
+	// only commit the transaction if it was created internally in this call
+	if !externalTx {
 		err = tx.Commit()
 	}
 	return err
@@ -752,39 +751,26 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 // perform the view if no transaction is provided in the context
 func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) error {
 	var err error
-	var tx *bolt.Tx
-	var managed bool
 
-	// if ctx has a transaction value, then we can use that transaction
-	// and mark it as managed so that we don't try to commit it or rollback in this function
-	var txFound bool
-	tx, txFound = txFromContext(ctx)
-	if txFound {
-		managed = true
-	} else {
+	// if ctx has a transaction value, then we can use that transaction, otherwise we need to create one
+	tx, externalTx := txFromContext(ctx)
+	if !externalTx {
 		tx, err = b.database.Begin(false)
 		if err != nil {
 			return err
 		}
 	}
 
-	// always rollback the transaction if we did create it and we're returning an error
+	// always rollback the transaction if the transaction
+	// was created internally in this call
+	// note that we don't commit the transaction as it's read-only
 	defer func() {
-		if !managed && err != nil {
+		if !externalTx {
 			_ = tx.Rollback()
 		}
 	}()
 
-	err = view(tx)
-	if err != nil {
-		return err
-	}
-
-	// if we created the transaction, then we need to commit it
-	if !managed {
-		err = tx.Rollback()
-	}
-	return err
+	return view(tx)
 }
 
 func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
