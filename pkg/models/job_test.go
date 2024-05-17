@@ -17,24 +17,39 @@ type JobTestSuite struct {
 }
 
 func (suite *JobTestSuite) TestJobNormalization() {
-	job := &models.Job{
-		ID:          "test-job",
-		Name:        "",
-		Namespace:   "",
-		Meta:        nil,
-		Labels:      nil,
-		Constraints: nil,
-		Tasks:       nil,
+	testCases := []struct {
+		jobType       string
+		expectedCount int
+	}{
+		{models.JobTypeBatch, 0},
+		{models.JobTypeService, 0},
+		{models.JobTypeOps, 1},
+		{models.JobTypeDaemon, 1},
 	}
 
-	job.Normalize()
+	for _, tc := range testCases {
+		job := &models.Job{
+			ID:          "test-job",
+			Type:        tc.jobType,
+			Name:        "",
+			Namespace:   "",
+			Meta:        nil,
+			Labels:      nil,
+			Constraints: nil,
+			Tasks:       nil,
+		}
 
-	suite.Equal(models.DefaultNamespace, job.Namespace)
-	suite.Equal("test-job", job.Name)
-	suite.NotNil(job.Meta)
-	suite.NotNil(job.Labels)
-	suite.NotNil(job.Constraints)
-	suite.NotNil(job.Tasks)
+		job.Normalize()
+
+		suite.Equal(models.DefaultNamespace, job.Namespace)
+		suite.Equal("test-job", job.Name)
+		suite.Equal(tc.jobType, job.Type)
+		suite.Equal(tc.expectedCount, job.Count)
+		suite.NotNil(job.Meta)
+		suite.NotNil(job.Labels)
+		suite.NotNil(job.Constraints)
+		suite.NotNil(job.Tasks)
+	}
 }
 
 func (suite *JobTestSuite) TestJobValidation() {
@@ -87,9 +102,14 @@ func (suite *JobTestSuite) TestJobCopy() {
 	suite.NotSame(job, cpy, "The job and its copy should not be the same instance")
 
 	// Ensure nested objects are deeply copied
-	for i, task := range job.Tasks {
-		suite.NotSame(task, cpy.Tasks[i], "The tasks in the job and its copy should not be the same instance")
+	for i := range job.Tasks {
+		suite.NotSame(job.Tasks[i], cpy.Tasks[i], "The tasks in the job and its copy should not be the same instance")
 	}
+}
+
+func (suite *JobTestSuite) TestJobTask() {
+	job := mock.Job()
+	suite.Equal(job.Tasks[0], job.Task())
 }
 
 func (suite *JobTestSuite) TestIsTerminal() {
