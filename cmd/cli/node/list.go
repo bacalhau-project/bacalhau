@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 var defaultColumnGroups = []string{"labels", "capacity"}
@@ -40,11 +41,24 @@ func NewListOptions() *ListOptions {
 
 func NewListCmd() *cobra.Command {
 	o := NewListOptions()
+
 	nodeCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List info of network nodes. ",
 		Args:  cobra.NoArgs,
-		RunE:  o.run,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return o.run(cmd, api)
+		},
 	}
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
@@ -61,7 +75,7 @@ func NewListCmd() *cobra.Command {
 }
 
 // Run executes node command
-func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
+func (o *ListOptions) run(cmd *cobra.Command, api client.API) error {
 	ctx := cmd.Context()
 
 	var err error
@@ -85,7 +99,7 @@ func (o *ListOptions) run(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	response, err := util.GetAPIClientV2(cmd).Nodes().List(ctx, &apimodels.ListNodesRequest{
+	response, err := api.Nodes().List(ctx, &apimodels.ListNodesRequest{
 		Labels:           labelRequirements,
 		FilterByApproval: o.FilterByApproval,
 		FilterByStatus:   o.FilterByStatus,

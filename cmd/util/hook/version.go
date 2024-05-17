@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -15,9 +16,10 @@ var printMessage *string = nil
 // StartUpdateCheck is a Cobra pre run hook to run an update check in the
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
-func StartUpdateCheck(cmd *cobra.Command, args []string) {
+func StartUpdateCheck(cmd *cobra.Command, args []string, cfg types.BacalhauConfig) {
 	version.RunUpdateChecker(
 		cmd.Context(),
+		cfg,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) {
 			return version.Get(), nil
 		},

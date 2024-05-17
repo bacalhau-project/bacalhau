@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -62,7 +63,17 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return cancel(cmd, cmdArgs, cancelOptions)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClient(cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return cancel(cmd, cmdArgs, api, cancelOptions)
 		},
 	}
 
@@ -73,7 +84,7 @@ func NewCmd() *cobra.Command {
 	return cancelCmd
 }
 
-func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error {
+func cancel(cmd *cobra.Command, cmdArgs []string, api *client.APIClient, options *CancelOptions) error {
 	ctx := cmd.Context()
 
 	if options.Quiet {
@@ -112,12 +123,11 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := util.GetAPIClient(ctx)
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.
 	spinner.NextStep(gettingJobMessage)
-	job, jobFound, err := apiClient.Get(ctx, requestedJobID)
+	job, jobFound, err := api.Get(ctx, requestedJobID)
 	if err != nil {
 		spinner.Done(printer.StopFailed)
 		return err
@@ -139,7 +149,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	// requester to decide if we are allowed to do that or not.
 	spinner.NextStep(cancellingJobMessage)
 
-	jobState, err := apiClient.Cancel(ctx, job.Job.Metadata.ID, "Canceled at user request")
+	jobState, err := api.Cancel(ctx, job.Job.Metadata.ID, "Canceled at user request")
 	if err != nil {
 		spinner.Done(printer.StopFailed)
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {

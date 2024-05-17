@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -61,7 +62,19 @@ func NewRunCmd() *cobra.Command {
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(0),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return o.run(cmd, args, api)
+		},
 	}
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
@@ -77,7 +90,8 @@ func NewRunCmd() *cobra.Command {
 	return runCmd
 }
 
-func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
+//nolint:gocyclo
+func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 
 	// read the job spec from stdin or file
@@ -147,8 +161,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Submit the job
-	client := util.GetAPIClientV2(cmd)
-	resp, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
+	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{
 		Job: j,
 	})
 	if err != nil {
@@ -159,7 +172,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string) error {
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, client); err != nil {
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

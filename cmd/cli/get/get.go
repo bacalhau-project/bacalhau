@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -53,10 +55,20 @@ func NewCmd() *cobra.Command {
 		Long:     getLong,
 		Example:  getExample,
 		Args:     cobra.ExactArgs(1),
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(getFlags)),
+		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), getFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return get(cmd, cmdArgs, OG)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return get(cmd, cmdArgs, api, cfg, OG)
 		},
 	}
 
@@ -69,7 +81,7 @@ func NewCmd() *cobra.Command {
 	return getCmd
 }
 
-func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
+func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.BacalhauConfig, OG *GetOptions) error {
 	ctx := cmd.Context()
 
 	jobID := cmdArgs[0]
@@ -88,15 +100,15 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 		jobID, OG.DownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
-	err := util.DownloadResultsHandler(
+	if err := util.DownloadResultsHandler(
 		ctx,
 		cmd,
+		cfg.Node.IPFS,
+		api,
 		jobID,
 		OG.DownloadSettings,
-	)
-
-	if err != nil {
-		return errors.Wrap(err, "error downloading job")
+	); err != nil {
+		return fmt.Errorf("downloading job: %w", err)
 	}
 
 	return nil

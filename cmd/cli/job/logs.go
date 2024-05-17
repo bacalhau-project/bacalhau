@@ -1,6 +1,8 @@
 package job
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -46,7 +48,17 @@ func NewLogCmd() *cobra.Command {
 				Follow:      options.Follow,
 				Tail:        options.Tail,
 			}
-			return util.Logs(cmd, opts)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return util.Logs(cmd, api, opts)
 		},
 	}
 

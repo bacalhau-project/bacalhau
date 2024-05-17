@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 // VersionOptions is a struct to support version command
@@ -29,16 +30,28 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Get the agent version.",
 		Args:  cobra.NoArgs,
-		RunE:  oV.runVersion,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return oV.runVersion(cmd, api)
+		},
 	}
 	versionCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&oV.OutputOpts))
 	return versionCmd
 }
 
 // Run executes version command
-func (oV *VersionOptions) runVersion(cmd *cobra.Command, _ []string) error {
+func (oV *VersionOptions) runVersion(cmd *cobra.Command, api client.API) error {
 	ctx := cmd.Context()
-	serverVersionResponse, err := util.GetAPIClientV2(cmd).Agent().Version(ctx)
+	serverVersionResponse, err := api.Agent().Version(ctx)
 	if err != nil {
 		return fmt.Errorf("could not get server version: %w", err)
 	}

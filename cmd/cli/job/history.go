@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -64,7 +65,19 @@ func NewHistoryCmd() *cobra.Command {
 		Long:    historyLong,
 		Example: historyExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return o.run(cmd, args, api)
+		},
 	}
 
 	nodeCmd.Flags().StringVar(&o.EventType, "event-type", o.EventType,
@@ -156,10 +169,10 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 	historyEventCol,
 }
 
-func (o *HistoryOptions) run(cmd *cobra.Command, args []string) error {
+func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 	jobID := args[0]
-	response, err := util.GetAPIClientV2(cmd).Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+	response, err := api.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,

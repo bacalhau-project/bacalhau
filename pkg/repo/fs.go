@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -83,7 +84,12 @@ func (fsr *FsRepo) Version() (int, error) {
 	return fsr.readVersion()
 }
 
-func (fsr *FsRepo) Init() error {
+// join joins path elements with fsr.path
+func (fsr *FsRepo) join(paths ...string) string {
+	return filepath.Join(append([]string{fsr.path}, paths...)...)
+}
+
+func (fsr *FsRepo) Init(c config.ReadWriter) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -97,7 +103,18 @@ func (fsr *FsRepo) Init() error {
 		return err
 	}
 
-	cfg, err := config.Init(fsr.path)
+	// check if a config file is already present, even though the repo is uninitialized
+	// users may still place a config file in a repo (we do this for our terraform deployments)
+	// we should attempt to load the config file if it's present.
+	if _, err := os.Stat(fsr.join(config.FileName)); err == nil {
+		if err := c.Load(fsr.join(config.FileName)); err != nil {
+			return fmt.Errorf("failed to load config file present in repo: %w", err)
+		}
+	}
+
+	fsr.EnsureRepoPathsConfigured(c)
+
+	cfg, err := c.Current()
 	if err != nil {
 		return err
 	}
@@ -111,7 +128,7 @@ func (fsr *FsRepo) Init() error {
 	return fsr.writeVersion(RepoVersion3)
 }
 
-func (fsr *FsRepo) Open() error {
+func (fsr *FsRepo) Open(c config.ReadWriter) error {
 	// if the repo does not exist we cannot open it.
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -126,7 +143,18 @@ func (fsr *FsRepo) Open() error {
 	}
 
 	// load the configuration for the repo.
-	cfg, err := config.Load(fsr.path)
+	// Repos without a config file are still valid. So check if one is present.
+	if _, err := os.Stat(fsr.join(config.FileName)); err == nil {
+		if err := c.Load(fsr.join(config.FileName)); err != nil {
+			return fmt.Errorf("failed to load config file present in repo: %w", err)
+		}
+	}
+
+	// modifies the config to include keys for accessing repo paths if they are not set.
+	// This ensures either user provided paths are valid to default paths for the repo are set.
+	fsr.EnsureRepoPathsConfigured(c)
+
+	cfg, err := c.Current()
 	if err != nil {
 		return err
 	}
@@ -139,15 +167,14 @@ func (fsr *FsRepo) Open() error {
 
 	// derive an installationID from the client ID loaded from the repo.
 	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID()
+		ID, _ := config.GetClientID(cfg.User.KeyPath)
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		config.SetIntallationID(uuidFromUserID.String())
+		c.Set(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
 	if cfg.Update.CheckStatePath == "" {
-		cfg.Update.CheckStatePath = filepath.Join(fsr.path, UpdateCheckStatePath)
-		config.SetUpdateCheckStatePath(cfg.Update.CheckStatePath)
+		c.Set(types.UpdateCheckStatePath, fsr.join(UpdateCheckStatePath))
 	}
 
 	// TODO this should be a part of the config.
@@ -209,4 +236,22 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 			writePath = userDir
 		}
 	*/
+}
+
+// modifies the config to include keys for accessing repo paths
+func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
+	c.SetIfAbsent(types.AuthTokensPath, fsr.join(config.TokensPath))
+	c.SetIfAbsent(types.UserKeyPath, fsr.join(config.UserPrivateKeyFileName))
+	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(config.PluginsPath))
+
+	// NB(forrest): pay attention to the subtle name difference here
+	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStorePath))
+
+	c.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(config.UpdateCheckStatePath))
+	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
+	c.SetIfAbsent(types.UserLibp2pKeyPath, fsr.join(config.Libp2pPrivateKeyFileName))
+	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
+
+	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
+	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
 }

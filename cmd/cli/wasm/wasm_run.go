@@ -6,11 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -23,8 +22,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
+	clientv1 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -100,10 +104,25 @@ func newRunCmd() *cobra.Command {
 		Long:     wasmRunLong,
 		Example:  wasmRunExample,
 		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(wasmRunFlags)),
+		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(viper.GetViper(), wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, opts)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create a v1 api client
+			apiV1, err := util.GetAPIClient(cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v1 api client: %w", err)
+			}
+			// create a v2 api client
+			apiV2, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v2 api client: %w", err)
+			}
+			return runWasm(cmd, args, apiV1, apiV2, cfg, opts)
 		},
 	}
 
@@ -136,7 +155,7 @@ func newRunCmd() *cobra.Command {
 	return wasmRunCmd
 }
 
-func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
+func runWasm(cmd *cobra.Command, args []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
 	j, err := CreateJob(ctx, args, opts)
@@ -159,12 +178,16 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
-	if err != nil {
-		return fmt.Errorf("executing job: %w", err)
+	if err := legacy_job.VerifyJob(ctx, j); err != nil {
+		return fmt.Errorf("verifying job for submission: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	executingJob, err := apiV1.Submit(ctx, j)
+	if err != nil {
+		return fmt.Errorf("submitting job for execution: %w", err)
+	}
+
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, apiV1, apiV2, cfg.Node.IPFS)
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {

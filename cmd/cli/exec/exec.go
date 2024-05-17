@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -85,8 +86,17 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 			// flags that are unknown. We will only support the long form for custom
 			// job types as we will want to use them as keys in template completions.
 			unknownArgs := ExtractUnknownArgs(cmd.Flags(), os.Args[1:])
-
-			return exec(cmd, cmdArgs, unknownArgs, options)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return exec(cmd, cmdArgs, unknownArgs, api, options)
 		},
 	}
 
@@ -97,7 +107,7 @@ func NewCmdWithOptions(options *ExecOptions) *cobra.Command {
 	return execCmd
 }
 
-func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *ExecOptions) error {
+func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, api client.API, options *ExecOptions) error {
 	job, err := PrepareJob(cmd, cmdArgs, unknownArgs, options)
 	if err != nil {
 		return err
@@ -109,15 +119,14 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, options *E
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	client := util.GetAPIClientV2(cmd)
-	resp, err := client.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
+	resp, err := api.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
 		Job: job,
 	})
 	if err != nil {
 		return fmt.Errorf("failed request: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(cmd.Context(), resp.JobID, cmd, options.RunTimeSettings, client); err != nil {
+	if err := printer.PrintJobExecution(cmd.Context(), resp.JobID, cmd, options.RunTimeSettings, api); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

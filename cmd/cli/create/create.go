@@ -13,14 +13,16 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	clientv1 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -68,7 +70,22 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return create(cmd, cmdArgs, OC)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create a v1 api client
+			apiV1, err := util.GetAPIClient(cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v1 api client: %w", err)
+			}
+			// create a v2 api client
+			apiV2, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v2 api client: %w", err)
+			}
+			return create(cmd, cmdArgs, apiV1, apiV2, cfg, OC)
 		},
 	}
 
@@ -78,18 +95,17 @@ func NewCmd() *cobra.Command {
 	return createCmd
 }
 
-func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
+func create(cmd *cobra.Command, cmdArgs []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, OC *CreateOptions) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
 	// Custom unmarshaller
 	// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1
 	var jwi model.JobWithInfo
 	var j *model.Job
-	var err error
 	var byteResult []byte
 	var rawMap map[string]interface{}
 
-	j, err = model.NewJobWithSaneProductionDefaults()
+	j, err := model.NewJobWithSaneProductionDefaults()
 	if err != nil {
 		return err
 	}
@@ -225,18 +241,10 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx,
-		j,
-		OC.RunTimeSettings,
-	)
+	executingJob, err := apiV1.Submit(ctx, j)
 	if err != nil {
-		return fmt.Errorf("error executing job: %w", err)
+		return fmt.Errorf("submitting job for execution: %w", err)
 	}
 
-	err = printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, apiV1, apiV2, cfg.Node.IPFS)
 }

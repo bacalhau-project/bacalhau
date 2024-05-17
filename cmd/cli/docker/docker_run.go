@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
@@ -16,8 +17,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	clientv1 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -98,15 +102,31 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	}
 
 	dockerRunCmd := &cobra.Command{
-		Use:      "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
-		Short:    "Run a docker job on the network",
-		Long:     runLong,
-		Example:  runExample,
-		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
+		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
+		Short:   "Run a docker job on the network",
+		Long:    runLong,
+		Example: runExample,
+		Args:    cobra.MinimumNArgs(1),
+		// bind flags for this command to the config.
+		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), dockerRunFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return dockerRun(cmd, cmdArgs, opts)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create a v1 api client
+			apiV1, err := util.GetAPIClient(cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v1 api client: %w", err)
+			}
+			// create a v2 api client
+			apiV2, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v2 api client: %w", err)
+			}
+			return dockerRun(cmd, cmdArgs, apiV1, apiV2, cfg, opts)
 		},
 	}
 
@@ -134,7 +154,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
+func dockerRun(cmd *cobra.Command, cmdArgs []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
 	image := cmdArgs[0]
@@ -171,12 +191,16 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return nil
 	}
 
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
-	if err != nil {
-		return err
+	if err := legacy_job.VerifyJob(ctx, j); err != nil {
+		return fmt.Errorf("verifying job for submission: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	executingJob, err := apiV1.Submit(ctx, j)
+	if err != nil {
+		return fmt.Errorf("submitting job for execution: %w", err)
+	}
+
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, apiV1, apiV2, cfg.Node.IPFS)
 }
 
 // CreateJob creates a job object from the given command line arguments and options.

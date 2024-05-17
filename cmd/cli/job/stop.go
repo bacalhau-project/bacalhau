@@ -8,6 +8,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
@@ -60,7 +61,19 @@ func NewStopCmd() *cobra.Command {
 		Long:    stopLong,
 		Example: stopExample,
 		Args:    cobra.ExactArgs(1),
-		RunE:    o.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return o.run(cmd, args, api)
+		},
 	}
 
 	stopCmd.PersistentFlags().BoolVar(&o.Quiet, "quiet", o.Quiet,
@@ -69,7 +82,7 @@ func NewStopCmd() *cobra.Command {
 	return stopCmd
 }
 
-func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
+func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string, api client.API) error {
 	ctx := cmd.Context()
 
 	if o.Quiet {
@@ -109,12 +122,10 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := util.GetAPIClientV2(cmd)
-
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.
 	spinner.NextStep(gettingJobMessage)
-	response, err := apiClient.Jobs().Get(ctx, &apimodels.GetJobRequest{
+	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID: requestedJobID,
 	})
 	if err != nil {
@@ -135,7 +146,7 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string) error {
 	// requester to decide if we are allowed to do that or not.
 	spinner.NextStep(stoppingJobMessage)
 
-	stopResponse, err := apiClient.Jobs().Stop(ctx, &apimodels.StopJobRequest{
+	stopResponse, err := api.Jobs().Stop(ctx, &apimodels.StopJobRequest{
 		JobID:  requestedJobID,
 		Reason: "Stopped at user request",
 	})

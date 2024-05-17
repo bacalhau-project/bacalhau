@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -76,7 +78,17 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.RemoteCmdPreRunHooks,
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return list(cmd, OL)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			// create an api client
+			api, err := util.GetAPIClient(cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create api client: %w", err)
+			}
+			return list(cmd, api, OL)
 		},
 	}
 
@@ -171,9 +183,9 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 	},
 }
 
-func list(cmd *cobra.Command, OL *ListOptions) error {
+func list(cmd *cobra.Command, api *client.APIClient, OL *ListOptions) error {
 	ctx := cmd.Context()
-	jobs, err := util.GetAPIClient(ctx).List(
+	jobs, err := api.List(
 		ctx,
 		OL.IDFilter,
 		OL.IncludeTags,
@@ -183,7 +195,6 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 		OL.SortBy.String(),
 		OL.SortReverse,
 	)
-
 	if err != nil {
 		return err
 	}

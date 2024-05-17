@@ -10,12 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -30,8 +29,6 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
-	err := config.Set(configenv.Local)
-	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }
 
@@ -41,7 +38,10 @@ func (s *StorageSuite) SetupTest() {
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	sp := NewStorage()
+	sp := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
 
 	spec := models.InputSource{
 		Source: &models.SpecConfig{
@@ -304,7 +304,10 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			}))
 			s.T().Cleanup(ts.Close)
 
-			subject := NewStorage()
+			subject := NewStorage(
+				time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+				configenv.Testing.Node.DownloadURLRequestRetries,
+			)
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
 			spec := models.InputSource{

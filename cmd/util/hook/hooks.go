@@ -68,7 +68,9 @@ func AfterParentPostRunHook(hook runHookE) runHookE {
 // should have applied.
 var ClientPreRunHooks runHookE = Chain(
 	Adapt(ApplyPorcelainLogLevel),
-	Adapt(StartUpdateCheck),
+	// TODO(forrest) [fixme/are-you-fucking-kidding-me]: need to un-wang this from here
+	// gut check idea is to perform this in a single place at the root level
+	// Adapt(StartUpdateCheck),
 )
 
 // RemoteCmdPreRunHooks is the set of pre-run hooks that all commands that
