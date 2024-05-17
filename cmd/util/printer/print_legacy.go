@@ -129,11 +129,11 @@ func PrintJobExecutionLegacy(
 
 	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
 	if !quiet && hasResults {
-		cmd.Printf("\nTo download the results, execute:\n\t"+os.Args[0]+" get %s\n", j.ID())
+		cmd.Printf("\nTo download the results, execute:\n\t"+os.Args[0]+" job get %s\n", j.ID())
 	}
 
 	if !quiet {
-		cmd.Printf("\nTo get more details about the run, execute:\n\t"+os.Args[0]+" describe %s\n", j.ID())
+		cmd.Printf("\nTo get more details about the run, execute:\n\t"+os.Args[0]+" job describe %s\n", j.ID())
 	}
 
 	if hasResults && runtimeSettings.AutoDownloadResults {
