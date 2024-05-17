@@ -10,15 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/benbjohnson/clock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 type BoltJobstoreTestSuite struct {
@@ -819,6 +820,65 @@ func (s *BoltJobstoreTestSuite) TestTransactionsReadDuringWrite() {
 
 	// Commit the transaction
 	s.Require().NoError(txCtx.Commit())
+}
+
+func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
+	txCtx1, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx1)
+	tx1, ok := txFromContext(txCtx1)
+	s.Require().True(ok)
+	// commit to release the transaction
+	s.Require().NoError(txCtx1.Commit())
+
+	// start second transaction, even through tcCtx1
+	txCtx2, err := s.store.BeginTx(txCtx1)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx2)
+	tx2, ok := txFromContext(txCtx2)
+	s.Require().True(ok)
+	// commit to release the transaction
+	s.Require().NoError(txCtx2.Commit())
+
+	// assert that the two transactions were different
+	s.Require().NotEqual(txCtx1, txCtx2)
+	s.Require().NotEqual(tx1, tx2)
+}
+
+func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Concurrent() {
+	// Start the first transaction
+	txCtx1, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx1)
+
+	// Channel to signal when the second transaction attempt is complete
+	done := make(chan bool)
+
+	// Start a goroutine to attempt the second transaction
+	var txCtx2 jobstore.TxContext
+	go func() {
+		txCtx2, err = s.store.BeginTx(s.ctx)
+		s.Require().NoError(err)
+		done <- true
+	}()
+
+	// Ensure the second transaction attempt has completed
+	select {
+	case <-done:
+		s.Fail("The second transaction attempt should not have completed")
+	case <-time.After(100 * time.Millisecond):
+		// Success
+	}
+
+	// Commit the first transaction
+	s.Require().NoError(txCtx1.Commit())
+	select {
+	case <-done:
+		// Success, now commit the second transaction
+		s.Require().NoError(txCtx2.Commit())
+	case <-time.After(100 * time.Millisecond):
+		s.Fail("The second transaction should've started")
+	}
 }
 
 func (s *BoltJobstoreTestSuite) parseLabels(selector string) labels.Selector {
