@@ -2,9 +2,12 @@ package boltjobstore
 
 import (
 	"context"
+	"errors"
+
+	"github.com/rs/zerolog/log"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	bolt "go.etcd.io/bbolt"
 )
 
 // contextKey is a custom type to avoid key collisions in context values.
@@ -32,10 +35,14 @@ func newTxContext(ctx context.Context, tx *bolt.Tx) *txContext {
 	// Start a goroutine that listens for the context's Done channel.
 	go func() {
 		<-innerCtx.Done()
-		// If the transaction has not been committed when the context is done, rollback the transaction.
-		// In boltdb transaction, db is nil if the transaction is already committed or rolled back.
-		if txCtx.tx.DB() != nil {
-			_ = txCtx.tx.Rollback()
+
+		// Always attempt to rollback the transaction,
+		// which is a no-op if the transaction is already committed or rolled back.
+		if err := tx.Rollback(); err != nil {
+			// ignore if error is boltdb.ErrTxClosed, otherwise log the error
+			if !errors.Is(err, bolt.ErrTxClosed) {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to rollback transaction")
+			}
 		}
 	}()
 
