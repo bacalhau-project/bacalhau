@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -108,7 +109,7 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 		jobID,
 		OG.DownloadSettings,
 	); err != nil {
-		return fmt.Errorf("downloading job: %w", err)
+		return errors.Wrap(err, "error downloading job")
 	}
 
 	return nil
