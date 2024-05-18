@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,8 +35,13 @@ var V2Migration = repo.NewMigration(
 		// reading the correct libp2p key in case the user is overriding the default value.
 		c := config.New()
 		if err := c.Load(filepath.Join(repoPath, config.FileName)); err != nil {
-			return fmt.Errorf("loading config from repo: %w", err)
+			// if the config doesn't exist that's okay, just means we read a repo without a config in it.
+			if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("loading config from repo: %w", err)
+			}
 		}
+		// modify the config with default paths required by the repo
+		r.EnsureRepoPathsConfigured(c)
 		resolvedCfg, err := c.Current()
 		if err != nil {
 			return err
