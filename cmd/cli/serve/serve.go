@@ -231,7 +231,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 	nodeConfig := node.NodeConfig{
-		NodeID:                nodeName,
+		NodeID:                cfg.Node.Name,
 		CleanupManager:        cm,
 		IPFSClient:            ipfsClient,
 		DisabledFeatures:      node.FeatureConfig(cfg.Node.DisabledFeatures),
