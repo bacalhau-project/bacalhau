@@ -2,7 +2,7 @@ package stream
 
 // Close error codes that follow these semantics:
 // - 1000 Series: Normal and controlled shutdown scenarios. These are standard and expected reasons for closing a stream.
-// - 4000 Series: Client-related errors or issues with the transmitted data, indicating problems that originate from the caller's side.
+// - 4000 Series: ConsumerClient-related errors or issues with the transmitted data, indicating problems that originate from the caller's side.
 // - 5000 Series: Server-side errors, indicating problems that are internal to the server or the processing system.
 const (
 	// CloseNormalClosure Indicates that the stream was closed after completing its

@@ -13,13 +13,13 @@ complexities of data encoding and NATS publishing into a simple, intuitive inter
 
 How It Works:
 
-  - The Client part of the package manages dynamic inboxes for each streaming session, facilitating
+  - The ConsumerClient part of the package manages dynamic inboxes for each streaming session, facilitating
     the sending of data and listening for responses on dedicated subjects. It leverages the NATS
     publish-subscribe model for asynchronous communication, efficiently routing and correlating
     messages to their respective streams.
 
   - The Writer component allows for easy publishing of structured data to any NATS subject. It
-    integrates tightly with the Client, utilizing the same connection for streamlined data streaming.
+    integrates tightly with the ConsumerClient, utilizing the same connection for streamlined data streaming.
     The Writer simplifies the publication process, automatically handling data serialization and
     supporting graceful stream closure with custom codes.
 
@@ -57,8 +57,8 @@ process of working with streaming data.
 
 Example:
 
-	params := stream.ClientParams{Conn: natsConn}
-	client, err := stream.NewClient(params)
+	params := stream.ConsumerClientParams{Conn: natsConn}
+	client, err := stream.NewConsumerClient(params)
 	if err != nil {
 	    log.Fatal(err)
 	}

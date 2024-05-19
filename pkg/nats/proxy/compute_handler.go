@@ -27,7 +27,7 @@ type ComputeHandler struct {
 	conn            *nats.Conn
 	computeEndpoint compute.Endpoint
 	subscription    *nats.Subscription
-	streamingClient *stream.Client
+	streamingClient *stream.ProducerClient
 }
 
 // handlerWithResponse represents a function that processes a request and returns a response.
@@ -35,7 +35,9 @@ type handlerWithResponse[Request, Response any] func(context.Context, Request) (
 
 // NewComputeHandler creates a new ComputeHandler.
 func NewComputeHandler(params ComputeHandlerParams) (*ComputeHandler, error) {
-	streamingClient, err := stream.NewClient(stream.ClientParams{Conn: params.Conn})
+	streamingClient, err := stream.NewProducerClient(stream.ProducerClientParams{
+		Conn: params.Conn,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +128,13 @@ func sendResponse[Response any](conn *nats.Conn, reply string, result *concurren
 	return conn.Publish(reply, resultData)
 }
 
-func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.Client, msg *nats.Msg,
+func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.ProducerClient, msg *nats.Msg,
 	f handlerWithResponse[Request, <-chan *concurrency.AsyncResult[Response]]) {
 	if msg.Reply == "" {
 		log.Ctx(ctx).Error().Msgf("streaming request on %s has no reply subject", msg.Subject)
 		return
 	}
+
 	writer := streamingClient.NewWriter(msg.Reply)
 	request := new(Request)
 	err := json.Unmarshal(msg.Data, request)
@@ -141,6 +144,13 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
+	connDetails := &stream.ConnectionDetails{
+		StreamId:            msg.Header.Get("StreamId"),
+		ConnId:              msg.Header.Get("ConnId"),
+		HeartBeatRequestSub: msg.Header.Get("StreamHeartBeatSub"),
+	}
+
+	streamingClient.AddConnDetails(ctx, connDetails)
 	ch, err := f(ctx, *request)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
@@ -154,5 +164,6 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
 		}
 	}
+	streamingClient.RemoveConnDetails(connDetails)
 	_ = writer.Close()
 }
