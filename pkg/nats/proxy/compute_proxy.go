@@ -27,11 +27,14 @@ type ComputeProxyParams struct {
 // is provided.
 type ComputeProxy struct {
 	conn            *nats.Conn
-	streamingClient *stream.Client
+	streamingClient *stream.ConsumerClient
 }
 
 func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
-	sc, err := stream.NewClient(stream.ClientParams{Conn: params.Conn})
+	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
+		Conn:                params.Conn,
+		HeartBeatRequestSub: requesterEndpointPublishSubject(params.Conn.Opts.Name, StreamHeartBeat),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +127,7 @@ func proxyRequest[Request any, Response any](
 
 func proxyStreamingRequest[Request any, Response any](
 	ctx context.Context,
-	client *stream.Client,
+	client *stream.ConsumerClient,
 	request *BaseRequest[Request]) (
 	<-chan *concurrency.AsyncResult[Response], error) {
 	subject := request.ComputeEndpoint()

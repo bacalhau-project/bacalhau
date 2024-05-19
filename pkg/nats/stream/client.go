@@ -58,12 +58,13 @@ func (sb *streamingBucket) close() {
 	})
 }
 
-type ClientParams struct {
-	Conn *nats.Conn
+type ConsumerClientParams struct {
+	Conn                *nats.Conn
+	HeartBeatRequestSub string
 }
 
-// Client represents a NATS streaming client.
-type Client struct {
+// ConsumerClient represents a NATS streaming client.
+type ConsumerClient struct {
 	Conn *nats.Conn
 	mu   sync.RWMutex // Protects access to the response map.
 
@@ -75,14 +76,18 @@ type Client struct {
 	respMux       *nats.Subscription          // A single response subscription
 	respMap       map[string]*streamingBucket // Request map for the response msg channels
 	respRand      *rand.Rand                  // Used for generating suffix
+
+	heartBeatRequestSub string // A heart beat subject where the producer sends heart beat request to convey existing stream ids
+
 }
 
-// NewClient creates a new NATS client.
-func NewClient(params ClientParams) (*Client, error) {
-	nc := &Client{
-		Conn:     params.Conn,
-		respMap:  make(map[string]*streamingBucket),
-		respRand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
+// NewConsumerClient creates a new NATS client.
+func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
+	nc := &ConsumerClient{
+		Conn:                params.Conn,
+		respMap:             make(map[string]*streamingBucket),
+		respRand:            rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
+		heartBeatRequestSub: params.HeartBeatRequestSub,
 	}
 
 	// Setup response subscription.
@@ -100,12 +105,17 @@ func NewClient(params ClientParams) (*Client, error) {
 	nc.respScanf = strings.Replace(nc.respSub, "*", "%s", -1)
 	nc.respMux = sub
 
+	_, err = nc.Conn.Subscribe(nc.heartBeatRequestSub, nc.heartBeatRespHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Debug().Msgf("Streaming client created with inbox %s", sub.Subject)
 	return nc, nil
 }
 
 // newInbox will return a new inbox string for this client.
-func (nc *Client) newInbox() string {
+func (nc *ConsumerClient) newInbox() string {
 	var b [inboxPrefixLen + nuidSize]byte
 	pres := b[:inboxPrefixLen]
 	copy(pres, inboxPrefix)
@@ -117,7 +127,7 @@ func (nc *Client) newInbox() string {
 // respHandler is the global response handler. It will look up
 // the appropriate channel based on the last token and place
 // the message on the channel if possible.
-func (nc *Client) respHandler(m *nats.Msg) {
+func (nc *ConsumerClient) respHandler(m *nats.Msg) {
 	// Just return if closed.
 	if nc.Conn.IsClosed() {
 		return
@@ -180,7 +190,7 @@ func (nc *Client) respHandler(m *nats.Msg) {
 	}
 }
 
-func (nc *Client) cleanupBucket(token string) {
+func (nc *ConsumerClient) cleanupBucket(token string) {
 	nc.mu.Lock()
 	defer nc.mu.Unlock()
 	if bucket, ok := nc.respMap[token]; ok {
@@ -192,7 +202,7 @@ func (nc *Client) cleanupBucket(token string) {
 // newRespInbox creates a new literal response subject
 // that will trigger the mux subscription handler.
 // Lock should be held.
-func (nc *Client) newRespInbox() string {
+func (nc *ConsumerClient) newRespInbox() string {
 	var sb strings.Builder
 	sb.WriteString(nc.respSubPrefix)
 
@@ -208,7 +218,7 @@ func (nc *Client) newRespInbox() string {
 // respToken will return the last token of a literal response inbox
 // which we use for the message channel lookup.
 // Lock should be held.
-func (nc *Client) respToken(respInbox string) string {
+func (nc *ConsumerClient) respToken(respInbox string) string {
 	var token string
 	n, err := fmt.Sscanf(respInbox, nc.respScanf, &token)
 	if err != nil || n != 1 {
@@ -219,7 +229,7 @@ func (nc *Client) respToken(respInbox string) string {
 
 // OpenStream takes a context, a subject and payload
 // in bytes and expects a channel with multiple responses.
-func (nc *Client) OpenStream(ctx context.Context, subj string, data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
+func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	if ctx == nil {
 		return nil, nats.ErrInvalidContext
 	}
@@ -239,8 +249,19 @@ func (nc *Client) OpenStream(ctx context.Context, subj string, data []byte) (<-c
 	return bucket.ch, nil
 }
 
+func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
+	log.Info().Msg("Heart Beat Received")
+	log.Info().Msgf("Stream Ids Receieved = %s", string(msg.Data))
+	log.Info().Msgf("Reply message = %s", msg.Reply)
+	err := nc.Conn.Publish(msg.Reply, nil)
+	if err != nil {
+		return
+	}
+
+}
+
 // createNewRequestAndSend sets up and sends a new request, returning the response bucket.
-func (nc *Client) createNewRequestAndSend(ctx context.Context, subj string, data []byte) (*streamingBucket, error) {
+func (nc *ConsumerClient) createNewRequestAndSend(ctx context.Context, subj string, data []byte) (*streamingBucket, error) {
 	nc.mu.Lock()
 
 	// Create new literal Inbox and map to a bucket.
@@ -251,7 +272,19 @@ func (nc *Client) createNewRequestAndSend(ctx context.Context, subj string, data
 	nc.respMap[token] = bucket
 	nc.mu.Unlock()
 
-	if err := nc.Conn.PublishRequest(subj, respInbox, data); err != nil {
+	header := make(nats.Header)
+	header.Add("ConnId", nc.Conn.Opts.Name)
+	header.Add("StreamId", token)
+	header.Add("StreamHeartBeatSub", nc.heartBeatRequestSub)
+
+	msg := &nats.Msg{
+		Subject: subj,
+		Reply:   respInbox,
+		Data:    data,
+		Header:  header,
+	}
+
+	if err := nc.Conn.PublishMsg(msg); err != nil {
 		return nil, err
 	}
 
@@ -259,9 +292,9 @@ func (nc *Client) createNewRequestAndSend(ctx context.Context, subj string, data
 }
 
 // NewWriter creates a new streaming writer.
-func (nc *Client) NewWriter(subject string) *Writer {
+func (nc *ConsumerClient) NewWriter(subject string) *Writer {
 	return &Writer{
-		client:  nc,
+		conn:    nc.Conn,
 		subject: subject,
 	}
 }
