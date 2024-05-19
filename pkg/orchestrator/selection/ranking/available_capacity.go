@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/rs/zerolog/log"
 )
 
 // Constants to normalize resource values to a comparable scale.
@@ -31,6 +32,22 @@ const (
 	maxQueueCapacityRank     = 20
 )
 
+// resourceWeights struct to hold resource weights.
+type resourceWeights struct {
+	cpuWeight    float64
+	memoryWeight float64
+	diskWeight   float64
+	gpuWeight    float64
+}
+
+// defaultResourceWeights returns the default resource weights.
+var defaultResourceWeights = resourceWeights{
+	cpuWeight:    defaultCPUWeight,
+	memoryWeight: defaultMemoryWeight,
+	diskWeight:   defaultDiskWeight,
+	gpuWeight:    defaultGPUWeight,
+}
+
 // AvailableCapacityNodeRanker ranks nodes based on their available capacity and queue used capacity.
 type AvailableCapacityNodeRanker struct{}
 
@@ -40,7 +57,7 @@ func NewAvailableCapacityNodeRanker() *AvailableCapacityNodeRanker {
 }
 
 // dynamicWeights calculates the weights for resources based on the job requirements.
-func dynamicWeights(jobRequirements *models.Resources) (float64, float64, float64, float64) {
+func dynamicWeights(jobRequirements *models.Resources) resourceWeights {
 	// Normalize the resource values
 	normalizedCPU := jobRequirements.CPU / cpuScale
 	normalizedMemory := float64(jobRequirements.Memory) / memoryScale
@@ -51,49 +68,40 @@ func dynamicWeights(jobRequirements *models.Resources) (float64, float64, float6
 	total := normalizedCPU + normalizedMemory + normalizedDisk + normalizedGPU
 	if total == 0 {
 		// Return default weights if job requirements are all zero
-		return defaultCPUWeight, defaultMemoryWeight, defaultDiskWeight, defaultGPUWeight
+		return defaultResourceWeights
 	}
 
 	// Calculate and return dynamic weights based on normalized resource values
-	return normalizedCPU / total,
-		normalizedMemory / total,
-		normalizedDisk / total,
-		normalizedGPU / total
+	return resourceWeights{
+		cpuWeight:    normalizedCPU / total,
+		memoryWeight: normalizedMemory / total,
+		diskWeight:   normalizedDisk / total,
+		gpuWeight:    normalizedGPU / total,
+	}
 }
 
-// weightedCapacity calculates the weighted capacity of a node's resources using dynamic weights.
-func weightedCapacity(resources models.Resources, cpuWeight, memoryWeight, diskWeight, gpuWeight float64) float64 {
+func weightedCapacity(resources models.Resources, weights resourceWeights) float64 {
 	normalizedCPU := resources.CPU / cpuScale
 	normalizedMemory := float64(resources.Memory) / memoryScale
 	normalizedDisk := float64(resources.Disk) / diskScale
 	normalizedGPU := float64(resources.GPU) / gpuScale
 
-	return (normalizedCPU * cpuWeight) +
-		(normalizedMemory * memoryWeight) +
-		(normalizedDisk * diskWeight) +
-		(normalizedGPU * gpuWeight)
+	return (normalizedCPU * weights.cpuWeight) +
+		(normalizedMemory * weights.memoryWeight) +
+		(normalizedDisk * weights.diskWeight) +
+		(normalizedGPU * weights.gpuWeight)
 }
 
-// RankNodes ranks nodes based on their available capacity and queue used capacity.
-// Nodes with more available capacity are ranked higher, and nodes with more queue capacity are ranked lower.
-func (s *AvailableCapacityNodeRanker) RankNodes(
-	ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
-	// Get dynamic weights based on job requirements
-	jobResources, err := job.Task().ResourcesConfig.ToResources()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get job resources: %w", err)
-	}
-	cpuWeight, memoryWeight, diskWeight, gpuWeight := dynamicWeights(jobResources)
-
-	// Initialize variables to track maximum weighted capacities
+// calculateWeightedCapacities calculates the weighted capacities for each node and determines the maximum values
+func (s *AvailableCapacityNodeRanker) calculateWeightedCapacities(nodes []models.NodeInfo, weights resourceWeights) (
+	map[string]float64, map[string]float64, float64, float64) {
 	var maxWeightedAvailableCapacity, maxQueueUsedCapacity float64
 	weightedAvailableCapacities := make(map[string]float64, len(nodes))
 	weightedQueueCapacities := make(map[string]float64, len(nodes))
 
-	// Calculate weighted capacities for each node and determine the maximum values
 	for _, node := range nodes {
-		weightedAvailableCapacity := weightedCapacity(node.ComputeNodeInfo.AvailableCapacity, cpuWeight, memoryWeight, diskWeight, gpuWeight)
-		weightedQueueUsedCapacity := weightedCapacity(node.ComputeNodeInfo.QueueUsedCapacity, cpuWeight, memoryWeight, diskWeight, gpuWeight)
+		weightedAvailableCapacity := weightedCapacity(node.ComputeNodeInfo.AvailableCapacity, weights)
+		weightedQueueUsedCapacity := weightedCapacity(node.ComputeNodeInfo.QueueUsedCapacity, weights)
 
 		weightedAvailableCapacities[node.NodeID] = weightedAvailableCapacity
 		weightedQueueCapacities[node.NodeID] = weightedQueueUsedCapacity
@@ -106,22 +114,28 @@ func (s *AvailableCapacityNodeRanker) RankNodes(
 		}
 	}
 
-	// Rank nodes based on normalized weighted capacities
+	return weightedAvailableCapacities, weightedQueueCapacities, maxWeightedAvailableCapacity, maxQueueUsedCapacity
+}
+
+// rankNodesBasedOnCapacities ranks nodes based on normalized weighted capacities
+func (s *AvailableCapacityNodeRanker) rankNodesBasedOnCapacities(ctx context.Context, nodes []models.NodeInfo,
+	wAvailableCapacities, wQueueCapacities map[string]float64, maxAvailableCapacity, maxQueueCapacity float64) (
+	[]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 
 	for i, node := range nodes {
-		weightedAvailableCapacity := weightedAvailableCapacities[node.NodeID]
-		weightedQueueUsedCapacity := weightedQueueCapacities[node.NodeID]
+		weightedAvailableCapacity := wAvailableCapacities[node.NodeID]
+		weightedQueueUsedCapacity := wQueueCapacities[node.NodeID]
 
 		// Calculate the ratios of available and queue capacities
 		availableRatio := 0.0
 		queueRatio := 0.0
 
-		if maxWeightedAvailableCapacity > 0 {
-			availableRatio = weightedAvailableCapacity / maxWeightedAvailableCapacity
+		if maxAvailableCapacity > 0 {
+			availableRatio = weightedAvailableCapacity / maxAvailableCapacity
 		}
-		if maxQueueUsedCapacity > 0 {
-			queueRatio = weightedQueueUsedCapacity / maxQueueUsedCapacity
+		if maxQueueCapacity > 0 {
+			queueRatio = weightedQueueUsedCapacity / maxQueueCapacity
 		}
 
 		// Normalize the ratios to the rank range
@@ -148,4 +162,24 @@ func (s *AvailableCapacityNodeRanker) RankNodes(
 	}
 
 	return ranks, nil
+}
+
+// RankNodes ranks nodes based on their available capacity and queue used capacity.
+// Nodes with more available capacity are ranked higher, and nodes with more queue capacity are ranked lower.
+func (s *AvailableCapacityNodeRanker) RankNodes(
+	ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
+	// Get dynamic weights based on job requirements
+	jobResources, err := job.Task().ResourcesConfig.ToResources()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job resources: %w", err)
+	}
+	weights := dynamicWeights(jobResources)
+
+	// Calculate weighted capacities for each node and determine the maximum values
+	wAvailableCapacities, wQueueCapacities, maxAvailableCapacity, maxQueueCapacity :=
+		s.calculateWeightedCapacities(nodes, weights)
+
+	// Rank nodes based on normalized weighted capacities
+	return s.rankNodesBasedOnCapacities(
+		ctx, nodes, wAvailableCapacities, wQueueCapacities, maxAvailableCapacity, maxQueueCapacity)
 }
