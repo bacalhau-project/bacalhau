@@ -32,6 +32,6 @@ num_gpu_machines            = 2
 internal_ip_addresses       = ["10.150.0.5", "10.150.0.6", "10.150.0.7", "10.150.0.8", "10.150.0.9"]
 public_ip_addresses         = ["35.245.161.250", "34.86.254.26", "35.245.215.155", "34.145.201.224", "35.245.41.51"]
 log_level                   = "debug"
-network_type                = "libp2p"
+network_type                = "nats"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
