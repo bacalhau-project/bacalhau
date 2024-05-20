@@ -177,6 +177,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 			return err
 		}
 		nodeName = libp2pHost.ID().String()
+		cfg.Node.Name = nodeName
 	} else {
 		if cfg.Node.Name == "" {
 			nodeName, err = getNodeID(ctx, cfg.Node.NameProvider)
