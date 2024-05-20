@@ -120,10 +120,8 @@ func (m PlanMatcher) String() string {
 		m.JobState, m.Evaluation, m.NewExecutionsNodes, m.StoppedExecutions, m.ApprovedExecutions)
 }
 
-func mockNodeInfo(t *testing.T, nodeID string) *models.NodeInfo {
+func fakeNodeInfo(t *testing.T, nodeID string) *models.NodeInfo {
 	return &models.NodeInfo{
-		NodeID:   nodeID,
-		Approval: models.NodeApprovals.APPROVED,
-		State:    models.NodeStates.CONNECTED,
+		NodeID: nodeID,
 	}
 }

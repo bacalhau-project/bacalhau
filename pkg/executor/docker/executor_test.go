@@ -15,10 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -519,8 +520,8 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 		Reader: reader,
 	}).Stream(context.Background())
 	res, ok := <-ch
-	executionLog := res.Value
 	require.True(s.T(), ok)
+	executionLog := res.Value
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
 	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
 

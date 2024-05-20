@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": false,
     "skipLibCheck": false,
     "esModuleInterop": true,
@@ -15,8 +19,13 @@
     "jsx": "react",
     "noEmit": false,
     "outDir": "./compiled",
-    "typeRoots": ["node_modules/@types", "src/types"],
-    "types": ["vite/client"]
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ],
+    "types": [
+      "vite/client"
+    ]
   },
   "include": [
     "src/**/*.tsx",

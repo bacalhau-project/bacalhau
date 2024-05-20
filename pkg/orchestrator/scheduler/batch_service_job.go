@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
@@ -14,29 +15,37 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
+type BatchServiceJobSchedulerParams struct {
+	JobStore      jobstore.Store
+	Planner       orchestrator.Planner
+	NodeSelector  orchestrator.NodeSelector
+	RetryStrategy orchestrator.RetryStrategy
+	// Clock is the clock used for time-based operations.
+	// If not provided, the system clock is used.
+	Clock clock.Clock
+}
+
 // BatchServiceJobScheduler is a scheduler for:
 // - batch jobs that run until completion on N number of nodes
 // - service jobs than run until stopped on N number of nodes
 type BatchServiceJobScheduler struct {
 	jobStore      jobstore.Store
 	planner       orchestrator.Planner
-	nodeSelector  orchestrator.NodeSelector
+	selector      orchestrator.NodeSelector
 	retryStrategy orchestrator.RetryStrategy
-}
-
-type BatchServiceJobSchedulerParams struct {
-	JobStore      jobstore.Store
-	Planner       orchestrator.Planner
-	NodeSelector  orchestrator.NodeSelector
-	RetryStrategy orchestrator.RetryStrategy
+	clock         clock.Clock
 }
 
 func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchServiceJobScheduler {
+	if params.Clock == nil {
+		params.Clock = clock.New()
+	}
 	return &BatchServiceJobScheduler{
 		jobStore:      params.JobStore,
 		planner:       params.Planner,
-		nodeSelector:  params.NodeSelector,
+		selector:      params.NodeSelector,
 		retryStrategy: params.RetryStrategy,
+		clock:         params.Clock,
 	}
 }
 
@@ -69,14 +78,29 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	}
 
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
 
+	// keep track or existing failed executions, and those that will be marked as failed
+	allFailedExecs := existingExecs.filterFailed()
+
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
+	allFailedExecs = allFailedExecs.union(lost)
+
+	// Mark executions that have exceeded their execution timeout as failed
+	// Only applicable for batch jobs and not service jobs.
+	if !job.IsLongRunning() {
+		timeout := job.Task().Timeouts.GetExecutionTimeout()
+		expirationTime := b.clock.Now().Add(-timeout)
+		var timedOut execSet
+		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
+		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+		allFailedExecs = allFailedExecs.union(timedOut)
+	}
 
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
@@ -95,16 +119,15 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
 	if remainingExecutionCount > 0 {
-		allFailed := existingExecs.filterFailed().union(lost)
 		var placementErr error
-		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
+		if len(allFailedExecs) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
 			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
 			plan.Event = orchestrator.JobExhaustedRetriesEvent()
 		} else {
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
 		if placementErr != nil {
-			b.handleFailure(nonTerminalExecs, allFailed, plan, placementErr)
+			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, placementErr)
 			return b.planner.Process(ctx, plan)
 		}
 	}
@@ -155,16 +178,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 // placeExecs places the executions
 func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
-		// TODO: Remove the options once we are ready to enforce that only connected/approved nodes can be used
-		selectedNodes, err := b.nodeSelector.TopMatchingNodes(
-			ctx,
-			job,
-			len(execs),
-			&orchestrator.NodeSelectionConstraints{
-				RequireApproval:  false,
-				RequireConnected: false,
-			},
-		)
+		selectedNodes, err := b.selector.TopMatchingNodes(ctx, job, len(execs))
 		if err != nil {
 			return err
 		}
@@ -178,7 +192,7 @@ func (b *BatchServiceJobScheduler) placeExecs(ctx context.Context, execs execSet
 }
 
 func (b *BatchServiceJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// TODO: allow scheduling retries in a later time if don't find nodes instead of failing the job
+	// TODO(walid): allow scheduling retries in a later time if don't find nodes instead of failing the job
 	// mark all non-terminal executions as failed
 	nonTerminalExecs.markStopped(plan.Event, plan)
 

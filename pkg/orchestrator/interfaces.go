@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 // EvaluationBroker is used to manage brokering of evaluations. When an evaluation is
@@ -89,8 +90,9 @@ type Planner interface {
 }
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
+// NodeDiscoverer is a subset of the routing.NodeInfoStore interface.
 type NodeDiscoverer interface {
-	ListNodes(ctx context.Context) ([]models.NodeInfo, error)
+	List(ctx context.Context, filter ...routing.NodeStateFilter) ([]models.NodeState, error)
 }
 
 // NodeRanker ranks nodes based on their suitability to execute a job.
@@ -104,11 +106,11 @@ type NodeSelector interface {
 	AllNodes(ctx context.Context) ([]models.NodeInfo, error)
 
 	// AllMatchingNodes returns all nodes that match the job constrains and selection criteria.
-	AllMatchingNodes(ctx context.Context, job *models.Job, constraints *NodeSelectionConstraints) ([]models.NodeInfo, error)
+	AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error)
 
 	// TopMatchingNodes return the top ranked desiredCount number of nodes that match job constraints
 	// ordered in descending order based on their rank, or error if not enough nodes match.
-	TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int, constraints *NodeSelectionConstraints) ([]models.NodeInfo, error)
+	TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error)
 }
 
 type RetryStrategy interface {

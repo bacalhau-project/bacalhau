@@ -47,6 +47,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
@@ -75,7 +76,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
-	DefaultApprovalState: models.NodeApprovals.APPROVED,
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -83,6 +84,7 @@ var TestRequesterConfig = RequesterConfigParams{
 		ExecutionTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
@@ -111,7 +113,7 @@ var TestRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
-	DefaultApprovalState: models.NodeApprovals.APPROVED,
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

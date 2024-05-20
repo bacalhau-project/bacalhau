@@ -63,13 +63,10 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
-	requesterConfig, err := node.NewRequesterConfigWith(
-		node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
-		},
-	)
+	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	s.Require().NoError(err)
+	requesterConfig.OverAskForBidsFactor = 1
+
 	stack := teststack.Setup(ctx,
 		s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),

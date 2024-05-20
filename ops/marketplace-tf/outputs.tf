@@ -13,3 +13,7 @@ output "bacalhau_requester_api_token" {
 output "bacalhau_compute_api_token" {
   value = local.token_config.compute_api_token
 }
+
+output "tls_cert" {
+  value = tls_self_signed_cert.tlscert.cert_pem
+}
