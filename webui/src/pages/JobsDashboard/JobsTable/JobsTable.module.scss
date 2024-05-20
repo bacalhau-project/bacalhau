@@ -1,14 +1,11 @@
 // styles/Table.module.scss
 @import "../../../styles/variables";
 @import "../../../styles/breakpoints";
+@import "../../../styles/container";
 
 .tableContainer {
+  @include container;
   width: 98%;
-  overflow: auto; // This allows scrolling if the content is larger than the container.
-  padding: 15px;
-  margin-top: 20px;
-  box-shadow: 0 0 10px 5px $table-color;
-  border-radius: 10px;
 
   table {
     width: 100%; // This makes the table span the full width of its container.

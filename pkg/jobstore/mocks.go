@@ -7,10 +7,119 @@ package jobstore
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockTxContext is a mock of TxContext interface.
+type MockTxContext struct {
+	ctrl     *gomock.Controller
+	recorder *MockTxContextMockRecorder
+}
+
+// MockTxContextMockRecorder is the mock recorder for MockTxContext.
+type MockTxContextMockRecorder struct {
+	mock *MockTxContext
+}
+
+// NewMockTxContext creates a new mock instance.
+func NewMockTxContext(ctrl *gomock.Controller) *MockTxContext {
+	mock := &MockTxContext{ctrl: ctrl}
+	mock.recorder = &MockTxContextMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTxContext) EXPECT() *MockTxContextMockRecorder {
+	return m.recorder
+}
+
+// Commit mocks base method.
+func (m *MockTxContext) Commit() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Commit")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Commit indicates an expected call of Commit.
+func (mr *MockTxContextMockRecorder) Commit() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockTxContext)(nil).Commit))
+}
+
+// Deadline mocks base method.
+func (m *MockTxContext) Deadline() (time.Time, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Deadline")
+	ret0, _ := ret[0].(time.Time)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// Deadline indicates an expected call of Deadline.
+func (mr *MockTxContextMockRecorder) Deadline() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deadline", reflect.TypeOf((*MockTxContext)(nil).Deadline))
+}
+
+// Done mocks base method.
+func (m *MockTxContext) Done() <-chan struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Done")
+	ret0, _ := ret[0].(<-chan struct{})
+	return ret0
+}
+
+// Done indicates an expected call of Done.
+func (mr *MockTxContextMockRecorder) Done() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Done", reflect.TypeOf((*MockTxContext)(nil).Done))
+}
+
+// Err mocks base method.
+func (m *MockTxContext) Err() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Err")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Err indicates an expected call of Err.
+func (mr *MockTxContextMockRecorder) Err() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Err", reflect.TypeOf((*MockTxContext)(nil).Err))
+}
+
+// Rollback mocks base method.
+func (m *MockTxContext) Rollback() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Rollback")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Rollback indicates an expected call of Rollback.
+func (mr *MockTxContextMockRecorder) Rollback() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockTxContext)(nil).Rollback))
+}
+
+// Value mocks base method.
+func (m *MockTxContext) Value(key any) any {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Value", key)
+	ret0, _ := ret[0].(any)
+	return ret0
+}
+
+// Value indicates an expected call of Value.
+func (mr *MockTxContextMockRecorder) Value(key interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Value", reflect.TypeOf((*MockTxContext)(nil).Value), key)
+}
 
 // MockStore is a mock of Store interface.
 type MockStore struct {
@@ -33,6 +142,21 @@ func NewMockStore(ctrl *gomock.Controller) *MockStore {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
+}
+
+// BeginTx mocks base method.
+func (m *MockStore) BeginTx(ctx context.Context) (TxContext, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTx", ctx)
+	ret0, _ := ret[0].(TxContext)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTx indicates an expected call of BeginTx.
+func (mr *MockStoreMockRecorder) BeginTx(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockStore)(nil).BeginTx), ctx)
 }
 
 // Close mocks base method.
@@ -64,31 +188,31 @@ func (mr *MockStoreMockRecorder) CreateEvaluation(ctx, eval interface{}) *gomock
 }
 
 // CreateExecution mocks base method.
-func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
+	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateExecution indicates an expected call of CreateExecution.
-func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution, event)
 }
 
 // CreateJob mocks base method.
-func (m *MockStore) CreateJob(ctx context.Context, j models.Job) error {
+func (m *MockStore) CreateJob(ctx context.Context, j models.Job, event models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJob", ctx, j)
+	ret := m.ctrl.Call(m, "CreateJob", ctx, j, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateJob indicates an expected call of CreateJob.
-func (mr *MockStoreMockRecorder) CreateJob(ctx, j interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateJob(ctx, j, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j, event)
 }
 
 // DeleteEvaluation mocks base method.
@@ -150,18 +274,18 @@ func (mr *MockStoreMockRecorder) GetExecutions(ctx, options interface{}) *gomock
 }
 
 // GetInProgressJobs mocks base method.
-func (m *MockStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
+func (m *MockStore) GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetInProgressJobs", ctx)
+	ret := m.ctrl.Call(m, "GetInProgressJobs", ctx, jobType)
 	ret0, _ := ret[0].([]models.Job)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetInProgressJobs indicates an expected call of GetInProgressJobs.
-func (mr *MockStoreMockRecorder) GetInProgressJobs(ctx interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetInProgressJobs(ctx, jobType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInProgressJobs", reflect.TypeOf((*MockStore)(nil).GetInProgressJobs), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInProgressJobs", reflect.TypeOf((*MockStore)(nil).GetInProgressJobs), ctx, jobType)
 }
 
 // GetJob mocks base method.

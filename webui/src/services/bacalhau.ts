@@ -1,4 +1,5 @@
-import axios, { AxiosInstance } from "axios"
+import { Buffer } from "buffer"
+import axios, { AxiosError, AxiosInstance } from "axios"
 import {
   JobExecutionsResponse,
   JobListRequest,
@@ -6,8 +7,9 @@ import {
   JobsResponse,
 } from "../helpers/jobInterfaces"
 import { NodeListRequest, NodesResponse } from "../helpers/nodeInterfaces"
+import { Authentication, AuthnRequest, AuthnResponse, ListAuthnMethodsResponse, Requirement } from "../helpers/authInterfaces"
 
-class BacalhauAPI {
+export class BacalhauAPI {
   apiClient: AxiosInstance
 
   constructor(baseURL: string) {
@@ -77,6 +79,36 @@ class BacalhauAPI {
         `An error occurred while fetching details for job executions: ${jobId}`,
         error
       )
+      throw error
+    }
+  }
+
+  async authMethods(): Promise<{ [key: string]: Requirement }> {
+    try {
+      const response = await this.apiClient.get("/auth")
+      return (response.data as ListAuthnMethodsResponse).Methods
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  }
+
+  async authenticate(req: AuthnRequest): Promise<Authentication> {
+    try {
+      const methodData = Buffer.from(JSON.stringify(req.MethodData)).toString("base64")
+      const request = { Name: req.Name, MethodData: methodData }
+      const response = await this.apiClient.post(`/auth/${req.Name}`, request)
+      const data = response.data as AuthnResponse
+      if (data.Authentication.success) {
+        this.apiClient.defaults.headers.common.Authorization = `Bearer ${data.Authentication.token}`
+      }
+
+      return data.Authentication
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status == 401) {
+        const data = error.response.data as AuthnResponse
+        return data.Authentication
+      }
       throw error
     }
   }

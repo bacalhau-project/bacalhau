@@ -55,7 +55,7 @@ locals {
   bacalhau_env_vars = {
     LOG_LEVEL                   = "debug"
     BACALHAU_NODE_LOGGINGMODE   = "default"
-    BACALHAU_DIR                = "/data"
+    BACALHAU_DIR                = "/bacalhau_repo"
     BACALHAU_ENVIRONMENT        = "local"
     // TODO make this a variable
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
@@ -83,6 +83,7 @@ locals {
     # add variables you'd like to inject into the config
     bacalhau_accept_networked_jobs = var.bacalhau_accept_networked_jobs
     compute_api_token = var.token_config.compute_api_token
+    requester_ip = var.requester_static_ip
   })
 
   //
@@ -93,7 +94,6 @@ locals {
   // I am sorry reader, terraform requires this be one line
   bacalhau_install_cmd_content = var.build_config.install_version  != "" ? "release ${var.build_config.install_version}" : var.build_config.install_branch  != "" ? "branch ${var.build_config.install_branch}" : var.build_config.install_commit  != "" ?"commit ${var.build_config.install_commit}" : ""
   bacalhau_start_script = templatefile("${path.module}/../../../instance_files/start.sh", {
-    node_type = "requester"
     bacalhau_version_cmd = local.bacalhau_install_cmd_content
     // Add more arguments as needed
   })
@@ -124,6 +124,9 @@ locals {
   bacalhau_authz_policy_content = templatefile("${path.module}/../../../instance_files/authz_policy.rego", {
     // add more arguments as needed
   })
+
+  tls_cert_content = var.tls_config.bacalhau_tls_crt
+  tls_key_content = var.tls_config.bacalhau_tls_sk
 }
 
 
@@ -136,7 +139,7 @@ data "cloudinit_config" "requester_cloud_init" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.module}/../../../cloud-init/cloud-init.yml", {
+    content = templatefile("${path.module}/../../../cloud-init/requester-cloud-init.yml", {
       bacalhau_install_script_file: base64encode(local.bacalhau_install_script_content)
       bacalhau_config_file        : base64encode(local.requester_config_content)
       bacalhau_service_file       : base64encode(local.bacalhau_service_content)
@@ -144,6 +147,9 @@ data "cloudinit_config" "requester_cloud_init" {
       bacalhau_authz_policy_file  : base64encode(local.bacalhau_authz_policy_content)
       otel_config_file            : base64encode(local.otel_config_content)
       otel_service_file           : base64encode(local.otel_service_content)
+      tls_cert_file               : base64encode(local.tls_cert_content)
+      tls_key_file                : base64encode(local.tls_key_content)
+
     })
   }
 }

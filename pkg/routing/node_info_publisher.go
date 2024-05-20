@@ -5,10 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type NodeInfoPublisherIntervalConfig struct {
@@ -34,26 +35,26 @@ func (n NodeInfoPublisherIntervalConfig) IsEagerPublishEnabled() bool {
 }
 
 type NodeInfoPublisherParams struct {
-	PubSub           pubsub.Publisher[models.NodeInfo]
-	NodeInfoProvider models.NodeInfoProvider
-	IntervalConfig   NodeInfoPublisherIntervalConfig
+	PubSub            pubsub.Publisher[models.NodeState]
+	NodeStateProvider models.NodeStateProvider
+	IntervalConfig    NodeInfoPublisherIntervalConfig
 }
 
 type NodeInfoPublisher struct {
-	pubSub           pubsub.Publisher[models.NodeInfo]
-	nodeInfoProvider models.NodeInfoProvider
-	intervalConfig   NodeInfoPublisherIntervalConfig
-	stopped          bool
-	stopChannel      chan struct{}
-	stopOnce         sync.Once
+	pubSub            pubsub.Publisher[models.NodeState]
+	nodeStateProvider models.NodeStateProvider
+	intervalConfig    NodeInfoPublisherIntervalConfig
+	stopped           bool
+	stopChannel       chan struct{}
+	stopOnce          sync.Once
 }
 
 func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 	p := &NodeInfoPublisher{
-		pubSub:           params.PubSub,
-		nodeInfoProvider: params.NodeInfoProvider,
-		intervalConfig:   params.IntervalConfig,
-		stopChannel:      make(chan struct{}),
+		pubSub:            params.PubSub,
+		nodeStateProvider: params.NodeStateProvider,
+		intervalConfig:    params.IntervalConfig,
+		stopChannel:       make(chan struct{}),
 	}
 
 	go func() {
@@ -71,7 +72,7 @@ func (n *NodeInfoPublisher) Publish(ctx context.Context) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoPublisher.publish")
 	defer span.End()
 
-	return n.pubSub.Publish(ctx, n.nodeInfoProvider.GetNodeInfo(ctx))
+	return n.pubSub.Publish(ctx, n.nodeStateProvider.GetNodeState(ctx))
 }
 
 func (n *NodeInfoPublisher) eagerPublishBackgroundTask() {

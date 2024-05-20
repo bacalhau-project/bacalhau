@@ -4,8 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"go.uber.org/multierr"
-
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -50,26 +48,27 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		return bidstrategy.NewBidResponse(true, "examine images for non-Docker jobs"), nil
 	}
 
-	supported, serr := s.client.SupportedPlatforms(ctx)
-
-	var ierr error = nil
-	var manifest docker.ImageManifest
+	supported, err := s.client.SupportedPlatforms(ctx)
+	if err != nil {
+		return bidstrategy.BidStrategyResponse{}, err
+	}
 
 	dockerEngine, err := dockermodels.DecodeSpec(request.Job.Task().Engine)
 	if err != nil {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid:  false,
-			ShouldWait: false,
-			Reason:     err.Error(),
-		}, nil
+		return bidstrategy.BidStrategyResponse{}, err
 	}
 
 	manifest, found := ManifestCache.Get(dockerEngine.Image)
 	if !found {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
-		var m *docker.ImageManifest
-		m, ierr = s.client.ImageDistribution(ctx, dockerEngine.Image, config.GetDockerCredentials())
+		creds := config.GetDockerCredentials()
+
+		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image, creds)
+		if err != nil {
+			return bidstrategy.BidStrategyResponse{}, err
+		}
+
 		if m != nil {
 			manifest = *m
 		}
@@ -87,20 +86,12 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 				// processing
 				log.Ctx(ctx).Warn().
 					Str("Image", dockerEngine.Image).
-					Str("Error", err.Error()).
+					Err(err).
 					Msg("Failed to save to manifest cache")
 			}
 		}()
 	} else {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
-	}
-
-	errs := multierr.Combine(serr, ierr)
-	if errs != nil {
-		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason:    errs.Error(),
-		}, nil
 	}
 
 	imageHasPlatforms := make([]string, 0, len(manifest.Platforms))

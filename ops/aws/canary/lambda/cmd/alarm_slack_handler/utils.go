@@ -2,20 +2,21 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/slack-go/slack"
-	"os"
-	"strconv"
-	"time"
 )
 
 func mustGetSlackSecret() slackSecretType {
 	secretName := os.Getenv("SLACK_SECRET_NAME")
 
-	//Create a Secrets Manager client
+	// Create a Secrets Manager client
 	sess, err := session.NewSession()
 	if err != nil {
 		panic(err)

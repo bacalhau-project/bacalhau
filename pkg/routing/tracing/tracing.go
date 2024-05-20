@@ -22,7 +22,7 @@ func NewNodeStore(delegate routing.NodeInfoStore) *NodeStore {
 	}
 }
 
-func (r *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
+func (r *NodeStore) Add(ctx context.Context, state models.NodeState) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.Add") //nolint:govet
 	defer span.End()
 
@@ -31,14 +31,14 @@ func (r *NodeStore) Add(ctx context.Context, nodeInfo models.NodeInfo) error {
 		dur := stopwatch()
 		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
-			Str("node", nodeInfo.ID()).
+			Str("node", state.Info.ID()).
 			Msg("node added")
 	}()
 
-	return r.delegate.Add(ctx, nodeInfo)
+	return r.delegate.Add(ctx, state)
 }
 
-func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, error) {
+func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.Get") //nolint:govet
 	defer span.End()
 
@@ -54,7 +54,7 @@ func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeInfo, er
 	return r.delegate.Get(ctx, nodeID)
 }
 
-func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeInfo, error) {
+func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeState, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.GetByPrefix") //nolint:govet
 	defer span.End()
 
@@ -74,7 +74,7 @@ func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo
 	return r.delegate.FindPeer(ctx, peerID)
 }
 
-func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeInfoFilter) ([]models.NodeInfo, error) {
+func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.List") //nolint:govet
 	defer span.End()
 

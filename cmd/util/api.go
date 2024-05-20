@@ -59,8 +59,8 @@ func GetAPIClientV2(cmd *cobra.Command) clientv2.API {
 			PersistCredential: func(cred *apimodels.HTTPCredential) error {
 				return WriteToken(base, cred)
 			},
-			Authenticate: func(a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
-				return auth.RunAuthenticationFlow(cmd, a)
+			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
+				return auth.RunAuthenticationFlow(ctx, cmd, a)
 			},
 		},
 	)

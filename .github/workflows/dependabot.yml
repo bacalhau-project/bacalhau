@@ -1,5 +1,11 @@
 name: Dependabot
-on: pull_request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+    branches:
+      - dependabot/**
+  repository_dispatch:
+    types: [ok-to-test]
 
 permissions:
   contents: write

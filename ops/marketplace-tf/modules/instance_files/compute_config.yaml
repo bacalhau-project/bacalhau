@@ -3,7 +3,10 @@ Node:
     - compute
   ClientAPI:
     Host: ${requester_ip}
-    Port: 1234
+    Port: 443
+    ClientTLS:
+      UseTLS: true
+      CaCert: /bacalhau_repo/bacalhau_cert.crt
   BootstrapAddresses:
   Network:
     Type: nats
@@ -19,6 +22,6 @@ Node:
       Locality: anywhere
       AcceptNetworkedJobs: ${bacalhau_accept_networked_jobs}
   AllowListedLocalPaths:
-    - "/local_data/**"
+    - "/bacalhau_local_data/**"
   UpdateConfig:
     SkipChecks: true

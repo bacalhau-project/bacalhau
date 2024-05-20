@@ -33,6 +33,12 @@ var DefaultComputeConfig = ComputeConfigParams{
 	LocalPublisher: types.LocalPublisherConfig{
 		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
 	},
+	ControlPlaneSettings: types.ComputeControlPlaneConfig{
+		InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
+		ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+	},
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
@@ -41,6 +47,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
@@ -62,6 +69,14 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
 	TranslationEnabled: false,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+	},
+
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
@@ -69,6 +84,7 @@ var TestRequesterConfig = RequesterConfigParams{
 		ExecutionTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
 
@@ -90,6 +106,14 @@ var TestRequesterConfig = RequesterConfigParams{
 
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
+
+	ControlPlaneSettings: types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+		HeartbeatTopic:          "heartbeat",
+		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+	},
+
+	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 func getRequesterConfigParams() RequesterConfigParams {

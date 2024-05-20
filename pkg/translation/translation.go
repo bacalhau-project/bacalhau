@@ -18,13 +18,13 @@ package translation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/translation/translators"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/hashicorp/go-multierror"
 )
 
 // Translator defines what functions are required for a component that
@@ -68,7 +68,7 @@ func Translate(ctx context.Context, provider TranslatorProvider, original *model
 	newJob := original.Copy()
 	newJob.ID = idgen.NewJobID()
 
-	errs := new(multierror.Error)
+	var errs error
 
 	for i := range newJob.Tasks {
 		task := newJob.Tasks[i]
@@ -79,11 +79,11 @@ func Translate(ctx context.Context, provider TranslatorProvider, original *model
 		}
 
 		if translator, err := provider.Get(ctx, kind); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		} else {
 			t, err := translator.Translate(task)
 			if err != nil {
-				errs = multierror.Append(errs, err)
+				errs = errors.Join(errs, err)
 				continue
 			}
 
@@ -93,14 +93,14 @@ func Translate(ctx context.Context, provider TranslatorProvider, original *model
 		}
 	}
 
-	return newJob, errs.ErrorOrNil()
+	return newJob, errs
 }
 
 // ShouldTranslate works out whether we need to carry on with translation, that is
 // are there any engine types specified that are not a default engine and we know
 // how to translate.  If not, then we can exit early.
 func ShouldTranslate(ctx context.Context, provider TranslatorProvider, tasks []*models.Task) (bool, error) {
-	errs := new(multierror.Error)
+	var errs error
 	needTranslationCount := 0
 
 	for i := range tasks {
@@ -110,9 +110,9 @@ func ShouldTranslate(ctx context.Context, provider TranslatorProvider, tasks []*
 		} else if kind == models.EngineDocker || kind == models.EngineWasm || kind == models.EngineNoop {
 			continue
 		} else {
-			errs = multierror.Append(errs, fmt.Errorf("unknown task type identified in translation: '%s'", kind))
+			errs = errors.Join(errs, fmt.Errorf("unknown task type identified in translation: '%s'", kind))
 		}
 	}
 
-	return needTranslationCount > 0, errs.ErrorOrNil()
+	return needTranslationCount > 0, errs
 }

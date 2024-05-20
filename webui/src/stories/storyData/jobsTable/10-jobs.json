@@ -1,0 +1,702 @@
+[
+  {
+    "ID": "3dd0e094-3565-4824-8f8d-4f52a45b5ab2",
+    "Name": "86bc810e-34a0-40d2-b7f7-b0101b1a27a8",
+    "Namespace": "26c17c343a0b2cf49675228ac139e6f0173d8d8c3dc4e69285792bacb851270a19cba1c7d169556b7771094841219dd96e2b02f8a2cadc849370caba7e92c373",
+    "Type": "system",
+    "Priority": 8,
+    "Count": 0,
+    "Constraints": [
+      {
+        "Key": "instanceType",
+        "Operator": "<",
+        "Values": [
+          "e44a9a14-1662-4c8d-9ce4-ef244986997d"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "26c17c343a0b2cf49675228ac139e6f0173d8d8c3dc4e69285792bacb851270a19cba1c7d169556b7771094841219dd96e2b02f8a2cadc849370caba7e92c373",
+      "bacalhau.org/requester.id": "Qm3a631f5cf7ccc9555ebdca94436e2d9d59cc123f823468a6963022a4fe25e6bd4c58fb0a653e365a4109b227",
+      "bacalhau.org/requester.publicKey": "CAAS9h0u6ZaczX1L1CiGV8BUDugAYQgewWENo7cJHZm6IR8FDJxSeUD9inUg1U7qI+dN7rdGlnFdYpiuGBSSmhm5HDqC8qLPt1/ofB0i9j0K31cjXHIrTuxjJCKlHLQZfKz320NMdV/wKfAbv2mMDNYiqkHLvgMHRKqny+IRcKmvfmA="
+    },
+    "Labels": {
+      "key": "owner",
+      "value": "prod"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 752
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Running",
+      "Message": "State Message"
+    },
+    "Version": 1,
+    "Revision": 4,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "862f4bc1-a63c-4b41-be52-5016e85955e3",
+    "Name": "0061be72-efa3-4757-88fb-f7151414eaa1",
+    "Namespace": "eeaf65b8fabcc490a32602caecc37e55ce4be4b772d70e0109aa276d11b0a037c283523b4f00e028d996d209018b468e7b4d8f781e2a632a8558e848075588b0",
+    "Type": "batch",
+    "Priority": 4,
+    "Count": 1,
+    "Constraints": [
+      {
+        "Key": "region",
+        "Operator": "in",
+        "Values": [
+          "e00e1edf-d6c5-48aa-9383-905ccad09245"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "eeaf65b8fabcc490a32602caecc37e55ce4be4b772d70e0109aa276d11b0a037c283523b4f00e028d996d209018b468e7b4d8f781e2a632a8558e848075588b0",
+      "bacalhau.org/requester.id": "Qm925b77315d0d6d885c7e6d0e2a967c007d05d3246b3a9459ba95a664cc00ca13dfbf9525d135025fc17568b3",
+      "bacalhau.org/requester.publicKey": "CAASGOJVXvMFsCAFYDMrnvvfNgTfjdJtnaTZYBgErtlyTZ/wy/jlWWu8c1+Hw3K1BPZPIh6Lr5PU0686ET+z+8Cmm5ZHpbEpJZ3INvIVSLkKa5an2sa6lAlsU6MSTlPQrVJlnNf879zGik+VCMhVclz+BGmeJgsCGxkgsCvMyfa6yMw="
+    },
+    "Labels": {
+      "key": "region",
+      "value": "us-west-2"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 3502
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Rejected",
+      "Message": "State Message"
+    },
+    "Version": 9,
+    "Revision": 2,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "df9a7e13-ce03-4a9b-837f-91db8feb0620",
+    "Name": "81ebe20f-cd0d-4a7e-b8f4-cd25b57e58ba",
+    "Namespace": "6ddc2ed1e3e0fe25ea19e6e21826e3bb03254176c9645bcfdb32cd49e2ca2606a7f7f9a59c86e1df4f76ff6778284f42cdf713fa63eeeb957b54f96381e41efe",
+    "Type": "ops",
+    "Priority": 2,
+    "Count": 5,
+    "Constraints": [
+      {
+        "Key": "instanceType",
+        "Operator": "!=",
+        "Values": [
+          "8bcf42f1-73c6-45fd-8670-2566020b8ceb"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "6ddc2ed1e3e0fe25ea19e6e21826e3bb03254176c9645bcfdb32cd49e2ca2606a7f7f9a59c86e1df4f76ff6778284f42cdf713fa63eeeb957b54f96381e41efe",
+      "bacalhau.org/requester.id": "Qm1eb155ae363409880def5c5288b24ca8fac684929ca4347bceaf882104b96d3f35555d3b695e251ee8904e93",
+      "bacalhau.org/requester.publicKey": "CAAS2ZBnENK3wXnPXzsBc8U0Zy/2dXCqIPPB8TfkYu15jkBOCbSriEubI1iO0aci4Np0GcSj/W3thjNopugrIbr63JgA2EHP25RkNdtWeXDRcj1wFXjroPLvJWs/7Av7PkOnIqUKzWmoKtMuMPjYaYn+HDp6PKEFIhSeDlUSd/mMlic="
+    },
+    "Labels": {
+      "key": "instanceType",
+      "value": "m4.4xlarge"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 2331
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Rejected",
+      "Message": "State Message"
+    },
+    "Version": 8,
+    "Revision": 3,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "d56f3046-833d-42dd-9b98-6523312ce524",
+    "Name": "f2a5c428-c8d0-4a99-8b31-a4e34a78ca04",
+    "Namespace": "432e30fb5b4ef99b4258d72842ddbe08590008cb5c377fcf1a6d558cf8689aabdff5a5405fb0fc3fa07c89dfb4134c19f7bb05ce50c754eae6f902fb8e52fe66",
+    "Type": "ops",
+    "Priority": 2,
+    "Count": 5,
+    "Constraints": [
+      {
+        "Key": "region",
+        "Operator": "!=",
+        "Values": [
+          "538dba86-0905-4d29-8787-bb8f47c8cb94"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "432e30fb5b4ef99b4258d72842ddbe08590008cb5c377fcf1a6d558cf8689aabdff5a5405fb0fc3fa07c89dfb4134c19f7bb05ce50c754eae6f902fb8e52fe66",
+      "bacalhau.org/requester.id": "Qm6b750d9e5f40dc9d3163ca527ca92aa5e2f531c0059e95a2cc4677c7ced846de72354ccfd881c1a17bffb093",
+      "bacalhau.org/requester.publicKey": "CAASyJkvv2aAcu0lyGaQcxFSSFc65DxAq7cpmO8wqWDzp7rnx049Xkj6EqUJK8IoAsl84eFalfu+1DS58+MrWdsXMfbCRzwlLMJmByOUH+0zRWsHaf1iHZrNH/9G6v1ZTJ7ODaBS/T4K3uBSUbKTjv5MeGddZARqF02/+T4baVqU8Po="
+    },
+    "Labels": {
+      "key": "canary",
+      "value": "true"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 799
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Completed",
+      "Message": "State Message"
+    },
+    "Version": 8,
+    "Revision": 8,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "4a70cb15-5893-4110-9ced-4ad952fa3cfb",
+    "Name": "083775e3-38ea-44f2-868a-caeb3a9c08a1",
+    "Namespace": "aeb6b6202df0a424777f62269dca3b49b6f673bdd779b65ce66c5ebc4ab5b49a0d6500646311b7469edcda0dd0470abdf680c3cec1de1090b34197481618216c",
+    "Type": "service",
+    "Priority": 3,
+    "Count": 9,
+    "Constraints": [
+      {
+        "Key": "region",
+        "Operator": "=",
+        "Values": [
+          "a765416c-b048-4343-a265-5d900e0149c8"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "aeb6b6202df0a424777f62269dca3b49b6f673bdd779b65ce66c5ebc4ab5b49a0d6500646311b7469edcda0dd0470abdf680c3cec1de1090b34197481618216c",
+      "bacalhau.org/requester.id": "Qm3fee40d3ddeccd12b2c5a7e97a2b86bf5ea66a7f9b9a9feadcdb8f80c1c8c2f2cf23af498476487a3fe066f5",
+      "bacalhau.org/requester.publicKey": "CAASWhWgixqDHFF8TDblY7lLLc/A5kSR3EiG+SRgvBloP2T6va/AluiN67JXVvpPWccEiS07DQGQNGrUXIympZyDA37RoJKwEYeCEjyCJsXQzjLHjn6+V0S23mrFkRYF9wy0FKVPt520YGK3RP/qoYhvNjwBlPKTATdfZWFi2RIp62A="
+    },
+    "Labels": {
+      "key": "owner",
+      "value": "dev"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 1150
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Completed",
+      "Message": "State Message"
+    },
+    "Version": 3,
+    "Revision": 2,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "fc528707-4620-4b9e-ab97-97899be9061d",
+    "Name": "d627e2ad-7ae3-4ee2-ace4-400bac2be1b5",
+    "Namespace": "746a27a822c474906b13f099793a7169e50a6386897d0c8fc13bdb1d48f223f9dbfaf67c0498c666e071db772ea540817ef3c1913074ebf96b037befbe44028b",
+    "Type": "system",
+    "Priority": 8,
+    "Count": 4,
+    "Constraints": [
+      {
+        "Key": "region",
+        "Operator": "in",
+        "Values": [
+          "64ac2a0e-41e9-461d-8362-7b9328332b62"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "746a27a822c474906b13f099793a7169e50a6386897d0c8fc13bdb1d48f223f9dbfaf67c0498c666e071db772ea540817ef3c1913074ebf96b037befbe44028b",
+      "bacalhau.org/requester.id": "Qmd1952ed95e4e6a4f0bf3c91b97a93f33e414816df050b7045dff3c219843aed4d7adb5f3156725fd34f8e2be",
+      "bacalhau.org/requester.publicKey": "CAAS7oQqUy/8HEjYIHh8c0BGpkrbfkXWT5GqtSADeNwhLrW4WIb/S/oczJd5GgED0xQaXqZXES56RXyKq8L1b7tjGQ1kSKaqhQURujnBOnLTBG8GfI3JolIObolwrqCIq+i6RWcoIGI4Wy7beQo2ELJFeq7UL5WmMbNmhMUGlmi6ePE="
+    },
+    "Labels": {
+      "key": "canary",
+      "value": "true"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 3148
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Undefined",
+      "Message": "State Message"
+    },
+    "Version": 1,
+    "Revision": 9,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "1db46084-eb2e-4d78-be76-18088378fbf7",
+    "Name": "eded78bc-05ca-42bc-8b30-e2bb09e6095e",
+    "Namespace": "d1dbcab9bbd14758002e202ad347a8d93b2b6cccab99f1d739252703478c1387492d34ab88e74480790d47e4718010a71faa0d0c05004fe0acf5c6e96b7b1012",
+    "Type": "system",
+    "Priority": 7,
+    "Count": 3,
+    "Constraints": [
+      {
+        "Key": "instanceType",
+        "Operator": "<",
+        "Values": [
+          "4cba179f-ed5b-45cc-b189-a39331b9bacb"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "d1dbcab9bbd14758002e202ad347a8d93b2b6cccab99f1d739252703478c1387492d34ab88e74480790d47e4718010a71faa0d0c05004fe0acf5c6e96b7b1012",
+      "bacalhau.org/requester.id": "Qm2dd4cb89635ab99ccae5a85037212fe73168e9f1d73ca241df69d86c7f364d10bb11249e778477a5fe3437db",
+      "bacalhau.org/requester.publicKey": "CAASIKw0+UrkO/451E5iS0GkZrSmDkVW9E34sO3NeU2oX8UkaeqUrFITwJM9aE1sHe9j1wieYYSLNoHTLnrOrC/SKLlaHd1gMg5VsNwSTrqYz+LLyrwEplBt+YMPaeGq/cxbcyEKVKDnoArrUUb5KWV8ysueT1Zcp5ir9TGCx0qhUHw="
+    },
+    "Labels": {
+      "key": "region",
+      "value": "us-west-1"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 1222
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Pending",
+      "Message": "State Message"
+    },
+    "Version": 9,
+    "Revision": 5,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "b6f4a428-e2ed-453e-8ccb-0fc2b02e099e",
+    "Name": "f9c234d8-1989-4a6a-9099-2f682c5f575a",
+    "Namespace": "3be02b68a3ba61ee396bd4126d21205d222924f5bccd7afb26bfc5c28f68fab82905eeb46856ce89fc4a529763fcde9f271e90b1d6222d633651e562c279fa86",
+    "Type": "system",
+    "Priority": 7,
+    "Count": 6,
+    "Constraints": [
+      {
+        "Key": "owner",
+        "Operator": ">",
+        "Values": [
+          "06b5e8aa-6af9-4096-9f76-3d8c343a1b0e"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "3be02b68a3ba61ee396bd4126d21205d222924f5bccd7afb26bfc5c28f68fab82905eeb46856ce89fc4a529763fcde9f271e90b1d6222d633651e562c279fa86",
+      "bacalhau.org/requester.id": "Qm553fa1957daf34330ced8df7f8c4c4f59377b44de80eb6c7257659ea882510e8e33f339fc80083c731b33b0a",
+      "bacalhau.org/requester.publicKey": "CAASu65Vs59ECfPxn6/qzkBYwsRIPIGgg47+8v7FxyWg2VqjHT88GcC90nwdj+3/qmpMMS/gBfgtC9kvSVygYl2y0IWNRPuf0pICZSGo0A8JbO7ak8tpZEOktA09RIeW/x1BS8lKT31i36lPeYoHu3OWJoPyDB8rZvQISjldoH4e59I="
+    },
+    "Labels": {
+      "key": "canary",
+      "value": "false"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 3131
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Cancelled",
+      "Message": "State Message"
+    },
+    "Version": 2,
+    "Revision": 7,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "fd53a428-7467-4b86-a17c-072489f1ca6f",
+    "Name": "04704210-6058-4706-ab35-be6f73dd5145",
+    "Namespace": "d8f072535eed76ef1f80b64393ad72caaeeb1eaa0da7b1fb60e820888f65b7a4d02049e585a34fa8ffb05e09c7c72689e5ca692c1c289aacced679bad1652547",
+    "Type": "batch",
+    "Priority": 3,
+    "Count": 1,
+    "Constraints": [
+      {
+        "Key": "owner",
+        "Operator": "!=",
+        "Values": [
+          "f5273713-7229-4718-a122-8af103d407bc"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "d8f072535eed76ef1f80b64393ad72caaeeb1eaa0da7b1fb60e820888f65b7a4d02049e585a34fa8ffb05e09c7c72689e5ca692c1c289aacced679bad1652547",
+      "bacalhau.org/requester.id": "Qm23b71bb309487cd7639c312ff35186184f53ecba7f1c62cd8da1e59f61a5042118269989918cac30a2ee5144",
+      "bacalhau.org/requester.publicKey": "CAASUy7L4SOkSrmnR/+wx9qxnRNtuwTeBnlioXhPB+oqfS1WVBQAldSa2dcpBnbzrEtAXCTwwNCAzhW/XauA8ZO9IHDBR81pwUgYqVJNy1LgnijK7qQR+rL3ptKaq16ptqhySZx+55DX5UbHH2kcGYd6HeECpOLGYEA7KKKfva8w4Ss="
+    },
+    "Labels": {
+      "key": "owner",
+      "value": "bacalhau"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 2793
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Running",
+      "Message": "State Message"
+    },
+    "Version": 3,
+    "Revision": 3,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  },
+  {
+    "ID": "4c561112-1a6c-4f22-a6b5-006aca22cad5",
+    "Name": "13d4f6cb-c2f7-494a-8b59-dcbfa41bc1b9",
+    "Namespace": "b838f2f1229aa7dd3462afb85a5404eef8a40337f71e061ee9fcaa319772e7566cb87aea832f22ea840349d818206a1324f08514832aeeeae2bd0cbb89c1e97b",
+    "Type": "batch",
+    "Priority": 4,
+    "Count": 8,
+    "Constraints": [
+      {
+        "Key": "region",
+        "Operator": "in",
+        "Values": [
+          "ed5ffdfe-5d68-4bfb-bc53-bcd7653af5e0"
+        ]
+      }
+    ],
+    "Meta": {
+      "bacalhau.org/client.id": "b838f2f1229aa7dd3462afb85a5404eef8a40337f71e061ee9fcaa319772e7566cb87aea832f22ea840349d818206a1324f08514832aeeeae2bd0cbb89c1e97b",
+      "bacalhau.org/requester.id": "Qm378c6b5937af823530ccc405ffe50eec4743c3f1e7c281f0121797b1086e134849c61d30ba82c866dfd956cc",
+      "bacalhau.org/requester.publicKey": "CAASpBpErKek2lm+QXnN5LuscyTSChXh4aBvpJr2dMApNy8ajAp5HwGqtGUWVy2/aYXXfX7GTyCg/ZjzGN6j1I3V9fBpWwu2kUmjsaoTA4lVQ30vUhBR6BXA7Sw7TI32xvTZ69nAeEiwJMbUDKVLEzgKJs2Wdn8Zlm06QUwyfJsinpE="
+    },
+    "Labels": {
+      "key": "owner",
+      "value": "bacalhau"
+    },
+    "Tasks": [
+      {
+        "Name": "main",
+        "Engine": {
+          "Type": "docker",
+          "Params": {
+            "Entrypoint": "echo",
+            "EnvironmentVariables": [],
+            "Image": "ubuntu",
+            "Parameters": [],
+            "WorkingDirectory": ""
+          }
+        },
+        "Publisher": {
+          "Type": "ipfs"
+        },
+        "Resources": {
+          "CPU": "1",
+          "Disk": "2",
+          "Memory": "3",
+          "GPU": "0"
+        },
+        "Network": {
+          "Type": "None"
+        },
+        "Timeouts": {
+          "ExecutionTimeout": 1969
+        },
+        "ResultPaths": [
+          {
+            "Name": "tmp",
+            "Path": "/tmp"
+          }
+        ]
+      }
+    ],
+    "State": {
+      "StateType": "Error",
+      "Message": "State Message"
+    },
+    "Version": 9,
+    "Revision": 7,
+    "CreateTime": 1707687808349,
+    "ModifyTime": 1707687808349
+  }
+]

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
@@ -136,6 +137,20 @@ func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (he
 	return healthy, lost
 }
 
+// filterByExecutionTimeout partitions executions based on their timeout status.
+func (set execSet) filterByExecutionTimeout(expirationTime time.Time) (remaining, timedOut execSet) {
+	remaining = make(execSet)
+	timedOut = make(execSet)
+	for _, exec := range set {
+		if exec.IsExpired(expirationTime) {
+			timedOut[exec.ID] = exec
+		} else {
+			remaining[exec.ID] = exec
+		}
+	}
+	return remaining, timedOut
+}
+
 // executionsByApprovalStatus represents the different sets of executions based on their approval status.
 type executionsByApprovalStatus struct {
 	running   execSet
@@ -193,9 +208,9 @@ func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApproval
 }
 
 // markStopped
-func (set execSet) markStopped(comment string, plan *models.Plan) {
+func (set execSet) markStopped(event models.Event, plan *models.Plan) {
 	for _, exec := range set {
-		plan.AppendStoppedExecution(exec, comment)
+		plan.AppendStoppedExecution(exec, event)
 	}
 }
 
@@ -216,17 +231,6 @@ func (set execSet) union(other execSet) execSet {
 		union[exec.ID] = exec
 	}
 	return union
-}
-
-// latest returns the latest execution in the set by the time it was last updated.
-func (set execSet) latest() *models.Execution {
-	var latest *models.Execution
-	for _, exec := range set {
-		if latest == nil || exec.ModifyTime > latest.ModifyTime {
-			latest = exec
-		}
-	}
-	return latest
 }
 
 // countByState counts the number of executions in each state.

@@ -3,16 +3,17 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/gorilla/websocket"
+	pkgerrors "github.com/pkg/errors"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
-	"go.uber.org/multierr"
 )
 
 // Client is the object that makes transport-level requests to specified APIs.
@@ -127,10 +128,18 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	if err != nil {
 		return nil, err
 	}
+
+	dialer := *websocket.DefaultDialer
 	httpR.URL.Scheme = "ws"
 
+	// if we are using TLS create a TLS config
+	if c.config.TLS.UseTLS {
+		httpR.URL.Scheme = "wss"
+		dialer.TLSClientConfig = getTLSTransport(&c.config).TLSClientConfig
+	}
+
 	// Connect to the server
-	conn, resp, err := websocket.DefaultDialer.Dial(httpR.URL.String(), httpR.Header)
+	conn, resp, err := dialer.Dial(httpR.URL.String(), httpR.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -301,35 +310,35 @@ type AuthenticatingClient struct {
 
 	// Authenticate will be called when the system should run an authentication
 	// flow using the passed Auth API.
-	Authenticate func(*Auth) (*apimodels.HTTPCredential, error)
+	Authenticate func(context.Context, *Auth) (*apimodels.HTTPCredential, error)
 }
 
 func (t *AuthenticatingClient) Get(ctx context.Context, path string, in apimodels.GetRequest, out apimodels.GetResponse) error {
-	return doRequest(t, in, func(req apimodels.GetRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.GetRequest) error {
 		return t.Client.Get(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) List(ctx context.Context, path string, in apimodels.ListRequest, out apimodels.ListResponse) error {
-	return doRequest(t, in, func(req apimodels.ListRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.ListRequest) error {
 		return t.Client.List(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Post(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Post(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Put(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.PutResponse) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Put(ctx, path, req, out)
 	})
 }
 
 func (t *AuthenticatingClient) Delete(ctx context.Context, path string, in apimodels.PutRequest, out apimodels.Response) error {
-	return doRequest(t, in, func(req apimodels.PutRequest) error {
+	return doRequest(ctx, t, in, func(req apimodels.PutRequest) error {
 		return t.Client.Delete(ctx, path, req, out)
 	})
 }
@@ -340,14 +349,14 @@ func (t *AuthenticatingClient) Dial(
 	in apimodels.Request,
 ) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	var output <-chan *concurrency.AsyncResult[[]byte]
-	err := doRequest(t, in, func(req apimodels.Request) (err error) {
+	err := doRequest(ctx, t, in, func(req apimodels.Request) (err error) {
 		output, err = t.Client.Dial(ctx, path, req)
 		return
 	})
 	return output, err
 }
 
-func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
+func doRequest[R apimodels.Request](ctx context.Context, t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
 	if t.Credential != nil {
 		request.SetCredential(t.Credential)
 		if err = runRequest(request); err == nil {
@@ -356,24 +365,24 @@ func doRequest[R apimodels.Request](t *AuthenticatingClient, request R, runReque
 		} else if t.Authenticate == nil {
 			// We don't have an authenticate method so can't try and get a new
 			// token, so we need to stop here.
-			return errors.Wrap(err, "unauthorized and no authentication is available")
+			return pkgerrors.Wrap(err, "unauthorized and no authentication is available")
 		}
 	}
 
 	// If we don't have a credential yet or the token we had was invalid, run a
 	// new auth flow to get a new token (maybe).
-	if t.Credential == nil || errors.Is(err, apimodels.ErrInvalidToken) {
+	if t.Credential == nil || pkgerrors.Is(err, apimodels.ErrInvalidToken) {
 		var authErr error
 		auth := NewAPI(t.Client).Auth()
-		if t.Credential, err = t.Authenticate(auth); err != nil {
-			authErr = multierr.Append(authErr, errors.Wrap(err, "failed to authorize user"))
+		if t.Credential, err = t.Authenticate(ctx, auth); err != nil {
+			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "failed to authorize user"))
 			t.Credential = nil // Don't assume Authenticate returned nil
 		}
 
 		// We either failed to get a credential or have a new one. Either way,
 		// persist the result of the call to remove the old credential.
 		if err = t.PersistCredential(t.Credential); err != nil {
-			authErr = multierr.Append(authErr, errors.Wrap(err, "unable to persist new client credential"))
+			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "unable to persist new client credential"))
 		}
 		err = authErr
 	}

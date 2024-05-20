@@ -37,6 +37,8 @@ type Definition struct {
 	DefaultValue         interface{}
 	Description          string
 	EnvironmentVariables []string
+	Deprecated           bool
+	DeprecatedMessage    string
 }
 
 // BindFlags binds flags from a command to Viper using the provided definitions.
@@ -47,7 +49,7 @@ func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			// set the default value
 			viper.SetDefault(def.ConfigPath, def.DefaultValue)
 
-			// bind the flag to viper
+			// Bind the flag to viper
 			if err := viper.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
 				return err
 			}
@@ -106,6 +108,11 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
 			default:
 				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
+			}
+
+			if def.Deprecated {
+				flag := fset.Lookup(def.FlagName)
+				flag.Deprecated = def.DeprecatedMessage
 			}
 		}
 		cmd.PersistentFlags().AddFlagSet(fset)

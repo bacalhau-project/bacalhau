@@ -10,18 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -36,8 +37,6 @@ const (
 	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
 	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
-
-	newJobComment = "Job created"
 )
 
 var SpecKey = []byte("spec")
@@ -137,6 +136,15 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	return store, err
 }
 
+// BeginTx starts a new writable transaction for the store
+func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) {
+	tx, err := b.database.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	return jobstore.NewTracingContext(newTxContext(ctx, tx)), nil
+}
+
 func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
 	events jobstore.StoreEventType) chan jobstore.WatchEvent {
@@ -165,7 +173,7 @@ func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.Stor
 // return an indicating the error.
 func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error) {
 	var job models.Job
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		job, err = b.getJob(tx, id)
 		return
 	})
@@ -304,7 +312,7 @@ func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
 // GetJobs returns all Jobs that match the provided query
 func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
 	var response *jobstore.JobQueryResponse
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		response, err = b.getJobs(tx, query)
 		return
 	})
@@ -527,7 +535,7 @@ func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery)
 func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
 	var state []models.Execution
 
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		state, err = b.getExecutions(tx, options)
 		return
 	})
@@ -535,17 +543,18 @@ func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetEx
 	return state, err
 }
 
-// GetInProgressJobs gets a list of the currently in-progress jobs
-func (b *BoltJobStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
+// GetInProgressJobs gets a list of the currently in-progress jobs, if a job type is supplied then
+// only jobs of that type will be retrieved
+func (b *BoltJobStore) GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error) {
 	var infos []models.Job
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
-		infos, err = b.getInProgressJobs(tx)
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
+		infos, err = b.getInProgressJobs(tx, jobType)
 		return
 	})
 	return infos, err
 }
 
-func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
+func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.Job, error) {
 	var infos []models.Job
 	var keys [][]byte
 
@@ -555,7 +564,14 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
 	}
 
 	for _, jobIDKey := range keys {
-		job, err := b.getJob(tx, string(jobIDKey))
+		k, typ := splitInProgressIndexKey(string(jobIDKey))
+		if jobType != "" && jobType != typ {
+			// If the user supplied a job type to filter on, and it doesn't match the job type
+			// then skip this job
+			continue
+		}
+
+		job, err := b.getJob(tx, k)
 		if err != nil {
 			return nil, err
 		}
@@ -565,12 +581,31 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]models.Job, error) {
 	return infos, nil
 }
 
+// splitInProgressIndexKey returns the job type and the job index from
+// the in-progress index key. If no delimiter is found, then this index
+// was created before this feature was implemented, and we are unable
+// to filter on its type so will return "" as the type.
+func splitInProgressIndexKey(key string) (string, string) {
+	parts := strings.Split(key, ":")
+	if len(parts) == 1 {
+		return key, ""
+	}
+
+	k, typ := parts[1], parts[0]
+	return k, typ
+}
+
+// createInProgressIndexKey will create a composite key for the in-progress index
+func createInProgressIndexKey(job *models.Job) string {
+	return fmt.Sprintf("%s:%s", job.Type, job.ID)
+}
+
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
 	var history []models.JobHistory
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
 		return
 	})
@@ -655,7 +690,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 }
 
 // CreateJob creates a new record of a job in the data store
-func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
+func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event models.Event) error {
 	job.State = models.NewJobState(models.JobStateTypePending)
 	job.Revision = 1
 	job.CreateTime = b.clock.Now().UTC().UnixNano()
@@ -665,12 +700,80 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
 	if err != nil {
 		return err
 	}
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		return b.createJob(tx, job)
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
+		return b.createJob(tx, job, event)
 	})
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
+// update is a helper function that will update the job in the store
+// it accepts a context, an update function and creates a new transaction to
+// perform the update if no transaction is provided in the context
+func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) error) error {
+	var err error
+	var tx *bolt.Tx
+
+	// if ctx has a transaction value, then we can use that transaction, otherwise we need to create one
+	var externalTx bool
+	tx, externalTx = txFromContext(ctx)
+	if externalTx {
+		if !tx.Writable() {
+			return fmt.Errorf("readonly transaction provided in context for update operation")
+		}
+	} else {
+		tx, err = b.database.Begin(true)
+		if err != nil {
+			return err
+		}
+	}
+
+	// always rollback the transaction if there was an error
+	// and the transaction was created internally in this call
+	defer func() {
+		if !externalTx && err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	err = update(tx)
+	if err != nil {
+		return err
+	}
+
+	// only commit the transaction if it was created internally in this call
+	if !externalTx {
+		err = tx.Commit()
+	}
+	return err
+}
+
+// view is a helper function that will perform a read-only operation on the store
+// it accepts a context, a view function and creates a new transaction to
+// perform the view if no transaction is provided in the context
+func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) error {
+	var err error
+
+	// if ctx has a transaction value, then we can use that transaction, otherwise we need to create one
+	tx, externalTx := txFromContext(ctx)
+	if !externalTx {
+		tx, err = b.database.Begin(false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// always rollback the transaction if the transaction
+	// was created internally in this call
+	// note that we don't commit the transaction as it's read-only
+	defer func() {
+		if !externalTx {
+			_ = tx.Rollback()
+		}
+	}()
+
+	return view(tx)
+}
+
+func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
 	if b.jobExists(tx, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
@@ -713,7 +816,9 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		}
 	}
 
-	if err = b.inProgressIndex.Add(tx, jobIDKey); err != nil {
+	// Create a composite key for the in progress index
+	jobkey := createInProgressIndexKey(&job)
+	if err = b.inProgressIndex.Add(tx, []byte(jobkey)); err != nil {
 		return err
 	}
 
@@ -729,12 +834,12 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 		}
 	}
 
-	return b.appendJobHistory(tx, job, models.JobStateTypePending, newJobComment)
+	return b.appendJobHistory(tx, job, models.JobStateTypePending, event)
 }
 
 // DeleteJob removes the specified job from the system entirely
 func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.deleteJob(tx, jobID)
 	})
 }
@@ -760,7 +865,12 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		}
 	}
 
-	if err = b.inProgressIndex.Remove(tx, jobIDKey); err != nil {
+	// We'll remove the job from the in progress index using just it's ID in case
+	// it predates when we switched to composite keys.
+	_ = b.inProgressIndex.Remove(tx, []byte(job.ID))
+
+	compositeKey := createInProgressIndexKey(&job)
+	if err = b.inProgressIndex.Remove(tx, []byte(compositeKey)); err != nil {
 		return err
 	}
 
@@ -782,7 +892,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 // UpdateJobState updates the current state for a single Job, appending an entry to
 // the history at the same time
 func (b *BoltJobStore) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.updateJobState(tx, request)
 	})
 }
@@ -815,6 +925,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	// update the job state
 	previousState := job.State.StateType
 	job.State.StateType = request.NewState
+	job.State.Message = request.Event.Message
 	job.Revision++
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 
@@ -830,16 +941,22 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if job.IsTerminal() {
-		err = b.inProgressIndex.Remove(tx, []byte(request.JobID))
+		// Remove the job from the in progress index, first checking for legacy items
+		// and then removing the composite.  Once we are confident no legacy items
+		// are left in the old index we can stick to just the composite
+		_ = b.inProgressIndex.Remove(tx, []byte(job.ID))
+
+		composite := createInProgressIndexKey(&job)
+		err = b.inProgressIndex.Remove(tx, []byte(composite))
 		if err != nil {
 			return err
 		}
 	}
 
-	return b.appendJobHistory(tx, job, previousState, request.Comment)
+	return b.appendJobHistory(tx, job, previousState, request.Event)
 }
 
-func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, comment string) error {
+func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:  models.JobHistoryTypeJobLevel,
 		JobID: updateJob.ID,
@@ -848,7 +965,8 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 			New:      updateJob.State.StateType,
 		},
 		NewRevision: updateJob.Revision,
-		Comment:     comment,
+		Comment:     event.Message,
+		Event:       event,
 		Time:        time.Unix(0, updateJob.ModifyTime),
 	}
 	data, err := b.marshaller.Marshal(historyEntry)
@@ -869,7 +987,7 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 }
 
 // CreateExecution creates a record of a new execution
-func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
 	if execution.CreateTime == 0 {
 		execution.CreateTime = b.clock.Now().UTC().UnixNano()
 	}
@@ -886,12 +1004,12 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 	if err != nil {
 		return err
 	}
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
-		return b.createExecution(tx, execution)
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
+		return b.createExecution(tx, execution, event)
 	})
 }
 
-func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) error {
+func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution, event models.Event) error {
 	if !b.jobExists(tx, execution.JobID) {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
@@ -929,13 +1047,13 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 		}
 	}
 
-	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, "")
+	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, event)
 }
 
 // UpdateExecution updates the state of a single execution by loading from storage,
 // updating and then writing back in a single transaction
 func (b *BoltJobStore) UpdateExecution(ctx context.Context, request jobstore.UpdateExecutionRequest) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.updateExecution(tx, request)
 	})
 }
@@ -990,11 +1108,11 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
-	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Comment)
+	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Event)
 }
 
 func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
-	previous models.ExecutionStateType, cmt string) error {
+	previous models.ExecutionStateType, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:        models.JobHistoryTypeExecutionLevel,
 		JobID:       updated.JobID,
@@ -1005,7 +1123,8 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 			New:      updated.ComputeState.StateType,
 		},
 		NewRevision: updated.Revision,
-		Comment:     cmt,
+		Comment:     event.Message,
+		Event:       event,
 		Time:        time.Unix(0, updated.ModifyTime),
 	}
 
@@ -1030,7 +1149,7 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 
 // CreateEvaluation creates a new evaluation
 func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.createEvaluation(tx, eval)
 	})
 }
@@ -1074,7 +1193,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 // GetEvaluation retrieves the specified evaluation
 func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
 	var eval models.Evaluation
-	err := b.database.View(func(tx *bolt.Tx) (err error) {
+	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		eval, err = b.getEvaluation(tx, id)
 		return
 	})
@@ -1122,7 +1241,7 @@ func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error
 
 // DeleteEvaluation deletes the specified evaluation
 func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
-	return b.database.Update(func(tx *bolt.Tx) (err error) {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.deleteEvaluation(tx, id)
 	})
 }

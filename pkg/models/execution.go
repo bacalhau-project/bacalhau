@@ -6,8 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
@@ -42,6 +40,13 @@ const (
 // IsUndefined returns true if the execution state is undefined
 func (s ExecutionStateType) IsUndefined() bool {
 	return s == ExecutionStateUndefined
+}
+
+func (s ExecutionStateType) IsTermainl() bool {
+	return s == ExecutionStateBidRejected ||
+		s == ExecutionStateCompleted ||
+		s == ExecutionStateFailed ||
+		s == ExecutionStateCancelled
 }
 
 type ExecutionDesiredStateType int
@@ -130,6 +135,13 @@ func (e *Execution) GetModifyTime() time.Time {
 	return time.Unix(0, e.ModifyTime).UTC()
 }
 
+// IsExpired returns true if the execution is still running beyond the expiration time
+// We return true if the execution is in the bid accepted state (i.e. running)
+// and the modify time is older than the expiration time
+func (e *Execution) IsExpired(expirationTime time.Time) bool {
+	return e.ComputeState.StateType == ExecutionStateBidAccepted && e.GetModifyTime().Before(expirationTime)
+}
+
 // Normalize Allocation to ensure fields are initialized to the expectations
 // of this version of Bacalhau. Should be called when restoring persisted
 // Executions or receiving Executions from Bacalhau clients potentially on an
@@ -162,21 +174,21 @@ func (e *Execution) Copy() *Execution {
 
 // Validate is used to check a job for reasonable configuration
 func (e *Execution) Validate() error {
-	var mErr multierror.Error
+	var mErr error
 	if validate.IsBlank(e.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing execution ID"))
+		mErr = errors.Join(mErr, errors.New("missing execution ID"))
 	} else if validate.ContainsSpaces(e.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a space"))
+		mErr = errors.Join(mErr, errors.New("job ID contains a space"))
 	} else if validate.ContainsNull(e.ID) {
-		mErr.Errors = append(mErr.Errors, errors.New("job ID contains a null character"))
+		mErr = errors.Join(mErr, errors.New("job ID contains a null character"))
 	}
 	if validate.IsBlank(e.Namespace) {
-		mErr.Errors = append(mErr.Errors, errors.New("execution must be in a namespace"))
+		mErr = errors.Join(mErr, errors.New("execution must be in a namespace"))
 	}
 	if validate.IsBlank(e.JobID) {
-		mErr.Errors = append(mErr.Errors, errors.New("missing execution job ID"))
+		mErr = errors.Join(mErr, errors.New("missing execution job ID"))
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // IsTerminalState returns true if the execution desired of observed state is terminal

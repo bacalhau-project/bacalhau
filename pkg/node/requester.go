@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
@@ -23,7 +25,6 @@ import (
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
@@ -72,13 +73,14 @@ func NewRequesterNode(
 
 	jobStore := requesterConfig.JobStore
 
+	// TODO(forrest) [simplify]: given the current state of the code this interface obfuscates what is happening here,
+	// there isn't any "node discovery" happening here, we are simply listing a node store.
+	// The todo here is to simply pass a node store where it's needed instead of this chain wrapping a discoverer wrapping
+	// a store...
 	// compute node discoverer
-	nodeDiscoveryChain := discovery.NewChain(true)
-	nodeDiscoveryChain.Add(
-		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
-			Store: nodeInfoStore,
-		}),
-	)
+	log.Ctx(ctx).
+		Info().
+		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
 
 	// compute node ranker
 	nodeRankerChain := ranking.NewChain()
@@ -96,12 +98,6 @@ func NewRequesterNode(
 			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
 		}),
 	)
-
-	// node selector
-	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
-		NodeDiscoverer: nodeDiscoveryChain,
-		NodeRanker:     nodeRankerChain,
-	})
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
@@ -148,6 +144,17 @@ func NewRequesterNode(
 		)
 		retryStrategy = retryStrategyChain
 	}
+
+	// node selector
+	nodeSelector := selector.NewNodeSelector(
+		nodeInfoStore,
+		nodeRankerChain,
+		// selector constraints: require nodes be online and approved to schedule
+		orchestrator.NodeSelectionConstraints{
+			RequireConnected: true,
+			RequireApproval:  true,
+		},
+	)
 
 	// scheduler provider
 	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
@@ -247,16 +254,20 @@ func NewRequesterNode(
 		ResultTransformer: resultTransformers,
 	})
 
-	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
-		Endpoint: endpoint,
-		JobStore: jobStore,
-		NodeID:   nodeID,
-		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
+	housekeeping, err := orchestrator.NewHousekeeping(orchestrator.HousekeepingParams{
+		EvaluationBroker: evalBroker,
+		JobStore:         jobStore,
+		Interval:         requesterConfig.HousekeepingBackgroundTaskInterval,
+		TimeoutBuffer:    requesterConfig.HousekeepingTimeoutBuffer,
 	})
+	if err != nil {
+		return nil, err
+	}
+	housekeeping.Start(ctx)
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
+		discovery.NewDebugInfoProvider(nodeInfoStore),
 	}
 
 	// register requester public http apis
@@ -265,7 +276,7 @@ func NewRequesterNode(
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 	})
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
@@ -299,7 +310,7 @@ func NewRequesterNode(
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
-		housekeeping.Stop()
+		housekeeping.Stop(ctx)
 		for _, worker := range workers {
 			worker.Stop()
 		}
@@ -325,7 +336,7 @@ func NewRequesterNode(
 		Endpoint:           endpoint,
 		localCallback:      endpoint,
 		EndpointV2:         endpointV2,
-		NodeDiscoverer:     nodeDiscoveryChain,
+		NodeDiscoverer:     nodeInfoStore,
 		NodeInfoStore:      nodeInfoStore,
 		JobStore:           jobStore,
 		nodeManager:        nodeManager,

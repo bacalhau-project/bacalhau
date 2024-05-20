@@ -93,21 +93,6 @@ func TestExecSet_Union(t *testing.T) {
 	assert.Equal(t, models.ExecutionStateCompleted, union["exec2"].ComputeState.StateType)
 }
 
-func TestExecSet_Latest(t *testing.T) {
-	now := time.Now()
-	executions := []*models.Execution{
-		{ID: "exec1", ModifyTime: now.UnixNano()},
-		{ID: "exec2", ModifyTime: now.Add(+1 * time.Second).UnixNano()},
-		{ID: "exec3", ModifyTime: now.Add(-1 * time.Second).UnixNano()},
-	}
-
-	set := execSetFromSlice(executions)
-	latest := set.latest()
-
-	assert.NotNil(t, latest)
-	assert.Equal(t, "exec2", latest.ID)
-}
-
 func TestExecSet_CountByState(t *testing.T) {
 	executions := []*models.Execution{
 		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
@@ -227,4 +212,31 @@ func TestExecSet_FilterByApprovalStatus(t *testing.T) {
 	assert.ElementsMatch(t, approvalStatus.toReject.keys(), []string{"exec2"})
 	assert.ElementsMatch(t, approvalStatus.pending.keys(), []string{})
 	assert.Equal(t, 3, approvalStatus.activeCount())
+}
+
+func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
+	// Create a set of executions with varying execution times
+	now := time.Now()
+
+	executions := []*models.Execution{
+		{ID: "exec1", ModifyTime: now.Add(-30 * time.Minute).UnixNano(), ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec2", ModifyTime: now.Add(-90 * time.Minute).UnixNano(), ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec3", ModifyTime: now.Add(-120 * time.Minute).UnixNano(), ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+	}
+	execs := execSetFromSlice(executions)
+
+	// Define an expiration timeout of 60 minutes in the past
+	expirationTime := now.Add(-60 * time.Minute)
+
+	// Filter executions by timeout
+	remainingExecs, timedOutExecs := execs.filterByExecutionTimeout(expirationTime)
+
+	// Check that the executions that have not exceeded the timeout remain in the set
+	assert.Len(t, remainingExecs, 1)
+	assert.Contains(t, remainingExecs, "exec1")
+
+	// Check that the executions that have exceeded the timeout are correctly identified
+	assert.Len(t, timedOutExecs, 2)
+	assert.Contains(t, timedOutExecs, "exec2")
+	assert.Contains(t, timedOutExecs, "exec3")
 }

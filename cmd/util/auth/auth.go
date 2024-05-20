@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,13 +20,13 @@ import (
 
 type responder = func(request *json.RawMessage) (response []byte, err error)
 
-func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HTTPCredential, error) {
+func RunAuthenticationFlow(ctx context.Context, cmd *cobra.Command, auth *client.Auth) (*apimodels.HTTPCredential, error) {
 	supportedMethods := map[authn.MethodType]responder{
 		authn.MethodTypeChallenge: challenge.Respond,
 		authn.MethodTypeAsk:       askResponder(cmd),
 	}
 
-	methods, err := auth.Methods(cmd.Context(), &apimodels.ListAuthnMethodsRequest{})
+	methods, err := auth.Methods(ctx, &apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HT
 			return nil, err
 		}
 
-		authnResponse, err := auth.Authenticate(cmd.Context(), &apimodels.AuthnRequest{
+		authnResponse, err := auth.Authenticate(ctx, &apimodels.AuthnRequest{
 			Name:       chosenMethodName,
 			MethodData: response,
 		})

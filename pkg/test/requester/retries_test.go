@@ -132,13 +132,10 @@ func (s *RetriesSuite) SetupSuite() {
 	}
 	ctx := context.Background()
 
-	requesterConfig, err := node.NewRequesterConfigWith(
-		node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
-		},
-	)
+	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	s.Require().NoError(err)
+	requesterConfig.OverAskForBidsFactor = 1
+
 	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
@@ -273,8 +270,7 @@ func (s *RetriesSuite) TestRetry() {
 				model.ExecutionStateCancelled: NewIntMatch(1),
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed:    errExecution.Error(),
-				model.ExecutionStateCancelled: "overall job has failed",
+				model.ExecutionStateFailed: errExecution.Error(),
 			},
 		},
 		{

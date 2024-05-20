@@ -30,9 +30,19 @@ type JobQueryResponse struct {
 	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
+// TxContext is a transactional context that can be used to commit or rollback
+type TxContext interface {
+	context.Context
+	Commit() error
+	Rollback() error
+}
+
 // A Store will persist jobs and their state to the underlying storage.
 // It also gives an efficient way to retrieve jobs using queries.
 type Store interface {
+	// BeginTx starts a new transaction and returns a transactional context
+	BeginTx(ctx context.Context) (TxContext, error)
+
 	// Watch returns a channel from which the caller can read specific events
 	// as they are transmitted. When called the combination of parameters
 	// will determine which events are sent.  Both the StoreWatcherType and
@@ -56,8 +66,9 @@ type Store interface {
 	GetJobs(ctx context.Context, query JobQuery) (*JobQueryResponse, error)
 
 	// GetInProgressJobs retrieves all jobs that have a state that can be
-	// considered, 'in progress'. Failure generates an error.
-	GetInProgressJobs(ctx context.Context) ([]models.Job, error)
+	// considered, 'in progress'. Failure generates an error. If the jobType
+	// is provided, only active jobs of that type will be returned.
+	GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error)
 
 	// GetJobHistory retrieves the history for the specified job.  The
 	// history returned is filtered by the contents of the provided
@@ -65,7 +76,7 @@ type Store interface {
 	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error)
 
 	// CreateJob will create a new job and persist it in the store.
-	CreateJob(ctx context.Context, j models.Job) error
+	CreateJob(ctx context.Context, j models.Job, event models.Event) error
 
 	// GetExecutions retrieves all executions for the specified job.
 	GetExecutions(ctx context.Context, options GetExecutionsOptions) ([]models.Execution, error)
@@ -75,7 +86,7 @@ type Store interface {
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 
 	// CreateExecution creates a new execution
-	CreateExecution(ctx context.Context, execution models.Execution) error
+	CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error
 
 	// UpdateExecution updates the execution state according to the values
 	// within [UpdateExecutionRequest].
@@ -102,14 +113,14 @@ type UpdateJobStateRequest struct {
 	JobID     string
 	Condition UpdateJobCondition
 	NewState  models.JobStateType
-	Comment   string
+	Event     models.Event
 }
 
 type UpdateExecutionRequest struct {
 	ExecutionID string
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
-	Comment     string
+	Event       models.Event
 }
 
 type UpdateJobCondition struct {

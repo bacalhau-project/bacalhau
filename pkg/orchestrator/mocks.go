@@ -15,6 +15,7 @@ import (
 	time "time"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
+	routing "github.com/bacalhau-project/bacalhau/pkg/routing"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -291,19 +292,24 @@ func (m *MockNodeDiscoverer) EXPECT() *MockNodeDiscovererMockRecorder {
 	return m.recorder
 }
 
-// ListNodes mocks base method.
-func (m *MockNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
+// List mocks base method.
+func (m *MockNodeDiscoverer) List(ctx context.Context, filter ...routing.NodeStateFilter) ([]models.NodeState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListNodes", ctx)
-	ret0, _ := ret[0].([]models.NodeInfo)
+	varargs := []any{ctx}
+	for _, a := range filter {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "List", varargs...)
+	ret0, _ := ret[0].([]models.NodeState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListNodes indicates an expected call of ListNodes.
-func (mr *MockNodeDiscovererMockRecorder) ListNodes(ctx any) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockNodeDiscovererMockRecorder) List(ctx any, filter ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNodes", reflect.TypeOf((*MockNodeDiscoverer)(nil).ListNodes), ctx)
+	varargs := append([]any{ctx}, filter...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNodeDiscoverer)(nil).List), varargs...)
 }
 
 // MockNodeRanker is a mock of NodeRanker interface.

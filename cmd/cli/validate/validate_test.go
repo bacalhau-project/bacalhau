@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata"
 )
 
@@ -33,8 +31,6 @@ func (s *ValidateSuite) TestValidate() {
 	}
 	for name, test := range tests {
 		s.Run(name, func() {
-			util.Fatal = util.FakeFatalErrorHandler
-
 			_, out, err := s.ExecuteTestCobraCommand("validate",
 				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
 			)
@@ -44,10 +40,10 @@ func (s *ValidateSuite) TestValidate() {
 				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
 				require.Error(s.T(), err)
-				fatalError, err := testutils.FirstFatalError(s.T(), out)
-				require.NoError(s.T(), err)
-				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+
+				fatalError := string(out)
+				require.Contains(s.T(), fatalError, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(s.T(), fatalError, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		})
 

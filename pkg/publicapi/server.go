@@ -110,6 +110,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	middlewareLogger := log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))
 	// base middle after routing
 	server.Router.Use(
+		echomiddelware.CORS(),
 		echomiddelware.Recover(),
 		echomiddelware.RequestID(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
@@ -153,7 +154,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	} else {
 		server.useTLS = params.TLSCertificateFile != "" && params.TLSKeyFile != ""
 	}
-
 	server.TLSCertificateFile = params.TLSCertificateFile
 	server.TLSKeyFile = params.TLSKeyFile
 
@@ -167,7 +167,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 			return logger.ContextWithNodeIDLogger(context.Background(), params.HostID)
 		},
 	}
-
 	return server, nil
 }
 

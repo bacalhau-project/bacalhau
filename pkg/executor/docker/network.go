@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -10,9 +11,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -104,7 +104,7 @@ func (e *Executor) createHTTPGateway(
 	// Get the gateway image if we don't have it already
 	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error pulling gateway image")
+		return nil, nil, pkgerrors.Wrap(err, "error pulling gateway image")
 	}
 
 	// Create an internal only bridge network to join our gateway and job container
@@ -116,13 +116,13 @@ func (e *Executor) createHTTPGateway(
 		Labels:     e.containerLabels(executionID, job),
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error creating network")
+		return nil, nil, pkgerrors.Wrap(err, "error creating network")
 	}
 
 	// Get the subnet that Docker has picked for the newly created network
 	internalNetwork, err := e.client.NetworkInspect(ctx, networkResp.ID, types.NetworkInspectOptions{})
 	if err != nil || len(internalNetwork.IPAM.Config) < 1 {
-		return nil, nil, errors.Wrap(err, "error getting network subnet")
+		return nil, nil, pkgerrors.Wrap(err, "error getting network subnet")
 	}
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
@@ -136,7 +136,7 @@ func (e *Executor) createHTTPGateway(
 	domainList, derr := json.Marshal(network.DomainSet())
 	clientList, cerr := json.Marshal([]string{subnet})
 	if derr != nil || cerr != nil {
-		return nil, nil, errors.Wrap(multierr.Combine(derr, cerr), "error preparing gateway config")
+		return nil, nil, pkgerrors.Wrap(errors.Join(derr, cerr), "error preparing gateway config")
 	}
 
 	gatewayContainer, err := e.client.ContainerCreate(ctx, &container.Config{
@@ -156,24 +156,24 @@ func (e *Executor) createHTTPGateway(
 		ExtraHosts:  []string{dockerHostAddCommand},
 	}, nil, nil, e.dockerObjectName(executionID, job, "gateway"))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error creating gateway container")
+		return nil, nil, pkgerrors.Wrap(err, "error creating gateway container")
 	}
 
 	// Attach the bridge network to the container
 	err = e.client.NetworkConnect(ctx, internalNetwork.ID, gatewayContainer.ID, nil)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error attaching network to gateway")
+		return nil, nil, pkgerrors.Wrap(err, "error attaching network to gateway")
 	}
 
 	// Start the container and wait for it to come up
 	err = e.client.ContainerStart(ctx, gatewayContainer.ID, container.StartOptions{})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to start network gateway container")
+		return nil, nil, pkgerrors.Wrap(err, "failed to start network gateway container")
 	}
 
 	stdout, stderr, err := e.client.FollowLogs(ctx, gatewayContainer.ID)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get gateway container logs")
+		return nil, nil, pkgerrors.Wrap(err, "failed to get gateway container logs")
 	}
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stdout").Logger().WithContext(ctx), stdout)
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stderr").Logger().WithContext(ctx), stderr)
@@ -183,7 +183,7 @@ func (e *Executor) createHTTPGateway(
 	for {
 		containerDetails, err = e.client.ContainerInspect(ctx, gatewayContainer.ID)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "error getting gateway container details")
+			return nil, nil, pkgerrors.Wrap(err, "error getting gateway container details")
 		}
 		switch containerDetails.State.Health.Status {
 		case types.NoHealthcheck:

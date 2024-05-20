@@ -2,6 +2,8 @@ package selector
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/rs/zerolog/log"
@@ -13,25 +15,35 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
-type NodeSelectorParams struct {
-	NodeDiscoverer orchestrator.NodeDiscoverer
-	NodeRanker     orchestrator.NodeRanker
-}
-
 type NodeSelector struct {
-	nodeDiscoverer orchestrator.NodeDiscoverer
-	nodeRanker     orchestrator.NodeRanker
+	discoverer  orchestrator.NodeDiscoverer
+	ranker      orchestrator.NodeRanker
+	constraints orchestrator.NodeSelectionConstraints
 }
 
-func NewNodeSelector(params NodeSelectorParams) *NodeSelector {
+func NewNodeSelector(
+	discoverer orchestrator.NodeDiscoverer,
+	ranker orchestrator.NodeRanker,
+	constraints orchestrator.NodeSelectionConstraints,
+) *NodeSelector {
 	return &NodeSelector{
-		nodeDiscoverer: params.NodeDiscoverer,
-		nodeRanker:     params.NodeRanker,
+		discoverer:  discoverer,
+		ranker:      ranker,
+		constraints: constraints,
 	}
 }
 
 func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	return n.nodeDiscoverer.ListNodes(ctx)
+	nodeStates, err := n.discoverer.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
+	}
+	// extract slice of models.NodeInfo from slice of routing.NodeConnectionState
+	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
+	for _, ns := range nodeStates {
+		nodeInfos = append(nodeInfos, ns.Info)
+	}
+	return nodeInfos, nil
 }
 
 func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
@@ -43,11 +55,17 @@ func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]
 	nodeInfos := generic.Map(filteredNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
 	return nodeInfos, nil
 }
-func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
+
+func (n NodeSelector) TopMatchingNodes(
+	ctx context.Context,
+	job *models.Job,
+	desiredCount int,
+) ([]models.NodeInfo, error) {
 	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(possibleNodes) < desiredCount {
 		// TODO: evaluate if we should run the job if some nodes where found
 		err = orchestrator.NewErrNotEnoughNodes(desiredCount, append(possibleNodes, rejectedNodes...))
@@ -63,17 +81,46 @@ func (n NodeSelector) TopMatchingNodes(ctx context.Context, job *models.Job, des
 	return selectedInfos, nil
 }
 
-func (n NodeSelector) rankAndFilterNodes(ctx context.Context, job *models.Job) (selected, rejected []orchestrator.NodeRank, err error) {
-	listed, err := n.nodeDiscoverer.ListNodes(ctx)
+func (n NodeSelector) rankAndFilterNodes(
+	ctx context.Context,
+	job *models.Job,
+) (selected, rejected []orchestrator.NodeRank, err error) {
+	listed, err := n.discoverer.List(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nodeIDs := lo.Filter(listed, func(nodeInfo models.NodeInfo, index int) bool {
-		return nodeInfo.NodeType == models.NodeTypeCompute
+	// filter node states to return a slice of nodes that are:
+	// - compute nodes
+	// - approved to executor jobs
+	// - connected (alive)
+	nodeStates := lo.Filter(listed, func(nodeState models.NodeState, index int) bool {
+		if nodeState.Info.NodeType != models.NodeTypeCompute {
+			return false
+		}
+
+		if n.constraints.RequireApproval && nodeState.Membership != models.NodeMembership.APPROVED {
+			return false
+		}
+
+		if n.constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
+			return false
+		}
+
+		return true
 	})
 
-	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeIDs)
+	if len(nodeStates) == 0 {
+		return nil, nil, errors.New("unable to find any connected and approved nodes")
+	}
+
+	// extract the nodeInfo from the slice of node states for ranking
+	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
+	for _, ns := range nodeStates {
+		nodeInfos = append(nodeInfos, ns.Info)
+	}
+
+	rankedNodes, err := n.ranker.RankNodes(ctx, *job, nodeInfos)
 	if err != nil {
 		return nil, nil, err
 	}

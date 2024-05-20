@@ -5,15 +5,18 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/benbjohnson/clock"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -26,6 +29,7 @@ const (
 
 type ServiceJobSchedulerTestSuite struct {
 	suite.Suite
+	clock         *clock.Mock
 	jobStore      *jobstore.MockStore
 	planner       *orchestrator.MockPlanner
 	nodeSelector  *orchestrator.MockNodeSelector
@@ -35,6 +39,7 @@ type ServiceJobSchedulerTestSuite struct {
 
 func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
@@ -46,6 +51,10 @@ func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 		NodeSelector:  s.nodeSelector,
 		RetryStrategy: s.retryStrategy,
 	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestServiceSchedulerTestSuite(t *testing.T) {
@@ -61,11 +70,11 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions(
 
 	// we need 3 executions. discover enough nodes
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
-		*mockNodeInfo(s.T(), nodeIDs[2]),
-		*mockNodeInfo(s.T(), nodeIDs[3]),
-		*mockNodeInfo(s.T(), nodeIDs[4]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[2]),
+		*fakeNodeInfo(s.T(), nodeIDs[3]),
+		*fakeNodeInfo(s.T(), nodeIDs[4]),
 	}
 	s.mockNodeSelection(job, nodeInfos, job.Count)
 
@@ -89,9 +98,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -118,9 +127,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[0].NodeID),
-		*mockNodeInfo(s.T(), executions[1].NodeID),
-		*mockNodeInfo(s.T(), executions[2].NodeID),
+		*fakeNodeInfo(s.T(), executions[0].NodeID),
+		*fakeNodeInfo(s.T(), executions[1].NodeID),
+		*fakeNodeInfo(s.T(), executions[2].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 
@@ -145,9 +154,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 	// mock active executions' nodes to be healthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
@@ -167,8 +176,8 @@ func (s *ServiceJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 
 	// we need 3 executions. discover fewer nodes
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
 	}
 	s.mockNodeSelection(job, nodeInfos, job.Count)
 
@@ -217,8 +226,8 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 
 	// mock node discoverer to exclude the node in BidAccepted state
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceCanceled].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceCanceled].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 	s.mockNodeSelection(job, nodeInfos, 2)
@@ -250,11 +259,11 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TreatCompletedExecutionsAsFai
 
 	// discover all nodes to avoid treating active executions as unhealthy
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), nodeIDs[0]),
-		*mockNodeInfo(s.T(), nodeIDs[1]),
-		*mockNodeInfo(s.T(), nodeIDs[2]),
-		*mockNodeInfo(s.T(), nodeIDs[3]),
-		*mockNodeInfo(s.T(), nodeIDs[4]),
+		*fakeNodeInfo(s.T(), nodeIDs[0]),
+		*fakeNodeInfo(s.T(), nodeIDs[1]),
+		*fakeNodeInfo(s.T(), nodeIDs[2]),
+		*fakeNodeInfo(s.T(), nodeIDs[3]),
+		*fakeNodeInfo(s.T(), nodeIDs[4]),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 	s.mockNodeSelection(job, nodeInfos, 2)
@@ -302,8 +311,8 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 
 	// mark askForBid exec as lost so we attempt to retry
 	nodeInfos := []models.NodeInfo{
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
-		*mockNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted1].NodeID),
+		*fakeNodeInfo(s.T(), executions[execServiceBidAccepted2].NodeID),
 	}
 	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
 

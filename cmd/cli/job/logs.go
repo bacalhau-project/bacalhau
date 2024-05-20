@@ -39,16 +39,14 @@ func NewLogCmd() *cobra.Command {
 		Short:   logsShortDesc,
 		Example: logsExample,
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, cmdArgs []string) {
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			opts := util.LogOptions{
 				JobID:       cmdArgs[0],
 				ExecutionID: options.ExecutionID,
 				Follow:      options.Follow,
 				Tail:        options.Tail,
 			}
-			if err := util.Logs(cmd, opts); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+			return util.Logs(cmd, opts)
 		},
 	}
 

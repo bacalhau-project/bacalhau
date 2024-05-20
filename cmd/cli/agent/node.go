@@ -29,22 +29,24 @@ func NewNodeCmd() *cobra.Command {
 		Use:   "node",
 		Short: "Get the agent's node info.",
 		Args:  cobra.NoArgs,
-		Run:   o.runNode,
+		RunE:  o.runNode,
 	}
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }
 
 // Run executes node command
-func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) {
+func (o *NodeOptions) runNode(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	response, err := util.GetAPIClientV2(cmd).Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not get server node: %w", err), 1)
+		return fmt.Errorf("could not get server node: %w", err)
 	}
 
-	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response.NodeInfo)
+	writeErr := output.OutputOneNonTabular(cmd, o.OutputOpts, response.NodeState)
 	if writeErr != nil {
-		util.Fatal(cmd, fmt.Errorf("failed to write node: %w", writeErr), 1)
+		return fmt.Errorf("failed to write node: %w", writeErr)
 	}
+
+	return nil
 }
