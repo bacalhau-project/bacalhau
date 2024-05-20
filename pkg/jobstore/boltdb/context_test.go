@@ -36,7 +36,6 @@ func (suite *TxContextTestSuite) Test_newTxContext() {
 
 	txCtx := newTxContext(context.Background(), tx)
 	suite.NotNil(txCtx.tx)
-	suite.NotNil(txCtx.cancelFunc)
 
 	// Ensure the transaction is part of the context.
 	retrievedTx, ok := txFromContext(txCtx)
