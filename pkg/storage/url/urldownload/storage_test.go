@@ -370,7 +370,10 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 	}))
 	s.T().Cleanup(ts.Close)
 
-	subject := NewStorage()
+	subject := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)
 	spec := models.InputSource{
@@ -408,7 +411,10 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 	}))
 	s.T().Cleanup(ts.Close)
 
-	subject := NewStorage()
+	subject := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)
 	spec := models.InputSource{
