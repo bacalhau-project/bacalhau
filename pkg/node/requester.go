@@ -93,6 +93,7 @@ func NewRequesterNode(
 		ranking.NewMaxUsageNodeRanker(),
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
+		ranking.NewAvailableCapacityNodeRanker(),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: requesterConfig.NodeRankRandomnessRange,

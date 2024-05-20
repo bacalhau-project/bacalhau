@@ -11,31 +11,34 @@ import (
 )
 
 type NodeInfoDecoratorParams struct {
-	Executors          executor.ExecutorProvider
-	Publisher          publisher.PublisherProvider
-	Storages           storage.StorageProvider
-	CapacityTracker    capacity.Tracker
-	ExecutorBuffer     *ExecutorBuffer
-	MaxJobRequirements models.Resources
+	Executors              executor.ExecutorProvider
+	Publisher              publisher.PublisherProvider
+	Storages               storage.StorageProvider
+	RunningCapacityTracker capacity.Tracker
+	QueueCapacityTracker   capacity.UsageTracker
+	ExecutorBuffer         *ExecutorBuffer
+	MaxJobRequirements     models.Resources
 }
 
 type NodeInfoDecorator struct {
-	executors          executor.ExecutorProvider
-	publishers         publisher.PublisherProvider
-	storages           storage.StorageProvider
-	capacityTracker    capacity.Tracker
-	executorBuffer     *ExecutorBuffer
-	maxJobRequirements models.Resources
+	executors              executor.ExecutorProvider
+	publishers             publisher.PublisherProvider
+	storages               storage.StorageProvider
+	runningCapacityTracker capacity.Tracker
+	queueCapacityTracker   capacity.UsageTracker
+	executorBuffer         *ExecutorBuffer
+	maxJobRequirements     models.Resources
 }
 
 func NewNodeInfoDecorator(params NodeInfoDecoratorParams) *NodeInfoDecorator {
 	return &NodeInfoDecorator{
-		executors:          params.Executors,
-		publishers:         params.Publisher,
-		storages:           params.Storages,
-		capacityTracker:    params.CapacityTracker,
-		executorBuffer:     params.ExecutorBuffer,
-		maxJobRequirements: params.MaxJobRequirements,
+		executors:              params.Executors,
+		publishers:             params.Publisher,
+		storages:               params.Storages,
+		runningCapacityTracker: params.RunningCapacityTracker,
+		queueCapacityTracker:   params.QueueCapacityTracker,
+		executorBuffer:         params.ExecutorBuffer,
+		maxJobRequirements:     params.MaxJobRequirements,
 	}
 }
 
@@ -45,8 +48,9 @@ func (n *NodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo model
 		ExecutionEngines:   n.executors.Keys(ctx),
 		Publishers:         n.publishers.Keys(ctx),
 		StorageSources:     n.storages.Keys(ctx),
-		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
-		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
+		MaxCapacity:        n.runningCapacityTracker.GetMaxCapacity(ctx),
+		AvailableCapacity:  n.runningCapacityTracker.GetAvailableCapacity(ctx),
+		QueueUsedCapacity:  n.queueCapacityTracker.GetUsedCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
 		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
