@@ -245,7 +245,7 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(config.PluginsPath))
 
 	// NB(forrest): pay attention to the subtle name difference here
-	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStorePath))
+	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
 
 	c.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(config.UpdateCheckStatePath))
 	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
