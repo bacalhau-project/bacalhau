@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/c2h5oh/datasize"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
@@ -299,6 +300,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+		ControlPlaneSettings: types.ComputeControlPlaneConfig{
+			ResourceUpdateFrequency: types.Duration(50 * time.Millisecond),
+		},
 	})
 	suite.Require().NoError(err)
 	stack := teststack.Setup(ctx,
@@ -334,9 +338,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			jobIds = append(jobIds, submittedJob.Metadata.ID)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
+			// and to give time for compute nodes to accept and run the jobs
 			// this needs to be less than the time the job lasts
 			// so we are running jobs in parallel
-			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
