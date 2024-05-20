@@ -154,7 +154,14 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func dockerRun(cmd *cobra.Command, cmdArgs []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, opts *DockerRunOptions) error {
+func dockerRun(
+	cmd *cobra.Command,
+	cmdArgs []string,
+	apiV1 *clientv1.APIClient,
+	apiV2 clientv2.API,
+	cfg types.BacalhauConfig,
+	opts *DockerRunOptions,
+) error {
 	ctx := cmd.Context()
 
 	image := cmdArgs[0]

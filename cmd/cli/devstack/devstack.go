@@ -63,6 +63,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 	}
 }
 
+//nolint:funlen,gocyclo
 func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false

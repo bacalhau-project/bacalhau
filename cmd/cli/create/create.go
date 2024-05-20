@@ -95,7 +95,15 @@ func NewCmd() *cobra.Command {
 	return createCmd
 }
 
-func create(cmd *cobra.Command, cmdArgs []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, OC *CreateOptions) error { //nolint:funlen,gocyclo
+//nolint:funlen,gocyclo
+func create(
+	cmd *cobra.Command,
+	cmdArgs []string,
+	apiV1 *clientv1.APIClient,
+	apiV2 clientv2.API,
+	cfg types.BacalhauConfig,
+	OC *CreateOptions,
+) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
 	// Custom unmarshaller

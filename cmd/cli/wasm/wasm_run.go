@@ -155,7 +155,14 @@ func newRunCmd() *cobra.Command {
 	return wasmRunCmd
 }
 
-func runWasm(cmd *cobra.Command, args []string, apiV1 *clientv1.APIClient, apiV2 clientv2.API, cfg types.BacalhauConfig, opts *WasmRunOptions) error {
+func runWasm(
+	cmd *cobra.Command,
+	args []string,
+	apiV1 *clientv1.APIClient,
+	apiV2 clientv2.API,
+	cfg types.BacalhauConfig,
+	opts *WasmRunOptions,
+) error {
 	ctx := cmd.Context()
 
 	j, err := CreateJob(ctx, args, opts)

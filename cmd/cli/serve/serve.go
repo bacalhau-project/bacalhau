@@ -416,7 +416,12 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 	return headerB.String() + cmdB.String(), nil
 }
 
-func buildEnvVariables(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+func buildEnvVariables(
+	ctx context.Context,
+	cfg types.BacalhauConfig,
+	nodeConfig *node.NodeConfig,
+	ipfsConfig types.IpfsConfig,
+) (string, error) {
 	// build shell variables to connect to this node
 	envVarBuilder := strings.Builder{}
 	envVarBuilder.WriteString(fmt.Sprintf(

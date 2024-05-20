@@ -25,7 +25,12 @@ type Responder interface {
 	Respond(request *json.RawMessage) ([]byte, error)
 }
 
-func RunAuthenticationFlow(ctx context.Context, cmd *cobra.Command, auth *client.Auth, clientKeyPath string) (*apimodels.HTTPCredential, error) {
+func RunAuthenticationFlow(
+	ctx context.Context,
+	cmd *cobra.Command,
+	auth *client.Auth,
+	clientKeyPath string,
+) (*apimodels.HTTPCredential, error) {
 	sk, err := config.GetClientPrivateKey(clientKeyPath)
 	if err != nil {
 		return nil, err
