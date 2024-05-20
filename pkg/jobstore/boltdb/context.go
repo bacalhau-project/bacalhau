@@ -26,22 +26,20 @@ const txContextKey contextKey = 0
 // TODO: Evaluate the trade-offs and consider delegating the handling of context cancellation to the caller.
 type txContext struct {
 	context.Context
-	tx         *bolt.Tx
-	cancelFunc context.CancelFunc
-	closed     bool
-	closeCh    chan struct{}
-	mu         sync.Mutex
+	tx      *bolt.Tx
+	closed  bool
+	closeCh chan struct{}
+	mu      sync.Mutex
 }
 
 // newTxContext creates a new transactional context for a BoltDB transaction.
 // It embeds a standard context and manages transaction commit/rollback based on the context's lifecycle.
 func newTxContext(ctx context.Context, tx *bolt.Tx) *txContext {
-	innerCtx, cancelFunc := context.WithCancel(context.WithValue(ctx, txContextKey, tx))
+	innerCtx := context.WithValue(ctx, txContextKey, tx)
 	txCtx := &txContext{
-		Context:    innerCtx,
-		tx:         tx,
-		cancelFunc: cancelFunc,
-		closeCh:    make(chan struct{}),
+		Context: innerCtx,
+		tx:      tx,
+		closeCh: make(chan struct{}),
 	}
 	// Start a goroutine that listens for the context's Done channel.
 	go func() {
