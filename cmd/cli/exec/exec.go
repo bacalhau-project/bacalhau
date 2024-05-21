@@ -231,7 +231,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		return nil, err
 	}
 
-	job.Labels = options.JobSettings.Labels
+	job.Labels = options.JobSettings.Labels()
 
 	// Constraints for node selection
 	if err := prepareConstraints(options, job); err != nil {
@@ -253,7 +253,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 }
 
 func prepareConstraints(options *ExecOptions, job *models.Job) error {
-	if nodeSelectorRequirements, err := parse.NodeSelector(options.JobSettings.Constraints); err != nil {
+	if nodeSelectorRequirements, err := parse.NodeSelector(options.JobSettings.Constraints()); err != nil {
 		return err
 	} else {
 		if err != nil {

@@ -65,19 +65,19 @@ func BuildJobFromFlags(
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
-	constraints, err := parse.NodeSelector(jobSettings.Constraints)
+	constraints, err := parse.NodeSelector(jobSettings.Constraints())
 	if err != nil {
 		return nil, fmt.Errorf("parseing job contstrints: %w", err)
 	}
 
 	job := &models.Job{
-		Name:        jobSettings.Name,
-		Namespace:   jobSettings.Namespace,
-		Type:        jobSettings.Type,
-		Priority:    jobSettings.Priority,
-		Count:       jobSettings.Count,
+		Name:        jobSettings.Name(),
+		Namespace:   jobSettings.Namespace(),
+		Type:        jobSettings.Type(),
+		Priority:    jobSettings.Priority(),
+		Count:       jobSettings.Count(),
 		Constraints: constraints,
-		Labels:      jobSettings.Labels,
+		Labels:      jobSettings.Labels(),
 		Tasks:       []*models.Task{t},
 	}
 

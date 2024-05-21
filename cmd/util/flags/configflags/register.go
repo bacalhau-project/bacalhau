@@ -113,6 +113,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			if def.Deprecated {
 				flag := fset.Lookup(def.FlagName)
 				flag.Deprecated = def.DeprecatedMessage
+				flag.Hidden = true
 			}
 		}
 		cmd.PersistentFlags().AddFlagSet(fset)
