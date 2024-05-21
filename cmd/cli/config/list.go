@@ -32,7 +32,7 @@ func newListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo. We need to ensure the config
 			// has been initialized so that the current values of it are displayed in the list command.
-			_, err := util.SetupRepoConfig()
+			_, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}

@@ -71,7 +71,7 @@ func NewCmd() *cobra.Command {
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			cfg, err := util.SetupRepoConfig()
+			cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}

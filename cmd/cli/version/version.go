@@ -54,7 +54,7 @@ func NewCmd() *cobra.Command {
 		PreRun: hook.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			cfg, err := util.SetupRepoConfig()
+			cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}

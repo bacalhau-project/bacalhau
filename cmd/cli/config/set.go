@@ -32,7 +32,7 @@ func newSetCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo. We need to ensure a repo
 			// exists before we can create or modify a config file in it.
-			_, err := util.SetupRepoConfig()
+			_, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}

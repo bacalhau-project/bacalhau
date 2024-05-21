@@ -3,14 +3,16 @@ package util
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
-func SetupRepoConfig() (types.BacalhauConfig, error) {
+func SetupRepoConfig(cmd *cobra.Command) (types.BacalhauConfig, error) {
 	// get the global viper instance
 	v := viper.GetViper()
 	// get the repo path set in the root command.
@@ -24,5 +26,12 @@ func SetupRepoConfig() (types.BacalhauConfig, error) {
 	if err != nil {
 		return types.BacalhauConfig{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
-	return cfg.Current()
+	bacalhauCfg, err := cfg.Current()
+	if err != nil {
+		return types.BacalhauConfig{}, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	hook.StartUpdateCheck(cmd, bacalhauCfg)
+
+	return bacalhauCfg, nil
 }
