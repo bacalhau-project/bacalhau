@@ -53,10 +53,9 @@ type DockerRunOptions struct {
 	WorkingDirectory     string
 	EnvironmentVariables []string
 
-	JobSettings      *cliflags.JobSettings
-	TaskSettings     *cliflags.TaskSettings
-	RunTimeSettings  *cliflags.RunTimeSettings
-	DownloadSettings *cliflags.DownloaderSettings
+	JobSettings     *cliflags.JobSettings
+	TaskSettings    *cliflags.TaskSettings
+	RunTimeSettings *cliflags.RunTimeSettings
 }
 
 func NewDockerRunOptions() *DockerRunOptions {
@@ -64,10 +63,9 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Entrypoint:       nil,
 		WorkingDirectory: "",
 
-		JobSettings:      cliflags.DefaultJobSettings(),
-		TaskSettings:     cliflags.DefaultTaskSettings(),
-		DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:  cliflags.DefaultRunTimeSettings(),
+		JobSettings:     cliflags.DefaultJobSettings(),
+		TaskSettings:    cliflags.DefaultTaskSettings(),
+		RunTimeSettings: cliflags.DefaultRunTimeSettings(),
 	}
 }
 
@@ -103,7 +101,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 
 	cliflags.RegisterJobFlags(dockerRunCmd, opts.JobSettings)
 	cliflags.RegisterTaskFlags(dockerRunCmd, opts.TaskSettings)
-	dockerRunCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
 	dockerRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
