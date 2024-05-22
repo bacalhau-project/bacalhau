@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type WatcherTestSuite struct {
@@ -21,7 +22,6 @@ type WatcherTestSuite struct {
 	store   jobstore.Store
 	broker  *evaluation.InMemoryBroker
 	watcher *evaluation.Watcher
-	ctx     context.Context
 }
 
 func (s *WatcherTestSuite) SetupTest() {
