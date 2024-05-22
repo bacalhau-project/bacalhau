@@ -274,14 +274,16 @@ func (b Bidder) runSemanticBidding(
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBid(ctx, request)
 
-		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
-			Err(err).
-			Str("Job", request.Job.ID).
-			Str("Strategy", strategyType).
-			Bool("Bid", resp.ShouldBid).
-			Bool("Wait", resp.ShouldWait).
-			Str("Reason", resp.Reason).
-			Send()
+		if err != nil || !resp.ShouldBid {
+			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+				Err(err).
+				Str("Job", request.Job.ID).
+				Str("Strategy", strategyType).
+				Bool("Bid", resp.ShouldBid).
+				Bool("Wait", resp.ShouldWait).
+				Str("Reason", resp.Reason).
+				Send()
+		}
 
 		if err != nil {
 			// NB: failure here results in a callback to OnComputeFailure
@@ -335,14 +337,16 @@ func (b Bidder) runResourceBidding(
 		strategyType := reflect.TypeOf(s).String()
 		resp, err := s.ShouldBidBasedOnUsage(ctx, request, *resourceUsage)
 
-		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
-			Err(err).
-			Str("Job", request.Job.ID).
-			Str("Strategy", strategyType).
-			Bool("Bid", resp.ShouldBid).
-			Bool("Wait", resp.ShouldWait).
-			Str("Reason", resp.Reason).
-			Send()
+		if err != nil || !resp.ShouldBid {
+			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).
+				Err(err).
+				Str("Job", request.Job.ID).
+				Str("Strategy", strategyType).
+				Bool("Bid", resp.ShouldBid).
+				Bool("Wait", resp.ShouldWait).
+				Str("Reason", resp.Reason).
+				Send()
+		}
 
 		if err != nil {
 			// NB: failure here results in a callback to OnComputeFailure

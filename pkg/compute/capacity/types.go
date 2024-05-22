@@ -25,6 +25,17 @@ type Tracker interface {
 	Remove(ctx context.Context, usage models.Resources)
 }
 
+// UsageTracker keeps track of the current resource usage of the compute node.
+// Useful when tracking jobs in the queue pending and haven't started yet.
+type UsageTracker interface {
+	// Add adds the given resource usage to the tracker.
+	Add(ctx context.Context, usage models.Resources)
+	// Remove removes the given resource usage from the tracker.
+	Remove(ctx context.Context, usage models.Resources)
+	// GetUsedCapacity returns the current resource usage of the tracker
+	GetUsedCapacity(ctx context.Context) models.Resources
+}
+
 // UsageCalculator calculates the resource usage of a job.
 // Can also be used to populate the resource usage of a job with default values if not defined
 type UsageCalculator interface {
