@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,7 +18,8 @@ import (
 )
 
 const (
-	DefaultBucketName = "nodes"
+	V130BucketName    = "nodes"
+	DefaultBucketName = "node_states"
 )
 
 type NodeStoreParams struct {
@@ -40,6 +42,11 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 	if bucketName == "" {
 		return nil, pkgerrors.New("bucket name is required")
 	}
+
+	if err := migrateNodeInfoToNodeState(ctx, js, V130BucketName, bucketName); err != nil {
+		return nil, err
+	}
+
 	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket: bucketName,
 	})
@@ -51,6 +58,77 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 		js: js,
 		kv: kv,
 	}, nil
+}
+
+func migrateNodeInfoToNodeState(ctx context.Context, js jetstream.JetStream, from string, to string) (retErr error) {
+	defer func() {
+		if retErr == nil {
+			if err := js.DeleteKeyValue(ctx, from); err != nil {
+				if errors.Is(err, jetstream.ErrBucketNotFound) {
+					// migration is successful since there isn't previous state to migrate from
+					retErr = nil
+				} else {
+					retErr = fmt.Errorf("NodeStore migration succeeded, but failed to remove old bucket: %w", err)
+				}
+			}
+		}
+	}()
+
+	fromKV, err := js.KeyValue(ctx, from)
+	if err != nil {
+		if errors.Is(err, jetstream.ErrBucketNotFound) {
+			// migration is successful since there isn't previous state to migrate from
+			return nil
+		}
+		return fmt.Errorf("NodeStore migration failed: failed to open 'from' bucket: %w", err)
+	}
+
+	keys, err := fromKV.Keys(ctx)
+	if err != nil {
+		if pkgerrors.Is(err, jetstream.ErrNoKeysFound) {
+			// if the store is empty the migration is successful as there isn't anything to migrate
+			return nil
+		}
+		return fmt.Errorf("NodeStore migration failed: failed to list store: %w", err)
+	}
+
+	nodeInfos := make([]models.NodeInfo, 0, len(keys))
+	for _, key := range keys {
+		entry, err := fromKV.Get(ctx, key)
+		if err != nil {
+			return fmt.Errorf("NodeStore migration failed: failed to read node info with name: %s: %w", key, err)
+		}
+
+		var nodeinfo models.NodeInfo
+		if err := json.Unmarshal(entry.Value(), &nodeinfo); err != nil {
+			return fmt.Errorf("NodeStore migration failed: failed to unmarshal node info: %w", err)
+		}
+		nodeInfos = append(nodeInfos, nodeinfo)
+	}
+
+	toKV, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
+		Bucket: to,
+	})
+	if err != nil {
+		return fmt.Errorf("NodeStore migration failed: failed to open to bucket: %w", err)
+	}
+
+	for _, ni := range nodeInfos {
+		nodestate := models.NodeState{
+			Info:       ni,
+			Membership: models.NodeMembership.PENDING,
+			Connection: models.NodeStates.DISCONNECTED,
+		}
+		data, err := json.Marshal(nodestate)
+		if err != nil {
+			return fmt.Errorf("NodeStore migration failed: failed to marshal node state: %w", err)
+		}
+		if _, err := toKV.Put(ctx, nodestate.Info.ID(), data); err != nil {
+			return fmt.Errorf("NodeStore migration failed: failed to write node state to store: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (n *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
