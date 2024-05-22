@@ -3,6 +3,20 @@ name: Trigger on Comment
 on:
   issue_comment:
     types: [created, edited]
+  pull_request:
+    types:
+      [
+        synchronize,
+        opened,
+        reopened,
+        ready_for_review,
+        labeled,
+        review_requested,
+      ]
+  pull_request_review:
+    types: [edited, dismissed, submitted]
+  pull_request_review_comment:
+    types: [created, edited]
 
 jobs:
   trigger-workflows:
