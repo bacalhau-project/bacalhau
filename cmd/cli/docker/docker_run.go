@@ -2,7 +2,6 @@ package docker
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -161,15 +160,15 @@ func run(cmd *cobra.Command, args []string, opts *DockerRunOptions) error {
 func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 	image := args[0]
 	parameters := args[1:]
-	if err := validateWorkingDir(opts.WorkingDirectory); err != nil {
-		return nil, err
-	}
-	engineSpec := engine_docker.NewDockerEngineBuilder(image).
+	engineSpec, err := engine_docker.NewDockerEngineBuilder(image).
 		WithParameters(parameters...).
 		WithWorkingDirectory(opts.WorkingDirectory).
 		WithEntrypoint(opts.Entrypoint...).
 		WithEntrypoint(opts.EnvironmentVariables...).
 		Build()
+	if err != nil {
+		return nil, err
+	}
 
 	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 	if err != nil {
@@ -183,18 +182,4 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 	}
 
 	return job, nil
-}
-
-// Function for validating the workdir of a docker command.
-func validateWorkingDir(jobWorkingDir string) error {
-	if jobWorkingDir != "" {
-		if !strings.HasPrefix(jobWorkingDir, "/") {
-			// This mirrors the implementation at path/filepath/path_unix.go#L13 which
-			// we reuse here to get cross-platform working dir detection. This is
-			// necessary (rather than using IsAbs()) because clients may be running on
-			// Windows/Plan9 but we want to check inside Docker (linux).
-			return fmt.Errorf("workdir must be an absolute path. Passed in: %s", jobWorkingDir)
-		}
-	}
-	return nil
 }
