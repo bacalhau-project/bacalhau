@@ -136,21 +136,23 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 	}
 
 	writer := streamingClient.NewWriter(msg.Reply)
+	streamRequest := new(stream.Request)
+	err := json.Unmarshal(msg.Data, streamRequest)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseBadRequest,
+			fmt.Sprintf("error decoding %s: %s", reflect.TypeOf(streamRequest).Name(), err))
+		return
+	}
+
 	request := new(Request)
-	err := json.Unmarshal(msg.Data, request)
+	err = json.Unmarshal(streamRequest.Data, request)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseBadRequest,
 			fmt.Sprintf("error decoding %s: %s", reflect.TypeOf(request).Name(), err))
 		return
 	}
 
-	connDetails := &stream.ConnectionDetails{
-		StreamId:            msg.Header.Get("StreamId"),
-		ConnId:              msg.Header.Get("ConnId"),
-		HeartBeatRequestSub: msg.Header.Get("StreamHeartBeatSub"),
-	}
-
-	streamingClient.AddConnDetails(ctx, connDetails)
+	streamingClient.AddConnDetails(ctx, &streamRequest.ConnectionDetails)
 	ch, err := f(ctx, *request)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
@@ -159,11 +161,12 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 	}
 
 	for res := range ch {
-		_, err = writer.WriteObject(res)
+		_, err := streamingClient.WriteResponse(&streamRequest.ConnectionDetails, res, writer)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
+			break
 		}
 	}
-	streamingClient.RemoveConnDetails(connDetails)
+	streamingClient.RemoveConnDetails(&streamRequest.ConnectionDetails)
 	_ = writer.Close()
 }

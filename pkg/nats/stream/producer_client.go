@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"sync"
@@ -11,12 +12,6 @@ import (
 
 type ProducerClientParams struct {
 	Conn *nats.Conn
-}
-
-type ConnectionDetails struct {
-	ConnId              string
-	StreamId            string
-	HeartBeatRequestSub string
 }
 
 type ProducerClient struct {
@@ -91,23 +86,52 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 			return
 
 		case <-ticker.C:
-			pc.mu.Lock()
-			data, _ := json.Marshal(pc.activeStreamIds)
-			pc.mu.Unlock()
+
+			results := make(map[string][]string)
 
 			for c, v := range pc.activeConnHeartBeatRequestSubjects {
-
-				log.Info().Msgf("HEART BEAT REQUEST TO %s", v)
-				msg, err := pc.Conn.Request(v, data, 5*time.Second)
+				msg, err := pc.Conn.Request(v, nil, 5*time.Second)
 				if err != nil {
-					pc.activeStreamIds[c] = pc.activeStreamIds[c][:0]
+					results[c] = []string{}
 					continue
 				}
-				log.Ctx(ctxWithCancel).Info().Msgf("Heart Beat Response = %s", string(msg.Data))
+
+				var heartBeatResponse HeartBeatResponse
+				err = json.Unmarshal(msg.Data, &heartBeatResponse)
+				if err != nil {
+					continue
+				}
+				results[c] = heartBeatResponse.StreamIds
 			}
+
+			pc.mu.Lock()
+			for c, ids := range results {
+				log.Info().Msgf("Ids = %s", ids)
+				pc.activeStreamIds[c] = ids
+			}
+			pc.mu.Unlock()
 
 		}
 	}
+}
+
+func (pc *ProducerClient) WriteResponse(conn *ConnectionDetails, obj interface{}, writer *Writer) (int, error) {
+	pc.mu.Lock()
+	streamIds, active := pc.activeStreamIds[conn.ConnId]
+
+	for _, v := range streamIds {
+		if v == conn.StreamId {
+			active = true
+		}
+
+	}
+	pc.mu.Unlock()
+
+	if !active {
+		return 0, fmt.Errorf("stream id is now closed")
+	}
+
+	return writer.WriteObject(obj)
 }
 
 func (pc *ProducerClient) NewWriter(subject string) *Writer {

@@ -250,10 +250,19 @@ func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, data []by
 }
 
 func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
-	log.Info().Msg("Heart Beat Received")
-	log.Info().Msgf("Stream Ids Receieved = %s", string(msg.Data))
-	log.Info().Msgf("Reply message = %s", msg.Reply)
-	err := nc.Conn.Publish(msg.Reply, nil)
+	nc.mu.Lock()
+	defer nc.mu.Unlock()
+	streamIds := make([]string, 0, len(nc.respMap))
+	for k := range nc.respMap {
+		streamIds = append(streamIds, k)
+	}
+
+	data, err := json.Marshal(HeartBeatResponse{StreamIds: streamIds})
+	if err != nil {
+		return
+	}
+
+	err = nc.Conn.Publish(msg.Reply, data)
 	if err != nil {
 		return
 	}
@@ -272,16 +281,24 @@ func (nc *ConsumerClient) createNewRequestAndSend(ctx context.Context, subj stri
 	nc.respMap[token] = bucket
 	nc.mu.Unlock()
 
-	header := make(nats.Header)
-	header.Add("ConnId", nc.Conn.Opts.Name)
-	header.Add("StreamId", token)
-	header.Add("StreamHeartBeatSub", nc.heartBeatRequestSub)
+	streamRequest := Request{
+		ConnectionDetails: ConnectionDetails{
+			ConnId:              nc.Conn.Opts.Name,
+			StreamId:            token,
+			HeartBeatRequestSub: nc.heartBeatRequestSub,
+		},
+		Data: data,
+	}
+
+	request, err := json.Marshal(streamRequest)
+	if err != nil {
+		return nil, err
+	}
 
 	msg := &nats.Msg{
 		Subject: subj,
 		Reply:   respInbox,
-		Data:    data,
-		Header:  header,
+		Data:    request,
 	}
 
 	if err := nc.Conn.PublishMsg(msg); err != nil {

@@ -24,6 +24,26 @@ type StreamingMsg struct {
 	CloseError *CloseError `json:"closeError,omitempty"`
 }
 
+type Request struct {
+	ConnectionDetails ConnectionDetails `json:"connectionDetails"`
+	Data              []byte            `json:"body"`
+}
+
+type ConnectionDetails struct {
+	// ConnId is the connection id of the consumer streaming client originating the request.
+	ConnId string `json:"connId"`
+	// StreamId is the id of the stream being created.
+	StreamId string `json:"streamId"`
+	// HeartBeatSub is the heart beat subject where the producer client will send its heart beat.
+	HeartBeatRequestSub string `json:"heartBeatRequestSub"`
+}
+
+// HeartBeatResponse represents a list of stream ids that are Consumer Client is
+// still interested in.
+type HeartBeatResponse struct {
+	StreamIds []string
+}
+
 // CloseError represents a close message.
 type CloseError struct {
 	// Code is defined in RFC 6455, section 11.7.
