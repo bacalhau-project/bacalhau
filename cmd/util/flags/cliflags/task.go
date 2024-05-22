@@ -94,6 +94,9 @@ func RegisterTaskFlags(cmd *cobra.Command, s *TaskSettings) {
 	fs.StringVar(&s.Resources.GPU, "gpu", s.Resources.GPU, ResourceGPUUsageMsg)
 	fs.Var(flags.NetworkV2Flag(&s.Network.Network), "network", NetworkTypeUsageMsg)
 	fs.StringArrayVar(&s.Network.Domains, "domain", s.Network.Domains, NetworkDomainUsageMsg)
+	fs.Int64Var(&s.Timeout, "timeout", s.Timeout,
+		`Job execution timeout in seconds (e.g. 300 for 5 minutes)`,
+	)
 
 	cmd.Flags().AddFlagSet(fs)
 }
