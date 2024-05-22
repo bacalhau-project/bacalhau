@@ -57,6 +57,10 @@ func BuildJobFromFlags(
 		return nil, fmt.Errorf("failed to parse job constraints: %w", err)
 	}
 
+	labels, err := jobSettings.Labels()
+	if err != nil {
+		return nil, fmt.Errorf("receieved invalid job labels: %w", err)
+	}
 	job := &models.Job{
 		Name:        jobSettings.Name(),
 		Namespace:   jobSettings.Namespace(),
@@ -64,7 +68,7 @@ func BuildJobFromFlags(
 		Priority:    jobSettings.Priority(),
 		Count:       jobSettings.Count(),
 		Constraints: constraints,
-		Labels:      jobSettings.Labels(),
+		Labels:      labels,
 		Tasks:       []*models.Task{t},
 	}
 
