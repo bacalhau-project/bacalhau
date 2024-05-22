@@ -22,6 +22,13 @@ func Eval() *models.Evaluation {
 	return eval
 }
 
+func EvalForJob(job *models.Job) *models.Evaluation {
+	eval := Eval()
+	eval.JobID = job.ID
+	eval.Type = job.Type
+	return eval
+}
+
 func Job() *models.Job {
 	job := &models.Job{
 		ID:        uuid.NewString(),

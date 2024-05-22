@@ -126,9 +126,6 @@ func autoConfig(ctx context.Context, settings *autoSettings) error {
 	if err := setResources(types.NodeComputeCapacityDefaultJobResourceLimits, settings.DefaultPercentage, physicalResources); err != nil {
 		return err
 	}
-	if err := setResources(types.NodeComputeCapacityQueueResourceLimits, settings.QueuePercentage, physicalResources); err != nil {
-		return err
-	}
 
 	return nil
 }

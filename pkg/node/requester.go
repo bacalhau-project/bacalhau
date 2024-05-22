@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 
@@ -93,6 +94,7 @@ func NewRequesterNode(
 		ranking.NewMaxUsageNodeRanker(),
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
+		ranking.NewAvailableCapacityNodeRanker(),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
@@ -110,6 +112,13 @@ func NewRequesterNode(
 		return nil, err
 	}
 	evalBroker.SetEnabled(true)
+
+	// evaluations watcher
+	evaluationsWatcher := evaluation.NewWatcher(jobStore, evalBroker)
+	if err = evaluationsWatcher.Backfill(ctx); err != nil {
+		return nil, fmt.Errorf("failed to backfill evaluations: %w", err)
+	}
+	evaluationsWatcher.Start(ctx)
 
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
@@ -212,7 +221,6 @@ func NewRequesterNode(
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         nodeID,
-		EvaluationBroker:           evalBroker,
 		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
@@ -245,7 +253,6 @@ func NewRequesterNode(
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
-		EvaluationBroker:  evalBroker,
 		Store:             jobStore,
 		EventEmitter:      eventEmitter,
 		ComputeProxy:      computeProxy,
@@ -255,10 +262,9 @@ func NewRequesterNode(
 	})
 
 	housekeeping, err := orchestrator.NewHousekeeping(orchestrator.HousekeepingParams{
-		EvaluationBroker: evalBroker,
-		JobStore:         jobStore,
-		Interval:         requesterConfig.HousekeepingBackgroundTaskInterval,
-		TimeoutBuffer:    requesterConfig.HousekeepingTimeoutBuffer,
+		JobStore:      jobStore,
+		Interval:      requesterConfig.HousekeepingBackgroundTaskInterval,
+		TimeoutBuffer: requesterConfig.HousekeepingTimeoutBuffer,
 	})
 	if err != nil {
 		return nil, err

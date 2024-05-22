@@ -2,6 +2,7 @@ package planner
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -25,12 +26,28 @@ func NewStateUpdater(store jobstore.Store) *StateUpdater {
 
 // Process updates the state of the executions in the plan according to the scheduler's desired state.
 func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
-	// TODO: evaluate the need for partial failure handling instead of failing and retrying
-	//  the whole evaluation/plan.
+	// If there are no new or updated executions
+	// and the job state is not being updated, there is nothing to do.
+	if len(plan.NewExecutions) == 0 &&
+		len(plan.UpdatedExecutions) == 0 &&
+		plan.DesiredJobState.IsUndefined() {
+		return nil
+	}
+
+	txContext, err := s.store.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
 
 	// Create new executions
 	for _, exec := range plan.NewExecutions {
-		err := s.store.CreateExecution(ctx, *exec, plan.Event)
+		err = s.store.CreateExecution(txContext, *exec, plan.Event)
 		if err != nil {
 			return err
 		}
@@ -38,7 +55,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 
 	// Update existing executions
 	for _, u := range plan.UpdatedExecutions {
-		err := s.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
+		err = s.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
 			ExecutionID: u.Execution.ID,
 			NewValues: models.Execution{
 				DesiredState: models.State[models.ExecutionDesiredStateType]{
@@ -58,7 +75,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 
 	// Update job state if necessary
 	if !plan.DesiredJobState.IsUndefined() {
-		err := s.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+		err = s.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
 			JobID:    plan.Job.ID,
 			NewState: plan.DesiredJobState,
 			Event:    plan.Event,
@@ -70,7 +87,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			return err
 		}
 	}
-	return nil
+	return txContext.Commit()
 }
 
 // compile-time check whether the StateUpdater implements the Planner interface.

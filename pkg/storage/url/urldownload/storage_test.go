@@ -339,3 +339,86 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 		})
 	}
 }
+func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
+	path := "/initial"
+	headers := &map[string]string{
+		"Content-Length": "500",
+	}
+	code := 200
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != path {
+			http.Error(w, fmt.Sprintf("invalid path: %s should be %s", r.URL.Path, path), 999)
+			return
+		}
+
+		if headers != nil {
+			// Set the headers, if any, before WriteHeader is called
+			for k, v := range *headers {
+				w.Header().Add(k, v)
+			}
+		}
+
+		w.WriteHeader(code)
+
+		_, err := w.Write([]byte(""))
+		s.NoError(err)
+	}))
+	s.T().Cleanup(ts.Close)
+
+	subject := NewStorage()
+
+	url := fmt.Sprintf("%s%s", ts.URL, path)
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: url,
+			}.ToMap(),
+		},
+		Target: "/inputs",
+	}
+
+	vs, err := subject.GetVolumeSize(context.Background(), spec)
+	s.Require().NoError(err)
+
+	s.Equal(uint64(500), vs, "content-length does not match")
+
+}
+
+func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
+	path := "/initial"
+	code := 200
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != path {
+			http.Error(w, fmt.Sprintf("invalid path: %s should be %s", r.URL.Path, path), 999)
+			return
+		}
+
+		w.WriteHeader(code)
+
+		_, err := w.Write([]byte(""))
+		s.NoError(err)
+	}))
+	s.T().Cleanup(ts.Close)
+
+	subject := NewStorage()
+
+	url := fmt.Sprintf("%s%s", ts.URL, path)
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: url,
+			}.ToMap(),
+		},
+		Target: "/inputs",
+	}
+
+	_, err := subject.GetVolumeSize(context.Background(), spec)
+	s.Require().ErrorIs(err, ErrNoContentLengthFound)
+
+}

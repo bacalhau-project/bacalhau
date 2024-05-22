@@ -23,7 +23,6 @@ import (
 
 type BaseEndpointParams struct {
 	ID                         string
-	EvaluationBroker           orchestrator.EvaluationBroker
 	Store                      jobstore.Store
 	EventEmitter               orchestrator.EventEmitter
 	ComputeEndpoint            compute.Endpoint
@@ -35,13 +34,12 @@ type BaseEndpointParams struct {
 
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
-	id               string
-	evaluationBroker orchestrator.EvaluationBroker
-	store            jobstore.Store
-	eventEmitter     orchestrator.EventEmitter
-	computesvc       compute.Endpoint
-	transforms       []jobtransform.Transformer
-	postTransforms   []jobtransform.PostTransformer
+	id             string
+	store          jobstore.Store
+	eventEmitter   orchestrator.EventEmitter
+	computesvc     compute.Endpoint
+	transforms     []jobtransform.Transformer
+	postTransforms []jobtransform.PostTransformer
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
@@ -59,13 +57,12 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	}
 
 	return &BaseEndpoint{
-		id:               params.ID,
-		evaluationBroker: params.EvaluationBroker,
-		computesvc:       params.ComputeEndpoint,
-		store:            params.Store,
-		transforms:       transforms,
-		postTransforms:   postTransforms,
-		eventEmitter:     params.EventEmitter,
+		id:             params.ID,
+		computesvc:     params.ComputeEndpoint,
+		store:          params.Store,
+		transforms:     transforms,
+		postTransforms: postTransforms,
+		eventEmitter:   params.EventEmitter,
 	}
 }
 
@@ -152,11 +149,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		return nil, err
 	}
 
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		return nil, err
-	}
-
 	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return legacyJob, nil
 }
@@ -208,11 +200,6 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 		err = e.store.CreateEvaluation(ctx, *eval)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for cancel job %s", request.JobID)
-			return CancelJobResult{}, err
-		}
-
-		err = e.evaluationBroker.Enqueue(eval)
-		if err != nil {
 			return CancelJobResult{}, err
 		}
 	}
@@ -374,11 +361,6 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to create/save evaluation for job %s", operation, jobID)
 		return
-	}
-
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
 	}
 }
 
