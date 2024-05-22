@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -55,11 +56,20 @@ func (j *JobSettings) Count() int {
 	return j.count
 }
 
-func (j *JobSettings) Constraints() string {
+func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) {
 	if j.cmd.Flags().Changed("selector") {
-		return j.legacy.selectors
+		req, err := parse.NodeSelector(j.legacy.selectors)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]*models.LabelSelectorRequirement, 0, len(req))
+		for _, c := range req {
+			tmp := models.LabelSelectorRequirement(c)
+			out = append(out, &tmp)
+		}
+		return out, nil
 	}
-	return j.constraints
+	return parse.NodeSelectorV2(j.constraints)
 }
 
 func (j *JobSettings) Labels() map[string]string {
@@ -86,7 +96,7 @@ type LegacyJobFlags struct {
 
 func DefaultJobSettings() *JobSettings {
 	return &JobSettings{
-		name:        "",
+		name:        "main",
 		namespace:   "default",
 		jobType:     models.JobTypeBatch,
 		priority:    0,

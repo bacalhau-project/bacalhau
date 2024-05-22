@@ -1,23 +1,23 @@
 package docker
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	engine_docker "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -50,33 +50,25 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Entrypoint       []string
-	WorkingDirectory string // Working directory for docker
+	Entrypoint           []string
+	WorkingDirectory     string
+	EnvironmentVariables []string
 
-	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
-	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
-	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
-	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
-	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
-	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
-
+	JobSettings      *cliflags.JobSettings
+	TaskSettings     *cliflags.TaskSettings
+	RunTimeSettings  *cliflags.RunTimeSettings
+	DownloadSettings *cliflags.DownloaderSettings
 }
-
-const (
-	DefaultDockerRunWaitSeconds = 600
-)
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
 		Entrypoint:       nil,
 		WorkingDirectory: "",
 
-		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
+		JobSettings:      cliflags.DefaultJobSettings(),
+		TaskSettings:     cliflags.DefaultTaskSettings(),
+		DownloadSettings: cliflags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:  cliflags.DefaultRunTimeSettings(),
 	}
 }
 
@@ -106,143 +98,103 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return dockerRun(cmd, cmdArgs, opts)
+			return run(cmd, cmdArgs, opts)
 		},
 	}
 
-	dockerRunCmd.PersistentFlags().StringVarP(
-		&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,
-		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
-	)
-
-	dockerRunCmd.PersistentFlags().StringSliceVar(
-		&opts.Entrypoint, "entrypoint", opts.Entrypoint,
-		`Override the default ENTRYPOINT of the image`,
-	)
-
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+	cliflags.RegisterJobFlags(dockerRunCmd, opts.JobSettings)
+	cliflags.RegisterTaskFlags(dockerRunCmd, opts.TaskSettings)
+	dockerRunCmd.Flags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
+	dockerRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
 		util.Fatal(dockerRunCmd, err, 1)
 	}
+	// register flags unique to docker.
+	dockerFlags := pflag.NewFlagSet("docker", pflag.ContinueOnError)
+	dockerFlags.StringVarP(&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,
+		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`)
+	dockerFlags.StringSliceVar(&opts.Entrypoint, "entrypoint", opts.Entrypoint,
+		`Override the default ENTRYPOINT of the image`)
+	dockerFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
+		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
+
+	dockerRunCmd.Flags().AddFlagSet(dockerFlags)
 
 	return dockerRunCmd
 }
 
-func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
+func run(cmd *cobra.Command, args []string, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
-	image := cmdArgs[0]
-	parameters := cmdArgs[1:]
-	j, err := CreateJob(ctx, image, parameters, opts)
-	if err != nil {
-		return fmt.Errorf("creating job: %w", err)
-	}
-
-	if err := legacy_job.VerifyJob(ctx, j); err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", image)
-		} else {
-			return fmt.Errorf("verifying job: %s", err)
-		}
-	}
-
-	quiet := opts.RunTimeSettings.PrintJobIDOnly
-	if !quiet {
-		containsTag := dockerImageContainsTag(image)
-		if !containsTag {
-			cmd.PrintErrln("Using default tag: latest. Please specify a tag/digest for better reproducibility.")
-		}
-	}
-
-	if opts.RunTimeSettings.DryRun {
-		// Converting job to yaml
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(j)
-		if err != nil {
-			return fmt.Errorf("converting job to yaml: %w", err)
-		}
-		cmd.Print(string(yamlBytes))
-		return nil
-	}
-
-	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	job, err := build(args, opts)
 	if err != nil {
 		return err
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	if opts.RunTimeSettings.DryRun {
+		out, err := helpers.JobToYaml(job)
+		if err != nil {
+			return err
+		}
+		cmd.Print(out)
+		return nil
+	}
+
+	api := util.GetAPIClientV2(cmd)
+	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
+	if err != nil {
+		return fmt.Errorf("failed to submit job: %w", err)
+	}
+
+	if len(resp.Warnings) > 0 {
+		helpers.PrintWarnings(cmd, resp.Warnings)
+	}
+
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, opts.RunTimeSettings, api); err != nil {
+		return fmt.Errorf("failed to print job execution: %w", err)
+	}
+
+	return nil
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, image string, parameters []string, opts *DockerRunOptions) (*model.Job, error) {
-	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
-	if err != nil {
+func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
+	image := args[0]
+	parameters := args[1:]
+	if err := validateWorkingDir(opts.WorkingDirectory); err != nil {
 		return nil, err
 	}
+	engineSpec := engine_docker.NewDockerEngineBuilder(image).
+		WithParameters(parameters...).
+		WithWorkingDirectory(opts.WorkingDirectory).
+		WithEntrypoint(opts.Entrypoint...).
+		WithEntrypoint(opts.EnvironmentVariables...).
+		Build()
 
-	nodeSelectorRequirements, err := parse.NodeSelector(opts.SpecSettings.Selector)
+	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("building job spec: %w", err)
 	}
 
-	labels, err := parse.Labels(ctx, opts.SpecSettings.Labels)
-	if err != nil {
-		return nil, err
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	spec, err := legacy_job.MakeDockerSpec(
-		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
-		legacy_job.WithResources(
-			opts.ResourceSettings.CPU,
-			opts.ResourceSettings.Memory,
-			opts.ResourceSettings.Disk,
-			opts.ResourceSettings.GPU,
-		),
-		legacy_job.WithNetwork(
-			opts.NetworkingSettings.Network,
-			opts.NetworkingSettings.Domains,
-		),
-		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
-		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		legacy_job.WithOutputs(outputs...),
-		legacy_job.WithAnnotations(labels...),
-		legacy_job.WithNodeSelector(nodeSelectorRequirements),
-		legacy_job.WithDeal(
-			opts.DealSettings.TargetingMode,
-			opts.DealSettings.Concurrency,
-		),
-	)
-
-	// Publisher is optional and we won't provide it if not specified
-	p := opts.SpecSettings.Publisher.Value()
-	if p != nil {
-		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = *p
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-		Spec:       spec,
-	}, nil
+	return job, nil
 }
 
-// dockerImageContainsTag checks if the image contains a tag or a digest
-func dockerImageContainsTag(image string) bool {
-	if strings.Contains(image, ":") {
-		return true
+// Function for validating the workdir of a docker command.
+func validateWorkingDir(jobWorkingDir string) error {
+	if jobWorkingDir != "" {
+		if !strings.HasPrefix(jobWorkingDir, "/") {
+			// This mirrors the implementation at path/filepath/path_unix.go#L13 which
+			// we reuse here to get cross-platform working dir detection. This is
+			// necessary (rather than using IsAbs()) because clients may be running on
+			// Windows/Plan9 but we want to check inside Docker (linux).
+			return fmt.Errorf("workdir must be an absolute path. Passed in: %s", jobWorkingDir)
+		}
 	}
-	if strings.Contains(image, "@") {
-		return true
-	}
-	return false
+	return nil
 }

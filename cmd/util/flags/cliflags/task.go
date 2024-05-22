@@ -62,7 +62,7 @@ type NetworkSettings struct {
 
 func DefaultTaskSettings() *TaskSettings {
 	return &TaskSettings{
-		Name:                 "",
+		Name:                 "main",
 		InputSources:         []*models.InputSource{},
 		ResultPaths:          []*models.ResultPath{},
 		EnvironmentVariables: make(map[string]string),
