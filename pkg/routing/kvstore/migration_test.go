@@ -52,7 +52,7 @@ func (s *KVMigrationSuite) TestMigrationFromNodeInfoToNodeState() {
 	ctx := context.Background()
 
 	// Create 'from' bucket and populate it, simulating a requester on v130 with state to migrate.
-	fromKV, err := s.js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: kvstore.V130BucketName})
+	fromKV, err := s.js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: kvstore.BucketNameV0})
 	s.Require().NoError(err)
 
 	nodeInfos := []models.NodeInfo{
@@ -69,8 +69,8 @@ func (s *KVMigrationSuite) TestMigrationFromNodeInfoToNodeState() {
 		s.Require().NoError(err)
 	}
 
-	fromBucket := kvstore.V130BucketName
-	toBucket := kvstore.DefaultBucketName
+	fromBucket := kvstore.BucketNameV0
+	toBucket := kvstore.BucketNameCurrent
 
 	// Open a NodeStore to trigger migration
 	ns, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
@@ -97,11 +97,11 @@ func (s *KVMigrationSuite) TestMigrationStoreEmpty() {
 	ctx := context.Background()
 
 	// Create an empty 'from' bucket
-	_, err := s.js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: kvstore.V130BucketName})
+	_, err := s.js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: kvstore.BucketNameV0})
 	s.Require().NoError(err)
 
-	fromBucket := kvstore.V130BucketName
-	toBucket := kvstore.DefaultBucketName
+	fromBucket := kvstore.BucketNameV0
+	toBucket := kvstore.BucketNameCurrent
 
 	// Open a NodeStore to trigger migration, in this case there is a from bucket, but it's empty.
 	ns, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
@@ -123,8 +123,8 @@ func (s *KVMigrationSuite) TestMigrationStoreEmpty() {
 func (s *KVMigrationSuite) TestMigrationStoreDNE() {
 	ctx := context.Background()
 
-	fromBucket := kvstore.V130BucketName
-	toBucket := kvstore.DefaultBucketName
+	fromBucket := kvstore.BucketNameV0
+	toBucket := kvstore.BucketNameCurrent
 
 	// Open a NodeStore to trigger migration, in this case there isn't a from bucket to migrate from.
 	ns, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
