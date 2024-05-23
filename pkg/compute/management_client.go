@@ -22,7 +22,6 @@ type ManagementClientParams struct {
 	NodeInfoDecorator        models.NodeInfoDecorator
 	AvailableCapacityTracker capacity.Tracker
 	QueueUsageTracker        capacity.UsageTracker
-	RegistrationFilePath     string
 	HeartbeatClient          *heartbeat.HeartbeatClient
 	ControlPlaneSettings     types.ComputeControlPlaneConfig
 }
@@ -39,7 +38,6 @@ type ManagementClient struct {
 	nodeInfoDecorator        models.NodeInfoDecorator
 	availableCapacityTracker capacity.Tracker
 	queueUsageTracker        capacity.UsageTracker
-	registrationFile         *RegistrationFile
 	heartbeatClient          *heartbeat.HeartbeatClient
 	settings                 types.ComputeControlPlaneConfig
 }
@@ -51,7 +49,6 @@ func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 		managementProxy:          params.ManagementProxy,
 		nodeID:                   params.NodeID,
 		nodeInfoDecorator:        params.NodeInfoDecorator,
-		registrationFile:         NewRegistrationFile(params.RegistrationFilePath),
 		availableCapacityTracker: params.AvailableCapacityTracker,
 		queueUsageTracker:        params.QueueUsageTracker,
 		heartbeatClient:          params.HeartbeatClient,
@@ -68,17 +65,8 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 	return ni
 }
 
-// RegisterNode sends a registration request to the requester node. If we successfully
-// register, a sentinel file is created to indicate that we are registered. If present
-// the requester node will know it is already registered.  If not present, it will
-// attempt to register again, expecting the requester node to gracefully handle any
-// previous registrations.
+// RegisterNode sends a registration request to the requester node.
 func (m *ManagementClient) RegisterNode(ctx context.Context) error {
-	if m.registrationFile.Exists() {
-		log.Ctx(ctx).Debug().Msg("not registering with requester, already registered")
-		return nil
-	}
-
 	nodeInfo := m.getNodeInfo(ctx)
 	response, err := m.managementProxy.Register(ctx, requests.RegisterRequest{
 		Info: nodeInfo,
@@ -88,10 +76,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	if response.Accepted {
-		if err := m.registrationFile.Set(); err != nil {
-			return errors.Wrap(err, "failed to record local registration status")
-		}
-		log.Ctx(ctx).Debug().Msg("register request accepted")
+		log.Ctx(ctx).Info().Msg("register request accepted")
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
 		// state instead
