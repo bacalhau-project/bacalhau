@@ -10,7 +10,6 @@ type ComputeConfig struct {
 	ExecutionStore       JobStoreConfig            `yaml:"ExecutionStore"`
 	JobTimeouts          JobTimeoutConfig          `yaml:"JobTimeouts"`
 	JobSelection         model.JobSelectionPolicy  `yaml:"JobSelection"`
-	Queue                QueueConfig               `yaml:"Queue"`
 	Logging              LoggingConfig             `yaml:"Logging"`
 	ManifestCache        DockerCacheConfig         `yaml:"ManifestCache"`
 	LogStreamConfig      LogStreamConfig           `yaml:"LogStream"`
@@ -25,7 +24,6 @@ type CapacityConfig struct {
 	// Per job amount of resource the system can be using at one time.
 	JobResourceLimits        models.ResourcesConfig `yaml:"JobResourceLimits"`
 	DefaultJobResourceLimits models.ResourcesConfig `yaml:"DefaultJobResourceLimits"`
-	QueueResourceLimits      models.ResourcesConfig `yaml:"QueueResourceLimits"`
 }
 
 type JobTimeoutConfig struct {
@@ -43,9 +41,6 @@ type JobTimeoutConfig struct {
 	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
 	// no timeout requirement defined.
 	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
-}
-
-type QueueConfig struct {
 }
 
 type LoggingConfig struct {

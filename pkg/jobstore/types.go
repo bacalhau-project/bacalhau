@@ -30,9 +30,19 @@ type JobQueryResponse struct {
 	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
+// TxContext is a transactional context that can be used to commit or rollback
+type TxContext interface {
+	context.Context
+	Commit() error
+	Rollback() error
+}
+
 // A Store will persist jobs and their state to the underlying storage.
 // It also gives an efficient way to retrieve jobs using queries.
 type Store interface {
+	// BeginTx starts a new transaction and returns a transactional context
+	BeginTx(ctx context.Context) (TxContext, error)
+
 	// Watch returns a channel from which the caller can read specific events
 	// as they are transmitted. When called the combination of parameters
 	// will determine which events are sent.  Both the StoreWatcherType and
@@ -45,7 +55,7 @@ type Store interface {
 	// will contain a timestamp, but also the StoreWatcherType and
 	// StoreEventType that triggered the event. A json encoded `[]byte`
 	// of the related object will also be included in the [WatchEvent].
-	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType) chan WatchEvent
+	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType, options ...WatcherOption) *Watcher
 
 	// GetJob returns a job, identified by the id parameter, or an error if
 	// it does not exist.

@@ -5,7 +5,9 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -27,6 +29,7 @@ const (
 
 type ServiceJobSchedulerTestSuite struct {
 	suite.Suite
+	clock         *clock.Mock
 	jobStore      *jobstore.MockStore
 	planner       *orchestrator.MockPlanner
 	nodeSelector  *orchestrator.MockNodeSelector
@@ -36,6 +39,7 @@ type ServiceJobSchedulerTestSuite struct {
 
 func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
@@ -47,6 +51,10 @@ func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 		NodeSelector:  s.nodeSelector,
 		RetryStrategy: s.retryStrategy,
 	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestServiceSchedulerTestSuite(t *testing.T) {
@@ -322,14 +330,10 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 }
 
 func (s *ServiceJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
-	constraints := &orchestrator.NodeSelectionConstraints{
-		RequireApproval:  false,
-		RequireConnected: false,
-	}
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount, constraints).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount, constraints).Return(nodeInfos, nil)
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nodeInfos, nil)
 	}
 }
 

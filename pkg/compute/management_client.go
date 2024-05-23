@@ -16,14 +16,15 @@ import (
 )
 
 type ManagementClientParams struct {
-	NodeID               string
-	LabelsProvider       models.LabelsProvider
-	ManagementProxy      ManagementEndpoint
-	NodeInfoDecorator    models.NodeInfoDecorator
-	ResourceTracker      capacity.Tracker
-	RegistrationFilePath string
-	HeartbeatClient      *heartbeat.HeartbeatClient
-	ControlPlaneSettings types.ComputeControlPlaneConfig
+	NodeID                   string
+	LabelsProvider           models.LabelsProvider
+	ManagementProxy          ManagementEndpoint
+	NodeInfoDecorator        models.NodeInfoDecorator
+	AvailableCapacityTracker capacity.Tracker
+	QueueUsageTracker        capacity.UsageTracker
+	RegistrationFilePath     string
+	HeartbeatClient          *heartbeat.HeartbeatClient
+	ControlPlaneSettings     types.ComputeControlPlaneConfig
 }
 
 // ManagementClient is used to call management functions with
@@ -31,28 +32,30 @@ type ManagementClientParams struct {
 // it will periodically send an update to the requester node with
 // the latest node info for this node.
 type ManagementClient struct {
-	done              chan struct{}
-	labelsProvider    models.LabelsProvider
-	managementProxy   ManagementEndpoint
-	nodeID            string
-	nodeInfoDecorator models.NodeInfoDecorator
-	resourceTracker   capacity.Tracker
-	registrationFile  *RegistrationFile
-	heartbeatClient   *heartbeat.HeartbeatClient
-	settings          types.ComputeControlPlaneConfig
+	done                     chan struct{}
+	labelsProvider           models.LabelsProvider
+	managementProxy          ManagementEndpoint
+	nodeID                   string
+	nodeInfoDecorator        models.NodeInfoDecorator
+	availableCapacityTracker capacity.Tracker
+	queueUsageTracker        capacity.UsageTracker
+	registrationFile         *RegistrationFile
+	heartbeatClient          *heartbeat.HeartbeatClient
+	settings                 types.ComputeControlPlaneConfig
 }
 
 func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		done:              make(chan struct{}, 1),
-		labelsProvider:    params.LabelsProvider,
-		managementProxy:   params.ManagementProxy,
-		nodeID:            params.NodeID,
-		nodeInfoDecorator: params.NodeInfoDecorator,
-		registrationFile:  NewRegistrationFile(params.RegistrationFilePath),
-		resourceTracker:   params.ResourceTracker,
-		heartbeatClient:   params.HeartbeatClient,
-		settings:          params.ControlPlaneSettings,
+		done:                     make(chan struct{}, 1),
+		labelsProvider:           params.LabelsProvider,
+		managementProxy:          params.ManagementProxy,
+		nodeID:                   params.NodeID,
+		nodeInfoDecorator:        params.NodeInfoDecorator,
+		registrationFile:         NewRegistrationFile(params.RegistrationFilePath),
+		availableCapacityTracker: params.AvailableCapacityTracker,
+		queueUsageTracker:        params.QueueUsageTracker,
+		heartbeatClient:          params.HeartbeatClient,
+		settings:                 params.ControlPlaneSettings,
 	}
 }
 
@@ -121,13 +124,14 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 }
 
 func (m *ManagementClient) updateResources(ctx context.Context) {
-	log.Ctx(ctx).Debug().Msg("Sending updated resources")
+	request := requests.UpdateResourcesRequest{
+		NodeID:            m.nodeID,
+		AvailableCapacity: m.availableCapacityTracker.GetAvailableCapacity(ctx),
+		QueueUsedCapacity: m.queueUsageTracker.GetUsedCapacity(ctx),
+	}
+	log.Ctx(ctx).Debug().Msgf("Sending updated resources: %+v", request)
 
-	resources := m.resourceTracker.GetAvailableCapacity(ctx)
-	_, err := m.managementProxy.UpdateResources(ctx, requests.UpdateResourcesRequest{
-		NodeID:    m.nodeID,
-		Resources: resources,
-	})
+	_, err := m.managementProxy.UpdateResources(ctx, request)
 	if err != nil {
 		log.Ctx(ctx).Warn().Err(err).Msg("failed to send resource update to requester node")
 	}

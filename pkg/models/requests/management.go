@@ -20,8 +20,9 @@ type UpdateInfoResponse struct {
 }
 
 type UpdateResourcesRequest struct {
-	NodeID    string
-	Resources models.Resources
+	NodeID            string
+	AvailableCapacity models.Resources
+	QueueUsedCapacity models.Resources
 }
 
 type UpdateResourcesResponse struct{}

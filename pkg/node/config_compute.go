@@ -44,7 +44,6 @@ type JobSelectionPolicy struct {
 type ComputeConfigParams struct {
 	// Capacity config
 	TotalResourceLimits          models.Resources
-	QueueResourceLimits          models.Resources
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	PhysicalResourcesProvider    capacity.Provider
@@ -82,7 +81,6 @@ type ComputeConfigParams struct {
 type ComputeConfig struct {
 	// Capacity config
 	TotalResourceLimits          models.Resources
-	QueueResourceLimits          models.Resources
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	IgnorePhysicalResourceLimits bool
@@ -189,19 +187,12 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 		Merge(DefaultComputeConfig.JobResourceLimits).
 		Merge(*totalResourceLimits)
 
-	// by default set the queue size to the total resource limits, which allows the node overcommit to double of the total resource limits.
-	// i.e. total resource limits can be busy in running state, and enqueue up to the total resource limits in the queue.
-	if params.QueueResourceLimits.IsZero() {
-		params.QueueResourceLimits = *totalResourceLimits
-	}
-
 	// populate default job resource limits with default values and job resource limits if not set
 	defaultJobResourceLimits := params.DefaultJobResourceLimits.
 		Merge(DefaultComputeConfig.DefaultJobResourceLimits)
 
 	config := ComputeConfig{
 		TotalResourceLimits:          *totalResourceLimits,
-		QueueResourceLimits:          params.QueueResourceLimits,
 		JobResourceLimits:            *jobResourceLimits,
 		DefaultJobResourceLimits:     *defaultJobResourceLimits,
 		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
@@ -245,12 +236,6 @@ func validateConfig(config ComputeConfig, physicalResources models.Resources) er
 		err = errors.Join(err,
 			fmt.Errorf("job resource limits %+v exceed total resource limits %+v",
 				config.JobResourceLimits, config.TotalResourceLimits))
-	}
-
-	if !config.JobResourceLimits.LessThanEq(config.QueueResourceLimits) {
-		err = errors.Join(err,
-			fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
-				config.JobResourceLimits, config.QueueResourceLimits))
 	}
 
 	if !config.DefaultJobResourceLimits.LessThanEq(config.JobResourceLimits) {

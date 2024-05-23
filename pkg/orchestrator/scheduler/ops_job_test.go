@@ -5,7 +5,9 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -18,6 +20,7 @@ import (
 
 type OpsJobSchedulerTestSuite struct {
 	suite.Suite
+	clock        *clock.Mock
 	jobStore     *jobstore.MockStore
 	planner      *orchestrator.MockPlanner
 	nodeSelector *orchestrator.MockNodeSelector
@@ -26,6 +29,7 @@ type OpsJobSchedulerTestSuite struct {
 
 func (s *OpsJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
@@ -35,6 +39,10 @@ func (s *OpsJobSchedulerTestSuite) SetupTest() {
 		Planner:      s.planner,
 		NodeSelector: s.nodeSelector,
 	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestOpsJobSchedulerTestSuite(t *testing.T) {
@@ -167,8 +175,37 @@ func (s *OpsJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
+func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
+	ctx := context.Background()
+	job, executions, evaluation := mockOpsJob()
+	// Set the job type to batch and the timeout to 60 minutes
+	job.Task().Timeouts.ExecutionTimeout = int64((60 * time.Minute).Seconds())
+	// Set the start time of the executions to exceed the timeout
+	for i := range executions {
+		executions[i].ModifyTime = s.clock.Now().Add(-90 * time.Minute).UnixNano()
+	}
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+
+	// mock active executions' nodes to be healthy
+	nodeInfos := []models.NodeInfo{
+		*fakeNodeInfo(s.T(), executions[0].NodeID),
+	}
+	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		JobState:   models.JobStateTypeFailed,
+		StoppedExecutions: []string{
+			executions[0].ID,
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
 func (s *OpsJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo) {
-	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job, gomock.Any()).Return(nodeInfos, nil)
+	s.nodeSelector.EXPECT().AllMatchingNodes(gomock.Any(), job).Return(nodeInfos, nil)
 }
 
 func mockOpsJob() (*models.Job, []models.Execution, *models.Evaluation) {

@@ -1,0 +1,6 @@
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: noop

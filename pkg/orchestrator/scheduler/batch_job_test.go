@@ -5,7 +5,9 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -35,6 +37,7 @@ var nodeIDs = []string{
 
 type BatchJobSchedulerTestSuite struct {
 	suite.Suite
+	clock         *clock.Mock
 	jobStore      *jobstore.MockStore
 	planner       *orchestrator.MockPlanner
 	nodeSelector  *orchestrator.MockNodeSelector
@@ -44,6 +47,7 @@ type BatchJobSchedulerTestSuite struct {
 
 func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
+	s.clock = clock.NewMock()
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
@@ -54,7 +58,12 @@ func (s *BatchJobSchedulerTestSuite) SetupTest() {
 		Planner:       s.planner,
 		NodeSelector:  s.nodeSelector,
 		RetryStrategy: s.retryStrategy,
+		Clock:         s.clock,
 	})
+
+	// we only want to freeze time to have more deterministic tests.
+	// It doesn't matter what time it is as we are using relative time to this value
+	s.clock.Set(time.Now())
 }
 
 func TestBatchSchedulerTestSuite(t *testing.T) {
@@ -303,20 +312,49 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry()
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
-	constraints := &orchestrator.NodeSelectionConstraints{
-		RequireApproval:  false,
-		RequireConnected: false,
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
+	ctx := context.Background()
+	job, executions, evaluation := mockJob()
+	// Set the job type to batch and the timeout to 60 minutes
+	job.Task().Timeouts.ExecutionTimeout = int64((60 * time.Minute).Seconds())
+	// Set the start time of the executions to exceed the timeout
+	for i := range executions {
+		executions[i].ModifyTime = s.clock.Now().Add(-90 * time.Minute).UnixNano()
 	}
+	// override the first execution to be running as well to time it out
+	executions[execAskForBid].ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID).Return(*job, nil)
+	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(executions, nil)
+
+	// mock active executions' nodes to be healthy
+	nodeInfos := []models.NodeInfo{
+		*fakeNodeInfo(s.T(), executions[execAskForBid].NodeID),
+		*fakeNodeInfo(s.T(), executions[execBidAccepted].NodeID),
+	}
+	s.nodeSelector.EXPECT().AllNodes(gomock.Any()).Return(nodeInfos, nil)
+	s.mockNodeSelection(job, nodeInfos, 2)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation:         evaluation,
+		NewExecutionsNodes: []string{nodeInfos[0].ID(), nodeInfos[1].ID()},
+		StoppedExecutions: []string{
+			executions[execAskForBid].ID,
+			executions[execBidAccepted].ID,
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *models.Job, nodeInfos []models.NodeInfo, desiredCount int) {
 	if len(nodeInfos) < desiredCount {
-		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount, constraints).Return(nil, orchestrator.ErrNotEnoughNodes{})
+		s.nodeSelector.EXPECT().TopMatchingNodes(gomock.Any(), job, desiredCount).Return(nil, orchestrator.ErrNotEnoughNodes{})
 	} else {
 		s.nodeSelector.EXPECT().TopMatchingNodes(
 			gomock.Any(),
 			job,
 			desiredCount,
-			constraints,
 		).Return(nodeInfos, nil)
 	}
 }
