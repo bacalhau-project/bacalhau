@@ -108,7 +108,7 @@ func (fsr *FsRepo) Init() error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.writeVersion(RepoVersion3)
+	return fsr.writeVersion(RepoVersion4)
 }
 
 func (fsr *FsRepo) Open() error {

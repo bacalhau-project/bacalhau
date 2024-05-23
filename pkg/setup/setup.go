@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
@@ -19,6 +20,7 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 	return repo.NewMigrationManager(
 		migrations.V1Migration,
 		migrations.V2Migration,
+		migrations.V3Migration,
 	)
 }
 
