@@ -17,7 +17,10 @@ import (
 )
 
 const (
-	DefaultBucketName = "nodes"
+	// BucketNameCurrent is the bucket name for bacalhau version v1.3.1 and beyond.
+	BucketNameCurrent = "node_v1"
+	// BucketNameV0 is the bucket name for bacalhau version v1.3.0 and below.
+	BucketNameV0 = "nodes"
 )
 
 type NodeStoreParams struct {
@@ -40,6 +43,11 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 	if bucketName == "" {
 		return nil, pkgerrors.New("bucket name is required")
 	}
+
+	if err := migrateJetStreamBucket(ctx, js, BucketNameV0, bucketName, migrateNodeInfoToNodeState); err != nil {
+		return nil, err
+	}
+
 	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket: bucketName,
 	})
