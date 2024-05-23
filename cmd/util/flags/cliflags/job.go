@@ -93,6 +93,8 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
+// TODO(forrest): based on a conversation with walid we should be returning an error here if at anypoint if a label
+// if provided that is invalid. We cannont remove them as we did previously.
 func (j *JobSettings) Labels() (map[string]string, error) {
 	rawLabels := j.labels
 	if j.cmd.Flags().Changed("labels") {
@@ -187,6 +189,7 @@ func RegisterJobFlags(cmd *cobra.Command, s *JobSettings) {
 		panic(err)
 	}
 
+	// TODO(forrest): walid says I can break this if it ends up being easier.
 	// NB(forrest): the `label` flag is replacing `labels` flag. Hide the `labels` flag and add deprecation notice.
 	fs.StringToStringVar(&s.labels, "label", s.labels,
 		`List of labels for the job. Enter multiple in the format '-label a -label 2'.
@@ -229,4 +232,8 @@ Matching objects must satisfy all of the specified label constraints.`)
 	cmd.MarkFlagsMutuallyExclusive("labels", "label")
 	cmd.MarkFlagsMutuallyExclusive("selector", "constraints")
 	cmd.MarkFlagsMutuallyExclusive("target", "type")
+	//NB(forrest): we require the name with the type.
+	// TODO (forrest): FOR REVIEW this ais a question for PRODUCT cc Aronchick
+	// - do we want to support type? do we want a dtype flag for each kind of job? --type-ops, --type-daemon, etc?
+	cmd.MarkFlagsRequiredTogether("type", "name")
 }
