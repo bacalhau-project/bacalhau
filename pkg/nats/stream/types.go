@@ -1,6 +1,9 @@
 package stream
 
-import "strconv"
+import (
+	"strconv"
+	"time"
+)
 
 // StreamingMsgType represents the type of a streaming message.
 type StreamingMsgType int
@@ -29,19 +32,45 @@ type Request struct {
 	Data              []byte            `json:"body"`
 }
 
+// ConnectionDetails represents the details of incoming stream connection.
 type ConnectionDetails struct {
-	// ConnId is the connection id of the consumer streaming client originating the request.
-	ConnId string `json:"connId"`
+	// ConnID is the connection id of the consumer streaming client originating the request.
+	ConnID string `json:"connId"`
 	// StreamId is the id of the stream being created.
-	StreamId string `json:"streamId"`
+	StreamID string `json:"streamId"`
 	// HeartBeatSub is the heart beat subject where the producer client will send its heart beat.
 	HeartBeatRequestSub string `json:"heartBeatRequestSub"`
 }
 
-// HeartBeatResponse represents a list of stream ids that are Consumer Client is
-// still interested in.
-type HeartBeatResponse struct {
-	StreamIds []string
+// StreamInfo represents information about the stream.
+type StreamInfo struct {
+	// Id is the identifier of the stream.
+	Id string
+	// CreatedAt represents the time the stream was created.
+	CreatedAt time.Time
+}
+
+// HeartBeatConfig represents the configuration of producer heart beating to the consumer.
+type HeartBeatConfig struct {
+	// HeartBeatIntervalDuration represents the duration between two heart beats from the producer client
+	// to consumer client.
+	HeartBeatIntervalDuration time.Duration
+	// HeartBeatRequestTimeout represents the time within which the producer client should receive the
+	// response from the consumer client.
+	HeartBeatRequestTimeout time.Duration
+}
+
+// HeartBeatRequest sent by producer client to the consumer client.
+type HeartBeatRequest struct {
+	ProducerConnID  string
+	ActiveStreamIds []string
+}
+
+// ConsumerHeartBeatResponse represents a heart beat response from the consumer client.
+type ConsumerHeartBeatResponse struct {
+	// NonActiveStreamIds represent a list of stream ids which the consumer client is not
+	// interested in.
+	NonActiveStreamIds []string
 }
 
 // CloseError represents a close message.

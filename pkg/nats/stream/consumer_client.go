@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -32,21 +33,25 @@ const (
 // streamingBucket is a structure to hold the response channel and context
 type streamingBucket struct {
 	// ctx is the context for the channel consumer that requested and waiting for messages
-	ctx       context.Context
-	token     string
-	ch        chan *concurrency.AsyncResult[[]byte]
-	cancel    context.CancelFunc
-	closeOnce sync.Once
+	ctx            context.Context
+	token          string
+	createdAt      time.Time
+	producerConnID string
+	ch             chan *concurrency.AsyncResult[[]byte]
+	cancel         context.CancelFunc
+	closeOnce      sync.Once
 }
 
 // newStreamingBucket creates a new streamingBucket.
-func newStreamingBucket(ctx context.Context, token string) *streamingBucket {
+func newStreamingBucket(ctx context.Context, token string, producerConnID string) *streamingBucket {
 	ctx, cancel := context.WithCancel(ctx)
 	return &streamingBucket{
-		ctx:    ctx,
-		cancel: cancel,
-		token:  token,
-		ch:     make(chan *concurrency.AsyncResult[[]byte], RequestChanLen),
+		ctx:            ctx,
+		cancel:         cancel,
+		createdAt:      time.Now(),
+		producerConnID: producerConnID,
+		token:          token,
+		ch:             make(chan *concurrency.AsyncResult[[]byte], RequestChanLen),
 	}
 }
 
@@ -59,12 +64,12 @@ func (sb *streamingBucket) close() {
 }
 
 type ConsumerClientParams struct {
-	Conn                *nats.Conn
-	HeartBeatRequestSub string
+	Conn *nats.Conn
 }
 
 // ConsumerClient represents a NATS streaming client.
 type ConsumerClient struct {
+	ID   string
 	Conn *nats.Conn
 	mu   sync.RWMutex // Protects access to the response map.
 
@@ -84,16 +89,18 @@ type ConsumerClient struct {
 // NewConsumerClient creates a new NATS client.
 func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc := &ConsumerClient{
-		Conn:                params.Conn,
-		respMap:             make(map[string]*streamingBucket),
-		respRand:            rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
-		heartBeatRequestSub: params.HeartBeatRequestSub,
+		ID:       params.Conn.Opts.Name,
+		Conn:     params.Conn,
+		respMap:  make(map[string]*streamingBucket),
+		respRand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
 	}
 
 	// Setup response subscription.
-	nc.respSubPrefix = fmt.Sprintf("%s.", nc.newInbox())
+	newInbox := nc.newInbox()
+	nc.respSubPrefix = fmt.Sprintf("%s.", newInbox)
 	nc.respSubLen = len(nc.respSubPrefix)
 	nc.respSub = fmt.Sprintf("%s*", nc.respSubPrefix)
+	nc.heartBeatRequestSub = fmt.Sprintf("%s.%s", nc.Conn.Opts.Name, newInbox)
 
 	// Create the response subscription we will use for all streaming responses.
 	// This will be on an _SINBOX with an additional terminal token. The subscription
@@ -229,7 +236,7 @@ func (nc *ConsumerClient) respToken(respInbox string) string {
 
 // OpenStream takes a context, a subject and payload
 // in bytes and expects a channel with multiple responses.
-func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
+func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, producerConnId string, data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	if ctx == nil {
 		return nil, nats.ErrInvalidContext
 	}
@@ -242,7 +249,7 @@ func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, data []by
 		return nil, ctx.Err()
 	}
 
-	bucket, err := nc.createNewRequestAndSend(ctx, subj, data)
+	bucket, err := nc.createNewRequestAndSend(ctx, subj, producerConnId, data)
 	if err != nil {
 		return nil, err
 	}
@@ -250,41 +257,50 @@ func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, data []by
 }
 
 func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
-	nc.mu.Lock()
-	defer nc.mu.Unlock()
-	streamIds := make([]string, 0, len(nc.respMap))
-	for k := range nc.respMap {
-		streamIds = append(streamIds, k)
+	request := new(HeartBeatRequest)
+	err := json.Unmarshal(msg.Data, request)
+	if err != nil {
+		log.Err(err)
+		return
 	}
 
-	data, err := json.Marshal(HeartBeatResponse{StreamIds: streamIds})
+	var nonRecentStreamIds []string
+	for k, v := range nc.respMap {
+		if v.producerConnID == request.ProducerConnID && time.Since(v.createdAt) > 10*time.Second {
+			nonRecentStreamIds = append(nonRecentStreamIds, k)
+		}
+	}
+
+	data, err := json.Marshal(ConsumerHeartBeatResponse{NonActiveStreamIds: Difference(nonRecentStreamIds, request.ActiveStreamIds)})
 	if err != nil {
+		log.Err(err)
 		return
 	}
 
 	err = nc.Conn.Publish(msg.Reply, data)
 	if err != nil {
+		log.Err(err)
 		return
 	}
 
 }
 
 // createNewRequestAndSend sets up and sends a new request, returning the response bucket.
-func (nc *ConsumerClient) createNewRequestAndSend(ctx context.Context, subj string, data []byte) (*streamingBucket, error) {
+func (nc *ConsumerClient) createNewRequestAndSend(ctx context.Context, subj string, producerConnId string, data []byte) (*streamingBucket, error) {
 	nc.mu.Lock()
 
 	// Create new literal Inbox and map to a bucket.
 	respInbox := nc.newRespInbox()
 	token := respInbox[nc.respSubLen:]
-	bucket := newStreamingBucket(ctx, token)
+	bucket := newStreamingBucket(ctx, token, producerConnId)
 
 	nc.respMap[token] = bucket
 	nc.mu.Unlock()
 
 	streamRequest := Request{
 		ConnectionDetails: ConnectionDetails{
-			ConnId:              nc.Conn.Opts.Name,
-			StreamId:            token,
+			ConnID:              nc.Conn.Opts.Name,
+			StreamID:            token,
 			HeartBeatRequestSub: nc.heartBeatRequestSub,
 		},
 		Data: data,
@@ -314,4 +330,29 @@ func (nc *ConsumerClient) NewWriter(subject string) *Writer {
 		conn:    nc.Conn,
 		subject: subject,
 	}
+}
+
+func Difference(a, b []string) []string {
+	i, j := 0, 0
+	var diff []string
+
+	sort.Strings(a)
+	sort.Strings(b)
+
+	for i < len(a) && j < len(b) {
+		if a[i] < b[j] {
+			diff = append(diff, a[i])
+			i++
+		} else if b[j] < a[i] {
+			j++
+		} else {
+			i++
+			j++
+		}
+	}
+	for ; i < len(a); i++ {
+		diff = append(diff, a[i])
+	}
+
+	return diff
 }

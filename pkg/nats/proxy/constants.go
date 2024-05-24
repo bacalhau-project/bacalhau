@@ -3,18 +3,15 @@ package proxy
 import "fmt"
 
 const (
-	ComputeEndpointSubjectPrefix   = "node.compute"
-	RequesterEndpointSubjectPrefix = "node.requester"
-	CallbackSubjectPrefix          = "node.orchestrator"
-	ManagementSubjectPrefix        = "node.management"
+	ComputeEndpointSubjectPrefix = "node.compute"
+	CallbackSubjectPrefix        = "node.orchestrator"
+	ManagementSubjectPrefix      = "node.management"
 
 	AskForBid       = "AskForBid/v1"
 	BidAccepted     = "BidAccepted/v1"
 	BidRejected     = "BidRejected/v1"
 	CancelExecution = "CancelExecution/v1"
 	ExecutionLogs   = "ExecutionLogs/v1"
-	LogBeatRequest  = "LogBeatRequest/v1"
-	LogBeatResponse = "LogBeatResponse/v1"
 
 	OnBidComplete    = "OnBidComplete/v1"
 	OnRunComplete    = "OnRunComplete/v1"
@@ -30,10 +27,6 @@ const (
 
 func computeEndpointPublishSubject(nodeID string, method string) string {
 	return fmt.Sprintf("%s.%s.%s", ComputeEndpointSubjectPrefix, nodeID, method)
-}
-
-func requesterEndpointPublishSubject(nodeID string, method string) string {
-	return fmt.Sprintf("%s.%s.%s", RequesterEndpointSubjectPrefix, nodeID, method)
 }
 
 func computeEndpointSubscribeSubject(nodeID string) string {

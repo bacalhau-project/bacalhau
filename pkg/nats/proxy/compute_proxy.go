@@ -32,8 +32,7 @@ type ComputeProxy struct {
 
 func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
 	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
-		Conn:                params.Conn,
-		HeartBeatRequestSub: requesterEndpointPublishSubject(params.Conn.Opts.Name, StreamHeartBeat),
+		Conn: params.Conn,
 	})
 	if err != nil {
 		return nil, err
@@ -138,7 +137,7 @@ func proxyStreamingRequest[Request any, Response any](
 	if err != nil {
 		return nil, fmt.Errorf("%T: failed to marshal request: %w", request.Body, err)
 	}
-	res, err := client.OpenStream(ctx, subject, data)
+	res, err := client.OpenStream(ctx, subject, request.TargetNodeID, data)
 	if err != nil {
 		return nil, fmt.Errorf("%T: failed to send request to node %s: %w", request.Body, request.TargetNodeID, err)
 	}

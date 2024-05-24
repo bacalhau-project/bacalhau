@@ -77,7 +77,7 @@ func (suite *BaseTestSuite) newTestStream() *testStream {
 	})
 	suite.Require().NoError(err)
 
-	ch, err := suite.streamingClient.OpenStream(suite.ctx, subject, []byte("test data"))
+	ch, err := suite.streamingClient.OpenStream(suite.ctx, subject, "", []byte("test data"))
 	suite.Require().NoError(err)
 	suite.Require().NotNil(ch)
 	s.ch = ch

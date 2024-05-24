@@ -6,27 +6,31 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"sync"
 	"time"
 )
 
 type ProducerClientParams struct {
-	Conn *nats.Conn
+	Conn            *nats.Conn
+	HeartBeatConfig HeartBeatConfig
 }
 
 type ProducerClient struct {
 	Conn *nats.Conn
-	mu   sync.RWMutex // Protects access to activeStreamIds and activeConnHeartBeatRequestSubjects
+	Id   string
+	mu   sync.RWMutex // Protects access to activeStreamInfo and activeConnHeartBeatRequestSubjects
 
-	activeStreamIds                    map[string][]string // A map of ConnId to StreamId that are active
-	activeConnHeartBeatRequestSubjects map[string]string   // A map of ConnId to the subject where a heart beat request should be sent
+	activeStreamInfo                   map[string][]StreamInfo // A map of ConnID to StreamId that are active
+	activeConnHeartBeatRequestSubjects map[string]string       // A map of ConnID to the subject where a heart beat request should be sent
 	heartBeatCancelFunc                context.CancelFunc
 }
 
 func NewProducerClient(params ProducerClientParams) (*ProducerClient, error) {
 	nc := &ProducerClient{
 		Conn:                               params.Conn,
-		activeStreamIds:                    make(map[string][]string),
+		Id:                                 params.Conn.Opts.Name,
+		activeStreamInfo:                   make(map[string][]StreamInfo),
 		activeConnHeartBeatRequestSubjects: make(map[string]string),
 	}
 
@@ -36,8 +40,13 @@ func NewProducerClient(params ProducerClientParams) (*ProducerClient, error) {
 func (pc *ProducerClient) AddConnDetails(ctx context.Context, connDetails *ConnectionDetails) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	pc.activeStreamIds[connDetails.ConnId] = append(pc.activeStreamIds[connDetails.ConnId], connDetails.StreamId)
-	pc.activeConnHeartBeatRequestSubjects[connDetails.ConnId] = connDetails.HeartBeatRequestSub
+
+	streamInfo := StreamInfo{
+		Id:        connDetails.StreamID,
+		CreatedAt: time.Now(),
+	}
+	pc.activeStreamInfo[connDetails.ConnID] = append(pc.activeStreamInfo[connDetails.ConnID], streamInfo)
+	pc.activeConnHeartBeatRequestSubjects[connDetails.ConnID] = connDetails.HeartBeatRequestSub
 
 	if pc.heartBeatCancelFunc == nil {
 		go pc.heartBeat(ctx)
@@ -49,23 +58,23 @@ func (pc *ProducerClient) RemoveConnDetails(connDetails *ConnectionDetails) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	activeStreamIdsForConn, ok := pc.activeStreamIds[connDetails.ConnId]
+	activeStreamIdsForConn, ok := pc.activeStreamInfo[connDetails.ConnID]
 	if !ok {
 		return
 	}
 
 	for i, v := range activeStreamIdsForConn {
-		if v == connDetails.StreamId {
+		if v.Id == connDetails.StreamID {
 			activeStreamIdsForConn = append(activeStreamIdsForConn[:i], activeStreamIdsForConn[i+1:]...)
 		}
 	}
 
 	if len(activeStreamIdsForConn) == 0 {
-		delete(pc.activeStreamIds, connDetails.ConnId)
-		delete(pc.activeConnHeartBeatRequestSubjects, connDetails.StreamId)
+		delete(pc.activeStreamInfo, connDetails.ConnID)
+		delete(pc.activeConnHeartBeatRequestSubjects, connDetails.StreamID)
 	}
 
-	if len(pc.activeStreamIds) == 0 && pc.heartBeatCancelFunc != nil {
+	if len(pc.activeStreamInfo) == 0 && pc.heartBeatCancelFunc != nil {
 		pc.heartBeatCancelFunc()
 		pc.heartBeatCancelFunc = nil
 	}
@@ -81,46 +90,51 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 
 	for {
 		select {
-
 		case <-ctxWithCancel.Done():
 			return
 
 		case <-ticker.C:
 
-			results := make(map[string][]string)
+			nonActiveStreamIds := make(map[string][]string)
 
 			for c, v := range pc.activeConnHeartBeatRequestSubjects {
-				msg, err := pc.Conn.Request(v, nil, 5*time.Second)
+				heartBeatRequest := HeartBeatRequest{
+					ProducerConnID: pc.Id,
+					ActiveStreamIds: lo.Map(pc.activeStreamInfo[c],
+						func(streamInfo StreamInfo, _ int) string { return streamInfo.Id }),
+				}
+
+				data, err := json.Marshal(heartBeatRequest)
 				if err != nil {
-					results[c] = []string{}
+					log.Err(err)
 					continue
 				}
 
-				var heartBeatResponse HeartBeatResponse
+				msg, err := pc.Conn.Request(v, data, 5*time.Second)
+				if err != nil {
+					nonActiveStreamIds[c] = []string{}
+					continue
+				}
+
+				var heartBeatResponse ConsumerHeartBeatResponse
 				err = json.Unmarshal(msg.Data, &heartBeatResponse)
 				if err != nil {
 					continue
 				}
-				results[c] = heartBeatResponse.StreamIds
+				nonActiveStreamIds[c] = heartBeatResponse.NonActiveStreamIds
 			}
 
-			pc.mu.Lock()
-			for c, ids := range results {
-				log.Info().Msgf("Ids = %s", ids)
-				pc.activeStreamIds[c] = ids
-			}
-			pc.mu.Unlock()
-
+			pc.updateActiveStreamInfo(nonActiveStreamIds)
 		}
 	}
 }
 
 func (pc *ProducerClient) WriteResponse(conn *ConnectionDetails, obj interface{}, writer *Writer) (int, error) {
 	pc.mu.Lock()
-	streamIds, active := pc.activeStreamIds[conn.ConnId]
+	streamIds, active := pc.activeStreamInfo[conn.ConnID]
 
 	for _, v := range streamIds {
-		if v == conn.StreamId {
+		if v.Id == conn.StreamID {
 			active = true
 		}
 
@@ -132,6 +146,34 @@ func (pc *ProducerClient) WriteResponse(conn *ConnectionDetails, obj interface{}
 	}
 
 	return writer.WriteObject(obj)
+}
+
+func (pc *ProducerClient) updateActiveStreamInfo(nonActiveStreamIds map[string][]string) {
+	updates := make(map[string][]StreamInfo)
+	for c, nonActiveIdsList := range nonActiveStreamIds {
+		nonActiveMap := make(map[string]bool)
+		for _, id := range nonActiveIdsList {
+			nonActiveMap[id] = true
+		}
+
+		update := make([]StreamInfo, 0)
+		for _, streamInfo := range pc.activeStreamInfo[c] {
+			if _, found := nonActiveMap[streamInfo.Id]; found && time.Since(streamInfo.CreatedAt) > 10*time.Second {
+				continue
+			}
+
+			update = append(update, streamInfo)
+		}
+
+		updates[c] = update
+	}
+
+	pc.mu.Lock()
+	for c, update := range updates {
+		pc.activeStreamInfo[c] = update
+	}
+	pc.mu.Unlock()
+
 }
 
 func (pc *ProducerClient) NewWriter(subject string) *Writer {
