@@ -37,6 +37,10 @@ const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
     logLevel: 'DEBUG',
 }
 
+// A fixed installation/profile ID for the canary to filter out
+// the canary's requests from our analytics tools
+const CANARY_INSTALLATION_ID = "BACA14A0-2000-0000-0000-000000000000";
+
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
     private readonly config: CanaryConfig;
@@ -107,6 +111,7 @@ export class CanaryStack extends cdk.Stack {
                 'LOG_LEVEL': props.logLevel,
                 'BACALHAU_ENVIRONMENT': this.config.bacalhauEnvironment,
                 "BACALHAU_NODE_SELECTORS": this.config.nodeSelectors,
+                "BACALHAU_USER_INSTALLATIONID": CANARY_INSTALLATION_ID
             }
         });
 
