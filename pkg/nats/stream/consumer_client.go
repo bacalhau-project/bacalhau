@@ -64,12 +64,12 @@ func (sb *streamingBucket) close() {
 }
 
 type ConsumerClientParams struct {
-	Conn *nats.Conn
+	Conn   *nats.Conn
+	Config StreamConsumerClientConfig
 }
 
 // ConsumerClient represents a NATS streaming client.
 type ConsumerClient struct {
-	ID   string
 	Conn *nats.Conn
 	mu   sync.RWMutex // Protects access to the response map.
 
@@ -84,15 +84,16 @@ type ConsumerClient struct {
 
 	heartBeatRequestSub string // A heart beat subject where the producer sends heart beat request to convey existing stream ids
 
+	config StreamConsumerClientConfig
 }
 
 // NewConsumerClient creates a new NATS client.
 func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc := &ConsumerClient{
-		ID:       params.Conn.Opts.Name,
 		Conn:     params.Conn,
 		respMap:  make(map[string]*streamingBucket),
 		respRand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
+		config:   params.Config,
 	}
 
 	// Setup response subscription.
@@ -100,7 +101,7 @@ func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc.respSubPrefix = fmt.Sprintf("%s.", newInbox)
 	nc.respSubLen = len(nc.respSubPrefix)
 	nc.respSub = fmt.Sprintf("%s*", nc.respSubPrefix)
-	nc.heartBeatRequestSub = fmt.Sprintf("%s.%s", nc.Conn.Opts.Name, newInbox)
+	nc.heartBeatRequestSub = fmt.Sprintf("%s.%s", "OrchestratorHeartBeatRequestSub", newInbox)
 
 	// Create the response subscription we will use for all streaming responses.
 	// This will be on an _SINBOX with an additional terminal token. The subscription
@@ -236,7 +237,10 @@ func (nc *ConsumerClient) respToken(respInbox string) string {
 
 // OpenStream takes a context, a subject and payload
 // in bytes and expects a channel with multiple responses.
-func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, producerConnId string, data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
+func (nc *ConsumerClient) OpenStream(
+	ctx context.Context, subj string,
+	producerConnID string,
+	data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	if ctx == nil {
 		return nil, nats.ErrInvalidContext
 	}
@@ -249,7 +253,7 @@ func (nc *ConsumerClient) OpenStream(ctx context.Context, subj string, producerC
 		return nil, ctx.Err()
 	}
 
-	bucket, err := nc.createNewRequestAndSend(ctx, subj, producerConnId, data)
+	bucket, err := nc.createNewRequestAndSend(ctx, subj, producerConnID, data)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +270,8 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 
 	var nonRecentStreamIds []string
 	for k, v := range nc.respMap {
-		if v.producerConnID == request.ProducerConnID && time.Since(v.createdAt) > 10*time.Second {
+		if v.producerConnID == request.ProducerConnID &&
+			time.Since(v.createdAt) > nc.config.StreamCancellationBufferDuration {
 			nonRecentStreamIds = append(nonRecentStreamIds, k)
 		}
 	}
@@ -282,24 +287,27 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 		log.Err(err)
 		return
 	}
-
 }
 
 // createNewRequestAndSend sets up and sends a new request, returning the response bucket.
-func (nc *ConsumerClient) createNewRequestAndSend(ctx context.Context, subj string, producerConnId string, data []byte) (*streamingBucket, error) {
+func (nc *ConsumerClient) createNewRequestAndSend(
+	ctx context.Context,
+	subj string,
+	producerConnID string,
+	data []byte) (*streamingBucket, error) {
 	nc.mu.Lock()
 
 	// Create new literal Inbox and map to a bucket.
 	respInbox := nc.newRespInbox()
 	token := respInbox[nc.respSubLen:]
-	bucket := newStreamingBucket(ctx, token, producerConnId)
+	bucket := newStreamingBucket(ctx, token, producerConnID)
 
 	nc.respMap[token] = bucket
 	nc.mu.Unlock()
 
 	streamRequest := Request{
 		ConnectionDetails: ConnectionDetails{
-			ConnID:              nc.Conn.Opts.Name,
+			ConnID:              nc.respSubPrefix,
 			StreamID:            token,
 			HeartBeatRequestSub: nc.heartBeatRequestSub,
 		},

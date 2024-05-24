@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -16,9 +17,10 @@ import (
 
 // ComputeHandlerParams defines parameters for creating a new ComputeHandler.
 type ComputeHandlerParams struct {
-	Name            string
-	Conn            *nats.Conn
-	ComputeEndpoint compute.Endpoint
+	Name                       string
+	Conn                       *nats.Conn
+	ComputeEndpoint            compute.Endpoint
+	StreamProducerClientConfig stream.StreamProducerClientConfig
 }
 
 // ComputeHandler handles NATS messages for compute operations.
@@ -37,6 +39,13 @@ type handlerWithResponse[Request, Response any] func(context.Context, Request) (
 func NewComputeHandler(params ComputeHandlerParams) (*ComputeHandler, error) {
 	streamingClient, err := stream.NewProducerClient(stream.ProducerClientParams{
 		Conn: params.Conn,
+		Config: stream.StreamProducerClientConfig{
+			HeartBeatConfig: stream.HeartBeatConfig{
+				HeartBeatIntervalDuration: 5 * time.Second,  //nolinter:gomnd
+				HeartBeatRequestTimeout:   10 * time.Second, //nolinter:gomnd
+			},
+			StreamCancellationBufferDuration: 10 * time.Second, //nolinter:gomnd
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -152,7 +161,14 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
-	streamingClient.AddConnDetails(ctx, &streamRequest.ConnectionDetails)
+	err = streamingClient.AddConnDetails(ctx, &streamRequest.ConnectionDetails)
+	defer streamingClient.RemoveConnDetails(&streamRequest.ConnectionDetails)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
+			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
+		return
+	}
+
 	ch, err := f(ctx, *request)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
@@ -167,6 +183,5 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 			break
 		}
 	}
-	streamingClient.RemoveConnDetails(&streamRequest.ConnectionDetails)
 	_ = writer.Close()
 }

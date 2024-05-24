@@ -3,10 +3,11 @@ package stream
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nats-io/nats.go"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/nats-io/nats.go"
 )
 
 type Writer struct {

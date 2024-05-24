@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -33,6 +34,9 @@ type ComputeProxy struct {
 func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
 	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
 		Conn: params.Conn,
+		Config: stream.StreamConsumerClientConfig{
+			StreamCancellationBufferDuration: 5 * time.Second, //nolinter:gomnd
+		},
 	})
 	if err != nil {
 		return nil, err

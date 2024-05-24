@@ -44,10 +44,23 @@ type ConnectionDetails struct {
 
 // StreamInfo represents information about the stream.
 type StreamInfo struct {
-	// Id is the identifier of the stream.
-	Id string
+	// ID is the identifier of the stream.
+	ID string
 	// CreatedAt represents the time the stream was created.
 	CreatedAt time.Time
+}
+
+// StreamProducerClientConfig represents the configuration of NATS based streaming
+// client acting as a producer.
+type StreamProducerClientConfig struct {
+	HeartBeatConfig                  HeartBeatConfig
+	StreamCancellationBufferDuration time.Duration
+}
+
+// StreamConsumerClientConfig represents the configuration of NATS based streaming
+// client acting as a consumer.
+type StreamConsumerClientConfig struct {
+	StreamCancellationBufferDuration time.Duration
 }
 
 // HeartBeatConfig represents the configuration of producer heart beating to the consumer.
