@@ -8,7 +8,7 @@ on:
     tags:
       - v**
   workflow_run:
-    workflows: ["Dependabot"]
+    workflows: ["Dependabot", "Trigger on Comment"]
     types:
       - completed
   repository_dispatch:
@@ -43,18 +43,14 @@ jobs:
         env:
           RUNNER_CONTEXT: ${{ toJson(runner) }}
         run: echo "$RUNNER_CONTEXT"
-      - name: Dump strategy context
-        env:
-          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
-        run: echo "$STRATEGY_CONTEXT"
-      - name: Dump matrix context
-        env:
-          MATRIX_CONTEXT: ${{ toJson(matrix) }}
-        run: echo "$MATRIX_CONTEXT"
       - uses: actions/checkout@v3
       - name: Trigger CircleCI
         id: trigger-circle-ci
         run: |
+          if [[ -z $CIRCLE_TOKEN ]]; then
+            echo "CIRCLE_TOKEN is not set. Exiting."
+            exit 1
+          fi
           ./.circleci/trigger_pipeline.sh
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}

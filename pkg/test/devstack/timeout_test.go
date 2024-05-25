@@ -66,7 +66,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			JobDefaults: transformer.JobDefaults{
 				ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
 			},
-			HousekeepingBackgroundTaskInterval: 1 * time.Second,
+			HousekeepingBackgroundTaskInterval: 10 * time.Millisecond,
+			HousekeepingTimeoutBuffer:          500 * time.Millisecond,
 			RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
 		})
 		suite.Require().NoError(err)
@@ -133,6 +134,18 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			concurrency:                         1,
 			jobTimeout:                          10 * time.Second,
 			sleepTime:                           100 * time.Millisecond,
+			completedCount:                      1,
+		},
+		{
+			name:                                "sleep_within_timeout_buffer",
+			computeJobNegotiationTimeout:        10 * time.Second,
+			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+			computeMaxJobExecutionTimeout:       1 * time.Minute,
+			requesterDefaultJobExecutionTimeout: 20 * time.Second,
+			nodeCount:                           1,
+			concurrency:                         1,
+			jobTimeout:                          1 * time.Millisecond,
+			sleepTime:                           100 * time.Millisecond, // less than 500ms buffer
 			completedCount:                      1,
 		},
 		{

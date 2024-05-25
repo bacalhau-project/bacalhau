@@ -230,7 +230,7 @@ func NewNode(
 				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
-				BucketName: kvstore.DefaultBucketName,
+				BucketName: kvstore.BucketNameCurrent,
 				Client:     natsClient.Client,
 			})
 			if err != nil {
@@ -484,6 +484,7 @@ func NewNode(
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,
+		// TODO(forrest) [correctness]: this code is literally the server, why are we returning nil???!!!
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)

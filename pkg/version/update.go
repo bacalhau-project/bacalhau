@@ -61,6 +61,14 @@ func CheckForUpdate(
 	}
 	q.Set("clientID", clientID)
 	q.Set("InstallationID", InstallationID)
+
+	// The BACALHAU_UPDATE_CHECKER_TEST is an env variable a user can set so that we can track
+	// when the binary is being run by a non-user, to enable easier filtering of queries
+	// to their update server for internal/CI.
+	if os.Getenv("BACALHAU_UPDATE_CHECKER_TEST") != "" {
+		q.Set("bacalhau_update_checker_test", "true")
+	}
+
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -125,6 +133,12 @@ func RunUpdateChecker(
 	runUpdateCheck := func() {
 		// Check this every time, to handle programmatic changes to config that
 		// may switch this on or off.
+		// TODO(forrest) [correctness]: how do we expect this value to change dynamically??
+		// - viper doesn't reload the config when it changes
+		// - viper not sure how we change a flag passed to an already running process
+		// - similarly not sure how we change an env var in the context of a process..
+		// the TODO is to delete this or implement a dynamic config value:
+		//  - https://github.com/spf13/viper?tab=readme-ov-file#watching-and-re-reading-config-files
 		if skip, err := config.Get[bool](types.UpdateSkipChecks); skip || err != nil {
 			log.Ctx(ctx).Debug().Err(err).Bool(types.UpdateSkipChecks, skip).Msg("Skipping update check due to config")
 			return
@@ -132,6 +146,9 @@ func RunUpdateChecker(
 
 		// The server may update itself between checks, so always ask the server
 		// for its current version.
+		// TODO(forrest): [correctness] this should be a local only call to get the version of the binary running this code
+		// otherwise I am going to get a message telling me there is a new version of bacalhau because my server
+		// is out of data even when my client is up to date which is really confusing and not what we want.
 		serverVersion, err := getServerVersion(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to read server version")
@@ -145,11 +162,14 @@ func RunUpdateChecker(
 
 		if err == nil {
 			responseCallback(ctx, updateResponse)
+			// TODO(forrest): similar to the below TODO, shove this in a cache and persit on shutdown.
 			err = writeNewLastCheckTime()
 			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Completed update check")
 		}
 	}
 
+	// TODO(forrest) [efficiency]: rather than repeatedly reading a file, set the value in a cache and flush the cache
+	// to disk when this service shutwdown, no reason for this IO.
 	lastCheck, err := readLastCheckTime()
 	if err != nil {
 		// Only log if the error is not about a missing update.json
@@ -165,7 +185,11 @@ func RunUpdateChecker(
 	// and then reset the ticker to start doing regular periodic checks. This is fine
 	// because the ticker will not have fired before the initial timer.
 	initialPeriod := time.Until(lastCheck.Add(updateFrequency))
+	// TODO(forrest) [simplify]: we can make this simpler. Use one timer else we
+	//  will be checking for updates more than the configured value
+	// this time ticks the last time we performed a check + the config default value
 	initialTimer := time.NewTimer(initialPeriod)
+	// by default this time ticks based on the config value, e.g. 24 hours
 	updateTicker := time.NewTicker(updateFrequency)
 
 	go func() {

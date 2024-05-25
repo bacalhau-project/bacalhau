@@ -31,7 +31,7 @@ type ExecutorBufferParams struct {
 	DelegateExecutor           Executor
 	Callback                   Callback
 	RunningCapacityTracker     capacity.Tracker
-	EnqueuedCapacityTracker    capacity.Tracker
+	EnqueuedUsageTracker       capacity.UsageTracker
 	DefaultJobExecutionTimeout time.Duration
 }
 
@@ -44,7 +44,7 @@ type ExecutorBufferParams struct {
 type ExecutorBuffer struct {
 	ID                         string
 	runningCapacity            capacity.Tracker
-	enqueuedCapacity           capacity.Tracker
+	enqueuedCapacity           capacity.UsageTracker
 	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
@@ -61,7 +61,7 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 	r := &ExecutorBuffer{
 		ID:                         params.ID,
 		runningCapacity:            params.RunningCapacityTracker,
-		enqueuedCapacity:           params.EnqueuedCapacityTracker,
+		enqueuedCapacity:           params.EnqueuedUsageTracker,
 		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
@@ -108,18 +108,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		err = models.NewBaseError("execution %s already running", execution.ID)
 		return err
 	}
-	if added := s.enqueuedCapacity.AddIfHasCapacity(ctx, *execution.TotalAllocatedResources()); added == nil {
-		err = models.NewBaseError("not enough capacity to enqueue job").WithRetryable()
-		return err
-	} else {
-		// Update the execution to include all the resources that have
-		// actually been allocated. Effectively this is picking the GPU(s)
-		// that the job will use. Note that this is not persisted here, as
-		// it was based on current usage information which would change
-		// under a restart, so it will only persist if the job starts
-		execution.AllocateResources(execution.Job.Task().Name, *added)
-	}
-
+	s.enqueuedCapacity.Add(ctx, *execution.TotalAllocatedResources())
 	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), int64(execution.Job.Priority))
 	s.deque()
 	return err
@@ -182,9 +171,9 @@ func (s *ExecutorBuffer) deque() {
 	for i := 0; i < max; i++ {
 		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
 			// If we don't have enough resources to run this task, then we will skip it
-			queued := task.localExecutionState.Execution.TotalAllocatedResources()
-			added := s.runningCapacity.AddIfHasCapacity(ctx, *queued)
-			if added == nil {
+			queuedResources := task.localExecutionState.Execution.TotalAllocatedResources()
+			allocatedResources := s.runningCapacity.AddIfHasCapacity(ctx, *queuedResources)
+			if allocatedResources == nil {
 				return false
 			}
 
@@ -192,11 +181,11 @@ func (s *ExecutorBuffer) deque() {
 			// actually been allocated
 			task.localExecutionState.Execution.AllocateResources(
 				task.localExecutionState.Execution.Job.Task().Name,
-				*added,
+				*allocatedResources,
 			)
 
-			// Claim the resources now so that we don't count allocated resources
-			s.enqueuedCapacity.Remove(ctx, *queued)
+			// Claim the resources now so that we don't count queued resources
+			s.enqueuedCapacity.Remove(ctx, *queuedResources)
 			return true
 		})
 

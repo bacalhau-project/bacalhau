@@ -37,10 +37,9 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	}
 
 	totalResources, totalErr := cfg.Capacity.TotalResourceLimits.ToResources()
-	queueResources, queueErr := cfg.Capacity.QueueResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
 	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
-	if err := errors.Join(totalErr, queueErr, jobErr, defaultErr); err != nil {
+	if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
 
@@ -56,7 +55,6 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
-		QueueResourceLimits:                   *queueResources,
 		JobResourceLimits:                     *jobResources,
 		DefaultJobResourceLimits:              *defaultResources,
 		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,

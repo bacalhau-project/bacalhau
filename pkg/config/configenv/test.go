@@ -105,12 +105,6 @@ var TestingComputeConfig = types.ComputeConfig{
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: models.ResourcesConfig{
-			CPU:    "",
-			Memory: "",
-			Disk:   "",
-			GPU:    "",
-		},
 	},
 	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
@@ -130,7 +124,6 @@ var TestingComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},

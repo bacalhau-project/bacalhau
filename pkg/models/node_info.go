@@ -109,6 +109,7 @@ type ComputeNodeInfo struct {
 	Publishers         []string  `json:"Publishers"`
 	StorageSources     []string  `json:"StorageSources"`
 	MaxCapacity        Resources `json:"MaxCapacity"`
+	QueueUsedCapacity  Resources `json:"QueueCapacity"`
 	AvailableCapacity  Resources `json:"AvailableCapacity"`
 	MaxJobRequirements Resources `json:"MaxJobRequirements"`
 	RunningExecutions  int       `json:"RunningExecutions"`

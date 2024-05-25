@@ -20,13 +20,18 @@ const (
 	resourceMapLockCount = 32
 )
 
+type trackedResources struct {
+	availableCapacity models.Resources
+	queueUsedCapacity models.Resources
+}
+
 // NodeManager is responsible for managing compute nodes and their
 // membership within the cluster through the entire lifecycle. It
 // also provides operations for querying and managing compute
 // node information.
 type NodeManager struct {
 	store                routing.NodeInfoStore
-	resourceMap          *concurrency.StripedMap[models.Resources]
+	resourceMap          *concurrency.StripedMap[trackedResources]
 	heartbeats           *heartbeat.HeartbeatServer
 	defaultApprovalState models.NodeMembershipState
 }
@@ -41,7 +46,7 @@ type NodeManagerParams struct {
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
 	return &NodeManager{
-		resourceMap:          concurrency.NewStripedMap[models.Resources](resourceMapLockCount),
+		resourceMap:          concurrency.NewStripedMap[trackedResources](resourceMapLockCount),
 		store:                params.NodeInfo,
 		heartbeats:           params.Heartbeats,
 		defaultApprovalState: params.DefaultApprovalState,
@@ -154,11 +159,14 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 		return &requests.UpdateResourcesResponse{}, nil
 	}
 
-	log.Ctx(ctx).Debug().Msg("updating resources availability for node")
+	log.Ctx(ctx).Debug().Msgf("updating node resources availability: %+v", request)
 
 	// Update the resources for the node in the stripedmap. This is a thread-safe operation as locking
 	// is handled by the stripedmap on a per-bucket basis.
-	n.resourceMap.Put(request.NodeID, request.Resources)
+	n.resourceMap.Put(request.NodeID, trackedResources{
+		availableCapacity: request.AvailableCapacity,
+		queueUsedCapacity: request.QueueUsedCapacity,
+	})
 	return &requests.UpdateResourcesResponse{}, nil
 }
 
@@ -174,7 +182,8 @@ func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeState) error 
 func (n *NodeManager) addToInfo(ctx context.Context, state *models.NodeState) {
 	resources, found := n.resourceMap.Get(state.Info.NodeID)
 	if found && state.Info.ComputeNodeInfo != nil {
-		state.Info.ComputeNodeInfo.AvailableCapacity = resources
+		state.Info.ComputeNodeInfo.AvailableCapacity = resources.availableCapacity
+		state.Info.ComputeNodeInfo.QueueUsedCapacity = resources.queueUsedCapacity
 	}
 
 	if n.heartbeats != nil {

@@ -4,21 +4,21 @@ package boltjobstore
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/benbjohnson/clock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 type BoltJobstoreTestSuite struct {
@@ -107,6 +107,9 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		s.clock.Add(1 * time.Second)
 		execution := mock.ExecutionForJob(job)
 		execution.ComputeState.StateType = models.ExecutionStateNew
+		// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
+		execution.CreateTime = 0
+		execution.ModifyTime = 0
 		err = s.store.CreateExecution(s.ctx, *execution, models.Event{})
 		s.Require().NoError(err)
 
@@ -575,7 +578,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
-	ch := s.store.Watch(s.ctx,
+	watcher := s.store.Watch(s.ctx,
 		jobstore.JobWatcher|jobstore.ExecutionWatcher,
 		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
 	)
@@ -592,14 +595,13 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Require().NoError(err)
 
 		// Read an event, it should be a jobcreate
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.CreateEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 
-		var decodedJob models.Job
-		err = json.Unmarshal(ev.Object, &decodedJob)
-		s.Require().NoError(err)
-		s.Require().Equal(decodedJob.ID, job.ID)
+		expectedJob, ok := ev.Object.(models.Job)
+		s.Require().True(ok, "expected object to be a job")
+		s.Require().Equal(expectedJob.ID, job.ID)
 	})
 
 	s.Run("execution create event", func() {
@@ -611,7 +613,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Require().NoError(err)
 
 		// Read an event, it should be a ExecutionForJob Create
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.CreateEvent)
 		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 	})
@@ -626,7 +628,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			Event: models.Event{Message: "event test"},
 		}
 		_ = s.store.UpdateJobState(s.ctx, request)
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})
@@ -642,19 +644,18 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			NewValues: execution,
 			Event:     models.Event{Message: "event test"},
 		})
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
 		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
 
-		var decodedExecution models.Execution
-		err := json.Unmarshal(ev.Object, &decodedExecution)
-		s.Require().NoError(err)
-		s.Require().Equal(decodedExecution.ID, execution.ID)
+		expectedExec, ok := ev.Object.(models.Execution)
+		s.Require().True(ok, "expected object to be an execution")
+		s.Require().Equal(expectedExec.ID, execution.ID)
 	})
 
 	s.Run("delete job event", func() {
 		_ = s.store.DeleteJob(s.ctx, job.ID)
-		ev := <-ch
+		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.DeleteEvent)
 		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
 	})
@@ -685,6 +686,196 @@ func (s *BoltJobstoreTestSuite) TestEvaluations() {
 
 	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
 	s.Require().NoError(err)
+}
+
+// TestTransactionsWithTxContext tests the creation of transactional context
+// and that multiple operations will be committed atomically with the context.
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContext() {
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// Commit the transaction
+	s.Require().NoError(txCtx.Commit())
+
+	// Ensure that the job is now available
+	j, err := s.store.GetJob(s.ctx, job.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(job.ID, j.ID)
+
+	// Ensure that the execution is now available
+	exec, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:      job.ID,
+		IncludeJob: true,
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(exec))
+	s.Require().NotNil(exec[0].Job)
+	s.Require().Equal(job.ID, exec[0].Job.ID)
+
+	// Ensure that the evaluation is now available
+	eval, err := s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(evaluation.ID, eval.ID)
+}
+
+// TestTransactionsWithTxContextRollback tests the creation of transactional context
+// and that multiple operations will be rolled back atomically with the context.
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextRollback() {
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// Rollback the transaction
+	s.Require().NoError(txCtx.Rollback())
+
+	// Ensure that no jobs are returned as the tx is not committed
+	_, err = s.store.GetJob(s.ctx, job.ID)
+	s.Require().Error(err)
+
+	// Ensure that no executions are returned as the tx is not committed
+	_, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
+	s.Require().Error(err)
+
+	// Ensure no evaluation is returned as the tx is not committed
+	_, err = s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().Error(err)
+}
+
+// TestTransactionsWithTxContextCancellation tests the creation of transactional context
+// and that multiple operations will be rolled back atomically with the context cancellation
+func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
+	ctx, cancel := context.WithCancel(s.ctx)
+	txCtx, err := s.store.BeginTx(ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	evaluation := mock.EvalForJob(job)
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
+
+	// cancel the context
+	cancel()
+	<-txCtx.Done()
+
+	// Ensure that no jobs are returned as the tx is not committed
+	_, err = s.store.GetJob(s.ctx, job.ID)
+	s.Require().Error(err)
+
+	// Ensure that no executions are returned as the tx is not committed
+	_, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: job.ID,
+	})
+	s.Require().Error(err)
+
+	// Ensure no evaluation is returned as the tx is not committed
+	_, err = s.store.GetEvaluation(s.ctx, evaluation.ID)
+	s.Require().Error(err)
+}
+
+// TestTransactionsReadDuringWrite tests we can read data that was written in the same transaction
+func (s *BoltJobstoreTestSuite) TestTransactionsReadDuringWrite() {
+	// Create a job outside the transaction
+	oldJob := mock.Job()
+	s.Require().NoError(s.store.CreateJob(s.ctx, *oldJob, models.Event{}))
+
+	txCtx, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx)
+
+	job := mock.Job()
+	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+
+	// make sure we can read existing data during transaction
+	readOldJob, err := s.store.GetJob(txCtx, oldJob.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(oldJob.ID, readOldJob.ID)
+
+	// make sure we can read uncommitted data during transaction
+	readJob, err := s.store.GetJob(txCtx, job.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(job.ID, readJob.ID)
+
+	// Commit the transaction
+	s.Require().NoError(txCtx.Commit())
+}
+
+func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
+	txCtx1, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx1)
+	tx1, ok := txFromContext(txCtx1)
+	s.Require().True(ok)
+	// commit to release the transaction
+	s.Require().NoError(txCtx1.Commit())
+
+	// start second transaction, even through tcCtx1
+	txCtx2, err := s.store.BeginTx(txCtx1)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx2)
+	tx2, ok := txFromContext(txCtx2)
+	s.Require().True(ok)
+	// commit to release the transaction
+	s.Require().NoError(txCtx2.Commit())
+
+	// assert that the two transactions were different
+	s.Require().NotEqual(txCtx1, txCtx2)
+	s.Require().NotEqual(tx1, tx2)
+}
+
+func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Concurrent() {
+	// Start the first transaction
+	txCtx1, err := s.store.BeginTx(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(txCtx1)
+
+	// Channel to signal when the second transaction attempt is complete
+	done := make(chan bool)
+
+	// Start a goroutine to attempt the second transaction
+	var txCtx2 jobstore.TxContext
+	go func() {
+		txCtx2, err = s.store.BeginTx(s.ctx)
+		s.Require().NoError(err)
+		done <- true
+	}()
+
+	// Ensure the second transaction attempt has completed
+	select {
+	case <-done:
+		s.Fail("The second transaction attempt should not have completed")
+	case <-time.After(100 * time.Millisecond):
+		// Success
+	}
+
+	// Commit the first transaction
+	s.Require().NoError(txCtx1.Commit())
+	select {
+	case <-done:
+		// Success, now commit the second transaction
+		s.Require().NoError(txCtx2.Commit())
+	case <-time.After(100 * time.Millisecond):
+		s.Fail("The second transaction should've started")
+	}
 }
 
 func (s *BoltJobstoreTestSuite) parseLabels(selector string) labels.Selector {

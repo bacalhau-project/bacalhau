@@ -30,11 +30,11 @@ func (s *DaemonJobSchedulerTestSuite) SetupTest() {
 	s.planner = orchestrator.NewMockPlanner(ctrl)
 	s.nodeSelector = orchestrator.NewMockNodeSelector(ctrl)
 
-	s.scheduler = NewDaemonJobScheduler(
-		s.jobStore,
-		s.planner,
-		s.nodeSelector,
-	)
+	s.scheduler = NewDaemonJobScheduler(DaemonJobSchedulerParams{
+		JobStore:     s.jobStore,
+		Planner:      s.planner,
+		NodeSelector: s.nodeSelector,
+	})
 }
 
 func TestDaemonJobSchedulerTestSuite(t *testing.T) {
