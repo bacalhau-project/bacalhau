@@ -3,8 +3,8 @@ module github.com/bacalhau-project/bacalhau/ops/aws/canary
 go 1.21
 
 require (
-	github.com/aws/aws-lambda-go v1.34.1
-	github.com/aws/aws-sdk-go v1.44.96
+	github.com/aws/aws-lambda-go v1.47.0
+	github.com/aws/aws-sdk-go v1.53.10
 	github.com/bacalhau-project/bacalhau v1.3.0
 	github.com/rs/zerolog v1.31.0
 	github.com/slack-go/slack v0.11.3
