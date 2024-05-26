@@ -2,7 +2,7 @@ name: Trigger on Comment
 
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 jobs:
   trigger-workflows:

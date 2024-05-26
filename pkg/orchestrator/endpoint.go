@@ -22,7 +22,6 @@ import (
 
 type BaseEndpointParams struct {
 	ID                string
-	EvaluationBroker  EvaluationBroker
 	Store             jobstore.Store
 	EventEmitter      EventEmitter
 	ComputeProxy      compute.Endpoint
@@ -33,7 +32,6 @@ type BaseEndpointParams struct {
 
 type BaseEndpoint struct {
 	id                string
-	evaluationBroker  EvaluationBroker
 	store             jobstore.Store
 	eventEmitter      EventEmitter
 	computeProxy      compute.Endpoint
@@ -45,7 +43,6 @@ type BaseEndpoint struct {
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
 		id:                params.ID,
-		evaluationBroker:  params.EvaluationBroker,
 		store:             params.Store,
 		eventEmitter:      params.EventEmitter,
 		computeProxy:      params.ComputeProxy,
@@ -125,9 +122,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	if err := e.evaluationBroker.Enqueue(eval); err != nil {
-		return nil, err
-	}
 	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return &SubmitJobResponse{
 		JobID:        job.ID,
@@ -184,11 +178,6 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		err = e.store.CreateEvaluation(ctx, *eval)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for stop job %s", request.JobID)
-			return StopJobResponse{}, err
-		}
-
-		err = e.evaluationBroker.Enqueue(eval)
-		if err != nil {
 			return StopJobResponse{}, err
 		}
 		evalID = eval.ID

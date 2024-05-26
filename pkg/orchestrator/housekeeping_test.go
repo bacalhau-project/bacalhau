@@ -25,26 +25,23 @@ const (
 
 type HousekeepingTestSuite struct {
 	suite.Suite
-	ctrl                 *gomock.Controller
-	clock                *clock.Mock
-	mockJobStore         *jobstore.MockStore
-	mockEvaluationBroker *MockEvaluationBroker
-	housekeeping         *Housekeeping
+	ctrl         *gomock.Controller
+	clock        *clock.Mock
+	mockJobStore *jobstore.MockStore
+	housekeeping *Housekeeping
 }
 
 func (s *HousekeepingTestSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.clock = clock.NewMock()
 	s.mockJobStore = jobstore.NewMockStore(s.ctrl)
-	s.mockEvaluationBroker = NewMockEvaluationBroker(s.ctrl)
 
 	h, _ := NewHousekeeping(HousekeepingParams{
-		EvaluationBroker: s.mockEvaluationBroker,
-		JobStore:         s.mockJobStore,
-		Interval:         200 * time.Millisecond,
-		Workers:          1,
-		TimeoutBuffer:    timeoutBuffer,
-		Clock:            s.clock,
+		JobStore:      s.mockJobStore,
+		Interval:      200 * time.Millisecond,
+		Workers:       1,
+		TimeoutBuffer: timeoutBuffer,
+		Clock:         s.clock,
 	})
 
 	// we only want to freeze time to have more deterministic tests.
@@ -352,10 +349,6 @@ func (s *HousekeepingTestSuite) assertEvaluationEnqueued(job models.Job) {
 	}
 	s.mockJobStore.EXPECT().CreateEvaluation(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, eval models.Evaluation) {
 		matchEvaluation(&eval)
-	}).Return(nil)
-
-	s.mockEvaluationBroker.EXPECT().Enqueue(gomock.Any()).Do(func(eval *models.Evaluation) {
-		matchEvaluation(eval)
 	}).Return(nil)
 }
 

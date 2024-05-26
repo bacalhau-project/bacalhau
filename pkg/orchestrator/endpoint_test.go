@@ -71,9 +71,6 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 	})
 	s.Require().NoError(err)
 
-	evalBroker := orchestrator.NewMockEvaluationBroker(ctrl)
-	evalBroker.EXPECT().Enqueue(gomock.Any()).Return(nil)
-
 	tmpFile := filepath.Join(s.T().TempDir(), "test.db")
 	jobstore, err := boltjobstore.NewBoltJobStore(tmpFile)
 	defer func() {
@@ -83,10 +80,9 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 	s.Require().NoError(err)
 
 	endpoint := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
-		ID:               "test_endpoint",
-		EvaluationBroker: evalBroker,
-		Store:            jobstore,
-		EventEmitter:     eventEmitter,
+		ID:           "test_endpoint",
+		Store:        jobstore,
+		EventEmitter: eventEmitter,
 		JobTransformer: transformer.ChainedTransformer[*models.Job]{
 			transformer.JobFn(transformer.IDGenerator),
 			transformer.NewInlineStoragePinner(storageProviders),

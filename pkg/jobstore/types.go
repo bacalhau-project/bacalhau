@@ -55,7 +55,7 @@ type Store interface {
 	// will contain a timestamp, but also the StoreWatcherType and
 	// StoreEventType that triggered the event. A json encoded `[]byte`
 	// of the related object will also be included in the [WatchEvent].
-	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType) chan WatchEvent
+	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType, options ...WatcherOption) *Watcher
 
 	// GetJob returns a job, identified by the id parameter, or an error if
 	// it does not exist.

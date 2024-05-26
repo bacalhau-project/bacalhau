@@ -3,11 +3,9 @@ package boltjobstore
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/benbjohnson/clock"
@@ -42,11 +40,10 @@ const (
 var SpecKey = []byte("spec")
 
 type BoltJobStore struct {
-	database    *bolt.DB
-	clock       clock.Clock
-	marshaller  marshaller.Marshaller
-	watchers    []*jobstore.Watcher
-	watcherLock sync.Mutex
+	database        *bolt.DB
+	clock           clock.Clock
+	marshaller      marshaller.Marshaller
+	watchersManager *jobstore.WatchersManager
 
 	inProgressIndex  *Index
 	namespacesIndex  *Index
@@ -91,10 +88,10 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	}
 
 	store := &BoltJobStore{
-		database:   db,
-		clock:      clock.New(),
-		marshaller: marshaller.NewJSONMarshaller(),
-		watchers:   make([]*jobstore.Watcher, 0), //nolint:gomnd
+		database:        db,
+		clock:           clock.New(),
+		marshaller:      marshaller.NewJSONMarshaller(),
+		watchersManager: jobstore.NewWatchersManager(),
 	}
 
 	for _, opt := range options {
@@ -147,26 +144,13 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 
 func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
-	events jobstore.StoreEventType) chan jobstore.WatchEvent {
-	w := jobstore.NewWatcher(types, events)
-
-	b.watcherLock.Lock() // keep the watchers lock as narrow as possible
-	b.watchers = append(b.watchers, w)
-	b.watcherLock.Unlock()
-
-	return w.Channel()
+	events jobstore.StoreEventType,
+	options ...jobstore.WatcherOption) *jobstore.Watcher {
+	return b.watchersManager.NewWatcher(ctx, types, events, options...)
 }
 
-func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object interface{}) {
-	data, _ := json.Marshal(object)
-
-	for _, w := range b.watchers {
-		if !w.IsWatchingEvent(e) || !w.IsWatchingType(t) {
-			return
-		}
-
-		_ = w.WriteEvent(t, e, data, false) // Do not block
-	}
+func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object any) {
+	b.watchersManager.Write(t, e, object)
 }
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
@@ -1274,9 +1258,7 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 }
 
 func (b *BoltJobStore) Close(ctx context.Context) error {
-	for _, w := range b.watchers {
-		w.Close()
-	}
+	b.watchersManager.Close()
 
 	log.Ctx(ctx).Debug().Msg("closing bolt-backed job store")
 	return b.database.Close()
