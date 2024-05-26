@@ -4,6 +4,7 @@ import * as codepipeline from "aws-cdk-lib/aws-codepipeline";
 import * as codepipeline_actions from "aws-cdk-lib/aws-codepipeline-actions";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { CanaryConfig, getCanaryConfig, PipelineConfig } from "./config";
+import { CanaryInstallationID } from "./canary-stack";
 
 export interface PipelineStackProps extends cdk.StackProps {
   readonly lambdaCode: lambda.CfnParametersCode;
@@ -217,6 +218,8 @@ export class PipelineStack extends cdk.Stack {
           env: {
             variables: {
               BACALHAU_ENVIRONMENT: config.bacalhauEnvironment,
+              BACALHAU_USER_INSTALLATIONID: CanaryInstallationID,
+              LOG_LEVEL: "Debug",
             },
           },
           phases: {

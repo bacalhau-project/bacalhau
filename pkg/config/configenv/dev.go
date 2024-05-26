@@ -70,9 +70,7 @@ var Development = types.BacalhauConfig{
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
 				"/ip4/34.86.177.175/tcp/4001/p2p/12D3KooWMSdbPzUf8WWkEcjxpCzkUfToasP9wRjFHy2iCZ6iiZdV",
-				"/ip4/34.86.177.175/udp/4001/quic/p2p/12D3KooWMSdbPzUf8WWkEcjxpCzkUfToasP9wRjFHy2iCZ6iiZdV",
 				"/ip4/35.245.221.171/tcp/4001/p2p/12D3KooWRBYMhTF6MNh6eN84xcZtg6EX2wJguqEtRTNq4C7aytbu",
-				"/ip4/35.245.221.171/udp/4001/quic/p2p/12D3KooWRBYMhTF6MNh6eN84xcZtg6EX2wJguqEtRTNq4C7aytbu",
 			},
 			Profile:                "flatfs",
 			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
