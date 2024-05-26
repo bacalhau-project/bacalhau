@@ -133,8 +133,8 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.28.0 h1:F7tQr61zYnTaeY50Rn4jwfVQbtcq
 github.com/aws/aws-sdk-go-v2/service/sts v1.28.0/go.mod h1:ozhhG9/NB5c9jcmhGq6tX9dpp21LYdmRWRQVppASim4=
 github.com/aws/smithy-go v1.20.1 h1:4SZlSlMr36UEqC7XOyRVb27XMeZubNcBNN+9IgEPIQw=
 github.com/aws/smithy-go v1.20.1/go.mod h1:krry+ya/rV9RDcV/Q16kpu6ypI4K2czasz0NC3qS14E=
-github.com/bacalhau-project/bacalhau v1.3.1-rc1.0.20240526102343-41b061704e1c h1:NkJj07Yh91aLXHA0yWySyRYyhnFLC8EKtxm9pzkwP3E=
-github.com/bacalhau-project/bacalhau v1.3.1-rc1.0.20240526102343-41b061704e1c/go.mod h1:t6LyFQeZSGe6ttD1hFvqrPXiKrNGrDAbUf4iyKpTpHg=
+github.com/bacalhau-project/bacalhau v1.3.1-rc1.0.20240526111249-66d4a8fb2752 h1:bS6LH+iW1KDCpJIk5qIjXRaHUfRiYksq+4lKQ4pqrr0=
+github.com/bacalhau-project/bacalhau v1.3.1-rc1.0.20240526111249-66d4a8fb2752/go.mod h1:t6LyFQeZSGe6ttD1hFvqrPXiKrNGrDAbUf4iyKpTpHg=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.5 h1:VvXlSJBzZpA/zum6Sj74hxwYI2DIxRWuNIoXAzHZz5o=
