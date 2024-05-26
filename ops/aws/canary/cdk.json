@@ -50,7 +50,7 @@
         "bacalhauSourceConnection": {
           "owner": "bacalhau-project",
           "repo": "bacalhau",
-          "branch": "main",
+          "branch": "canary-1.3.0",
           "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/da1428c1-439e-4669-8a58-f1898be26f47"
         }
       }
