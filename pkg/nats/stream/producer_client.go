@@ -20,9 +20,9 @@ type ProducerClient struct {
 	Conn *nats.Conn
 	mu   sync.RWMutex // Protects access to activeStreamInfo and activeConnHeartBeatRequestSubjects
 
-	// A map of ConnID to StreamId that are active
+	// A map of ConsumerID to StreamId that are active
 	activeStreamInfo map[string]map[string]StreamInfo
-	// A map of ConnID to the subject where a heartBeatRequest needs to be sent.
+	// A map of ConsumerID to the subject where a heartBeatRequest needs to be sent.
 	activeConnHeartBeatRequestSubjects map[string]string
 	heartBeatCancelFunc                context.CancelFunc
 	config                             StreamProducerClientConfig
@@ -41,48 +41,53 @@ func NewProducerClient(ctx context.Context, params ProducerClientParams) (*Produ
 	return nc, nil
 }
 
-func (pc *ProducerClient) AddConnDetails(requestSub string, connDetails *ConnectionDetails) error {
+func (pc *ProducerClient) AddStream(
+	consumerID string,
+	streamID string,
+	requestSub string,
+	heartBeatRequestSub string,
+) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
 	streamInfo := StreamInfo{
-		ID:         connDetails.StreamID,
+		ID:         streamID,
 		RequestSub: requestSub,
 		CreatedAt:  time.Now(),
 	}
 
-	if pc.activeStreamInfo[connDetails.ConnID] == nil {
-		pc.activeStreamInfo[connDetails.ConnID] = make(map[string]StreamInfo)
+	if pc.activeStreamInfo[consumerID] == nil {
+		pc.activeStreamInfo[consumerID] = make(map[string]StreamInfo)
 	}
 
-	if _, ok := pc.activeStreamInfo[connDetails.ConnID][connDetails.StreamID]; ok {
-		return fmt.Errorf("cannot create request with same streamId %s again", connDetails.StreamID)
+	if _, ok := pc.activeStreamInfo[consumerID][streamID]; ok {
+		return fmt.Errorf("cannot create request with same streamId %s again", streamID)
 	}
 
-	pc.activeStreamInfo[connDetails.ConnID][connDetails.StreamID] = streamInfo
-	pc.activeConnHeartBeatRequestSubjects[connDetails.ConnID] = connDetails.HeartBeatRequestSub
+	pc.activeStreamInfo[consumerID][streamID] = streamInfo
+	pc.activeConnHeartBeatRequestSubjects[consumerID] = heartBeatRequestSub
 
 	return nil
 }
 
-func (pc *ProducerClient) RemoveConnDetails(connDetails *ConnectionDetails) {
+func (pc *ProducerClient) RemoveStream(consumerID string, streamID string) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	activeStreamIdsForConn, ok := pc.activeStreamInfo[connDetails.ConnID]
+	activeStreamIdsForConn, ok := pc.activeStreamInfo[consumerID]
 	if !ok {
 		return
 	}
 
-	if _, ok := activeStreamIdsForConn[connDetails.StreamID]; !ok {
+	if _, ok := activeStreamIdsForConn[streamID]; !ok {
 		return
 	}
 
-	delete(activeStreamIdsForConn, connDetails.StreamID)
+	delete(activeStreamIdsForConn, streamID)
 
 	if len(activeStreamIdsForConn) == 0 {
-		delete(pc.activeStreamInfo, connDetails.ConnID)
-		delete(pc.activeConnHeartBeatRequestSubjects, connDetails.ConnID)
+		delete(pc.activeStreamInfo, consumerID)
+		delete(pc.activeConnHeartBeatRequestSubjects, consumerID)
 	}
 }
 
@@ -144,18 +149,23 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 	}
 }
 
-func (pc *ProducerClient) WriteResponse(conn *ConnectionDetails, obj interface{}, writer *Writer) (int, error) {
+func (pc *ProducerClient) WriteResponse(
+	consumerID string,
+	streamID string,
+	obj interface{},
+	writer *Writer,
+) (int, error) {
 	pc.mu.Lock()
-	streamIds, active := pc.activeStreamInfo[conn.ConnID]
+	streamIds, active := pc.activeStreamInfo[consumerID]
 
 	if !active {
-		return 0, fmt.Errorf("no stream ids exist to write for connId=%s", conn.ConnID)
+		return 0, fmt.Errorf("no stream ids exist to write for consumerId=%s", consumerID)
 	}
 	pc.mu.Unlock()
 
-	_, active = streamIds[conn.StreamID]
+	_, active = streamIds[streamID]
 	if !active {
-		return 0, fmt.Errorf("stream id is now closed")
+		return 0, fmt.Errorf("streamId %s is now closed", streamID)
 	}
 
 	return writer.WriteObject(obj)

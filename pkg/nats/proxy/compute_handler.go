@@ -158,8 +158,14 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
-	err = streamingClient.AddConnDetails(msg.Subject, &streamRequest.ConnectionDetails)
-	defer streamingClient.RemoveConnDetails(&streamRequest.ConnectionDetails)
+	err = streamingClient.AddStream(
+		streamRequest.ConsumerID,
+		streamRequest.StreamID,
+		msg.Subject,
+		streamRequest.HeartBeatRequestSub,
+	)
+
+	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.ConsumerID)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
 			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
@@ -174,7 +180,7 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 	}
 
 	for res := range ch {
-		_, err := streamingClient.WriteResponse(&streamRequest.ConnectionDetails, res, writer)
+		_, err := streamingClient.WriteResponse(streamRequest.ConsumerID, streamRequest.StreamID, res, writer)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
 			break

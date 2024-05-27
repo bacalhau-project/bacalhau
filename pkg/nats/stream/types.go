@@ -28,18 +28,15 @@ type StreamingMsg struct {
 }
 
 type Request struct {
-	ConnectionDetails ConnectionDetails `json:"connectionDetails"`
-	Data              []byte            `json:"body"`
-}
-
-// ConnectionDetails represents the details of incoming stream connection.
-type ConnectionDetails struct {
-	// ConnID is the connection id of the consumer streaming client originating the request.
-	ConnID string `json:"connId"`
+	// ConsumerID is the connection id of the consumer streaming client originating the request.
+	ConsumerID string `json:"consumerId"`
 	// StreamId is the id of the stream being created.
 	StreamID string `json:"streamId"`
 	// HeartBeatSub is the heart beat subject where the producer client will send its heart beat.
 	HeartBeatRequestSub string `json:"heartBeatRequestSub"`
+	// Data represents request of different stream type. For example currently we support Log request
+	// in that case it would be ExecutionLogRequest
+	Data []byte `json:"body"`
 }
 
 // StreamInfo represents information about the stream.
@@ -81,8 +78,9 @@ type HeartBeatRequest struct {
 
 // ConsumerHeartBeatResponse represents a heart beat response from the consumer client.
 type ConsumerHeartBeatResponse struct {
-	// NonActiveStreamIds represent a list of stream ids which the consumer client is not
-	// interested in.
+	// NonActiveStreamIds represents a map, where key is the request subject where consumer sent
+	// request for opening a stream, and value is the list of streamIDs which should no longer be
+	// active.
 	NonActiveStreamIds map[string][]string
 }
 

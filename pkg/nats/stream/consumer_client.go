@@ -75,14 +75,14 @@ type ConsumerClient struct {
 	mu   sync.RWMutex // Protects access to the response map.
 
 	// response handler
-	respSub       string                                 // The wildcard subject
-	respSubPrefix string                                 // the wildcard prefix including trailing .
-	respSubLen    int                                    // the length of the wildcard prefix excluding trailing .
-	respScanf     string                                 // The scanf template to extract mux token
-	respMux       *nats.Subscription                     // A single response subscription
-	respMap       map[string]*streamingBucket            // Request map for the response msg channels
-	reqSubMap     map[string]map[string]*streamingBucket // Request Subject map which hold a request subject where request was sent for streams
-	respRand      *rand.Rand                             // Used for generating suffix
+	respSub       string                        // The wildcard subject
+	respSubPrefix string                        // the wildcard prefix including trailing .
+	respSubLen    int                           // the length of the wildcard prefix excluding trailing .
+	respScanf     string                        // The scanf template to extract mux token
+	respMux       *nats.Subscription            // A single response subscription
+	respMap       map[string]*streamingBucket   // Request map for the response msg channels
+	reqSubMap     map[string][]*streamingBucket // Request Subject map which hold a request subject where request was sent for streams
+	respRand      *rand.Rand                    // Used for generating suffix
 
 	heartBeatRequestSub string // A heart beat subject where the producer sends heart beat request to convey existing stream ids
 
@@ -94,7 +94,7 @@ func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc := &ConsumerClient{
 		Conn:      params.Conn,
 		respMap:   make(map[string]*streamingBucket),
-		reqSubMap: make(map[string]map[string]*streamingBucket),
+		reqSubMap: make(map[string][]*streamingBucket),
 		respRand:  rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
 		config:    params.Config,
 	}
@@ -299,19 +299,14 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 	nc.respMap[token] = bucket
 
 	// Ensure map for this subject exists
-	if _, ok := nc.reqSubMap[subj]; !ok {
-		nc.reqSubMap[subj] = make(map[string]*streamingBucket)
-	}
-	nc.reqSubMap[subj][token] = bucket
+	nc.reqSubMap[subj] = append(nc.reqSubMap[subj], bucket)
 	nc.mu.Unlock()
 
 	streamRequest := Request{
-		ConnectionDetails: ConnectionDetails{
-			ConnID:              nc.respSubPrefix,
-			StreamID:            token,
-			HeartBeatRequestSub: nc.heartBeatRequestSub,
-		},
-		Data: data,
+		ConsumerID:          nc.respSubPrefix,
+		StreamID:            token,
+		HeartBeatRequestSub: nc.heartBeatRequestSub,
+		Data:                data,
 	}
 
 	request, err := json.Marshal(streamRequest)
@@ -345,17 +340,17 @@ func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[st
 			continue
 		}
 
-		nonRecentBuckets := lo.OmitBy(consumerBuckets, func(key string, value *streamingBucket) bool {
-			return time.Since(value.createdAt) > nc.config.StreamCancellationBufferDuration
+		nonRecentBuckets := lo.Filter(consumerBuckets, func(bucket *streamingBucket, _ int) bool {
+			return time.Since(bucket.createdAt) < nc.config.StreamCancellationBufferDuration
 		})
 
-		// If no non recent buckets, means all are active streams
+		//If no non recent buckets, means all are active streams
 		if len(nonRecentBuckets) == 0 {
 			continue
 		}
 
-		nonRecentStreamIds := lo.MapToSlice(nonRecentBuckets, func(key string, value *streamingBucket) string {
-			return value.token
+		nonRecentStreamIds := lo.Map(nonRecentBuckets, func(bucket *streamingBucket, _ int) string {
+			return bucket.token
 		})
 
 		_, nonActiveStreamIds[subject] = lo.Difference(nonRecentStreamIds, producerStreamIds)
