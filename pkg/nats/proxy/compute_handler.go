@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -36,15 +35,13 @@ type ComputeHandler struct {
 type handlerWithResponse[Request, Response any] func(context.Context, Request) (Response, error)
 
 // NewComputeHandler creates a new ComputeHandler.
-func NewComputeHandler(params ComputeHandlerParams) (*ComputeHandler, error) {
-	streamingClient, err := stream.NewProducerClient(stream.ProducerClientParams{
+func NewComputeHandler(ctx context.Context, params ComputeHandlerParams) (*ComputeHandler, error) {
+	streamingClient, err := stream.NewProducerClient(ctx, stream.ProducerClientParams{
 		Conn: params.Conn,
 		Config: stream.StreamProducerClientConfig{
-			HeartBeatConfig: stream.HeartBeatConfig{
-				HeartBeatIntervalDuration: 5 * time.Second,  //nolinter:gomnd
-				HeartBeatRequestTimeout:   10 * time.Second, //nolinter:gomnd
-			},
-			StreamCancellationBufferDuration: 10 * time.Second, //nolinter:gomnd
+			HeartBeatIntervalDuration:        stream.DefaultHeartBeatIntervalDuration,
+			HeartBeatRequestTimeout:          stream.DefaultHeartBeatRequestTimeout,
+			StreamCancellationBufferDuration: stream.DefaultStreamCancellationBufferDuration,
 		},
 	})
 	if err != nil {
@@ -161,7 +158,7 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
-	err = streamingClient.AddConnDetails(ctx, &streamRequest.ConnectionDetails)
+	err = streamingClient.AddConnDetails(msg.Subject, &streamRequest.ConnectionDetails)
 	defer streamingClient.RemoveConnDetails(&streamRequest.ConnectionDetails)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,

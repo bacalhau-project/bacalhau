@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 )
 
 // RequestChanLen Default request channel length for buffering asynchronous results.
@@ -22,36 +22,37 @@ const RequestChanLen = 16
 // inboxPrefix is the prefix for all streaming inbox subjects.
 // similar to https://github.com/nats-io/nats.go/blob/main/nats.go#L4015
 const (
-	inboxPrefix    = "_SINBOX."
-	inboxPrefixLen = len(inboxPrefix)
-	replySuffixLen = 8 // Gives us 62^8
-	rdigits        = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	base           = 62
-	nuidSize       = 22
+	inboxPrefix     = "_SINBOX."
+	heartBeatPrefix = "_HEARTBEAT"
+	inboxPrefixLen  = len(inboxPrefix)
+	replySuffixLen  = 8 // Gives us 62^8
+	rdigits         = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	base            = 62
+	nuidSize        = 22
 )
 
 // streamingBucket is a structure to hold the response channel and context
 type streamingBucket struct {
 	// ctx is the context for the channel consumer that requested and waiting for messages
-	ctx            context.Context
-	token          string
-	createdAt      time.Time
-	producerConnID string
-	ch             chan *concurrency.AsyncResult[[]byte]
-	cancel         context.CancelFunc
-	closeOnce      sync.Once
+	ctx        context.Context
+	token      string
+	createdAt  time.Time
+	requestSub string
+	ch         chan *concurrency.AsyncResult[[]byte]
+	cancel     context.CancelFunc
+	closeOnce  sync.Once
 }
 
 // newStreamingBucket creates a new streamingBucket.
-func newStreamingBucket(ctx context.Context, token string, producerConnID string) *streamingBucket {
+func newStreamingBucket(ctx context.Context, token string, requestSub string) *streamingBucket {
 	ctx, cancel := context.WithCancel(ctx)
 	return &streamingBucket{
-		ctx:            ctx,
-		cancel:         cancel,
-		createdAt:      time.Now(),
-		producerConnID: producerConnID,
-		token:          token,
-		ch:             make(chan *concurrency.AsyncResult[[]byte], RequestChanLen),
+		ctx:        ctx,
+		cancel:     cancel,
+		createdAt:  time.Now(),
+		requestSub: requestSub,
+		token:      token,
+		ch:         make(chan *concurrency.AsyncResult[[]byte], RequestChanLen),
 	}
 }
 
@@ -74,13 +75,14 @@ type ConsumerClient struct {
 	mu   sync.RWMutex // Protects access to the response map.
 
 	// response handler
-	respSub       string                      // The wildcard subject
-	respSubPrefix string                      // the wildcard prefix including trailing .
-	respSubLen    int                         // the length of the wildcard prefix excluding trailing .
-	respScanf     string                      // The scanf template to extract mux token
-	respMux       *nats.Subscription          // A single response subscription
-	respMap       map[string]*streamingBucket // Request map for the response msg channels
-	respRand      *rand.Rand                  // Used for generating suffix
+	respSub       string                                 // The wildcard subject
+	respSubPrefix string                                 // the wildcard prefix including trailing .
+	respSubLen    int                                    // the length of the wildcard prefix excluding trailing .
+	respScanf     string                                 // The scanf template to extract mux token
+	respMux       *nats.Subscription                     // A single response subscription
+	respMap       map[string]*streamingBucket            // Request map for the response msg channels
+	reqSubMap     map[string]map[string]*streamingBucket // Request Subject map which hold a request subject where request was sent for streams
+	respRand      *rand.Rand                             // Used for generating suffix
 
 	heartBeatRequestSub string // A heart beat subject where the producer sends heart beat request to convey existing stream ids
 
@@ -90,10 +92,11 @@ type ConsumerClient struct {
 // NewConsumerClient creates a new NATS client.
 func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc := &ConsumerClient{
-		Conn:     params.Conn,
-		respMap:  make(map[string]*streamingBucket),
-		respRand: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
-		config:   params.Config,
+		Conn:      params.Conn,
+		respMap:   make(map[string]*streamingBucket),
+		reqSubMap: make(map[string]map[string]*streamingBucket),
+		respRand:  rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // using same inbox naming as nats
+		config:    params.Config,
 	}
 
 	// Setup response subscription.
@@ -101,7 +104,7 @@ func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	nc.respSubPrefix = fmt.Sprintf("%s.", newInbox)
 	nc.respSubLen = len(nc.respSubPrefix)
 	nc.respSub = fmt.Sprintf("%s*", nc.respSubPrefix)
-	nc.heartBeatRequestSub = fmt.Sprintf("%s.%s", "OrchestratorHeartBeatRequestSub", newInbox)
+	nc.heartBeatRequestSub = fmt.Sprintf("%s.%s", heartBeatPrefix, newInbox)
 
 	// Create the response subscription we will use for all streaming responses.
 	// This will be on an _SINBOX with an additional terminal token. The subscription
@@ -239,7 +242,6 @@ func (nc *ConsumerClient) respToken(respInbox string) string {
 // in bytes and expects a channel with multiple responses.
 func (nc *ConsumerClient) OpenStream(
 	ctx context.Context, subj string,
-	producerConnID string,
 	data []byte) (<-chan *concurrency.AsyncResult[[]byte], error) {
 	if ctx == nil {
 		return nil, nats.ErrInvalidContext
@@ -253,7 +255,7 @@ func (nc *ConsumerClient) OpenStream(
 		return nil, ctx.Err()
 	}
 
-	bucket, err := nc.createNewRequestAndSend(ctx, subj, producerConnID, data)
+	bucket, err := nc.createNewRequestAndSend(ctx, subj, data)
 	if err != nil {
 		return nil, err
 	}
@@ -268,15 +270,9 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 		return
 	}
 
-	var nonRecentStreamIds []string
-	for k, v := range nc.respMap {
-		if v.producerConnID == request.ProducerConnID &&
-			time.Since(v.createdAt) > nc.config.StreamCancellationBufferDuration {
-			nonRecentStreamIds = append(nonRecentStreamIds, k)
-		}
-	}
+	nonActiveStreamIds := nc.getNotActiveStreamIds(request.ActiveStreamIds)
 
-	data, err := json.Marshal(ConsumerHeartBeatResponse{NonActiveStreamIds: Difference(nonRecentStreamIds, request.ActiveStreamIds)})
+	data, err := json.Marshal(ConsumerHeartBeatResponse{NonActiveStreamIds: nonActiveStreamIds})
 	if err != nil {
 		log.Err(err)
 		return
@@ -293,16 +289,20 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 func (nc *ConsumerClient) createNewRequestAndSend(
 	ctx context.Context,
 	subj string,
-	producerConnID string,
 	data []byte) (*streamingBucket, error) {
 	nc.mu.Lock()
 
 	// Create new literal Inbox and map to a bucket.
 	respInbox := nc.newRespInbox()
 	token := respInbox[nc.respSubLen:]
-	bucket := newStreamingBucket(ctx, token, producerConnID)
-
+	bucket := newStreamingBucket(ctx, token, subj)
 	nc.respMap[token] = bucket
+
+	// Ensure map for this subject exists
+	if _, ok := nc.reqSubMap[subj]; !ok {
+		nc.reqSubMap[subj] = make(map[string]*streamingBucket)
+	}
+	nc.reqSubMap[subj][token] = bucket
 	nc.mu.Unlock()
 
 	streamRequest := Request{
@@ -332,35 +332,41 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 	return bucket, nil
 }
 
+func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[string][]string) map[string][]string {
+	nonActiveStreamIds := make(map[string][]string)
+
+	// Loop through all active stream ids at producer
+	for subject, producerStreamIds := range activeStreamIDsAtProducer {
+		consumerBuckets, consumerHasSubject := nc.reqSubMap[subject]
+
+		// Check if request subject does not exist in consumer
+		if !consumerHasSubject {
+			nonActiveStreamIds[subject] = producerStreamIds
+			continue
+		}
+
+		nonRecentBuckets := lo.OmitBy(consumerBuckets, func(key string, value *streamingBucket) bool {
+			return time.Since(value.createdAt) > nc.config.StreamCancellationBufferDuration
+		})
+
+		// If no non recent buckets, means all are active streams
+		if len(nonRecentBuckets) == 0 {
+			continue
+		}
+
+		nonRecentStreamIds := lo.MapToSlice(nonRecentBuckets, func(key string, value *streamingBucket) string {
+			return value.token
+		})
+
+		_, nonActiveStreamIds[subject] = lo.Difference(nonRecentStreamIds, producerStreamIds)
+	}
+	return nonActiveStreamIds
+}
+
 // NewWriter creates a new streaming writer.
 func (nc *ConsumerClient) NewWriter(subject string) *Writer {
 	return &Writer{
 		conn:    nc.Conn,
 		subject: subject,
 	}
-}
-
-func Difference(a, b []string) []string {
-	i, j := 0, 0
-	var diff []string
-
-	sort.Strings(a)
-	sort.Strings(b)
-
-	for i < len(a) && j < len(b) {
-		if a[i] < b[j] {
-			diff = append(diff, a[i])
-			i++
-		} else if b[j] < a[i] {
-			j++
-		} else {
-			i++
-			j++
-		}
-	}
-	for ; i < len(a); i++ {
-		diff = append(diff, a[i])
-	}
-
-	return diff
 }

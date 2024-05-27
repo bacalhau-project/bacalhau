@@ -416,7 +416,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterComputeEndpoint(computeNode.LocalEndpoint)
+		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
 		}

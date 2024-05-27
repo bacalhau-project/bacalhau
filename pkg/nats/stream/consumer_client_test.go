@@ -71,7 +71,7 @@ func (suite *ClientTestSuite) TestRequestWithContextCancellation() {
 	cancel()
 
 	// Attempt to make the request
-	_, err := suite.streamingClient.OpenStream(ctx, subj, "", payload)
+	_, err := suite.streamingClient.OpenStream(ctx, subj, payload)
 	suite.Require().Error(err, "Expected an error due to cancelled context")
 }
 

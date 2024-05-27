@@ -1,6 +1,8 @@
 package proxy
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	ComputeEndpointSubjectPrefix = "node.compute"
@@ -21,8 +23,6 @@ const (
 	RegisterNode    = "RegisterNode/v1"
 	UpdateNodeInfo  = "UpdateNodeInfo/v1"
 	UpdateResources = "UpdateResources/v1"
-
-	StreamHeartBeat = "StreamHeartBeat/v1"
 )
 
 func computeEndpointPublishSubject(nodeID string, method string) string {
