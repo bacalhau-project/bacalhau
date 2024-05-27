@@ -6,18 +6,20 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/nats-io/nats.go"
 )
 
 type Writer struct {
-	client    *Client
+	conn      *nats.Conn
 	subject   string
 	closeOnce sync.Once
 }
 
 // NewWriter creates a new Writer.
-func NewWriter(client *Client, subject string) *Writer {
+func NewWriter(conn *nats.Conn, subject string) *Writer {
 	return &Writer{
-		client:  client,
+		conn:    conn,
 		subject: subject,
 	}
 }
@@ -34,7 +36,7 @@ func (w *Writer) Write(data []byte) (int, error) {
 		return 0, fmt.Errorf("error encoding streaming data: %s", err)
 	}
 
-	return len(msgData), w.client.Conn.Publish(w.subject, msgData)
+	return len(msgData), w.conn.Publish(w.subject, msgData)
 }
 
 // WriteObject writes an object to the stream.
@@ -75,7 +77,7 @@ func (w *Writer) doClose(code int, text string) error {
 			return
 		}
 
-		err = w.client.Conn.Publish(w.subject, data)
+		err = w.conn.Publish(w.subject, data)
 	})
 	return err
 }
