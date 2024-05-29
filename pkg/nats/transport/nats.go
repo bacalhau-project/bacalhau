@@ -223,8 +223,8 @@ func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error
 }
 
 // RegisterComputeEndpoint registers a compute endpoint with the transport layer.
-func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error {
-	_, err := proxy.NewComputeHandler(proxy.ComputeHandlerParams{
+func (t *NATSTransport) RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error {
+	_, err := proxy.NewComputeHandler(ctx, proxy.ComputeHandlerParams{
 		Name:            t.nodeID,
 		Conn:            t.natsClient.Client,
 		ComputeEndpoint: endpoint,

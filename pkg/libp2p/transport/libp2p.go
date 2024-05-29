@@ -155,7 +155,7 @@ func (t *Libp2pTransport) RegisterManagementEndpoint(endpoint compute.Management
 }
 
 // RegisterComputeEndpoint registers a compute endpoint with the transport layer.
-func (t *Libp2pTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error {
+func (t *Libp2pTransport) RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error {
 	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
 		Host:            t.Host,
 		ComputeEndpoint: endpoint,
