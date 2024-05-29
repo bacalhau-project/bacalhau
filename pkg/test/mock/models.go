@@ -3,8 +3,9 @@ package mock
 import (
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/google/uuid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func Eval() *models.Evaluation {
@@ -23,10 +24,7 @@ func Eval() *models.Evaluation {
 }
 
 func EvalForJob(job *models.Job) *models.Evaluation {
-	eval := Eval()
-	eval.JobID = job.ID
-	eval.Type = job.Type
-	return eval
+	return Eval().WithJob(job)
 }
 
 func Job() *models.Job {

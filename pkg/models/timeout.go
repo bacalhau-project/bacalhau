@@ -22,11 +22,17 @@ type TimeoutConfig struct {
 }
 
 // GetExecutionTimeout returns the execution timeout duration
+// Returns ExecutionTimeout if configured, otherwise returns TotalTimeout value, otherwise returns 0.
 func (t *TimeoutConfig) GetExecutionTimeout() time.Duration {
-	return time.Duration(t.ExecutionTimeout) * time.Second
+	if t.ExecutionTimeout > 0 {
+		return time.Duration(t.ExecutionTimeout) * time.Second
+	}
+	return time.Duration(t.TotalTimeout) * time.Second
 }
 
 // GetQueueTimeout returns the queue timeout duration
+// Returns QueueTimeout if configured, otherwise returns 0.
+// We don't fallback to TotalTimeout to allow users to disable queueing if no nodes were available.
 func (t *TimeoutConfig) GetQueueTimeout() time.Duration {
 	return time.Duration(t.QueueTimeout) * time.Second
 }

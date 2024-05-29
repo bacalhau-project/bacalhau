@@ -23,6 +23,9 @@ type Plan struct {
 	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
 
 	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate `json:"UpdatedExecutions,omitempty"`
+
+	// NewEvaluations holds the evaluations to be created, such as delayed evaluations when no nodes are available.
+	NewEvaluations []*Evaluation `json:"NewEvaluations,omitempty"`
 }
 
 // NewPlan creates a new Plan instance.
@@ -34,6 +37,7 @@ func NewPlan(eval *Evaluation, job *Job) *Plan {
 		Job:               job,
 		NewExecutions:     []*Execution{},
 		UpdatedExecutions: make(map[string]*PlanExecutionDesiredUpdate),
+		NewEvaluations:    []*Evaluation{},
 	}
 }
 
@@ -59,6 +63,11 @@ func (p *Plan) AppendApprovedExecution(execution *Execution) {
 		DesiredState: ExecutionDesiredStateRunning,
 	}
 	p.UpdatedExecutions[execution.ID] = updateRequest
+}
+
+// AppendEvaluation appends the evaluation to the plan evaluations.
+func (p *Plan) AppendEvaluation(eval *Evaluation) {
+	p.NewEvaluations = append(p.NewEvaluations, eval)
 }
 
 func (p *Plan) MarkJobCompleted() {
@@ -98,6 +107,11 @@ func (p *Plan) MarkJobFailed(event Event) {
 			delete(p.UpdatedExecutions, id)
 		}
 	}
+}
+
+// IsJobFailed returns true if the plan is marking the job as failed
+func (p *Plan) IsJobFailed() bool {
+	return p.DesiredJobState == JobStateTypeFailed
 }
 
 // hasRunningExecutions returns true if the plan has executions in desired state "Running".

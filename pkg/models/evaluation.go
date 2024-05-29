@@ -19,6 +19,7 @@ const (
 const (
 	EvalTriggerJobRegister = "job-register"
 	EvalTriggerJobCancel   = "job-cancel"
+	EvalTriggerJobQueue    = "job-queue"
 	EvalTriggerExecFailure = "exec-failure"
 	EvalTriggerExecUpdate  = "exec-update"
 	EvalTriggerExecTimeout = "exec-timeout"
@@ -79,6 +80,14 @@ func (e *Evaluation) WithJobID(jobID string) *Evaluation {
 	return e
 }
 
+// WithJob sets the JobID, Type, Priority nd Namespace of the Evaluation.
+func (e *Evaluation) WithJob(job *Job) *Evaluation {
+	return e.WithJobID(job.ID).
+		WithType(job.Type).
+		WithNamespace(job.Namespace).
+		WithPriority(job.Priority)
+}
+
 // WithNamespace sets the Namespace of the Evaluation.
 func (e *Evaluation) WithNamespace(namespace string) *Evaluation {
 	e.Namespace = namespace
@@ -119,6 +128,22 @@ func (e *Evaluation) WithComment(comment string) *Evaluation {
 func (e *Evaluation) WithWaitUntil(waitUntil time.Time) *Evaluation {
 	e.WaitUntil = waitUntil
 	return e
+}
+
+// NewDelayedEvaluation creates a new Evaluation from current one with a WaitUntil time.
+func (e *Evaluation) NewDelayedEvaluation(waitUntil time.Time) *Evaluation {
+	return &Evaluation{
+		ID:          idgen.NewEvaluationID(),
+		Namespace:   e.Namespace,
+		JobID:       e.JobID,
+		TriggeredBy: e.TriggeredBy,
+		Priority:    e.Priority,
+		Type:        e.Type,
+		WaitUntil:   waitUntil,
+		Status:      EvalStatusPending,
+		CreateTime:  time.Now().UTC().UnixNano(),
+		ModifyTime:  time.Now().UTC().UnixNano(),
+	}
 }
 
 // Normalize ensures that the Evaluation is in a valid state.

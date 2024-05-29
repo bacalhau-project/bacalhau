@@ -87,6 +87,14 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			return err
 		}
 	}
+
+	// Create follow-up evaluations, if any
+	for _, eval := range plan.NewEvaluations {
+		err = s.store.CreateEvaluation(txContext, *eval)
+		if err != nil {
+			return err
+		}
+	}
 	return txContext.Commit()
 }
 
