@@ -30,6 +30,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 	// and the job state is not being updated, there is nothing to do.
 	if len(plan.NewExecutions) == 0 &&
 		len(plan.UpdatedExecutions) == 0 &&
+		len(plan.NewEvaluations) == 0 &&
 		plan.DesiredJobState.IsUndefined() {
 		return nil
 	}
