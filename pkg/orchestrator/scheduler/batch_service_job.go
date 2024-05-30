@@ -201,9 +201,12 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		// and we haven't passed the queue timeout
 		waitUntil := b.clock.Now().Add(b.queueBackoff)
 		comment := orchestrator.NewErrNotEnoughNodes(remainingExecutionCount, append(matching, rejected...)).Error()
-		plan.AppendEvaluation(plan.Eval.NewDelayedEvaluation(waitUntil).
+		delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
 			WithTriggeredBy(models.EvalTriggerJobQueue).
-			WithComment(comment))
+			WithComment(comment)
+		plan.AppendEvaluation(delayedEvaluation)
+		log.Ctx(ctx).Debug().Msgf("Creating delayed evaluation %s to retry scheduling job %s in %s due to: %s",
+			delayedEvaluation.ID, job.ID, waitUntil.Sub(b.clock.Now()), comment)
 	}
 	return nil
 }
