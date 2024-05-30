@@ -9,15 +9,22 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmdutil "github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // This test submits a job that uses the Docker executor with an IPFS input.
-func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
-	client := getClient()
+func SubmitDockerIPFSJobAndGet(ctx context.Context, cfg types.BacalhauConfig) error {
+	apiV1, err := cmdutil.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+	apiv2 := clientv2.New(fmt.Sprintf("http://%s:%d", cfg.Node.ClientAPI.Host, cfg.Node.ClientAPI.Port))
 
 	cm := system.NewCleanupManager()
 	j, err := getSampleDockerIPFSJob()
@@ -34,19 +41,19 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		expectedStat = "21"
 	}
 
-	submittedJob, err := client.Submit(ctx, j)
+	submittedJob, err := apiV1.Submit(ctx, j)
 	if err != nil {
 		return err
 	}
 
 	log.Ctx(ctx).Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
-	err = waitUntilCompleted(ctx, client, submittedJob)
+	err = waitUntilCompleted(ctx, apiV1, submittedJob)
 	if err != nil {
 		return fmt.Errorf("waiting until completed: %s", err)
 	}
 
-	results, err := getClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
+	results, err := apiv2.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: submittedJob.Metadata.ID,
 	})
 	if err != nil {
@@ -72,7 +79,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	// 1 minute for the rest of the test
 	downloadSettings.Timeout = 240 * time.Second
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	downloaderProvider := util.NewStandardDownloaders(cm, cfg.Node.IPFS)
 	if err != nil {
 		return err
 	}
