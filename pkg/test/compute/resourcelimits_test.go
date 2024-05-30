@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/c2h5oh/datasize"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -305,11 +306,18 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		},
 	})
 	suite.Require().NoError(err)
+
+	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+		NodeOverSubscriptionFactor: 2,
+	})
+	suite.Require().NoError(err)
+
 	stack := teststack.Setup(ctx,
 		suite.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
