@@ -14,7 +14,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	libp2p_host "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -53,7 +53,9 @@ type Libp2pTransport struct {
 
 func NewLibp2pTransport(ctx context.Context,
 	config Libp2pTransportConfig,
-	nodeInfoStore routing.NodeInfoStore) (*Libp2pTransport, error) {
+	nodeInfoStore routing.NodeInfoStore,
+	cfg types.MetricsConfig,
+) (*Libp2pTransport, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating libp2p transport config. %w", err)
 	}
@@ -66,7 +68,7 @@ func NewLibp2pTransport(ctx context.Context,
 	libp2pHost := config.Host
 
 	// A single gossipSub instance that will be used by all topics
-	gossipSub, err := newLibp2pPubSub(ctx, libp2pHost)
+	gossipSub, err := newLibp2pPubSub(ctx, libp2pHost, cfg.Libp2pTracerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -204,8 +206,8 @@ func (t *Libp2pTransport) Close(ctx context.Context) error {
 	)
 }
 
-func newLibp2pPubSub(ctx context.Context, host host.Host) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(pkgconfig.GetLibp2pTracerPath())
+func newLibp2pPubSub(ctx context.Context, host host.Host, tracerPath string) (*libp2p_pubsub.PubSub, error) {
+	tracer, err := libp2p_pubsub.NewJSONTracer(tracerPath)
 	if err != nil {
 		return nil, err
 	}

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -47,17 +47,14 @@ type ScenarioTestSuite interface {
 // their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
-	Ctx context.Context
+	Ctx    context.Context
+	Config types.BacalhauConfig
+	Repo   *repo.FsRepo
 }
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
-	repoPath, err := fsRepo.Path()
-	if err != nil {
-		s.T().Fatal(err)
-	}
-	s.T().Setenv("BACALHAU_DIR", repoPath)
+	s.Repo, s.Config = setup.SetupBacalhauRepoForTesting(s.T())
 
 	s.Ctx = context.Background()
 
@@ -101,18 +98,18 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
 		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
 		// we probably want to merge these instead.
-		cfg, err := node.NewComputeConfigWithDefaults()
+		cfg, err := node.NewComputeConfigWithDefaults(s.Config.Node.ComputeStoragePath)
 		s.Require().NoError(err)
 		config.ComputeConfig = cfg
 	}
 
 	config.RequesterConfig.DefaultPublisher = defaultPublisher
 
-	stack := testutils.Setup(s.Ctx, s.T(),
+	stack := testutils.Setup(s.Ctx, s.T(), s.Repo, s.Config,
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
-			testutils.WithNoopExecutor(config.ExecutorConfig),
+			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Node.Compute.ManifestCache),
 		)...,
 	)
 
@@ -156,7 +153,8 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	}
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
+	apiClient, err := client.NewAPIClient(client.NoTLS, s.Config.User, apiServer.Address, apiServer.Port)
+	s.Require().NoError(err)
 	apiClientV2 := clientv2.New(fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port))
 
 	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
@@ -192,15 +190,16 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 			swarmAddresses = append(swarmAddresses, addrs...)
 		}
 
-		viper.Set(types.NodeIPFSSwarmAddresses, swarmAddresses)
-		viper.Set(types.NodeIPFSPrivateInternal, true)
+		cfg := s.Config
+		cfg.Node.IPFS.SwarmAddresses = swarmAddresses
+		cfg.Node.IPFS.PrivateInternal = true
 
 		downloaderSettings := &downloader.DownloaderSettings{
 			Timeout:   time.Second * 10,
 			OutputDir: resultsDir,
 		}
 
-		ipfsDownloader := ipfs.NewIPFSDownloader(cm)
+		ipfsDownloader := ipfs.NewIPFSDownloader(cm, cfg.Node.IPFS)
 		s.Require().NoError(err)
 
 		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{

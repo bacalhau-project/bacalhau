@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -39,9 +40,11 @@ func TestWebsocketSuite(t *testing.T) {
 // Before each test
 func (s *WebsocketSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	n, _ := setupNodeForTest(s.T())
+	n, c := setupNodeForTest(s.T())
 	s.node = n
-	s.client = client.NewAPIClient(client.NoTLS, n.APIServer.Address, n.APIServer.Port)
+	var err error
+	s.client, err = client.NewAPIClient(client.NoTLS, c.User, n.APIServer.Address, n.APIServer.Port)
+	s.Require().NoError(err)
 }
 
 // After each test

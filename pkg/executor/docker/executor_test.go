@@ -20,14 +20,13 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-
-	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 const (
@@ -57,8 +56,8 @@ func (s *ExecutorTestSuite) SetupTest() {
 	})
 
 	s.executor, err = NewExecutor(
-		context.Background(),
 		"bacalhau-executor-unit-test",
+		configenv.Testing.Node.Compute.ManifestCache,
 	)
 	require.NoError(s.T(), err)
 	s.T().Cleanup(func() {
