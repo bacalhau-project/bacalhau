@@ -163,6 +163,7 @@ func NewRequesterNode(
 		Planner:       planners,
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
+		QueueBackoff:  requesterConfig.SchedulerQueueBackoff,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,

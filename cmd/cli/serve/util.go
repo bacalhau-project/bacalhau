@@ -95,6 +95,7 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
+			QueueTimeout:     time.Duration(cfg.JobDefaults.QueueTimeout),
 		},
 		HousekeepingBackgroundTaskInterval: time.Duration(cfg.HousekeepingBackgroundTaskInterval),
 		NodeRankRandomnessRange:            cfg.NodeRankRandomnessRange,
@@ -115,6 +116,7 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),
+		SchedulerQueueBackoff:          time.Duration(cfg.Scheduler.QueueBackoff),
 		S3PreSignedURLExpiration:       time.Duration(cfg.StorageProvider.S3.PreSignedURLExpiration),
 		S3PreSignedURLDisabled:         cfg.StorageProvider.S3.PreSignedURLDisabled,
 		TranslationEnabled:             cfg.TranslationEnabled,
