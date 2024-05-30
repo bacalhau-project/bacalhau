@@ -285,8 +285,6 @@ bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
---timeout 3600 \
---wait-timeout-secs 3600 \
 -i <CID-OF-THE-SUBJECT> \
  jsacex/dreambooth:full \
 -- bash finetune.sh /inputs /outputs "a photo of <name-of-the-subject> man" "a photo of man" 3000 "/man" "/model"
@@ -323,8 +321,6 @@ Here is our command with our parameters replaced
 %%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
---timeout 3600 \
---wait-timeout-secs 3600 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 -i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a \
