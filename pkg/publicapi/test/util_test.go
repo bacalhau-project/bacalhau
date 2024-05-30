@@ -7,11 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -26,13 +28,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func setupNodeForTest(t *testing.T) (*node.Node, client.API) {
+func setupNodeForTest(t *testing.T) (*node.Node, types.BacalhauConfig) {
 	// blank config should result in using defaults in node.Node constructor
 	return setupNodeForTestWithConfig(t, publicapi.Config{})
 }
 
-func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, client.API) {
-	repo := setup.SetupBacalhauRepoForTesting(t)
+func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.Node, types.BacalhauConfig) {
+	repo, c := setup.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	repoPath, err := repo.Path()
@@ -44,7 +46,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	libp2pPort, err := network.GetFreePort()
 	require.NoError(t, err)
 
-	privKey, err := config.GetLibp2pPrivKey()
+	privKey, err := config.GetLibp2pPrivKey(c.User.Libp2pKeyPath)
 	require.NoError(t, err)
 
 	peerID, err := peer.IDFromPrivateKey(privKey)
@@ -79,7 +81,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	executionStore, err := boltdb.NewStore(ctx, filepath.Join(repoPath, "executions.db"))
 	require.NoError(t, err)
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(c.Node.ComputeStoragePath, node.ComputeConfigParams{
 		ExecutionStore: executionStore,
 	})
 	require.NoError(t, err)
@@ -104,7 +106,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		NetworkConfig:             networkConfig,
 	}
 
-	n, err := node.NewNode(ctx, nodeConfig)
+	n, err := node.NewNode(ctx, c, nodeConfig, repo)
 	require.NoError(t, err)
 
 	err = n.Start(ctx)
@@ -112,5 +114,5 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 
 	apiClient := client.New(n.APIServer.GetURI().String())
 	require.NoError(t, WaitForNodes(ctx, apiClient))
-	return n, apiClient
+	return n, c
 }

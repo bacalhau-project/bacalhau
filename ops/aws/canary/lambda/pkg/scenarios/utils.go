@@ -7,16 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -125,31 +120,6 @@ func compareOutput(output []byte, expectedOutput string) error {
 		return fmt.Errorf("output mismatch: expected '%v' but got '%v'", expectedOutput, outputStr)
 	}
 	return nil
-}
-
-func getClientHostAndPort() (string, uint16) {
-	host, err := config.Get[string](types.NodeClientAPIHost)
-	if err != nil {
-		panic(err)
-	}
-
-	port, err := config.Get[uint16](types.NodeClientAPIPort)
-	if err != nil {
-		panic(err)
-	}
-	log.Debug().Msgf("Connecting to %s:%d", host, port)
-	return host, port
-}
-
-func getClient() *client.APIClient {
-	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
-	host, port := getClientHostAndPort()
-	return client.NewAPIClient(legacyTLS, host, port)
-}
-
-func getClientV2() clientv2.API {
-	host, port := getClientHostAndPort()
-	return clientv2.New(fmt.Sprintf("http://%s:%d", host, port))
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

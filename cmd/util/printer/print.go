@@ -68,7 +68,7 @@ func PrintJobExecution(
 	}
 
 	if runtimeSettings.Follow {
-		return followLogs(cmd, jobID, client)
+		return followLogs(cmd, client, jobID, client)
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
@@ -134,7 +134,7 @@ func PrintJobExecution(
 	return nil
 }
 
-func followLogs(cmd *cobra.Command, jobID string, client clientv2.API) error {
+func followLogs(cmd *cobra.Command, api clientv2.API, jobID string, client clientv2.API) error {
 	cmd.Printf("Job successfully submitted. Job ID: %s\n", jobID)
 	cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
@@ -154,7 +154,7 @@ func followLogs(cmd *cobra.Command, jobID string, client clientv2.API) error {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	return util.Logs(cmd, util.LogOptions{
+	return util.Logs(cmd, api, util.LogOptions{
 		JobID:  jobID,
 		Follow: true,
 	})

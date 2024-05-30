@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/stretchr/testify/suite"
 )
 
 type V2MigrationsTestSuite struct {
@@ -44,7 +45,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open())
+	suite.Require().NoError(suite.repo.Open(config.New()))
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
@@ -75,7 +76,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open())
+	suite.Require().NoError(suite.repo.Open(config.New()))
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -108,7 +109,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open())
+	suite.Require().NoError(suite.repo.Open(config.New()))
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -140,7 +141,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open())
+	suite.Require().NoError(suite.repo.Open(config.New()))
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)

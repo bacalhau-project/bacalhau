@@ -2,15 +2,18 @@ package node
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -46,14 +49,15 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory() StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg types.NodeConfig) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
 		pr, err := executor_util.NewStandardStorageProvider(
-			ctx,
-			nodeConfig.CleanupManager,
+			time.Duration(cfg.VolumeSizeRequestTimeout),
+			time.Duration(cfg.DownloadURLRequestTimeout),
+			cfg.DownloadURLRequestRetries,
 			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
@@ -66,12 +70,11 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 	})
 }
 
-func NewStandardExecutorsFactory() ExecutorsFactory {
+func NewStandardExecutorsFactory(cfg types.DockerCacheConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
-				ctx,
-				nodeConfig.CleanupManager,
+				cfg,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.NodeID),
 				},
@@ -83,7 +86,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 		})
 }
 
-func NewPluginExecutorFactory() ExecutorsFactory {
+func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewPluginExecutorProvider(
@@ -93,7 +96,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 					Plugins: []executor_util.PluginExecutorManagerConfig{
 						{
 							Name:             models.EngineDocker,
-							Path:             config.GetExecutorPluginsPath(),
+							Path:             pluginPath,
 							Command:          "bacalhau-docker-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
@@ -101,7 +104,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 						},
 						{
 							Name:             models.EngineWasm,
-							Path:             config.GetExecutorPluginsPath(),
+							Path:             pluginPath,
 							Command:          "bacalhau-wasm-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
@@ -116,13 +119,14 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory() PublishersFactory {
+func NewStandardPublishersFactory(storagePath string) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
+				storagePath,
 				nodeConfig.CleanupManager,
 				nodeConfig.IPFSClient,
 				&nodeConfig.ComputeConfig.LocalPublisher,
@@ -134,11 +138,11 @@ func NewStandardPublishersFactory() PublishersFactory {
 		})
 }
 
-func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
+func NewStandardAuthenticatorsFactory(userKeyPath string) AuthenticatorsFactory {
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
-			privKey, allErr := config.GetClientPrivateKey()
+			privKey, allErr := loadUserIDKey(userKeyPath)
 			if allErr != nil {
 				return nil, allErr
 			}
@@ -179,4 +183,9 @@ func NewStandardAuthenticatorsFactory() AuthenticatorsFactory {
 			return provider.NewMappedProvider(authns), allErr
 		},
 	)
+}
+
+// loadUserIDKey loads the user ID key from the path
+func loadUserIDKey(path string) (*rsa.PrivateKey, error) {
+	return baccrypto.LoadPKCS1KeyFile(path)
 }

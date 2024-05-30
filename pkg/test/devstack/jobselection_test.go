@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -42,10 +43,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 	runTest := func(testCase TestCase) {
 		if testCase.nodeCount != testCase.addFilesCount {
+			// TODO(forrest) [correctness]: this issue was closed ~2 years ago
+			// maybe it's time to run this test now?
 			suite.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/361")
 		}
 
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(configenv.Testing.Node.ComputeStoragePath, node.ComputeConfigParams{
 			JobSelectionPolicy: testCase.policy,
 		})
 		suite.Require().NoError(err)

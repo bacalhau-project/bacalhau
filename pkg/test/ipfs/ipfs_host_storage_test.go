@@ -8,10 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -24,6 +26,7 @@ import (
 
 type IPFSHostStorageSuite struct {
 	suite.Suite
+	Config types.BacalhauConfig
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -35,7 +38,7 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	setup.SetupBacalhauRepoForTesting(suite.T())
+	_, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
@@ -48,7 +51,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(api)
+			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
 		},
 	)
 }
@@ -60,7 +63,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(api)
+			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
 		},
 	)
 }

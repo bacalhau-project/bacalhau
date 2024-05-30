@@ -26,7 +26,7 @@ import (
 //   - only set values are added to the config.
 func TestAdditiveSet(t *testing.T) {
 	// this initializes the global viper configuration system
-	r := setup.SetupBacalhauRepoForTesting(t)
+	r, _ := setup.SetupBacalhauRepoForTesting(t)
 	repoPath, err := r.Path()
 	require.NoError(t, err)
 	viper.Set("repo", repoPath)
@@ -152,7 +152,7 @@ func TestAdditiveSet(t *testing.T) {
 
 func TestSetFailure(t *testing.T) {
 	// this initializes the global viper configuration system
-	r := setup.SetupBacalhauRepoForTesting(t)
+	r, _ := setup.SetupBacalhauRepoForTesting(t)
 	repoPath, err := r.Path()
 	require.NoError(t, err)
 	viper.Set("repo", repoPath)

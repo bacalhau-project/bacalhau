@@ -10,11 +10,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -54,7 +53,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(suite.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
 			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
 			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
 			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
@@ -110,7 +109,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	clientID, err := config.GetClientID()
+	clientID, err := config.GetClientID(suite.Config.User.KeyPath)
 	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{

@@ -5,10 +5,11 @@ package exec_test
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ExecSuite struct {

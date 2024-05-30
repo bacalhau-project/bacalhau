@@ -11,11 +11,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func setup(t *testing.T) authn.Authenticator {
@@ -64,9 +65,10 @@ func TestBadlySignedChallenge(t *testing.T) {
 	userPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
+	signer := system.NewMessageSigner(userPrivKey)
 	userPubKey := base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&userPrivKey.PublicKey))
 
-	signature, err := system.Sign([]byte("other input phrase"), userPrivKey)
+	signature, err := signer.Sign([]byte("other input phrase"))
 	require.NoError(t, err)
 	response := response{
 		PhraseSignature: signature,
@@ -87,11 +89,12 @@ func TestGoodChallenge(t *testing.T) {
 
 	userPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
+	signer := system.NewMessageSigner(userPrivKey)
 
 	userPubKey := base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&userPrivKey.PublicKey))
 	require.NoError(t, err)
 
-	signature, err := system.Sign([]byte(req.InputPhrase), userPrivKey)
+	signature, err := signer.Sign(req.InputPhrase)
 	require.NoError(t, err)
 
 	response := response{

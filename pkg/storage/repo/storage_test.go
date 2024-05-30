@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
@@ -28,6 +29,7 @@ import (
 type StorageSuite struct {
 	suite.Suite
 	RootCmd *cobra.Command
+	Config  types.BacalhauConfig
 }
 
 func TestStorageSuite(t *testing.T) {
@@ -37,10 +39,10 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
+	_, s.Config = setup.SetupBacalhauRepoForTesting(s.T())
 }
 
-func getIpfsStorage() (*apicopy.StorageProvider, error) {
+func getIpfsStorage(volumeTimeout time.Duration) (*apicopy.StorageProvider, error) {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
@@ -51,7 +53,7 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	}
 
 	cl := ipfs.NewClient(node.Client().API)
-	storage, err := apicopy.NewStorage(cl)
+	storage, err := apicopy.NewStorage(cl, volumeTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +63,7 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 
 func (s *StorageSuite) TestHasStorageLocally() {
 	ctx := context.Background()
-	storage, err := getIpfsStorage()
+	storage, err := getIpfsStorage(time.Duration(s.Config.Node.VolumeSizeRequestTimeout))
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +111,7 @@ func (s *StorageSuite) TestCloneRepo() {
 
 		hash, err := func() (string, error) {
 			ctx := context.Background()
-			storage, err := getIpfsStorage()
+			storage, err := getIpfsStorage(time.Duration(s.Config.Node.VolumeSizeRequestTimeout))
 			if err != nil {
 				panic(err)
 			}

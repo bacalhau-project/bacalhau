@@ -29,11 +29,11 @@ type ServerSuite struct {
 
 func (s *ServerSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
+	fsr, c := setup.SetupBacalhauRepoForTesting(s.T())
 
 	ctx := context.Background()
 
-	stack := teststack.Setup(ctx, s.T(),
+	stack := teststack.Setup(ctx, s.T(), fsr, c,
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()),

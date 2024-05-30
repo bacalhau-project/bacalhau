@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -14,8 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/signatures"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 )
 
 // APIRetryCount - for some queries (like read events and read state)
@@ -41,7 +42,7 @@ func (apiClient *APIClient) List(
 	defer span.End()
 
 	req := legacymodels.ListRequest{
-		ClientID:    system.GetClientID(),
+		ClientID:    apiClient.ClientID,
 		MaxJobs:     uint32(maxJobs),
 		JobID:       idFilter,
 		IncludeTags: includeTags,
@@ -98,7 +99,7 @@ func (apiClient *APIClient) Cancel(ctx context.Context, jobID string, reason str
 	// Create a payload before signing it with our local key (for verification on the
 	// server).
 	req := model.JobCancelPayload{
-		ClientID: system.GetClientID(),
+		ClientID: apiClient.ClientID,
 		JobID:    jobID,
 		Reason:   reason,
 	}
@@ -141,7 +142,7 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	}
 
 	req := legacymodels.StateRequest{
-		ClientID: system.GetClientID(),
+		ClientID: apiClient.ClientID,
 		JobID:    jobID,
 	}
 
@@ -188,7 +189,7 @@ func (apiClient *APIClient) GetEvents(
 	}
 
 	req := legacymodels.EventsRequest{
-		ClientID: system.GetClientID(),
+		ClientID: apiClient.ClientID,
 		JobID:    jobID,
 		Options:  options,
 	}
@@ -223,7 +224,7 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 	}
 
 	req := legacymodels.ResultsRequest{
-		ClientID: system.GetClientID(),
+		ClientID: apiClient.ClientID,
 		JobID:    jobID,
 	}
 
@@ -244,7 +245,7 @@ func (apiClient *APIClient) Submit(
 	defer span.End()
 
 	data := model.JobCreatePayload{
-		ClientID:   system.GetClientID(),
+		ClientID:   apiClient.ClientID,
 		APIVersion: j.APIVersion,
 		Spec:       &j.Spec,
 	}
@@ -293,14 +294,14 @@ func (apiClient *APIClient) Logs(
 	// Create a payload before signing it with our local key (for verification on the
 	// server).
 	payload := model.LogsPayload{
-		ClientID:    system.GetClientID(),
+		ClientID:    apiClient.ClientID,
 		JobID:       jobID,
 		ExecutionID: executionID,
 		Tail:        withHistory,
 		Follow:      follow,
 	}
 
-	req, err := signatures.SignRequest(payload)
+	req, err := signatures.SignRequest(apiClient.Signer, payload)
 	if err != nil {
 		return nil, err
 	}

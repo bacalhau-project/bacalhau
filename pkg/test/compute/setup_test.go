@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -31,6 +33,7 @@ import (
 type ComputeSuite struct {
 	suite.Suite
 	node             *node.Compute
+	c                types.BacalhauConfig
 	config           node.ComputeConfig
 	cm               *system.CleanupManager
 	executor         *noop_executor.NoopExecutor
@@ -48,10 +51,11 @@ func (s *ComputeSuite) SetupTest() {
 
 // setupConfig creates a new config for testing
 func (s *ComputeSuite) setupConfig() {
+	s.c = configenv.Testing
 	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
 	s.Require().NoError(err)
 
-	cfg, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	cfg, err := node.NewComputeConfigWith(s.c.Node.ComputeStoragePath, node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU: 2,
 		},
@@ -82,6 +86,7 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 
 	storagePath := s.T().TempDir()
+	repoPath := s.T().TempDir()
 
 	noopstorage := noop_storage.NewNoopStorage()
 	callback := compute.CallbackMock{
@@ -113,6 +118,7 @@ func (s *ComputeSuite) setupNode() {
 		apiServer,
 		s.config,
 		storagePath,
+		repoPath,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),

@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/pkg/errors"
 )
 
 // A weakly-typed signed request. We use this type only in our code
@@ -40,14 +41,14 @@ type ContainsClientID interface {
 	GetClientID() string
 }
 
-func SignRequest(reqData any) (req signedRequest, err error) {
+func SignRequest(s system.Signer, reqData any) (req signedRequest, err error) {
 	jsonData, err := marshaller.JSONMarshalWithMax(reqData)
 	if err != nil {
 		return
 	}
 	rawJSON := json.RawMessage(jsonData)
 
-	signature, err := system.SignForClient(rawJSON)
+	signature, err := s.Sign(rawJSON)
 	if err != nil {
 		return
 	}
@@ -55,7 +56,7 @@ func SignRequest(reqData any) (req signedRequest, err error) {
 	req = signedRequest{
 		Payload:         &rawJSON,
 		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
+		ClientPublicKey: s.PublicKeyString(),
 	}
 	return
 }

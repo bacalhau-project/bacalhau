@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -22,17 +21,18 @@ import (
 
 func NewPublisherProvider(
 	ctx context.Context,
+	storagePath string,
 	cm *system.CleanupManager,
 	cl ipfsClient.Client,
 	localConfig *types.LocalPublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cl)
 	if err != nil {
 		return nil, err
 	}
 
-	s3Publisher, err := configureS3Publisher(cm)
+	s3Publisher, err := configureS3Publisher(storagePath, cm)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +47,8 @@ func NewPublisherProvider(
 	}), nil
 }
 
-func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
+func configureS3Publisher(storagePath string, cm *system.CleanupManager) (*s3.Publisher, error) {
+	dir, err := os.MkdirTemp(storagePath, "bacalhau-s3-publisher")
 	if err != nil {
 		return nil, err
 	}

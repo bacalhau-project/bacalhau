@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type IPFSPublisher struct {
@@ -18,7 +18,6 @@ type IPFSPublisher struct {
 
 func NewIPFSPublisher(
 	ctx context.Context,
-	_ *system.CleanupManager,
 	cl ipfs.Client,
 ) (*IPFSPublisher, error) {
 	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", cl.APIAddress())

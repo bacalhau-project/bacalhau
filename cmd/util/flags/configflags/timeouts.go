@@ -29,7 +29,7 @@ var ComputeTimeoutFlags = []Definition{
 	},
 	{
 		FlagName:     "default-job-execution-timeout",
-		ConfigPath:   types.NodeComputeJobTimeoutsJobExecutionTimeoutClientIDBypassList,
+		ConfigPath:   types.NodeComputeJobTimeoutsDefaultJobExecutionTimeout,
 		DefaultValue: Default.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout,
 		Description:  `default value for the execution timeout this compute node will assign to jobs with no timeout requirement defined.`,
 	},

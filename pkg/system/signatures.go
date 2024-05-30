@@ -7,31 +7,39 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
-const (
-	sigHash = crypto.SHA256 // hash function to use for sign/verify
-)
-
-// SignForClient signs a message with the user's private ID key.
-// NOTE: must be called after InitConfig() or system will panic.
-func SignForClient(msg []byte) (string, error) {
-	privKey, err := config.GetClientPrivateKey()
-	if err != nil {
-		return "", err
-	}
-
-	return Sign(msg, privKey)
+type Signer interface {
+	// Sign signs a message with the user's private ID key.
+	Sign(msg []byte) (string, error)
+	PublicKey() *rsa.PublicKey
+	PublicKeyString() string
 }
 
-func Sign(msg []byte, privKey *rsa.PrivateKey) (string, error) {
+func NewMessageSigner(sk *rsa.PrivateKey) *MessageSigner {
+	return &MessageSigner{sk: sk}
+}
+
+type MessageSigner struct {
+	sk *rsa.PrivateKey
+}
+
+func (m *MessageSigner) PublicKey() *rsa.PublicKey {
+	return &m.sk.PublicKey
+}
+
+// PublicKeyString returns a base64-encoding of the user's public ID key:
+func (m *MessageSigner) PublicKeyString() string {
+	pk := m.PublicKey()
+	return encodePublicKey(pk)
+}
+
+func (m *MessageSigner) Sign(msg []byte) (string, error) {
 	hash := sigHash.New()
 	hash.Write(msg)
 	hashBytes := hash.Sum(nil)
 
-	sig, err := rsa.SignPKCS1v15(rand.Reader, privKey, sigHash, hashBytes)
+	sig, err := rsa.SignPKCS1v15(rand.Reader, m.sk, sigHash, hashBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign message: %w", err)
 	}
@@ -39,26 +47,9 @@ func Sign(msg []byte, privKey *rsa.PrivateKey) (string, error) {
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
-// VerifyForClient verifies a signed message with the user's public ID key.
-// NOTE: must be called after InitConfig() or system will panic.
-func VerifyForClient(msg []byte, sig string) (bool, error) {
-	pubKey, err := config.GetClientPublicKey()
-	if err != nil {
-		return false, err
-	}
-
-	hash := sigHash.New()
-	hash.Write(msg)
-	hashBytes := hash.Sum(nil)
-
-	sigBytes, err := base64.StdEncoding.DecodeString(sig)
-	if err != nil {
-		return false, fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	// A successful verification is indicated by a nil return:
-	return rsa.VerifyPKCS1v15(pubKey, sigHash, hashBytes, sigBytes) == nil, nil
-}
+const (
+	sigHash = crypto.SHA256 // hash function to use for sign/verify
+)
 
 // Verify verifies a signed message with the given encoding of a public key.
 // Returns non nil if the key is invalid.
@@ -81,25 +72,9 @@ func Verify(msg []byte, sig, publicKey string) error {
 	return rsa.VerifyPKCS1v15(key, sigHash, hashBytes, sigBytes)
 }
 
-// GetClientID returns a hash identifying a user based on their ID key.
-// NOTE: must be called after InitConfig() or system will panic.
-func GetClientID() string {
-	clientID, err := config.GetClientID()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load clientID: %s", err))
-	}
-
-	return clientID
-}
-
-// GetClientPublicKey returns a base64-encoding of the user's public ID key:
-// NOTE: must be called after InitConfig() or system will panic.
-func GetClientPublicKey() string {
-	pkstr, err := config.GetClientPublicKeyString()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load client public key: %s", err))
-	}
-	return pkstr
+// encodePublicKey encodes a public key as a string:
+func encodePublicKey(key *rsa.PublicKey) string {
+	return base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(key))
 }
 
 // PublicKeyMatchesID returns true if the given base64-encoded public key and

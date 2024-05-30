@@ -35,7 +35,7 @@ func (apiClient *APIClient) Version(ctx context.Context) (*models.BuildVersionIn
 	defer span.End()
 
 	req := legacymodels.VersionRequest{
-		ClientID: system.GetClientID(),
+		ClientID: apiClient.ClientID,
 	}
 
 	var res legacymodels.VersionResponse

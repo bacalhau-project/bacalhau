@@ -4,14 +4,17 @@ package orchestrator_test
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"encoding/base64"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -22,8 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
-	"github.com/stretchr/testify/suite"
-	gomock "go.uber.org/mock/gomock"
 )
 
 type EndpointSuite struct {
@@ -64,7 +65,7 @@ func (s *EndpointSuite) TestInlinePinnerTransformInSubmit() {
 		EventConsumer: localJobEventConsumer,
 	})
 
-	storageFactory := node.NewStandardStorageProvidersFactory()
+	storageFactory := node.NewStandardStorageProvidersFactory(configenv.Testing.Node)
 	storageProviders, err := storageFactory.Get(s.ctx, node.NodeConfig{
 		CleanupManager: s.cm,
 		IPFSClient:     s.client,

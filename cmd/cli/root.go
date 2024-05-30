@@ -31,10 +31,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
@@ -45,43 +42,21 @@ func NewRootCmd() *cobra.Command {
 		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
 	}
+	cfgViper := viper.GetViper()
 	RootCmd := &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Compute over data",
 		Long:  `Compute over data`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			repoDir, err := config.Get[string]("repo")
-			if err != nil {
-				util.Fatal(cmd, fmt.Errorf("failed to read --repo value: %w", err), 1)
-			}
-			if repoDir == "" {
-				// this error indicates `defaultRepo` was unable to find a default location and the user
-				// didn't provide on.
-				util.Fatal(cmd, fmt.Errorf("bacalhau repo not set, please use BACALHAU_DIR or --repo"), 1)
-			}
-			if _, err := setup.SetupBacalhauRepo(repoDir); err != nil {
-				util.Fatal(cmd, fmt.Errorf("failed to initialize bacalhau repo at '%s': %w", repoDir, err), 1)
-			}
-
-			if err := configflags.BindFlags(cmd, rootFlags); err != nil {
+			if err := configflags.BindFlags(cmd, cfgViper, rootFlags); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
-
-			// If a CA certificate was provided, it must be a file that exists. If it does not
-			// exist we should not continue.
-			if caCert, err := config.Get[string](types.NodeClientAPIClientTLSCACert); err == nil && caCert != "" {
-				if _, err := os.Stat(caCert); os.IsNotExist(err) {
-					util.Fatal(cmd, fmt.Errorf("CA certificate file '%s' does not exist", caCert), 1)
-				}
-			}
-
-			ctx := cmd.Context()
 
 			logger.ConfigureLogging(util.LoggingMode)
 
 			cm := system.NewCleanupManager()
 			cm.RegisterCallback(telemetry.Cleanup)
-			ctx = context.WithValue(ctx, util.SystemManagerKey, cm)
+			ctx := context.WithValue(cmd.Context(), util.SystemManagerKey, cm)
 
 			var names []string
 			root := cmd
@@ -110,10 +85,12 @@ func NewRootCmd() *cobra.Command {
 			"BACALHAU_DIR or --repo must be set to initialize a node.\n\n", err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
-	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+
+	// Bind the repo flag to the system configuration
+	if err := cfgViper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
 		util.Fatal(RootCmd, err, 1)
 	}
-	if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
+	if err := cfgViper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
 		util.Fatal(RootCmd, err, 1)
 	}
 

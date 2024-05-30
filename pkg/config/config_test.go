@@ -1,137 +1,76 @@
 //go:build unit || !integration
 
-package config
+package config_test
 
 import (
-	"os"
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func TestConfig(t *testing.T) {
 	// Cleanup viper settings after each test
-	defer Reset()
 
 	// Testing Set and Get
-	t.Run("SetAndGetHappyPath", func(t *testing.T) {
+	t.Run("NewWriteRead", func(t *testing.T) {
+		// create a testing config instance
 		expectedConfig := configenv.Testing
-		err := Set(expectedConfig)
-		assert.NoError(t, err)
+		wc := config.New(config.WithDefaultConfig(expectedConfig))
 
-		var out types.NodeConfig
-		err = ForKey(types.Node, &out)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedConfig.Node, out)
+		// write the config file to disk
+		cfgFilePath := filepath.Join(t.TempDir(), fmt.Sprintf("%d_config.yaml", time.Now().UnixNano()))
+		err := wc.Write(cfgFilePath)
+		require.NoError(t, err)
 
-		retrieved, err := Get[string](types.NodeServerAPIHost)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedConfig.Node.ServerAPI.Host, retrieved)
+		// read the file we wrote from disk
+		rc := config.New(config.WithDefaultConfig(expectedConfig))
+		err = rc.Load(cfgFilePath)
+		require.NoError(t, err)
+
+		wCfg, err := wc.Current()
+		require.NoError(t, err)
+		rCfg, err := rc.Current()
+		require.NoError(t, err)
+
+		assert.Equal(t, expectedConfig.Node.Network, wCfg.Node.Network)
+		assert.Equal(t, expectedConfig.Node.Network, rCfg.Node.Network)
+
 	})
-	t.Run("SetAndGetAdvance", func(t *testing.T) {
+
+	t.Run("SetAndWrite", func(t *testing.T) {
+		// create a testing config instance
 		expectedConfig := configenv.Testing
-		expectedConfig.Node.IPFS.SwarmAddresses = []string{"1", "2", "3", "4", "5"}
-		err := Set(expectedConfig)
-		assert.NoError(t, err)
+		expectedConfig.Node.Name = "unexpected_name"
+		wc := config.New(config.WithDefaultConfig(expectedConfig))
 
-		var out types.IpfsConfig
-		err = ForKey(types.NodeIPFS, &out)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedConfig.Node.IPFS, out)
+		const expectedName = "bacalhau_testing"
+		wc.Set(types.NodeName, expectedName)
+		// write the config file to disk
+		cfgFilePath := filepath.Join(t.TempDir(), fmt.Sprintf("%d_config.yaml", time.Now().UnixNano()))
+		err := wc.Write(cfgFilePath)
+		require.NoError(t, err)
 
-		var node types.NodeConfig
-		err = ForKey(types.Node, &node)
-		assert.Equal(t, expectedConfig.Node, node)
-		assert.NoError(t, err)
+		// read the file we wrote from disk
+		rc := config.New(config.WithDefaultConfig(expectedConfig))
+		err = rc.Load(cfgFilePath)
+		require.NoError(t, err)
 
-		var invalidNode types.NodeConfig
-		err = ForKey("INVALID", &invalidNode)
-		assert.Error(t, err)
-	})
+		wCfg, err := wc.Current()
+		require.NoError(t, err)
+		rCfg, err := rc.Current()
+		require.NoError(t, err)
 
-	// Testing KeyAsEnvVar
-	t.Run("KeyAsEnvVar", func(t *testing.T) {
-		assert.Equal(t, "BACALHAU_NODE_SERVERAPI_HOST", KeyAsEnvVar(types.NodeServerAPIHost))
-	})
-
-	// Testing Init
-	t.Run("Init", func(t *testing.T) {
-		testCases := []struct {
-			name       string
-			configType string
-		}{
-			{"config", "yaml"},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				defer Reset()
-
-				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
-				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
-				expected := configenv.Testing
-
-				configPath := t.TempDir()
-
-				_, err := Init(configPath)
-				require.NoError(t, err)
-
-				var out types.NodeConfig
-				err = ForKey(types.Node, &out)
-				assert.NoError(t, err)
-				assert.Equal(t, expected.Node.Requester, out.Requester)
-
-				var retrieved types.RequesterConfig
-				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
-				assert.Equal(t, expected.Node.Requester, retrieved)
-			})
-		}
+		assert.Equal(t, expectedName, rCfg.Node.Name)
+		assert.Equal(t, expectedName, wCfg.Node.Name)
 
 	})
 
-	t.Run("Load", func(t *testing.T) {
-		testCases := []struct {
-			name       string
-			configType string
-		}{
-			{"yaml config type", "yaml"},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				defer Reset()
-				// First, set up an expected configuration and save it using Init.
-				require.NoError(t, os.Setenv("BACALHAU_ENVIRONMENT", "test"))
-				// since BACALHAU_ENVIRONMENT is set to testing we expect the config to be test
-				expected := configenv.Testing
-				configPath := t.TempDir()
-				expected.Node.Requester.JobStore.Path = filepath.Join(configPath, OrchestratorJobStorePath)
-
-				_, err := Init(configPath)
-				require.NoError(t, err)
-
-				// Now, try to load the configuration we just saved.
-				loadedConfig, err := Load(configPath)
-				require.NoError(t, err)
-
-				// After loading, compare the loaded configuration with the expected configuration.
-				assert.Equal(t, expected.Node.Requester, loadedConfig.Node.Requester)
-
-				// Further, test specific parts:
-				var out types.NodeConfig
-				err = ForKey(types.Node, &out)
-				assert.NoError(t, err)
-				assert.Equal(t, expected.Node.Requester, out.Requester)
-
-				var retrieved types.RequesterConfig
-				require.NoError(t, ForKey(types.NodeRequester, &retrieved))
-				assert.Equal(t, expected.Node.Requester, retrieved)
-			})
-		}
-	})
 }

@@ -1,8 +1,9 @@
 package agent
 
 import (
-	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 )
 
 func NewCmd() *cobra.Command {

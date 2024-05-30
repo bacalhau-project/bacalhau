@@ -109,38 +109,26 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 // (e.g. because the node running the update check is the server).
 func RunUpdateChecker(
 	ctx context.Context,
+	cfg types.BacalhauConfig,
 	getServerVersion func(context.Context) (*models.BuildVersionInfo, error),
 	responseCallback func(context.Context, *UpdateCheckResponse),
 ) {
-	updateFrequency := config.GetUpdateCheckFrequency()
+	updateFrequency := time.Duration(cfg.Update.CheckFrequency)
 	if updateFrequency <= 0 {
 		log.Ctx(ctx).Warn().Dur(types.UpdateCheckFrequency, updateFrequency).Msg("Update frequency is zero or less so no update checks will run")
 		return
 	}
 
 	clientVersion := Get()
-	clientID, err := config.GetClientID()
+	clientID, err := config.GetClientID(cfg.User.KeyPath)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to read client ID")
 		return
 	}
-	userID, err := config.GetInstallationUserID()
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to read user ID")
-		return
-	}
 
 	runUpdateCheck := func() {
-		// Check this every time, to handle programmatic changes to config that
-		// may switch this on or off.
-		// TODO(forrest) [correctness]: how do we expect this value to change dynamically??
-		// - viper doesn't reload the config when it changes
-		// - viper not sure how we change a flag passed to an already running process
-		// - similarly not sure how we change an env var in the context of a process..
-		// the TODO is to delete this or implement a dynamic config value:
-		//  - https://github.com/spf13/viper?tab=readme-ov-file#watching-and-re-reading-config-files
-		if skip, err := config.Get[bool](types.UpdateSkipChecks); skip || err != nil {
-			log.Ctx(ctx).Debug().Err(err).Bool(types.UpdateSkipChecks, skip).Msg("Skipping update check due to config")
+		if cfg.Update.SkipChecks {
+			log.Debug().Msg("skipping update check")
 			return
 		}
 
@@ -155,7 +143,7 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, clientID, userID)
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, clientID, cfg.User.InstallationID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}
@@ -163,14 +151,14 @@ func RunUpdateChecker(
 		if err == nil {
 			responseCallback(ctx, updateResponse)
 			// TODO(forrest): similar to the below TODO, shove this in a cache and persit on shutdown.
-			err = writeNewLastCheckTime()
+			err = writeNewLastCheckTime(cfg.Update.CheckStatePath)
 			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Completed update check")
 		}
 	}
 
 	// TODO(forrest) [efficiency]: rather than repeatedly reading a file, set the value in a cache and flush the cache
 	// to disk when this service shutwdown, no reason for this IO.
-	lastCheck, err := readLastCheckTime()
+	lastCheck, err := readLastCheckTime(cfg.Update.CheckStatePath)
 	if err != nil {
 		// Only log if the error is not about a missing update.json
 		if !os.IsNotExist(err) {
@@ -213,12 +201,7 @@ type updateState struct {
 	LastCheck time.Time
 }
 
-func readLastCheckTime() (time.Time, error) {
-	path, err := config.Get[string](types.UpdateCheckStatePath)
-	if err != nil {
-		return time.Now(), errors.Wrap(err, "error getting repo path")
-	}
-
+func readLastCheckTime(path string) (time.Time, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -237,12 +220,7 @@ func readLastCheckTime() (time.Time, error) {
 	return state.LastCheck, nil
 }
 
-func writeNewLastCheckTime() error {
-	path, err := config.Get[string](types.UpdateCheckStatePath)
-	if err != nil {
-		return errors.Wrap(err, "error getting repo path")
-	}
-
+func writeNewLastCheckTime(path string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return errors.Wrap(err, "error creating update state file")

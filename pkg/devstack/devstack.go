@@ -83,11 +83,12 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
+	cfg types.BacalhauConfig,
 	cm *system.CleanupManager,
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	stackConfig, err := defaultDevStackConfig()
+	stackConfig, err := defaultDevStackConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
@@ -317,7 +318,7 @@ func Setup(
 		}
 
 		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig)
+		n, err = node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 		if err != nil {
 			return nil, err
 		}

@@ -6,7 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -20,6 +23,8 @@ import (
 
 type DevstackSubmitSuite struct {
 	suite.Suite
+	Repo   *repo.FsRepo
+	Config types.BacalhauConfig
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -31,18 +36,19 @@ func TestDevstackSubmitSuite(t *testing.T) {
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	setup.SetupBacalhauRepoForTesting(suite.T())
+	suite.Repo, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack := testutils.Setup(ctx, suite.T(),
+	stack := testutils.Setup(ctx, suite.T(), suite.Repo, suite.Config,
 		devstack.WithNumberOfHybridNodes(1),
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := client.NewAPIClient(client.NoTLS, apiServer.Address, apiServer.Port)
+	apiClient, err := client.NewAPIClient(client.NoTLS, suite.Config.User, apiServer.Address, apiServer.Port)
+	suite.Require().NoError(err)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}

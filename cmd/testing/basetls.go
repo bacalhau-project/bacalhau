@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	"github.com/bacalhau-project/bacalhau/pkg/test/utils/certificates"
 )
@@ -26,12 +27,6 @@ type BaseTLSSuite struct {
 func (s *BaseTLSSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality: semantic.Anywhere,
-		},
-	})
-	s.Require().NoError(err)
 	ctx := context.Background()
 	requesterConfig, err := node.NewRequesterConfigWith(
 		node.RequesterConfigParams{
@@ -39,6 +34,7 @@ func (s *BaseTLSSuite) SetupTest() {
 		},
 	)
 	s.Require().NoError(err)
+
 	tempDir := s.T().TempDir()
 	caCertPath := filepath.Join(tempDir, "ca_certificate.pem")
 	caKeyPath := filepath.Join(tempDir, "ca_private_key.pem")
@@ -47,23 +43,34 @@ func (s *BaseTLSSuite) SetupTest() {
 
 	s.TempCACertFilePath = caCertPath
 
-	//generate certificates
+	// generate certificates
 	caCert, err := certificates.NewTestCACertificate(caCertPath, caKeyPath)
 	s.Require().NoError(err)
 	_, err = caCert.CreateTestSignedCertificate(serverCertPath, serverKeyPath)
 	s.Require().NoError(err)
 
+	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+
+	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
+		JobSelectionPolicy: node.JobSelectionPolicy{
+			Locality: semantic.Anywhere,
+		},
+	})
+	s.Require().NoError(err)
+
 	stack := teststack.Setup(ctx, s.T(),
+		fsr, cfg,
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithSelfSignedCertificate(serverCertPath, serverKeyPath),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 	s.Node = stack.Nodes[0]
-	s.Host = s.Node.APIServer.Address //NOTE: 0.0.0.0 will not work because we're testing TLS validation
+	s.Host = s.Node.APIServer.Address // NOTE: 0.0.0.0 will not work because we're testing TLS validation
 	s.Port = s.Node.APIServer.Port
-	s.Client = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, s.Host, s.Port)
+	s.Client, err = client.NewAPIClient(client.LegacyTLSSupport{UseTLS: true, Insecure: false}, cfg.User, s.Host, s.Port)
+	s.Require().NoError(err)
 	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port), clientv2.WithTLS(true), clientv2.WithInsecureTLS(true))
 }
 

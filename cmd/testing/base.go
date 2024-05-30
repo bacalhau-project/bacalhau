@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -21,8 +23,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	"github.com/stretchr/testify/suite"
 )
 
 type BaseSuite struct {
@@ -38,7 +40,9 @@ type BaseSuite struct {
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+
+	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
@@ -54,16 +58,17 @@ func (s *BaseSuite) SetupTest() {
 		},
 	)
 	s.Require().NoError(err)
-	stack := teststack.Setup(ctx, s.T(),
+	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = client.NewAPIClient(client.NoTLS, s.Host, s.Port)
+	s.Client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.Host, s.Port)
+	s.Require().NoError(err)
 	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 }
 

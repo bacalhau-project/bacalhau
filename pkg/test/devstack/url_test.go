@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -42,6 +43,7 @@ type URLBasedTestCase struct {
 
 func runURLTest(
 	suite *URLTestSuite,
+	cfg types.BacalhauConfig,
 	handler func(w http.ResponseWriter, r *http.Request),
 	testCase URLBasedTestCase,
 ) {
@@ -50,7 +52,7 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
@@ -120,7 +122,7 @@ func (s *URLTestSuite) TestMultipleURLs() {
 			w.Write([]byte(content))
 		}
 	}
-	runURLTest(s, handler, testCase)
+	runURLTest(s, s.Config, handler, testCase)
 }
 
 // both starts should be before both ends if we are downloading in parallel
@@ -155,7 +157,7 @@ func (s *URLTestSuite) TestURLsInParallel() {
 		}
 
 	}
-	runURLTest(s, handler, testCase)
+	runURLTest(s, s.Config, handler, testCase)
 
 	start1, ok := accessTimes["/"+getAccessKey(testCase.file1, "start")]
 	require.True(s.T(), ok)
@@ -203,7 +205,7 @@ func (s *URLTestSuite) TestFlakyURLs() {
 		}
 
 	}
-	runURLTest(s, handler, testCase)
+	runURLTest(s, s.Config, handler, testCase)
 }
 
 func (s *URLTestSuite) TestIPFSURLCombo() {
@@ -221,7 +223,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(s.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},

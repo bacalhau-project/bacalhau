@@ -17,6 +17,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
@@ -49,14 +50,15 @@ type Executor struct {
 	// handlers is a map of executionID to its handler.
 	handlers generic.SyncMap[string, *executionHandler]
 
-	activeFlags map[string]chan struct{}
-	complete    map[string]chan struct{}
-	client      *docker.Client
+	activeFlags       map[string]chan struct{}
+	complete          map[string]chan struct{}
+	client            *docker.Client
+	dockerCacheConfig types.DockerCacheConfig
 }
 
 func NewExecutor(
-	_ context.Context,
 	id string,
+	dockerCacheCfg types.DockerCacheConfig,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -64,10 +66,11 @@ func NewExecutor(
 	}
 
 	de := &Executor{
-		ID:          id,
-		client:      dockerClient,
-		activeFlags: make(map[string]chan struct{}),
-		complete:    make(map[string]chan struct{}),
+		ID:                id,
+		client:            dockerClient,
+		activeFlags:       make(map[string]chan struct{}),
+		complete:          make(map[string]chan struct{}),
+		dockerCacheConfig: dockerCacheCfg,
 	}
 
 	return de, nil
@@ -97,7 +100,7 @@ func (e *Executor) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	return semantic.NewImagePlatformBidStrategy(e.client).ShouldBid(ctx, request)
+	return semantic.NewImagePlatformBidStrategy(e.client, e.dockerCacheConfig).ShouldBid(ctx, request)
 }
 
 func (e *Executor) ShouldBidBasedOnUsage(

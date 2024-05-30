@@ -53,6 +53,7 @@ func NewComputeNode(
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
+	repoPath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -195,9 +196,8 @@ func NewComputeNode(
 	if managementProxy != nil {
 		// TODO: Make the registration lock folder a config option so that we have it
 		// available and don't have to depend on getting the repo folder.
-		repo, _ := pkgconfig.Get[string]("repo")
 		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
+		regFilename = filepath.Join(repoPath, pkgconfig.ComputeStorePath, regFilename)
 
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node

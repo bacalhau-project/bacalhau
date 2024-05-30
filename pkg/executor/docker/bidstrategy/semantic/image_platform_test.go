@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -30,12 +29,10 @@ func jobForDockerImage(t testing.TB, imageID string) models.Job {
 func TestBidsBasedOnImagePlatform(t *testing.T) {
 	docker.MustHaveDocker(t)
 
-	config.Set(configenv.Testing)
-
 	client, err := docker.NewDockerClient()
 	require.NoError(t, err)
 
-	strategy := semantic.NewImagePlatformBidStrategy(client)
+	strategy := semantic.NewImagePlatformBidStrategy(client, configenv.Testing.Node.Compute.ManifestCache)
 
 	t.Run("positive response for supported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{

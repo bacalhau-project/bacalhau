@@ -6,11 +6,11 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Tracer is a JobEventHandler that will marshal the received event to a
@@ -27,8 +27,8 @@ const eventTracerFilePerms fs.FileMode = 0644
 
 // Returns an eventhandler.Tracer that writes to config.GetEventTracerPath(), or
 // an error if the file can't be opened.
-func NewTracer() (*Tracer, error) {
-	return NewTracerToFile(config.GetEventTracerPath())
+func NewTracer(path string) (*Tracer, error) {
+	return NewTracerToFile(path)
 }
 
 // Returns an eventhandler.Tracer that writes to the specified filename, or an
