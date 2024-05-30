@@ -161,7 +161,7 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 		WithParameters(parameters...).
 		WithWorkingDirectory(opts.WorkingDirectory).
 		WithEntrypoint(opts.Entrypoint...).
-		WithEntrypoint(opts.EnvironmentVariables...).
+		WithEnvironmentVariables(opts.EnvironmentVariables...).
 		Build()
 	if err != nil {
 		return nil, err
