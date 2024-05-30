@@ -230,7 +230,7 @@ func NewNode(
 				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
-				BucketName: kvstore.DefaultBucketName,
+				BucketName: kvstore.BucketNameCurrent,
 				Client:     natsClient.Client,
 			})
 			if err != nil {
@@ -416,7 +416,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterComputeEndpoint(computeNode.LocalEndpoint)
+		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
 		}
