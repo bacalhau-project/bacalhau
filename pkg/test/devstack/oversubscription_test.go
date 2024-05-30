@@ -52,8 +52,8 @@ func (s *OverSubscriptionTestSuite) SetupSuite() {
 
 func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
 	ctx := context.Background()
+	fsr, c := setup.SetupBacalhauRepoForTesting(s.T())
 
 	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		NodeOverSubscriptionFactor: overSubscriptionFactor,
@@ -64,7 +64,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 	nodeCapacity, err := s.jobResources.ToResources()
 	s.Require().NoError(err)
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(c.Node.ComputeStoragePath, node.ComputeConfigParams{
 		IgnorePhysicalResourceLimits: true,
 		TotalResourceLimits:          *nodeCapacity,
 		DefaultJobResourceLimits:     *nodeCapacity,
@@ -74,8 +74,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 	})
 	s.Require().NoError(err)
 
-	stack := teststack.Setup(ctx,
-		s.T(),
+	stack := teststack.Setup(ctx, s.T(), fsr, c,
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithRequesterConfig(requesterConfig),
@@ -85,7 +84,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: noop_executor.DelayedJobHandler(s.jobRunDuration),
 				},
-			}),
+			}, c.Node.Compute.ManifestCache),
 	)
 
 	s.requester = stack.Nodes[0]
