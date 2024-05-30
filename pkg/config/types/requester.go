@@ -50,7 +50,8 @@ type WorkerConfig struct {
 }
 
 type SchedulerConfig struct {
-	QueueBackoff Duration `yaml:"QueueBackoff"`
+	QueueBackoff               Duration `yaml:"QueueBackoff"`
+	NodeOverSubscriptionFactor float64  `yaml:"NodeOverSubscriptionFactor"`
 }
 
 type StorageProviderConfig struct {

@@ -102,6 +102,8 @@ var TestRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
 	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
 
+	NodeOverSubscriptionFactor: 1.5,
+
 	TranslationEnabled: false,
 
 	S3PreSignedURLDisabled:   false,
