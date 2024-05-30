@@ -172,6 +172,10 @@ func (j *Job) Normalize() {
 		j.Namespace = DefaultNamespace
 	}
 
+	if j.Name == "" {
+		j.Name = j.ID
+	}
+
 	if (j.Type == JobTypeDaemon || j.Type == JobTypeOps) && j.Count == 0 {
 		j.Count = 1
 	}

@@ -1,6 +1,8 @@
 package proxy
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	ComputeEndpointSubjectPrefix = "node.compute"

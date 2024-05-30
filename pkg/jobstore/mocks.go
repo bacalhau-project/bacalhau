@@ -362,15 +362,20 @@ func (mr *MockStoreMockRecorder) UpdateJobState(ctx, request interface{}) *gomoc
 }
 
 // Watch mocks base method.
-func (m *MockStore) Watch(ctx context.Context, types StoreWatcherType, events StoreEventType) chan WatchEvent {
+func (m *MockStore) Watch(ctx context.Context, types StoreWatcherType, events StoreEventType, options ...WatcherOption) *Watcher {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Watch", ctx, types, events)
-	ret0, _ := ret[0].(chan WatchEvent)
+	varargs := []interface{}{ctx, types, events}
+	for _, a := range options {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Watch", varargs...)
+	ret0, _ := ret[0].(*Watcher)
 	return ret0
 }
 
 // Watch indicates an expected call of Watch.
-func (mr *MockStoreMockRecorder) Watch(ctx, types, events interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) Watch(ctx, types, events interface{}, options ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockStore)(nil).Watch), ctx, types, events)
+	varargs := append([]interface{}{ctx, types, events}, options...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockStore)(nil).Watch), varargs...)
 }

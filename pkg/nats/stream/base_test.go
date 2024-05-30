@@ -18,7 +18,7 @@ type BaseTestSuite struct {
 	natsServer      *server.Server
 	natsClient      *nats.Conn
 	inboxSubject    string
-	streamingClient *Client
+	streamingClient *ConsumerClient
 	writer          *Writer
 	ch              <-chan *concurrency.AsyncResult[[]byte]
 	ctx             context.Context
@@ -40,7 +40,7 @@ func (suite *BaseTestSuite) SetupSuite() {
 	suite.natsClient, err = nats.Connect(suite.natsServer.ClientURL())
 	suite.Require().NoError(err)
 
-	suite.streamingClient, err = NewClient(ClientParams{Conn: suite.natsClient})
+	suite.streamingClient, err = NewConsumerClient(ConsumerClientParams{Conn: suite.natsClient})
 	suite.Require().NoError(err)
 }
 
@@ -86,7 +86,7 @@ func (suite *BaseTestSuite) newTestStream() *testStream {
 		return s.replySubject != ""
 	}, 1*time.Second, 10*time.Millisecond, "h.replySubject should not be empty within 1 second")
 
-	s.writer = NewWriter(suite.streamingClient, s.replySubject)
+	s.writer = NewWriter(suite.streamingClient.Conn, s.replySubject)
 	return s
 
 }
