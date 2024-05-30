@@ -191,6 +191,9 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		NodeOverSubscriptionFactor: 0.5,
+	},
 	JobDefaults: types.JobDefaults{
 		ExecutionTimeout: types.Duration(30 * time.Minute),
 	},
