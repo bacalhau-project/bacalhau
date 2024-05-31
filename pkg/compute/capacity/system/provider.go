@@ -12,21 +12,22 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system/gpu"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type PhysicalCapacityProvider struct {
 	gpuCapacityProviders []capacity.Provider
+	path                 string
 }
 
-func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
+func NewPhysicalCapacityProvider(path string) *PhysicalCapacityProvider {
 	return &PhysicalCapacityProvider{
 		gpuCapacityProviders: []capacity.Provider{
 			gpu.NewNvidiaGPUProvider(),
 			gpu.NewAMDGPUProvider(),
 			gpu.NewIntelGPUProvider(),
 		},
+		path: path,
 	}
 }
 
@@ -46,7 +47,7 @@ func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (mo
 }
 
 func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models.Resources, error) {
-	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
+	diskSpace, err := getFreeDiskSpace(p.path)
 	if err != nil {
 		return models.Resources{}, err
 	}

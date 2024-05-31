@@ -38,7 +38,7 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
+	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 
 	ctx := context.Background()
 
@@ -66,21 +66,20 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	s.Require().NoError(err)
 	requesterConfig.OverAskForBidsFactor = 1
-
-	stack := teststack.Setup(ctx,
-		s.T(),
+	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(3),
 		devstack.WithNodeOverrides(nodeOverrides...),
 		devstack.WithRequesterConfig(requesterConfig),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 
 	s.requester = stack.Nodes[0]
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.Require().NoError(err)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 

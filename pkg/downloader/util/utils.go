@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
@@ -10,9 +11,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func NewStandardDownloaders(
-	cm *system.CleanupManager) downloader.DownloaderProvider {
-	ipfsDownloader := ipfs.NewIPFSDownloader(cm)
+func NewStandardDownloaders(cm *system.CleanupManager, cfg types.IpfsConfig) downloader.DownloaderProvider {
+	ipfsDownloader := ipfs.NewIPFSDownloader(cm, cfg)
 	s3PreSignedDownloader := s3signed.NewDownloader(s3signed.DownloaderParams{
 		HTTPDownloader: http.NewHTTPDownloader(),
 	})

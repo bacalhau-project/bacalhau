@@ -2,20 +2,25 @@ package serve
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
+	"os"
 	"path/filepath"
 	"time"
 
+	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/multiformats/go-multiaddr"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
@@ -30,15 +35,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.ComputeConfig, error) {
-	var cfg types.ComputeConfig
-	if err := config.ForKey(types.NodeCompute, &cfg); err != nil {
-		return node.ComputeConfig{}, err
-	}
-
-	totalResources, totalErr := cfg.Capacity.TotalResourceLimits.ToResources()
-	jobResources, jobErr := cfg.Capacity.JobResourceLimits.ToResources()
-	defaultResources, defaultErr := cfg.Capacity.DefaultJobResourceLimits.ToResources()
+func GetComputeConfig(ctx context.Context, cfg types.NodeConfig, createExecutionStore bool) (node.ComputeConfig, error) {
+	totalResources, totalErr := cfg.Compute.Capacity.TotalResourceLimits.ToResources()
+	jobResources, jobErr := cfg.Compute.Capacity.JobResourceLimits.ToResources()
+	defaultResources, defaultErr := cfg.Compute.Capacity.DefaultJobResourceLimits.ToResources()
 	if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
@@ -47,42 +47,37 @@ func GetComputeConfig(ctx context.Context, createExecutionStore bool) (node.Comp
 	var executionStore store.ExecutionStore
 
 	if createExecutionStore {
-		executionStore, err = getExecutionStore(ctx, cfg.ExecutionStore)
+		executionStore, err = getExecutionStore(ctx, cfg.Compute.ExecutionStore)
 		if err != nil {
 			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
-	return node.NewComputeConfigWith(node.ComputeConfigParams{
+	return node.NewComputeConfigWith(cfg.ComputeStoragePath, node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		JobResourceLimits:                     *jobResources,
 		DefaultJobResourceLimits:              *defaultResources,
-		IgnorePhysicalResourceLimits:          cfg.Capacity.IgnorePhysicalResourceLimits,
-		JobNegotiationTimeout:                 time.Duration(cfg.JobTimeouts.JobNegotiationTimeout),
-		MinJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MinJobExecutionTimeout),
-		MaxJobExecutionTimeout:                time.Duration(cfg.JobTimeouts.MaxJobExecutionTimeout),
-		DefaultJobExecutionTimeout:            time.Duration(cfg.JobTimeouts.DefaultJobExecutionTimeout),
-		JobExecutionTimeoutClientIDBypassList: cfg.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+		IgnorePhysicalResourceLimits:          cfg.Compute.Capacity.IgnorePhysicalResourceLimits,
+		JobNegotiationTimeout:                 time.Duration(cfg.Compute.JobTimeouts.JobNegotiationTimeout),
+		MinJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MinJobExecutionTimeout),
+		MaxJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MaxJobExecutionTimeout),
+		DefaultJobExecutionTimeout:            time.Duration(cfg.Compute.JobTimeouts.DefaultJobExecutionTimeout),
+		JobExecutionTimeoutClientIDBypassList: cfg.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.JobSelection.Locality),
-			RejectStatelessJobs: cfg.JobSelection.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.JobSelection.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.JobSelection.ProbeHTTP,
-			ProbeExec:           cfg.JobSelection.ProbeExec,
+			Locality:            semantic.JobSelectionDataLocality(cfg.Compute.JobSelection.Locality),
+			RejectStatelessJobs: cfg.Compute.JobSelection.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.Compute.JobSelection.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.Compute.JobSelection.ProbeHTTP,
+			ProbeExec:           cfg.Compute.JobSelection.ProbeExec,
 		},
-		LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogRunningExecutionsInterval),
-		LogStreamBufferSize:          cfg.LogStreamConfig.ChannelBufferSize,
+		LogRunningExecutionsInterval: time.Duration(cfg.Compute.Logging.LogRunningExecutionsInterval),
+		LogStreamBufferSize:          cfg.Compute.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
-		LocalPublisher:               cfg.LocalPublisher,
+		LocalPublisher:               cfg.Compute.LocalPublisher,
 	})
 }
 
-func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.RequesterConfig, error) {
-	var cfg types.RequesterConfig
-	if err := config.ForKey(types.NodeRequester, &cfg); err != nil {
-		return node.RequesterConfig{}, err
-	}
-
+func GetRequesterConfig(ctx context.Context, cfg types.RequesterConfig, createJobStore bool) (node.RequesterConfig, error) {
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
@@ -134,13 +129,12 @@ func GetRequesterConfig(ctx context.Context, createJobStore bool) (node.Requeste
 	return requesterConfig, nil
 }
 
-func getNodeType() (requester, compute bool, err error) {
+func getNodeType(cfg types.BacalhauConfig) (requester, compute bool, err error) {
 	requester = false
 	compute = false
 	err = nil
 
-	nodeType := viper.GetStringSlice(types.NodeType)
-	for _, nodeType := range nodeType {
+	for _, nodeType := range cfg.Node.Type {
 		if nodeType == "compute" {
 			compute = true
 		} else if nodeType == "requester" {
@@ -152,11 +146,8 @@ func getNodeType() (requester, compute bool, err error) {
 	return
 }
 
-func getIPFSConfig() (types.IpfsConfig, error) {
-	var ipfsConfig types.IpfsConfig
-	if err := config.ForKey(types.NodeIPFS, &ipfsConfig); err != nil {
-		return types.IpfsConfig{}, err
-	}
+func getIPFSConfig(ipfsConfig types.IpfsConfig) (types.IpfsConfig, error) {
+	// TODO this can be moved to a validate method on the IpfsConfig type
 	if ipfsConfig.Connect != "" && ipfsConfig.PrivateInternal {
 		return types.IpfsConfig{}, fmt.Errorf("%s cannot be used with %s",
 			configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...),
@@ -205,35 +196,18 @@ func SetupIPFSClient(ctx context.Context, cm *system.CleanupManager, ipfsCfg typ
 	return client, nil
 }
 
-func getAllowListedLocalPathsConfig() []string {
-	return viper.GetStringSlice(types.NodeAllowListedLocalPaths)
-}
-
-func getTransportType() (string, error) {
-	var networkCfg types.NetworkConfig
-	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
-		return "", err
-	}
-	return networkCfg.Type, nil
-}
-
-func getNetworkConfig() (node.NetworkConfig, error) {
-	var networkCfg types.NetworkConfig
-	if err := config.ForKey(types.NodeNetwork, &networkCfg); err != nil {
-		return node.NetworkConfig{}, err
-	}
-
+func getNetworkConfig(cfg types.NetworkConfig) (node.NetworkConfig, error) {
 	return node.NetworkConfig{
-		Type:                     networkCfg.Type,
-		Port:                     networkCfg.Port,
-		AdvertisedAddress:        networkCfg.AdvertisedAddress,
-		Orchestrators:            networkCfg.Orchestrators,
-		StoreDir:                 networkCfg.StoreDir,
-		AuthSecret:               networkCfg.AuthSecret,
-		ClusterName:              networkCfg.Cluster.Name,
-		ClusterPort:              networkCfg.Cluster.Port,
-		ClusterAdvertisedAddress: networkCfg.Cluster.AdvertisedAddress,
-		ClusterPeers:             networkCfg.Cluster.Peers,
+		Type:                     cfg.Type,
+		Port:                     cfg.Port,
+		AdvertisedAddress:        cfg.AdvertisedAddress,
+		Orchestrators:            cfg.Orchestrators,
+		StoreDir:                 cfg.StoreDir,
+		AuthSecret:               cfg.AuthSecret,
+		ClusterName:              cfg.Cluster.Name,
+		ClusterPort:              cfg.Cluster.Port,
+		ClusterAdvertisedAddress: cfg.Cluster.AdvertisedAddress,
+		ClusterPeers:             cfg.Cluster.Peers,
 	}, nil
 }
 
@@ -264,20 +238,7 @@ func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig) (jobstore.S
 	}
 }
 
-func getNodeID(ctx context.Context) (string, error) {
-	nodeName, err := config.Get[string](types.NodeName)
-	if err != nil {
-		return "", err
-	}
-
-	if nodeName != "" {
-		return nodeName, nil
-	}
-	nodeNameProviderType, err := config.Get[string](types.NodeNameProvider)
-	if err != nil {
-		return "", err
-	}
-
+func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
 	nodeNameProviders := map[string]idgen.NodeNameProvider{
 		"hostname": idgen.HostnameProvider{},
 		"aws":      idgen.NewAWSNodeNameProvider(),
@@ -291,13 +252,11 @@ func getNodeID(ctx context.Context) (string, error) {
 			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
 	}
 
-	nodeName, err = nodeNameProvider.GenerateNodeName(ctx)
+	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	// set the new name in the config, so it can be used and persisted later.
-	config.SetValue(types.NodeName, nodeName)
 	return nodeName, nil
 }
 
@@ -305,14 +264,65 @@ func getNodeID(ctx context.Context) (string, error) {
 // this will only write values that must not change between invocations,
 // such as the job store path and node name,
 // and only if they are not already set in the config file.
-func persistConfigs(repoPath string) error {
-	resolvedConfig, err := config.GetConfig()
-	if err != nil {
-		return fmt.Errorf("error getting config: %w", err)
-	}
-	err = config.WritePersistedConfigs(filepath.Join(repoPath, config.ConfigFileName), *resolvedConfig)
-	if err != nil {
+func persistConfigs(repoPath string, cfg types.BacalhauConfig) error {
+	if err := config.WritePersistedConfigs(filepath.Join(repoPath, config.FileName), cfg); err != nil {
 		return fmt.Errorf("error writing persisted config: %w", err)
 	}
 	return nil
+}
+
+func loadLibp2pPrivKey(keyPath string) (libp2p_crypto.PrivKey, error) {
+	keyBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %w", err)
+	}
+	// parse the private key
+	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	return key, nil
+}
+
+func parseBootstrapPeers(bootstrappers []string) ([]multiaddr.Multiaddr, error) {
+	peers := make([]multiaddr.Multiaddr, 0, len(bootstrappers))
+	for _, peer := range bootstrappers {
+		parsed, err := multiaddr.NewMultiaddr(peer)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, parsed)
+	}
+	return peers, nil
+}
+
+func parseServerAPIHost(host string) (string, error) {
+	if net.ParseIP(host) == nil {
+		// We should check that the value gives us an address type
+		// we can use to get our IP address. If it doesn't, we should
+		// panic.
+		atype, ok := network.AddressTypeFromString(host)
+		if !ok {
+			return "", fmt.Errorf("invalid address type in Server API Host config: %s", host)
+		}
+
+		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
+		if err != nil {
+			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", host, err)
+		}
+
+		if len(addr) == 0 {
+			return "", fmt.Errorf("no %s addresses found for Server API Host", host)
+		}
+
+		// Use the first address
+		host = addr[0]
+	}
+
+	return host, nil
 }
