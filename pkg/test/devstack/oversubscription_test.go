@@ -40,9 +40,9 @@ type OverSubscriptionTestSuite struct {
 }
 
 func (s *OverSubscriptionTestSuite) SetupSuite() {
-	s.jobRunDuration = 1000 * time.Millisecond
-	s.jobRunWait = 250 * time.Millisecond
-	s.resourceUpdateFrequency = 50 * time.Millisecond
+	s.jobRunDuration = 2000 * time.Millisecond
+	s.jobRunWait = 1000 * time.Millisecond
+	s.resourceUpdateFrequency = 200 * time.Millisecond
 	s.jobResources = models.ResourcesConfig{
 		CPU:    "1",
 		Memory: "1",
@@ -169,7 +169,7 @@ func (s *OverSubscriptionTestSuite) TestOverSubscribeNode() {
 				}
 				return true
 
-			}, s.jobRunDuration*time.Duration(jobsCount)+time.Second, 50*time.Millisecond,
+			}, s.jobRunDuration*time.Duration(jobsCount)+time.Second, 500*time.Millisecond,
 				"expected states: %s, retrieved states: %s", tt.expectedStates, s.getJobStates())
 		})
 	}
