@@ -1,4 +1,5 @@
-name: Trigger on Comment
+# If someone with write access comments "/ok-to-test" on a pull request, emit a repository_dispatch event
+name: Ok To Test
 
 on:
   issue_comment:
@@ -19,9 +20,9 @@ on:
     types: [created, edited]
 
 jobs:
-  trigger-workflows:
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/oktotest')
+  ok-to-test:
     runs-on: ubuntu-latest
+    if: github.event.issue.pull_request
     steps:
       - name: Check if commenter is authorized
         id: check-authorization
