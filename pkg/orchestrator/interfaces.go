@@ -107,7 +107,7 @@ type NodeSelector interface {
 
 	// MatchingNodes return the nodes that match job constraints order by rank in descending order.
 	// Also return the nodes that were filtered out and an error if any.
-	MatchingNodes(ctx context.Context, job *models.Job) ([]NodeRank, []NodeRank, error)
+	MatchingNodes(ctx context.Context, job *models.Job) (matched []NodeRank, rejected []NodeRank, err error)
 }
 
 type RetryStrategy interface {
