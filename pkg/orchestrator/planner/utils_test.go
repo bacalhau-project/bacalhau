@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/assert"
 )
 
 func mockCreateExecutions(plan *models.Plan) (*models.Execution, *models.Execution) {
@@ -39,6 +40,15 @@ func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate
 	plan.UpdatedExecutions[execution1.ID] = update1
 	plan.UpdatedExecutions[execution2.ID] = update2
 	return update1, update2
+}
+
+func mockCreateEvaluations(plan *models.Plan) (*models.Evaluation, *models.Evaluation) {
+	evaluation1 := mock.EvalForJob(plan.Job)
+	evaluation2 := mock.EvalForJob(plan.Job)
+	evaluation1.ID = "NewEval1"
+	evaluation2.ID = "NewEval2"
+	plan.NewEvaluations = []*models.Evaluation{evaluation1, evaluation2}
+	return evaluation1, evaluation2
 }
 
 // UpdateExecutionMatcher is a matcher for the UpdateExecutionState method of the JobStore interface.

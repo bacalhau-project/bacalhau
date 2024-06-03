@@ -45,6 +45,9 @@ type RequesterConfigParams struct {
 	WorkerEvalDequeueBaseBackoff time.Duration
 	WorkerEvalDequeueMaxBackoff  time.Duration
 
+	// scheduler config
+	SchedulerQueueBackoff time.Duration
+
 	// Should the orchestrator attempt to translate jobs?
 	TranslationEnabled bool
 
