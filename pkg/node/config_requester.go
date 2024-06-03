@@ -46,7 +46,8 @@ type RequesterConfigParams struct {
 	WorkerEvalDequeueMaxBackoff  time.Duration
 
 	// scheduler config
-	SchedulerQueueBackoff time.Duration
+	SchedulerQueueBackoff      time.Duration
+	NodeOverSubscriptionFactor float64
 
 	// Should the orchestrator attempt to translate jobs?
 	TranslationEnabled bool
@@ -76,8 +77,15 @@ func NewRequesterConfigWithDefaults() (RequesterConfig, error) {
 
 //nolint:gosimple
 func NewRequesterConfigWith(params RequesterConfigParams) (RequesterConfig, error) {
-	if err := mergo.Merge(&params, getRequesterConfigParams()); err != nil {
+	defaults := getRequesterConfigParams()
+	if err := mergo.Merge(&params, defaults); err != nil {
 		return RequesterConfig{}, fmt.Errorf("creating requester config: %w", err)
+	}
+
+	// TODO: move away from how we define approval states as they don't have clear
+	//  zero value and don't play nicely with merge
+	if params.DefaultApprovalState.IsUndefined() {
+		params.DefaultApprovalState = defaults.DefaultApprovalState
 	}
 
 	log.Debug().Msgf("Requester config: %+v", params)

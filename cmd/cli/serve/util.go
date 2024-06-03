@@ -108,6 +108,7 @@ func GetRequesterConfig(ctx context.Context, cfg types.RequesterConfig, createJo
 		EvalBrokerSubsequentRetryDelay: time.Duration(cfg.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
 		EvalBrokerMaxRetryCount:        cfg.EvaluationBroker.EvalBrokerMaxRetryCount,
 		WorkerCount:                    cfg.Worker.WorkerCount,
+		NodeOverSubscriptionFactor:     cfg.Scheduler.NodeOverSubscriptionFactor,
 		WorkerEvalDequeueTimeout:       time.Duration(cfg.Worker.WorkerEvalDequeueTimeout),
 		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Worker.WorkerEvalDequeueBaseBackoff),
 		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Worker.WorkerEvalDequeueMaxBackoff),

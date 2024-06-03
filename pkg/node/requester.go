@@ -85,6 +85,10 @@ func NewRequesterNode(
 		Info().
 		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
 
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
+	if err != nil {
+		return nil, err
+	}
 	// compute node ranker
 	nodeRankerChain := ranking.NewChain()
 	nodeRankerChain.Add(
@@ -94,6 +98,7 @@ func NewRequesterNode(
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
+		overSubscriptionNodeRanker,
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		ranking.NewAvailableCapacityNodeRanker(),
