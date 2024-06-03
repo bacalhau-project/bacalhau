@@ -66,11 +66,12 @@ type Evaluation struct {
 
 // NewEvaluation creates a new Evaluation.
 func NewEvaluation() *Evaluation {
+	now := time.Now().UTC().UnixNano()
 	return &Evaluation{
 		ID:         idgen.NewEvaluationID(),
 		Status:     EvalStatusPending,
-		CreateTime: time.Now().UTC().UnixNano(),
-		ModifyTime: time.Now().UTC().UnixNano(),
+		CreateTime: now,
+		ModifyTime: now,
 	}
 }
 
