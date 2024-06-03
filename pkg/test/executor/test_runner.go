@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -29,7 +30,8 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
+	fsr, c := setup.SetupBacalhauRepoForTesting(t)
+	stack := testutils.Setup(ctx, t, fsr, c, devstack.WithNumberOfHybridNodes(testNodeCount))
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine().String())
 	require.NoError(t, err)
 

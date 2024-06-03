@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
@@ -29,6 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
@@ -89,21 +89,21 @@ type NodeDependencyInjector struct {
 	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
-func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
+func NewExecutorPluginNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
-		ExecutorsFactory:        NewPluginExecutorFactory(),
-		PublishersFactory:       NewStandardPublishersFactory(),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.Node),
+		ExecutorsFactory:        NewPluginExecutorFactory(cfg.Node.ExecutorPluginPath),
+		PublishersFactory:       NewStandardPublishersFactory(cfg.Node.ComputeStoragePath),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
 
-func NewStandardNodeDependencyInjector() NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
-		ExecutorsFactory:        NewStandardExecutorsFactory(),
-		PublishersFactory:       NewStandardPublishersFactory(),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.Node),
+		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
+		PublishersFactory:       NewStandardPublishersFactory(cfg.Node.ComputeStoragePath),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
 
@@ -125,7 +125,10 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	config NodeConfig) (*Node, error) {
+	cfg types.BacalhauConfig,
+	config NodeConfig,
+	fsr *repo.FsRepo,
+) (*Node, error) {
 	var err error
 	ctx, cancel := context.WithCancel(ctx)
 	defer func() {
@@ -134,7 +137,7 @@ func NewNode(
 		}
 	}()
 
-	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
+	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(cfg))
 	err = mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -159,7 +162,7 @@ func NewNode(
 		return nil, err
 	}
 
-	signingKey, err := pkgconfig.GetClientPublicKey()
+	signingKey, err := loadUserIDKey(cfg.User.KeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +175,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, config.NodeID),
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, &signingKey.PublicKey, config.NodeID),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
@@ -267,7 +270,7 @@ func NewNode(
 			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
 			CleanupManager: config.CleanupManager,
 		}
-		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
+		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore, cfg.Metrics)
 		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with libp2p transport")
 		}
@@ -324,6 +327,7 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			apiServer,
+			cfg.Metrics,
 			config.RequesterNodeConfig,
 			storageProviders,
 			authenticators,
@@ -357,7 +361,7 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
-		storagePath := pkgconfig.GetStoragePath()
+		storagePath := cfg.Node.ComputeStoragePath
 
 		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 		if err != nil {
@@ -396,6 +400,10 @@ func NewNode(
 			}
 		}
 
+		repoPath, err := fsr.Path()
+		if err != nil {
+			return nil, err
+		}
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -404,6 +412,7 @@ func NewNode(
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
+			repoPath,
 			storageProviders,
 			executors,
 			publishers,
@@ -484,7 +493,7 @@ func NewNode(
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,
-		// TODO(forrest) [correctness]: this code is literally the server, why are we returning nil???!!!
+		cfg,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)

@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -23,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -74,14 +74,13 @@ func (ds *DownloaderSuite) SetupTest() {
 	swarm, err := node.SwarmAddresses()
 	require.NoError(ds.T(), err)
 
-	cfg := configenv.Testing
-	cfg.Node.IPFS.SwarmAddresses = swarm
-	ds.Require().NoError(config.Set(cfg))
+	cfg := configenv.Testing.Node.IPFS
+	cfg.SwarmAddresses = swarm
 
 	ds.ipfsClient = node.Client()
 	ds.downloadProvider = provider.NewMappedProvider(
 		map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm),
+			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, cfg),
 			models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
 				HTTPDownloader: http.NewHTTPDownloader(),
 			}),

@@ -14,7 +14,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -22,9 +25,6 @@ import (
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3storage "github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 const defaultBucket = "bacalhau-test-datasets"
@@ -81,9 +81,7 @@ func NewTestHelper(t *testing.T, params HelperSuiteParams) *HelperSuite {
 		ClientProvider: clientProvider,
 	})
 
-	storage := s3storage.NewStorage(s3storage.StorageProviderParams{
-		ClientProvider: clientProvider,
-	})
+	storage := s3storage.NewStorage(time.Duration(configenv.Testing.Node.VolumeSizeRequestTimeout), clientProvider)
 
 	return &HelperSuite{
 		Bucket:         params.Bucket,
@@ -98,7 +96,6 @@ func NewTestHelper(t *testing.T, params HelperSuiteParams) *HelperSuite {
 
 // SetupSuite creates a unique prefix for the test suite to avoid collisions.
 func (s *HelperSuite) SetupSuite() {
-	s.Require().NoError(config.Set(configenv.Local))
 	if !s.HasValidCredentials() {
 		s.T().Skip("No valid AWS credentials found")
 	}

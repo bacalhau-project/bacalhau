@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -57,6 +58,7 @@ func NewRequesterNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
+	cfg types.MetricsConfig,
 	requesterConfig RequesterConfig,
 	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
@@ -171,6 +173,7 @@ func NewRequesterNode(
 		Planner:       planners,
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
+		QueueBackoff:  requesterConfig.SchedulerQueueBackoff,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -296,7 +299,7 @@ func NewRequesterNode(
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
-	eventTracer, err := eventhandler.NewTracer()
+	eventTracer, err := eventhandler.NewTracer(cfg.EventTracerPath)
 	if err != nil {
 		return nil, err
 	}

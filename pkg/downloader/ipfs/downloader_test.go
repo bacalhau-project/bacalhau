@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -19,7 +20,6 @@ import (
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
-	"github.com/stretchr/testify/require"
 )
 
 const testSwarmKey = "/key/swarm/psk/1.0.0/\n/base16/\n463ff859373f8e89dd23e7d5429864c84283d961148dc311d120534780549ec3\n"
@@ -62,10 +62,9 @@ func TestIPFSDownload(t *testing.T) {
 
 	cfg := configenv.Testing
 	cfg.Node.IPFS.SwarmAddresses = swarm
-	config.Set(cfg)
 
 	outputDir := t.TempDir()
-	ipfsDownloader := NewIPFSDownloader(cm)
+	ipfsDownloader := NewIPFSDownloader(cm, cfg.Node.IPFS)
 
 	resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
 		Result: &models.SpecConfig{
@@ -90,7 +89,6 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 	cfg := configenv.Testing
 	cfg.Node.IPFS.PrivateInternal = true
 	cfg.Node.IPFS.SwarmKeyPath = writeSwarmKey(t)
-	config.Set(cfg)
 
 	server, err := ipfs.NewNodeWithConfig(ctx, cm, cfg.Node.IPFS)
 	require.NoError(t, err)
@@ -103,11 +101,10 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg.Node.IPFS.SwarmAddresses = swarm
-	config.Set(cfg)
 
 	t.Run("download success with swarm key", func(t *testing.T) {
 		outputDir := t.TempDir()
-		ipfsDownloader := NewIPFSDownloader(cm)
+		ipfsDownloader := NewIPFSDownloader(cm, cfg.Node.IPFS)
 
 		resultPath, err := ipfsDownloader.FetchResult(ctx, downloader.DownloadItem{
 			Result: &models.SpecConfig{
@@ -127,7 +124,6 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 	cfg = configenv.Testing
 	cfg.Node.IPFS.SwarmKeyPath = ""
 	cfg.Node.IPFS.SwarmAddresses = swarm
-	config.Set(cfg)
 
 	t.Run("download failure without swarm key", func(t *testing.T) {
 		// This fails by timing out, but does so after 2minutes. We should give it
@@ -135,7 +131,7 @@ func TestDownloadFromPrivateSwarm(t *testing.T) {
 		cTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 
 		outputDir := t.TempDir()
-		ipfsDownloader := NewIPFSDownloader(cm)
+		ipfsDownloader := NewIPFSDownloader(cm, cfg.Node.IPFS)
 		resultPath, err := ipfsDownloader.FetchResult(cTimeout, downloader.DownloadItem{
 			Result: &models.SpecConfig{
 				Type: models.StorageSourceIPFS,

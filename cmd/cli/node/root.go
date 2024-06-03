@@ -1,9 +1,10 @@
 package node
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/spf13/cobra"
 )
 
 func NewCmd() *cobra.Command {
