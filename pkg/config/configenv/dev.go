@@ -184,6 +184,7 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
 	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(30 * time.Second),
 		NodeOverSubscriptionFactor: 1.5,
 	},
 	JobDefaults: types.JobDefaults{

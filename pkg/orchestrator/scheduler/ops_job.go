@@ -120,7 +120,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
-	nodes, err := b.selector.AllMatchingNodes(ctx, job)
+	nodes, _, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}
@@ -136,7 +136,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.ID(),
+			NodeID:       node.NodeInfo.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

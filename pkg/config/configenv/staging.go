@@ -190,6 +190,7 @@ var StagingRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
 	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(1 * time.Minute),
 		NodeOverSubscriptionFactor: 1.5,
 	},
 	JobDefaults: types.JobDefaults{

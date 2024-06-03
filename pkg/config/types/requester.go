@@ -50,7 +50,8 @@ type WorkerConfig struct {
 }
 
 type SchedulerConfig struct {
-	NodeOverSubscriptionFactor float64 `yaml:"NodeOverSubscriptionFactor"`
+	QueueBackoff               Duration `yaml:"QueueBackoff"`
+	NodeOverSubscriptionFactor float64  `yaml:"NodeOverSubscriptionFactor"`
 }
 
 type StorageProviderConfig struct {
@@ -64,6 +65,7 @@ type S3StorageProviderConfig struct {
 
 type JobDefaults struct {
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
+	QueueTimeout     Duration `yaml:"QueueTimeout"`
 }
 
 type RequesterControlPlaneConfig struct {
