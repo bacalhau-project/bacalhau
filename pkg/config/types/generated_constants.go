@@ -126,6 +126,7 @@ const NodeRequesterWorkerWorkerEvalDequeueBaseBackoff = "Node.Requester.Worker.W
 const NodeRequesterWorkerWorkerEvalDequeueMaxBackoff = "Node.Requester.Worker.WorkerEvalDequeueMaxBackoff"
 const NodeRequesterScheduler = "Node.Requester.Scheduler"
 const NodeRequesterSchedulerQueueBackoff = "Node.Requester.Scheduler.QueueBackoff"
+const NodeRequesterSchedulerNodeOverSubscriptionFactor = "Node.Requester.Scheduler.NodeOverSubscriptionFactor"
 const NodeRequesterStorageProvider = "Node.Requester.StorageProvider"
 const NodeRequesterStorageProviderS3 = "Node.Requester.StorageProvider.S3"
 const NodeRequesterStorageProviderS3PreSignedURLDisabled = "Node.Requester.StorageProvider.S3.PreSignedURLDisabled"
