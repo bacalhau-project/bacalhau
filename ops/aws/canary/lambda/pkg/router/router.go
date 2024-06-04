@@ -35,7 +35,11 @@ func WithConfig(cfg types.BacalhauConfig) Option {
 	}
 }
 
-func Route(ctx context.Context, event models.Event, opts ...Option) error {
+func Route(ctx context.Context, event models.Event) error {
+	return RouteWithOpts(ctx, event)
+}
+
+func RouteWithOpts(ctx context.Context, event models.Event, opts ...Option) error {
 	// NB(forrest): settings is required to allow this method to be called with or without config.
 	// The lambda runs expect this method to instantiate a repo and config then run. No config is provided.
 	// Conversely, TestScenariosAgainstDevstack creates a devstack and needs to provide
@@ -44,21 +48,11 @@ func Route(ctx context.Context, event models.Event, opts ...Option) error {
 	for _, opt := range opts {
 		opt(settings)
 	}
+
 	if settings.cfg == nil {
-		repoPath, err := os.MkdirTemp("", "bacalhau_canary_repo_*")
+		resolvedCfg, err := loadConfig()
 		if err != nil {
-			return fmt.Errorf("failed to create repo dir: %s", err)
-		}
-
-		c := config.New()
-		// init system configs and repo.
-		if _, err := setup.SetupBacalhauRepo(repoPath, c); err != nil {
-			return fmt.Errorf("failed to initialize bacalhau repo: %s", err)
-		}
-
-		resolvedCfg, err := c.Current()
-		if err != nil {
-			return err
+			return fmt.Errorf("failed to load config: %s", err)
 		}
 		settings.cfg = &resolvedCfg
 	}
@@ -72,4 +66,23 @@ func Route(ctx context.Context, event models.Event, opts ...Option) error {
 	}
 	log.Info().Msgf("testcase %s passed", event.Action)
 	return nil
+}
+
+func loadConfig() (types.BacalhauConfig, error) {
+	repoPath, err := os.MkdirTemp("", "bacalhau_canary_repo_*")
+	if err != nil {
+		return types.BacalhauConfig{}, fmt.Errorf("failed to create repo dir: %s", err)
+	}
+
+	c := config.New()
+	// init system configs and repo.
+	if _, err := setup.SetupBacalhauRepo(repoPath, c); err != nil {
+		return types.BacalhauConfig{}, fmt.Errorf("failed to initialize bacalhau repo: %s", err)
+	}
+
+	resolvedCfg, err := c.Current()
+	if err != nil {
+		return types.BacalhauConfig{}, err
+	}
+	return resolvedCfg, nil
 }
