@@ -21,17 +21,17 @@ func buildIPFSConfig(cfg types.IpfsConfig) (*config.Config, error) {
 
 	swarmListenAddresses := cfg.SwarmListenAddresses
 	if len(swarmListenAddresses) == 0 {
-		swarmListenAddresses = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		swarmListenAddresses = []string{"/ip4/0.0.0.0/tcp/0"}
 	}
 
 	gatewayListenAddresses := cfg.GatewayListenAddresses
 	if len(gatewayListenAddresses) == 0 {
-		gatewayListenAddresses = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		gatewayListenAddresses = []string{"/ip4/0.0.0.0/tcp/0"}
 	}
 
 	apiListenAddresses := cfg.APIListenAddresses
 	if len(apiListenAddresses) == 0 {
-		apiListenAddresses = []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"}
+		apiListenAddresses = []string{"/ip4/0.0.0.0/tcp/0"}
 	}
 
 	profile := config.Profiles[profileName]
