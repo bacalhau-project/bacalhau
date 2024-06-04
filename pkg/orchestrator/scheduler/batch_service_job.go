@@ -95,16 +95,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
 	allFailedExecs = allFailedExecs.union(lost)
 
-	// Mark executions that have exceeded their execution timeout as failed
-	// Only applicable for batch jobs and not service jobs.
-	if !job.IsLongRunning() {
-		timeout := job.Task().Timeouts.GetExecutionTimeout()
-		expirationTime := b.clock.Now().Add(-timeout)
-		var timedOut execSet
-		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
-		allFailedExecs = allFailedExecs.union(timedOut)
-	}
+	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
 
 	// Calculate remaining job count
 	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
@@ -153,6 +144,32 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		plan.MarkJobRunningIfEligible()
 	}
 	return b.planner.Process(ctx, plan)
+}
+
+func (b *BatchServiceJobScheduler) handleTimeouts(
+	plan *models.Plan, nonTerminalExecs, allFailedExecs execSet) (execSet, execSet) {
+	// Mark job/executions that have exceeded their total/execution timeout as failed
+	// Only applicable for batch jobs and not service jobs.
+	job := plan.Job
+	if !job.IsLongRunning() {
+		// check if job has exceeded total timeout
+		jobTimeout := job.Task().Timeouts.GetTotalTimeout()
+		jobExpirationTime := b.clock.Now().Add(-jobTimeout)
+		if job.IsExpired(jobExpirationTime) {
+			plan.MarkJobFailed(orchestrator.JobTimeoutEvent(jobTimeout))
+		}
+
+		// check if the executions have exceeded their execution timeout
+		if !plan.IsJobFailed() && job.Task().Timeouts.GetExecutionTimeout() > 0 {
+			timeout := job.Task().Timeouts.GetExecutionTimeout()
+			expirationTime := b.clock.Now().Add(-timeout)
+			var timedOut execSet
+			nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
+			timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+			allFailedExecs = allFailedExecs.union(timedOut)
+		}
+	}
+	return nonTerminalExecs, allFailedExecs
 }
 
 func (b *BatchServiceJobScheduler) createMissingExecs(

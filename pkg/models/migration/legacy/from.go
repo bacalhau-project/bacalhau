@@ -107,7 +107,7 @@ func FromLegacyJobSpec(legacy model.Spec) (*models.Task, error) {
 		},
 		Network: network,
 		Timeouts: &models.TimeoutConfig{
-			ExecutionTimeout: legacy.Timeout,
+			TotalTimeout: legacy.Timeout,
 		},
 	}
 	return task, nil

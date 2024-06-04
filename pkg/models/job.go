@@ -366,3 +366,10 @@ func (j *Job) AllStorageTypes() []string {
 func (j *Job) IsLongRunning() bool {
 	return j.Type == JobTypeService || j.Type == JobTypeDaemon
 }
+
+// IsExpired returns true if the job is still running beyond the expiration time
+func (j *Job) IsExpired(expirationTime time.Time) bool {
+	return !j.IsTerminal() &&
+		j.Task().Timeouts.TotalTimeout > 0 &&
+		j.GetCreateTime().Before(expirationTime)
+}

@@ -38,17 +38,13 @@ const (
 )
 
 func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	timeoutSeconds := request.Job.Task().Timeouts.ExecutionTimeout
-	if timeoutSeconds <= 0 {
-		return bidstrategy.NewBidResponse(true, minReason, timeoutSeconds, 0), nil
+	timeout := request.Job.Task().Timeouts.GetExecutionTimeout()
+	if timeout <= 0 {
+		return bidstrategy.NewBidResponse(true, minReason, timeout.String(), 0), nil
 	}
 
-	// Timeout will be multiplied by 1000000000 (time.Second) when it gets
-	// converted to a time.Duration (which is an int64 underneath), so make sure
-	// that it can fit into it.
-	var maxTimeout = int64(model.NoJobTimeout.Seconds())
-	if request.Job.Task().Timeouts.ExecutionTimeout > maxTimeout {
-		return bidstrategy.NewBidResponse(false, maxReason, timeoutSeconds, maxTimeout), nil
+	if timeout > model.NoJobTimeout {
+		return bidstrategy.NewBidResponse(false, maxReason, timeout.String(), model.NoJobTimeout.String()), nil
 	}
 
 	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
@@ -58,11 +54,10 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 	}
 
 	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
-	timeoutDuration := request.Job.Task().Timeouts.GetExecutionTimeout()
-	if timeoutDuration < s.minJobExecutionTimeout {
-		return bidstrategy.NewBidResponse(false, minReason, timeoutDuration.String(), s.minJobExecutionTimeout.String()), nil
+	if timeout < s.minJobExecutionTimeout {
+		return bidstrategy.NewBidResponse(false, minReason, timeout.String(), s.minJobExecutionTimeout.String()), nil
 	}
 
-	success := s.maxJobExecutionTimeout <= 0 || (s.maxJobExecutionTimeout > 0 && timeoutDuration <= s.maxJobExecutionTimeout)
-	return bidstrategy.NewBidResponse(success, maxReason, timeoutDuration.String(), s.maxJobExecutionTimeout.String()), nil
+	success := s.maxJobExecutionTimeout <= 0 || (s.maxJobExecutionTimeout > 0 && timeout <= s.maxJobExecutionTimeout)
+	return bidstrategy.NewBidResponse(success, maxReason, timeout.String(), s.maxJobExecutionTimeout.String()), nil
 }

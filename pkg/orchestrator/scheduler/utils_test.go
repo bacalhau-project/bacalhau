@@ -53,6 +53,12 @@ func WithExecutionTimeout(timeout time.Duration) ScenarioBuilderOption {
 	}
 }
 
+func WithTotalTimeout(timeout time.Duration) ScenarioBuilderOption {
+	return func(b *Scenario) {
+		b.job.Task().Timeouts.TotalTimeout = int64(timeout.Seconds())
+	}
+}
+
 func WithCreateTime(t int64) ScenarioBuilderOption {
 	return func(b *Scenario) {
 		b.job.CreateTime = t
@@ -70,6 +76,8 @@ type Scenario struct {
 
 func NewScenario(opts ...ScenarioBuilderOption) *Scenario {
 	job := mock.Job()
+	job.Task().Timeouts = &models.TimeoutConfig{}
+
 	builder := &Scenario{
 		job:        job,
 		executions: make([]models.Execution, 0),

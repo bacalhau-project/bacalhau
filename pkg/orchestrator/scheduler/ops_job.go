@@ -86,12 +86,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
 	allFailedExecs = allFailedExecs.union(lost)
 
-	// Mark executions that have exceeded their execution timeout as failed
-	timeout := job.Task().Timeouts.GetExecutionTimeout()
-	expirationTime := b.clock.Now().Add(-timeout)
-	nonTerminalExecs, timedOut := nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-	timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
-	allFailedExecs = allFailedExecs.union(timedOut)
+	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
 
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
@@ -104,17 +99,44 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		}
 	}
 
-	// mark job as completed if there are no more active or new executions
-	if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
-		if len(allFailedExecs) > 0 {
-			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, errors.New(""))
-		} else {
-			plan.MarkJobCompleted()
+	// if the plan's job state is failed, stop all active executions
+	if plan.IsJobFailed() {
+		nonTerminalExecs.markStopped(plan.Event, plan)
+	} else {
+		// mark job as completed if there are no more active or new executions
+		if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
+			if len(allFailedExecs) > 0 {
+				b.handleFailure(nonTerminalExecs, allFailedExecs, plan, errors.New(""))
+			} else {
+				plan.MarkJobCompleted()
+			}
 		}
 	}
-
 	plan.MarkJobRunningIfEligible()
 	return b.planner.Process(ctx, plan)
+}
+
+func (b *OpsJobScheduler) handleTimeouts(
+	plan *models.Plan, nonTerminalExecs execSet, allFailedExecs execSet) (execSet, execSet) {
+	// Mark job/executions that have exceeded their total/execution timeout as failed
+	// check if job has exceeded total timeout
+	job := plan.Job
+	jobTimeout := job.Task().Timeouts.GetTotalTimeout()
+	jobExpirationTime := b.clock.Now().Add(-jobTimeout)
+	if job.IsExpired(jobExpirationTime) {
+		plan.MarkJobFailed(orchestrator.JobTimeoutEvent(jobTimeout))
+	}
+
+	// check if the executions have exceeded their execution timeout
+	if !plan.IsJobFailed() && job.Task().Timeouts.GetExecutionTimeout() > 0 {
+		timeout := job.Task().Timeouts.GetExecutionTimeout()
+		expirationTime := b.clock.Now().Add(-timeout)
+		var timedOut execSet
+		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
+		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+		allFailedExecs = allFailedExecs.union(timedOut)
+	}
+	return nonTerminalExecs, allFailedExecs
 }
 
 func (b *OpsJobScheduler) createMissingExecs(
