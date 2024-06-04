@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type TimeoutStrategyParams struct {
@@ -41,10 +40,6 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 	timeout := request.Job.Task().Timeouts.GetExecutionTimeout()
 	if timeout <= 0 {
 		return bidstrategy.NewBidResponse(true, minReason, timeout.String(), 0), nil
-	}
-
-	if timeout > model.NoJobTimeout {
-		return bidstrategy.NewBidResponse(false, maxReason, timeout.String(), model.NoJobTimeout.String()), nil
 	}
 
 	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
