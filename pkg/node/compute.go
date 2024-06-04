@@ -87,12 +87,11 @@ func NewComputeNode(
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
-		ID:                         nodeID,
-		DelegateExecutor:           baseExecutor,
-		Callback:                   computeCallback,
-		RunningCapacityTracker:     runningCapacityTracker,
-		EnqueuedUsageTracker:       enqueuedUsageTracker,
-		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+		ID:                     nodeID,
+		DelegateExecutor:       baseExecutor,
+		Callback:               computeCallback,
+		RunningCapacityTracker: runningCapacityTracker,
+		EnqueuedUsageTracker:   enqueuedUsageTracker,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
@@ -266,11 +265,6 @@ func NewBidder(
 	if config.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
 			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
-			}),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
 			}),

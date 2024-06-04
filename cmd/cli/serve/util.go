@@ -54,15 +54,10 @@ func GetComputeConfig(ctx context.Context, cfg types.NodeConfig, createExecution
 	}
 
 	return node.NewComputeConfigWith(cfg.ComputeStoragePath, node.ComputeConfigParams{
-		TotalResourceLimits:                   *totalResources,
-		JobResourceLimits:                     *jobResources,
-		DefaultJobResourceLimits:              *defaultResources,
-		IgnorePhysicalResourceLimits:          cfg.Compute.Capacity.IgnorePhysicalResourceLimits,
-		JobNegotiationTimeout:                 time.Duration(cfg.Compute.JobTimeouts.JobNegotiationTimeout),
-		MinJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MinJobExecutionTimeout),
-		MaxJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MaxJobExecutionTimeout),
-		DefaultJobExecutionTimeout:            time.Duration(cfg.Compute.JobTimeouts.DefaultJobExecutionTimeout),
-		JobExecutionTimeoutClientIDBypassList: cfg.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+		TotalResourceLimits:          *totalResources,
+		JobResourceLimits:            *jobResources,
+		DefaultJobResourceLimits:     *defaultResources,
+		IgnorePhysicalResourceLimits: cfg.Compute.Capacity.IgnorePhysicalResourceLimits,
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality:            semantic.JobSelectionDataLocality(cfg.Compute.JobSelection.Locality),
 			RejectStatelessJobs: cfg.Compute.JobSelection.RejectStatelessJobs,
@@ -89,6 +84,7 @@ func GetRequesterConfig(ctx context.Context, cfg types.RequesterConfig, createJo
 
 	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
+			TotalTimeout:     time.Duration(cfg.JobDefaults.TotalTimeout),
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 			QueueTimeout:     time.Duration(cfg.JobDefaults.QueueTimeout),
 		},

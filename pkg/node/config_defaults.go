@@ -23,11 +23,6 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 			Memory: 100 * 1024 * 1024, // 100Mi
 		},
 
-		JobNegotiationTimeout:      3 * time.Minute,
-		MinJobExecutionTimeout:     500 * time.Millisecond,
-		MaxJobExecutionTimeout:     model.NoJobTimeout,
-		DefaultJobExecutionTimeout: model.NoJobTimeout,
-
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
 		LocalPublisher: types.LocalPublisherConfig{
@@ -44,6 +39,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
+		TotalTimeout:     model.NoJobTimeout,
 		ExecutionTimeout: model.NoJobTimeout,
 	},
 

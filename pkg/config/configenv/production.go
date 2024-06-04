@@ -118,13 +118,6 @@ var ProductionComputeConfig = types.ComputeConfig{
 		Type: types.BoltDB,
 		Path: "",
 	},
-	JobTimeouts: types.JobTimeoutConfig{
-		JobExecutionTimeoutClientIDBypassList: []string{},
-		JobNegotiationTimeout:                 types.Duration(3 * time.Minute),
-		MinJobExecutionTimeout:                types.Duration(500 * time.Millisecond),
-		MaxJobExecutionTimeout:                types.Duration(model.NoJobTimeout),
-		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
-	},
 	JobSelection: model.JobSelectionPolicy{
 		Locality:            model.Anywhere,
 		RejectStatelessJobs: false,
@@ -191,7 +184,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		NodeOverSubscriptionFactor: 1.5,
 	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

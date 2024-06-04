@@ -64,6 +64,7 @@ type S3StorageProviderConfig struct {
 }
 
 type JobDefaults struct {
+	TotalTimeout     Duration `yaml:"TotalTimeout"`
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
 	QueueTimeout     Duration `yaml:"QueueTimeout"`
 }

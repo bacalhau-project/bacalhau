@@ -49,14 +49,6 @@ type ComputeConfigParams struct {
 	PhysicalResourcesProvider    capacity.Provider
 	IgnorePhysicalResourceLimits bool
 
-	// Timeout config
-	JobNegotiationTimeout      time.Duration
-	MinJobExecutionTimeout     time.Duration
-	MaxJobExecutionTimeout     time.Duration
-	DefaultJobExecutionTimeout time.Duration
-
-	JobExecutionTimeoutClientIDBypassList []string
-
 	// Bid strategies config
 	JobSelectionPolicy JobSelectionPolicy
 
@@ -84,22 +76,6 @@ type ComputeConfig struct {
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	IgnorePhysicalResourceLimits bool
-
-	// JobNegotiationTimeout default timeout value to hold a bid for a job
-	JobNegotiationTimeout time.Duration
-	// MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
-	// lower timeout requirements will not be bid on.
-	MinJobExecutionTimeout time.Duration
-	// MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
-	// higher timeout requirements will not be bid on.
-	MaxJobExecutionTimeout time.Duration
-	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
-	// no timeout requirement defined.
-	DefaultJobExecutionTimeout time.Duration
-
-	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
-	// check.
-	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
 	JobSelectionPolicy JobSelectionPolicy
@@ -133,18 +109,6 @@ func NewComputeConfigWith(storagePath string, params ComputeConfigParams) (Compu
 		storagePath = os.TempDir()
 	}
 	defaults := NewDefaultComputeParam(storagePath)
-	if params.JobNegotiationTimeout == 0 {
-		params.JobNegotiationTimeout = defaults.JobNegotiationTimeout
-	}
-	if params.MinJobExecutionTimeout == 0 {
-		params.MinJobExecutionTimeout = defaults.MinJobExecutionTimeout
-	}
-	if params.MaxJobExecutionTimeout == 0 {
-		params.MaxJobExecutionTimeout = defaults.MaxJobExecutionTimeout
-	}
-	if params.DefaultJobExecutionTimeout == 0 {
-		params.DefaultJobExecutionTimeout = defaults.DefaultJobExecutionTimeout
-	}
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = defaults.LogRunningExecutionsInterval
 	}
@@ -201,13 +165,6 @@ func NewComputeConfigWith(storagePath string, params ComputeConfigParams) (Compu
 		JobResourceLimits:            *jobResourceLimits,
 		DefaultJobResourceLimits:     *defaultJobResourceLimits,
 		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
-
-		JobNegotiationTimeout:      params.JobNegotiationTimeout,
-		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
-		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
-		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-
-		JobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 

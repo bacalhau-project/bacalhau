@@ -65,7 +65,7 @@ func Task() *models.Task {
 			Domains: make([]string, 0),
 		},
 		Timeouts: &models.TimeoutConfig{
-			ExecutionTimeout: 30,
+			TotalTimeout: 30,
 		},
 	}
 	task.Normalize()

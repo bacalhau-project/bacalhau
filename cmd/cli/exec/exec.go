@@ -251,9 +251,9 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 		return nil, err
 	}
 
-	// Set the execution timeouts
+	// Set the job timeout
 	job.Tasks[0].Timeouts = &models.TimeoutConfig{
-		ExecutionTimeout: options.SpecSettings.Timeout,
+		TotalTimeout: options.SpecSettings.Timeout,
 	}
 
 	// Unsupported in new job specifications (models.Job)

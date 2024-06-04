@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -88,7 +89,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
 	}
 
-	if config.RequesterConfig.JobDefaults.ExecutionTimeout == 0 {
+	if config.RequesterConfig.JobDefaults == (transformer.JobDefaults{}) {
 		cfg, err := node.NewRequesterConfigWithDefaults()
 		s.Require().NoError(err)
 

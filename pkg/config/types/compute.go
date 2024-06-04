@@ -8,7 +8,6 @@ import (
 type ComputeConfig struct {
 	Capacity             CapacityConfig            `yaml:"Capacity"`
 	ExecutionStore       JobStoreConfig            `yaml:"ExecutionStore"`
-	JobTimeouts          JobTimeoutConfig          `yaml:"JobTimeouts"`
 	JobSelection         model.JobSelectionPolicy  `yaml:"JobSelection"`
 	Logging              LoggingConfig             `yaml:"Logging"`
 	ManifestCache        DockerCacheConfig         `yaml:"ManifestCache"`
@@ -24,23 +23,6 @@ type CapacityConfig struct {
 	// Per job amount of resource the system can be using at one time.
 	JobResourceLimits        models.ResourcesConfig `yaml:"JobResourceLimits"`
 	DefaultJobResourceLimits models.ResourcesConfig `yaml:"DefaultJobResourceLimits"`
-}
-
-type JobTimeoutConfig struct {
-	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
-	// check.
-	JobExecutionTimeoutClientIDBypassList []string `yaml:"JobExecutionTimeoutClientIDBypassList"`
-	// JobNegotiationTimeout default timeout value to hold a bid for a job
-	JobNegotiationTimeout Duration `yaml:"JobNegotiationTimeout"`
-	// MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
-	// lower timeout requirements will not be bid on.
-	MinJobExecutionTimeout Duration `yaml:"MinJobExecutionTimeout"`
-	// MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
-	// higher timeout requirements will not be bid on.
-	MaxJobExecutionTimeout Duration `yaml:"MaxJobExecutionTimeout"`
-	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
-	// no timeout requirement defined.
-	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
 }
 
 type LoggingConfig struct {
