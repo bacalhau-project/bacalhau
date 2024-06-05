@@ -42,6 +42,16 @@ func (s JobStateType) IsUndefined() bool {
 	return s == JobStateTypeUndefined
 }
 
+// IsTerminal returns true if the job state is terminal
+func (s JobStateType) IsTerminal() bool {
+	switch s {
+	case JobStateTypeCompleted, JobStateTypeFailed, JobStateTypeStopped:
+		return true
+	default:
+		return false
+	}
+}
+
 func JobStateTypes() []JobStateType {
 	var res []JobStateType
 	for typ := JobStateTypePending; typ <= JobStateTypeStopped; typ++ {
@@ -319,12 +329,7 @@ func (j *Job) SanitizeSubmission() (warnings []string) {
 
 // IsTerminal returns true if the job is in a terminal state
 func (j *Job) IsTerminal() bool {
-	switch j.State.StateType {
-	case JobStateTypeCompleted, JobStateTypeFailed, JobStateTypeStopped:
-		return true
-	default:
-		return false
-	}
+	return j.State.StateType.IsTerminal()
 }
 
 // Task returns the job task
@@ -361,4 +366,11 @@ func (j *Job) AllStorageTypes() []string {
 // IsLongRunning returns true if the job is long running
 func (j *Job) IsLongRunning() bool {
 	return j.Type == JobTypeService || j.Type == JobTypeDaemon
+}
+
+// IsExpired returns true if the job is still running beyond the expiration time
+func (j *Job) IsExpired(expirationTime time.Time) bool {
+	return !j.IsTerminal() &&
+		j.Task().Timeouts.TotalTimeout > 0 &&
+		j.GetCreateTime().Before(expirationTime)
 }

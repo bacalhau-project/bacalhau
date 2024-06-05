@@ -8,15 +8,10 @@ import (
 var (
 	oldSwarmPeers = []string{
 		"/ip4/35.245.115.191/tcp/4001/p2p/12D3KooWE4wfAknWtY9mQ4eAA8zrFGeZa7X2Kh4nBP2tZgDSt7Rh",
-		"/ip4/35.245.115.191/udp/4001/quic/p2p/12D3KooWE4wfAknWtY9mQ4eAA8zrFGeZa7X2Kh4nBP2tZgDSt7Rh",
 		"/ip4/35.245.61.251/tcp/4001/p2p/12D3KooWD8zeukHTMyuPtQBoUUPqtEnaA7NwFXWcVywUJtCVPske",
-		"/ip4/35.245.61.251/udp/4001/quic/p2p/12D3KooWD8zeukHTMyuPtQBoUUPqtEnaA7NwFXWcVywUJtCVPske",
 		"/ip4/35.245.251.239/tcp/4001/p2p/12D3KooWAg1YdehZxcZhetcgA6KP8TLGX6Fq4h9PUswnUWoStVNc",
-		"/ip4/35.245.251.239/udp/4001/quic/p2p/12D3KooWAg1YdehZxcZhetcgA6KP8TLGX6Fq4h9PUswnUWoStVNc",
 		"/ip4/34.150.153.87/tcp/4001/p2p/12D3KooWGE4R98vokeLsRVdTv8D6jhMnifo81mm7NMRV8WJPNVHb",
-		"/ip4/34.150.153.87/udp/4001/quic/p2p/12D3KooWGE4R98vokeLsRVdTv8D6jhMnifo81mm7NMRV8WJPNVHb",
 		"/ip4/34.91.247.176/tcp/4001/p2p/12D3KooWSNKPM5PBchoqn774bpQ4j4QbL3VoyX6mH6vTyWXqE3kH",
-		"/ip4/34.91.247.176/udp/4001/quic/p2p/12D3KooWSNKPM5PBchoqn774bpQ4j4QbL3VoyX6mH6vTyWXqE3kH",
 	}
 
 	oldBootstrapPeers = []string{

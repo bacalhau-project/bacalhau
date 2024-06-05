@@ -72,20 +72,15 @@ var Production = types.BacalhauConfig{
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
 				"/ip4/35.245.161.250/tcp/4001/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH",
-				"/ip4/35.245.161.250/udp/4001/quic/p2p/12D3KooWAQpZzf3qiNxpwizXeArGjft98ZBoMNgVNNpoWtKAvtYH",
 				"/ip4/34.86.254.26/tcp/4001/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK",
-				"/ip4/34.86.254.26/udp/4001/quic/p2p/12D3KooWLfFBjDo8dFe1Q4kSm8inKjPeHzmLBkQ1QAjTHocAUazK",
 				"/ip4/35.245.215.155/tcp/4001/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF",
-				"/ip4/35.245.215.155/udp/4001/quic/p2p/12D3KooWH3rxmhLUrpzg81KAwUuXXuqeGt4qyWRniunb5ipjemFF",
 				"/ip4/34.145.201.224/tcp/4001/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf",
-				"/ip4/34.145.201.224/udp/4001/quic/p2p/12D3KooWBCBZnXnNbjxqqxu2oygPdLGseEbfMbFhrkDTRjUNnZYf",
 				"/ip4/35.245.41.51/tcp/4001/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa",
-				"/ip4/35.245.41.51/udp/4001/quic/p2p/12D3KooWJM8j97yoDTb7B9xV1WpBXakT4Zof3aMgFuSQQH56rCXa",
 			},
 			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0"},
 		},
 		Compute:   ProductionComputeConfig,
 		Requester: ProductionRequesterConfig,
@@ -191,8 +186,12 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(1 * time.Minute),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

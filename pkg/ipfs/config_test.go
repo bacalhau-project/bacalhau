@@ -25,8 +25,8 @@ func TestSetSwarmListenAddresses(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, expected)
-	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
-	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0"})
 }
 
 func TestSetGatewayListenAddresses(t *testing.T) {
@@ -42,8 +42,8 @@ func TestSetGatewayListenAddresses(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, expected)
-	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
-	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, []string{"/ip4/0.0.0.0/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0"})
 }
 
 func TestSetAPIListenAddresses(t *testing.T) {
@@ -59,8 +59,8 @@ func TestSetAPIListenAddresses(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, ipfscfg.Addresses.API, expected)
-	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
-	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, []string{"/ip4/0.0.0.0/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0"})
 }
 
 func TestPrivateConfig(t *testing.T) {
@@ -70,8 +70,8 @@ func TestPrivateConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, ipfscfg.Addresses.Swarm, []string{"/ip4/127.0.0.1/tcp/0"})
-	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
-	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.API, []string{"/ip4/0.0.0.0/tcp/0"})
+	assert.ElementsMatch(t, ipfscfg.Addresses.Gateway, []string{"/ip4/0.0.0.0/tcp/0"})
 	assert.Equal(t, config.AutoNATServiceDisabled, ipfscfg.AutoNAT.ServiceMode)
 	assert.Equal(t, config.False, ipfscfg.Swarm.EnableHolePunching)
 	assert.Equal(t, config.False, ipfscfg.Swarm.RelayClient.Enabled)

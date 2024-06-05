@@ -9,10 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type NodeSelector struct {
@@ -46,39 +44,19 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (n NodeSelector) AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
-	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeInfos := generic.Map(filteredNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
-	return nodeInfos, nil
-}
-
-func (n NodeSelector) TopMatchingNodes(
+func (n NodeSelector) MatchingNodes(
 	ctx context.Context,
 	job *models.Job,
-	desiredCount int,
-) ([]models.NodeInfo, error) {
-	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job)
+) (matchingNodes, rejectedNodes []orchestrator.NodeRank, err error) {
+	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if len(possibleNodes) < desiredCount {
-		// TODO: evaluate if we should run the job if some nodes where found
-		err = orchestrator.NewErrNotEnoughNodes(desiredCount, append(possibleNodes, rejectedNodes...))
-		return nil, err
-	}
-
-	sort.Slice(possibleNodes, func(i, j int) bool {
-		return possibleNodes[i].Rank > possibleNodes[j].Rank
+	sort.Slice(matchingNodes, func(i, j int) bool {
+		return matchingNodes[i].Rank > matchingNodes[j].Rank
 	})
-
-	selectedNodes := possibleNodes[:math.Min(len(possibleNodes), desiredCount)]
-	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
-	return selectedInfos, nil
+	return matchingNodes, rejectedNodes, nil
 }
 
 func (n NodeSelector) rankAndFilterNodes(

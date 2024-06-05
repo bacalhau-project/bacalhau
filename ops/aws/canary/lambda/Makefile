@@ -8,7 +8,6 @@ TEST_BUILD_TAGS ?= unit,integration
 update:
 	go get github.com/bacalhau-project/bacalhau@${TARGET_COMMIT} && go mod tidy
 
-
 CMD_TARGETS := $(wildcard ./cmd/*)
 BIN_TARGETS := $(patsubst ./cmd/%,./bin/%,${CMD_TARGETS})
 
@@ -21,17 +20,18 @@ build: ${BIN_TARGETS}
 ./bin:
 	mkdir $@
 
-
 .PHONY: test
 test: TEST_BUILD_TAGS=unit
-test: tests.xml
+test: run-tests
 
 .PHONY: integration-test
 integration-test: TEST_BUILD_TAGS=integration
-integration-test: tests.xml
+integration-test: run-tests
 
-tests.xml: $(shell find ./pkg ./cmd -type f)
-	gotestsum --junitfile $@ -- -timeout 300s --tags=$(TEST_BUILD_TAGS) ./...
+.PHONY: run-tests
+run-tests:
+	rm -f tests.xml
+	gotestsum --format=standard-verbose --junitfile tests.xml -- -count=1 -timeout 300s --tags=$(TEST_BUILD_TAGS) ./...
 
 .PHONY: clean
 clean:

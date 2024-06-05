@@ -72,18 +72,14 @@ var Staging = types.BacalhauConfig{
 			// Swarm addresses of the IPFS nodes. Find these by running: `env IPFS_PATH=/data/ipfs ipfs id`.
 			SwarmAddresses: []string{
 				"/ip4/34.85.228.65/tcp/4001/p2p/12D3KooWCWSTjjWh7SVoVv24W47z3T1Ly1tgnwZ56CCqCku5e4dS",
-				"/ip4/34.85.228.65/udp/4001/quic/p2p/12D3KooWCWSTjjWh7SVoVv24W47z3T1Ly1tgnwZ56CCqCku5e4dS",
 				"/ip4/34.86.73.105/tcp/4001/p2p/12D3KooWQuhW3LSpvhea25Zed47Z7fD5Cq2nw1xmapQ2tAUJ3q4F",
-				"/ip4/34.86.73.105/udp/4001/quic/p2p/12D3KooWQuhW3LSpvhea25Zed47Z7fD5Cq2nw1xmapQ2tAUJ3q4F",
 				"/ip4/34.150.138.100/tcp/4001/p2p/12D3KooWQm1T8EN8fMBz7rLviHxTGdRnohZ9nDPGbW4bfi78ckVT",
-				"/ip4/34.150.138.100/udp/4001/quic/p2p/12D3KooWQm1T8EN8fMBz7rLviHxTGdRnohZ9nDPGbW4bfi78ckVT",
 				"/ip4/35.245.247.85/tcp/4001/p2p/12D3KooWEztGEJtqtzy7th2d7cTw2iR4CQCPHFUYvj66rhh9Cf7h",
-				"/ip4/35.245.247.85/udp/4001/quic/p2p/12D3KooWEztGEJtqtzy7th2d7cTw2iR4CQCPHFUYvj66rhh9Cf7h",
 			},
 			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0"},
 		},
 		Compute:   StagingComputeConfig,
 		Requester: StagingRequesterConfig,
@@ -189,8 +185,12 @@ var StagingRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(1 * time.Minute),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

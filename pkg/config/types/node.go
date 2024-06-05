@@ -29,6 +29,7 @@ type NodeConfig struct {
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
+	// TODO(forrest) [refactor]: rename this to ExecutorStoragePath
 	ComputeStoragePath string `yaml:"ComputeStoragePath"`
 
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`

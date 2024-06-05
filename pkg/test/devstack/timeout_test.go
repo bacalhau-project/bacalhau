@@ -10,11 +10,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -22,7 +21,6 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -54,7 +52,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(suite.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
 			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
 			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
 			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
@@ -64,11 +62,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 
 		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 			JobDefaults: transformer.JobDefaults{
-				ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
+				TotalTimeout: testCase.requesterDefaultJobExecutionTimeout,
 			},
 			HousekeepingBackgroundTaskInterval: 10 * time.Millisecond,
 			HousekeepingTimeoutBuffer:          500 * time.Millisecond,
-			RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
 		})
 		suite.Require().NoError(err)
 
@@ -110,7 +107,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	clientID, err := config.GetClientID()
+	clientID, err := config.GetClientID(suite.Config.User.KeyPath)
 	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
@@ -153,7 +150,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterDefaultJobExecutionTimeout: 1 * time.Millisecond,
+			requesterDefaultJobExecutionTimeout: 1 * time.Second,
 			nodeCount:                           1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,

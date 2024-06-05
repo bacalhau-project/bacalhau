@@ -43,20 +43,28 @@ type Definition struct {
 
 // BindFlags binds flags from a command to Viper using the provided definitions.
 // This method should be called in command `PreRun`
-func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
+func BindFlags(cmd *cobra.Command, v *viper.Viper, register map[string][]Definition) error {
+	seen := make(map[string]Definition)
 	for _, defs := range register {
 		for _, def := range defs {
+			// sanity check to ensure we are not binding a config key on more than one flag.
+			if dup, ok := seen[def.ConfigPath]; ok {
+				return fmt.Errorf("DEVELOPER ERROR: duplicate regsistration of config key %s for flag %s"+
+					" previously registered on on flag %s", def.ConfigPath, def.FlagName, dup.FlagName)
+			}
+			seen[def.ConfigPath] = def
+
 			// set the default value
-			viper.SetDefault(def.ConfigPath, def.DefaultValue)
+			v.SetDefault(def.ConfigPath, def.DefaultValue)
 
 			// Bind the flag to viper
-			if err := viper.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
+			if err := v.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
 				return err
 			}
 
 			// Bind environment variables to viper
 			if len(def.EnvironmentVariables) > 0 {
-				if err := viper.BindEnv(append([]string{def.ConfigPath}, def.EnvironmentVariables...)...); err != nil {
+				if err := v.BindEnv(append([]string{def.ConfigPath}, def.EnvironmentVariables...)...); err != nil {
 					return err
 				}
 			}
@@ -66,9 +74,9 @@ func BindFlags(cmd *cobra.Command, register map[string][]Definition) error {
 }
 
 // PreRun returns a run hook that binds the passed flag sets onto the command.
-func PreRun(flags map[string][]Definition) func(*cobra.Command, []string) error {
+func PreRun(v *viper.Viper, flags map[string][]Definition) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		err := BindFlags(cmd, flags)
+		err := BindFlags(cmd, v, flags)
 		if err != nil {
 			util.Fatal(cmd, err, 1)
 		}

@@ -66,9 +66,9 @@ var Local = types.BacalhauConfig{
 			PrivateInternal:        true,
 			SwarmAddresses:         []string{},
 			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0"},
+			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0"},
+			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0"},
 		},
 		Compute:   LocalComputeConfig,
 		Requester: LocalRequesterConfig,
@@ -174,8 +174,12 @@ var LocalRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(30 * time.Second),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

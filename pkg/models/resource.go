@@ -273,6 +273,16 @@ func (r *Resources) Sub(other Resources) *Resources {
 	return usage
 }
 
+// Multiply returns the product of the resources
+func (r *Resources) Multiply(factor float64) *Resources {
+	return &Resources{
+		CPU:    r.CPU * factor,
+		Memory: uint64(float64(r.Memory) * factor),
+		Disk:   uint64(float64(r.Disk) * factor),
+		GPU:    uint64(float64(r.GPU) * factor),
+	}
+}
+
 func (r *Resources) LessThan(other Resources) bool {
 	return r.CPU < other.CPU && r.Memory < other.Memory && r.Disk < other.Disk && r.GPU < other.GPU
 }
@@ -307,7 +317,7 @@ func (r *Resources) IsZero() bool {
 func (r *Resources) String() string {
 	mem := humanize.Bytes(r.Memory)
 	disk := humanize.Bytes(r.Disk)
-	return fmt.Sprintf("{CPU: %f, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem, disk, r.GPU)
+	return fmt.Sprintf("{CPU: %g, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem, disk, r.GPU)
 }
 
 // AllocatedResources is the set of resources to be used by an execution, which

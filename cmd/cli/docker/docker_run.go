@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
@@ -16,6 +17,7 @@ import (
 	engine_docker "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -87,15 +89,25 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	}
 
 	dockerRunCmd := &cobra.Command{
-		Use:      "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
-		Short:    "Run a docker job on the network",
-		Long:     runLong,
-		Example:  runExample,
-		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(dockerRunFlags)),
+		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
+		Short:   "Run a docker job on the network",
+		Long:    runLong,
+		Example: runExample,
+		Args:    cobra.MinimumNArgs(1),
+		// bind flags for this command to the config.
+		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), dockerRunFlags)),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return run(cmd, cmdArgs, opts)
+			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
+			cfg, err := util.SetupRepoConfig(cmd)
+			if err != nil {
+				return fmt.Errorf("failed to setup repo: %w", err)
+			}
+			api, err := util.GetAPIClientV2(cmd, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create v2 api client: %w", err)
+			}
+			return run(cmd, cmdArgs, api, opts)
 		},
 	}
 
@@ -120,7 +132,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func run(cmd *cobra.Command, args []string, opts *DockerRunOptions) error {
+func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
 	job, err := build(args, opts)
@@ -137,7 +149,6 @@ func run(cmd *cobra.Command, args []string, opts *DockerRunOptions) error {
 		return nil
 	}
 
-	api := util.GetAPIClientV2(cmd)
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
 		return fmt.Errorf("failed to submit job: %w", err)
