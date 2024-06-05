@@ -5,10 +5,8 @@ package docker_test
 import (
 	"bytes"
 	"context"
-	crand "crypto/rand"
 	"fmt"
 	"io"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -198,88 +196,6 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 	}
 }
 
-func (s *DockerRunSuite) TestRun_SubmitOutputs() {
-	s.T().Skip("outputs are no longer included by default on jobs since a publisher is required to use an output")
-	type (
-		OutputVolumes struct {
-			name string
-			path string
-		}
-	)
-
-	testCids := []struct {
-		outputVolumes []OutputVolumes
-		correctLength int
-		err           string
-	}{
-		{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 1, err: ""},                                                                     // Flag not provided
-		{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs_1"}}, correctLength: 2, err: ""},                                                // Correct output flag
-		{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
-		{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
-		{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volume"},                                      // OV requested but no name (should error)
-	}
-
-	for _, tcids := range testCids {
-		ctx := context.Background()
-		flagsArray := []string{"docker", "run"}
-		ovString := ""
-		for _, ov := range tcids.outputVolumes {
-			if ov.name != "" {
-				ovString = ov.name
-			}
-			if ov.path != "" {
-				ovString += fmt.Sprintf(":%s", ov.path)
-			}
-			if ovString != "" {
-				flagsArray = append(flagsArray, "-o", ovString)
-			}
-		}
-		flagsArray = append(flagsArray, "ubuntu", "echo", "'hello world'")
-
-		_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
-
-		if tcids.err != "" {
-			s.Require().Error(err)
-			s.Require().Contains(string(out), "invalid output volume", "Missed detection of invalid output volume.")
-			return // Go to next in loop
-		}
-		s.Require().NoError(err, "Error submitting job.")
-
-		j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
-
-		s.Require().Equal(tcids.correctLength, len(j.Task().ResultPaths), "Number of job outputs != correct number.")
-
-		// Need to do the below because ordering is not guaranteed
-		for _, tcidOV := range tcids.outputVolumes {
-			testNameinJobOutputs := false
-			testPathinJobOutputs := false
-			for _, jobOutput := range j.Task().ResultPaths {
-				if tcidOV.name == "" {
-					if jobOutput.Name == "outputs" {
-						testNameinJobOutputs = true
-					}
-				} else {
-					if tcidOV.name == jobOutput.Name {
-						testNameinJobOutputs = true
-					}
-				}
-
-				if tcidOV.path == "" {
-					if jobOutput.Path == "/outputs" {
-						testPathinJobOutputs = true
-					}
-				} else {
-					if tcidOV.path == jobOutput.Path {
-						testPathinJobOutputs = true
-					}
-				}
-			}
-			s.Require().True(testNameinJobOutputs, "Test OutputVolume Name not in job output names.")
-			s.Require().True(testPathinJobOutputs, "Test OutputVolume Path not in job output paths.")
-		}
-	}
-}
-
 func (s *DockerRunSuite) TestRun_CreatedAt() {
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
@@ -294,102 +210,6 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 
 	oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
 	s.Require().GreaterOrEqual(j.CreateTime, oldStartTime.UnixNano(), "Created at time is not greater or equal to 2022-01-01.")
-}
-
-func (s *DockerRunSuite) TestRun_Annotations() {
-	/*
-		FOR REVIEW: There are several issues with the migration from v1 job to v2 jobs spec wrt labels/annotations:
-		- The V1 Job Spec contains a field called `Annotations` which is a []string
-		- The V2 Job Spec contains a file called `Labels` which is a map[string]string
-		- The Job store currently only uses the key of the Labels map when creating a bucket to track labels
-		- But when we compare labels of a job with labels on a compute node we use both the key and the value
-
-		- The expectation of a V1 Job spec is that is may only contain "safe" label keys: https://github.com/bacalhau-project/bacalhau/blob/main/cmd/util/parse/parse.go#L19
-		- There isn't currently an expectation on the value of the label map since it's a new field.
-		- The JobStore cannot accept a label with an empty key, or a space.
-		- Previously we removed labels that were invalid. We can't remove just a value from the map that is invalid
-		  since a key with no value will have undefined behaviour.
-
-		- It would appear that migrating from V1 labels to v2 labels is a breaking change as far as the flag is concerned
-		- We need to define new validation rules for the labels when parsed as a map.
-	*/
-
-	s.T().Skip("NEED TO DISCUSS IN PR REVIEW")
-
-	tests := []struct {
-		numberOfJobs int
-	}{
-		{numberOfJobs: 1}, // Test for one
-		// {numberOfJobs: 5}, // Test for five
-	}
-
-	annotationsToTest := []struct {
-		Name          string
-		Annotations   []string
-		CorrectLength int
-		BadCase       bool
-	}{
-		{Name: "1", Annotations: []string{""}, CorrectLength: 0, BadCase: false},                 // Label flag, no value, but correctly quoted
-		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 0, BadCase: false},             // Label flag, no value, but correctly quoted
-		{Name: "2", Annotations: []string{"a"}, CorrectLength: 1, BadCase: false},                // Annotations, string
-		{Name: "3", Annotations: []string{"b", "1"}, CorrectLength: 2, BadCase: false},           // Annotations, string and int
-		{Name: "4", Annotations: []string{`''`, `" "`}, CorrectLength: 0, BadCase: false},        // Annotations, some edge case characters
-		{Name: "5", Annotations: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},     // Emojis
-		{Name: "6", Annotations: []string{"ايطاليا"}, CorrectLength: 0, BadCase: false},          // Right to left
-		{Name: "7", Annotations: []string{"\u202Btest\u202B"}, CorrectLength: 0, BadCase: false}, // Control charactel
-		{Name: "8", Annotations: []string{"사회과학원", "어학연구소"}, CorrectLength: 0, BadCase: false},   // Two-byte characters
-	}
-
-	// allBadStrings := LoadBadStringsAnnotations()
-	// for _, s := range allBadStrings {
-	// 	strippedString := SafeStringStripper(s)
-	// 	l := struct {
-	// 		Annotations        []string
-	// 		CorrectLength int
-	// 		BadCase       bool
-	// 	}{Annotations: []string{s}, CorrectLength: len(strippedString), BadCase: false}
-	// 	AnnotationsToTest = append(AnnotationsToTest, l)
-	// }
-
-	for i, tc := range tests {
-		func() {
-			ctx := context.Background()
-
-			for _, labelTest := range annotationsToTest {
-				var args []string
-
-				args = append(args, "docker", "run")
-				for _, label := range labelTest.Annotations {
-					args = append(args, "-l", label)
-				}
-
-				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
-				args = append(args, "ubuntu", "echo", fmt.Sprintf("'hello world - %s'", randNum.String()))
-
-				_, out, err := s.ExecuteTestCobraCommand(args...)
-				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
-
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
-
-				if labelTest.BadCase {
-					s.Require().Contains(out, "rror")
-				} else {
-					s.Require().NotNil(j, "Failed to get job with ID: %s", out)
-					s.Require().NotContains(out, "rror", "'%s' caused an error", labelTest.Annotations)
-					msg := fmt.Sprintf(`
-Number of Annotations stored not equal to expected length.
-Name: %s
-Expected length: %d
-Actual length: %d
-
-Expected Annotations: %+v
-Actual Annotations: %+v
-`, labelTest.Name, len(labelTest.Annotations), len(j.Labels), labelTest.Annotations, j.Labels)
-					s.Require().Equal(labelTest.CorrectLength, len(j.Labels), msg)
-				}
-			}
-		}()
-	}
 }
 
 func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
