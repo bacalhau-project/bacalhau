@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/benbjohnson/clock"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/benbjohnson/clock"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -161,6 +162,10 @@ func (h *Housekeeping) fetchActiveExecutions(ctx context.Context) []*models.Exec
 		if job.IsLongRunning() {
 			continue
 		}
+
+		if h.timeoutJob(ctx, job) {
+			continue
+		}
 		executions, err := h.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 			JobID: job.ID,
 		})
@@ -181,6 +186,20 @@ func (h *Housekeeping) fetchActiveExecutions(ctx context.Context) []*models.Exec
 	return activeExecutions
 }
 
+// timeoutJob checks for executions that have been in progress beyond the timeout period
+// and enqueue an evaluation for them. It is the responsibility of the scheduler to fail the executions
+// returns true if the job was timed out, false otherwise
+func (h *Housekeeping) timeoutJob(ctx context.Context, job *models.Job) bool {
+	timeoutWithBuffer := job.Task().Timeouts.GetTotalTimeout() + h.timeoutBuffer
+	expirationTime := h.clock.Now().Add(-timeoutWithBuffer)
+	if job.IsExpired(expirationTime) {
+		h.enqueueTimeoutTask(ctx, job, models.EvalTriggerJobTimeout,
+			fmt.Sprintf("job %s timed out", job.ID))
+		return true
+	}
+	return false
+}
+
 // timeoutExecutions checks for executions that have been in progress beyond the timeout period
 // and enqueue an evaluation for them. It is the responsibility of the scheduler to fail the executions
 func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions []*models.Execution) {
@@ -191,42 +210,38 @@ func (h *Housekeeping) timeoutExecutions(ctx context.Context, activeExecutions [
 			continue
 		}
 
-		timeoutWithBuffer := execution.Job.Task().Timeouts.GetExecutionTimeout() + h.timeoutBuffer
+		executionTimeout := execution.Job.Task().Timeouts.GetExecutionTimeout()
+		if executionTimeout <= 0 {
+			continue
+		}
+
+		timeoutWithBuffer := executionTimeout + h.timeoutBuffer
 		expirationTime := h.clock.Now().Add(-timeoutWithBuffer)
 		if execution.IsExpired(expirationTime) {
-			// acquire semaphore to limit the number of concurrent housekeeping tasks
-			h.workersSem <- struct{}{}
-			h.waitGroup.Add(1)
 			alreadyEvaluatedJobs[execution.JobID] = struct{}{}
-
-			go func(execution *models.Execution) {
-				defer h.waitGroup.Done()
-				defer func() { <-h.workersSem }() // release semaphore
-				if err := h.handleTimeoutExecutions(ctx, execution); err != nil {
-					log.Ctx(ctx).Err(err).Msgf("failed to handle timeout for execution %s", execution.ID)
-				}
-			}(execution)
+			h.enqueueTimeoutTask(ctx, execution.Job, models.EvalTriggerExecTimeout,
+				fmt.Sprintf("execution %s timed out", execution.ID))
 		}
 	}
 }
 
-// handleTimeoutExecutions handles the timeout of an execution
-// TODO: atomic creation and enqueue of evaluations #3972
-func (h *Housekeeping) handleTimeoutExecutions(ctx context.Context, execution *models.Execution) error {
-	// enqueue evaluation to trigger the scheduler to communicate the cancellation to the compute
-	// node, and schedule a new execution if applicable
-	eval := models.NewEvaluation().
-		WithJobID(execution.JobID).
-		WithTriggeredBy(models.EvalTriggerExecTimeout).
-		WithType(execution.Job.Type).
-		WithComment(fmt.Sprintf("execution %s timed out", execution.ID)).
-		Normalize()
+func (h *Housekeeping) enqueueTimeoutTask(ctx context.Context, job *models.Job, trigger, comment string) {
+	h.workersSem <- struct{}{}
+	h.waitGroup.Add(1)
 
-	err := h.jobStore.CreateEvaluation(ctx, *eval)
-	if err != nil {
-		return fmt.Errorf("failed to create evaluation %+v: %w", eval, err)
-	}
+	go func() {
+		defer h.waitGroup.Done()
+		defer func() { <-h.workersSem }()
+		eval := models.NewEvaluation().
+			WithJob(job).
+			WithTriggeredBy(trigger).
+			WithComment(comment).
+			Normalize()
 
-	log.Ctx(ctx).Debug().Msgf("enqueued evaluation for timed-out execution %+v", eval)
-	return nil
+		if err := h.jobStore.CreateEvaluation(ctx, *eval); err != nil {
+			log.Ctx(ctx).Err(err).Msgf("failed to create evaluation %+v", eval)
+		} else {
+			log.Ctx(ctx).Debug().Msgf("enqueued evaluation for timed-out job/execution %+v", eval)
+		}
+	}()
 }

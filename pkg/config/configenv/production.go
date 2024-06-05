@@ -191,7 +191,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 		NodeOverSubscriptionFactor: 1.5,
 	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

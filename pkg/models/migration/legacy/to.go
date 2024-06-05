@@ -93,7 +93,7 @@ func ToLegacyJobSpec(job *models.Job) (*model.Spec, error) {
 			GPU:    job.Task().ResourcesConfig.GPU,
 		},
 		Network:       networkConfig,
-		Timeout:       job.Task().Timeouts.ExecutionTimeout,
+		Timeout:       job.Task().Timeouts.TotalTimeout,
 		Inputs:        inputs,
 		Outputs:       outputs,
 		Annotations:   annotations,
@@ -210,7 +210,7 @@ func ToLegacyJobStatus(job models.Job, executions []models.Execution) (*model.Jo
 		Version:    int(job.Revision),
 		CreateTime: time.Unix(0, job.CreateTime),
 		UpdateTime: time.Unix(0, job.ModifyTime),
-		TimeoutAt:  time.Unix(job.Task().Timeouts.ExecutionTimeout, job.CreateTime),
+		TimeoutAt:  time.Unix(job.Task().Timeouts.TotalTimeout, job.CreateTime),
 	}, nil
 }
 

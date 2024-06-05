@@ -183,7 +183,7 @@ var TestingRequesterConfig = types.RequesterConfig{
 		NodeOverSubscriptionFactor: 1.5,
 	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Second),
+		TotalTimeout: types.Duration(30 * time.Second),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

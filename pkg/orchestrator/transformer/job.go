@@ -17,6 +17,7 @@ func IDGenerator(_ context.Context, job *models.Job) error {
 }
 
 type JobDefaults struct {
+	TotalTimeout     time.Duration
 	ExecutionTimeout time.Duration
 	QueueTimeout     time.Duration
 }
@@ -27,7 +28,10 @@ func DefaultsApplier(defaults JobDefaults) JobTransformer {
 		for _, task := range job.Tasks {
 			// only apply default execution timeout to non-long running jobs
 			if !job.IsLongRunning() {
-				if task.Timeouts.GetExecutionTimeout() <= 0 {
+				if task.Timeouts.TotalTimeout <= 0 {
+					task.Timeouts.TotalTimeout = int64(defaults.TotalTimeout.Seconds())
+				}
+				if task.Timeouts.ExecutionTimeout <= 0 {
 					task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
 				}
 			}

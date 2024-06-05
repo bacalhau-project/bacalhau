@@ -228,13 +228,13 @@ func NewRequesterNode(
 	}
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         nodeID,
-		EventEmitter:               eventEmitter,
-		ComputeEndpoint:            computeProxy,
-		Store:                      jobStore,
-		StorageProviders:           storageProvider,
-		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
-		DefaultPublisher:           requesterConfig.DefaultPublisher,
+		ID:                nodeID,
+		EventEmitter:      eventEmitter,
+		ComputeEndpoint:   computeProxy,
+		Store:             jobStore,
+		StorageProviders:  storageProvider,
+		DefaultJobTimeout: requesterConfig.JobDefaults.TotalTimeout,
+		DefaultPublisher:  requesterConfig.DefaultPublisher,
 	})
 
 	var translationProvider translation.TranslatorProvider
