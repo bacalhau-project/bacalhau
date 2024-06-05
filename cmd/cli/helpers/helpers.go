@@ -46,7 +46,7 @@ func BuildJobFromFlags(
 			Type:    taskSettings.Network.Network,
 			Domains: taskSettings.Network.Domains,
 		}).
-		Timeouts(&models.TimeoutConfig{ExecutionTimeout: taskSettings.Timeout}).
+		Timeouts(&models.TimeoutConfig{TotalTimeout: taskSettings.Timeout}).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
@@ -49,6 +50,8 @@ var (
 )
 
 func TestJobFlagParsing(t *testing.T) {
+	repoPath := t.TempDir()
+	viper.Set("repo", repoPath)
 	tests := []struct {
 		name          string
 		flags         []string
@@ -332,41 +335,6 @@ func TestJobFlagParsing(t *testing.T) {
 			},
 			expectedError: false,
 		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			cmd := NewCmd()
-			output, err := ExecuteDryRun(cmd, test.flags...)
-			if test.expectedError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.NotEmpty(t, output)
-
-				// NB(forrest): because https://github.com/spf13/cobra/issues/1708
-				// deprecation warnings are printed to stdout instead of stderr
-				if strings.Contains(output, "has been deprecated") {
-					lines := strings.Split(output, "\n")
-					require.NotEmpty(t, lines)
-					output = strings.Join(lines[1:], "\n")
-				}
-				actual := new(models.Job)
-				err = yaml.Unmarshal([]byte(output), actual)
-				require.NoError(t, err)
-
-				test.assertJob(t, actual)
-			}
-		})
-	}
-}
-
-func TestTaskFlagParsing(t *testing.T) {
-	tests := []struct {
-		name          string
-		flags         []string
-		assertJob     func(t *testing.T, j *models.Job)
-		expectedError bool
-	}{
 		{
 			name:  "with task-name",
 			flags: []string{"--task-name=TASKNAME", "image:tag"},
@@ -475,7 +443,7 @@ func TestTaskFlagParsing(t *testing.T) {
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.EqualValues(t, 300, task.Timeouts.ExecutionTimeout)
+				assert.EqualValues(t, 300, task.Timeouts.TotalTimeout)
 			},
 			expectedError: false,
 		},
