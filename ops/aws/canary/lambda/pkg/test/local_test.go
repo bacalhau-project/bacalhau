@@ -65,7 +65,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	for name := range router.TestcasesMap {
 		t.Run(name, func(t *testing.T) {
 			event := models.Event{Action: name}
-			err := router.Route(context.Background(), event, router.WithConfig(c))
+			err := router.RouteWithOpts(context.Background(), event, router.WithConfig(c))
 			require.NoError(t, err)
 		})
 	}
