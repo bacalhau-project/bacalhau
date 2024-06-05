@@ -116,6 +116,34 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
 }
 
+func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_TotalTimeout() {
+	scenario := NewScenario(
+		WithJobType(models.JobTypeOps),
+		WithTotalTimeout(60*time.Minute),
+		WithExecution("node0", models.ExecutionStateBidAccepted),
+		WithExecution("node1", models.ExecutionStateBidAccepted),
+		WithExecution("node2", models.ExecutionStateCompleted),
+	)
+
+	// Set the CreateTime to exceed timeout
+	scenario.job.CreateTime = s.clock.Now().Add(-90 * time.Minute).UnixNano()
+	s.mockJobStore(scenario)
+
+	// mock active executions' nodes to be healthy
+	s.mockAllNodes("node0", "node1")
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeFailed,
+		StoppedExecutions: []string{
+			scenario.executions[0].ID,
+			scenario.executions[1].ID,
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
 func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalExecutionsAsStopped() {
 	scenario := NewScenario(
 		WithJobType(models.JobTypeOps),

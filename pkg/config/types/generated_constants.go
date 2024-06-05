@@ -96,6 +96,7 @@ const NodeComputeControlPlaneSettingsHeartbeatFrequency = "Node.Compute.ControlP
 const NodeComputeControlPlaneSettingsHeartbeatTopic = "Node.Compute.ControlPlaneSettings.HeartbeatTopic"
 const NodeRequester = "Node.Requester"
 const NodeRequesterJobDefaults = "Node.Requester.JobDefaults"
+const NodeRequesterJobDefaultsTotalTimeout = "Node.Requester.JobDefaults.TotalTimeout"
 const NodeRequesterJobDefaultsExecutionTimeout = "Node.Requester.JobDefaults.ExecutionTimeout"
 const NodeRequesterJobDefaultsQueueTimeout = "Node.Requester.JobDefaults.QueueTimeout"
 const NodeRequesterExternalVerifierHook = "Node.Requester.ExternalVerifierHook"

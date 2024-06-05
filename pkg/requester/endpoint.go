@@ -22,14 +22,14 @@ import (
 )
 
 type BaseEndpointParams struct {
-	ID                         string
-	Store                      jobstore.Store
-	EventEmitter               orchestrator.EventEmitter
-	ComputeEndpoint            compute.Endpoint
-	StorageProviders           storage.StorageProvider
-	MinJobExecutionTimeout     time.Duration
-	DefaultJobExecutionTimeout time.Duration
-	DefaultPublisher           string
+	ID                     string
+	Store                  jobstore.Store
+	EventEmitter           orchestrator.EventEmitter
+	ComputeEndpoint        compute.Endpoint
+	StorageProviders       storage.StorageProvider
+	MinJobExecutionTimeout time.Duration
+	DefaultJobTimeout      time.Duration
+	DefaultPublisher       string
 }
 
 // BaseEndpoint base implementation of requester Endpoint
@@ -44,7 +44,7 @@ type BaseEndpoint struct {
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
-		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
+		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobTimeout),
 		jobtransform.NewRequesterInfo(params.ID),
 		jobtransform.NewPublisherMigrator(params.DefaultPublisher),
 		jobtransform.NewEngineMigrator(),

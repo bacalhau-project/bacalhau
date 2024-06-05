@@ -44,7 +44,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ExecutionTimeout: model.NoJobTimeout,
+		TotalTimeout: model.NoJobTimeout,
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
@@ -82,7 +82,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 var TestRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ExecutionTimeout: 30 * time.Second,
+		TotalTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          100 * time.Millisecond,

@@ -89,6 +89,7 @@ func GetRequesterConfig(ctx context.Context, cfg types.RequesterConfig, createJo
 
 	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		JobDefaults: transformer.JobDefaults{
+			TotalTimeout:     time.Duration(cfg.JobDefaults.TotalTimeout),
 			ExecutionTimeout: time.Duration(cfg.JobDefaults.ExecutionTimeout),
 			QueueTimeout:     time.Duration(cfg.JobDefaults.QueueTimeout),
 		},
