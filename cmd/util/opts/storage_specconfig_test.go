@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/stretchr/testify/assert"
@@ -207,7 +206,7 @@ func TestParseMultipleStorageInputSources(t *testing.T) {
 	require.NoError(t, opt.Set("ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA"))
 	require.NoError(t, opt.Set("s3://myBucket/dir/file-001.txt"))
 	assert.Equal(t, 2, len(opt.Values()))
-	assert.Equal(t, model.StorageSourceIPFS, opt.Values()[0].Source.Type)
-	assert.Equal(t, model.StorageSourceS3, opt.Values()[1].Source.Type)
+	assert.Equal(t, models.StorageSourceIPFS, opt.Values()[0].Source.Type)
+	assert.Equal(t, models.StorageSourceS3, opt.Values()[1].Source.Type)
 	assert.Equal(t, 2, len(strings.Split(opt.String(), ",")))
 }
