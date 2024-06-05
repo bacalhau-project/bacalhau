@@ -33,14 +33,14 @@ func BuildJobFromFlags(
 	t, err := models.NewTaskBuilder().
 		Name(taskSettings.Name).
 		Engine(engineSpec).
-		Publisher(taskSettings.Publisher).
+		Publisher(taskSettings.Publisher.Value()).
 		ResourcesConfig(&models.ResourcesConfig{
 			CPU:    taskSettings.Resources.CPU,
 			Memory: taskSettings.Resources.Memory,
 			Disk:   taskSettings.Resources.Disk,
 			GPU:    taskSettings.Resources.GPU,
 		}).
-		InputSources(taskSettings.InputSources...).
+		InputSources(taskSettings.InputSources.Values()...).
 		ResultPaths(taskSettings.ResultPaths...).
 		Network(&models.NetworkConfig{
 			Type:    taskSettings.Network.Network,

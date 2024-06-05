@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -39,10 +40,10 @@ Examples:
 
 type TaskSettings struct {
 	Name                 string
-	InputSources         []*models.InputSource
+	InputSources         opts.StorageSpecConfigOpt
 	ResultPaths          []*models.ResultPath
 	EnvironmentVariables map[string]string
-	Publisher            *models.SpecConfig
+	Publisher            opts.PublisherSpecConfigOpt
 	Resources            ResourceSettings
 	Network              NetworkSettings
 	Timeout              int64
@@ -63,10 +64,10 @@ type NetworkSettings struct {
 func DefaultTaskSettings() *TaskSettings {
 	return &TaskSettings{
 		Name:                 "main",
-		InputSources:         []*models.InputSource{},
+		InputSources:         opts.StorageSpecConfigOpt{},
 		ResultPaths:          []*models.ResultPath{},
 		EnvironmentVariables: make(map[string]string),
-		Publisher:            &models.SpecConfig{},
+		Publisher:            opts.NewPublisherSpecConfigOpt(),
 		Resources: ResourceSettings{
 			CPU:    "",
 			Memory: "",
@@ -85,9 +86,9 @@ func RegisterTaskFlags(cmd *cobra.Command, s *TaskSettings) {
 	fs := pflag.NewFlagSet("task", pflag.ContinueOnError)
 
 	fs.StringVar(&s.Name, "task-name", s.Name, NameUsageMsg)
-	fs.VarP(flags.InputSourceFlag(&s.InputSources), "input", "i", PublisherInputUsageMsg)
+	fs.VarP(&s.InputSources, "input", "i", PublisherInputUsageMsg)
 	fs.VarP(flags.ResultPathFlag(&s.ResultPaths), "output", "o", ResultPathUsageMsg)
-	fs.VarP(flags.PublisherSpecFlag(&s.Publisher), "publisher", "p", PublisherUsageMsg)
+	fs.VarP(&s.Publisher, "publisher", "p", PublisherUsageMsg)
 	fs.StringVar(&s.Resources.CPU, "cpu", s.Resources.CPU, ResourceCPUUsageMsg)
 	fs.StringVar(&s.Resources.Memory, "memory", s.Resources.Memory, ResourceMemoryUsageMsg)
 	fs.StringVar(&s.Resources.Disk, "disk", s.Resources.Disk, ResourceDiskUsageMsg)

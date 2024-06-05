@@ -1,6 +1,9 @@
 package cliflags
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,11 +17,11 @@ import (
 type JobSettings struct {
 	name        string
 	namespace   string
-	jobType     string
+	jobType     model.TargetingMode
 	priority    int
 	count       int
 	constraints string
-	labels      map[string]string
+	labels      []string
 
 	// TODO(forrest): remove these fields and their usage when we complete deprecation of legacy flag names.
 	// tracked via https://github.com/bacalhau-project/bacalhau/issues/3838
@@ -36,14 +39,14 @@ func (j *JobSettings) Namespace() string {
 }
 
 func (j *JobSettings) Type() string {
-	if j.cmd.Flags().Changed("target") {
-		jobType := models.JobTypeBatch
-		if j.legacy.targetingMode == model.TargetAll {
-			jobType = models.JobTypeOps
-		}
-		return jobType
+	switch j.jobType {
+	case model.TargetAll:
+		return models.JobTypeOps
+	case model.TargetAny:
+		return models.JobTypeBatch
+	default:
+		panic("unreachable")
 	}
-	return j.jobType
 }
 
 func (j *JobSettings) Priority() int {
@@ -76,18 +79,30 @@ func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) 
 // TODO(forrest): based on a conversation with walid we should be returning an error here if at anypoint if a label
 // if provided that is invalid. We cannont remove them as we did previously.
 func (j *JobSettings) Labels() (map[string]string, error) {
+	parsedLabels := make(map[string]string)
 	rawLabels := j.labels
-	s := labels.Set(rawLabels)
+
+	for _, label := range rawLabels {
+		if strings.Contains(label, "=") {
+			parts := strings.SplitN(label, "=", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid label format: %s", parts)
+			}
+			parsedLabels[parts[0]] = parts[1]
+		} else {
+			parsedLabels[label] = ""
+		}
+	}
+
+	s := labels.Set(parsedLabels)
 	if _, err := s.AsValidatedSelector(); err != nil {
 		return nil, err
 	}
 
-	return rawLabels, nil
+	return s, nil
 }
 
 type LegacyJobFlags struct {
-	// Deprecated: use `JobSettings.jobType`
-	targetingMode model.TargetingMode
 	// Deprecated: use 'JobSettings.constraints'
 	selectors string
 	//Deprecated: use `JobSettings.count`
@@ -98,16 +113,15 @@ func DefaultJobSettings() *JobSettings {
 	return &JobSettings{
 		name:        "",
 		namespace:   models.DefaultNamespace,
-		jobType:     models.JobTypeBatch,
+		jobType:     model.TargetAny,
 		priority:    0,
 		count:       1,
 		constraints: "",
-		labels:      make(map[string]string),
+		labels:      make([]string, 0),
 
 		legacy: &LegacyJobFlags{
-			targetingMode: model.TargetAny,
-			selectors:     "",
-			concurrency:   1,
+			selectors:   "",
+			concurrency: 1,
 		},
 	}
 }
@@ -122,7 +136,7 @@ func RegisterJobFlags(cmd *cobra.Command, s *JobSettings) {
 
 	fs.IntVar(&s.priority, "priority", s.priority, `The priority of the job.`)
 
-	fs.StringToStringVarP(&s.labels, "labels", "l", s.labels,
+	fs.StringSliceVarP(&s.labels, "labels", "l", s.labels,
 		`List of labels for the job. Enter multiple in the format '-labels env=prod -label region=earth'.
 Valid label keys must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character.
 Valid label values must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end 
@@ -138,27 +152,12 @@ with an alphanumeric character.`)
 	fs.IntVar(&s.legacy.concurrency, "concurrency", s.legacy.concurrency,
 		`How many nodes should run the job`)
 
-	if err := fs.MarkHidden("concurrency"); err != nil {
-		panic(err)
-	}
 	if err := fs.MarkDeprecated("concurrency", "use --count"); err != nil {
 		panic(err)
 	}
 
-	// NB(forrest): the `type` flag is replacing `targeting`. Hide the `targeting` flag and add deprecation notice.
-	fs.StringVar(&s.jobType, "type", s.jobType,
-		`The type of the job (batch, ops, system, or daemon).`)
-
-	// deprecated
-	fs.Var(flags.TargetingFlag(&s.legacy.targetingMode), "target",
+	fs.Var(flags.TargetingFlag(&s.jobType), "target",
 		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all").`)
-
-	if err := fs.MarkHidden("target"); err != nil {
-		panic(err)
-	}
-	if err := fs.MarkDeprecated("target", "use --type"); err != nil {
-		panic(err)
-	}
 
 	// NB(forrest): the `constraints` flag is replacing `selector` flag. Hide the `selector` flag and add deprecation notice.
 	fs.StringVarP(&s.constraints, "constraints", "c", s.constraints,
@@ -172,9 +171,6 @@ Matching objects must satisfy all of the specified label constraints.`)
 Supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). 
 Matching objects must satisfy all of the specified label constraints.`)
 
-	if err := fs.MarkHidden("selector"); err != nil {
-		panic(err)
-	}
 	if err := fs.MarkDeprecated("selector", "use --constraints"); err != nil {
 		panic(err)
 	}
@@ -183,9 +179,4 @@ Matching objects must satisfy all of the specified label constraints.`)
 	// NB(forrest): don't allow the legacy flag name to be used together with the new flag name.
 	cmd.MarkFlagsMutuallyExclusive("count", "concurrency")
 	cmd.MarkFlagsMutuallyExclusive("selector", "constraints")
-	cmd.MarkFlagsMutuallyExclusive("target", "type")
-	//NB(forrest): we require the name with the type.
-	// TODO (forrest): FOR REVIEW this ais a question for PRODUCT cc Aronchick
-	// - do we want to support type? do we want a dtype flag for each kind of job? --type-ops, --type-daemon, etc?
-	//cmd.MarkFlagsRequiredTogether("type", "name")
 }
