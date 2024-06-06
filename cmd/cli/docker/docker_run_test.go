@@ -68,21 +68,19 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 }
 
 func (s *DockerRunSuite) TestRun_DryRun() {
-	s.T().Skip("The update checker occationally returns a result for this test causing yaml marshalling to fail")
 	randomUUID := uuid.New()
 	entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
-	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
+	stdout, _, err := s.Execute("docker", "run",
 		"ubuntu",
 		entrypointCommand,
 		"--dry-run",
 	)
 	s.Require().NoError(err, "Error submitting job.")
 
-	s.Require().NoError(err)
-	s.Require().Contains(out, randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
+	s.Require().Contains(stdout, randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 	var j *models.Job
-	s.Require().NoError(yaml.Unmarshal([]byte(out), &j))
+	s.Require().NoError(yaml.Unmarshal([]byte(stdout), &j))
 	s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
 
 	dockerSpec, err := dockermodels.DecodeSpec(j.Task().Engine)

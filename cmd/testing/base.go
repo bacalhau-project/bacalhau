@@ -79,6 +79,37 @@ func (s *BaseSuite) TearDownTest() {
 	}
 }
 
+// Execute executes a cobra command with the given arguments. The api-host and api-port
+// flags are automatically added if they are not provided in `args`. They are set to the values of
+// `s.Host` and `s.Port` respectively. The stdout and stderr of the command are returned as well as
+// any error that occurred while executing the command.
+func (s *BaseSuite) Execute(args ...string) (stdout string, stderr string, err error) {
+	stdoutBuf := new(bytes.Buffer)
+	stderrBuf := new(bytes.Buffer)
+	root := cli.NewRootCmd()
+	root.SetOut(stdoutBuf)
+	root.SetErr(stderrBuf)
+
+	arguments := []string{}
+	if !slices.Contains(args, "--api-host") {
+		arguments = append(arguments, "--api-host", s.Host)
+	}
+
+	if !slices.Contains(args, "--api-port") {
+		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
+	}
+	arguments = append(arguments, args...)
+	root.SetArgs(arguments)
+
+	s.T().Logf("Command to execute: %v", arguments)
+
+	_, err = root.ExecuteC()
+	if err != nil {
+		return "", "", err
+	}
+	return stdoutBuf.String(), stderrBuf.String(), nil
+}
+
 // ExecuteTestCobraCommand executes a cobra command with the given arguments. The api-host and api-port
 // flags are automatically added if they are not provided in `args`. They are set to the values of
 // `s.Host` and `s.Port` respectively.
