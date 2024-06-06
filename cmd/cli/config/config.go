@@ -16,5 +16,6 @@ func NewCmd() *cobra.Command {
 	configCmd.AddCommand(newListCmd())
 	configCmd.AddCommand(newSetCmd())
 	configCmd.AddCommand(newAutoResourceCmd())
+	configCmd.AddCommand(newDefaultCmd())
 	return configCmd
 }
