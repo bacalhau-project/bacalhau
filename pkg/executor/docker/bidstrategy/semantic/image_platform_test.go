@@ -22,7 +22,9 @@ import (
 
 func jobForDockerImage(t testing.TB, imageID string) models.Job {
 	job := mock.Job()
-	job.Task().Engine = dockermodels.NewDockerEngineBuilder(imageID).Build()
+	var err error
+	job.Task().Engine, err = dockermodels.NewDockerEngineBuilder(imageID).Build()
+	require.NoError(t, err)
 	return *job
 }
 

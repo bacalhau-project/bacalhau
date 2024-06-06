@@ -5,17 +5,19 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
+	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
 // A Parser is a function that can convert a string into a native object.
@@ -201,7 +203,7 @@ func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mod
 }
 
 func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
-	u, err := urldownload.IsURLSupported(inputURL)
+	u, err := storage_url.IsURLSupported(inputURL)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -413,4 +415,35 @@ func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
 	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
 
 	return flags
+}
+
+func ResultPathFlag(value *[]*models.ResultPath) *ArrayValueFlag[*models.ResultPath] {
+	return &ArrayValueFlag[*models.ResultPath]{
+		value:  value,
+		parser: parseResultPath,
+		stringer: func(r **models.ResultPath) string {
+			return fmt.Sprintf("%+v", r)
+		},
+		typeStr: "ResultPath",
+	}
+}
+
+func parseResultPath(value string) (*models.ResultPath, error) {
+	tokens := strings.Split(value, ":")
+	if len(tokens) != 2 || tokens[0] == "" || tokens[1] == "" {
+		return nil, fmt.Errorf("invalid output volume: %s", value)
+	}
+	return &models.ResultPath{
+		Name: tokens[0],
+		Path: tokens[1],
+	}, nil
+}
+
+func NetworkV2Flag(value *models.Network) *ValueFlag[models.Network] {
+	return &ValueFlag[models.Network]{
+		value:    value,
+		parser:   models.ParseNetwork,
+		stringer: func(n *models.Network) string { return n.String() },
+		typeStr:  "network-type",
+	}
 }

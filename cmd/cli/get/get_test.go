@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -125,6 +126,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
+	s.T().Skip("--download not supported in v2")
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -146,6 +148,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // this tests that when we do docker run with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
+	s.T().Skip("--download not supported in v2")
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
@@ -166,6 +169,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
+	s.T().Skip("--download not supported in v2")
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(s.T(), err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
@@ -278,6 +282,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"-o outputs:/outputs",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 
