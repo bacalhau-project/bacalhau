@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package storage_test
 
@@ -14,25 +14,21 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
-	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type ParallelStorageSuite struct {
 	suite.Suite
-
-	ctx         context.Context
-	cm          *system.CleanupManager
-	ipfsEnabled bool
-	cid         string
-	provider    provider.Provider[storage.Storage]
+	cfg      types.BacalhauConfig
+	provider provider.Provider[storage.Storage]
 }
 
 func TestParallelStorageSuite(t *testing.T) {
@@ -40,10 +36,8 @@ func TestParallelStorageSuite(t *testing.T) {
 }
 
 func (s *ParallelStorageSuite) SetupSuite() {
-	s.ctx = context.Background()
 	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-
-	s.ipfsEnabled = testutils.IsIPFSEnabled(cfg.Node.IPFS.Connect)
+	s.cfg = cfg
 
 	var err error
 	s.provider, err = executor_util.NewStandardStorageProvider(
@@ -56,20 +50,25 @@ func (s *ParallelStorageSuite) SetupSuite() {
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
-	if !s.ipfsEnabled {
-		s.T().Skip("IPFS connect not configured")
-	}
+	testutils.MustHaveIPFS(s.T(), s.cfg.Node.IPFS.Connect)
+
+	ctx := context.Background()
+	client, err := ipfs.NewClient(ctx, s.cfg.Node.IPFS.Connect)
+	require.NoError(s.T(), err)
+
+	cid, err := client.Put(ctx, "../../testdata/grep_file.txt")
+	require.NoError(s.T(), err)
 
 	artifact := &models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceIPFS,
 			Params: map[string]interface{}{
-				"CID": s.cid,
+				"CID": cid,
 			},
 		},
 		Target: "/inputs/test.txt",
 	}
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
+	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
@@ -79,7 +78,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 	}
 
 	// Cleanup the directory and make sure there are no longer any assets left
-	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	err = storage.ParallelCleanStorage(ctx, s.provider, volumes)
 	s.Require().NoError(err)
 
 	for _, v := range volumes {
@@ -88,6 +87,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 }
 
 func (s *ParallelStorageSuite) TestURLCleanup() {
+	ctx := context.Background()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		_, err := w.Write([]byte("hello world"))
@@ -105,7 +105,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		Target: "/inputs/test.txt",
 	}
 
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, s.T().TempDir(), artifact)
+	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
@@ -114,7 +114,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		s.Require().FileExists(v.Volume.Source)
 	}
 
-	err = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
+	err = storage.ParallelCleanStorage(ctx, s.provider, volumes)
 	s.Require().NoError(err)
 
 	for _, v := range volumes {
