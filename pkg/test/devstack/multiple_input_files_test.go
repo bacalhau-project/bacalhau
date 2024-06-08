@@ -23,7 +23,7 @@ type MultipleInputFilesSuite struct {
 	scenario.ScenarioRunner
 }
 
-func TestMultipleCIDSuite(t *testing.T) {
+func TestMultipleInputFilesSuite(t *testing.T) {
 	suite.Run(t, new(MultipleInputFilesSuite))
 }
 
