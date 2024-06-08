@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
@@ -180,45 +181,52 @@ func SeparatorParser(sep string) KeyValueParser[string, string] {
 	}
 }
 
-func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
+func parseIPFSStorageSpec(input string) (*models.InputSource, error) {
 	cid, path, err := SeparatorParser(":")(input)
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-		Path:          path,
-	}, err
+	if err != nil {
+		return nil, err
+	}
+	ipfsSpec, err := storage_ipfs.NewSpecConfig(cid)
+	if err != nil {
+		return nil, err
+	}
+	return &models.InputSource{
+		Source: ipfsSpec,
+		Alias:  fmt.Sprintf("ipfs://%s", cid),
+		Target: path,
+	}, nil
 }
 
-func storageSpecToIPFSMount(input *model.StorageSpec) string {
-	return fmt.Sprintf("%s:%s", input.CID, input.Path)
-}
-
-func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
+func NewIPFSStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*models.InputSource] {
+	return &ArrayValueFlag[*models.InputSource]{
 		value:    value,
 		parser:   parseIPFSStorageSpec,
-		stringer: storageSpecToIPFSMount,
+		stringer: func(s **models.InputSource) string { return (*s).Source.Type },
 		typeStr:  "cid:path",
 	}
 }
 
-func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
+func parseURLStorageSpec(inputURL string) (*models.InputSource, error) {
 	u, err := storage_url.IsURLSupported(inputURL)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return nil, err
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           u.String(),
-		Path:          "/inputs",
+	urlSpec, err := storage_url.NewSpecConfig(u.String())
+	if err != nil {
+		return nil, err
+	}
+	return &models.InputSource{
+		Source: urlSpec,
+		Alias:  u.String(),
+		Target: "/inputs",
 	}, nil
 }
 
-func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
+func NewURLStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*models.InputSource] {
+	return &ArrayValueFlag[*models.InputSource]{
 		value:    value,
 		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
+		stringer: func(s **models.InputSource) string { return (*s).Source.Type },
 		typeStr:  "url",
 	}
 }
