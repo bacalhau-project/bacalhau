@@ -274,8 +274,8 @@ commands:
           command: |
             wget https://dist.ipfs.tech/kubo/v0.28.0/kubo_v0.28.0_linux-amd64.tar.gz
             tar -xzf kubo_v0.28.0_linux-amd64.tar.gz
-            cd kubo
-            sudo bash install.sh
+            sudo mv kubo/ipfs /usr/local/bin/ipfs
+            sudo chmod +x /usr/local/bin/ipfs
             ipfs --version
       - run:
           name: Initialize IPFS
