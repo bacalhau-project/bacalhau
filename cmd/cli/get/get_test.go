@@ -123,6 +123,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
+	s.T().Skip("--download not supported in v2")
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -144,6 +145,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // this tests that when we do docker run with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
+	s.T().Skip("--download not supported in v2")
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
@@ -164,6 +166,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
+	s.T().Skip("--download not supported in v2")
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -269,6 +272,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"-o outputs:/outputs",
 		"--publisher", "local",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)

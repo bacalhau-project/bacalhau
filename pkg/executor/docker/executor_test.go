@@ -108,9 +108,11 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 }
 
 func (s *ExecutorTestSuite) curlTask() *models.SpecConfig {
-	return dockermodels.NewDockerEngineBuilder(CurlDockerImage).
+	es, err := dockermodels.NewDockerEngineBuilder(CurlDockerImage).
 		WithEntrypoint("curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()).
 		Build()
+	s.Require().NoError(err)
+	return es
 }
 
 func (s *ExecutorTestSuite) runJob(spec *models.Task, executionID string) (*models.RunCommandResult, error) {
@@ -212,10 +214,12 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
+		WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
+		Build()
+	s.Require().NoError(err)
 	task := mock.TaskBuilder().
-		Engine(dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
-			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
-			Build()).
+		Engine(es).
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
@@ -254,11 +258,12 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	}
 
 	for _, p := range tests {
+		es, err := dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
+			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
+			Build()
+		s.Require().NoError(err)
 		task := mock.TaskBuilder().
-			Engine(
-				dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
-					WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
-					Build()).
+			Engine(es).
 			ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(p.in).BuildOrDie()).
 			BuildOrDie()
 
@@ -375,14 +380,17 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
+	es, err := dockermodels.NewDockerEngineBuilder(CurlDockerImage).
+		WithEntrypoint("curl", "--fail-with-body", "https://www.bacalhau.org").
+		Build()
+	s.Require().NoError(err)
+
 	task := mock.TaskBuilder().
 		Network(models.NewNetworkConfigBuilder().
 			Type(models.NetworkHTTP).
 			Domains(s.containerHttpURL().Hostname()).
 			BuildOrDie()).
-		Engine(dockermodels.NewDockerEngineBuilder(CurlDockerImage).
-			WithEntrypoint("curl", "--fail-with-body", "https://www.bacalhau.org").
-			Build()).
+		Engine(es).
 		BuildOrDie()
 
 	result, err := s.runJob(task, uuid.New().String())
@@ -414,11 +422,12 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	jobCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
+		WithEntrypoint("bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)).
+		Build()
+	s.Require().NoError(err)
 	task := mock.TaskBuilder().
-		Engine(
-			dockermodels.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint("bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)).
-				Build()).
+		Engine(es).
 		BuildOrDie()
 
 	name := "timeout"
@@ -470,11 +479,12 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
+		WithEntrypoint("bash", "cat /sys/fs/cgroup/cpu.max").
+		Build()
+	s.Require().NoError(err)
 	task := mock.TaskBuilder().
-		Engine(
-			dockermodels.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint("bash", "cat /sys/fs/cgroup/cpu.max").
-				Build()).
+		Engine(es).
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
@@ -496,11 +506,13 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
 
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
+		WithEntrypoint("bash", "-c", "echo hello && sleep 20").
+		Build()
+	s.Require().NoError(err)
+
 	task := mock.TaskBuilder().
-		Engine(
-			dockermodels.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint("bash", "-c", "echo hello && sleep 20").
-				Build()).
+		Engine(es).
 		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
 		BuildOrDie()
 
@@ -529,11 +541,11 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 }
 
 func (s *ExecutorTestSuite) TestDockerOOM() {
-	task := mock.TaskBuilder().
-		Engine(
-			dockermodels.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint("tail", "/dev/zero").
-				Build()).BuildOrDie()
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
+		WithEntrypoint("tail", "/dev/zero").
+		Build()
+	s.Require().NoError(err)
+	task := mock.TaskBuilder().Engine(es).BuildOrDie()
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)

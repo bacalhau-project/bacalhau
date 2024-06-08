@@ -9,12 +9,13 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -22,14 +23,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	clientv1 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	engine_wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -50,28 +51,23 @@ var (
 
 type WasmRunOptions struct {
 	// parameters and entry modules are arguments
-	ImportModules []model.StorageSpec
-	Entrypoint    string
+	ImportModules        []*models.InputSource
+	Entrypoint           string
+	EnvironmentVariables []string
 
-	SpecSettings       *cliflags.SpecFlagSettings            // Setting for top level job spec fields.
-	ResourceSettings   *cliflags.ResourceUsageSettings       // Settings for the jobs resource requirements.
-	NetworkingSettings *cliflags.NetworkingFlagSettings      // Settings for the jobs networking.
-	DealSettings       *cliflags.DealFlagSettings            // Settings for the jobs deal.
-	RunTimeSettings    *cliflags.RunTimeSettingsWithDownload // Settings for running the job.
-	DownloadSettings   *cliflags.DownloaderSettings          // Settings for running Download.
-
+	JobSettings     *cliflags.JobSettings
+	TaskSettings    *cliflags.TaskSettings
+	RunTimeSettings *cliflags.RunTimeSettings
 }
 
 func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
-		ImportModules:      []model.StorageSpec{},
-		Entrypoint:         "_start",
-		SpecSettings:       cliflags.NewSpecFlagDefaultSettings(),
-		ResourceSettings:   cliflags.NewDefaultResourceUsageSettings(),
-		NetworkingSettings: cliflags.NewDefaultNetworkingFlagSettings(),
-		DealSettings:       cliflags.NewDefaultDealFlagSettings(),
-		DownloadSettings:   cliflags.NewDefaultDownloaderSettings(),
-		RunTimeSettings:    cliflags.DefaultRunTimeSettingsWithDownload(),
+		ImportModules:        []*models.InputSource{},
+		Entrypoint:           "_start",
+		EnvironmentVariables: []string{},
+		JobSettings:          cliflags.DefaultJobSettings(),
+		TaskSettings:         cliflags.DefaultTaskSettings(),
+		RunTimeSettings:      cliflags.DefaultRunTimeSettings(),
 	}
 }
 
@@ -112,167 +108,124 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			// create a v1 api client
-			apiV1, err := util.GetAPIClient(cfg)
-			if err != nil {
-				return fmt.Errorf("failed to create v1 api client: %w", err)
-			}
 			// create a v2 api client
 			apiV2, err := util.GetAPIClientV2(cmd, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}
-			return runWasm(cmd, args, apiV1, apiV2, cfg, opts)
+			return run(cmd, args, apiV2, opts)
 		},
 	}
 
-	wasmRunCmd.PersistentFlags().VarP(
-		flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
-		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
-			`the 'wget' command, and supports both HTTP and HTTPS.`,
-	)
-	wasmRunCmd.PersistentFlags().VarP(
-		flags.NewIPFSStorageSpecArrayFlag(&opts.ImportModules), "import-module-volumes", "I",
-		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
-	)
-	wasmRunCmd.PersistentFlags().StringVar(
-		&opts.Entrypoint, "entry-point", opts.Entrypoint,
-		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
-		will execute the job.`,
-	)
-
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.SpecFlags(opts.SpecSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.DealFlags(opts.DealSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(opts.DownloadSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NetworkingFlags(opts.NetworkingSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.ResourceUsageFlags(opts.ResourceSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithDownload(opts.RunTimeSettings))
+	cliflags.RegisterJobFlags(wasmRunCmd, opts.JobSettings)
+	cliflags.RegisterTaskFlags(wasmRunCmd, opts.TaskSettings)
+	wasmRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
 		util.Fatal(wasmRunCmd, err, 1)
 	}
 
+	wasmFlags := pflag.NewFlagSet("wasm", pflag.ContinueOnError)
+	wasmFlags.VarP(
+		flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
+		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
+			`the 'wget' command, and supports both HTTP and HTTPS.`,
+	)
+	wasmFlags.VarP(
+		flags.NewIPFSStorageSpecArrayFlag(&opts.ImportModules), "import-module-volumes", "I",
+		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
+	)
+	wasmFlags.StringVar(
+		&opts.Entrypoint, "entry-point", opts.Entrypoint,
+		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
+		will execute the job.`,
+	)
+	wasmFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
+		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
+
+	wasmRunCmd.Flags().AddFlagSet(wasmFlags)
 	return wasmRunCmd
 }
 
-func runWasm(
-	cmd *cobra.Command,
-	args []string,
-	apiV1 *clientv1.APIClient,
-	apiV2 clientv2.API,
-	cfg types.BacalhauConfig,
-	opts *WasmRunOptions,
-) error {
+func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
-	j, err := CreateJob(ctx, args, opts)
+	job, err := build(ctx, args, opts)
 	if err != nil {
-		return fmt.Errorf("creating job: %w", err)
-	}
-
-	if err := legacy_job.VerifyJob(ctx, j); err != nil {
-		return fmt.Errorf("verifying job: %w", err)
+		return err
 	}
 
 	if opts.RunTimeSettings.DryRun {
-		// Converting job to yaml
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(j)
+		out, err := helpers.JobToYaml(job)
 		if err != nil {
-			return fmt.Errorf("converting job to yaml: %w", err)
+			return err
 		}
-		cmd.Print(string(yamlBytes))
+		cmd.Print(out)
 		return nil
 	}
 
-	if err := legacy_job.VerifyJob(ctx, j); err != nil {
-		return fmt.Errorf("verifying job for submission: %w", err)
-	}
-
-	executingJob, err := apiV1.Submit(ctx, j)
+	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
-		return fmt.Errorf("submitting job for execution: %w", err)
+		return fmt.Errorf("failed to submit job: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, apiV1, apiV2, cfg)
+	if len(resp.Warnings) > 0 {
+		helpers.PrintWarnings(cmd, resp.Warnings)
+	}
+
+	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, opts.RunTimeSettings, api); err != nil {
+		return fmt.Errorf("failed to print job execution: %w", err)
+	}
+
+	return nil
 }
 
-func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
-	parameters := cmdArgs[1:]
-
-	entryModule, err := parseWasmEntryModule(ctx, cmdArgs[0])
+func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Job, error) {
+	entryModule, err := parseWasmEntryModule(ctx, args[0])
 	if err != nil {
 		return nil, err
 	}
-
-	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeSelectorRequirements, err := parse.NodeSelector(opts.SpecSettings.Selector)
-	if err != nil {
-		return nil, err
-	}
-
-	labels, err := parse.Labels(ctx, opts.SpecSettings.Labels)
-	if err != nil {
-		return nil, err
-	}
-
-	wasmEnvvar, err := parse.StringSliceToMap(opts.SpecSettings.EnvVar)
+	envar, err := parse.StringSliceToMap(opts.EnvironmentVariables)
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
-
-	spec, err := legacy_job.MakeWasmSpec(
-		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		legacy_job.WithResources(
-			opts.ResourceSettings.CPU,
-			opts.ResourceSettings.Memory,
-			opts.ResourceSettings.Disk,
-			opts.ResourceSettings.GPU,
-		),
-		legacy_job.WithNetwork(
-			opts.NetworkingSettings.Network,
-			opts.NetworkingSettings.Domains,
-		),
-		legacy_job.WithTimeout(opts.SpecSettings.Timeout),
-		legacy_job.WithInputs(opts.SpecSettings.Inputs.Values()...),
-		legacy_job.WithOutputs(outputs...),
-		legacy_job.WithAnnotations(labels...),
-		legacy_job.WithNodeSelector(nodeSelectorRequirements),
-		legacy_job.WithDeal(
-			opts.DealSettings.TargetingMode,
-			opts.DealSettings.Concurrency,
-		),
-	)
+	engineSpec, err := engine_wasm.NewWasmEngineBuilder(entryModule).
+		WithParameters(args[1:]...).
+		WithEntrypoint(opts.Entrypoint).
+		WithImportModules(opts.ImportModules).
+		WithEnvironmentVariables(envar).
+		Build()
 	if err != nil {
 		return nil, err
 	}
 
-	// Publisher is now optional
-	p := opts.SpecSettings.Publisher.Value()
-	if p != nil {
-		spec.Publisher = p.Type //nolint:staticcheck
-		spec.PublisherSpec = *p
+	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
+	if err != nil {
+		return nil, fmt.Errorf("building job spec: %w", err)
 	}
 
-	return &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-		Spec:       spec,
-	}, nil
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
+	}
+
+	return job, nil
 }
 
-func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {
+func parseWasmEntryModule(ctx context.Context, in string) (*models.InputSource, error) {
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(in)
 	if err == nil {
-		// It is a valid CID – proceed to create IPFS context.
-		// TODO(forrest): doesn't this require a name?
-		return &model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           wasmCid.String(),
+		ipfsSpec, err := storage_ipfs.NewSpecConfig(wasmCid.String())
+		if err != nil {
+			return nil, err
+		}
+		return &models.InputSource{
+			Source: ipfsSpec,
+			Alias:  fmt.Sprintf("ipfs://%s", wasmCid),
+			// TODO REVIEW a target was never previously set here, unsure what to do?
+			Target: "",
 		}, nil
 	}
 	// Try interpreting this as a path.
@@ -298,11 +251,18 @@ func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, e
 	if err != nil {
 		return nil, err
 	}
-	legacyInlineData, err := legacy.ToLegacyStorageSpec(&inlineData)
+
+	inlineSpec, err := inline.DecodeSpec(&inlineData)
 	if err != nil {
 		return nil, err
 	}
-	return &legacyInlineData, nil
+
+	return &models.InputSource{
+		Source: &inlineData,
+		Alias:  inlineSpec.URL,
+		// TODO REVIEW a target was never previously set here, unsure what to do?
+		Target: "",
+	}, nil
 }
 
 func newValidateCmd() *cobra.Command {

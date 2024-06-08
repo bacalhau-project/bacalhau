@@ -106,6 +106,7 @@ type Job struct {
 
 	// Labels is used to associate arbitrary labels with this job, which can be used
 	// for filtering.
+	// key=value
 	Labels map[string]string `json:"Labels"`
 
 	Tasks []*Task `json:"Tasks"`

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	flag "github.com/spf13/pflag"
+
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	flag "github.com/spf13/pflag"
 )
 
 // compile-time check to ensure type implements the flag.Value interface
@@ -46,9 +47,9 @@ func (o *PublisherOpt) Set(value string) error {
 
 		key = strings.ToLower(key)
 		switch key {
-		case "target", "dst", "destination":
+		case "target", "dst", "destination": //nolint:goconst
 			destinationURI = val
-		case "opt", "option":
+		case "opt", "option": //nolint:goconst
 			k, v, _ := strings.Cut(val, "=")
 			if k != "" {
 				options[k] = v
