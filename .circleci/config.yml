@@ -285,6 +285,12 @@ commands:
           name: Start IPFS Daemon
           command: |
             nohup ipfs daemon &
+            cat nohup
+            sleep 2
+            cat nohup
+            sleep 2
+            cat nohup
+            ipfs id
 
 jobs:
   build_cli:
