@@ -266,6 +266,26 @@ commands:
             earthly account login
             earthly sat select << pipeline.parameters.earthly_satellite >>
 
+  install_ipfs:
+    description: Install IPFS for linux-amd64
+    steps:
+      - run:
+          name: Install IPFS
+          command: |
+            wget https://dist.ipfs.tech/kubo/v0.28.0/kubo_v0.28.0_linux-amd64.tar.gz
+            tar -xzf kubo_v0.28.0_linux-amd64.tar.gz
+            cd kubo
+            sudo bash install.sh
+            ipfs --version
+      - run:
+          name: Initialize IPFS
+          command: |
+            ipfs init --profile=test
+      - run:
+          name: Start IPFS Daemon
+          command: |
+            nohup ipfs daemon &
+
 jobs:
   build_cli:
     executor: linux-amd64
@@ -507,6 +527,20 @@ jobs:
       - run:
           name: "Setup BACALHAU_ENVIRONMENT environment variable"
           command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
+
+      - when:
+          condition:
+            equal: ["linux", << parameters.target_os >>]
+          steps:
+            - when:
+                condition:
+                  equal: ["integration", << parameters.build_tags >>]
+                steps:
+                  - install_ipfs
+                  - run:
+                      name: Set IPFS Connect Env
+                      command: echo 'export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001' >> "$BASH_ENV"
+
       - run:
           name: Test Go
           environment:
