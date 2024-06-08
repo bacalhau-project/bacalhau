@@ -14,12 +14,12 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -28,11 +28,11 @@ import (
 type ParallelStorageSuite struct {
 	suite.Suite
 
-	ctx      context.Context
-	cm       *system.CleanupManager
-	node     *ipfs.Node
-	cid      string
-	provider provider.Provider[storage.Storage]
+	ctx         context.Context
+	cm          *system.CleanupManager
+	ipfsEnabled bool
+	cid         string
+	provider    provider.Provider[storage.Storage]
 }
 
 func TestParallelStorageSuite(t *testing.T) {
@@ -41,32 +41,25 @@ func TestParallelStorageSuite(t *testing.T) {
 
 func (s *ParallelStorageSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.cm = system.NewCleanupManager()
+	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 
-	// Setup required IPFS node and client
-	node, err := ipfs.NewNodeWithConfig(s.ctx, s.cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(s.T(), err)
-	s.node = node
-	client := s.node.Client()
+	s.ipfsEnabled = testutils.IsIPFSEnabled(cfg.Node.IPFS.Connect)
 
-	s.cid, err = client.Put(s.ctx, "../../testdata/grep_file.txt")
-	require.NoError(s.T(), err)
-
+	var err error
 	s.provider, err = executor_util.NewStandardStorageProvider(
 		time.Duration(configenv.Testing.Node.VolumeSizeRequestTimeout),
 		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
 		configenv.Testing.Node.DownloadURLRequestRetries,
-		executor_util.StandardStorageProviderOptions{API: client},
+		executor_util.StandardStorageProviderOptions{IPFSConnect: cfg.Node.IPFS.Connect},
 	)
 	s.Require().NoError(err)
 }
 
-func (s *ParallelStorageSuite) TearDownSuite() {
-	s.cm.Cleanup(s.ctx)
-	_ = s.node.Close(s.ctx)
-}
-
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
+	if !s.ipfsEnabled {
+		s.T().Skip("IPFS connect not configured")
+	}
+
 	artifact := &models.InputSource{
 		Source: &models.SpecConfig{
 			Type: models.StorageSourceIPFS,

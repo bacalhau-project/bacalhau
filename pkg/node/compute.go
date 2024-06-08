@@ -25,7 +25,6 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -187,7 +186,6 @@ func NewComputeNode(
 		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
-		repo_storage.NewLabelsProvider(),
 	)
 
 	var managementClient *compute.ManagementClient

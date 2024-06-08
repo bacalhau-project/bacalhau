@@ -3,8 +3,10 @@ package scenario
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -12,10 +14,17 @@ import (
 )
 
 func basicScenario(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+			},
+		},
 		Inputs: ManyStores(
-			StoredText("hello, world!", "/inputs"),
-			StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
+			StoredText(rootSourceDir, "hello, world!", "/inputs"),
+			StoredFile(rootSourceDir, "../../../testdata/wasm/cat/main.wasm", "/job"),
 		),
 		Outputs:        []model.StorageSpec{},
 		ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),

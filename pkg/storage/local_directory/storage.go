@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type StorageProviderParams struct {
@@ -84,8 +85,10 @@ func (driver *StorageProvider) PrepareStorage(
 	}, nil
 }
 
-func (driver *StorageProvider) CleanupStorage(ctx context.Context, src models.InputSource, vol storage.StorageVolume) error {
-	return os.Remove(vol.Source)
+func (driver *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, _ storage.StorageVolume) error {
+	// We should NOT clean up the storage as it is a locally mounted volume.
+	// We are mounting the source directory directly to the target directory and not copying the data.
+	return nil
 }
 
 func (driver *StorageProvider) Upload(context.Context, string) (models.SpecConfig, error) {

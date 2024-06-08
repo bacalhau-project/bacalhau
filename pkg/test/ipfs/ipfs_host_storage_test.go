@@ -10,22 +10,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type IPFSHostStorageSuite struct {
 	suite.Suite
+	client *ipfs.Client
 	Config types.BacalhauConfig
 }
 
@@ -39,16 +38,20 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	_, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
+	testutils.MustHaveIPFS(suite.T(), suite.Config.Node.IPFS.Connect)
+
+	var err error
+	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.Node.IPFS.Connect)
+	suite.Require().NoError(err)
+
 }
 
-type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+type getStorageFunc func(ctx context.Context, api ipfs.Client) (
 	storage.Storage, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
-	runFileTest(
-		suite.T(),
-		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+	suite.runFileTest(
+		func(ctx context.Context, api ipfs.Client) (
 			storage.Storage, error) {
 
 			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
@@ -57,10 +60,8 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 }
 
 func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
-	runFolderTest(
-		suite.T(),
-		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
+	suite.runFolderTest(
+		func(ctx context.Context, api ipfs.Client) (
 			storage.Storage, error) {
 
 			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
@@ -68,20 +69,17 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	)
 }
 
-func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
+func (suite *IPFSHostStorageSuite) runFileTest(getStorageDriver getStorageFunc) {
 	ctx := context.Background()
-	// get a single IPFS server
-	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(cm)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
-	fileCid, err := ipfs.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), stack.IPFSClients[0])
-	require.NoError(t, err)
+	fileCid, err := ipfs.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), *suite.client)
+	suite.Require().NoError(err)
 
 	// construct an ipfs docker storage client
-	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
-	require.NoError(t, err)
+	storageDriver, err := getStorageDriver(ctx, *suite.client)
+	suite.Require().NoError(err)
 
 	// the storage spec for the cid we added
 	inputSource := models.InputSource{
@@ -94,41 +92,38 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// does the storage client think we have the cid locally?
 	hasCid, err := storageDriver.HasStorageLocally(ctx, inputSource)
-	require.NoError(t, err)
-	require.True(t, hasCid)
+	suite.Require().NoError(err)
+	suite.Require().True(hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, t.TempDir(), inputSource)
-	require.NoError(t, err)
+	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
+	suite.Require().NoError(err)
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
 	r, err := os.ReadFile(volume.Source)
-	require.NoError(t, err)
-	require.Equal(t, string(r), EXAMPLE_TEXT)
+	suite.Require().NoError(err)
+	suite.Require().Equal(string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, inputSource, volume)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 }
 
-func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
+func (suite *IPFSHostStorageSuite) runFolderTest(getStorageDriver getStorageFunc) {
 	ctx := context.Background()
-	// get a single IPFS server
-	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(cm)
 
-	dir := t.TempDir()
+	dir := suite.T().TempDir()
 
 	EXAMPLE_TEXT := `hello world`
 	err := os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
 	// add this file to the server
-	folderCid, err := ipfs.AddFileToNodes(ctx, dir, stack.IPFSClients[0])
-	require.NoError(t, err)
+	folderCid, err := ipfs.AddFileToNodes(ctx, dir, *suite.client)
+	suite.Require().NoError(err)
 
 	// construct an ipfs docker storage client
-	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
-	require.NoError(t, err)
+	storageDriver, err := getStorageDriver(ctx, *suite.client)
+	suite.Require().NoError(err)
 
 	// the storage spec for the cid we added
 	inputSource := models.InputSource{
@@ -141,19 +136,19 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 
 	// does the storage client think we have the cid locally?
 	hasCid, err := storageDriver.HasStorageLocally(ctx, inputSource)
-	require.NoError(t, err)
-	require.True(t, hasCid)
+	suite.Require().NoError(err)
+	suite.Require().True(hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, t.TempDir(), inputSource)
-	require.NoError(t, err)
+	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
+	suite.Require().NoError(err)
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
 
 	r, err := os.ReadFile(filepath.Join(volume.Source, "file.txt"))
-	require.NoError(t, err)
-	require.Equal(t, string(r), EXAMPLE_TEXT)
+	suite.Require().NoError(err)
+	suite.Require().Equal(string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, inputSource, volume)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 }

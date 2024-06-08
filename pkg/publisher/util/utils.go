@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -23,15 +23,10 @@ func NewPublisherProvider(
 	ctx context.Context,
 	storagePath string,
 	cm *system.CleanupManager,
-	cl ipfsClient.Client,
+	ipfsConnect string,
 	localConfig *types.LocalPublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cl)
-	if err != nil {
-		return nil, err
-	}
-
 	s3Publisher, err := configureS3Publisher(storagePath, cm)
 	if err != nil {
 		return nil, err
@@ -39,12 +34,25 @@ func NewPublisherProvider(
 
 	localPublisher := local.NewLocalPublisher(ctx, localConfig.Directory, localConfig.Address, localConfig.Port)
 
-	return provider.NewMappedProvider(map[string]publisher.Publisher{
+	providers := map[string]publisher.Publisher{
 		models.PublisherNoop:  tracing.Wrap(noopPublisher),
-		models.PublisherIPFS:  tracing.Wrap(ipfsPublisher),
 		models.PublisherS3:    tracing.Wrap(s3Publisher),
 		models.PublisherLocal: tracing.Wrap(localPublisher),
-	}), nil
+	}
+
+	if ipfsConnect != "" {
+		ipfsClient, err := ipfs_client.NewClient(ctx, ipfsConnect)
+		if err != nil {
+			return nil, err
+		}
+		ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, *ipfsClient)
+		if err != nil {
+			return nil, err
+		}
+
+		providers[models.PublisherIPFS] = ipfsPublisher
+	}
+	return provider.NewMappedProvider(providers), nil
 }
 
 func configureS3Publisher(storagePath string, cm *system.CleanupManager) (*s3.Publisher, error) {

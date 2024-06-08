@@ -89,7 +89,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: testutils.MakeSpecWithOpts(suite.T(),
-				legacy_job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
 				legacy_job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
 			),
 			Deal: model.Deal{

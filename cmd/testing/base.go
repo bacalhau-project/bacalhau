@@ -29,11 +29,13 @@ import (
 
 type BaseSuite struct {
 	suite.Suite
-	Node     *node.Node
-	Client   *client.APIClient
-	ClientV2 clientv2.API
-	Host     string
-	Port     uint16
+	Node            *node.Node
+	Client          *client.APIClient
+	ClientV2        clientv2.API
+	Config          types.BacalhauConfig
+	Host            string
+	Port            uint16
+	AllowListedPath string
 }
 
 // before each test
@@ -41,6 +43,13 @@ func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+	s.Config = cfg
+
+	// TODO: Update checker is configured with production default configs
+	//  and not respecting the test environment. This is a temporary fix
+	os.Setenv("BACALHAU_UPDATE_SKIPCHECKS", "true")
+
+	s.AllowListedPath = s.T().TempDir()
 
 	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
@@ -62,6 +71,7 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
+		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 	s.Node = stack.Nodes[0]

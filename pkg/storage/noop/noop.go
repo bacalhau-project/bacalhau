@@ -98,9 +98,9 @@ func (s *NoopStorage) Upload(ctx context.Context, localPath string) (models.Spec
 		return handler(ctx, localPath)
 	}
 	return models.SpecConfig{
-		Type: models.StorageSourceIPFS,
+		Type: models.StorageSourceLocalDirectory,
 		Params: map[string]interface{}{
-			"CID": "test",
+			"SourcePath": "/dummy/path",
 		},
 	}, nil
 }

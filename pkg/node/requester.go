@@ -35,7 +35,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -60,7 +59,6 @@ func NewRequesterNode(
 	apiServer *publicapi.Server,
 	cfg types.MetricsConfig,
 	requesterConfig RequesterConfig,
-	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
 	computeProxy compute.Endpoint,
@@ -232,7 +230,6 @@ func NewRequesterNode(
 		EventEmitter:      eventEmitter,
 		ComputeEndpoint:   computeProxy,
 		Store:             jobStore,
-		StorageProviders:  storageProvider,
 		DefaultJobTimeout: requesterConfig.JobDefaults.TotalTimeout,
 		DefaultPublisher:  requesterConfig.DefaultPublisher,
 	})
@@ -247,7 +244,6 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
-		transformer.NewInlineStoragePinner(storageProvider),
 	}
 
 	if requesterConfig.DefaultPublisher != "" {

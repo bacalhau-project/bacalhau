@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/stretchr/testify/suite"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -17,32 +19,37 @@ import (
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 )
 
-type MultipleCIDSuite struct {
+type MultipleInputFilesSuite struct {
 	scenario.ScenarioRunner
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestMultipleCIDSuite(t *testing.T) {
-	suite.Run(t, new(MultipleCIDSuite))
+	suite.Run(t, new(MultipleInputFilesSuite))
 }
 
-func (s *MultipleCIDSuite) TestMultipleCIDs() {
+func (s *MultipleInputFilesSuite) TestMultipleFiles() {
 	dirCID1 := "/input-1"
 	dirCID2 := "/input-2"
 
 	fileName1 := "hello-cid-1.txt"
 	fileName2 := "hello-cid-2.txt"
 
+	rootSourceDir := s.T().TempDir()
+
 	testCase := scenario.Scenario{
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+			},
+		},
 		Inputs: scenario.ManyStores(
-			scenario.StoredText("file1\n", filepath.Join(dirCID1, fileName1)),
-			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
+			scenario.StoredText(rootSourceDir, "file1\n", filepath.Join(dirCID1, fileName1)),
+			scenario.StoredText(rootSourceDir, "file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: testutils.MakeSpecWithOpts(s.T(),
 			legacy_job.WithPublisher(
 				model.PublisherSpec{
-					Type: model.PublisherIpfs,
+					Type: model.PublisherLocal,
 				},
 			),
 			legacy_job.WithEngineSpec(

@@ -11,7 +11,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -21,9 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -168,11 +165,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
 
-			swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-			s.Require().NoError(err)
-
 			_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
 				"--output-dir", s.T().TempDir(),
 				"ubuntu",
@@ -183,81 +176,6 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			_ = testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
 		})
-	}
-}
-
-func (s *DockerRunSuite) TestRun_SubmitInputs() {
-	s.T().Skip("TODO: test stack is not connected to public IPFS and can't resolve the CIDs")
-	tests := []struct {
-		numberOfJobs int
-	}{
-		{numberOfJobs: 1},
-	}
-
-	for i, tc := range tests {
-		type (
-			InputVolume struct {
-				cid  string
-				path string
-				flag string
-			}
-		)
-
-		testCids := []struct {
-			inputVolumes []InputVolume
-			err          error
-		}{
-			{inputVolumes: []InputVolume{{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHA", path: "", flag: "-i"}}, err: nil},        // Fake CID, but well structured
-			{inputVolumes: []InputVolume{{cid: "ipfs://QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHA", path: "", flag: "-i"}}, err: nil}, // Fake ipfs URI, but well structured
-			{inputVolumes: []InputVolume{
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHB", path: "", flag: "-i"},
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHC", path: "", flag: "-i"}}, err: nil}, // 2x Fake CID, but well structured
-			{inputVolumes: []InputVolume{
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHD", path: "/CUSTOM_INPUT_PATH_1", flag: "-v"}}, err: nil}, // Fake CID, but well structured
-			{inputVolumes: []InputVolume{
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHE", path: "", flag: "-i"},
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHF", path: "/CUSTOM_INPUT_PATH_2", flag: "-v"}}, err: nil}, // 2x Fake CID, but well structured
-
-		}
-
-		for _, tcids := range testCids {
-			func() {
-				ctx := context.Background()
-				flagsArray := []string{"docker", "run"}
-				for _, iv := range tcids.inputVolumes {
-					ivString := iv.cid
-					if iv.path != "" {
-						ivString += fmt.Sprintf(":%s", iv.path)
-					}
-					flagsArray = append(flagsArray, iv.flag, ivString)
-				}
-				flagsArray = append(flagsArray, "ubuntu", "cat", "/inputs/foo.txt") // This doesn't exist, but shouldn't error
-
-				_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
-				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-
-				j := testutils.GetJobFromTestOutputLegacy(ctx, s.T(), s.Client, out)
-
-				s.Require().Equal(len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
-
-				// Need to do the below because ordering is not guaranteed
-				for _, tcidIV := range tcids.inputVolumes {
-					testCIDinJobInputs := false
-					for _, jobInput := range j.Spec.Inputs {
-						if tcidIV.cid == jobInput.CID {
-							testCIDinJobInputs = true
-							testPath := "/inputs"
-							if tcidIV.path != "" {
-								testPath = tcidIV.path
-							}
-							s.Require().Equal(testPath, jobInput.Path, "Test Path not equal to Path from job.")
-							break
-						}
-					}
-					s.Require().True(testCIDinJobInputs, "Test CID not in job inputs.")
-				}
-			}()
-		}
 	}
 }
 
@@ -590,32 +508,25 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
-	ctx := context.TODO()
-
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	dirPath := s.T().TempDir()
-
 	for _, video := range videos {
 		err := os.WriteFile(
-			filepath.Join(dirPath, video),
+			filepath.Join(s.AllowListedPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)
 		s.Require().NoError(err)
 	}
 
-	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients([]*node.Node{s.Node})...)
-	s.Require().NoError(err)
-
 	allArgs := []string{
 		"docker", "run",
 		"--wait",
-		"-i", fmt.Sprintf("ipfs://%s,dst=/inputs", directoryCid),
+		"-i", fmt.Sprintf("file://%s,dst=/inputs", s.AllowListedPath),
 		"ubuntu", "echo", "hello",
 	}
 

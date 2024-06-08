@@ -49,17 +49,17 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory(cfg types.NodeConfig) StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg types.BacalhauConfig) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
 		pr, err := executor_util.NewStandardStorageProvider(
-			time.Duration(cfg.VolumeSizeRequestTimeout),
-			time.Duration(cfg.DownloadURLRequestTimeout),
-			cfg.DownloadURLRequestRetries,
+			time.Duration(cfg.Node.VolumeSizeRequestTimeout),
+			time.Duration(cfg.Node.DownloadURLRequestTimeout),
+			cfg.Node.DownloadURLRequestRetries,
 			executor_util.StandardStorageProviderOptions{
-				API:                   nodeConfig.IPFSClient,
+				IPFSConnect:           cfg.Node.IPFS.Connect,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
@@ -119,16 +119,16 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(storagePath string) PublishersFactory {
+func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
-				storagePath,
+				cfg.Node.ComputeStoragePath,
 				nodeConfig.CleanupManager,
-				nodeConfig.IPFSClient,
+				cfg.Node.IPFS.Connect,
 				&nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {

@@ -137,16 +137,6 @@ func ToLegacyStorageSpec(storage *models.SpecConfig) (model.StorageSpec, error) 
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           storage.Params["URL"].(string),
 		}, nil
-	case models.StorageSourceRepoClone:
-		return model.StorageSpec{
-			StorageSource: model.StorageSourceRepoClone,
-			Repo:          storage.Params["Repo"].(string),
-		}, nil
-	case models.StorageSourceRepoCloneLFS:
-		return model.StorageSpec{
-			StorageSource: model.StorageSourceRepoCloneLFS,
-			Repo:          storage.Params["Repo"].(string),
-		}, nil
 	case models.StorageSourceInline:
 		return model.StorageSpec{
 			StorageSource: model.StorageSourceInline,

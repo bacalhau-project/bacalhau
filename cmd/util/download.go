@@ -22,13 +22,12 @@ import (
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
-	cfg types.IpfsConfig,
+	cfg types.BacalhauConfig,
 	apiV2 clientv2.API,
 	jobID string,
 	downloadSettings *cliflags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
-	cm := GetCleanupManager(ctx)
 
 	response, err := apiV2.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: jobID,
@@ -45,7 +44,7 @@ func DownloadResultsHandler(
 		return nil
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm, cfg)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.Node.IPFS.Connect)
 	if err != nil {
 		return err
 	}

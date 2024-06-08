@@ -17,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -26,7 +25,6 @@ type BaseEndpointParams struct {
 	Store                  jobstore.Store
 	EventEmitter           orchestrator.EventEmitter
 	ComputeEndpoint        compute.Endpoint
-	StorageProviders       storage.StorageProvider
 	MinJobExecutionTimeout time.Duration
 	DefaultJobTimeout      time.Duration
 	DefaultPublisher       string
@@ -53,7 +51,6 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 
 	postTransforms := []jobtransform.PostTransformer{
 		jobtransform.NewWasmStorageSpecConverter(),
-		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 	}
 
 	return &BaseEndpoint{

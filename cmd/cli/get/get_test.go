@@ -3,15 +3,16 @@
 package get_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -102,12 +103,9 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 }
 
 func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
-		"--publisher", "ipfs",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--publisher", "local",
 		"-o", "data:/data",
 		"--wait",
 	}
@@ -166,13 +164,12 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"--publisher", "local",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
@@ -180,7 +177,6 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -190,18 +186,17 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
-
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"--publisher", "ipfs",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -210,13 +205,13 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"--publisher", "ipfs",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
@@ -224,7 +219,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -234,13 +229,13 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"--publisher", "ipfs",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
@@ -248,9 +243,9 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -269,15 +264,12 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 // this tests that when we do get with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
-	ctx := context.Background()
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-	require.NoError(s.T(), err)
-
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
+		"--publisher", "local",
 	})
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 
@@ -286,7 +278,6 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("get",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
 		jobID,
 	)

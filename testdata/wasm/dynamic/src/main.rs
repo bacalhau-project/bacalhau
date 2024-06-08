@@ -1,4 +1,4 @@
-#[link(wasm_import_module="QmPympgyrEGEdSJ93rqvQkR71QLuQGdhKQtYztFwxpQsid")]
+#[link(wasm_import_module="input.wasm")]
 extern "C" {
     pub fn easter(year: i32) -> i32;
 }

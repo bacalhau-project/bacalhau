@@ -34,7 +34,7 @@ func TestCancelSuite(t *testing.T) {
 
 func (suite *CancelSuite) TestCancelTerminalJob() {
 	ctx := context.Background()
-	_, stdout, err := suite.ExecuteTestCobraCommandWithStdinBytes(testdata.IPVMTaskDocker.Data, "create")
+	_, stdout, err := suite.ExecuteTestCobraCommandWithStdinBytes(testdata.DockerJobYAML.Data, "create")
 	require.NoError(suite.T(), err, "Error submitting job")
 
 	job := testutils.GetJobFromTestOutputLegacy(ctx, suite.T(), suite.Client, stdout)

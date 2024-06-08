@@ -2,7 +2,7 @@
     "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "docker",
-        "Publisher": "ipfs",
+        "Publisher": "local",
         "Docker": {
             "Image": "ubuntu:latest",
             "Entrypoint": [
@@ -22,9 +22,8 @@
         ],
         "Outputs": [
             {
-                "StorageSource": "ipfs",
+                "StorageSource": "localDirectory",
                 "Name": "output_custom",
-                "CID": "",
                 "Path": "/output_custom"
             }
         ],

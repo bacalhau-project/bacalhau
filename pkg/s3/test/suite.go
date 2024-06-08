@@ -192,7 +192,10 @@ func (s *HelperSuite) PublishResult(publisherConfig s3helper.PublisherSpec, resu
 		Type:   models.PublisherS3,
 		Params: publisherConfig.ToMap(),
 	}
-	return s.Publisher.PublishResult(s.Ctx, &models.Execution{ID: s.ExecutionID, Job: job}, resultPath)
+	execution := mock.ExecutionForJob(job)
+	execution.ID = s.ExecutionID // to get predictable published key
+
+	return s.Publisher.PublishResult(s.Ctx, execution, resultPath)
 }
 
 // PublishResultSilently publishes the resultPath to S3 and skip if no access.

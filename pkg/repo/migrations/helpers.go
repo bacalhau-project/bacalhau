@@ -59,28 +59,6 @@ func readConfig(r repo.FsRepo) (*viper.Viper, types.BacalhauConfig, error) {
 	return v, fileCfg, nil
 }
 
-// haveSameElements returns true if arr1 and arr2 have the same elements, false otherwise.
-func haveSameElements(arr1, arr2 []string) bool {
-	if len(arr1) != len(arr2) {
-		return false
-	}
-
-	elementCount := make(map[string]int)
-
-	for _, item := range arr1 {
-		elementCount[item]++
-	}
-
-	for _, item := range arr2 {
-		if count, exists := elementCount[item]; !exists || count == 0 {
-			return false
-		}
-		elementCount[item]--
-	}
-
-	return true
-}
-
 func getLibp2pNodeID(path string) (string, error) {
 	privKey, err := config.GetLibp2pPrivKey(path)
 	if err != nil {

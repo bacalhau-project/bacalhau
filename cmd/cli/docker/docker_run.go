@@ -207,7 +207,7 @@ func dockerRun(
 		return fmt.Errorf("submitting job for execution: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, apiV1, apiV2, cfg.Node.IPFS)
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, apiV1, apiV2, cfg)
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
