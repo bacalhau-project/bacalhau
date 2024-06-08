@@ -108,6 +108,8 @@ func DownloadResults( //nolint:funlen,gocyclo
 			newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
 			newResultPath = strings.TrimSuffix(newResultPath, ".tgz")
 
+			log.Ctx(ctx).Debug().Msgf("Decompressing %s to %s", resultPath, newResultPath)
+
 			if _, err := os.Stat(newResultPath); os.IsNotExist(err) {
 				err = os.MkdirAll(newResultPath, DownloadFolderPerm)
 				if err != nil {
@@ -137,6 +139,7 @@ func moveData(
 	toFolder string,
 	appendMode bool,
 ) error {
+	log.Ctx(ctx).Debug().Msgf("Moving data from %s to %s", fromFolder, toFolder)
 	// the recursive function that will scan our source volume folder
 	moveFunc := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -160,6 +163,11 @@ func moveData(
 
 		// the path to where we are saving this item in the global folders
 		globalTargetPath := filepath.Join(toFolder, basePath)
+		log.Ctx(ctx).Debug().
+			Str("Source", path).
+			Str("BasePath", basePath).
+			Str("Target", globalTargetPath).
+			Msg("Moving file or directory")
 
 		// are we dealing with a special case file?
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]

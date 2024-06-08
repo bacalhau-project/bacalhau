@@ -285,11 +285,11 @@ commands:
           name: Start IPFS Daemon
           command: |
             nohup ipfs daemon &
-            cat nohup
+            cat nohup.out
             sleep 2
-            cat nohup
+            cat nohup.out
             sleep 2
-            cat nohup
+            cat nohup.out
             ipfs id
 
 jobs:
