@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"os"
 	"runtime"
 	"testing"
 
@@ -22,6 +23,8 @@ const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
+
+const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
 
 func CatFileToStdout(t testing.TB) Scenario {
 	rootSourceDir := t.TempDir()
@@ -58,7 +61,7 @@ func CatFileToVolume(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredText(
@@ -92,7 +95,7 @@ func GrepFile(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredFile(
@@ -121,7 +124,7 @@ func SedFile(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredFile(
@@ -155,7 +158,7 @@ func AwkFile(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredFile(
@@ -243,7 +246,7 @@ func WasmCsvTransform(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredFile(
@@ -282,7 +285,7 @@ func WasmDynamicLink(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: ManyStores(
@@ -314,7 +317,7 @@ func WasmLogTest(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: StoredFile(rootSourceDir,

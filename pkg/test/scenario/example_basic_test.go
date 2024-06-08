@@ -19,7 +19,7 @@ func basicScenario(t testing.TB) Scenario {
 	return Scenario{
 		Stack: &StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
 			},
 		},
 		Inputs: ManyStores(

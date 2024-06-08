@@ -24,7 +24,7 @@ func getSampleDockerJob() (*model.Job, error) {
 	}
 	spec, err := legacy_job.MakeSpec(
 		legacy_job.WithPublisher(model.PublisherSpec{
-			Type: model.PublisherIpfs,
+			Type: model.PublisherLocal,
 		}),
 		legacy_job.WithEngineSpec(
 			model.NewDockerEngineBuilder("ubuntu").
@@ -44,54 +44,7 @@ func getSampleDockerJob() (*model.Job, error) {
 	return j, nil
 }
 
-func getSampleDockerIPFSJob() (*model.Job, error) {
-	nodeSelectors, err := getNodeSelectors()
-	if err != nil {
-		return nil, err
-	}
-	var j = &model.Job{
-		APIVersion: model.APIVersionLatest().String(),
-	}
-	spec, err := legacy_job.MakeSpec(
-		legacy_job.WithPublisher(model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		}),
-		legacy_job.WithEngineSpec(
-			model.NewDockerEngineBuilder("ubuntu").
-				WithEntrypoint(
-					"bash",
-					"-c",
-					"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
-				).Build(),
-		),
-		legacy_job.WithInputs(
-			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
-			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
-			model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "inputs",
-				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
-				Path:          "/inputs/data.tar.gz",
-			},
-		),
-		legacy_job.WithOutputs(
-			model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "outputs",
-				Path:          "/outputs",
-			},
-		),
-		legacy_job.WithAnnotations(canaryAnnotation),
-		legacy_job.WithNodeSelector(nodeSelectors),
-	)
-	if err != nil {
-		return nil, err
-	}
-	j.Spec = spec
-	return j, nil
-}
-
-func getIPFSDownloadSettings() (*downloader.DownloaderSettings, error) {
+func getDownloadSettings() (*downloader.DownloaderSettings, error) {
 	dir, err := os.MkdirTemp(os.TempDir(), "")
 	if err != nil {
 		return nil, err

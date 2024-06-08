@@ -79,7 +79,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{
-					AllowListedLocalPaths: []string{rootSourceDir + "/*"},
+					AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
 				},
 				ComputeConfig:   computeConfig,
 				RequesterConfig: requesterConfig,
