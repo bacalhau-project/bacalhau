@@ -272,9 +272,9 @@ commands:
       - run:
           name: Install IPFS
           command: |
-            wget https://dist.ipfs.tech/kubo/v0.28.0/kubo_v0.28.0_linux-amd64.tar.gz -O ipfs.tar.gz
+            wget https://dist.ipfs.tech/go-ipfs/v0.18.0/go-ipfs_v0.18.0_linux-amd64.tar.gz -O ipfs.tar.gz
             tar -xzf ipfs.tar.gz
-            cd kubo
+            cd go-ipfs
             sudo bash install.sh
             ipfs --version
       - run:
