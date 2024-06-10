@@ -14,6 +14,84 @@ import (
 
 const DefaultMaxDecompressSize = 100 * 1024 * 1024 * 1024 // 100 GB
 
+// Compress compresses the sourcePath (which can be a file or a directory)
+// into a gzip archive written to targetFile. It uses relative paths for
+// the file headers within the archive to preserve the directory structure.
+func Compress(sourcePath string, targetFile *os.File) error {
+	gw := gzip.NewWriter(targetFile)
+	defer gw.Close()
+
+	tarWriter := tar.NewWriter(gw)
+	defer tarWriter.Close()
+
+	info, err := os.Stat(sourcePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat source path: %w", err)
+	}
+
+	if info.IsDir() {
+		return filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			// Get the relative path for the file
+			relpath, err := filepath.Rel(sourcePath, path)
+			if err != nil {
+				return err
+			}
+			header, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				return err
+			}
+			header.Name = relpath
+			if err := tarWriter.WriteHeader(header); err != nil {
+				return err
+			}
+			if !info.Mode().IsRegular() {
+				return nil
+			}
+			// Open the file for reading.
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			// Write the file contents to the GZIP archive.
+			_, err = io.Copy(tarWriter, file)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+	} else {
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.Base(sourcePath)
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+
+		// Open the file for reading.
+		file, err := os.Open(sourcePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// Write the file contents to the GZIP archive.
+		_, err = io.Copy(tarWriter, file)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Decompress takes the path to a .tar.gz file and decompresses it into the specified directory.
 func Decompress(tarGzPath, destDir string) error {
 	log.Debug().Msgf("Decompressing %s to %s", tarGzPath, destDir)
@@ -54,6 +132,14 @@ func DecompressWithMaxBytes(tarGzPath, destDir string, maxDecompressSize int64) 
 
 		// Clean the name to mitigate directory traversal
 		cleanName := filepath.Clean(header.Name)
+		if filepath.IsAbs(cleanName) {
+			// Remove the common prefix (destDir) from the absolute path
+			cleanName, err = filepath.Rel(filepath.Clean(destDir), cleanName)
+			if err != nil {
+				return fmt.Errorf("failed to compute relative path: %w", err)
+			}
+		}
+
 		if strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) {
 			return fmt.Errorf("invalid file path: %s", header.Name)
 		}
