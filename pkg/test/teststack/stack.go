@@ -31,7 +31,6 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		NumberOfBadComputeActors:   0,
 		NumberOfBadRequesterActors: 0,
 		Peer:                       "",
-		PublicIPFSMode:             false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		DisabledFeatures:           node.FeatureConfig{},

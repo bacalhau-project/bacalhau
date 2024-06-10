@@ -5,12 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
-
-	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -55,7 +52,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
-		PublicIPFSMode:             false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
@@ -149,10 +145,6 @@ func NewCmd() *cobra.Command {
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
 	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
-		`Connect devstack to public IPFS`,
-	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
 		"File to save CPU profiling to",
@@ -173,9 +165,6 @@ func NewCmd() *cobra.Command {
 		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
 		"Folder to act as the devstack configuration repo",
 	)
-	devstackCmd.PersistentFlags().StringVar(
-		&ODs.NetworkType, "network", ODs.NetworkType,
-		"Type of inter-node network layer. e.g. nats and libp2p")
 	return devstackCmd
 }
 
@@ -184,20 +173,6 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
-
-	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
-	if cfg.Node.IPFS.ServePath != "" {
-		flag, _ := lo.Find(configflags.IPFSFlags, func(item configflags.Definition) bool { return item.ConfigPath == types.NodeIPFSServePath })
-		return fmt.Errorf("unset %s in your environment "+
-			"and/or --%s from your flags "+
-			"and/or %s from your config "+
-			"to run devstack",
-			strings.Join(append(flag.EnvironmentVariables, config.KeyAsEnvVar(flag.ConfigPath)), " and "),
-			flag.FlagName,
-			flag.ConfigPath,
-		)
-	}
-
 	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()

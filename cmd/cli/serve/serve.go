@@ -36,9 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/webui"
 )
 
-var DefaultSwarmPort = 1235
-var DefaultWebPort = 8483
-
 const DefaultPeerConnect = "none"
 
 var (
@@ -57,11 +54,8 @@ var (
 		# or
 		bacalhau serve --node-type compute,requester
 
-		# Start a private bacalhau node with a persistent local IPFS node
-		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
-
 		# Start a public bacalhau requester node
-		bacalhau serve --peer env --private-internal-ipfs=false
+		bacalhau serve --peer env 
 
 		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
 		bacalhau serve --web-ui --web-ui-port=3000
@@ -195,17 +189,6 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	// Establishing IPFS connection
-	ipfsConfig, err := getIPFSConfig(cfg.Node.IPFS)
-	if err != nil {
-		return err
-	}
-
-	ipfsClient, err := SetupIPFSClient(ctx, cm, ipfsConfig)
-	if err != nil {
-		return err
-	}
-
 	networkConfig, err := getNetworkConfig(cfg.Node.Network)
 	if err != nil {
 		return err
@@ -234,7 +217,6 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 	nodeConfig := node.NodeConfig{
 		NodeID:                cfg.Node.Name,
 		CleanupManager:        cm,
-		IPFSClient:            ipfsClient,
 		DisabledFeatures:      node.FeatureConfig(cfg.Node.DisabledFeatures),
 		HostAddress:           hostAddress,
 		APIPort:               uint16(cfg.Node.ServerAPI.Port),
@@ -301,14 +283,14 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		}()
 	}
 
-	connectCmd, err := buildConnectCommand(ctx, &nodeConfig, ipfsConfig)
+	connectCmd, err := buildConnectCommand(ctx, &nodeConfig)
 	if err != nil {
 		return err
 	}
 	cmd.Println()
 	cmd.Println(connectCmd)
 
-	envVars, err := buildEnvVariables(ctx, cfg, &nodeConfig, ipfsConfig)
+	envVars, err := buildEnvVariables(ctx, cfg, &nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -356,7 +338,7 @@ func setupLibp2p(cfg types.BacalhauConfig) (libp2pHost host.Host, peers []string
 	return
 }
 
-func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsConfig types.IpfsConfig) (string, error) {
+func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (string, error) {
 	headerB := strings.Builder{}
 	cmdB := strings.Builder{}
 	if nodeConfig.IsRequesterNode {
@@ -393,21 +375,6 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig, ipfsC
 				peerAddress,
 			))
 		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			cmdB.WriteString(fmt.Sprintf("%s ",
-				configflags.FlagNameForKey(types.NodeIPFSPrivateInternal, configflags.IPFSFlags...)))
-
-			cmdB.WriteString(fmt.Sprintf("%s=%s ",
-				configflags.FlagNameForKey(types.NodeIPFSSwarmAddresses, configflags.IPFSFlags...),
-				pickP2pAddress(ipfsAddresses).String(),
-			))
-		}
 	} else {
 		if nodeConfig.NetworkConfig.Type == models.NetworkTypeLibp2p {
 			headerB.WriteString("Make sure there's at least one requester node in your network.")
@@ -421,7 +388,6 @@ func buildEnvVariables(
 	ctx context.Context,
 	cfg types.BacalhauConfig,
 	nodeConfig *node.NodeConfig,
-	ipfsConfig types.IpfsConfig,
 ) (string, error) {
 	// build shell variables to connect to this node
 	envVarBuilder := strings.Builder{}
@@ -460,19 +426,6 @@ func buildEnvVariables(
 				"export %s=%s\n",
 				config.KeyAsEnvVar(types.NodeLibp2pPeerConnect),
 				peerAddress,
-			))
-		}
-
-		if ipfsConfig.PrivateInternal {
-			ipfsAddresses, err := nodeConfig.IPFSClient.SwarmMultiAddresses(ctx)
-			if err != nil {
-				return "", fmt.Errorf("error looking up IPFS addresses: %w", err)
-			}
-
-			envVarBuilder.WriteString(fmt.Sprintf(
-				"export %s=%s\n",
-				config.KeyAsEnvVar(types.NodeIPFSSwarmAddresses),
-				pickP2pAddress(ipfsAddresses).String(),
 			))
 		}
 	}

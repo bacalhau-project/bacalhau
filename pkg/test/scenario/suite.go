@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -20,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -66,10 +66,7 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 		return []model.StorageSpec{}
 	}
 
-	clients := stack.IPFSClients()
-	s.Require().GreaterOrEqual(len(clients), 1, "No IPFS clients to upload to?")
-
-	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, stack.IPFSClients()...)
+	storageList, stErr := getStorage(s.Ctx)
 	s.Require().NoError(stErr)
 
 	return storageList
@@ -85,7 +82,11 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	defaultPublisher := config.RequesterConfig.DefaultPublisher
 
 	if config.DevStackOptions == nil {
-		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
+		config.DevStackOptions = &devstack.DevStackOptions{}
+	}
+
+	if config.DevStackOptions.NumberOfNodes() == 0 {
+		config.DevStackOptions.NumberOfHybridNodes = 1
 	}
 
 	if config.RequesterConfig.JobDefaults.TotalTimeout == 0 {
@@ -126,7 +127,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	spec := scenario.Spec
 	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
-	stack, cm := s.setupStack(scenario.Stack)
+	stack, _ := s.setupStack(scenario.Stack)
 
 	s.T().Log("Setting up storage")
 	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
@@ -143,7 +144,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Engine()))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
-			Type: model.PublisherIpfs,
+			Type: model.PublisherLocal,
 		}
 	}
 
@@ -183,27 +184,14 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 		s.Require().NoError(err)
 
 		resultsDir = s.T().TempDir()
-		var swarmAddresses []string
-		for _, n := range stack.Nodes {
-			addrs, err := n.IPFSClient.SwarmAddresses(s.Ctx)
-			s.Require().NoError(err)
-			swarmAddresses = append(swarmAddresses, addrs...)
-		}
-
-		cfg := s.Config
-		cfg.Node.IPFS.SwarmAddresses = swarmAddresses
-		cfg.Node.IPFS.PrivateInternal = true
 
 		downloaderSettings := &downloader.DownloaderSettings{
 			Timeout:   time.Second * 10,
 			OutputDir: resultsDir,
 		}
 
-		ipfsDownloader := ipfs.NewIPFSDownloader(cm, cfg.Node.IPFS)
-		s.Require().NoError(err)
-
 		downloaderProvider := provider.NewMappedProvider(map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfsDownloader,
+			models.StorageSourceURL: http.NewHTTPDownloader(),
 		})
 
 		err = downloader.DownloadResults(s.Ctx, results.Results, downloaderProvider, downloaderSettings)

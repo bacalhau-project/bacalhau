@@ -5,9 +5,10 @@ package devstack
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -37,7 +38,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(
 		downloader.DownloadFilenameStdout,
-		"Hello, world!\n",
+		"Hello, world!\nHello, world!\n",
 	)
 	testCase.JobCheckers = []legacy_job.CheckStatesFunction{
 		legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{

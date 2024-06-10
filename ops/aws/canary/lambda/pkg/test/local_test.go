@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -38,22 +37,6 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	)
 	// for the requester node to pick up the nodeInfo messages
 	nodeutils.WaitForNodeDiscovery(t, stack.Nodes[0].RequesterNode, nodeCount)
-
-	var swarmAddresses []string
-	for _, n := range stack.Nodes {
-		nodeSwarmAddresses, err := n.IPFSClient.SwarmAddresses(context.Background())
-		require.NoError(t, err)
-		swarmAddresses = append(swarmAddresses, nodeSwarmAddresses...)
-	}
-	// Need to set the swarm addresses for getIPFSDownloadSettings() to work in test
-	c.Node.IPFS.SwarmAddresses = swarmAddresses
-
-	// Add data to devstack IPFS
-	testString := "This is a test string"
-	cid, err := ipfs.AddTextToNodes(context.Background(), []byte(testString), stack.IPFSClients()...)
-	require.NoError(t, err)
-	// Need to set the local ipfs CID for SubmitDockerIPFSJobAndGet() to work in test
-	os.Setenv("BACALHAU_CANARY_TEST_CID", cid)
 
 	c.Node.ClientAPI.Host = stack.Nodes[0].APIServer.Address
 	c.Node.ClientAPI.Port = int(stack.Nodes[0].APIServer.Port)

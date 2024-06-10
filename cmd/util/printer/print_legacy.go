@@ -48,7 +48,7 @@ func PrintJobExecutionLegacy(
 	runtimeSettings *cliflags.RunTimeSettingsWithDownload,
 	apiLegacy *client.APIClient,
 	apiV2 clientv2.API,
-	cfg types.IpfsConfig,
+	cfg types.BacalhauConfig,
 ) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to

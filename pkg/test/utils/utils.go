@@ -79,3 +79,15 @@ func MakeSpecWithOpts(t testing.TB, opts ...legacy_job.SpecOpt) model.Spec {
 	}
 	return spec
 }
+
+// MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.
+func MustHaveIPFS(t testing.TB, ipfsConnect string) {
+	if !IsIPFSEnabled(ipfsConnect) {
+		t.Skip("Cannot run this test because it IPFS Connect is not configured")
+	}
+}
+
+// IsIPFSEnabled will return true if the test is running in an environment that can support IPFS.
+func IsIPFSEnabled(ipfsConnect string) bool {
+	return ipfsConnect != ""
+}

@@ -104,7 +104,7 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 	if err := util.DownloadResultsHandler(
 		ctx,
 		cmd,
-		cfg.Node.IPFS,
+		cfg,
 		api,
 		jobID,
 		OG.DownloadSettings,

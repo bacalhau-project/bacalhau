@@ -6,6 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"github.com/tetratelabs/wazero"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -13,9 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/easter"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"github.com/tetratelabs/wazero"
 )
 
 func prepareModule(t *testing.T, alias string, program []byte) storage.PreparedStorage {
@@ -68,10 +69,10 @@ func TestModuleLoading(t *testing.T) {
 			name:        "loads module with a dependency if it is specified as an input source with the correct alias",
 			entryModule: prepareModule(t, "", dynamic.Program()),
 			importModules: []storage.PreparedStorage{
-				// The alias being a CID is not relevant for this test – this is
+				// The alias being input.wasm is not relevant for this test – this is
 				// just the "module name" that the `dynamic` program is looking
 				// for in its WASM import header.
-				prepareModule(t, "QmPympgyrEGEdSJ93rqvQkR71QLuQGdhKQtYztFwxpQsid", easter.Program()),
+				prepareModule(t, "input.wasm", easter.Program()),
 			},
 			errorChecker:  require.NoError,
 			moduleChecker: require.NotNil,

@@ -254,5 +254,5 @@ func create(
 		return fmt.Errorf("submitting job for execution: %w", err)
 	}
 
-	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, apiV1, apiV2, cfg.Node.IPFS)
+	return printer.PrintJobExecutionLegacy(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, apiV1, apiV2, cfg)
 }

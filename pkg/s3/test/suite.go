@@ -100,18 +100,29 @@ func (s *HelperSuite) SetupSuite() {
 		s.T().Skip("No valid AWS credentials found")
 	}
 
-	// Create a fake file with a unique name to test if we have access to the default bucket
-	// This is needed because the bucket may exist but as a client we don't have access to read/write
-	fakeFile := fmt.Sprintf("%s/%s", s.Bucket, uuid.NewString())
-	_, err := s.GetClient().S3.PutObject(context.Background(), &s3.PutObjectInput{
+	// Get a fake file with a unique name to test if we have access to the default bucket
+	// This is needed because the bucket may exist but as a client we don't have access to read
+	fakeFile := fmt.Sprintf("%s/%s", s.BasePrefix, uuid.NewString())
+	_, err := s.GetClient().S3.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(fakeFile),
-		Body:   strings.NewReader(""),
 	})
-	defer s.DeleteObjects(fakeFile)
 
-	if err != nil {
-		s.T().Skip("No access to S3 bucket " + s.Bucket)
+	// skip if the error is not 404, indicating the bucket not found or no access
+	var noSuchKey bool
+	var opErr *smithy.OperationError
+	if errors.As(err, &opErr) {
+		var apiErr smithy.APIError
+		if errors.As(opErr.Err, &apiErr) && apiErr.ErrorCode() == "NoSuchKey" {
+			noSuchKey = true
+		}
+	}
+	if !noSuchKey {
+		if err != nil {
+			s.T().Skipf("No access to S3 bucket %s: %s", s.Bucket, err)
+		} else {
+			s.T().Skipf("Unexpectedly found the fake file %s/%s, something might be wrong", s.Bucket, fakeFile)
+		}
 	}
 
 	// unique runID added to prefix to avoid collisions
@@ -192,7 +203,10 @@ func (s *HelperSuite) PublishResult(publisherConfig s3helper.PublisherSpec, resu
 		Type:   models.PublisherS3,
 		Params: publisherConfig.ToMap(),
 	}
-	return s.Publisher.PublishResult(s.Ctx, &models.Execution{ID: s.ExecutionID, Job: job}, resultPath)
+	execution := mock.ExecutionForJob(job)
+	execution.ID = s.ExecutionID // to get predictable published key
+
+	return s.Publisher.PublishResult(s.Ctx, execution, resultPath)
 }
 
 // PublishResultSilently publishes the resultPath to S3 and skip if no access.

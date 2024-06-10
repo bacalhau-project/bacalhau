@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
@@ -89,19 +88,6 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 			default:
 				return model.StorageSpec{}, fmt.Errorf("unknown option %s", key)
 			}
-		}
-	case "git", "gitlfs":
-		u, err := clone.IsValidGitRepoURL(sourceURI)
-		if err != nil {
-			return model.StorageSpec{}, err
-		}
-		storageSource := model.StorageSourceRepoClone
-		if parsedURI.Scheme == "gitlfs" {
-			storageSource = model.StorageSourceRepoCloneLFS
-		}
-		res = model.StorageSpec{
-			StorageSource: storageSource,
-			Repo:          u.String(),
 		}
 	default:
 		return model.StorageSpec{}, fmt.Errorf("unknown storage schema: %s", parsedURI.Scheme)

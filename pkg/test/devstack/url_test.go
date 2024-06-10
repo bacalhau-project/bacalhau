@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -77,7 +78,7 @@ func runURLTest(
 		Spec: testutils.MakeSpecWithOpts(suite.T(),
 			legacy_job.WithPublisher(
 				model.PublisherSpec{
-					Type: model.PublisherIpfs,
+					Type: model.PublisherLocal,
 				},
 			),
 			legacy_job.WithEngineSpec(
@@ -208,14 +209,14 @@ func (s *URLTestSuite) TestFlakyURLs() {
 	runURLTest(s, s.Config, handler, testCase)
 }
 
-func (s *URLTestSuite) TestIPFSURLCombo() {
-	ipfsfile := "hello-ipfs.txt"
+func (s *URLTestSuite) TestLocalURLCombo() {
+	localFile := "hello-local.txt"
 	urlfile := "hello-url.txt"
-	ipfsmount := "/inputs-1"
+	localMount := "/inputs-1"
 	urlmount := "/inputs-2"
 
 	URLContent := "Common sense is like deodorant. The people who need it most never use it.\n"
-	IPFSContent := "Truth hurts. Maybe not as much as jumping on a bicycle with a seat missing, but it hurts.\n"
+	localContent := "Truth hurts. Maybe not as much as jumping on a bicycle with a seat missing, but it hurts.\n"
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -229,19 +230,24 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 		},
 	})
 	s.Require().NoError(err)
+	rootSourceDir := s.T().TempDir()
+
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+			},
 			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
-			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
+			scenario.StoredText(rootSourceDir, localContent, path.Join(localMount, localFile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
 
 		Spec: testutils.MakeSpecWithOpts(s.T(),
 			legacy_job.WithPublisher(
 				model.PublisherSpec{
-					Type: model.PublisherIpfs,
+					Type: model.PublisherLocal,
 				},
 			),
 			legacy_job.WithEngineSpec(
@@ -249,12 +255,12 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 					WithEntrypoint("_start").
 					WithParameters(
 						urlmount,
-						path.Join(ipfsmount, ipfsfile),
+						path.Join(localMount, localFile),
 					).
 					Build(),
 			),
 		),
-		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+IPFSContent),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+localContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	files "github.com/ipfs/boxo/files"
+	"github.com/ipfs/boxo/files"
 	dag "github.com/ipfs/boxo/ipld/merkledag"
 	ft "github.com/ipfs/boxo/ipld/unixfs"
 	icorepath "github.com/ipfs/boxo/path"
@@ -20,29 +20,23 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
-// Client is a front-end for an ipfs node's API endpoints. You can create
-// Client instances manually by connecting to an ipfs node's API multiaddr using NewClientUsingRemoteHandler,
-// or automatically from an active Node instance using NewClient.
+// Client is a front-end for an ipfs node's API endpoints
 type Client struct {
 	API  icore.CoreAPI
 	addr string
 }
 
-// NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
-// NOTE: the API address is _not_ the same as the swarm address
-func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, error) {
+// NewClient creates an API client for the given ipfs node API multiaddress.
+func NewClient(ctx context.Context, apiAddr string) (*Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
 	}
 
 	// This http.Transport is the same that httpapi.NewApi would use if we weren't passing in our own http.Client
@@ -51,38 +45,23 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 		DisableKeepAlives: true,
 	}
 	api, err := httpapi.NewApiWithClient(addr, &http.Client{
-		Transport: otelhttp.NewTransport(
-			defaultTransport,
-			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
-				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-			}),
-			otelhttp.WithSpanOptions(trace.WithAttributes(semconv.PeerService("ipfs"))),
-		),
+		Transport: defaultTransport,
 	})
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 
-	client := Client{
+	client := &Client{
 		API:  api,
 		addr: apiAddr,
 	}
 
 	id, err := client.ID(ctx)
 	if err != nil {
-		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 	log.Ctx(ctx).Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
 	return client, nil
-}
-
-const MagicInternalIPFSAddress = "memory://in-memory-node/"
-
-func NewClient(api icore.CoreAPI) Client {
-	return Client{
-		API:  api,
-		addr: MagicInternalIPFSAddress,
-	}
 }
 
 // ID returns the node's ipfs ID.

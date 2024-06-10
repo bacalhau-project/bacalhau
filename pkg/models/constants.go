@@ -32,8 +32,6 @@ const (
 const (
 	StorageSourceNoop           = "noop"
 	StorageSourceIPFS           = "ipfs"
-	StorageSourceRepoClone      = "repoclone"
-	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
 	StorageSourceS3PreSigned    = "s3PreSigned"

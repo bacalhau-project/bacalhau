@@ -16,7 +16,6 @@ The canary is composed of several scenarios, each is executed periodically on it
 - `submit`: Submits a job to Bacalhau and verify it was successfully completed
 - `submitAndDescribe`: Submits a job to Bacalhau, waits for it to complete, and then calls the describe related APIs.
 - `submitAndGet`: Submits a job to Bacalhau, waits for it to complete, and then download the output and verify its correctness.
-- `submitDockerIPFSJobAndGet`: Submits a job to Bacalhau with an IPFS input, waits for it to complete, and then download the output and verify its correctness.
 - `submitWithConcurrency`: Submits a job to Bacalhau with a concurrency of 3, and waits for it to complete.
 
 ### Local Testing

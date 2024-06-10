@@ -2,7 +2,7 @@
 APIVersion: v1beta1
 Engine: Docker
 Verifier: Noop
-Publisher: IPFS
+Publisher: local
 JobSpecDocker:
   # docker image you want to use
   Image: ubuntu
@@ -12,13 +12,10 @@ JobSpecDocker:
   - -c
   - echo "hello"
   EnvironmentVariables: []
-# if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
 inputs: []
 Contexts: []
 outputs:
-- StorageEngine: IPFS
+- StorageEngine: local
   # default output volume is outputs
   Name: outputs
-  CID: ""
-  URL: ""
   path: /outputs

@@ -5,8 +5,9 @@ package devstack
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
@@ -41,7 +42,9 @@ func (s *DisabledFeatureTestSuite) TestNothingDisabled() {
 	testCase := disabledTestSpec(s.T())
 	testCase.SubmitChecker = scenario.SubmitJobSuccess()
 	testCase.JobCheckers = scenario.WaitUntilSuccessful(1)
-	testCase.Spec.Publisher = model.PublisherIpfs
+	testCase.Spec.PublisherSpec = model.PublisherSpec{
+		Type: model.PublisherLocal,
+	}
 	s.RunScenario(testCase)
 }
 
@@ -61,8 +64,10 @@ func (s *DisabledFeatureTestSuite) TestDisabledStorage() {
 
 func (s *DisabledFeatureTestSuite) TestDisabledPublisher() {
 	testCase := disabledTestSpec(s.T())
-	testCase.Spec.Publisher = model.PublisherIpfs
-	testCase.Stack.DevStackOptions.DisabledFeatures.Publishers = []string{models.PublisherIPFS}
+	testCase.Spec.PublisherSpec = model.PublisherSpec{
+		Type: model.PublisherLocal,
+	}
+	testCase.Stack.DevStackOptions.DisabledFeatures.Publishers = []string{models.PublisherLocal}
 
 	s.RunScenario(testCase)
 }

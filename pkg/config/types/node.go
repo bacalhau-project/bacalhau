@@ -1,10 +1,6 @@
 package types
 
 import (
-	"strings"
-
-	"github.com/samber/lo"
-
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -116,30 +112,6 @@ type Libp2pConfig struct {
 type IpfsConfig struct {
 	// Connect is the multiaddress to connect to for IPFS.
 	Connect string `yaml:"Connect"`
-	// Whether the in-process IPFS should automatically discover other IPFS nodes
-	PrivateInternal bool `yaml:"PrivateInternal"`
-	// IPFS multiaddresses that the in-process IPFS should connect to
-	// TODO call this Peers, its peers the node will try and stay connected to.
-	SwarmAddresses []string `yaml:"SwarmAddresses"`
-	// Optional IPFS swarm key required to connect to a private IPFS swarm
-	SwarmKeyPath string `yaml:"SwarmKeyPath"`
-	// Path of the IPFS repo
-	ServePath string `yaml:"ServePath"`
-
-	Profile                string   `yaml:"Profile"`
-	SwarmListenAddresses   []string `yaml:"SwarmListenAddresses"`
-	GatewayListenAddresses []string `yaml:"GatewayListenAddresses"`
-	APIListenAddresses     []string `yaml:"APIListenAddresses"`
-}
-
-// Due to a bug in Viper (https://github.com/spf13/viper/issues/380), string
-// slice values can be comma-separated as a command-line flag but not as an
-// environment variable. This getter exists to handle the case where swarm
-// addresses that are meant to be comma-separated end up in the first item.
-func (cfg IpfsConfig) GetSwarmAddresses() []string {
-	return lo.FlatMap[string, string](cfg.SwarmAddresses, func(item string, index int) []string {
-		return strings.Split(item, ",")
-	})
 }
 
 type FeatureConfig struct {

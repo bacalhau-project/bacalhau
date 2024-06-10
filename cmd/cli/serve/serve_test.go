@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
@@ -28,7 +27,6 @@ import (
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -46,7 +44,6 @@ type ServeSuite struct {
 
 	out, err strings.Builder
 
-	ipfsPort int
 	ctx      context.Context
 	repoPath string
 	protocol string
@@ -76,10 +73,6 @@ func (s *ServeSuite) SetupTest() {
 	s.T().Cleanup(func() {
 		cm.Cleanup(s.ctx)
 	})
-
-	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, cfgtypes.IpfsConfig{PrivateInternal: true})
-	s.Require().NoError(err)
-	s.ipfsPort = node.APIPort
 }
 
 func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
@@ -101,13 +94,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetOut(&s.out)
 	cmd.SetErr(&s.err)
 
-	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
-	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
 	args := []string{
 		"serve",
 		"--repo", s.repoPath,
-		"--peer", serve.DefaultPeerConnect,
-		"--private-internal-ipfs",
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
@@ -224,44 +213,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 	_, err = client.Submit(s.ctx, job)
 	s.NoError(err)
-}
-
-func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
-	cm := system.NewCleanupManager()
-
-	client, err := serve.SetupIPFSClient(s.ctx, cm, cfgtypes.IpfsConfig{
-		Connect:         "",
-		PrivateInternal: true,
-		SwarmAddresses:  []string{},
-	})
-	s.Require().NoError(err)
-
-	addrs, err := client.SwarmMultiAddresses(s.ctx)
-	s.Require().NoError(err)
-
-	ip4 := multiaddr.ProtocolWithName("ip4")
-	ip6 := multiaddr.ProtocolWithName("ip6")
-
-	for _, addr := range addrs {
-		s.T().Logf("Internal IPFS node listening on %s", addr)
-		ip, err := addr.ValueForProtocol(ip4.Code)
-		if err == nil {
-			s.Require().Equal("127.0.0.1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-
-		ip, err = addr.ValueForProtocol(ip6.Code)
-		if err == nil {
-			s.Require().Equal("::1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-	}
-
-	s.Require().GreaterOrEqual(len(addrs), 1)
 }
 
 func (s *ServeSuite) TestGetPeers() {

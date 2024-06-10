@@ -8,14 +8,12 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/host"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -47,7 +45,6 @@ type FeatureConfig struct {
 // Node configuration
 type NodeConfig struct {
 	NodeID                      string
-	IPFSClient                  ipfs.Client
 	CleanupManager              *system.CleanupManager
 	HostAddress                 string
 	APIPort                     uint16
@@ -91,18 +88,18 @@ type NodeDependencyInjector struct {
 
 func NewExecutorPluginNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.Node),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewPluginExecutorFactory(cfg.Node.ExecutorPluginPath),
-		PublishersFactory:       NewStandardPublishersFactory(cfg.Node.ComputeStoragePath),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
 
 func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.Node),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
-		PublishersFactory:       NewStandardPublishersFactory(cfg.Node.ComputeStoragePath),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
@@ -114,8 +111,6 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	IPFSClient     ipfs.Client
-	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -329,7 +324,6 @@ func NewNode(
 			apiServer,
 			cfg.Metrics,
 			config.RequesterNodeConfig,
-			storageProviders,
 			authenticators,
 			legacyInfoStore,
 			transportLayer.ComputeProxy(),
@@ -539,10 +533,8 @@ func NewNode(
 		ID:             config.NodeID,
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
-		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
-		Libp2pHost:     config.NetworkConfig.Libp2pHost,
 	}
 
 	return node, nil

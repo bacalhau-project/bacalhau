@@ -14,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func SubmitAndGet(ctx context.Context, cfg types.BacalhauConfig) error {
@@ -26,7 +25,6 @@ func SubmitAndGet(ctx context.Context, cfg types.BacalhauConfig) error {
 	}
 	apiv2 := clientv2.New(fmt.Sprintf("http://%s:%d", cfg.Node.ClientAPI.Host, cfg.Node.ClientAPI.Port))
 
-	cm := system.NewCleanupManager()
 	j, err := getSampleDockerJob()
 	if err != nil {
 		return err
@@ -60,13 +58,13 @@ func SubmitAndGet(ctx context.Context, cfg types.BacalhauConfig) error {
 	}
 	defer os.RemoveAll(outputDir)
 
-	downloadSettings, err := getIPFSDownloadSettings()
+	downloadSettings, err := getDownloadSettings()
 	if err != nil {
 		return err
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider := util.NewStandardDownloaders(cm, cfg.Node.IPFS)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.Node.IPFS.Connect)
 	if err != nil {
 		return err
 	}

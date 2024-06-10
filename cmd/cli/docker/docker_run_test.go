@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -23,9 +22,7 @@ import (
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
 	"github.com/rs/zerolog/log"
@@ -139,11 +136,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	ctx := context.Background()
 
-	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-	s.Require().NoError(err)
-
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--wait",
 		"ubuntu",
 		"--",
@@ -291,32 +284,25 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
-	ctx := context.Background()
-
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	dirPath := s.T().TempDir()
-
 	for _, video := range videos {
 		err := os.WriteFile(
-			filepath.Join(dirPath, video),
+			filepath.Join(s.AllowListedPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)
 		s.Require().NoError(err)
 	}
 
-	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients([]*node.Node{s.Node})...)
-	s.Require().NoError(err)
-
 	allArgs := []string{
 		"docker", "run",
 		"--wait",
-		"-i", fmt.Sprintf("ipfs://%s,dst=/inputs", directoryCid),
+		"-i", fmt.Sprintf("file://%s,dst=/inputs", s.AllowListedPath),
 		"ubuntu", "echo", "hello",
 	}
 
@@ -581,6 +567,6 @@ func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	urlSpec, err := storage_url.DecodeSpec(result)
 	s.Require().NoError(err)
 	s.Require().Contains(urlSpec.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
-	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tgz", exec.ID), "URL does not contain expected file")
+	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tar.gz", exec.ID), "URL does not contain expected file")
 
 }

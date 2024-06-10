@@ -5,6 +5,7 @@ declare -a RUNNING_NODES
 new_repo() {
     export BACALHAU_DIR=$(mktemp -d)
     export BACALHAU_UPDATE_SKIPCHECKS=true
+    export BACALHAU_NODE_COMPUTE_LOCALPUBLISHER_ADDRESS=127.0.0.1
     RUNNING_NODES=()
     bacalhau id >/dev/null 2>&1
 }
