@@ -283,14 +283,11 @@ commands:
             ipfs init 
             ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
             ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-            cat ~/.ipfs/config
-            echo '127.0.0.1 docker.localhost' | sudo tee -a /etc/hosts
       - run:
           name: Start IPFS Daemon
           command: |
             ipfs daemon
           background: true
-
 jobs:
   build_cli:
     executor: linux-amd64
