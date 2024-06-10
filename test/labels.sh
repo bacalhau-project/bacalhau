@@ -23,11 +23,9 @@ run_test() {
 }
 
 testcase_receive_labels_about_requester_node() {
-    assert_equal 0 $status
     run_test requester
 }
 
 testcase_receive_labels_about_compute_node() {
-    assert_equal 0 $status
     run_test requester,compute
 }
