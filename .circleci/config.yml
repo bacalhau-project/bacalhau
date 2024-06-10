@@ -272,16 +272,20 @@ commands:
       - run:
           name: Install IPFS
           command: |
-            wget https://dist.ipfs.tech/kubo/v0.28.0/kubo_v0.28.0_linux-amd64.tar.gz
-            tar -xzf kubo_v0.28.0_linux-amd64.tar.gz
+            set -x 
+            TGT_OS_ARCH="<< parameters.target_os>>-<< parameters.target_arch >>" 
+            wget https://dist.ipfs.tech/kubo/v0.28.0/kubo_v0.28.0_${TGT_OS_ARCH}.tar.gz -O ipfs.tar.gz
+            tar -xzf ipfs.tar.gz
             cd kubo
             sudo bash install.sh
             ipfs --version
       - run:
           name: Initialize IPFS
           command: |
-            ipfs init --profile=test
+            ipfs init 
             ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
+            ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+            cat ~/.ipfs/config
       - run:
           name: Start IPFS Daemon
           command: |
