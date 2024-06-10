@@ -289,6 +289,7 @@ commands:
           name: Start IPFS Daemon
           command: |
             ipfs daemon
+          background: true
 
 jobs:
   build_cli:
