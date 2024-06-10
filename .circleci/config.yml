@@ -288,22 +288,7 @@ commands:
       - run:
           name: Start IPFS Daemon
           command: |
-            nohup ipfs daemon > nohup.out 2>&1 &
-            sleep 5
-            if [ ! -f nohup.out ]; then
-              echo "nohup.out not found"
-              ipfs daemon
-              exit 1
-            fi
-            echo "Checking nohup.out contents"
-            cat nohup.out
-            sleep 5
-            echo "Checking nohup.out contents again"
-            cat nohup.out
-            sleep 5
-            echo "Final check of nohup.out contents"
-            cat nohup.out
-            ipfs id
+            ipfs daemon
 
 jobs:
   build_cli:
