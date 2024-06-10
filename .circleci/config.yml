@@ -557,7 +557,7 @@ jobs:
                   - install_ipfs
                   - run:
                       name: Set IPFS Connect Env
-                      command: echo 'export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001' >> "$BASH_ENV"
+                      command: echo 'export BACALHAU_NODE_IPFS_CONNECT=/ip4/docker.localhost/tcp/5001' >> "$BASH_ENV"
 
       - run:
           name: Test Go
