@@ -91,5 +91,5 @@ func (s *WasmRunSuite) TestLocalPublisher() {
 	urlSpec, err := storage_url.DecodeSpec(result)
 	s.Require().NoError(err)
 	s.Require().Contains(urlSpec.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
-	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tgz", exec[0].ID), "URL does not contain expected file")
+	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tar.gz", exec[0].ID), "URL does not contain expected file")
 }

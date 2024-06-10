@@ -567,6 +567,6 @@ func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	urlSpec, err := storage_url.DecodeSpec(result)
 	s.Require().NoError(err)
 	s.Require().Contains(urlSpec.URL, "http://127.0.0.1:", "URL does not contain expected prefix")
-	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tgz", exec.ID), "URL does not contain expected file")
+	s.Require().Contains(urlSpec.URL, fmt.Sprintf("%s.tar.gz", exec.ID), "URL does not contain expected file")
 
 }
