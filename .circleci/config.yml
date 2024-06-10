@@ -288,7 +288,7 @@ commands:
       - run:
           name: Start IPFS Daemon
           command: |
-            ipfs daemon --offline
+            ipfs daemon
           background: true
 
 jobs:
