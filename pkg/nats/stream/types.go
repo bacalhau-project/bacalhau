@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"strconv"
 	"time"
 )
@@ -47,6 +48,8 @@ type StreamInfo struct {
 	RequestSub string
 	// CreatedAt represents the time the stream was created.
 	CreatedAt time.Time
+	// Function to cancel the stream
+	Cancel context.CancelFunc
 }
 
 // StreamProducerClientConfig represents the configuration of NATS based streaming

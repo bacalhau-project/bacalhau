@@ -158,11 +158,13 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
+	childCtx, cancel := context.WithCancel(ctx)
 	err = streamingClient.AddStream(
 		streamRequest.ConsumerID,
 		streamRequest.StreamID,
 		msg.Subject,
 		streamRequest.HeartBeatRequestSub,
+		cancel,
 	)
 
 	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.ConsumerID)
@@ -172,17 +174,20 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
-	ch, err := f(ctx, *request)
+	ch, err := f(childCtx, *request)
 	if err != nil {
-		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
+		closeError := writer.CloseWithCode(stream.CloseInternalServerErr,
 			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
+		if closeError != nil {
+			log.Err(closeError).Msg("error while closing NATS Stream")
+		}
 		return
 	}
 
 	for res := range ch {
-		_, err := streamingClient.WriteResponse(streamRequest.ConsumerID, streamRequest.StreamID, res, writer)
+		_, err := writer.WriteObject(res)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
+			log.Err(err).Msg("error writing log to NATS subject")
 			break
 		}
 	}

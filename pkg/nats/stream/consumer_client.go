@@ -71,8 +71,9 @@ type ConsumerClientParams struct {
 
 // ConsumerClient represents a NATS streaming client.
 type ConsumerClient struct {
-	Conn *nats.Conn
-	mu   sync.RWMutex // Protects access to the response map.
+	Conn        *nats.Conn
+	mu          sync.RWMutex // Protects access to the response map.
+	muReqSubMap sync.RWMutex // Protects access to reqSubMap
 
 	// response handler
 	respSub       string                        // The wildcard subject
@@ -266,7 +267,7 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 	request := new(HeartBeatRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("failured to parse heart beat request for NATs based consumer client")
 		return
 	}
 
@@ -274,13 +275,13 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 
 	data, err := json.Marshal(ConsumerHeartBeatResponse{NonActiveStreamIds: nonActiveStreamIds})
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("failed to marshal ConsumerHeartBeatResponse")
 		return
 	}
 
 	err = nc.Conn.Publish(msg.Reply, data)
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("failed to publish heart beat response")
 		return
 	}
 }
@@ -297,10 +298,12 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 	token := respInbox[nc.respSubLen:]
 	bucket := newStreamingBucket(ctx, token, subj)
 	nc.respMap[token] = bucket
+	nc.mu.Unlock()
 
 	// Ensure map for this subject exists
+	nc.muReqSubMap.Lock()
 	nc.reqSubMap[subj] = append(nc.reqSubMap[subj], bucket)
-	nc.mu.Unlock()
+	nc.muReqSubMap.Unlock()
 
 	streamRequest := Request{
 		ConsumerID:          nc.respSubPrefix,
@@ -329,6 +332,8 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 
 func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[string][]string) map[string][]string {
 	nonActiveStreamIds := make(map[string][]string)
+	nc.muReqSubMap.RLock()
+	defer nc.muReqSubMap.RUnlock()
 
 	// Loop through all active stream ids at producer
 	for subject, producerStreamIds := range activeStreamIDsAtProducer {
