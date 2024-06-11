@@ -154,10 +154,7 @@ func publishToS3Unsigned(ds *DownloaderSuite, dir string) *models.SpecConfig {
 func requireFileExists(ds *DownloaderSuite, path ...string) string {
 	testPath := filepath.Join(ds.downloadSettings.OutputDir, filepath.Join(path...))
 	_, err := os.Stat(testPath)
-	if err != nil {
-		ds.T().Logf("Could not find file at %s", testPath)
-	}
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err, "File does not exist: %s", testPath)
 	return testPath
 }
 
