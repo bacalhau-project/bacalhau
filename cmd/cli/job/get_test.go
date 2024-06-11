@@ -11,16 +11,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
+	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -42,7 +42,109 @@ func (s *GetSuite) SetupTest() {
 	s.BaseSuite.SetupTest()
 }
 
-func testResultsFolderStructure(t *testing.T, baseFolder string, expectedFiles []string) {
+func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+		"--publisher", "ipfs",
+	})
+	_, out, err := s.ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+
+	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		fmt.Sprintf("%s/missing", jobID),
+	)
+
+	require.Error(s.T(), err, "expected error but it wasn't returned")
+	require.Contains(s.T(), getoutput, "error downloading job")
+}
+
+func (s *GetSuite) TestGetSingleFileFromOutput() {
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+		"--publisher", "ipfs",
+	})
+	_, out, err := s.ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.Node.ID
+
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		fmt.Sprintf("%s/stdout", jobID),
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+}
+
+func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
+	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+		"--publisher", "ipfs",
+	})
+	_, out, err := s.ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.Node.ID
+
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
+		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		"--api-host", s.Node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
+		fmt.Sprintf("%s/data/apples/file.txt", jobID),
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(),
+		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
+		hostID,
+		[]string{
+			"/data",
+			"/data/apples",
+			"/data/apples/file.txt",
+		})
+}
+
+// this tests that when we do get with an --output-dir
+// the results layout adheres to the expected folder layout
+func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(s.T(), err)
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+		"-o outputs:/outputs",
+		"--publisher", "local",
+	})
+	_, out, err := s.ExecuteTestCobraCommand(args...)
+
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.Node.ID
+
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
+		"--output-dir", tempDir,
+		jobID,
+	)
+	require.NoError(s.T(), err, "Error getting results")
+	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
+	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
+}
+
+func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expectedFiles []string) {
 	var files []string
 	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
@@ -117,167 +219,4 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",
 	)
 	return args
-}
-
-// this tests that when we do docker run with no --output-dir
-// it makes it's own folder to put the results in and does not splat results
-// all over the current directory
-func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
-	s.T().Skip("--download not supported in v2")
-	tempDir, cleanup := setupTempWorkingDir(s.T())
-	defer cleanup()
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--download",
-	})
-	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-
-	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
-	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), outputFolder, nil)
-
-}
-
-// this tests that when we do docker run with an --output-dir
-// the results layout adheres to the expected folder layout
-func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
-	s.T().Skip("--download not supported in v2")
-	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(s.T(), err)
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--download",
-		"--output-dir", tempDir,
-	})
-	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, nil)
-}
-
-// this tests that when we do get with no --output-dir
-// it makes it's own folder to put the results in and does not splat results
-// all over the current directory
-func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
-	s.T().Skip("--download not supported in v2")
-	tempDir, cleanup := setupTempWorkingDir(s.T())
-	defer cleanup()
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--publisher", "local",
-	})
-	_, out, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(out)
-	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		jobID,
-	)
-	require.NoError(s.T(), err, "Error getting results")
-
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), nil)
-}
-
-func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--publisher", "ipfs",
-	})
-	_, out, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(out)
-
-	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
-		fmt.Sprintf("%s/missing", jobID),
-	)
-
-	require.Error(s.T(), err, "expected error but it wasn't returned")
-	require.Contains(s.T(), getoutput, "error downloading job")
-}
-
-func (s *GetSuite) TestGetSingleFileFromOutput() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
-	tempDir, cleanup := setupTempWorkingDir(s.T())
-	defer cleanup()
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--publisher", "ipfs",
-	})
-	_, out, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(out)
-
-	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
-		fmt.Sprintf("%s/stdout", jobID),
-	)
-	require.NoError(s.T(), err, "Error getting results")
-
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), []string{"/stdout"})
-}
-
-func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
-	tempDir, cleanup := setupTempWorkingDir(s.T())
-	defer cleanup()
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"--publisher", "ipfs",
-	})
-	_, out, err := s.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(out)
-
-	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
-		"--api-host", s.Node.APIServer.Address,
-		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
-		fmt.Sprintf("%s/data/apples/file.txt", jobID),
-	)
-	require.NoError(s.T(), err, "Error getting results")
-
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(),
-		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
-		[]string{
-			"/data",
-			"/data/apples",
-			"/data/apples/file.txt",
-		})
-}
-
-// this tests that when we do get with an --output-dir
-// the results layout adheres to the expected folder layout
-func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
-	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(s.T(), err)
-
-	args := s.getDockerRunArgs([]string{
-		"--wait",
-		"-o outputs:/outputs",
-		"--publisher", "local",
-	})
-	_, out, err := s.ExecuteTestCobraCommand(args...)
-
-	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutputLegacy(out)
-
-	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--output-dir", tempDir,
-		jobID,
-	)
-	require.NoError(s.T(), err, "Error getting results")
-	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, nil)
 }
