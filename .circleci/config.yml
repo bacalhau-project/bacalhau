@@ -278,12 +278,11 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - ipfs-<< parameters.cache_version >>-{{ checksum "ipfs_version.txt" }}
+            - ipfs-<< parameters.cache_version >>-{{ checksum ".circleci/config.yml" }}
             - ipfs-<< parameters.cache_version >>
       - run:
           name: Install IPFS
           command: |
-            echo "<< parameters.ipfs_version >>" > ipfs_version.txt
             if [ ! -f /usr/local/bin/ipfs ]; then
               wget https://dist.ipfs.tech/go-ipfs/v0.18.0/go-ipfs_<< parameters.ipfs_version >>_linux-amd64.tar.gz -O ipfs.tar.gz
               tar -xzf ipfs.tar.gz
@@ -294,10 +293,9 @@ commands:
               echo "IPFS is already installed, skipping download."
             fi
       - save_cache:
-          key: ipfs-<< parameters.cache_version >>-{{ checksum "ipfs_version.txt" }}
+          key: ipfs-<< parameters.cache_version >>-{{ checksum ".circleci/config.yml" }}
           paths:
             - /usr/local/bin/ipfs
-            - ipfs_version.txt
       - run:
           name: Initialize IPFS
           command: |
