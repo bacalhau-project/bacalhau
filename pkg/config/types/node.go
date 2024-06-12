@@ -5,23 +5,18 @@ import (
 )
 
 type NodeConfig struct {
-	Name         string       `yaml:"Name"`
-	NameProvider string       `yaml:"NameProvider"`
-	ClientAPI    APIConfig    `yaml:"ClientAPI"`
-	ServerAPI    APIConfig    `yaml:"ServerAPI"`
-	Libp2p       Libp2pConfig `yaml:"Libp2P"`
-	IPFS         IpfsConfig   `yaml:"IPFS"`
+	Name         string     `yaml:"Name"`
+	NameProvider string     `yaml:"NameProvider"`
+	ClientAPI    APIConfig  `yaml:"ClientAPI"`
+	ServerAPI    APIConfig  `yaml:"ServerAPI"`
+	IPFS         IpfsConfig `yaml:"IPFS"`
 
 	Compute   ComputeConfig   `yaml:"Compute"`
 	Requester RequesterConfig `yaml:"Requester"`
 
-	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
-	BootstrapAddresses []string `yaml:"BootstrapAddresses"`
-
 	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
 	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
 	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
-	NodeInfoStoreTTL          Duration `yaml:"NodeInfoStoreTTL"`
 
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
@@ -103,12 +98,6 @@ type TLSConfiguration struct {
 	SelfSigned bool `yaml:"SelfSigned"`
 }
 
-type Libp2pConfig struct {
-	SwarmPort int `yaml:"SwarmPort"`
-	// PeerConnect is the libp2p multiaddress to connect to.
-	PeerConnect string `yaml:"PeerConnect"`
-}
-
 type IpfsConfig struct {
 	// Connect is the multiaddress to connect to for IPFS.
 	Connect string `yaml:"Connect"`
@@ -127,7 +116,6 @@ type DockerCacheConfig struct {
 }
 
 type NetworkConfig struct {
-	Type              string               `yaml:"Type"`
 	Port              int                  `yaml:"Port"`
 	AdvertisedAddress string               `yaml:"AdvertisedAddress"`
 	AuthSecret        string               `yaml:"AuthSecret"`

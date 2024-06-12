@@ -3,16 +3,11 @@ package routing
 import (
 	"context"
 
-	libp2p_routing "github.com/libp2p/go-libp2p/core/routing"
-
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // TODO rename this interface to NodeStore, it tracks more than their info
 type NodeInfoStore interface {
-	// TODO: Remove this interface once we switch to nats
-	libp2p_routing.PeerRouting
-
 	// Add adds a node info to the repo.
 	Add(ctx context.Context, nodeInfo models.NodeState) error
 

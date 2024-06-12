@@ -4,14 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
+	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
@@ -24,6 +28,8 @@ import (
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
@@ -52,18 +58,22 @@ type Requester struct {
 	debugInfoProviders []model.DebugInfoProvider
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo
 func NewRequesterNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
-	cfg types.MetricsConfig,
+	nodeConfig NodeConfig,
+	metricsConfig types.MetricsConfig,
 	requesterConfig RequesterConfig,
-	authnProvider authn.Provider,
-	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
+	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
-	nodeManager *manager.NodeManager,
 ) (*Requester, error) {
+	nodeManager, err := createNodeManager(ctx, transportLayer, requesterConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
@@ -73,38 +83,6 @@ func NewRequesterNode(
 	})
 
 	jobStore := requesterConfig.JobStore
-
-	// TODO(forrest) [simplify]: given the current state of the code this interface obfuscates what is happening here,
-	// there isn't any "node discovery" happening here, we are simply listing a node store.
-	// The todo here is to simply pass a node store where it's needed instead of this chain wrapping a discoverer wrapping
-	// a store...
-	// compute node discoverer
-	log.Ctx(ctx).
-		Info().
-		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
-
-	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
-	if err != nil {
-		return nil, err
-	}
-	// compute node ranker
-	nodeRankerChain := ranking.NewChain()
-	nodeRankerChain.Add(
-		// rankers that act as filters and give a -1 score to nodes that do not match the filter
-		ranking.NewEnginesNodeRanker(),
-		ranking.NewPublishersNodeRanker(),
-		ranking.NewStoragesNodeRanker(),
-		ranking.NewLabelsNodeRanker(),
-		ranking.NewMaxUsageNodeRanker(),
-		overSubscriptionNodeRanker,
-		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
-		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
-		ranking.NewAvailableCapacityNodeRanker(),
-		// arbitrary rankers
-		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
-		}),
-	)
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
@@ -160,9 +138,14 @@ func NewRequesterNode(
 	}
 
 	// node selector
+	nodeRanker, err := createNodeRanker(requesterConfig, jobStore)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeSelector := selector.NewNodeSelector(
-		nodeInfoStore,
-		nodeRankerChain,
+		nodeManager,
+		nodeRanker,
 		// selector constraints: require nodes be online and approved to schedule
 		orchestrator.NodeSelectionConstraints{
 			RequireConnected: true,
@@ -277,7 +260,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeInfoStore),
+		discovery.NewDebugInfoProvider(nodeManager),
 	}
 
 	// register requester public http apis
@@ -286,7 +269,7 @@ func NewRequesterNode(
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
-		NodeDiscoverer:     nodeInfoStore,
+		NodeDiscoverer:     nodeManager,
 	})
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
@@ -296,11 +279,18 @@ func NewRequesterNode(
 		NodeManager:  nodeManager,
 	})
 
-	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authnProvider)
+	authenticators, err := nodeConfig.DependencyInjector.AuthenticatorsFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+	metrics.NodeInfo.Add(ctx, 1,
+		attribute.StringSlice("node_authenticators", authenticators.Keys(ctx)),
+	)
+	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
-	eventTracer, err := eventhandler.NewTracer(cfg.EventTracerPath)
+	eventTracer, err := eventhandler.NewTracer(metricsConfig.EventTracerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -342,17 +332,107 @@ func NewRequesterNode(
 		}
 	}
 
+	if err = transportLayer.RegisterComputeCallback(endpoint); err != nil {
+		return nil, err
+	}
+
 	return &Requester{
 		Endpoint:           endpoint,
 		localCallback:      endpoint,
 		EndpointV2:         endpointV2,
-		NodeDiscoverer:     nodeInfoStore,
-		NodeInfoStore:      nodeInfoStore,
+		NodeDiscoverer:     nodeManager,
+		NodeInfoStore:      nodeManager,
 		JobStore:           jobStore,
 		nodeManager:        nodeManager,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
+}
+
+func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
+	if err != nil {
+		return nil, err
+	}
+	// compute node ranker
+	nodeRankerChain := ranking.NewChain()
+	nodeRankerChain.Add(
+		// rankers that act as filters and give a -1 score to nodes that do not match the filter
+		ranking.NewEnginesNodeRanker(),
+		ranking.NewPublishersNodeRanker(),
+		ranking.NewStoragesNodeRanker(),
+		ranking.NewLabelsNodeRanker(),
+		ranking.NewMaxUsageNodeRanker(),
+		overSubscriptionNodeRanker,
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
+		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
+		ranking.NewAvailableCapacityNodeRanker(),
+		// arbitrary rankers
+		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
+			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
+		}),
+	)
+	return nodeRankerChain, nil
+}
+
+func createNodeManager(ctx context.Context,
+	transportLayer *nats_transport.NATSTransport,
+	requesterConfig RequesterConfig) (*manager.NodeManager, error) {
+	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
+	if err != nil {
+		return nil, err
+	}
+
+	// heartbeat service
+	heartbeatParams := heartbeat.HeartbeatServerParams{
+		Client:                transportLayer.Client(),
+		Topic:                 requesterConfig.ControlPlaneSettings.HeartbeatTopic,
+		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
+		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
+	}
+	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
+	}
+
+	// node manager
+	// Create a new node manager to keep track of compute nodes connecting
+	// to the network. Provide it with a mechanism to lookup (and enhance)
+	// node info, and a reference to the heartbeat server
+	nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
+		NodeInfo:             nodeInfoStore,
+		Heartbeats:           heartbeatSvr,
+		DefaultApprovalState: requesterConfig.DefaultApprovalState,
+	})
+
+	// Start the nodemanager, ensuring it doesn't block the main thread and
+	// that any errors are logged. If we are unable to start the manager
+	// then we should not start the node.
+	if err = nodeManager.Start(ctx); err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to start node manager")
+	}
+
+	return nodeManager, transportLayer.RegisterManagementEndpoint(nodeManager)
+}
+
+func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NATSTransport) (routing.NodeInfoStore, error) {
+	// nodeInfoStore
+	nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
+		BucketName: kvstore.BucketNameCurrent,
+		Client:     transportLayer.Client(),
+	})
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
+	}
+
+	tracingInfoStore := tracing.NewNodeStore(nodeInfoStore)
+
+	// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
+	// of node info.
+	if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
+	}
+	return tracingInfoStore, nil
 }
 
 func (r *Requester) cleanup(ctx context.Context) {

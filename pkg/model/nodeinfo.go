@@ -2,8 +2,6 @@ package model
 
 import (
 	"context"
-
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 //go:generate stringer -type=NodeType -trimprefix=NodeType -output=nodeinfo_string.go
@@ -24,7 +22,6 @@ type ComputeNodeInfoProvider interface {
 
 type NodeInfo struct {
 	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
-	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo"`

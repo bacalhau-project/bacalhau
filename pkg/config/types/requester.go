@@ -28,6 +28,7 @@ type RequesterConfig struct {
 	DefaultPublisher string            `yaml:"DefaultPublisher"`
 
 	ControlPlaneSettings RequesterControlPlaneConfig `yaml:"ControlPlaneSettings"`
+	NodeInfoStoreTTL     Duration                    `yaml:"NodeInfoStoreTTL"`
 
 	// ManualNodeApproval is a flag that determines if nodes should be manually approved or not.
 	// By default, nodes are auto-approved to simplify upgrades, by setting this property to
