@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "WasmParams": {
+      "type": "object",
+      "required": ["EntryModule", "Entrypoint"],
+      "properties": {
+        "EntryModule": { "$ref": "input-source.json#/$defs/InputSource" },
+        "Entrypoint": { "type": "string" },
+        "Parameters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "EnvironmentVariables": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "ImportModules": {
+          "type": "array",
+          "items": { "$ref": "input-source.json#/$defs/InputSource" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "DockerParams": {
+      "type": "object",
+      "required": ["Image"],
+      "properties": {
+        "Image": { "type": "string" },
+        "Entrypoint": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "Parameters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "EnvironmentVariables": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "WorkingDirectory": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "SpecConfigEngine": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string",
+          "enum": ["docker", "wasm"]
+        },
+        "Params": {
+          "type": "object"
+        }
+      },
+      "required": ["Type", "Params"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "Type": {
+              "const": "docker"
+            },
+            "Params": {
+              "$ref": "eng-docker.schema.json#/$defs/DockerParams"
+            }
+          }
+        },
+        {
+          "properties": {
+            "Type": {
+              "const": "wasm"
+            },
+            "Params": {
+              "$ref": "eng-wasm.schema.json#/$defs/WasmParams"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

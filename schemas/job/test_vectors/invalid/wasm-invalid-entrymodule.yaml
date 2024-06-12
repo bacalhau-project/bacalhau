@@ -1,0 +1,14 @@
+Name: Wasm Job
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: wasm
+      Params:
+        EntryModule:
+          Target: "/inputs"
+          Source:
+            Type: invalid
+        Entrypoint: _start
+

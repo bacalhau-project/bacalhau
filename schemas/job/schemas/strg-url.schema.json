@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "URLParams": {
+      "required": ["URL"],
+      "type": "object",
+      "properties": {
+        "URL": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

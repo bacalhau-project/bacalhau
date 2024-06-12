@@ -16,12 +16,12 @@ import (
 // EngineSpec contains necessary parameters to execute a wasm job.
 type EngineSpec struct {
 	// EntryModule is a Spec containing the WASM code to start running.
-	EntryModule *models.InputSource `json:"EntryModule,omitempty"`
+	EntryModule *models.InputSource `json:"EntryModule"`
 
 	// Entrypoint is the name of the function in the EntryModule to call to run the job.
 	// For WASI jobs, this will should be `_start`, but jobs can choose to call other WASM functions instead.
 	// Entrypoint must be a zero-parameter zero-result function.
-	Entrypoint string `json:"EntryPoint,omitempty"`
+	Entrypoint string `json:"EntryPoint"`
 
 	// Parameters contains arguments supplied to the program (i.e. as ARGV).
 	Parameters []string `json:"Parameters,omitempty"`

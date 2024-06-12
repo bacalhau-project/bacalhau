@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "NetworkConfig": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string",
+          "enum": ["None", "Full", "HTTP"],
+          "description": "Specifies the type of network configuration. Must be one of: None, Full, or HTTP."
+        },
+        "Domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\b([a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,}\\b",
+            "description": "A list of domain names. If Type is HTTP, each domain must match the specified regex pattern."
+          },
+          "description": "A list of domains. Must be set only if Type is HTTP."
+        }
+      },
+      "required": ["Type"],
+      "additionalProperties": false,
+      "description": "Defines the network configuration settings.",
+      "allOf": [
+        {
+          "if": {
+            "properties": { "Type": { "const": "HTTP" } },
+            "required": ["Type"],
+            "description": "If Type is HTTP, Domains must be provided and must match the specified regex pattern."
+          },
+          "then": {
+            "properties": {
+              "Domains": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "\\b([a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,}\\b"
+                }
+              }
+            },
+            "required": ["Domains"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "Type": { "enum": ["None", "Full"] } },
+            "required": ["Type"],
+            "description": "If Type is None or Full, Domains must not be set."
+          },
+          "then": {
+            "properties": {
+              "Domains": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

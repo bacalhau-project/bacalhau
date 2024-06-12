@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "Task": {
+      "type": "object",
+      "properties": {
+        "Name": { "type": "string" },
+        "Engine": { "$ref": "eng.schema.json#/$defs/SpecConfigEngine"},
+        "Publisher": { "$ref": "pub.schema.json#/$defs/SpecConfigPublisher"},
+        "Env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "Meta": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "InputSources": {
+          "type": "array",
+          "items": { "$ref": "input-source.json#/$defs/InputSource" }
+        },
+        "ResultPaths": {
+          "type": "array",
+          "items": { "$ref": "result-path.json#/$defs/ResultPath" }
+        },
+        "Resources": { "$ref": "resources-config.json#/$defs/ResourcesConfig" },
+        "Network": { "$ref": "network-config.json#/$defs/NetworkConfig" },
+        "Timeouts": { "$ref": "timeout-config.json#/$defs/TimeoutConfig" }
+      },
+      "required": ["Name", "Engine"],
+      "dependencies": {
+        "ResultPaths": ["Publisher"]
+      },
+      "additionalProperties": false
+    }
+  }
+}

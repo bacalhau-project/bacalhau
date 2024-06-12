@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "SpecConfigStorage": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string",
+          "enum": ["ipfs", "urlDownload", "s3", "inline", "localDirectory"]
+        },
+        "Params": {
+          "type": "object"
+        }
+      },
+      "required": ["Type", "Params"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "Type": { "const": "ipfs" },
+            "Params": { "$ref": "strg-ipfs.schema.json#/$defs/IPFSParams"}
+          }
+        },
+         {
+          "properties": {
+            "Type": { "const": "urlDownload" },
+            "Params": { "$ref": "strg-url.schema.json#/$defs/URLParams"}
+          }
+        },
+         {
+          "properties": {
+            "Type": { "const": "s3" },
+            "Params": { "$ref": "strg-s3.schema.json#/$defs/S3Params"}
+          }
+        },
+        {
+          "properties": {
+            "Type": { "const": "inline" },
+            "Params": { "$ref": "strg-inline.schema.json#/$defs/InlineParams"}
+          }
+        },
+        {
+          "properties": {
+            "Type": { "const": "localDirectory" },
+            "Params": { "$ref": "strg-local.schema.json#/$defs/LocalParams"}
+          }
+        }
+      ]
+    }
+  }
+}

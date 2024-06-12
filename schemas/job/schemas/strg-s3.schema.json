@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "S3Params": {
+      "required": ["Bucket"],
+      "type": "object",
+      "properties": {
+        "Bucket": { "type": "string" },
+        "Key": { "type": "string" },
+        "Filter": { "type": "string" },
+        "Region": { "type": "string" },
+        "Endpoint": { "type": "string" },
+        "VersionID": { "type": "string" },
+        "ChecksumSHA256": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

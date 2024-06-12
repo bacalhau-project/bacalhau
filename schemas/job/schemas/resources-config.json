@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "ResourcesConfig": {
+      "type": "object",
+      "properties": {
+        "CPU": { "type": "string" },
+        "Memory": { "type": "string" },
+        "Disk": { "type": "string" },
+        "GPU": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

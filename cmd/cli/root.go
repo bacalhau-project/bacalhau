@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
@@ -26,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"

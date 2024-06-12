@@ -1,8 +1,9 @@
-Name: A Simple Docker Job
+Name: Docker Job with Output
 Type: batch
+Namespace: default
 Count: 1
 Tasks:
-  - Name: My main task
+  - Name: main
     Engine:
       Type: docker
       Params:
@@ -11,4 +12,6 @@ Tasks:
           - /bin/bash
         Parameters:
           - -c
-          - echo Hello Bacalhau!
+          - echo 15 > /output_custom/output.txt
+    Publisher:
+      Type: local

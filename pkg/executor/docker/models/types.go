@@ -15,7 +15,7 @@ import (
 // EngineSpec contains necessary parameters to execute a docker job.
 type EngineSpec struct {
 	// Image this should be pullable by docker
-	Image string `json:"Image,omitempty"`
+	Image string `json:"Image"`
 	// Entrypoint optionally override the default entrypoint
 	Entrypoint []string `json:"Entrypoint,omitempty"`
 	// Parameters holds additional commandline arguments

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "S3Params": {
+      "required": ["Bucket", "Key", "Endpoint"],
+      "properties": {
+        "Bucket": { "type": "string" },
+        "Key": { "type": "string" },
+        "Endpoint": { "type": "string" },
+        "Region": { "type": "string" }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  }
+}

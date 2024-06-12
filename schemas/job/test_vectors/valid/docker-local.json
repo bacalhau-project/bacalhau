@@ -1,0 +1,31 @@
+{
+  "Name": "Docker Job with Local File",
+  "Type": "batch",
+  "Namespace": "default",
+  "Count": 1,
+  "Tasks": [
+    {
+      "Name": "main",
+      "Engine": {
+        "Type": "docker",
+        "Params": {
+          "Image": "ubuntu:latest",
+          "Entrypoint": ["cat", "/data/input.txt"]
+        }
+      },
+      "InputSources": [
+        {
+          "Alias": "input_file",
+          "Target": "/data/input.txt",
+          "Source": {
+            "Type": "localDirectory",
+            "Params": {
+              "SourcePath": "/local/path/to/input.txt",
+              "ReadWrite": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "IPFSParams": {
+      "type": "object",
+      "required": ["CID"],
+      "properties": {
+        "CID": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

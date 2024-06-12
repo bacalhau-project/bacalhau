@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "InputSource": {
+      "type": "object",
+      "properties": {
+        "Source": {
+          "$ref": "strg.schema.json#/$defs/SpecConfigStorage"
+        },
+        "Alias": { "type": "string" },
+        "Target": { "type": "string" }
+      },
+      "required": ["Source", "Target"],
+      "additionalProperties": false
+    }
+  }
+}

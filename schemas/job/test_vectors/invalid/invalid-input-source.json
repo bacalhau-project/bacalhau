@@ -1,0 +1,29 @@
+{
+  "Name": "Invalid Input Source Type",
+  "Type": "batch",
+  "Namespace": "default",
+  "Count": 1,
+  "Tasks": [
+    {
+      "Name": "main",
+      "Engine": {
+        "Type": "docker",
+        "Params": {
+          "Image": "ubuntu:latest"
+        }
+      },
+      "InputSources": [
+        {
+          "Alias": "input_custom",
+          "Target": "/input_custom",
+          "Source": {
+            "Type": "InvalidType",
+            "Params": {
+              "Bad": "invalid"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

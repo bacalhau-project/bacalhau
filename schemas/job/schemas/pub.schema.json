@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$defs": {
+    "SpecConfigPublisher": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string",
+          "enum": ["ipfs", "s3", "local"]
+        },
+        "Params": {
+          "type": "object"
+        }
+      },
+      "required": ["Type"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "Type": {"const": "ipfs"},
+            "Params": {"$ref": "pub-ipfs.schema.json#/$defs/IPFSParams"}
+          }
+        },
+        {
+          "properties": {
+            "Type": {"const": "s3"},
+            "Params": {"$ref": "pub-s3.schema.json#/$defs/S3Params"}
+          }
+        },
+        {
+          "properties": {
+            "Type": {"const": "local"},
+            "Params": {"$ref": "pub-local.schema.json#/$defs/LocalParams"}
+          }
+        }
+      ]
+    }
+  }
+}

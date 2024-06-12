@@ -1,0 +1,25 @@
+{
+  "Name": "Docker Job with Resources and Network",
+  "Type": "batch",
+  "Namespace": "default",
+  "Count": 1,
+  "Tasks": [
+    {
+      "Name": "main",
+      "Engine": {
+        "Type": "docker",
+        "Params": {
+          "Image": "ubuntu:latest",
+          "Entrypoint": ["ping", "-c", "4", "google.com"]
+        }
+      },
+      "Resources": {
+        "CPU": "500m",
+        "Memory": "512Mi"
+      },
+      "Network": {
+        "Type": "Full"
+      }
+    }
+  ]
+}
