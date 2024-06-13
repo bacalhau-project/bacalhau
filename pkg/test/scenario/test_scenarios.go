@@ -1,9 +1,11 @@
 package scenario
 
 import (
+	"os"
 	"runtime"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -22,9 +24,19 @@ const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
+const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
+
 func CatFileToStdout(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredText(
+			rootSourceDir,
 			helloWorld,
 			simpleMountPath,
 		),
@@ -44,8 +56,16 @@ func CatFileToStdout(t testing.TB) Scenario {
 }
 
 func CatFileToVolume(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredText(
+			rootSourceDir,
 			catProgram,
 			simpleMountPath,
 		),
@@ -70,8 +90,16 @@ func CatFileToVolume(t testing.TB) Scenario {
 }
 
 func GrepFile(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredFile(
+			rootSourceDir,
 			"../../../testdata/grep_file.txt",
 			simpleMountPath,
 		),
@@ -91,8 +119,16 @@ func GrepFile(t testing.TB) Scenario {
 }
 
 func SedFile(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredFile(
+			rootSourceDir,
 			"../../../testdata/sed_file.txt",
 			simpleMountPath,
 		),
@@ -117,8 +153,16 @@ func SedFile(t testing.TB) Scenario {
 }
 
 func AwkFile(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredFile(
+			rootSourceDir,
 			"../../../testdata/awk_file.txt",
 			simpleMountPath,
 		),
@@ -197,8 +241,16 @@ func WasmEnvVars(t testing.TB) Scenario {
 }
 
 func WasmCsvTransform(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: StoredFile(
+			rootSourceDir,
 			"../../../testdata/wasm/csv/inputs",
 			"/inputs",
 		),
@@ -228,12 +280,21 @@ func WasmCsvTransform(t testing.TB) Scenario {
 }
 
 func WasmDynamicLink(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
 		Inputs: ManyStores(
-			StoredText("unused input", "/data"),
-			StoredFile(
+			StoredText(rootSourceDir, "unused input", "/data"),
+
+			// We are mounting/aliasing the wasm file as a input.wasm as this is what dynamic.wasm expects.
+			StoredFile(rootSourceDir,
 				"../../../testdata/wasm/easter/main.wasm",
-				"/inputs",
+				"input.wasm",
 			),
 		),
 		ResultsChecker: FileEquals(
@@ -251,8 +312,15 @@ func WasmDynamicLink(t testing.TB) Scenario {
 }
 
 func WasmLogTest(t testing.TB) Scenario {
+	rootSourceDir := t.TempDir()
+
 	return Scenario{
-		Inputs: StoredFile(
+		Stack: &StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + AllowedListedLocalPathsSuffix},
+			},
+		},
+		Inputs: StoredFile(rootSourceDir,
 			"../../../testdata/wasm/logtest/inputs/",
 			"/inputs",
 		),

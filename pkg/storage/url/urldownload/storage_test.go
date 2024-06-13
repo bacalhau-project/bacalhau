@@ -10,12 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -30,8 +29,6 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
-	err := config.Set(configenv.Local)
-	require.NoError(t, err)
 	suite.Run(t, new(StorageSuite))
 }
 
@@ -41,7 +38,10 @@ func (s *StorageSuite) SetupTest() {
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	sp := NewStorage()
+	sp := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
 
 	spec := models.InputSource{
 		Source: &models.SpecConfig{
@@ -304,7 +304,10 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			}))
 			s.T().Cleanup(ts.Close)
 
-			subject := NewStorage()
+			subject := NewStorage(
+				time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+				configenv.Testing.Node.DownloadURLRequestRetries,
+			)
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
 			spec := models.InputSource{
@@ -338,4 +341,93 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			s.Equal(test.expectedContent, string(actualContent), "content does not match")
 		})
 	}
+}
+func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
+	path := "/initial"
+	headers := &map[string]string{
+		"Content-Length": "500",
+	}
+	code := 200
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != path {
+			http.Error(w, fmt.Sprintf("invalid path: %s should be %s", r.URL.Path, path), 999)
+			return
+		}
+
+		if headers != nil {
+			// Set the headers, if any, before WriteHeader is called
+			for k, v := range *headers {
+				w.Header().Add(k, v)
+			}
+		}
+
+		w.WriteHeader(code)
+
+		_, err := w.Write([]byte(""))
+		s.NoError(err)
+	}))
+	s.T().Cleanup(ts.Close)
+
+	subject := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
+
+	url := fmt.Sprintf("%s%s", ts.URL, path)
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: url,
+			}.ToMap(),
+		},
+		Target: "/inputs",
+	}
+
+	vs, err := subject.GetVolumeSize(context.Background(), spec)
+	s.Require().NoError(err)
+
+	s.Equal(uint64(500), vs, "content-length does not match")
+
+}
+
+func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
+	path := "/initial"
+	code := 200
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != path {
+			http.Error(w, fmt.Sprintf("invalid path: %s should be %s", r.URL.Path, path), 999)
+			return
+		}
+
+		w.WriteHeader(code)
+
+		_, err := w.Write([]byte(""))
+		s.NoError(err)
+	}))
+	s.T().Cleanup(ts.Close)
+
+	subject := NewStorage(
+		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
+		configenv.Testing.Node.DownloadURLRequestRetries,
+	)
+
+	url := fmt.Sprintf("%s%s", ts.URL, path)
+	spec := models.InputSource{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: url,
+			}.ToMap(),
+		},
+		Target: "/inputs",
+	}
+
+	_, err := subject.GetVolumeSize(context.Background(), spec)
+	s.Require().ErrorIs(err, ErrNoContentLengthFound)
+
 }

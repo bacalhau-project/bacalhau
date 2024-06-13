@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -41,7 +43,6 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 type SeenJobRecord struct {
@@ -83,6 +84,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		testCase TotalResourceTestCase,
 	) {
 		ctx := context.Background()
+		fsr, c := setup.SetupBacalhauRepoForTesting(suite.T())
 
 		epochSeconds := time.Now().Unix()
 
@@ -128,13 +130,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		parsedResources, err := resourcesConfig.ToResources()
 		require.NoError(suite.T(), err)
 
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(c.Node.ComputeStoragePath, node.ComputeConfigParams{
 			TotalResourceLimits:          *parsedResources,
 			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 		})
 		suite.Require().NoError(err)
-		stack := teststack.Setup(ctx,
-			suite.T(),
+		stack := teststack.Setup(ctx, suite.T(), fsr, c,
 			devstack.WithNumberOfHybridNodes(1),
 			devstack.WithComputeConfig(computeConfig),
 			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
@@ -142,7 +143,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
-			}),
+			}, c.Node.Compute.ManifestCache),
 		)
 
 		for _, jobResources := range testCase.jobs {
@@ -290,7 +291,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		return &models.RunCommandResult{}, nil
 	}
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	fsr, c := setup.SetupBacalhauRepoForTesting(suite.T())
+
+	computeConfig, err := node.NewComputeConfigWith(c.Node.ComputeStoragePath, node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU:    1,
 			Memory: 1 * 1024 * 1024 * 1024,
@@ -299,19 +302,28 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+		ControlPlaneSettings: types.ComputeControlPlaneConfig{
+			ResourceUpdateFrequency: types.Duration(50 * time.Millisecond),
+		},
 	})
 	suite.Require().NoError(err)
-	stack := teststack.Setup(ctx,
-		suite.T(),
+
+	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+		NodeOverSubscriptionFactor: 2,
+	})
+	suite.Require().NoError(err)
+
+	stack := teststack.Setup(ctx, suite.T(), fsr, c,
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
 		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: jobHandler,
 				},
-			}),
+			}, c.Node.Compute.ManifestCache),
 	)
 
 	// for the requester node to pick up the nodeInfo messages
@@ -334,9 +346,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			jobIds = append(jobIds, submittedJob.Metadata.ID)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
+			// and to give time for compute nodes to accept and run the jobs
 			// this needs to be less than the time the job lasts
 			// so we are running jobs in parallel
-			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 

@@ -3,8 +3,9 @@ package mock
 import (
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/google/uuid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func Eval() *models.Evaluation {
@@ -20,6 +21,10 @@ func Eval() *models.Evaluation {
 		ModifyTime: now,
 	}
 	return eval
+}
+
+func EvalForJob(job *models.Job) *models.Evaluation {
+	return Eval().WithJob(job)
 }
 
 func Job() *models.Job {
@@ -60,7 +65,7 @@ func Task() *models.Task {
 			Domains: make([]string, 0),
 		},
 		Timeouts: &models.TimeoutConfig{
-			ExecutionTimeout: 30,
+			TotalTimeout: 30,
 		},
 	}
 	task.Normalize()
@@ -79,6 +84,7 @@ func Execution() *models.Execution {
 }
 
 func ExecutionForJob(job *models.Job) *models.Execution {
+	now := time.Now().UTC().UnixNano()
 	execution := &models.Execution{
 		JobID:     job.ID,
 		Job:       job,
@@ -91,6 +97,8 @@ func ExecutionForJob(job *models.Job) *models.Execution {
 		DesiredState: models.State[models.ExecutionDesiredStateType]{
 			StateType: models.ExecutionDesiredStatePending,
 		},
+		CreateTime: now,
+		ModifyTime: now,
 	}
 	execution.Normalize()
 	if err := execution.Validate(); err != nil {

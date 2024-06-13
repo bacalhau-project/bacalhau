@@ -77,9 +77,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 			EngineSpec: EngineSpec{
 				Type: EngineNoop.String(),
 			},
-			PublisherSpec: PublisherSpec{
-				Type: PublisherIpfs,
-			},
 			Deal: Deal{
 				Concurrency: 1,
 			},
@@ -227,6 +224,8 @@ type Spec struct {
 	Outputs []StorageSpec `json:"Outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
+	// key
+	// key
 	Annotations []string `json:"Annotations,omitempty"`
 
 	// NodeSelectors is a selector which must be true for the compute node to run this job.

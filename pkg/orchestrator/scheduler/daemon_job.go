@@ -86,12 +86,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
 
-	// Require approval when selecting nodes, but do not require them to be connected.
-	nodes, err := b.nodeSelector.AllMatchingNodes(
-		ctx,
-		job,
-		&orchestrator.NodeSelectionConstraints{RequireApproval: true, RequireConnected: false},
-	)
+	nodes, _, err := b.nodeSelector.MatchingNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}
@@ -103,7 +98,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	}
 
 	for _, node := range nodes {
-		if _, ok := existingNodes[node.ID()]; ok {
+		if _, ok := existingNodes[node.NodeInfo.ID()]; ok {
 			// there is already a healthy execution on this node
 			continue
 		}
@@ -115,7 +110,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
-			NodeID:       node.ID(),
+			NodeID:       node.NodeInfo.ID(),
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

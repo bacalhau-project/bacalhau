@@ -62,13 +62,7 @@ var Local = types.BacalhauConfig{
 			PeerConnect: "none",
 		},
 		IPFS: types.IpfsConfig{
-			Connect:                "",
-			PrivateInternal:        true,
-			SwarmAddresses:         []string{},
-			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			Connect: "",
 		},
 		Compute:   LocalComputeConfig,
 		Requester: LocalRequesterConfig,
@@ -101,12 +95,6 @@ var LocalComputeConfig = types.ComputeConfig{
 			Disk:   "",
 			GPU:    "",
 		},
-		QueueResourceLimits: models.ResourcesConfig{
-			CPU:    "",
-			Memory: "",
-			Disk:   "",
-			GPU:    "",
-		},
 	},
 	ExecutionStore: types.JobStoreConfig{
 		Type: types.BoltDB,
@@ -126,7 +114,6 @@ var LocalComputeConfig = types.ComputeConfig{
 		ProbeHTTP:           "",
 		ProbeExec:           "",
 	},
-	Queue: types.QueueConfig{},
 	Logging: types.LoggingConfig{
 		LogRunningExecutionsInterval: types.Duration(10 * time.Second),
 	},
@@ -181,8 +168,12 @@ var LocalRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(30 * time.Second),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{

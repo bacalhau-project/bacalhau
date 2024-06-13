@@ -1,11 +1,6 @@
 package s3
 
 import (
-	"archive/tar"
-	"compress/gzip"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,48 +21,4 @@ func ParsePublishedKey(key string, execution *models.Execution, archive bool) st
 	key = strings.ReplaceAll(key, "{date}", time.Now().Format("20060102"))
 	key = strings.ReplaceAll(key, "{time}", time.Now().Format("150405"))
 	return key
-}
-
-func archiveDirectory(sourceDir string, targetFile *os.File) error {
-	gw := gzip.NewWriter(targetFile)
-	defer gw.Close()
-
-	tarWriter := tar.NewWriter(gw)
-	defer tarWriter.Close()
-
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// Get the relative path for the file
-		relpath, err := filepath.Rel(sourceDir, path)
-		if err != nil {
-			return err
-		}
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		header.Name = relpath
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return err
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		// Open the file for reading.
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		// Write the file contents to the GZIP archive.
-		_, err = io.Copy(tarWriter, file)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
 }

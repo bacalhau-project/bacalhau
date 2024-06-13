@@ -2,7 +2,9 @@ package util
 
 import (
 	"context"
+	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -16,7 +18,6 @@ import (
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
@@ -24,7 +25,7 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	API                   ipfs.Client
+	IPFSConnect           string
 	DownloadPath          string
 	AllowListedLocalPaths []string
 }
@@ -34,28 +35,16 @@ type StandardExecutorOptions struct {
 }
 
 func NewStandardStorageProvider(
-	_ context.Context,
-	cm *system.CleanupManager,
+	getVolumeTimeout time.Duration,
+	urlDownloadTimeout time.Duration,
+	urlMaxRetries int,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(options.API)
-	if err != nil {
-		return nil, err
-	}
-
-	urlDownloadStorage := urldownload.NewStorage()
-	if err != nil {
-		return nil, err
-	}
-
-	repoCloneStorage, err := repo.NewStorage(ipfsAPICopyStorage)
-	if err != nil {
-		return nil, err
-	}
+	urlDownloadStorage := urldownload.NewStorage(urlDownloadTimeout, urlMaxRetries)
 
 	inlineStorage := inline.NewStorage()
 
-	s3Storage, err := configureS3StorageProvider(cm)
+	s3Storage, err := configureS3StorageProvider(getVolumeTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -67,20 +56,28 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
-
-	return provider.NewMappedProvider(map[string]storage.Storage{
-		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+	providers := map[string]storage.Storage{
 		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
 		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
 		models.StorageSourceS3:             tracing.Wrap(s3Storage),
 		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
-	}), nil
+	}
+
+	if options.IPFSConnect != "" {
+		ipfsClient, err := ipfs.NewClient(context.Background(), options.IPFSConnect)
+		if err != nil {
+			return nil, err
+		}
+		ipfsStorage, err := ipfs_storage.NewStorage(*ipfsClient, getVolumeTimeout)
+		if err != nil {
+			return nil, err
+		}
+		providers[models.StorageSourceIPFS] = tracing.Wrap(ipfsStorage)
+	}
+	return provider.NewMappedProvider(providers), nil
 }
 
-func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
+func configureS3StorageProvider(getVolumeTimeout time.Duration) (*s3.StorageProvider, error) {
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
 		return nil, err
@@ -88,9 +85,7 @@ func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider,
 	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
 		AWSConfig: cfg,
 	})
-	s3Storage := s3.NewStorage(s3.StorageProviderParams{
-		ClientProvider: clientProvider,
-	})
+	s3Storage := s3.NewStorage(getVolumeTimeout, clientProvider)
 	return s3Storage, nil
 }
 
@@ -104,11 +99,10 @@ func NewNoopStorageProvider(
 }
 
 func NewStandardExecutorProvider(
-	ctx context.Context,
-	cm *system.CleanupManager,
+	dockerCacheCfg types.DockerCacheConfig,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(ctx, executorOptions.DockerID)
+	dockerExecutor, err := docker.NewExecutor(executorOptions.DockerID, dockerCacheCfg)
 	if err != nil {
 		return nil, err
 	}

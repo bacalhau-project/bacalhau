@@ -2,6 +2,7 @@ package urldownload
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -13,10 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/rs/zerolog"
@@ -24,6 +21,14 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+)
+
+var (
+	ErrNoContentLengthFound = errors.New("content-length not provided by the server")
 )
 
 // StorageProvider downloads data on request from a URL to a local
@@ -33,17 +38,17 @@ type StorageProvider struct {
 	client *retryablehttp.Client
 }
 
-func NewStorage() *StorageProvider {
+func NewStorage(timeout time.Duration, maxRetries int) *StorageProvider {
 	log.Debug().Msg("URL download driver created")
 
 	client := retryablehttp.NewClient()
 	client.HTTPClient = &http.Client{
-		Timeout: config.GetDownloadURLRequestTimeout(),
+		Timeout: timeout,
 		Transport: otelhttp.NewTransport(nil, otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
 		}), otelhttp.WithSpanOptions(trace.WithAttributes(semconv.PeerService("url-download")))),
 	}
-	client.RetryMax = config.GetDownloadURLRequestRetries()
+	client.RetryMax = maxRetries
 	client.RetryWaitMax = time.Second * 1
 	client.Logger = retryLogger{}
 	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
@@ -75,9 +80,39 @@ func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(context.Context, models.InputSource) (uint64, error) {
-	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-	return 0, nil
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.InputSource) (uint64, error) {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return 0, err
+	}
+
+	u, err := IsURLSupported(source.URL)
+	if err != nil {
+		return 0, err
+	}
+
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodHead, u.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := sp.client.Do(req) //nolint:bodyclose // this is being closed - golangci-lint is wrong again
+	if err != nil {
+		return 0, err
+	}
+	defer closer.DrainAndCloseWithLogOnError(ctx, "response", res.Body)
+
+	if res.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("received non-OK response code %d while fetching size of file download", res.StatusCode)
+	}
+
+	// Ideally if the content size is not provided by server we should try and fetch the file with max size
+	// as the one provided in the storageSpec
+	if res.ContentLength < 0 {
+		return 0, ErrNoContentLengthFound
+	}
+
+	return uint64(res.ContentLength), nil
 }
 
 // PrepareStorage will download the file from the URL

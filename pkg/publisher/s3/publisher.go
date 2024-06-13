@@ -8,10 +8,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
-	"github.com/rs/zerolog/log"
 )
 
 type PublisherParams struct {
@@ -66,7 +68,7 @@ func (publisher *Publisher) PublishResult(
 	defer targetFile.Close()
 	defer os.Remove(targetFile.Name())
 
-	err = archiveDirectory(resultPath, targetFile)
+	err = gzip.Compress(resultPath, targetFile)
 	if err != nil {
 		return models.SpecConfig{}, err
 	}

@@ -7,13 +7,11 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
-
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -24,49 +22,25 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func CheckVersion(cmd *cobra.Command, args []string) error {
-	strictVersioning, err := config.Get[bool](types.NodeStrictVersionMatch)
-	if err != nil {
-		return fmt.Errorf("DEVELOPER ERROR: please file an issue with this error message: %w", err)
-	}
-	if !strictVersioning {
-		return nil
-	}
-	// the client will not be known until the root persistent pre run logic is executed which
-	// sets up the repo and config
-	ctx := cmd.Context()
-	apiClient := GetAPIClient(ctx)
-
-	// Check that the server version is compatible with the client version
-	serverVersion, _ := apiClient.Version(ctx) // Ok if this fails, version validation will skip
-	if err := EnsureValidVersion(ctx, version.Get(), serverVersion); err != nil {
-		return fmt.Errorf("version validation failed: %w", err)
-	}
-
-	return nil
-}
-
-func GetAllVersions(ctx context.Context) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api *client.APIClient) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 
-	legacyTLS := client.LegacyTLSSupport(config.ClientTLSConfig())
-	versions.ServerVersion, err = client.NewAPIClient(legacyTLS, config.ClientAPIHost(), config.ClientAPIPort()).Version(ctx)
+	versions.ServerVersion, err = api.Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
 	}
 
-	clientID, err := config.GetClientID()
+	clientID, err := config.GetClientID(cfg.User.KeyPath)
 	if err != nil {
 		return versions, errors.Wrap(err, "error getting client ID")
 	}
 
-	InstallationID, err := config.GetInstallationUserID()
-	if err != nil {
-		return versions, errors.Wrap(err, "error getting Installation ID")
+	if cfg.User.InstallationID == "" {
+		return versions, errors.Wrap(err, "Installation ID not set")
 	}
 
-	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID, InstallationID)
+	updateCheck, err := version.CheckForUpdate(ctx, versions.ClientVersion, versions.ServerVersion, clientID, cfg.User.InstallationID)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")
 	} else {

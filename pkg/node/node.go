@@ -8,15 +8,12 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p/core/host"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	libp2p_transport "github.com/bacalhau-project/bacalhau/pkg/libp2p/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -29,6 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
@@ -47,7 +45,6 @@ type FeatureConfig struct {
 // Node configuration
 type NodeConfig struct {
 	NodeID                      string
-	IPFSClient                  ipfs.Client
 	CleanupManager              *system.CleanupManager
 	HostAddress                 string
 	APIPort                     uint16
@@ -89,21 +86,21 @@ type NodeDependencyInjector struct {
 	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
-func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
+func NewExecutorPluginNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
-		ExecutorsFactory:        NewPluginExecutorFactory(),
-		PublishersFactory:       NewStandardPublishersFactory(),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
+		ExecutorsFactory:        NewPluginExecutorFactory(cfg.Node.ExecutorPluginPath),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
 
-func NewStandardNodeDependencyInjector() NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
-		ExecutorsFactory:        NewStandardExecutorsFactory(),
-		PublishersFactory:       NewStandardPublishersFactory(),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
+		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
 	}
 }
 
@@ -114,8 +111,6 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	IPFSClient     ipfs.Client
-	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -125,7 +120,10 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	config NodeConfig) (*Node, error) {
+	cfg types.BacalhauConfig,
+	config NodeConfig,
+	fsr *repo.FsRepo,
+) (*Node, error) {
 	var err error
 	ctx, cancel := context.WithCancel(ctx)
 	defer func() {
@@ -134,7 +132,7 @@ func NewNode(
 		}
 	}()
 
-	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
+	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(cfg))
 	err = mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -159,7 +157,7 @@ func NewNode(
 		return nil, err
 	}
 
-	signingKey, err := pkgconfig.GetClientPublicKey()
+	signingKey, err := loadUserIDKey(cfg.User.KeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +170,7 @@ func NewNode(
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, signingKey, config.NodeID),
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, &signingKey.PublicKey, config.NodeID),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
@@ -230,7 +228,7 @@ func NewNode(
 				return nil, pkgerrors.Wrap(err, "failed to create NATS client for node info store")
 			}
 			nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
-				BucketName: kvstore.DefaultBucketName,
+				BucketName: kvstore.BucketNameCurrent,
 				Client:     natsClient.Client,
 			})
 			if err != nil {
@@ -267,7 +265,7 @@ func NewNode(
 			ReconnectDelay: config.NetworkConfig.ReconnectDelay,
 			CleanupManager: config.CleanupManager,
 		}
-		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore)
+		transportLayer, err = libp2p_transport.NewLibp2pTransport(ctx, libp2pConfig, tracingInfoStore, cfg.Metrics)
 		if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to register node info consumer with libp2p transport")
 		}
@@ -324,8 +322,8 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			apiServer,
+			cfg.Metrics,
 			config.RequesterNodeConfig,
-			storageProviders,
 			authenticators,
 			legacyInfoStore,
 			transportLayer.ComputeProxy(),
@@ -357,7 +355,7 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
-		storagePath := pkgconfig.GetStoragePath()
+		storagePath := cfg.Node.ComputeStoragePath
 
 		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 		if err != nil {
@@ -396,6 +394,10 @@ func NewNode(
 			}
 		}
 
+		repoPath, err := fsr.Path()
+		if err != nil {
+			return nil, err
+		}
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
@@ -404,6 +406,7 @@ func NewNode(
 			apiServer,
 			config.ComputeConfig,
 			storagePath,
+			repoPath,
 			storageProviders,
 			executors,
 			publishers,
@@ -416,7 +419,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterComputeEndpoint(computeNode.LocalEndpoint)
+		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -484,6 +487,7 @@ func NewNode(
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,
+		cfg,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)
@@ -529,10 +533,8 @@ func NewNode(
 		ID:             config.NodeID,
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
-		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
-		Libp2pHost:     config.NetworkConfig.Libp2pHost,
 	}
 
 	return node, nil

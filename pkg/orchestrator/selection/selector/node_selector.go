@@ -9,31 +9,30 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
-type NodeSelectorParams struct {
-	NodeDiscoverer orchestrator.NodeDiscoverer
-	NodeRanker     orchestrator.NodeRanker
-}
-
 type NodeSelector struct {
-	nodeDiscoverer orchestrator.NodeDiscoverer
-	nodeRanker     orchestrator.NodeRanker
+	discoverer  orchestrator.NodeDiscoverer
+	ranker      orchestrator.NodeRanker
+	constraints orchestrator.NodeSelectionConstraints
 }
 
-func NewNodeSelector(params NodeSelectorParams) *NodeSelector {
+func NewNodeSelector(
+	discoverer orchestrator.NodeDiscoverer,
+	ranker orchestrator.NodeRanker,
+	constraints orchestrator.NodeSelectionConstraints,
+) *NodeSelector {
 	return &NodeSelector{
-		nodeDiscoverer: params.NodeDiscoverer,
-		nodeRanker:     params.NodeRanker,
+		discoverer:  discoverer,
+		ranker:      ranker,
+		constraints: constraints,
 	}
 }
 
 func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	nodeStates, err := n.nodeDiscoverer.List(ctx)
+	nodeStates, err := n.discoverer.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
 	}
@@ -45,45 +44,26 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (n NodeSelector) AllMatchingNodes(ctx context.Context,
+func (n NodeSelector) MatchingNodes(
+	ctx context.Context,
 	job *models.Job,
-	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
-	filteredNodes, _, err := n.rankAndFilterNodes(ctx, job, constraints)
+) (matchingNodes, rejectedNodes []orchestrator.NodeRank, err error) {
+	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	nodeInfos := generic.Map(filteredNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
-	return nodeInfos, nil
-}
-
-func (n NodeSelector) TopMatchingNodes(ctx context.Context,
-	job *models.Job, desiredCount int,
-	constraints *orchestrator.NodeSelectionConstraints) ([]models.NodeInfo, error) {
-	possibleNodes, rejectedNodes, err := n.rankAndFilterNodes(ctx, job, constraints)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(possibleNodes) < desiredCount {
-		// TODO: evaluate if we should run the job if some nodes where found
-		err = orchestrator.NewErrNotEnoughNodes(desiredCount, append(possibleNodes, rejectedNodes...))
-		return nil, err
-	}
-
-	sort.Slice(possibleNodes, func(i, j int) bool {
-		return possibleNodes[i].Rank > possibleNodes[j].Rank
+	sort.Slice(matchingNodes, func(i, j int) bool {
+		return matchingNodes[i].Rank > matchingNodes[j].Rank
 	})
-
-	selectedNodes := possibleNodes[:math.Min(len(possibleNodes), desiredCount)]
-	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
-	return selectedInfos, nil
+	return matchingNodes, rejectedNodes, nil
 }
 
-func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
+func (n NodeSelector) rankAndFilterNodes(
+	ctx context.Context,
 	job *models.Job,
-	constraints *orchestrator.NodeSelectionConstraints) (selected, rejected []orchestrator.NodeRank, err error) {
-	listed, err := n.nodeDiscoverer.List(ctx)
+) (selected, rejected []orchestrator.NodeRank, err error) {
+	listed, err := n.discoverer.List(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,11 +77,11 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 			return false
 		}
 
-		if constraints.RequireApproval && nodeState.Membership != models.NodeMembership.APPROVED {
+		if n.constraints.RequireApproval && nodeState.Membership != models.NodeMembership.APPROVED {
 			return false
 		}
 
-		if constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
+		if n.constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
 			return false
 		}
 
@@ -118,7 +98,7 @@ func (n NodeSelector) rankAndFilterNodes(ctx context.Context,
 		nodeInfos = append(nodeInfos, ns.Info)
 	}
 
-	rankedNodes, err := n.nodeRanker.RankNodes(ctx, *job, nodeInfos)
+	rankedNodes, err := n.ranker.RankNodes(ctx, *job, nodeInfos)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -10,6 +10,7 @@ autofetch
 automagically
 bacalhau
 bacalhauproject
+baccrypto
 bacerrors
 bafybeig
 bbolt
@@ -55,6 +56,7 @@ deflt
 deleteme
 devstack
 devstask
+direnv
 doclines
 dpkg
 dpokidov
@@ -129,6 +131,7 @@ groupby
 gserviceaccount
 healthz
 helloworld
+HMAC
 humanid
 icore
 icoreoptions
@@ -365,4 +368,3 @@ yyyymmddhhmm
 zarr
 zerolog
 zidane
-HMAC

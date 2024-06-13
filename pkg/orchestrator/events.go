@@ -1,14 +1,17 @@
 package orchestrator
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
-	EventTopicJobSubmission models.EventTopic = "Submission"
-	EventTopicJobScheduling models.EventTopic = "Scheduling"
+	EventTopicJobSubmission    models.EventTopic = "Submission"
+	EventTopicJobScheduling    models.EventTopic = "Scheduling"
+	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
+	EventTopicJobTimeout       models.EventTopic = "Job Timeout"
 )
 
 const (
@@ -16,6 +19,7 @@ const (
 	jobTranslatedMessage       = "Job tasks translated to new type"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
+	JobTimeoutMessage          = "Job timed out"
 
 	execStoppedByJobStopMessage          = "Execution stop requested because job has been stopped"
 	execStoppedByNodeUnhealthyMessage    = "Execution stop requested because node has disappeared"
@@ -23,6 +27,9 @@ const (
 	execStoppedByOversubscriptionMessage = "Execution stop requested because there are more executions than needed"
 	execRejectedByNodeMessage            = "Node responded to execution run request"
 	execFailedMessage                    = "Execution did not complete successfully"
+
+	executionTimeoutMessage = "Execution timed out"
+	timeoutHint             = "Try increasing the task timeout or reducing the task size"
 )
 
 func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
@@ -55,12 +62,28 @@ func JobExhaustedRetriesEvent() models.Event {
 	return event(EventTopicJobScheduling, jobExhaustedRetriesMessage, map[string]string{})
 }
 
+func JobTimeoutEvent(timeout time.Duration) models.Event {
+	e := models.NewEvent(EventTopicJobTimeout).
+		WithError(fmt.Errorf("%s. Job took longer than %s", JobTimeoutMessage, timeout)).
+		WithHint(timeoutHint).
+		WithFailsExecution(true)
+	return *e
+}
+
 func ExecStoppedByJobStopEvent() models.Event {
 	return event(EventTopicJobScheduling, execStoppedByJobStopMessage, map[string]string{})
 }
 
 func ExecStoppedByNodeUnhealthyEvent() models.Event {
 	return event(EventTopicJobScheduling, execStoppedByNodeUnhealthyMessage, map[string]string{})
+}
+
+func ExecStoppedByExecutionTimeoutEvent(timeout time.Duration) models.Event {
+	e := models.NewEvent(EventTopicExecutionTimeout).
+		WithError(fmt.Errorf("%s. Execution took longer than %s", executionTimeoutMessage, timeout)).
+		WithHint(timeoutHint).
+		WithFailsExecution(true)
+	return *e
 }
 
 func ExecStoppedByNodeRejectedEvent() models.Event {

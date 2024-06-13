@@ -44,7 +44,6 @@ type JobSelectionPolicy struct {
 type ComputeConfigParams struct {
 	// Capacity config
 	TotalResourceLimits          models.Resources
-	QueueResourceLimits          models.Resources
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	PhysicalResourcesProvider    capacity.Provider
@@ -82,7 +81,6 @@ type ComputeConfigParams struct {
 type ComputeConfig struct {
 	// Capacity config
 	TotalResourceLimits          models.Resources
-	QueueResourceLimits          models.Resources
 	JobResourceLimits            models.Resources
 	DefaultJobResourceLimits     models.Resources
 	IgnorePhysicalResourceLimits bool
@@ -125,32 +123,37 @@ type ComputeConfig struct {
 	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
-func NewComputeConfigWithDefaults() (ComputeConfig, error) {
-	return NewComputeConfigWith(DefaultComputeConfig)
+func NewComputeConfigWithDefaults(storagePath string) (ComputeConfig, error) {
+	return NewComputeConfigWith(storagePath, NewDefaultComputeParam(storagePath))
 }
 
-func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
+//nolint:funlen
+func NewComputeConfigWith(storagePath string, params ComputeConfigParams) (ComputeConfig, error) {
+	if storagePath == "" {
+		storagePath = os.TempDir()
+	}
+	defaults := NewDefaultComputeParam(storagePath)
 	if params.JobNegotiationTimeout == 0 {
-		params.JobNegotiationTimeout = DefaultComputeConfig.JobNegotiationTimeout
+		params.JobNegotiationTimeout = defaults.JobNegotiationTimeout
 	}
 	if params.MinJobExecutionTimeout == 0 {
-		params.MinJobExecutionTimeout = DefaultComputeConfig.MinJobExecutionTimeout
+		params.MinJobExecutionTimeout = defaults.MinJobExecutionTimeout
 	}
 	if params.MaxJobExecutionTimeout == 0 {
-		params.MaxJobExecutionTimeout = DefaultComputeConfig.MaxJobExecutionTimeout
+		params.MaxJobExecutionTimeout = defaults.MaxJobExecutionTimeout
 	}
 	if params.DefaultJobExecutionTimeout == 0 {
-		params.DefaultJobExecutionTimeout = DefaultComputeConfig.DefaultJobExecutionTimeout
+		params.DefaultJobExecutionTimeout = defaults.DefaultJobExecutionTimeout
 	}
 	if params.LogRunningExecutionsInterval == 0 {
-		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
+		params.LogRunningExecutionsInterval = defaults.LogRunningExecutionsInterval
 	}
 
 	if params.LocalPublisher.Address == "" {
-		params.LocalPublisher.Address = DefaultComputeConfig.LocalPublisher.Address
+		params.LocalPublisher.Address = defaults.LocalPublisher.Address
 	}
 	if params.LocalPublisher.Directory == "" {
-		params.LocalPublisher.Directory = DefaultComputeConfig.LocalPublisher.Directory
+		params.LocalPublisher.Directory = defaults.LocalPublisher.Directory
 		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {
 			return ComputeConfig{}, pkgerrors.Wrap(err, "creating default local publisher directory")
 		}
@@ -158,22 +161,22 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 
 	// Control plan settings defaults
 	if params.ControlPlaneSettings.HeartbeatFrequency == 0 {
-		params.ControlPlaneSettings.HeartbeatFrequency = DefaultComputeConfig.ControlPlaneSettings.HeartbeatFrequency
+		params.ControlPlaneSettings.HeartbeatFrequency = defaults.ControlPlaneSettings.HeartbeatFrequency
 	}
 	if params.ControlPlaneSettings.InfoUpdateFrequency == 0 {
-		params.ControlPlaneSettings.InfoUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.InfoUpdateFrequency
+		params.ControlPlaneSettings.InfoUpdateFrequency = defaults.ControlPlaneSettings.InfoUpdateFrequency
 	}
 	if params.ControlPlaneSettings.ResourceUpdateFrequency == 0 {
-		params.ControlPlaneSettings.ResourceUpdateFrequency = DefaultComputeConfig.ControlPlaneSettings.ResourceUpdateFrequency
+		params.ControlPlaneSettings.ResourceUpdateFrequency = defaults.ControlPlaneSettings.ResourceUpdateFrequency
 	}
 	if params.ControlPlaneSettings.HeartbeatTopic == "" {
-		params.ControlPlaneSettings.HeartbeatTopic = DefaultComputeConfig.ControlPlaneSettings.HeartbeatTopic
+		params.ControlPlaneSettings.HeartbeatTopic = defaults.ControlPlaneSettings.HeartbeatTopic
 	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
 	if physicalResourcesProvider == nil {
-		physicalResourcesProvider = DefaultComputeConfig.PhysicalResourcesProvider
+		physicalResourcesProvider = defaults.PhysicalResourcesProvider
 	}
 	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.Background())
 	if err != nil {
@@ -181,27 +184,20 @@ func NewComputeConfigWith(params ComputeConfigParams) (ComputeConfig, error) {
 	}
 	// populate total resource limits with default values and physical resources if not set
 	totalResourceLimits := params.TotalResourceLimits.
-		Merge(DefaultComputeConfig.TotalResourceLimits).
+		Merge(defaults.TotalResourceLimits).
 		Merge(physicalResources)
 
 	// populate job resource limits with default values and total resource limits if not set
 	jobResourceLimits := params.JobResourceLimits.
-		Merge(DefaultComputeConfig.JobResourceLimits).
+		Merge(defaults.JobResourceLimits).
 		Merge(*totalResourceLimits)
-
-	// by default set the queue size to the total resource limits, which allows the node overcommit to double of the total resource limits.
-	// i.e. total resource limits can be busy in running state, and enqueue up to the total resource limits in the queue.
-	if params.QueueResourceLimits.IsZero() {
-		params.QueueResourceLimits = *totalResourceLimits
-	}
 
 	// populate default job resource limits with default values and job resource limits if not set
 	defaultJobResourceLimits := params.DefaultJobResourceLimits.
-		Merge(DefaultComputeConfig.DefaultJobResourceLimits)
+		Merge(defaults.DefaultJobResourceLimits)
 
 	config := ComputeConfig{
 		TotalResourceLimits:          *totalResourceLimits,
-		QueueResourceLimits:          params.QueueResourceLimits,
 		JobResourceLimits:            *jobResourceLimits,
 		DefaultJobResourceLimits:     *defaultJobResourceLimits,
 		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
@@ -245,12 +241,6 @@ func validateConfig(config ComputeConfig, physicalResources models.Resources) er
 		err = errors.Join(err,
 			fmt.Errorf("job resource limits %+v exceed total resource limits %+v",
 				config.JobResourceLimits, config.TotalResourceLimits))
-	}
-
-	if !config.JobResourceLimits.LessThanEq(config.QueueResourceLimits) {
-		err = errors.Join(err,
-			fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
-				config.JobResourceLimits, config.QueueResourceLimits))
 	}
 
 	if !config.DefaultJobResourceLimits.LessThanEq(config.JobResourceLimits) {

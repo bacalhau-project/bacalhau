@@ -5,6 +5,7 @@ package devstack
 import (
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -29,12 +30,19 @@ func TestPublishOnErrorSuite(t *testing.T) {
 func (s *PublishOnErrorSuite) TestPublishOnError() {
 	stdoutText := "I am a miserable failure\n"
 
+	rootSourceDir := s.T().TempDir()
+
 	testcase := scenario.Scenario{
-		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{
+				AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+			},
+		},
+		Inputs: scenario.StoredText(rootSourceDir, stdoutText, "data/hello.txt"),
 		Spec: testutils.MakeSpecWithOpts(s.T(),
 			legacy_job.WithPublisher(
 				model.PublisherSpec{
-					Type: model.PublisherIpfs,
+					Type: model.PublisherLocal,
 				},
 			),
 			legacy_job.WithEngineSpec(

@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/aws/smithy-go"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 )
 
 type PublisherTestSuite struct {
@@ -48,23 +49,24 @@ func (s *PublisherTestSuite) TestIsInstalled() {
 
 func (s *PublisherTestSuite) TestDateSubstitution() {
 
+	key := s.Prefix + "{date}/{time}"
 	job := mock.Job()
 	job.Task().Publisher = &models.SpecConfig{
 		Type: models.PublisherS3,
 		Params: s3helper.PublisherSpec{
-			Bucket: "test",
-			Key:    "{date}/{time}",
+			Bucket: s.Bucket,
+			Key:    key,
 		}.ToMap(),
 	}
 
-	str := s3publisher.ParsePublishedKey("{date}/{time}", &models.Execution{ID: "e1", Job: job}, false)
+	str := s3publisher.ParsePublishedKey(key, &models.Execution{ID: "e1", Job: job}, false)
 	parts := strings.Split(str, "/")
 
 	n := time.Now()
-	s.Require().Equal(fmt.Sprintf("%d%02d%02d", n.Year(), n.Month(), n.Day()), parts[0], "date was incorrect")
+	s.Require().Equal(fmt.Sprintf("%d%02d%02d", n.Year(), n.Month(), n.Day()), parts[2], "date was incorrect")
 
 	// Check the time is all numbers
-	_, err := strconv.Atoi(parts[1])
+	_, err := strconv.Atoi(parts[3])
 	s.Require().NoError(err, "time was not numeric")
 }
 

@@ -10,11 +10,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -22,7 +21,6 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -54,7 +52,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(suite.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
 			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
 			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
 			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
@@ -64,10 +62,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 
 		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 			JobDefaults: transformer.JobDefaults{
-				ExecutionTimeout: testCase.requesterDefaultJobExecutionTimeout,
+				TotalTimeout: testCase.requesterDefaultJobExecutionTimeout,
 			},
-			HousekeepingBackgroundTaskInterval: 1 * time.Second,
-			RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
+			HousekeepingBackgroundTaskInterval: 10 * time.Millisecond,
+			HousekeepingTimeoutBuffer:          500 * time.Millisecond,
 		})
 		suite.Require().NoError(err)
 
@@ -91,7 +89,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: testutils.MakeSpecWithOpts(suite.T(),
-				legacy_job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
 				legacy_job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
 			),
 			Deal: model.Deal{
@@ -109,7 +106,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	clientID, err := config.GetClientID()
+	clientID, err := config.GetClientID(suite.Config.User.KeyPath)
 	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
@@ -136,11 +133,23 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			completedCount:                      1,
 		},
 		{
+			name:                                "sleep_within_timeout_buffer",
+			computeJobNegotiationTimeout:        10 * time.Second,
+			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+			computeMaxJobExecutionTimeout:       1 * time.Minute,
+			requesterDefaultJobExecutionTimeout: 20 * time.Second,
+			nodeCount:                           1,
+			concurrency:                         1,
+			jobTimeout:                          1 * time.Millisecond,
+			sleepTime:                           100 * time.Millisecond, // less than 500ms buffer
+			completedCount:                      1,
+		},
+		{
 			name:                                "sleep_longer_than_default_running_timeout",
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterDefaultJobExecutionTimeout: 1 * time.Millisecond,
+			requesterDefaultJobExecutionTimeout: 1 * time.Second,
 			nodeCount:                           1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,

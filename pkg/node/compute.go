@@ -25,7 +25,6 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -53,6 +52,7 @@ func NewComputeNode(
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
+	repoPath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -67,9 +67,7 @@ func NewComputeNode(
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
 	})
-	enqueuedCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: config.QueueResourceLimits,
-	})
+	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
 	resultsPath, err := compute.NewResultsPath()
 	if err != nil {
@@ -92,7 +90,7 @@ func NewComputeNode(
 		DelegateExecutor:           baseExecutor,
 		Callback:                   computeCallback,
 		RunningCapacityTracker:     runningCapacityTracker,
-		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
+		EnqueuedUsageTracker:       enqueuedUsageTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
@@ -133,12 +131,13 @@ func NewComputeNode(
 
 	// node info
 	nodeInfoDecorator := compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
-		Executors:          executors,
-		Publisher:          publishers,
-		Storages:           storages,
-		CapacityTracker:    runningCapacityTracker,
-		ExecutorBuffer:     bufferRunner,
-		MaxJobRequirements: config.JobResourceLimits,
+		Executors:              executors,
+		Publisher:              publishers,
+		Storages:               storages,
+		RunningCapacityTracker: runningCapacityTracker,
+		QueueCapacityTracker:   enqueuedUsageTracker,
+		ExecutorBuffer:         bufferRunner,
+		MaxJobRequirements:     config.JobResourceLimits,
 	})
 
 	bidder := NewBidder(config,
@@ -146,7 +145,6 @@ func NewComputeNode(
 		storages,
 		executors,
 		runningCapacityTracker,
-		enqueuedCapacityTracker,
 		nodeID,
 		executionStore,
 		computeCallback,
@@ -188,7 +186,6 @@ func NewComputeNode(
 		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
-		repo_storage.NewLabelsProvider(),
 	)
 
 	var managementClient *compute.ManagementClient
@@ -197,22 +194,22 @@ func NewComputeNode(
 	if managementProxy != nil {
 		// TODO: Make the registration lock folder a config option so that we have it
 		// available and don't have to depend on getting the repo folder.
-		repo, _ := pkgconfig.Get[string]("repo")
 		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
+		regFilename = filepath.Join(repoPath, pkgconfig.ComputeStorePath, regFilename)
 
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node
 		// info updates.
 		managementClient = compute.NewManagementClient(&compute.ManagementClientParams{
-			NodeID:               nodeID,
-			LabelsProvider:       labelsProvider,
-			ManagementProxy:      managementProxy,
-			NodeInfoDecorator:    nodeInfoDecorator,
-			RegistrationFilePath: regFilename,
-			ResourceTracker:      runningCapacityTracker,
-			HeartbeatClient:      heartbeatClient,
-			ControlPlaneSettings: config.ControlPlaneSettings,
+			NodeID:                   nodeID,
+			LabelsProvider:           labelsProvider,
+			ManagementProxy:          managementProxy,
+			NodeInfoDecorator:        nodeInfoDecorator,
+			RegistrationFilePath:     regFilename,
+			AvailableCapacityTracker: runningCapacityTracker,
+			QueueUsageTracker:        enqueuedUsageTracker,
+			HeartbeatClient:          heartbeatClient,
+			ControlPlaneSettings:     config.ControlPlaneSettings,
 		})
 		if err := managementClient.RegisterNode(ctx); err != nil {
 			return nil, fmt.Errorf("failed to register node with requester: %s", err)
@@ -256,7 +253,6 @@ func NewBidder(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	runningCapacityTracker capacity.Tracker,
-	enqueuedCapacityTracker capacity.Tracker,
 	nodeID string,
 	executionStore store.ExecutionStore,
 	computeCallback compute.Callback,
@@ -302,10 +298,6 @@ func NewBidder(
 		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
 			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
 				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			resource.NewAvailableCapacityStrategy(resource.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
 			}),
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 		}

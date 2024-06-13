@@ -6,10 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -65,6 +66,9 @@ var dockerS3YAML []byte
 //go:embed jobs/empty.yaml
 var emptyJobYAML []byte
 
+//go:embed jobs/nameless.yaml
+var namelessJobYAML []byte
+
 //go:embed jobs/noop.yaml
 var noopJobYAML []byte
 
@@ -92,6 +96,7 @@ var (
 	DockerOutputJSON *Fixture
 	DockerS3YAML     *Fixture
 	EmptyJobYAML     *Fixture
+	NamelessJobYAML  *Fixture
 	NoopJobYAML      *Fixture
 	WasmJobYAML      *Fixture
 )
@@ -121,6 +126,7 @@ func init() {
 	DockerOutputJSON = NewJobFixture("docker with output json", dockerOutputJSON, false)
 	DockerS3YAML = NewJobFixture("docker with s3", dockerS3YAML, false)
 	EmptyJobYAML = NewJobFixture("empty job", emptyJobYAML, true)
+	NamelessJobYAML = NewJobFixture("nameless job", namelessJobYAML, false)
 	NoopJobYAML = NewJobFixture("noop", noopJobYAML, false)
 	WasmJobYAML = NewJobFixture("wasm", wasmJobYAML, false)
 }
@@ -139,6 +145,7 @@ func AllFixtures() []*Fixture {
 		DockerOutputJSON,
 		DockerS3YAML,
 		EmptyJobYAML,
+		NamelessJobYAML,
 		NoopJobYAML,
 		WasmJobYAML,
 	}

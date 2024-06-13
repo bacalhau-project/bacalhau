@@ -49,9 +49,9 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	setup.SetupBacalhauRepoForTesting(s.T())
+	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
 		BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 		BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 	})
@@ -132,23 +132,20 @@ func (s *RetriesSuite) SetupSuite() {
 	}
 	ctx := context.Background()
 
-	requesterConfig, err := node.NewRequesterConfigWith(
-		node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
-		},
-	)
+	requesterConfig, err := node.NewRequesterConfigWithDefaults()
 	s.Require().NoError(err)
-	stack := teststack.Setup(ctx, s.T(),
+	requesterConfig.OverAskForBidsFactor = 1
+	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
 		devstack.WithNodeOverrides(nodeOverrides...),
 		devstack.WithRequesterConfig(requesterConfig),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 
 	s.requester = stack.Nodes[0]
-	s.client = client.NewAPIClient(client.NoTLS, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.Require().NoError(err)
 	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester.RequesterNode, len(nodeOverrides))
 }

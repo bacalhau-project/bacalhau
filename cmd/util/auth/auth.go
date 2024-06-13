@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,20 +13,34 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/choose"
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-type responder = func(request *json.RawMessage) (response []byte, err error)
+type Responder interface {
+	Respond(request *json.RawMessage) ([]byte, error)
+}
 
-func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HTTPCredential, error) {
-	supportedMethods := map[authn.MethodType]responder{
-		authn.MethodTypeChallenge: challenge.Respond,
-		authn.MethodTypeAsk:       askResponder(cmd),
+func RunAuthenticationFlow(
+	ctx context.Context,
+	cmd *cobra.Command,
+	auth *client.Auth,
+	clientKeyPath string,
+) (*apimodels.HTTPCredential, error) {
+	sk, err := config.GetClientPrivateKey(clientKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	supportedMethods := map[authn.MethodType]Responder{
+		authn.MethodTypeChallenge: &challenge.Responder{Signer: system.NewMessageSigner(sk)},
+		authn.MethodTypeAsk:       &ask.Responder{Cmd: cmd},
 	}
 
-	methods, err := auth.Methods(cmd.Context(), &apimodels.ListAuthnMethodsRequest{})
+	methods, err := auth.Methods(ctx, &apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -55,12 +70,12 @@ func RunAuthenticationFlow(cmd *cobra.Command, auth *client.Auth) (*apimodels.HT
 
 		methodRequirement := methods.Methods[chosenMethodName]
 		methodResponder := supportedMethods[methodRequirement.Type]
-		response, err := methodResponder(methodRequirement.Params)
+		response, err := methodResponder.Respond(methodRequirement.Params)
 		if err != nil {
 			return nil, err
 		}
 
-		authnResponse, err := auth.Authenticate(cmd.Context(), &apimodels.AuthnRequest{
+		authnResponse, err := auth.Authenticate(ctx, &apimodels.AuthnRequest{
 			Name:       chosenMethodName,
 			MethodData: response,
 		})

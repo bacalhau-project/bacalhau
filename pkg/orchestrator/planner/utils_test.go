@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/assert"
 )
 
 func mockCreateExecutions(plan *models.Plan) (*models.Execution, *models.Execution) {
@@ -41,6 +42,15 @@ func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate
 	return update1, update2
 }
 
+func mockCreateEvaluations(plan *models.Plan) (*models.Evaluation, *models.Evaluation) {
+	evaluation1 := mock.EvalForJob(plan.Job)
+	evaluation2 := mock.EvalForJob(plan.Job)
+	evaluation1.ID = "NewEval1"
+	evaluation2.ID = "NewEval2"
+	plan.NewEvaluations = []*models.Evaluation{evaluation1, evaluation2}
+	return evaluation1, evaluation2
+}
+
 // UpdateExecutionMatcher is a matcher for the UpdateExecutionState method of the JobStore interface.
 type UpdateExecutionMatcher struct {
 	t                   *testing.T
@@ -51,6 +61,7 @@ type UpdateExecutionMatcher struct {
 	desiredStateComment string
 	expectedState       models.ExecutionStateType
 	expectedRevision    uint64
+	expectedEvent       models.Event
 }
 
 type UpdateExecutionMatcherParams struct {
@@ -60,6 +71,7 @@ type UpdateExecutionMatcherParams struct {
 	DesiredStateComment string
 	ExpectedState       models.ExecutionStateType
 	ExpectedRevision    uint64
+	ExpectedEvent       models.Event
 }
 
 func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params UpdateExecutionMatcherParams) *UpdateExecutionMatcher {
@@ -72,6 +84,7 @@ func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params
 		desiredStateComment: params.DesiredStateComment,
 		expectedState:       params.ExpectedState,
 		expectedRevision:    params.ExpectedRevision,
+		expectedEvent:       params.ExpectedEvent,
 	}
 }
 
@@ -80,6 +93,7 @@ func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanEx
 		NewDesiredState:     update.DesiredState,
 		DesiredStateComment: update.Event.Message,
 		ExpectedRevision:    update.Execution.Revision,
+		ExpectedEvent:       update.Event,
 	})
 }
 
@@ -99,6 +113,7 @@ func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedRevision: m.expectedRevision,
 		},
+		Event: m.expectedEvent,
 	}
 
 	// set expected state if present

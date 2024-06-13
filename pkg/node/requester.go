@@ -2,10 +2,12 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -33,7 +35,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -56,8 +57,8 @@ func NewRequesterNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
+	cfg types.MetricsConfig,
 	requesterConfig RequesterConfig,
-	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
 	computeProxy compute.Endpoint,
@@ -82,6 +83,10 @@ func NewRequesterNode(
 		Info().
 		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
 
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
+	if err != nil {
+		return nil, err
+	}
 	// compute node ranker
 	nodeRankerChain := ranking.NewChain()
 	nodeRankerChain.Add(
@@ -91,19 +96,15 @@ func NewRequesterNode(
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
+		overSubscriptionNodeRanker,
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
+		ranking.NewAvailableCapacityNodeRanker(),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
 		}),
 	)
-
-	// node selector
-	nodeSelector := selector.NewNodeSelector(selector.NodeSelectorParams{
-		NodeDiscoverer: nodeInfoStore,
-		NodeRanker:     nodeRankerChain,
-	})
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
@@ -116,6 +117,13 @@ func NewRequesterNode(
 		return nil, err
 	}
 	evalBroker.SetEnabled(true)
+
+	// evaluations watcher
+	evaluationsWatcher := evaluation.NewWatcher(jobStore, evalBroker)
+	if err = evaluationsWatcher.Backfill(ctx); err != nil {
+		return nil, fmt.Errorf("failed to backfill evaluations: %w", err)
+	}
+	evaluationsWatcher.Start(ctx)
 
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
@@ -151,12 +159,24 @@ func NewRequesterNode(
 		retryStrategy = retryStrategyChain
 	}
 
+	// node selector
+	nodeSelector := selector.NewNodeSelector(
+		nodeInfoStore,
+		nodeRankerChain,
+		// selector constraints: require nodes be online and approved to schedule
+		orchestrator.NodeSelectionConstraints{
+			RequireConnected: true,
+			RequireApproval:  true,
+		},
+	)
+
 	// scheduler provider
 	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
 		JobStore:      jobStore,
 		Planner:       planners,
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
+		QueueBackoff:  requesterConfig.SchedulerQueueBackoff,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -206,14 +226,12 @@ func NewRequesterNode(
 	}
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         nodeID,
-		EvaluationBroker:           evalBroker,
-		EventEmitter:               eventEmitter,
-		ComputeEndpoint:            computeProxy,
-		Store:                      jobStore,
-		StorageProviders:           storageProvider,
-		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
-		DefaultPublisher:           requesterConfig.DefaultPublisher,
+		ID:                nodeID,
+		EventEmitter:      eventEmitter,
+		ComputeEndpoint:   computeProxy,
+		Store:             jobStore,
+		DefaultJobTimeout: requesterConfig.JobDefaults.TotalTimeout,
+		DefaultPublisher:  requesterConfig.DefaultPublisher,
 	})
 
 	var translationProvider translation.TranslatorProvider
@@ -226,7 +244,6 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
-		transformer.NewInlineStoragePinner(storageProvider),
 	}
 
 	if requesterConfig.DefaultPublisher != "" {
@@ -240,7 +257,6 @@ func NewRequesterNode(
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
-		EvaluationBroker:  evalBroker,
 		Store:             jobStore,
 		EventEmitter:      eventEmitter,
 		ComputeProxy:      computeProxy,
@@ -249,12 +265,15 @@ func NewRequesterNode(
 		ResultTransformer: resultTransformers,
 	})
 
-	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
-		Endpoint: endpoint,
-		JobStore: jobStore,
-		NodeID:   nodeID,
-		Interval: requesterConfig.HousekeepingBackgroundTaskInterval,
+	housekeeping, err := orchestrator.NewHousekeeping(orchestrator.HousekeepingParams{
+		JobStore:      jobStore,
+		Interval:      requesterConfig.HousekeepingBackgroundTaskInterval,
+		TimeoutBuffer: requesterConfig.HousekeepingTimeoutBuffer,
 	})
+	if err != nil {
+		return nil, err
+	}
+	housekeeping.Start(ctx)
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
@@ -281,7 +300,7 @@ func NewRequesterNode(
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
-	eventTracer, err := eventhandler.NewTracer()
+	eventTracer, err := eventhandler.NewTracer(cfg.EventTracerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +320,7 @@ func NewRequesterNode(
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
-		housekeeping.Stop()
+		housekeeping.Stop(ctx)
 		for _, worker := range workers {
 			worker.Stop()
 		}
