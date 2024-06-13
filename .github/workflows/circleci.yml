@@ -11,7 +11,7 @@ on:
     workflows: ["Dependabot", "Trigger on Comment"]
     types:
       - completed
-  m:
+  repository_dispatch:
     types: [ok-to-test]
 
 permissions:
