@@ -2,6 +2,8 @@ module github.com/bacalhau-project/bacalhau
 
 go 1.21
 
+toolchain go1.21.11
+
 require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0

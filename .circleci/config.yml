@@ -359,44 +359,6 @@ jobs:
             - "webui/build/*"
             - "webui/node_modules/*"
 
-  build_canary:
-    environment:
-      GOPROXY: https://proxy.golang.org
-      TARGET_COMMIT: << pipeline.git.revision >>
-    working_directory: ~/repo
-    executor: linux-amd64
-    steps:
-      - checkout
-
-      - install_go:
-          executor: linux-amd64
-
-      - run:
-          name: Install Executor Plugins
-          command: make install-plugins
-
-      - run:
-          name: Set canary dependency
-          working_directory: ops/aws/canary/lambda
-          command: make update
-
-      - run:
-          name: Build
-          working_directory: ops/aws/canary/lambda
-          command: make build -j
-
-      - run:
-          name: Run tests
-          working_directory: ops/aws/canary/lambda
-          command: |
-            export GOBIN=${HOME}/bin
-            export PATH=$GOBIN:$PATH
-            go install gotest.tools/gotestsum@v1.8.2
-            make test
-
-      - store_test_results:
-          path: ops/aws/canary/lambda/tests.xml
-
   build_docker:
     executor: linux-amd64
     steps:
@@ -742,14 +704,6 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  check_canary:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - build_canary:
-          name: Check canary build
-          filters:
-            tags:
-              ignore: /.*/
   test_workflow:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
