@@ -3,12 +3,13 @@
 package logstream_test
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -19,10 +20,12 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	docker.MustHaveDocker(s.T())
 	node := s.stack.Nodes[0]
 
+	es, err := dockermodels.NewDockerEngineBuilder("bash").
+		WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+		Build()
+	s.Require().NoError(err)
 	task := mock.TaskBuilder().
-		Engine(dockermodels.NewDockerEngineBuilder("bash").
-			WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
-			Build()).
+		Engine(es).
 		BuildOrDie()
 	job := mock.Job()
 	job.Tasks[0] = task
@@ -31,7 +34,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	execution.NodeID = node.ID
 	execution.AllocateResources(task.Name, models.Resources{})
 
-	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job, models.Event{})
+	err = node.RequesterNode.JobStore.CreateJob(s.ctx, *job, models.Event{})
 	require.NoError(s.T(), err)
 
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, models.EngineDocker)

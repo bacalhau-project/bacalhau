@@ -3,7 +3,7 @@ Spec:
   Engine: noop
   Publisher: noop
   Outputs:
-    - StorageSource: ipfs
+    - StorageSource: localDirectory
       Name: output_custom
       Path: /output_custom
   Deal:

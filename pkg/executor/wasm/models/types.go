@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/fatih/structs"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/fatih/structs"
 )
 
 // EngineSpec contains necessary parameters to execute a wasm job.
@@ -185,4 +186,46 @@ func DecodeArguments(spec *models.SpecConfig) (*EngineArguments, error) {
 		return nil, fmt.Errorf("failed to decode wasm engine specs. %w", err)
 	}
 	return c, c.Validate()
+}
+
+type WasmEngineBuilder struct {
+	spec *EngineSpec
+}
+
+func NewWasmEngineBuilder(entryModule *models.InputSource) *WasmEngineBuilder {
+	spec := &EngineSpec{
+		EntryModule: entryModule,
+	}
+
+	return &WasmEngineBuilder{spec: spec}
+}
+
+func (b *WasmEngineBuilder) WithEntrypoint(e string) *WasmEngineBuilder {
+	b.spec.Entrypoint = e
+	return b
+}
+
+func (b *WasmEngineBuilder) WithParameters(e ...string) *WasmEngineBuilder {
+	b.spec.Parameters = e
+	return b
+}
+
+func (b *WasmEngineBuilder) WithEnvironmentVariables(e map[string]string) *WasmEngineBuilder {
+	b.spec.EnvironmentVariables = e
+	return b
+}
+
+func (b *WasmEngineBuilder) WithImportModules(e []*models.InputSource) *WasmEngineBuilder {
+	b.spec.ImportModules = e
+	return b
+}
+
+func (b *WasmEngineBuilder) Build() (*models.SpecConfig, error) {
+	if err := b.spec.Validate(); err != nil {
+		return nil, err
+	}
+	return &models.SpecConfig{
+		Type:   models.EngineWasm,
+		Params: b.spec.ToMap(),
+	}, nil
 }

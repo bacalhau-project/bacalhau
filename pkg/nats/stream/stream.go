@@ -13,13 +13,28 @@ complexities of data encoding and NATS publishing into a simple, intuitive inter
 
 How It Works:
 
-  - The Client part of the package manages dynamic inboxes for each streaming session, facilitating
+  - The ConsumerClient part of the package manages dynamic inboxes for each streaming session, facilitating
     the sending of data and listening for responses on dedicated subjects. It leverages the NATS
     publish-subscribe model for asynchronous communication, efficiently routing and correlating
     messages to their respective streams.
 
+  - The ProducerClient component is instrumental in maintaining the smooth exchange of information between the server and client.
+    Its primary role is to manage the heartbeat mechanism that plays a pivotal role in synchronizing the client and server.
+    A 'heartbeat' is essentially a methodical signal dispatched by the ProducerClient at fixed intervals.
+    Each heartbeat carries a list of active stream IDs, which instructs the ConsumerClient on which streams to keep
+    open for continued communication.Taking advantage of NATS's asynchronous publish-subscribe model, the ProducerClient ensures
+    that heartbeat messages are efficiently directed to the right ConsumerClient. In turn, the ConsumerClient recognizes
+    the active streams and keeps them open for receiving subsequent messages. It's important that the ProducerClient
+    receives a response to each heartbeat within a certain timeout period. This response comprises a list of non-active stream
+    IDs sent by the ConsumerClient. The ProducerClient can interpret this response to understand which streams are unnecessary,
+    prompting it to stop publishing to those specific inbox subjects that were initially created by the ConsumerClient.
+    In the absence of a timely heartbeat response, the ProducerClient assumes the ConsumerClient no longer requires the information.
+    Consequently, it ceases publishing to those specific inbox subjects, thus preserving resources and ensuring efficient communication.
+    Through this mechanism, the ProducerClient not only facilitates efficient communication but also effective resource management.
+    It stops the overuse of streams that are no longer in demand, thereby maintaining the application's responsiveness and real-time prowess
+
   - The Writer component allows for easy publishing of structured data to any NATS subject. It
-    integrates tightly with the Client, utilizing the same connection for streamlined data streaming.
+    integrates tightly with the ConsumerClient, utilizing the same connection for streamlined data streaming.
     The Writer simplifies the publication process, automatically handling data serialization and
     supporting graceful stream closure with custom codes.
 
@@ -49,6 +64,9 @@ Key Features:
   - Data Publication: The Writer simplifies structured data publishing to NATS, with support for
     automatic serialization and stream closure signals.
 
+  - HeartBeating: The producer client in regular interval sends information to consumer client about the
+    active stream ids.
+
 Usage:
 
 Initialize the client with a NATS connection and use the provided methods to send streaming requests
@@ -57,8 +75,8 @@ process of working with streaming data.
 
 Example:
 
-	params := stream.ClientParams{Conn: natsConn}
-	client, err := stream.NewClient(params)
+	params := stream.ConsumerClientParams{Conn: natsConn}
+	client, err := stream.NewConsumerClient(params)
 	if err != nil {
 	    log.Fatal(err)
 	}

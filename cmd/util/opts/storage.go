@@ -6,9 +6,10 @@ import (
 	"net/url"
 	"strings"
 
+	flag "github.com/spf13/pflag"
+
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	flag "github.com/spf13/pflag"
 )
 
 // compile-time check to ensure type implements the flag.Value interface
@@ -41,12 +42,12 @@ func (o *StorageOpt) Set(value string) error {
 				}
 				// find the last colon, excluding the schema part
 				schema := parsedURI.Scheme
-				trimmedURI := strings.TrimPrefix(field, schema+"://")
+				trimmedURI := strings.TrimPrefix(field, schema+"://") //nolint:goconst
 				index := strings.LastIndex(trimmedURI, ":")
 				if index == -1 {
 					sourceURI = field
 				} else {
-					sourceURI = schema + "://" + trimmedURI[:index]
+					sourceURI = schema + "://" + trimmedURI[:index] //nolint:goconst
 					destination = trimmedURI[index+1:]
 				}
 				continue

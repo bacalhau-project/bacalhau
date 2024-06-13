@@ -16,9 +16,10 @@ import (
 
 // ComputeHandlerParams defines parameters for creating a new ComputeHandler.
 type ComputeHandlerParams struct {
-	Name            string
-	Conn            *nats.Conn
-	ComputeEndpoint compute.Endpoint
+	Name                       string
+	Conn                       *nats.Conn
+	ComputeEndpoint            compute.Endpoint
+	StreamProducerClientConfig stream.StreamProducerClientConfig
 }
 
 // ComputeHandler handles NATS messages for compute operations.
@@ -27,15 +28,22 @@ type ComputeHandler struct {
 	conn            *nats.Conn
 	computeEndpoint compute.Endpoint
 	subscription    *nats.Subscription
-	streamingClient *stream.Client
+	streamingClient *stream.ProducerClient
 }
 
 // handlerWithResponse represents a function that processes a request and returns a response.
 type handlerWithResponse[Request, Response any] func(context.Context, Request) (Response, error)
 
 // NewComputeHandler creates a new ComputeHandler.
-func NewComputeHandler(params ComputeHandlerParams) (*ComputeHandler, error) {
-	streamingClient, err := stream.NewClient(stream.ClientParams{Conn: params.Conn})
+func NewComputeHandler(ctx context.Context, params ComputeHandlerParams) (*ComputeHandler, error) {
+	streamingClient, err := stream.NewProducerClient(ctx, stream.ProducerClientParams{
+		Conn: params.Conn,
+		Config: stream.StreamProducerClientConfig{
+			HeartBeatIntervalDuration:        stream.DefaultHeartBeatIntervalDuration,
+			HeartBeatRequestTimeout:          stream.DefaultHeartBeatRequestTimeout,
+			StreamCancellationBufferDuration: stream.DefaultStreamCancellationBufferDuration,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -126,18 +134,41 @@ func sendResponse[Response any](conn *nats.Conn, reply string, result *concurren
 	return conn.Publish(reply, resultData)
 }
 
-func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.Client, msg *nats.Msg,
+func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.ProducerClient, msg *nats.Msg,
 	f handlerWithResponse[Request, <-chan *concurrency.AsyncResult[Response]]) {
 	if msg.Reply == "" {
 		log.Ctx(ctx).Error().Msgf("streaming request on %s has no reply subject", msg.Subject)
 		return
 	}
+
 	writer := streamingClient.NewWriter(msg.Reply)
+	streamRequest := new(stream.Request)
+	err := json.Unmarshal(msg.Data, streamRequest)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseBadRequest,
+			fmt.Sprintf("error decoding %s: %s", reflect.TypeOf(streamRequest).Name(), err))
+		return
+	}
+
 	request := new(Request)
-	err := json.Unmarshal(msg.Data, request)
+	err = json.Unmarshal(streamRequest.Data, request)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseBadRequest,
 			fmt.Sprintf("error decoding %s: %s", reflect.TypeOf(request).Name(), err))
+		return
+	}
+
+	err = streamingClient.AddStream(
+		streamRequest.ConsumerID,
+		streamRequest.StreamID,
+		msg.Subject,
+		streamRequest.HeartBeatRequestSub,
+	)
+
+	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.ConsumerID)
+	if err != nil {
+		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
+			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
 		return
 	}
 
@@ -149,9 +180,10 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 	}
 
 	for res := range ch {
-		_, err = writer.WriteObject(res)
+		_, err := streamingClient.WriteResponse(streamRequest.ConsumerID, streamRequest.StreamID, res, writer)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
+			break
 		}
 	}
 	_ = writer.Close()

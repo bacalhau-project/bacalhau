@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/s3signed"
@@ -23,7 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -37,7 +36,7 @@ import (
 type DownloaderSuite struct {
 	*s3test.HelperSuite
 	cm               *system.CleanupManager
-	ipfsClient       ipfs.Client
+	ipfsClient       *ipfs.Client
 	downloadSettings *downloader.DownloaderSettings
 	downloadProvider downloader.DownloaderProvider
 	s3Signer         *s3helper.ResultSigner
@@ -45,48 +44,33 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
-	setup.SetupBacalhauRepoForTesting(ds.T())
+	_, cfg := setup.SetupBacalhauRepoForTesting(ds.T())
+	if testutils.IsIPFSEnabled(cfg.Node.IPFS.Connect) {
+		var err error
+		ds.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.Node.IPFS.Connect)
+		require.NoError(ds.T(), err)
+	}
 	ds.HelperSuite.SetupSuite()
 	ds.s3Signer = s3helper.NewResultSigner(s3helper.ResultSignerParams{
 		ClientProvider: ds.ClientProvider,
 		Expiration:     5 * time.Minute,
 	})
-}
 
-// Before each test
-func (ds *DownloaderSuite) SetupTest() {
-	ds.cm = system.NewCleanupManager()
-	ds.T().Cleanup(func() {
-		ds.cm.Cleanup(ds.Ctx)
-	})
-
-	ctx, cancel := context.WithCancel(ds.Ctx)
-	ds.T().Cleanup(cancel)
-
-	ds.downloadSettings = &downloader.DownloaderSettings{
-		Timeout: downloader.DefaultDownloadTimeout,
-	}
-
-	// Setup ipfs node
-	node, err := ipfs.NewNodeWithConfig(ctx, ds.cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(ds.T(), err)
-
-	swarm, err := node.SwarmAddresses()
-	require.NoError(ds.T(), err)
-
-	cfg := configenv.Testing
-	cfg.Node.IPFS.SwarmAddresses = swarm
-	ds.Require().NoError(config.Set(cfg))
-
-	ds.ipfsClient = node.Client()
 	ds.downloadProvider = provider.NewMappedProvider(
 		map[string]downloader.Downloader{
-			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm),
+			models.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.ipfsClient),
 			models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
 				HTTPDownloader: http.NewHTTPDownloader(),
 			}),
 		},
 	)
+}
+
+// Before each test, reset the download settings to the default.
+func (ds *DownloaderSuite) SetupTest() {
+	ds.downloadSettings = &downloader.DownloaderSettings{
+		Timeout: downloader.DefaultDownloadTimeout,
+	}
 }
 
 func (ds *DownloaderSuite) TearDownSuite() {
@@ -137,6 +121,10 @@ func (ds *DownloaderSuite) mockFile(path ...string) string {
 
 // Publish to IPFS
 func publishToIPFS(ds *DownloaderSuite, dir string) *models.SpecConfig {
+	if ds.ipfsClient == nil {
+		ds.T().Skip("IPFS connect is not available")
+	}
+
 	cid, err := ds.ipfsClient.Put(ds.Ctx, dir)
 	require.NoError(ds.T(), err)
 	return &models.SpecConfig{
@@ -165,8 +153,11 @@ func publishToS3Unsigned(ds *DownloaderSuite, dir string) *models.SpecConfig {
 // output directory.
 func requireFileExists(ds *DownloaderSuite, path ...string) string {
 	testPath := filepath.Join(ds.downloadSettings.OutputDir, filepath.Join(path...))
-	require.FileExistsf(ds.T(), testPath, "File %s not present", testPath)
-
+	_, err := os.Stat(testPath)
+	if err != nil {
+		ds.T().Logf("Could not find file at %s", testPath)
+	}
+	require.NoError(ds.T(), err)
 	return testPath
 }
 
@@ -180,11 +171,13 @@ func requireFile(ds *DownloaderSuite, expected string, path ...string) {
 	require.Equal(ds.T(), expected, string(contents))
 }
 
-var publishers = map[string]struct {
+type testCase struct {
 	publishFn  func(*DownloaderSuite, string) *models.SpecConfig
 	rawMatcher func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string
 	shouldFail bool
-}{
+}
+
+var publishers = map[string]testCase{
 	models.StorageSourceS3PreSigned: {
 		publishFn: publishToS3,
 		rawMatcher: func(ds *DownloaderSuite, result *models.SpecConfig, rawParentPath string) string {
@@ -226,6 +219,18 @@ var publishers = map[string]struct {
 	},
 }
 
+func (ds *DownloaderSuite) getPublishers() map[string]testCase {
+	res := make(map[string]testCase)
+	for name, publisher := range publishers {
+		if name == models.StorageSourceIPFS && ds.ipfsClient == nil {
+			ds.T().Log("Skipping IPFS test as IPFS Connect is not available")
+			continue
+		}
+		res[name] = publisher
+	}
+	return res
+}
+
 func (ds *DownloaderSuite) TestNoExpectedResults() {
 	err := downloader.DownloadResults(
 		ds.Ctx,
@@ -247,9 +252,9 @@ func (ds *DownloaderSuite) download(results ...*models.SpecConfig) error {
 }
 
 func (ds *DownloaderSuite) TestSingleOutput() {
-	res := ds.mockOutput("hello.txt")
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.T().Run("TestSingleOutput: "+name, func(t *testing.T) {
+			res := ds.mockOutput("hello.txt")
 			err := ds.download(publisher.publishFn(ds, res.path))
 			if publisher.shouldFail {
 				require.Error(t, err)
@@ -266,11 +271,11 @@ func (ds *DownloaderSuite) TestSingleOutput() {
 }
 
 func (ds *DownloaderSuite) TestSingleRawOutput() {
-	ds.downloadSettings.Raw = true
-	res := ds.mockOutput("hello.txt", "goodbye.txt")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.T().Run("TestSingleRawOutput: "+name, func(t *testing.T) {
+			ds.downloadSettings.Raw = true
+			res := ds.mockOutput("hello.txt", "goodbye.txt")
+
 			publishedResult := publisher.publishFn(ds, res.path)
 			err := ds.download(publishedResult)
 			if publisher.shouldFail {
@@ -291,12 +296,11 @@ func (ds *DownloaderSuite) TestSingleRawOutput() {
 }
 
 func (ds *DownloaderSuite) TestMultiRawOutput() {
-	ds.downloadSettings.Raw = true
-	res := ds.mockOutput("hello.txt")
-	res2 := ds.mockOutput("goodbye.txt")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.T().Run("TestMultiRawOutput: "+name, func(t *testing.T) {
+			ds.downloadSettings.Raw = true
+			res := ds.mockOutput("hello.txt")
+			res2 := ds.mockOutput("goodbye.txt")
 			publishedResult1 := publisher.publishFn(ds, res.path)
 			publishedResult2 := publisher.publishFn(ds, res2.path)
 			err := ds.download(publishedResult1, publishedResult2)
@@ -324,11 +328,10 @@ func (ds *DownloaderSuite) TestMultiRawOutput() {
 }
 
 func (ds *DownloaderSuite) TestMultiMergedOutput() {
-	res := ds.mockOutput("hello.txt")
-	res2 := ds.mockOutput("goodbye.txt")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.Run("TestMultiMergedOutput: "+name, func() {
+			res := ds.mockOutput("hello.txt")
+			res2 := ds.mockOutput("goodbye.txt")
 			err := ds.download(
 				publisher.publishFn(ds, res.path),
 				publisher.publishFn(ds, res2.path),
@@ -345,11 +348,10 @@ func (ds *DownloaderSuite) TestMultiMergedOutput() {
 }
 
 func (ds *DownloaderSuite) TestMultiMergeConflictingOutput() {
-	res := ds.mockOutput("same_same.txt")
-	res2 := ds.mockOutput("same_same.txt")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.Run("TestMultiMergeConflictingOutput: "+name, func() {
+			res := ds.mockOutput("same_same.txt")
+			res2 := ds.mockOutput("same_same.txt")
 			err := ds.download(
 				publisher.publishFn(ds, res.path),
 				publisher.publishFn(ds, res2.path),
@@ -360,11 +362,10 @@ func (ds *DownloaderSuite) TestMultiMergeConflictingOutput() {
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
-	path := ds.T().TempDir()
-	ds.mockFile(path, "outputs", "lonely.txt")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.Run("TestOutputWithNoStdFiles: "+name, func() {
+			path := ds.T().TempDir()
+			ds.mockFile(path, "outputs", "lonely.txt")
 			err := ds.download(
 				publisher.publishFn(ds, path),
 			)
@@ -379,11 +380,10 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 }
 
 func (ds *DownloaderSuite) TestCustomVolumeNames() {
-	path := ds.T().TempDir()
-	ds.mockFile(path, "secrets", "private.pem")
-
-	for name, publisher := range publishers {
+	for name, publisher := range ds.getPublishers() {
 		ds.Run("TestCustomVolumeNames: "+name, func() {
+			path := ds.T().TempDir()
+			ds.mockFile(path, "secrets", "private.pem")
 			err := ds.download(
 				publisher.publishFn(ds, path),
 			)

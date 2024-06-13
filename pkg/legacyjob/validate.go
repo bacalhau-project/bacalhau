@@ -52,10 +52,6 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		}
 	*/
 
-	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
-		veriferrs = errors.Join(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))
-	}
-
 	if err := j.Spec.Network.IsValid(); err != nil {
 		veriferrs = errors.Join(veriferrs, err)
 	}

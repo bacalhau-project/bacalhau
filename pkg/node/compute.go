@@ -25,7 +25,6 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -53,6 +52,7 @@ func NewComputeNode(
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
+	repoPath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -186,7 +186,6 @@ func NewComputeNode(
 		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
-		repo_storage.NewLabelsProvider(),
 	)
 
 	var managementClient *compute.ManagementClient
@@ -195,9 +194,8 @@ func NewComputeNode(
 	if managementProxy != nil {
 		// TODO: Make the registration lock folder a config option so that we have it
 		// available and don't have to depend on getting the repo folder.
-		repo, _ := pkgconfig.Get[string]("repo")
 		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
+		regFilename = filepath.Join(repoPath, pkgconfig.ComputeStorePath, regFilename)
 
 		// Set up the management client which will attempt to register this node
 		// with the requester node, and then if successful will send regular node

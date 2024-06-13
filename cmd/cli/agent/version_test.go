@@ -5,10 +5,11 @@ package agent_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -44,7 +45,7 @@ func (s *VersionSuite) TestVersionJSONOutput() {
 	expectedVersion := version.Get()
 	printedVersion := &models.BuildVersionInfo{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &printedVersion)
-	s.Require().NoError(err, "Could not unmarshall the output into json - %+v", err)
+	s.Require().NoError(err, "Could not unmarshall the output into json - %+v", out)
 	s.Require().Equal(expectedVersion, printedVersion, "Versions do not match in json.")
 }
 
@@ -57,6 +58,6 @@ func (s *VersionSuite) TestVersionYAMLOutput() {
 	expectedVersion := version.Get()
 	printedVersion := &models.BuildVersionInfo{}
 	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &printedVersion)
-	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", err)
+	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", out)
 	s.Require().Equal(expectedVersion, printedVersion, "Versions do not match in yaml.")
 }

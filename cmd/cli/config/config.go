@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 )
 
 func NewCmd() *cobra.Command {
@@ -12,8 +13,6 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 	}
-	configCmd.AddCommand(newShowCmd())
-	configCmd.AddCommand(newDefaultCmd())
 	configCmd.AddCommand(newListCmd())
 	configCmd.AddCommand(newSetCmd())
 	configCmd.AddCommand(newAutoResourceCmd())

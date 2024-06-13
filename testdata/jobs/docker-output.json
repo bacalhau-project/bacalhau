@@ -20,7 +20,7 @@
         }
       },
       "Publisher": {
-        "Type": "ipfs"
+        "Type": "local"
       },
       "ResultPaths": [
         {

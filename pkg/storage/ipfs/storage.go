@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -22,12 +22,14 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	ipfsClient ipfs.Client
+	ipfsClient       ipfs.Client
+	getVolumeTimeout time.Duration
 }
 
-func NewStorage(cl ipfs.Client) (*StorageProvider, error) {
+func NewStorage(cl ipfs.Client, getVolumeTimeout time.Duration) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
-		ipfsClient: cl,
+		ipfsClient:       cl,
+		getVolumeTimeout: getVolumeTimeout,
 	}
 
 	log.Trace().Msgf("IPFS API Copy driver created with address: %s", cl.APIAddress())
@@ -52,8 +54,7 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 
 	// TODO(forrest) [correctness] this timeout should be passed in as a param or set on the context by the method caller.
 	// for further context on why this is the way it is see: https://github.com/bacalhau-project/bacalhau/pull/1432
-	timeoutDuration := config.GetVolumeSizeRequestTimeout()
-	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
+	ctx, cancel := context.WithTimeout(ctx, s.getVolumeTimeout)
 	defer cancel()
 
 	source, err := DecodeSpec(volume.Source)
@@ -67,7 +68,7 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 		if errors.Is(err, context.DeadlineExceeded) {
 			return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q before timeout %s: %w",
 				source.CID,
-				timeoutDuration, err)
+				s.getVolumeTimeout, err)
 		}
 		return 0, fmt.Errorf("IPFS storage provider was unable to retrieve content %q: %w", source.CID, err)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -29,7 +30,14 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
+	devstackOptions := &devstack.DevStackOptions{}
+	if testCase.Stack != nil && testCase.Stack.DevStackOptions != nil {
+		devstackOptions = testCase.Stack.DevStackOptions
+	}
+	devstackOptions.NumberOfHybridNodes = testNodeCount
+
+	fsr, c := setup.SetupBacalhauRepoForTesting(t)
+	stack := testutils.Setup(ctx, t, fsr, c, devstackOptions.Options()...)
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine().String())
 	require.NoError(t, err)
 
@@ -42,7 +50,7 @@ func RunTestCase(
 			return []model.StorageSpec{}
 		}
 
-		storageList, stErr := getStorage(ctx, model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
+		storageList, stErr := getStorage(ctx)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
@@ -61,6 +69,9 @@ func RunTestCase(
 
 	spec.Inputs = prepareStorage(testCase.Inputs)
 	spec.Outputs = testCase.Outputs
+	spec.PublisherSpec = model.PublisherSpec{
+		Type: model.PublisherLocal,
+	}
 	spec.Deal = model.Deal{Concurrency: testNodeCount}
 
 	job := model.Job{

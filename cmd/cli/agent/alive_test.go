@@ -5,9 +5,10 @@ package agent_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -39,6 +40,6 @@ func (s *AliveSuite) TestAliveYAMLOutput() {
 
 	aliveInfo := &apimodels.IsAliveResponse{}
 	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &aliveInfo)
-	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", err)
+	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", out)
 	s.Require().True(aliveInfo.IsReady())
 }

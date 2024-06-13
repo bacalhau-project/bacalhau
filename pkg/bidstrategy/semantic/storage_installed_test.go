@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -22,7 +23,7 @@ import (
 var (
 	OneStorageSpec = []*models.InputSource{
 		{
-			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
+			Source: models.NewSpecConfig(models.StorageSourceLocalDirectory).WithParam("SourcePath", "/dummy/path"),
 			Target: "target",
 		},
 	}

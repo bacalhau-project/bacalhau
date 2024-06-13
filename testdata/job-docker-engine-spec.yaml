@@ -1,6 +1,6 @@
 APIVersion: v1beta1
 Spec:
-  Publisher: ipfs
+  Publisher: local
   EngineSpec:
     Type: docker
     Params:
@@ -16,8 +16,7 @@ Resources:
   Disk: ''
 Inputs: []
 Outputs:
-  - StorageSource: ipfs
+  - StorageSource: localDirectory
     Name: output_custom
-    CID: ''
     Path: /output_custom
 Annotations: []

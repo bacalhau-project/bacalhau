@@ -1,5 +1,7 @@
 package stream
 
+import "time"
+
 // Close error codes that follow these semantics:
 // - 1000 Series: Normal and controlled shutdown scenarios. These are standard and expected reasons for closing a stream.
 // - 4000 Series: Client-related errors or issues with the transmitted data, indicating problems that originate from the caller's side.
@@ -26,4 +28,11 @@ const (
 	// by the server, preventing it from fulfilling the request. This signals issues
 	// that are internal to the server or the processing system.
 	CloseInternalServerErr = 5000
+)
+
+// Default Stream Configurations
+const (
+	DefaultHeartBeatIntervalDuration        = 10 * time.Second
+	DefaultHeartBeatRequestTimeout          = 5 * time.Second
+	DefaultStreamCancellationBufferDuration = 10 * time.Second
 )

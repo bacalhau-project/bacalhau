@@ -3,9 +3,10 @@ package ipfs
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type Source struct {
@@ -39,4 +40,16 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 	}
 
 	return c, c.Validate()
+}
+
+func NewSpecConfig(cid string) (*models.SpecConfig, error) {
+	s := Source{CID: cid}
+	if err := s.Validate(); err != nil {
+		return nil, fmt.Errorf("creating %s spec config: %w", models.StorageSourceIPFS, err)
+	}
+	return &models.SpecConfig{
+		// TODO(forrest) [refactor] the type definition ought to live in this package.
+		Type:   models.StorageSourceIPFS,
+		Params: s.ToMap(),
+	}, nil
 }
