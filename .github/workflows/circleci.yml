@@ -11,7 +11,7 @@ on:
     workflows: ["Dependabot", "Trigger on Comment"]
     types:
       - completed
-  m:
+  repository_dispatch:
     types: [ok-to-test]
 
 permissions:
@@ -21,12 +21,14 @@ permissions:
 jobs:
   trigger-circle-ci:
     if: |
-      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
-      !contains(github.event.pull_request.labels.*.name, 'wip')
+      github.event_name != 'pull_request' ||
+      (
+        !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
+        !contains(github.event.pull_request.labels.*.name, 'wip')
+      )
     runs-on: ubuntu-latest
     name: Pull Request Triggered CircleCI
     steps:
-      # For Debugging Below
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -44,6 +46,22 @@ jobs:
           RUNNER_CONTEXT: ${{ toJson(runner) }}
         run: echo "$RUNNER_CONTEXT"
       - uses: actions/checkout@v3
+      - if: ${{ github.event_name != 'pull_request' }}
+        run: echo "Not a pull request. Exiting."
+      - name: Set up SHA
+        id: set-sha
+        run: |
+          if [[ -n "${{ github.event.client_payload.sha }}" ]]; then
+            echo "SHA=${{ github.event.client_payload.sha }}" >> $GITHUB_ENV
+          elif [[ -n "${{ github.event.pull_request.head.sha }}" ]]; then
+            echo "SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          elif [[ -n "${{ github.sha }}" ]]; then
+            echo "SHA=${{ github.sha }}" >> $GITHUB_ENV
+          else
+            echo "No SHA set. Exiting."
+            exit 1
+          fi
+
       - name: Trigger CircleCI
         id: trigger-circle-ci
         run: |
@@ -54,4 +72,4 @@ jobs:
           ./.circleci/trigger_pipeline.sh
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}
+          SHA: ${{ env.SHA }}
