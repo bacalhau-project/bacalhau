@@ -12,7 +12,7 @@ on:
     types:
       - completed
   repository_dispatch:
-    types: [ok-to-test]
+    types: [ok-to-test, ok-to-trigger-circleci]
 
 permissions:
   contents: write
