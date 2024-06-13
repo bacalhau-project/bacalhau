@@ -5,17 +5,20 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
+	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
 // A Parser is a function that can convert a string into a native object.
@@ -178,45 +181,52 @@ func SeparatorParser(sep string) KeyValueParser[string, string] {
 	}
 }
 
-func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
+func parseIPFSStorageSpec(input string) (*models.InputSource, error) {
 	cid, path, err := SeparatorParser(":")(input)
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-		Path:          path,
-	}, err
+	if err != nil {
+		return nil, err
+	}
+	ipfsSpec, err := storage_ipfs.NewSpecConfig(cid)
+	if err != nil {
+		return nil, err
+	}
+	return &models.InputSource{
+		Source: ipfsSpec,
+		Alias:  fmt.Sprintf("ipfs://%s", cid),
+		Target: path,
+	}, nil
 }
 
-func storageSpecToIPFSMount(input *model.StorageSpec) string {
-	return fmt.Sprintf("%s:%s", input.CID, input.Path)
-}
-
-func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
+func NewIPFSStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*models.InputSource] {
+	return &ArrayValueFlag[*models.InputSource]{
 		value:    value,
 		parser:   parseIPFSStorageSpec,
-		stringer: storageSpecToIPFSMount,
+		stringer: func(s **models.InputSource) string { return (*s).Source.Type },
 		typeStr:  "cid:path",
 	}
 }
 
-func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
-	u, err := urldownload.IsURLSupported(inputURL)
+func parseURLStorageSpec(inputURL string) (*models.InputSource, error) {
+	u, err := storage_url.IsURLSupported(inputURL)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return nil, err
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           u.String(),
-		Path:          "/inputs",
+	urlSpec, err := storage_url.NewSpecConfig(u.String())
+	if err != nil {
+		return nil, err
+	}
+	return &models.InputSource{
+		Source: urlSpec,
+		Alias:  u.String(),
+		Target: "/inputs",
 	}, nil
 }
 
-func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
+func NewURLStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*models.InputSource] {
+	return &ArrayValueFlag[*models.InputSource]{
 		value:    value,
 		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
+		stringer: func(s **models.InputSource) string { return (*s).Source.Type },
 		typeStr:  "url",
 	}
 }
@@ -413,4 +423,35 @@ func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
 	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
 
 	return flags
+}
+
+func ResultPathFlag(value *[]*models.ResultPath) *ArrayValueFlag[*models.ResultPath] {
+	return &ArrayValueFlag[*models.ResultPath]{
+		value:  value,
+		parser: parseResultPath,
+		stringer: func(r **models.ResultPath) string {
+			return fmt.Sprintf("%+v", r)
+		},
+		typeStr: "ResultPath",
+	}
+}
+
+func parseResultPath(value string) (*models.ResultPath, error) {
+	tokens := strings.Split(value, ":")
+	if len(tokens) != 2 || tokens[0] == "" || tokens[1] == "" {
+		return nil, fmt.Errorf("invalid output volume: %s", value)
+	}
+	return &models.ResultPath{
+		Name: tokens[0],
+		Path: tokens[1],
+	}, nil
+}
+
+func NetworkV2Flag(value *models.Network) *ValueFlag[models.Network] {
+	return &ValueFlag[models.Network]{
+		value:    value,
+		parser:   models.ParseNetwork,
+		stringer: func(n *models.Network) string { return n.String() },
+		typeStr:  "network-type",
+	}
 }

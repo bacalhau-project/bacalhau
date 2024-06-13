@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // specialFiles - i.e. anything that is not a volume
@@ -89,46 +90,47 @@ func DownloadResults( //nolint:funlen,gocyclo
 		if err != nil {
 			return err
 		}
-		downloadedResults[resultPath] = struct{}{}
+		downloadedResults[filepath.Clean(resultPath)] = struct{}{}
 	}
 
 	if settings.Raw {
 		return nil
-	} else {
-		for resultPath := range downloadedResults {
-			log.Ctx(ctx).Debug().
-				Str("Source", resultPath).
-				Str("Target", resultsOutputDir).
-				Msg("Copying downloaded data to target")
+	}
+	for resultPath := range downloadedResults {
+		log.Ctx(ctx).Debug().
+			Str("Source", resultPath).
+			Str("Target", resultsOutputDir).
+			Msg("Copying downloaded data to target")
 
-			// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)
-			// TODO: We could also do this using the content-type for the download (for _some_ downloaders).
-			if strings.HasSuffix(resultPath, ".tar.gz") || strings.HasSuffix(resultPath, ".tgz") {
-				newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
-				newResultPath = strings.TrimSuffix(newResultPath, ".tgz")
+		// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)
+		// TODO: We could also do this using the content-type for the download (for _some_ downloaders).
+		if strings.HasSuffix(resultPath, ".tar.gz") || strings.HasSuffix(resultPath, ".tgz") {
+			newResultPath := strings.TrimSuffix(resultPath, ".tar.gz")
+			newResultPath = strings.TrimSuffix(newResultPath, ".tgz")
 
-				if _, err := os.Stat(newResultPath); os.IsNotExist(err) {
-					err = os.MkdirAll(newResultPath, DownloadFolderPerm)
-					if err != nil {
-						return errors.Wrap(err, "failed to create folder for uncompressed result")
-					}
+			log.Ctx(ctx).Debug().Msgf("Decompressing %s to %s", resultPath, newResultPath)
+
+			if _, err := os.Stat(newResultPath); os.IsNotExist(err) {
+				err = os.MkdirAll(newResultPath, DownloadFolderPerm)
+				if err != nil {
+					return errors.Wrap(err, "failed to create folder for uncompressed result")
 				}
-
-				if err = gzip.Decompress(resultPath, newResultPath); err != nil {
-					return err
-				}
-
-				resultPath = newResultPath
 			}
 
-			err = moveData(ctx, resultPath, resultsOutputDir, len(downloadedResults) > 1)
-			if err != nil {
+			if err = gzip.Decompress(resultPath, newResultPath); err != nil {
 				return err
 			}
+
+			resultPath = newResultPath
 		}
 
-		return os.RemoveAll(rawParentDir)
+		err = moveData(ctx, resultPath, resultsOutputDir, len(downloadedResults) > 1)
+		if err != nil {
+			return err
+		}
 	}
+
+	return os.RemoveAll(rawParentDir)
 }
 
 func moveData(
@@ -137,6 +139,7 @@ func moveData(
 	toFolder string,
 	appendMode bool,
 ) error {
+	log.Ctx(ctx).Debug().Msgf("Moving data from %s to %s", fromFolder, toFolder)
 	// the recursive function that will scan our source volume folder
 	moveFunc := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -160,6 +163,11 @@ func moveData(
 
 		// the path to where we are saving this item in the global folders
 		globalTargetPath := filepath.Join(toFolder, basePath)
+		log.Ctx(ctx).Debug().
+			Str("Source", path).
+			Str("BasePath", basePath).
+			Str("Target", globalTargetPath).
+			Msg("Moving file or directory")
 
 		// are we dealing with a special case file?
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
@@ -172,11 +180,7 @@ func moveData(
 		} else {
 			// if it's not a special file then we move it into the global dir
 			if !appendMode || !isSpecialFile {
-				err = moveFile(
-					path,
-					globalTargetPath,
-				)
-				if err != nil {
+				if err = moveFile(path, globalTargetPath); err != nil {
 					return err
 				}
 			}
@@ -184,11 +188,7 @@ func moveData(
 			// if this is a special file, and we are in append mode (such as when downloading multiple results), then we
 			// append the content instead of overwriting it
 			if appendMode && shouldAppendLogs {
-				err = appendFile(
-					path,
-					globalTargetPath,
-				)
-				if err != nil {
+				if err = appendFile(path, globalTargetPath); err != nil {
 					return err
 				}
 			}

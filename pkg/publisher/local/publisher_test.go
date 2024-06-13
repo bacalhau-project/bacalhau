@@ -9,9 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
-	"github.com/stretchr/testify/suite"
 )
 
 const defaultHost = "127.0.0.1"
@@ -63,6 +64,6 @@ func (s *PublisherTestSuite) TestPublishFolder() {
 	s.Require().NoError(err)
 	s.NotNil(cfg)
 
-	expected := fmt.Sprintf("http://%s:%d/eid.tgz", defaultHost, defaultPort)
+	expected := fmt.Sprintf("http://%s:%d/eid.tar.gz", defaultHost, defaultPort)
 	s.Require().Equal(expected, cfg.Params["URL"])
 }

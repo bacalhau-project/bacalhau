@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 )
 
 type DockerCacheTestSuite struct {
@@ -18,14 +18,13 @@ type DockerCacheTestSuite struct {
 }
 
 func TestDockerCache(t *testing.T) {
-	config.Set(configenv.Testing)
 	suite.Run(t, new(DockerCacheTestSuite))
 }
 
 func (s *DockerCacheTestSuite) TestDefaultsSize() {
 	sampleVal := docker.ImageManifest{}
 
-	mc := docker.NewManifestCache()
+	mc := docker.NewManifestCache(configenv.Testing.Node.Compute.ManifestCache)
 	for i := 0; i < 1000; i++ {
 		err := mc.Set(fmt.Sprintf("k%d", i), sampleVal, 1, 10)
 		require.NoError(s.T(), err)

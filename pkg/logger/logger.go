@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/rs/zerolog/pkgerrors"
 
-	ipfslog2 "github.com/ipfs/go-log/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -85,7 +85,6 @@ func ConfigureTestLogging(t tTesting) {
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
-		configureIpfsLogging(log.Logger)
 	})
 }
 
@@ -146,8 +145,6 @@ func configureLogging(logWriter io.Writer) {
 	zerolog.DefaultContextLogger = &log.Logger
 
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-
-	configureIpfsLogging(log.Logger)
 }
 
 func jsonLogging() io.Writer {
@@ -238,10 +235,6 @@ func (z *zerologWriteSyncer) Write(b []byte) (int, error) {
 
 func (z *zerologWriteSyncer) Sync() error {
 	return nil
-}
-
-func configureIpfsLogging(l zerolog.Logger) {
-	ipfslog2.SetPrimaryCore(&zerologZapCore{l})
 }
 
 func LogStream(ctx context.Context, r io.Reader) {

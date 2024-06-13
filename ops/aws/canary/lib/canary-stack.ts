@@ -37,6 +37,10 @@ const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
     logLevel: 'DEBUG',
 }
 
+// A fixed installation/profile ID for the canary to filter out
+// the canary's requests from our analytics tools
+export const CanaryInstallationID = "BACA14A0-2000-0000-0000-000000000000";
+
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
     private readonly config: CanaryConfig;
@@ -59,10 +63,6 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndDescribe"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
-                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 5120, storageSize: 5012,
-                datapointsToAlarm: 4, evaluationPeriods: 6, doAlarm: false}});
-
         if (config.createOperators) {
             this.createOperatorGroup()
         }
@@ -107,6 +107,7 @@ export class CanaryStack extends cdk.Stack {
                 'LOG_LEVEL': props.logLevel,
                 'BACALHAU_ENVIRONMENT': this.config.bacalhauEnvironment,
                 "BACALHAU_NODE_SELECTORS": this.config.nodeSelectors,
+                "BACALHAU_USER_INSTALLATIONID": CanaryInstallationID
             }
         });
 

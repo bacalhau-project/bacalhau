@@ -21,6 +21,7 @@ type RequesterConfig struct {
 
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
+	Scheduler        SchedulerConfig        `yaml:"Scheduler"`
 	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`
 
 	TagCache         DockerCacheConfig `yaml:"TagCache"`
@@ -48,6 +49,11 @@ type WorkerConfig struct {
 	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
+type SchedulerConfig struct {
+	QueueBackoff               Duration `yaml:"QueueBackoff"`
+	NodeOverSubscriptionFactor float64  `yaml:"NodeOverSubscriptionFactor"`
+}
+
 type StorageProviderConfig struct {
 	S3 S3StorageProviderConfig `yaml:"S3"`
 }
@@ -58,7 +64,9 @@ type S3StorageProviderConfig struct {
 }
 
 type JobDefaults struct {
+	TotalTimeout     Duration `yaml:"TotalTimeout"`
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
+	QueueTimeout     Duration `yaml:"QueueTimeout"`
 }
 
 type RequesterControlPlaneConfig struct {

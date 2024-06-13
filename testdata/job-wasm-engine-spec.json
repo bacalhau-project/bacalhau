@@ -12,7 +12,7 @@
       }
     }
   },
-  "Publisher": "ipfs",
+  "Publisher": "local",
   "Resources": {
     "CPU": "",
     "GPU": "",
@@ -23,9 +23,8 @@
   ],
   "Outputs": [
     {
-      "StorageSource": "ipfs",
+      "StorageSource": "localDirectory",
       "Name": "output_custom",
-      "CID": "",
       "Path": "/output_custom"
     }
   ],

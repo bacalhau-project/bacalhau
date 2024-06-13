@@ -4,18 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/fatih/structs"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/fatih/structs"
-)
-
-const (
-	EngineKeyImageDocker                = "Image"
-	EngineKeyEntrypointDocker           = "Entrypoint"
-	EngineKeyParametersDocker           = "Parameters"
-	EngineKeyEnvironmentVariablesDocker = "EnvironmentVariables"
-	EngineKeyWorkingDirectoryDocker     = "WorkingDirectory"
 )
 
 // EngineSpec contains necessary parameters to execute a docker job.
@@ -34,7 +28,21 @@ type EngineSpec struct {
 
 func (c EngineSpec) Validate() error {
 	if validate.IsBlank(c.Image) {
-		return errors.New("invalid docker engine params: image cannot be empty")
+		return fmt.Errorf("invalid docker engine param: 'Image' cannot be empty")
+	}
+	if c.WorkingDirectory != "" {
+		if !strings.HasPrefix(c.WorkingDirectory, "/") {
+			// This mirrors the implementation at path/filepath/path_unix.go#L13 which
+			// we reuse here to get cross-platform working dir detection. This is
+			// necessary (rather than using IsAbs()) because clients may be running on
+			// Windows/Plan9 but we want to check inside Docker (linux).
+			return fmt.Errorf("invalid docker engine param: 'WorkingDirectory' (%q) "+
+				"must contain absolute path", c.WorkingDirectory)
+		}
+	}
+	if len(c.EnvironmentVariables)%2 != 0 {
+		return fmt.Errorf("invalid docker engine param: 'EnvironmentVariables' (%s) "+
+			"must contain an even number of elements to represent environment variable key-value pairs", c.EnvironmentVariables)
 	}
 	return nil
 }
@@ -70,46 +78,53 @@ func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 // specifically for Docker engines using the Builder pattern.
 // It embeds an EngineBuilder object for handling the common builder methods.
 type DockerEngineBuilder struct {
-	eb *models.SpecConfig
+	spec *EngineSpec
 }
 
 // NewDockerEngineBuilder function initializes a new DockerEngineBuilder instance.
 // It sets the engine type to model.EngineDocker.String() and image as per the input argument.
 func NewDockerEngineBuilder(image string) *DockerEngineBuilder {
-	eb := models.NewSpecConfig(models.EngineDocker)
-	eb.WithParam(EngineKeyImageDocker, image)
-	return &DockerEngineBuilder{eb: eb}
+	spec := &EngineSpec{
+		Image: image,
+	}
+	return &DockerEngineBuilder{spec: spec}
 }
 
 // WithEntrypoint is a builder method that sets the Docker engine entrypoint.
 // It returns the DockerEngineBuilder for further chaining of builder methods.
 func (b *DockerEngineBuilder) WithEntrypoint(e ...string) *DockerEngineBuilder {
-	b.eb.WithParam(EngineKeyEntrypointDocker, e)
+	b.spec.Entrypoint = e
 	return b
 }
 
 // WithEnvironmentVariables is a builder method that sets the Docker engine's environment variables.
 // It returns the DockerEngineBuilder for further chaining of builder methods.
 func (b *DockerEngineBuilder) WithEnvironmentVariables(e ...string) *DockerEngineBuilder {
-	b.eb.WithParam(EngineKeyEnvironmentVariablesDocker, e)
+	b.spec.EnvironmentVariables = e
 	return b
 }
 
 // WithWorkingDirectory is a builder method that sets the Docker engine's working directory.
 // It returns the DockerEngineBuilder for further chaining of builder methods.
 func (b *DockerEngineBuilder) WithWorkingDirectory(e string) *DockerEngineBuilder {
-	b.eb.WithParam(EngineKeyWorkingDirectoryDocker, e)
+	b.spec.WorkingDirectory = e
 	return b
 }
 
 // WithParameters is a builder method that sets the Docker engine's parameters.
 // It returns the DockerEngineBuilder for further chaining of builder methods.
 func (b *DockerEngineBuilder) WithParameters(e ...string) *DockerEngineBuilder {
-	b.eb.WithParam(EngineKeyParametersDocker, e)
+	b.spec.Parameters = e
 	return b
 }
 
 // Build method constructs the final SpecConfig object by calling the embedded EngineBuilder's Build method.
-func (b *DockerEngineBuilder) Build() *models.SpecConfig {
-	return b.eb
+func (b *DockerEngineBuilder) Build() (*models.SpecConfig, error) {
+	if err := b.spec.Validate(); err != nil {
+		return nil, fmt.Errorf("building docker engine spec: %w", err)
+	}
+	return &models.SpecConfig{
+		Type:   models.EngineDocker,
+		Params: b.spec.ToMap(),
+	}, nil
 }

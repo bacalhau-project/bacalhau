@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -34,7 +35,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -57,8 +57,8 @@ func NewRequesterNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
+	cfg types.MetricsConfig,
 	requesterConfig RequesterConfig,
-	storageProvider storage.StorageProvider,
 	authnProvider authn.Provider,
 	nodeInfoStore routing.NodeInfoStore, // for libp2p store only, once removed remove this in favour of nodeManager
 	computeProxy compute.Endpoint,
@@ -83,6 +83,10 @@ func NewRequesterNode(
 		Info().
 		Msgf("Nodes joining the cluster will be assigned approval state: %s", requesterConfig.DefaultApprovalState.String())
 
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
+	if err != nil {
+		return nil, err
+	}
 	// compute node ranker
 	nodeRankerChain := ranking.NewChain()
 	nodeRankerChain.Add(
@@ -92,6 +96,7 @@ func NewRequesterNode(
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
+		overSubscriptionNodeRanker,
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		ranking.NewAvailableCapacityNodeRanker(),
@@ -171,6 +176,7 @@ func NewRequesterNode(
 		Planner:       planners,
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
+		QueueBackoff:  requesterConfig.SchedulerQueueBackoff,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -220,13 +226,12 @@ func NewRequesterNode(
 	}
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                         nodeID,
-		EventEmitter:               eventEmitter,
-		ComputeEndpoint:            computeProxy,
-		Store:                      jobStore,
-		StorageProviders:           storageProvider,
-		DefaultJobExecutionTimeout: requesterConfig.JobDefaults.ExecutionTimeout,
-		DefaultPublisher:           requesterConfig.DefaultPublisher,
+		ID:                nodeID,
+		EventEmitter:      eventEmitter,
+		ComputeEndpoint:   computeProxy,
+		Store:             jobStore,
+		DefaultJobTimeout: requesterConfig.JobDefaults.TotalTimeout,
+		DefaultPublisher:  requesterConfig.DefaultPublisher,
 	})
 
 	var translationProvider translation.TranslatorProvider
@@ -239,7 +244,6 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
-		transformer.NewInlineStoragePinner(storageProvider),
 	}
 
 	if requesterConfig.DefaultPublisher != "" {
@@ -296,7 +300,7 @@ func NewRequesterNode(
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
-	eventTracer, err := eventhandler.NewTracer()
+	eventTracer, err := eventhandler.NewTracer(cfg.EventTracerPath)
 	if err != nil {
 		return nil, err
 	}

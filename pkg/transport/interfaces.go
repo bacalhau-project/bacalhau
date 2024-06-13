@@ -41,7 +41,7 @@ type TransportLayer interface {
 
 	// RegisterComputeEndpoint registers a compute endpoint with the transport layer
 	// so that incoming orchestrator requests are forwarded to the handler
-	RegisterComputeEndpoint(endpoint compute.Endpoint) error
+	RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error
 
 	// RegisterRegistrationEndpoint registers a requester endpoint that computes nodes
 	// can use to register with the cluster.

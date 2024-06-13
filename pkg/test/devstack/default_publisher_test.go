@@ -49,7 +49,7 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 	stack := scenario.StackConfig{}
-	stack.DefaultPublisher = "ipfs"
+	stack.DefaultPublisher = "local"
 
 	testcase := scenario.Scenario{
 		Spec: testutils.MakeSpecWithOpts(s.T(),

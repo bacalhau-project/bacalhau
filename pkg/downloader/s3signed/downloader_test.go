@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
-	"github.com/stretchr/testify/suite"
 )
 
 type DownloaderTestSuite struct {
@@ -76,22 +77,4 @@ func (s *DownloaderTestSuite) TestDownloadCompressed() {
 	s.Require().NoError(gzip.Decompress(downloadedFile, decompressedPath))
 
 	s3test.AssertEqualDirectories(s.T(), resultPath, decompressedPath)
-}
-
-func (s *DownloaderTestSuite) TestDownloadUnCompressedFail() {
-	storageSpec, _ := s.PrepareAndPublish(false)
-
-	// attempting to get a signed url for uncompressed data should have no impact and return the same result
-	s.Require().NoError(s.signer.Transform(s.Ctx, &storageSpec))
-	s.Require().Equal(models.StorageSourceS3, storageSpec.Type)
-
-	// download unsigned result should fail
-	downloadParentPath, err := os.MkdirTemp(s.TempDir, "")
-	s.Require().NoError(err)
-
-	_, err = s.downloader.FetchResult(s.Ctx, downloader.DownloadItem{
-		Result:     &storageSpec,
-		ParentPath: downloadParentPath,
-	})
-	s.Require().Error(err)
 }

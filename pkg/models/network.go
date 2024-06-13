@@ -118,6 +118,7 @@ func (n *NetworkConfig) Validate() (err error) {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
+	// TODO(forrest): should return an error if the network type is not HTTP and domanins are set.
 	for _, domain := range n.Domains {
 		if domainRegex.MatchString(domain) {
 			continue

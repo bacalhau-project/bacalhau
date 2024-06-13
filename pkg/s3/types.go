@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type SourceSpec struct {
@@ -46,13 +47,6 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }
 
-type PublisherSpec struct {
-	Bucket   string `json:"Bucket"`
-	Key      string `json:"Key"`
-	Endpoint string `json:"Endpoint"`
-	Region   string `json:"Region"`
-}
-
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, errors.New("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
@@ -89,6 +83,27 @@ func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, er
 	return c, c.Validate()
 }
 
+type PublisherSpec struct {
+	Bucket   string `json:"Bucket"`
+	Key      string `json:"Key"`
+	Endpoint string `json:"Endpoint"`
+	Region   string `json:"Region"`
+}
+
+func (c PublisherSpec) Validate() error {
+	if c.Bucket == "" {
+		return fmt.Errorf("invalid s3 params. bucket cannot be empty")
+	}
+	if c.Key == "" {
+		return fmt.Errorf("invalid s3 params. key cannot be empty")
+	}
+	return nil
+}
+
+func (c PublisherSpec) ToMap() map[string]interface{} {
+	return structs.Map(c)
+}
+
 func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	if !spec.IsType(models.PublisherS3) {
 		return PublisherSpec{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
@@ -107,16 +122,36 @@ func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	return c, c.Validate()
 }
 
-func (c PublisherSpec) Validate() error {
-	if c.Bucket == "" {
-		return fmt.Errorf("invalid s3 params. bucket cannot be empty")
+type PublisherOption func(p *PublisherSpec)
+
+func WithPublisherEndpoint(e string) PublisherOption {
+	return func(p *PublisherSpec) {
+		p.Endpoint = e
 	}
-	if c.Key == "" {
-		return fmt.Errorf("invalid s3 params. key cannot be empty")
-	}
-	return nil
 }
 
-func (c PublisherSpec) ToMap() map[string]interface{} {
-	return structs.Map(c)
+func WithPublisherRegion(r string) PublisherOption {
+	return func(p *PublisherSpec) {
+		p.Region = r
+	}
+}
+
+func NewPublisherSpec(bucket string, key string, opts ...PublisherOption) (*models.SpecConfig, error) {
+	spec := &PublisherSpec{
+		Bucket: bucket,
+		Key:    key,
+	}
+
+	for _, opt := range opts {
+		opt(spec)
+	}
+
+	if err := spec.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to build %s publisher spec: %w", models.PublisherS3, err)
+	}
+
+	return &models.SpecConfig{
+		Type:   models.PublisherS3,
+		Params: spec.ToMap(),
+	}, nil
 }

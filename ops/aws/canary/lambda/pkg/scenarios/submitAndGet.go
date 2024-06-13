@@ -8,35 +8,40 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmdutil "github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
-func SubmitAndGet(ctx context.Context) error {
-	// intentionally delay creation of the client so a new client is created for each
+func SubmitAndGet(ctx context.Context, cfg types.BacalhauConfig) error {
+	// intentionally delay creation of the api client so a new client is created for each
 	// scenario to mimic the behavior of bacalhau cli.
-	client := getClient()
+	apiV1, err := cmdutil.GetAPIClient(cfg)
+	if err != nil {
+		return err
+	}
+	apiv2 := clientv2.New(fmt.Sprintf("http://%s:%d", cfg.Node.ClientAPI.Host, cfg.Node.ClientAPI.Port))
 
-	cm := system.NewCleanupManager()
 	j, err := getSampleDockerJob()
 	if err != nil {
 		return err
 	}
-	submittedJob, err := client.Submit(ctx, j)
+	submittedJob, err := apiV1.Submit(ctx, j)
 	if err != nil {
 		return err
 	}
 
 	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
-	err = waitUntilCompleted(ctx, client, submittedJob)
+	err = waitUntilCompleted(ctx, apiV1, submittedJob)
 	if err != nil {
 		return err
 	}
 
-	results, err := getClientV2().Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
+	results, err := apiv2.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{
 		JobID: submittedJob.Metadata.ID,
 	})
 	if err != nil {
@@ -53,13 +58,13 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	defer os.RemoveAll(outputDir)
 
-	downloadSettings, err := getIPFSDownloadSettings()
+	downloadSettings, err := getDownloadSettings()
 	if err != nil {
 		return err
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider := util.NewStandardDownloaders(cm)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.Node.IPFS.Connect)
 	if err != nil {
 		return err
 	}

@@ -9,11 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type LocalDirectorySuite struct {
@@ -243,7 +244,26 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 			require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
 		})
 	}
+}
 
+func (s *LocalDirectorySuite) TestCleanupStorage() {
+	tmpDir := s.T().TempDir()
+	storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths([]string{filepath.Join(tmpDir, "**:rw")})})
+	require.NoError(s.T(), err)
+
+	storageVolume := storage.StorageVolume{
+		Type:     storage.StorageVolumeConnectorBind,
+		ReadOnly: false,
+		Source:   tmpDir,
+		Target:   "/path/inside/the/container",
+	}
+
+	err = storageProvider.CleanupStorage(context.Background(), s.prepareStorageSpec(tmpDir), storageVolume)
+	require.NoError(s.T(), err)
+
+	// Check that the directory still exists (as it should not be removed)
+	_, err = os.Stat(tmpDir)
+	require.NoError(s.T(), err)
 }
 
 func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) models.InputSource {

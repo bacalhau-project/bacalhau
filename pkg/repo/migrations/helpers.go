@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/spf13/viper"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/spf13/viper"
 )
 
 func getViper(r repo.FsRepo) (*viper.Viper, error) {
@@ -18,7 +19,7 @@ func getViper(r repo.FsRepo) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	configFile := filepath.Join(repoPath, config.ConfigFileName)
+	configFile := filepath.Join(repoPath, config.FileName)
 	v := viper.New()
 	v.SetTypeByDefaultValue(true)
 	v.SetConfigFile(configFile)
@@ -38,7 +39,7 @@ func configExists(r repo.FsRepo) (bool, error) {
 		return false, err
 	}
 
-	configFile := filepath.Join(repoPath, config.ConfigFileName)
+	configFile := filepath.Join(repoPath, config.FileName)
 	_, err = os.Stat(configFile)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -58,30 +59,8 @@ func readConfig(r repo.FsRepo) (*viper.Viper, types.BacalhauConfig, error) {
 	return v, fileCfg, nil
 }
 
-// haveSameElements returns true if arr1 and arr2 have the same elements, false otherwise.
-func haveSameElements(arr1, arr2 []string) bool {
-	if len(arr1) != len(arr2) {
-		return false
-	}
-
-	elementCount := make(map[string]int)
-
-	for _, item := range arr1 {
-		elementCount[item]++
-	}
-
-	for _, item := range arr2 {
-		if count, exists := elementCount[item]; !exists || count == 0 {
-			return false
-		}
-		elementCount[item]--
-	}
-
-	return true
-}
-
-func getLibp2pNodeID() (string, error) {
-	privKey, err := config.GetLibp2pPrivKey()
+func getLibp2pNodeID(path string) (string, error) {
+	privKey, err := config.GetLibp2pPrivKey(path)
 	if err != nil {
 		return "", err
 	}

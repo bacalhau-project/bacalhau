@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -27,11 +28,16 @@ type ComputeProxyParams struct {
 // is provided.
 type ComputeProxy struct {
 	conn            *nats.Conn
-	streamingClient *stream.Client
+	streamingClient *stream.ConsumerClient
 }
 
 func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
-	sc, err := stream.NewClient(stream.ClientParams{Conn: params.Conn})
+	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
+		Conn: params.Conn,
+		Config: stream.StreamConsumerClientConfig{
+			StreamCancellationBufferDuration: 5 * time.Second, //nolinter:gomnd
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +130,7 @@ func proxyRequest[Request any, Response any](
 
 func proxyStreamingRequest[Request any, Response any](
 	ctx context.Context,
-	client *stream.Client,
+	client *stream.ConsumerClient,
 	request *BaseRequest[Request]) (
 	<-chan *concurrency.AsyncResult[Response], error) {
 	subject := request.ComputeEndpoint()
