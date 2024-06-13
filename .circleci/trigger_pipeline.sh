@@ -14,6 +14,7 @@ fi
 curl --fail -X POST --header "Content-Type: application/json" --header "Circle-Token: ${CIRCLE_TOKEN}" -d "{
  \"parameters\": {
     \"GHA_Action\": \"trigger_pipeline\"
+    \"Name\": \"${NAME}\",
  },
  ${TARGET}
 }" https://circleci.com/api/v2/project/gh/bacalhau-project/bacalhau/pipeline
