@@ -1,0 +1,4 @@
+# Default pipeline from cli
+steps:
+- label: ":pipeline:"
+  command: buildkite-agent pipeline upload
