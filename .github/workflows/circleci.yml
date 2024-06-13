@@ -72,4 +72,4 @@ jobs:
           ./.circleci/trigger_pipeline.sh
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          SHA: ${{ env.SHA }}
+          BRANCH: ${{ env.SHA }}
