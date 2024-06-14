@@ -19,10 +19,8 @@ import (
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -38,9 +36,8 @@ type DevStackOptions struct {
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
-	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
-	ExecutorPlugins            bool   // when true pluggable executors will be used.
-	ConfigurationRepo          string // A custom config repo
+	ExecutorPlugins            bool     // when true pluggable executors will be used.
+	ConfigurationRepo          string   // A custom config repo
 	AuthSecret                 string
 }
 
@@ -55,7 +52,6 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithMemoryProfilingFile(o.MemoryProfilingFile),
 		WithDisabledFeatures(o.DisabledFeatures),
 		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
-		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
 		WithExecutorPlugins(o.ExecutorPlugins),
 		WithAuthSecret(o.AuthSecret),
 	}
@@ -130,7 +126,6 @@ func Setup(
 			}
 		}
 		clusterConfig := node.NetworkConfig{
-			Type:          models.NetworkTypeNATS,
 			Orchestrators: orchestratorAddrs,
 			Port:          natsPort,
 			ClusterPeers:  clusterPeersAddrs,
@@ -180,11 +175,6 @@ func Setup(
 			stackConfig.RequesterConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
 		}
 
-		nodeInfoPublisherInterval := stackConfig.NodeInfoPublisherInterval
-		if nodeInfoPublisherInterval.IsZero() {
-			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
-		}
-
 		if isComputeNode {
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
 			// and so we will give each compute node a random open port to listen on.
@@ -221,12 +211,10 @@ func Setup(
 				"name": fmt.Sprintf("node-%d", i),
 				"env":  "devstack",
 			},
-			DependencyInjector:        stackConfig.NodeDependencyInjector,
-			DisabledFeatures:          stackConfig.DisabledFeatures,
-			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
-			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
-			NodeInfoStoreTTL:          stackConfig.NodeInfoStoreTTL,
-			NetworkConfig:             clusterConfig,
+			DependencyInjector:    stackConfig.NodeDependencyInjector,
+			DisabledFeatures:      stackConfig.DisabledFeatures,
+			AllowListedLocalPaths: stackConfig.AllowListedLocalPaths,
+			NetworkConfig:         clusterConfig,
 			AuthConfig: types.AuthConfig{
 				Methods: map[string]types.AuthenticatorConfig{
 					"ClientKey": {

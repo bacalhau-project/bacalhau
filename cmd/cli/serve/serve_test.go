@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
@@ -25,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -213,59 +211,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 	_, err = client.Submit(s.ctx, job)
 	s.NoError(err)
-}
-
-func (s *ServeSuite) TestGetPeers() {
-	cfg := configenv.Testing
-	// by default it should return no peers
-	peers, err := serve.GetPeers(cfg)
-	s.NoError(err)
-	s.Require().Equal(0, len(peers))
-
-	// if we set the peer connect to "env" it should return the peers from the env
-	for envName, envData := range system.Envs {
-		// skip checking environments other than test, because
-		// system.GetEnvironment() in getPeers() always returns "test" while testing
-		if envName.String() != "test" {
-			continue
-		}
-
-		// this is required for the below line to succeed as environment is being deprecated.
-		cfg.Node.Libp2p.PeerConnect = "env"
-		peers, err = serve.GetPeers(cfg)
-		s.NoError(err)
-		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")
-		// search each peer in env BootstrapAddresses
-		for _, peer := range peers {
-			found := false
-			for _, envPeer := range envData.BootstrapAddresses {
-				if peer.String() == envPeer {
-					found = true
-					break
-				}
-			}
-			s.Require().True(found, "Peer %s not found in env %s", peer, envName)
-		}
-	}
-
-	// if we pass multiaddresses it should just return them
-	inputPeers := []string{
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
-	}
-	peerConnect := strings.Join(inputPeers, ",")
-	cfg.Node.Libp2p.PeerConnect = peerConnect
-	peers, err = serve.GetPeers(cfg)
-	s.NoError(err)
-	s.Require().Equal(inputPeers[0], peers[0].String())
-	s.Require().Equal(inputPeers[1], peers[1].String())
-
-	// if we pass invalid multiaddress it should error out
-	inputPeers = []string{"foo"}
-	peerConnect = strings.Join(inputPeers, ",")
-	cfg.Node.Libp2p.PeerConnect = peerConnect
-	_, err = serve.GetPeers(cfg)
-	s.Require().Error(err)
 }
 
 func (s *ServeSuite) TestSelfSignedRequester() {

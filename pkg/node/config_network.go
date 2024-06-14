@@ -1,26 +1,6 @@
 package node
 
-import (
-	"errors"
-	"fmt"
-	"time"
-
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/samber/lo"
-)
-
-var supportedNetworks = []string{
-	models.NetworkTypeLibp2p,
-	models.NetworkTypeNATS,
-}
-
 type NetworkConfig struct {
-	Type           string
-	Libp2pHost     host.Host // only set if using libp2p transport, nil otherwise
-	ReconnectDelay time.Duration
-
 	// NATS config for requesters to be reachable by compute nodes
 	Port              int
 	AdvertisedAddress string
@@ -46,11 +26,5 @@ type NetworkConfig struct {
 }
 
 func (c *NetworkConfig) Validate() error {
-	var mErr error
-	if validate.IsBlank(c.Type) {
-		mErr = errors.Join(mErr, errors.New("missing network type"))
-	} else if !lo.Contains(supportedNetworks, c.Type) {
-		mErr = errors.Join(mErr, fmt.Errorf("network type %s not in supported values %s", c.Type, supportedNetworks))
-	}
-	return mErr
+	return nil
 }

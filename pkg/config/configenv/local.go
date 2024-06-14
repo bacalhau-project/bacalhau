@@ -15,8 +15,7 @@ import (
 
 var Local = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
-		Libp2pTracerPath: os.DevNull,
-		EventTracerPath:  os.DevNull,
+		EventTracerPath: os.DevNull,
 	},
 	Update: types.UpdateConfig{
 		SkipChecks: true,
@@ -40,13 +39,10 @@ var Local = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeNATS,
 			Port: 4222,
 		},
-		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -56,10 +52,6 @@ var Local = types.BacalhauConfig{
 			Engines:    []string{},
 			Publishers: []string{},
 			Storages:   []string{},
-		},
-		Libp2p: types.Libp2pConfig{
-			SwarmPort:   1235,
-			PeerConnect: "none",
 		},
 		IPFS: types.IpfsConfig{
 			Connect: "",
@@ -185,4 +177,5 @@ var LocalRequesterConfig = types.RequesterConfig{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
+	NodeInfoStoreTTL: types.Duration(10 * time.Minute),
 }

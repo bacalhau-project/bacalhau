@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -35,7 +34,6 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		MemoryProfilingFile:        "",
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
-		NodeInfoPublisherInterval:  routing.NodeInfoPublisherIntervalConfig{},
 		ExecutorPlugins:            false,
 	}
 }

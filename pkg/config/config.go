@@ -41,8 +41,7 @@ const (
 	inferConfigTypes          = true
 
 	// user key files
-	Libp2pPrivateKeyFileName = "libp2p_private_key"
-	UserPrivateKeyFileName   = "user_id.pem"
+	UserPrivateKeyFileName = "user_id.pem"
 
 	// compute paths
 	ComputeStoragesPath = "executor_storages"
