@@ -1,43 +1,49 @@
-# Default pipeline from cli
 steps:
-  - label: ":asdf: Install ASDF"
-  - commands:
-      - git config advice.detachedHead false
-      - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
-      - cd $HOME/.asdf
-      - git fetch origin
-      - git checkout master
-      - git pull --all
-      - git checkout tags/v0.14.0
-      - cd -
-      - echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
-    key: asdf
+  - command: |
+      git config advice.detachedHead false"
+      echo "foobaz"
 
-  - label: ":earth: Install Earthly"
-  - commands:
-      - asdf plugin-add earthly
-      - asdf install
-      - earthly --version
-    key: earthly
-    depends_on: asdf
+  # - command: "make build\nmake test"
 
-  - label: ":earth: Select Earthly satellite"
-  - commands:
-      - earthly account login --token $(buildkite-agent secret get EARTHLY_ACCOUNT_TOKEN)
-      - earthly sat select
-    key: earthly-satellite
-    depends_on: earthly
+  # - command: "earthly satellite push"
+  # - label: ":asdf: Install ASDF"
+  # - commands:
+  #     - git config advice.detachedHead false
+  #     - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
+  #     - cd $HOME/.asdf
+  #     - git fetch origin
+  #     - git checkout master
+  #     - git pull --all
+  #     - git checkout tags/v0.14.0
+  #     - cd -
+  #     - echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
+  #   key: asdf
 
-  - label: ":hammer: Build"
-    commands:
-      - cd webui
-      - earthly --push +all
-    key: build
-    depends_on: earthly-satellite
+  # - label: ":earth: Install Earthly"
+  # - commands:
+  #     - asdf plugin-add earthly
+  #     - asdf install
+  #     - earthly --version
+  #   key: earthly
+  #   depends_on: asdf
 
-  - label: ":test_tube: Test"
-  - commands:
-      - cd webui
-      - earthly --push +test
-    key: test
-    depends_on: build
+  # - label: ":earth: Select Earthly satellite"
+  # - commands:
+  #     - earthly account login --token $(buildkite-agent secret get EARTHLY_ACCOUNT_TOKEN)
+  #     - earthly sat select
+  #   key: earthly-satellite
+  #   depends_on: earthly
+
+  # - label: ":hammer: Build"
+  #   commands:
+  #     - cd webui
+  #     - earthly --push +all
+  #   key: build
+  #   depends_on: earthly-satellite
+
+  # - label: ":test_tube: Test"
+  # - commands:
+  #     - cd webui
+  #     - earthly --push +test
+  #   key: test
+  #   depends_on: build
