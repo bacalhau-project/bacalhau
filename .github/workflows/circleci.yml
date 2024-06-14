@@ -12,7 +12,7 @@ on:
     types:
       - completed
   repository_dispatch:
-    types: [ok-to-test, ok-to-trigger-circleci]
+    types: [ok-to-test]
 
 permissions:
   contents: write
@@ -71,4 +71,4 @@ jobs:
           python ./.circleci/trigger_circleci.py
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          BRANCH: ${{ env.SHA }}
+          SHA: ${{ env.SHA }}
