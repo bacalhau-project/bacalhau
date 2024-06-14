@@ -12,6 +12,7 @@ sgqlc = "^16.0"
 semver = "^2.13.0"
 ruff = "^0.2.1"
 python-dotenv = "^1.0.1"
+requests = "^2.32.3"
 
 [tool.poetry.dev-dependencies]
 
