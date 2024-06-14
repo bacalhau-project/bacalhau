@@ -62,6 +62,8 @@ jobs:
             exit 1
           fi
 
+      - uses: hmarr/debug-action@v3
+
       - name: "Trigger CircleCI"
         id: trigger-circle-ci
         run: |
