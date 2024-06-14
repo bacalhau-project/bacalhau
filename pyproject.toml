@@ -3,6 +3,7 @@ name = "bacalhau"
 version = "0.1"
 description = ""
 authors = []
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10.5"
