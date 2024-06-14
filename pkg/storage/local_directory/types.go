@@ -5,9 +5,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type Source struct {
@@ -40,6 +41,18 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 	}
 
 	return c, nil
+}
+
+func NewSpecConfig(source string, rw bool) (*models.SpecConfig, error) {
+	s := Source{
+		SourcePath: source,
+		ReadWrite:  rw,
+	}
+	// TODO validate
+	return &models.SpecConfig{
+		Type:   models.StorageSourceLocalDirectory,
+		Params: s.ToMap(),
+	}, nil
 }
 
 type AllowedPath struct {

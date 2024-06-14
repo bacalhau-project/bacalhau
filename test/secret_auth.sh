@@ -25,14 +25,6 @@ testcase_valid_token_is_accepted() {
     assert_equal '[]' $stdout
 }
 
-testcase_token_works_for_v1_api() {
-    setup
-
-    subject "echo insert a secret string here | bacalhau list --output=json"
-    assert_equal 0 $status
-    assert_equal '[]' $stdout
-}
-
 testcase_input_can_be_cancelled() {
     setup
 

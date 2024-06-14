@@ -19,7 +19,6 @@ import (
 	nats_pubsub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	core_transport "github.com/bacalhau-project/bacalhau/pkg/transport"
 )
 
 const NodeInfoSubjectPrefix = "node.info."
@@ -190,6 +189,20 @@ func NewNATSTransport(ctx context.Context,
 	}, nil
 }
 
+// CreateClient creates a new NATS client.
+func (t *NATSTransport) CreateClient(ctx context.Context) (*nats.Conn, error) {
+	clientManager, err := CreateClient(ctx, t.Config)
+	if err != nil {
+		return nil, err
+	}
+	return clientManager.Client, nil
+}
+
+// Client returns the existing NATS client.
+func (t *NATSTransport) Client() *nats.Conn {
+	return t.natsClient.Client
+}
+
 func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
 	// create nats client
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
@@ -223,8 +236,8 @@ func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error
 }
 
 // RegisterComputeEndpoint registers a compute endpoint with the transport layer.
-func (t *NATSTransport) RegisterComputeEndpoint(endpoint compute.Endpoint) error {
-	_, err := proxy.NewComputeHandler(proxy.ComputeHandlerParams{
+func (t *NATSTransport) RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error {
+	_, err := proxy.NewComputeHandler(ctx, proxy.ComputeHandlerParams{
 		Name:            t.nodeID,
 		Conn:            t.natsClient.Client,
 		ComputeEndpoint: endpoint,
@@ -289,6 +302,3 @@ func (t *NATSTransport) Close(ctx context.Context) error {
 	}
 	return nil
 }
-
-// compile-time interface check
-var _ core_transport.TransportLayer = (*NATSTransport)(nil)

@@ -105,12 +105,9 @@ type NodeSelector interface {
 	// AllNodes returns all nodes in the network.
 	AllNodes(ctx context.Context) ([]models.NodeInfo, error)
 
-	// AllMatchingNodes returns all nodes that match the job constrains and selection criteria.
-	AllMatchingNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error)
-
-	// TopMatchingNodes return the top ranked desiredCount number of nodes that match job constraints
-	// ordered in descending order based on their rank, or error if not enough nodes match.
-	TopMatchingNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error)
+	// MatchingNodes return the nodes that match job constraints order by rank in descending order.
+	// Also return the nodes that were filtered out and an error if any.
+	MatchingNodes(ctx context.Context, job *models.Job) (matched []NodeRank, rejected []NodeRank, err error)
 }
 
 type RetryStrategy interface {

@@ -1,16 +1,21 @@
 package migrations
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/spf13/viper"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/spf13/viper"
 )
+
+const libp2pPrivateKey = "libp2p_private_key"
 
 func getViper(r repo.FsRepo) (*viper.Viper, error) {
 	repoPath, err := r.Path()
@@ -18,7 +23,7 @@ func getViper(r repo.FsRepo) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	configFile := filepath.Join(repoPath, config.ConfigFileName)
+	configFile := filepath.Join(repoPath, config.FileName)
 	v := viper.New()
 	v.SetTypeByDefaultValue(true)
 	v.SetConfigFile(configFile)
@@ -38,7 +43,7 @@ func configExists(r repo.FsRepo) (bool, error) {
 		return false, err
 	}
 
-	configFile := filepath.Join(repoPath, config.ConfigFileName)
+	configFile := filepath.Join(repoPath, config.FileName)
 	_, err = os.Stat(configFile)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -58,30 +63,10 @@ func readConfig(r repo.FsRepo) (*viper.Viper, types.BacalhauConfig, error) {
 	return v, fileCfg, nil
 }
 
-// haveSameElements returns true if arr1 and arr2 have the same elements, false otherwise.
-func haveSameElements(arr1, arr2 []string) bool {
-	if len(arr1) != len(arr2) {
-		return false
-	}
-
-	elementCount := make(map[string]int)
-
-	for _, item := range arr1 {
-		elementCount[item]++
-	}
-
-	for _, item := range arr2 {
-		if count, exists := elementCount[item]; !exists || count == 0 {
-			return false
-		}
-		elementCount[item]--
-	}
-
-	return true
-}
-
-func getLibp2pNodeID() (string, error) {
-	privKey, err := config.GetLibp2pPrivKey()
+// TODO: remove this with 1.5 release as we don't expect users to migrate from 1.2 to 1.5
+func getLibp2pNodeID(repoPath string) (string, error) {
+	path := filepath.Join(repoPath, libp2pPrivateKey)
+	privKey, err := loadLibp2pPrivKey(path)
 	if err != nil {
 		return "", err
 	}
@@ -90,4 +75,22 @@ func getLibp2pNodeID() (string, error) {
 		return "", err
 	}
 	return peerID.String(), nil
+}
+
+func loadLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
+	keyBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %w", err)
+	}
+	// parse the private key
+	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	return key, nil
 }

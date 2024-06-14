@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package ipfs
 
@@ -8,49 +8,50 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 // how many bytes more does ipfs report the file than the actual content?
 const IpfsMetadataSize uint64 = 8
 
-func getIpfsStorage(t *testing.T) *StorageProvider {
-	ctx := context.Background()
-	cm := system.NewCleanupManager()
-	t.Cleanup(func() {
-		cm.Cleanup(context.Background())
-	})
-
-	node, err := ipfs.NewNodeWithConfig(ctx, cm, types.IpfsConfig{PrivateInternal: true})
-	require.NoError(t, err)
-
-	storage, err := NewStorage(node.Client())
-	require.NoError(t, err)
-
-	return storage
+type StorageSuite struct {
+	suite.Suite
+	ipfsClient *ipfs.Client
+	storage    *StorageProvider
 }
 
-func TestGetVolumeSize(t *testing.T) {
-	ctx := context.Background()
-	config.SetVolumeSizeRequestTimeout(time.Second * 3)
+func TestStorageSuite(t *testing.T) {
+	suite.Run(t, new(StorageSuite))
+}
 
+func (s *StorageSuite) SetupSuite() {
+	logger.ConfigureTestLogging(s.T())
+	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+	testutils.MustHaveIPFS(s.T(), cfg.Node.IPFS.Connect)
+
+	var err error
+	s.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.Node.IPFS.Connect)
+	s.storage, err = NewStorage(*s.ipfsClient, time.Duration(cfg.Node.VolumeSizeRequestTimeout))
+	s.Require().NoError(err)
+}
+
+func (s *StorageSuite) TestGetVolumeSize() {
+	ctx := context.Background()
 	for _, testString := range []string{
 		"hello from test volume size",
 		"hello world",
 	} {
-		t.Run(testString, func(t *testing.T) {
-			storage := getIpfsStorage(t)
+		s.Run(testString, func() {
+			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), *s.ipfsClient)
+			s.Require().NoError(err)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), storage.ipfsClient)
-			require.NoError(t, err)
-
-			result, err := storage.GetVolumeSize(ctx, models.InputSource{
+			result, err := s.storage.GetVolumeSize(ctx, models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -60,26 +61,25 @@ func TestGetVolumeSize(t *testing.T) {
 				Target: "/",
 			})
 
-			require.NoError(t, err)
-			require.Equal(t, uint64(len(testString))+IpfsMetadataSize, result)
+			s.Require().NoError(err)
+			s.Require().Equal(uint64(len(testString))+IpfsMetadataSize, result)
 		})
 	}
 }
 
-func TestPrepareStorageRespectsTimeouts(t *testing.T) {
+func (s *StorageSuite) TestPrepareStorageRespectsTimeouts() {
 	for _, testDuration := range []time.Duration{
 		// 0, // Disable test -- timeouts aren't respected when getting cached files
 		time.Minute,
 	} {
-		t.Run(fmt.Sprint(testDuration), func(t *testing.T) {
+		s.Run(fmt.Sprint(testDuration), func() {
 			ctx, cancel := context.WithTimeout(context.Background(), testDuration)
 			defer cancel()
-			storage := getIpfsStorage(t)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
-			require.NoError(t, err)
+			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), *s.ipfsClient)
+			s.Require().NoError(err)
 
-			_, err = storage.PrepareStorage(ctx, t.TempDir(), models.InputSource{
+			_, err = s.storage.PrepareStorage(ctx, s.T().TempDir(), models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -88,25 +88,23 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 				},
 				Target: "/",
 			})
-			require.Equal(t, testDuration == 0, err != nil)
+			s.Require().Equal(testDuration == 0, err != nil)
 		})
 	}
 }
 
-func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
+func (s *StorageSuite) TestGetVolumeSizeRespectsTimeout() {
 	for _, testDuration := range []time.Duration{
 		// 0, // Disable test -- timeouts aren't respected when getting cached files
 		time.Minute,
 	} {
-		t.Run(fmt.Sprint(testDuration), func(t *testing.T) {
+		s.Run(fmt.Sprint(testDuration), func() {
 			ctx := context.Background()
-			storage := getIpfsStorage(t)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
-			require.NoError(t, err)
+			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), *s.ipfsClient)
+			s.Require().NoError(err)
 
-			config.SetVolumeSizeRequestTimeout(testDuration)
-			_, err = storage.GetVolumeSize(ctx, models.InputSource{
+			_, err = s.storage.GetVolumeSize(ctx, models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -115,7 +113,8 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 				},
 				Target: "/",
 			})
-			require.Equal(t, testDuration == 0, err != nil)
+
+			s.Require().Equal(testDuration == 0, err != nil)
 		})
 	}
 }

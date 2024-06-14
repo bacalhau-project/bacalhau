@@ -10,11 +10,6 @@ import (
 )
 
 var (
-	getShortDesc = templates.LongDesc(i18n.T(`
-		Get the results of the job, including stdout and stderr.
-`))
-
-	//nolint:lll // Documentation
 	getExample = templates.Examples(i18n.T(`
 		# Get the results of a job.
 		bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
@@ -30,7 +25,6 @@ type GetOptions struct {
 
 func NewCmd() *cobra.Command {
 	cmd := job.NewGetCmd()
-	cmd.Short = getShortDesc
 	cmd.Example = getExample
 	return cmd
 }

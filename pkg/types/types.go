@@ -14,9 +14,8 @@ type HealthInfo struct {
 }
 
 type FreeSpace struct {
-	IPFSMount MountStatus `json:"IPFSMount"`
-	TMP       MountStatus `json:"tmp"`
-	ROOT      MountStatus `json:"root"`
+	TMP  MountStatus `json:"tmp"`
+	ROOT MountStatus `json:"root"`
 }
 
 // Creating structure for DiskStatus

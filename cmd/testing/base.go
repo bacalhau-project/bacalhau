@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -21,24 +23,35 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	"github.com/stretchr/testify/suite"
 )
 
 type BaseSuite struct {
 	suite.Suite
-	Node     *node.Node
-	Client   *client.APIClient
-	ClientV2 clientv2.API
-	Host     string
-	Port     uint16
+	Node            *node.Node
+	Client          *client.APIClient
+	ClientV2        clientv2.API
+	Config          types.BacalhauConfig
+	Host            string
+	Port            uint16
+	AllowListedPath string
 }
 
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+	s.Config = cfg
+
+	// TODO: Update checker is configured with production default configs
+	//  and not respecting the test environment. This is a temporary fix
+	os.Setenv("BACALHAU_UPDATE_SKIPCHECKS", "true")
+
+	s.AllowListedPath = s.T().TempDir()
+
+	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
@@ -54,16 +67,18 @@ func (s *BaseSuite) SetupTest() {
 		},
 	)
 	s.Require().NoError(err)
-	stack := teststack.Setup(ctx, s.T(),
+	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = client.NewAPIClient(client.NoTLS, s.Host, s.Port)
+	s.Client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.Host, s.Port)
+	s.Require().NoError(err)
 	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 }
 
@@ -72,6 +87,37 @@ func (s *BaseSuite) TearDownTest() {
 	if s.Node != nil {
 		s.Node.CleanupManager.Cleanup(context.Background())
 	}
+}
+
+// Execute executes a cobra command with the given arguments. The api-host and api-port
+// flags are automatically added if they are not provided in `args`. They are set to the values of
+// `s.Host` and `s.Port` respectively. The stdout and stderr of the command are returned as well as
+// any error that occurred while executing the command.
+func (s *BaseSuite) Execute(args ...string) (stdout string, stderr string, err error) {
+	stdoutBuf := new(bytes.Buffer)
+	stderrBuf := new(bytes.Buffer)
+	root := cli.NewRootCmd()
+	root.SetOut(stdoutBuf)
+	root.SetErr(stderrBuf)
+
+	arguments := []string{}
+	if !slices.Contains(args, "--api-host") {
+		arguments = append(arguments, "--api-host", s.Host)
+	}
+
+	if !slices.Contains(args, "--api-port") {
+		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
+	}
+	arguments = append(arguments, args...)
+	root.SetArgs(arguments)
+
+	s.T().Logf("Command to execute: %v", arguments)
+
+	_, err = root.ExecuteC()
+	if err != nil {
+		return "", "", err
+	}
+	return stdoutBuf.String(), stderrBuf.String(), nil
 }
 
 // ExecuteTestCobraCommand executes a cobra command with the given arguments. The api-host and api-port

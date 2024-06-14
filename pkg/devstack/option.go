@@ -3,19 +3,18 @@ package devstack
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 type ConfigOption = func(cfg *DevStackConfig)
 
-func defaultDevStackConfig() (*DevStackConfig, error) {
-	computeConfig, err := node.NewComputeConfigWithDefaults()
+func defaultDevStackConfig(cfg types.BacalhauConfig) (*DevStackConfig, error) {
+	computeConfig, err := node.NewComputeConfigWithDefaults(cfg.Node.ComputeStoragePath)
 	if err != nil {
 		return nil, err
 	}
@@ -34,18 +33,14 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		NumberOfRequesterOnlyNodes: 1,
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
-		Peer:                       "",
-		PublicIPFSMode:             false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
 
 		NumberOfBadRequesterActors: 0,
 		NumberOfHybridNodes:        0,
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
 		ExecutorPlugins:            false,
-		NodeInfoStoreTTL:           10 * time.Minute,
 	}, nil
 }
 
@@ -61,22 +56,17 @@ type DevStackConfig struct {
 	NodeOverrides          []node.NodeConfig
 
 	// DevStackOptions
-	NumberOfHybridNodes        int    // Number of nodes to start in the cluster
-	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
-	NumberOfComputeOnlyNodes   int    // Number of nodes to start in the cluster
-	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
-	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
-	Peer                       string // Connect node 0 to another network node
-	PublicIPFSMode             bool   // Use public IPFS nodes
+	NumberOfHybridNodes        int // Number of nodes to start in the cluster
+	NumberOfRequesterOnlyNodes int // Number of nodes to start in the cluster
+	NumberOfComputeOnlyNodes   int // Number of nodes to start in the cluster
+	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
+	NumberOfBadRequesterActors int // Number of requester nodes to be bad actors
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
-	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
-	ExecutorPlugins            bool // when true pluggable executors will be used.
-	NodeInfoStoreTTL           time.Duration
+	ExecutorPlugins            bool     // when true pluggable executors will be used.
 	TLS                        DevstackTLSSettings
-	NetworkType                string
 	AuthSecret                 string
 }
 
@@ -86,15 +76,11 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Int("ComputeOnlyNodes", o.NumberOfComputeOnlyNodes).
 		Int("BadComputeActors", o.NumberOfBadComputeActors).
 		Int("BadRequesterActors", o.NumberOfBadRequesterActors).
-		Str("Peer", o.Peer).
 		Str("CPUProfilingFile", o.CPUProfilingFile).
 		Str("MemoryProfilingFile", o.MemoryProfilingFile).
 		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
-		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
-		Bool("PublicIPFSMode", o.PublicIPFSMode).
-		Bool("ExecutorPlugins", o.ExecutorPlugins).
-		Str("NetworkType", o.NetworkType)
+		Bool("ExecutorPlugins", o.ExecutorPlugins)
 }
 
 func (o *DevStackConfig) Validate() error {
@@ -158,12 +144,6 @@ func WithNumberOfHybridNodes(count int) ConfigOption {
 	}
 }
 
-func WithPublicIPFSMode(enabled bool) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.PublicIPFSMode = enabled
-	}
-}
-
 func WithNumberOfRequesterOnlyNodes(count int) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NumberOfRequesterOnlyNodes = count
@@ -185,12 +165,6 @@ func WithNumberOfBadComputeActors(count int) ConfigOption {
 func WithNumberOfBadRequesterActors(count int) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NumberOfBadRequesterActors = count
-	}
-}
-
-func WithPeer(p string) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.Peer = p
 	}
 }
 
@@ -218,24 +192,11 @@ func WithAllowListedLocalPaths(paths []string) ConfigOption {
 	}
 }
 
-func WithNodeInfoPublisherInterval(interval routing.NodeInfoPublisherIntervalConfig) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.NodeInfoPublisherInterval = interval
-	}
-}
-
 func WithExecutorPlugins(enabled bool) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.ExecutorPlugins = enabled
 	}
 }
-
-func WithNetworkType(typ string) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.NetworkType = typ
-	}
-}
-
 func WithAuthSecret(secret string) ConfigOption {
 	return func(c *DevStackConfig) {
 		c.AuthSecret = secret

@@ -5,11 +5,15 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
 	"github.com/stretchr/testify/suite"
 
@@ -29,42 +33,64 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 	suite.Run(t, new(DevstackJobSelectionSuite))
 }
 
-// Reuse the docker executor tests but full end to end with libp2p transport
-// and 3 nodes
+// Reuse the docker executor tests but full end to end with transport layer and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	type TestCase struct {
-		name            string
-		policy          node.JobSelectionPolicy
-		nodeCount       int
-		addFilesCount   int
-		expectedAccepts int
+		name      string
+		policy    node.JobSelectionPolicy
+		addFiles  bool
+		completed int
+		rejected  int
+		failed    int
 	}
 
 	runTest := func(testCase TestCase) {
-		if testCase.nodeCount != testCase.addFilesCount {
-			suite.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/361")
-		}
-
-		computeConfig, err := node.NewComputeConfigWith(node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(configenv.Testing.Node.ComputeStoragePath, node.ComputeConfigParams{
 			JobSelectionPolicy: testCase.policy,
 		})
 		suite.Require().NoError(err)
+
+		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
+			RetryStrategy: retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
+		})
+		suite.Require().NoError(err)
+
+		rootSourceDir := suite.T().TempDir()
+
+		var inputs scenario.SetupStorage
+		if testCase.addFiles {
+			inputs = scenario.StoredText(rootSourceDir, "job selection", "/inputs")
+		} else {
+			inputs = func(ctx context.Context) ([]model.StorageSpec, error) {
+				sourceFile, err := scenario.CreateSourcePath(rootSourceDir)
+				if err != nil {
+					return nil, err
+				}
+				return []model.StorageSpec{
+					{
+						StorageSource: model.StorageSourceLocalDirectory,
+						SourcePath:    sourceFile,
+						Path:          "/inputs",
+					},
+				}, nil
+			}
+		}
+
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
+				DevStackOptions: &devstack.DevStackOptions{
+					AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+				},
 				ComputeConfig:   computeConfig,
+				RequesterConfig: requesterConfig,
 			},
-			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform(suite.T()).Inputs),
-			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,
-			Spec:    scenario.WasmCsvTransform(suite.T()).Spec,
-			Deal:    model.Deal{Concurrency: testCase.nodeCount},
+			Inputs: inputs,
+			Spec:   testutils.MakeNoopJob(suite.T()).Spec,
 			JobCheckers: []legacy_job.CheckStatesFunction{
-				legacy_job.WaitDontExceedCount(testCase.expectedAccepts),
-				legacy_job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
-					model.ExecutionStateFailed,
-				}),
 				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-					model.ExecutionStateCompleted: testCase.expectedAccepts,
+					model.ExecutionStateCompleted:         testCase.completed,
+					model.ExecutionStateAskForBidRejected: testCase.rejected,
+					model.ExecutionStateFailed:            testCase.failed,
 				}),
 			},
 		}
@@ -73,33 +99,30 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	for _, testCase := range []TestCase{
-
 		{
-			name:            "all nodes added files, all nodes ran job",
-			policy:          node.NewDefaultJobSelectionPolicy(),
-			nodeCount:       1,
-			addFilesCount:   1,
-			expectedAccepts: 1,
+			name: "Local: Add files, Accept job",
+			policy: node.JobSelectionPolicy{
+				Locality: semantic.Local,
+			},
+			addFiles:  true,
+			completed: 1,
 		},
 
-		// check we get only 2 when we've only added data to 2
 		{
-			name:            "only nodes we added data to ran the job",
-			policy:          node.NewDefaultJobSelectionPolicy(),
-			nodeCount:       3,
-			addFilesCount:   2,
-			expectedAccepts: 2,
+			name: "Local: Don't add files, Reject job",
+			policy: node.JobSelectionPolicy{
+				Locality: semantic.Local,
+			},
+			addFiles: false,
+			rejected: 1,
 		},
-
-		// check we run on all 3 nodes even though we only added data to 1
 		{
-			name: "only added files to 1 node but all 3 run it",
+			name: "Anywhere: Don't add files, Fail job",
 			policy: node.JobSelectionPolicy{
 				Locality: semantic.Anywhere,
 			},
-			nodeCount:       3,
-			addFilesCount:   1,
-			expectedAccepts: 3,
+			addFiles: false,
+			failed:   1,
 		},
 	} {
 		suite.Run(testCase.name, func() {

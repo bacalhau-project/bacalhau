@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
@@ -25,11 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -47,10 +42,10 @@ type ServeSuite struct {
 
 	out, err strings.Builder
 
-	ipfsPort int
 	ctx      context.Context
 	repoPath string
 	protocol string
+	config   cfgtypes.BacalhauConfig
 }
 
 func TestServeSuite(t *testing.T) {
@@ -59,11 +54,12 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	fsRepo := setup.SetupBacalhauRepoForTesting(s.T())
+	fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
 	s.repoPath = repoPath
 	s.protocol = "http"
+	s.config = c
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -75,10 +71,6 @@ func (s *ServeSuite) SetupTest() {
 	s.T().Cleanup(func() {
 		cm.Cleanup(s.ctx)
 	})
-
-	node, err := ipfs.NewNodeWithConfig(s.ctx, cm, types2.IpfsConfig{PrivateInternal: true})
-	s.Require().NoError(err)
-	s.ipfsPort = node.APIPort
 }
 
 func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
@@ -100,13 +92,9 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetOut(&s.out)
 	cmd.SetErr(&s.err)
 
-	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
-	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
 	args := []string{
 		"serve",
 		"--repo", s.repoPath,
-		"--peer", serve.DefaultPeerConnect,
-		"--private-internal-ipfs",
 		"--port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
@@ -194,6 +182,7 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
+	s.T().Skip("bacalhau is no longer used by station")
 	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
 	actualUrl := s.out.String()
@@ -211,7 +200,8 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, err := s.serve("--node-type", "requester,compute")
 	s.Require().NoError(err)
-	client := client.NewAPIClient(client.NoTLS, "localhost", port)
+	client, err := client.NewAPIClient(client.NoTLS, s.config.User, "localhost", port)
+	s.Require().NoError(err)
 
 	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
@@ -221,94 +211,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 	_, err = client.Submit(s.ctx, job)
 	s.NoError(err)
-}
-
-func (s *ServeSuite) TestDefaultServeOptionsHavePrivateLocalIpfs() {
-	cm := system.NewCleanupManager()
-
-	client, err := serve.SetupIPFSClient(s.ctx, cm, types2.IpfsConfig{
-		Connect:         "",
-		PrivateInternal: true,
-		SwarmAddresses:  []string{},
-	})
-	s.Require().NoError(err)
-
-	addrs, err := client.SwarmMultiAddresses(s.ctx)
-	s.Require().NoError(err)
-
-	ip4 := multiaddr.ProtocolWithName("ip4")
-	ip6 := multiaddr.ProtocolWithName("ip6")
-
-	for _, addr := range addrs {
-		s.T().Logf("Internal IPFS node listening on %s", addr)
-		ip, err := addr.ValueForProtocol(ip4.Code)
-		if err == nil {
-			s.Require().Equal("127.0.0.1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-
-		ip, err = addr.ValueForProtocol(ip6.Code)
-		if err == nil {
-			s.Require().Equal("::1", ip)
-			continue
-		} else {
-			s.Require().ErrorIs(err, multiaddr.ErrProtocolNotFound)
-		}
-	}
-
-	s.Require().GreaterOrEqual(len(addrs), 1)
-}
-
-func (s *ServeSuite) TestGetPeers() {
-	// by default it should return no peers
-	peers, err := serve.GetPeers(serve.DefaultPeerConnect)
-	s.NoError(err)
-	s.Require().Equal(0, len(peers))
-
-	// if we set the peer connect to "env" it should return the peers from the env
-	for envName, envData := range system.Envs {
-		// skip checking environments other than test, because
-		// system.GetEnvironment() in getPeers() always returns "test" while testing
-		if envName.String() != "test" {
-			continue
-		}
-
-		// this is required for the below line to succeed as environment is being deprecated.
-		config.Set(configenv.Testing)
-		peers, err = serve.GetPeers("env")
-		s.NoError(err)
-		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")
-		// search each peer in env BootstrapAddresses
-		for _, peer := range peers {
-			found := false
-			for _, envPeer := range envData.BootstrapAddresses {
-				if peer.String() == envPeer {
-					found = true
-					break
-				}
-			}
-			s.Require().True(found, "Peer %s not found in env %s", peer, envName)
-		}
-	}
-
-	// if we pass multiaddresses it should just return them
-	inputPeers := []string{
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
-		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
-	}
-	peerConnect := strings.Join(inputPeers, ",")
-	peers, err = serve.GetPeers(peerConnect)
-	s.NoError(err)
-	s.Require().Equal(inputPeers[0], peers[0].String())
-	s.Require().Equal(inputPeers[1], peers[1].String())
-
-	// if we pass invalid multiaddress it should error out
-	inputPeers = []string{"foo"}
-	peerConnect = strings.Join(inputPeers, ",")
-	_, err = serve.GetPeers(peerConnect)
-	s.Require().Error(err)
 }
 
 func (s *ServeSuite) TestSelfSignedRequester() {

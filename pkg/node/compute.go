@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -25,8 +26,6 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	repo_storage "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type Compute struct {
@@ -49,17 +48,17 @@ type Compute struct {
 func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
-	cleanupManager *system.CleanupManager,
 	apiServer *publicapi.Server,
 	config ComputeConfig,
 	storagePath string,
+	repoPath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
-	heartbeatClient *heartbeat.HeartbeatClient,
+	heartbeatClient heartbeat.Client,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -102,12 +101,7 @@ func NewComputeNode(
 			InfoProvider: runningInfoProvider,
 			Interval:     config.LogRunningExecutionsInterval,
 		})
-		loggingCtx, cancel := context.WithCancel(ctx)
-		cleanupManager.RegisterCallback(func() error {
-			cancel()
-			return nil
-		})
-		go loggingSensor.Start(loggingCtx)
+		go loggingSensor.Start(ctx)
 	}
 
 	// endpoint/frontend
@@ -186,45 +180,40 @@ func NewComputeNode(
 		&ConfigLabelsProvider{staticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
-		repo_storage.NewLabelsProvider(),
 	)
 
-	var managementClient *compute.ManagementClient
-	// TODO: When we no longer use libP2P for management, we should remove this
-	// as the managementProxy will always be set for NATS
-	if managementProxy != nil {
-		// TODO: Make the registration lock folder a config option so that we have it
-		// available and don't have to depend on getting the repo folder.
-		repo, _ := pkgconfig.Get[string]("repo")
-		regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-		regFilename = filepath.Join(repo, pkgconfig.ComputeStorePath, regFilename)
-
-		// Set up the management client which will attempt to register this node
-		// with the requester node, and then if successful will send regular node
-		// info updates.
-		managementClient = compute.NewManagementClient(&compute.ManagementClientParams{
-			NodeID:                   nodeID,
-			LabelsProvider:           labelsProvider,
-			ManagementProxy:          managementProxy,
-			NodeInfoDecorator:        nodeInfoDecorator,
-			RegistrationFilePath:     regFilename,
-			AvailableCapacityTracker: runningCapacityTracker,
-			QueueUsageTracker:        enqueuedUsageTracker,
-			HeartbeatClient:          heartbeatClient,
-			ControlPlaneSettings:     config.ControlPlaneSettings,
-		})
-		if err := managementClient.RegisterNode(ctx); err != nil {
-			return nil, fmt.Errorf("failed to register node with requester: %s", err)
-		}
-		go managementClient.Start(ctx)
+	computeStorePath := filepath.Join(repoPath, pkgconfig.ComputeStorePath)
+	if err = os.MkdirAll(computeStorePath, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("failed to create compute store directory: %s", err)
 	}
+
+	// TODO: Make the registration lock folder a config option so that we have it
+	// available and don't have to depend on getting the repo folder.
+	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
+	regFilename = filepath.Join(computeStorePath, regFilename)
+
+	// Set up the management client which will attempt to register this node
+	// with the requester node, and then if successful will send regular node
+	// info updates.
+	managementClient := compute.NewManagementClient(&compute.ManagementClientParams{
+		NodeID:                   nodeID,
+		LabelsProvider:           labelsProvider,
+		ManagementProxy:          managementProxy,
+		NodeInfoDecorator:        nodeInfoDecorator,
+		RegistrationFilePath:     regFilename,
+		AvailableCapacityTracker: runningCapacityTracker,
+		QueueUsageTracker:        enqueuedUsageTracker,
+		HeartbeatClient:          heartbeatClient,
+		ControlPlaneSettings:     config.ControlPlaneSettings,
+	})
+	if err := managementClient.RegisterNode(ctx); err != nil {
+		return nil, fmt.Errorf("failed to register node with requester: %s", err)
+	}
+	go managementClient.Start(ctx)
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		if managementClient != nil {
-			managementClient.Stop()
-		}
-
+		managementClient.Stop()
 		executionStore.Close(ctx)
 		resultsPath.Close()
 	}

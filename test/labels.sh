@@ -22,28 +22,10 @@ run_test() {
     assert_equal $WORD $(jq -rcM '.[0].Info.Labels["random"]' <<< $stdout)
 }
 
-testcase_receive_labels_about_requester_node_for_nats() {
-    subject bacalhau config set node.network.type nats
-    assert_equal 0 $status
+testcase_receive_labels_about_requester_node() {
     run_test requester
 }
 
-testcase_receive_extra_labels_about_compute_node_for_nats() {
-    subject bacalhau config set node.network.type nats
-    assert_equal 0 $status
+testcase_receive_labels_about_compute_node() {
     run_test requester,compute
-    assert_equal false $(jq -rcM '.[0].Info.Labels["git-lfs"] == null' <<< $stdout)
-}
-
-testcase_receive_labels_about_requester_node_for_libp2p() {
-    subject bacalhau config set node.network.type libp2p
-    assert_equal 0 $status
-    run_test requester
-}
-
-testcase_receive_extra_labels_about_compute_node_for_libp2p() {
-    subject bacalhau config set node.network.type libp2p
-    assert_equal 0 $status
-    run_test requester,compute
-    assert_equal false $(jq -rcM '.[0].Info.Labels["git-lfs"] == null' <<< $stdout)
 }

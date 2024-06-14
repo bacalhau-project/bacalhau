@@ -7,44 +7,49 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 const (
-	mockJobTimeout                 = 60              // 1 minute
-	timeoutBuffer                  = 1 * time.Minute // another minute. only executions older than 2 minutes are expired
+	mockJobExecutionTimeout = 60  // 1 minute
+	mockJobTotalTimeout     = 120 // 2 minutes
+
+	// another minute. only executions older than 2 minutes are expired, and jobs older than 3 minutes are expired
+	timeoutBuffer                  = 1 * time.Minute
 	notExpiredModifyTime           = -30 * time.Second
 	expiredWithinBufferModifyTime  = -90 * time.Second
 	expiredOutsideBufferModifyTime = -120*time.Second - 1*time.Nanosecond
+
+	notExpiredJobCreateTime           = -2 * time.Minute
+	expiredJobCreateTimeWithinBuffer  = -3 * time.Minute
+	expiredJobCreateTimeOutsideBuffer = -4 * time.Minute
 )
 
 type HousekeepingTestSuite struct {
 	suite.Suite
-	ctrl                 *gomock.Controller
-	clock                *clock.Mock
-	mockJobStore         *jobstore.MockStore
-	mockEvaluationBroker *MockEvaluationBroker
-	housekeeping         *Housekeeping
+	ctrl         *gomock.Controller
+	clock        *clock.Mock
+	mockJobStore *jobstore.MockStore
+	housekeeping *Housekeeping
 }
 
 func (s *HousekeepingTestSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.clock = clock.NewMock()
 	s.mockJobStore = jobstore.NewMockStore(s.ctrl)
-	s.mockEvaluationBroker = NewMockEvaluationBroker(s.ctrl)
 
 	h, _ := NewHousekeeping(HousekeepingParams{
-		EvaluationBroker: s.mockEvaluationBroker,
-		JobStore:         s.mockJobStore,
-		Interval:         200 * time.Millisecond,
-		Workers:          1,
-		TimeoutBuffer:    timeoutBuffer,
-		Clock:            s.clock,
+		JobStore:      s.mockJobStore,
+		Interval:      200 * time.Millisecond,
+		Workers:       1,
+		TimeoutBuffer: timeoutBuffer,
+		Clock:         s.clock,
 	})
 
 	// we only want to freeze time to have more deterministic tests.
@@ -60,106 +65,135 @@ func (s *HousekeepingTestSuite) TearDownTest() {
 
 func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 	var tests = []struct {
-		name                 string
-		ModifyTimes          []time.Duration
-		expectedEnqueueCount int
-		jobCount             int
-		jobType              string
-		executionState       models.ExecutionStateType
+		name                  string
+		JobCreateTime         time.Duration
+		ExecutionsModifyTimes []time.Duration
+		enqueuedExecTimeouts  int
+		enqueuedJobTimeouts   int
+		jobCount              int
+		jobType               string
+		executionState        models.ExecutionStateType
 	}{
 		{
 			name: "ExpiredExecutionOutsideBuffer",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             1,
-			expectedEnqueueCount: 1,
+			enqueuedExecTimeouts: 1,
 		},
 		{
 			name: "ExpiredExecutionOutsideBufferOpsJobs",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             1,
 			jobType:              models.JobTypeOps,
-			expectedEnqueueCount: 1,
+			enqueuedExecTimeouts: 1,
 		},
 		{
 			name: "ExpiredExecutionWithinBuffer",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredWithinBufferModifyTime,
 			},
 			jobCount:             1,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
 		},
 		{
 			name: "NoExpiredExecutions",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				notExpiredModifyTime,
 			},
 			jobCount:             1,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
+		},
+		{
+			name:                "ExpiredJobOutsideBuffer",
+			JobCreateTime:       expiredJobCreateTimeOutsideBuffer,
+			jobCount:            1,
+			enqueuedJobTimeouts: 1,
+		},
+		{
+			name:                "ExpiredJobWithinBuffer",
+			JobCreateTime:       expiredJobCreateTimeWithinBuffer,
+			jobCount:            1,
+			enqueuedJobTimeouts: 0,
+		},
+		{
+			name:                "NoExpiredJo",
+			JobCreateTime:       notExpiredJobCreateTime,
+			jobCount:            1,
+			enqueuedJobTimeouts: 0,
 		},
 		{
 			name: "MultipleExecutionTimeout",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             1,
-			expectedEnqueueCount: 1,
+			enqueuedExecTimeouts: 1,
 		},
-
+		{
+			name: "JobExpirationHasHigherPrecedence",
+			ExecutionsModifyTimes: []time.Duration{
+				expiredOutsideBufferModifyTime,
+				expiredOutsideBufferModifyTime,
+			},
+			JobCreateTime:       expiredJobCreateTimeOutsideBuffer,
+			jobCount:            1,
+			enqueuedJobTimeouts: 1,
+		},
 		{
 			name: "NoopOnTerminalExecutions",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			executionState:       models.ExecutionStateCompleted,
 			jobCount:             1,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
 		},
 		{
 			name: "NoopOnServiceJobs",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             1,
 			jobType:              models.JobTypeService,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
 		},
 		{
 			name: "NoopOnDaemonJobs",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             1,
 			jobType:              models.JobTypeDaemon,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
 		},
 		{
 			name: "MultipleJobsExecutionTimeout",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             2,
-			expectedEnqueueCount: 2,
+			enqueuedExecTimeouts: 2,
 		},
 		{
 			name: "MultipleJobsMultipleExecutionTimeout",
-			ModifyTimes: []time.Duration{
+			ExecutionsModifyTimes: []time.Duration{
 				notExpiredModifyTime,
 				expiredWithinBufferModifyTime,
 				expiredOutsideBufferModifyTime,
 				expiredOutsideBufferModifyTime,
 			},
 			jobCount:             2,
-			expectedEnqueueCount: 2,
+			enqueuedExecTimeouts: 2,
 		},
 		{
 			name:                 "TestNoActiveJobsFound",
 			jobCount:             0,
-			expectedEnqueueCount: 0,
+			enqueuedExecTimeouts: 0,
 		},
 	}
 
@@ -172,7 +206,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 
 			// prepare jobs and executions mock data
 			for i := 0; i < tc.jobCount; i++ {
-				job, executions := s.mockJob(tc.ModifyTimes...)
+				job, executions := s.mockJob(tc.JobCreateTime, tc.ExecutionsModifyTimes...)
 
 				// set execution state if provided
 				for j := range executions {
@@ -201,19 +235,25 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 				if job.IsLongRunning() {
 					continue
 				}
+				if tc.enqueuedJobTimeouts > 0 {
+					continue
+				}
 				s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(jobsMap[job.ID], nil)
 			}
 
 			// assert evaluation enqueued for each job
-			for i := 0; i < tc.expectedEnqueueCount; i++ {
-				s.assertEvaluationEnqueued(jobs[i])
+			for i := 0; i < tc.enqueuedExecTimeouts; i++ {
+				s.assertEvaluationEnqueued(jobs[i], models.EvalTriggerExecTimeout)
+			}
+			for i := 0; i < tc.enqueuedJobTimeouts; i++ {
+				s.assertEvaluationEnqueued(jobs[i], models.EvalTriggerJobTimeout)
 			}
 
 			s.housekeeping.Start(context.Background())
 			s.Eventually(func() bool { return s.ctrl.Satisfied() }, 3*time.Second, 50*time.Millisecond)
 
 			// if no-op is expected, wait another 200ms to ensure that
-			if tc.expectedEnqueueCount == 0 {
+			if (tc.enqueuedExecTimeouts + tc.enqueuedJobTimeouts) == 0 {
 				time.Sleep(200 * time.Millisecond)
 			}
 
@@ -225,9 +265,9 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 // TestMultipleHousekeepingRounds tests that housekeeping tasks are run multiple times
 // and in each time we are picking new set of jobs
 func (s *HousekeepingTestSuite) TestMultipleHousekeepingRounds() {
-	job1, executions1 := s.mockJob(expiredOutsideBufferModifyTime)
-	job2, executions2 := s.mockJob(expiredOutsideBufferModifyTime)
-	job3, executions3 := s.mockJob(expiredOutsideBufferModifyTime)
+	job1, executions1 := s.mockJob(notExpiredJobCreateTime, expiredOutsideBufferModifyTime)
+	job2, executions2 := s.mockJob(expiredJobCreateTimeWithinBuffer, expiredOutsideBufferModifyTime)
+	job3, _ := s.mockJob(expiredJobCreateTimeOutsideBuffer, expiredOutsideBufferModifyTime)
 
 	// mock job store calls where we return a single job in each call
 	s.mockJobStore.EXPECT().GetInProgressJobs(gomock.Any(), "").Times(1).Return([]models.Job{*job1}, nil)
@@ -238,12 +278,11 @@ func (s *HousekeepingTestSuite) TestMultipleHousekeepingRounds() {
 	// mock executions call for each job
 	s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job1.ID}).Return(executions1, nil)
 	s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job2.ID}).Return(executions2, nil)
-	s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job3.ID}).Return(executions3, nil)
 
 	// assert evaluation enqueued for each job
-	s.assertEvaluationEnqueued(*job1)
-	s.assertEvaluationEnqueued(*job2)
-	s.assertEvaluationEnqueued(*job3)
+	s.assertEvaluationEnqueued(*job1, models.EvalTriggerExecTimeout)
+	s.assertEvaluationEnqueued(*job2, models.EvalTriggerExecTimeout)
+	s.assertEvaluationEnqueued(*job3, models.EvalTriggerJobTimeout)
 
 	s.housekeeping.Start(context.Background())
 	s.Eventually(func() bool { return s.ctrl.Satisfied() }, 3*time.Second, 50*time.Millisecond)
@@ -344,25 +383,23 @@ func (s *HousekeepingTestSuite) TestCancelProvidedContext() {
 	s.Eventually(func() bool { return !s.housekeeping.IsRunning() }, 1*time.Second, 10*time.Millisecond)
 }
 
-func (s *HousekeepingTestSuite) assertEvaluationEnqueued(job models.Job) {
+func (s *HousekeepingTestSuite) assertEvaluationEnqueued(job models.Job, trigger string) {
 	matchEvaluation := func(eval *models.Evaluation) {
 		s.Require().Equal(job.ID, eval.JobID)
-		s.Require().Equal(models.EvalTriggerExecTimeout, eval.TriggeredBy)
+		s.Require().Equal(trigger, eval.TriggeredBy)
 		s.Require().Equal(job.Type, eval.Type)
 	}
 	s.mockJobStore.EXPECT().CreateEvaluation(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, eval models.Evaluation) {
 		matchEvaluation(&eval)
 	}).Return(nil)
-
-	s.mockEvaluationBroker.EXPECT().Enqueue(gomock.Any()).Do(func(eval *models.Evaluation) {
-		matchEvaluation(eval)
-	}).Return(nil)
 }
 
 // mockJob creates a mock job for testing. It takes list of ModifyTime for executions
-func (s *HousekeepingTestSuite) mockJob(ModifyTime ...time.Duration) (*models.Job, []models.Execution) {
+func (s *HousekeepingTestSuite) mockJob(CreateTime time.Duration, ModifyTime ...time.Duration) (*models.Job, []models.Execution) {
 	job := mock.Job()
-	job.Task().Timeouts.ExecutionTimeout = mockJobTimeout
+	job.CreateTime = s.clock.Now().Add(CreateTime).UnixNano()
+	job.Task().Timeouts.ExecutionTimeout = mockJobExecutionTimeout
+	job.Task().Timeouts.TotalTimeout = mockJobTotalTimeout
 
 	executions := make([]models.Execution, 0, len(ModifyTime))
 	for _, t := range ModifyTime {

@@ -17,17 +17,21 @@ type TLSSuite struct {
 }
 
 func (s *TLSSuite) TestTLSflagWithSelfSignedCertificate() {
-	_, _, err := s.ExecuteTestCobraCommand("list", "--tls")
+	// NB(forrest): we expect an error here because we are using self signed certs
+	// and not providing the client command with the cacert making the connection 'insecure'
+	// in this command we don't provide the --insecure flag or the certificate file (as done in below commands)
+	// meaning we expect an error.
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls")
 	s.Require().Error(err)
 }
 
 func (s *TLSSuite) TestTLSWithInsecureFlag() {
-	_, _, err := s.ExecuteTestCobraCommand("list", "--tls", "--insecure")
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls", "--insecure")
 
 	s.Require().NoError(err)
 }
 
 func (s *TLSSuite) TestTLSWithCACert() {
-	_, _, err := s.ExecuteTestCobraCommand("list", "--tls", "--cacert", s.TempCACertFilePath)
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls", "--cacert", s.TempCACertFilePath)
 	s.Require().NoError(err, "failed to execute Cobra Command")
 }

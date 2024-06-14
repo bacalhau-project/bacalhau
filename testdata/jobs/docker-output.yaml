@@ -14,7 +14,7 @@ Tasks:
           - -c
           - echo 15 > /output_custom/output.txt
     Publisher:
-      Type: ipfs
+      Type: local
     ResultPaths:
       - Name: output_custom
         Path: /output_custom

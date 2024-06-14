@@ -8,15 +8,15 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 )
 
-func addInput(execution *models.Execution, cid string) *models.Execution {
+func addInput(execution *models.Execution, sourcePath string) *models.Execution {
 	execution.Job.Task().InputSources = append(execution.Job.Task().InputSources, &models.InputSource{
 		Source: &models.SpecConfig{
-			Type: models.StorageSourceIPFS,
-			Params: ipfs.Source{
-				CID: cid,
+			Type: models.StorageSourceLocalDirectory,
+			Params: localdirectory.Source{
+				SourcePath: sourcePath,
 			}.ToMap(),
 		},
 		Target: "/test_file.txt",

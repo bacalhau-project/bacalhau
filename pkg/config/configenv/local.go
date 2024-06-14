@@ -15,8 +15,7 @@ import (
 
 var Local = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
-		Libp2pTracerPath: os.DevNull,
-		EventTracerPath:  os.DevNull,
+		EventTracerPath: os.DevNull,
 	},
 	Update: types.UpdateConfig{
 		SkipChecks: true,
@@ -40,13 +39,10 @@ var Local = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeNATS,
 			Port: 4222,
 		},
-		BootstrapAddresses:        []string{},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -57,18 +53,8 @@ var Local = types.BacalhauConfig{
 			Publishers: []string{},
 			Storages:   []string{},
 		},
-		Libp2p: types.Libp2pConfig{
-			SwarmPort:   1235,
-			PeerConnect: "none",
-		},
 		IPFS: types.IpfsConfig{
-			Connect:                "",
-			PrivateInternal:        true,
-			SwarmAddresses:         []string{},
-			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			Connect: "",
 		},
 		Compute:   LocalComputeConfig,
 		Requester: LocalRequesterConfig,
@@ -174,8 +160,12 @@ var LocalRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(30 * time.Second),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Minute),
+		TotalTimeout: types.Duration(30 * time.Minute),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{
@@ -187,4 +177,5 @@ var LocalRequesterConfig = types.RequesterConfig{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
+	NodeInfoStoreTTL: types.Duration(10 * time.Minute),
 }

@@ -21,7 +21,6 @@ variable "egress_tcp_ports" {
   description = "List of TCP ports for egress rules"
   type        = list(string)
   default     = [
-    // Libp2p
     "4001", // ipfs
     "1235", // bacalhau
     "4318", // otel
@@ -83,7 +82,6 @@ variable "ingress_udp_ports" {
   description = "List of UDP ports for ingress rules"
   type        = list(string)
   default     = [
-    // Libp2p
     // ipfs daemon
     "4001",
     // bacalhau

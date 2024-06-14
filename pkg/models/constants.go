@@ -32,8 +32,6 @@ const (
 const (
 	StorageSourceNoop           = "noop"
 	StorageSourceIPFS           = "ipfs"
-	StorageSourceRepoClone      = "repoclone"
-	StorageSourceRepoCloneLFS   = "repoCloneLFS"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
 	StorageSourceS3PreSigned    = "s3PreSigned"
@@ -46,11 +44,6 @@ const (
 	PublisherIPFS  = "ipfs"
 	PublisherS3    = "s3"
 	PublisherLocal = "local"
-)
-
-const (
-	NetworkTypeNATS   = "nats"
-	NetworkTypeLibp2p = "libp2p"
 )
 
 const (

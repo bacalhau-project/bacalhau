@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -35,7 +36,7 @@ func executorTestCases(t testing.TB) []model.Spec {
 	return []model.Spec{
 		testutils.MakeSpecWithOpts(t,
 			legacy_job.WithPublisher(
-				model.PublisherSpec{Type: model.PublisherIpfs},
+				model.PublisherSpec{Type: model.PublisherLocal},
 			),
 		),
 		testutils.MakeSpecWithOpts(t,
@@ -45,7 +46,7 @@ func executorTestCases(t testing.TB) []model.Spec {
 					Build(),
 			),
 			legacy_job.WithPublisher(
-				model.PublisherSpec{Type: model.PublisherIpfs},
+				model.PublisherSpec{Type: model.PublisherLocal},
 			),
 		),
 	}

@@ -6,10 +6,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -27,10 +28,12 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:latest").
+		WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+		Build()
+	s.Require().NoError(err)
 	task := mock.TaskBuilder().
-		Engine(dockermodels.NewDockerEngineBuilder("ubuntu:latest").
-			WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
-			Build()).
+		Engine(es).
 		BuildOrDie()
 	job := mock.Job()
 	job.Tasks[0] = task

@@ -21,12 +21,14 @@ type RequesterConfig struct {
 
 	EvaluationBroker EvaluationBrokerConfig `yaml:"EvaluationBroker"`
 	Worker           WorkerConfig           `yaml:"Worker"`
+	Scheduler        SchedulerConfig        `yaml:"Scheduler"`
 	StorageProvider  StorageProviderConfig  `yaml:"StorageProvider"`
 
 	TagCache         DockerCacheConfig `yaml:"TagCache"`
 	DefaultPublisher string            `yaml:"DefaultPublisher"`
 
 	ControlPlaneSettings RequesterControlPlaneConfig `yaml:"ControlPlaneSettings"`
+	NodeInfoStoreTTL     Duration                    `yaml:"NodeInfoStoreTTL"`
 
 	// ManualNodeApproval is a flag that determines if nodes should be manually approved or not.
 	// By default, nodes are auto-approved to simplify upgrades, by setting this property to
@@ -48,6 +50,11 @@ type WorkerConfig struct {
 	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
+type SchedulerConfig struct {
+	QueueBackoff               Duration `yaml:"QueueBackoff"`
+	NodeOverSubscriptionFactor float64  `yaml:"NodeOverSubscriptionFactor"`
+}
+
 type StorageProviderConfig struct {
 	S3 S3StorageProviderConfig `yaml:"S3"`
 }
@@ -58,7 +65,9 @@ type S3StorageProviderConfig struct {
 }
 
 type JobDefaults struct {
+	TotalTimeout     Duration `yaml:"TotalTimeout"`
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
+	QueueTimeout     Duration `yaml:"QueueTimeout"`
 }
 
 type RequesterControlPlaneConfig struct {

@@ -14,10 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/rs/zerolog"
@@ -25,6 +21,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 var (
@@ -38,17 +38,17 @@ type StorageProvider struct {
 	client *retryablehttp.Client
 }
 
-func NewStorage() *StorageProvider {
+func NewStorage(timeout time.Duration, maxRetries int) *StorageProvider {
 	log.Debug().Msg("URL download driver created")
 
 	client := retryablehttp.NewClient()
 	client.HTTPClient = &http.Client{
-		Timeout: config.GetDownloadURLRequestTimeout(),
+		Timeout: timeout,
 		Transport: otelhttp.NewTransport(nil, otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
 		}), otelhttp.WithSpanOptions(trace.WithAttributes(semconv.PeerService("url-download")))),
 	}
-	client.RetryMax = config.GetDownloadURLRequestRetries()
+	client.RetryMax = maxRetries
 	client.RetryWaitMax = time.Second * 1
 	client.Logger = retryLogger{}
 	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {

@@ -7,43 +7,43 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-var DefaultComputeConfig = ComputeConfigParams{
-	PhysicalResourcesProvider: compute_system.NewPhysicalCapacityProvider(),
-	DefaultJobResourceLimits: models.Resources{
-		CPU:    0.1,               // 100m
-		Memory: 100 * 1024 * 1024, // 100Mi
-	},
+func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
+	return ComputeConfigParams{
+		PhysicalResourcesProvider: compute_system.NewPhysicalCapacityProvider(storagePath),
+		DefaultJobResourceLimits: models.Resources{
+			CPU:    0.1,               // 100m
+			Memory: 100 * 1024 * 1024, // 100Mi
+		},
 
-	JobNegotiationTimeout:      3 * time.Minute,
-	MinJobExecutionTimeout:     500 * time.Millisecond,
-	MaxJobExecutionTimeout:     model.NoJobTimeout,
-	DefaultJobExecutionTimeout: model.NoJobTimeout,
+		JobNegotiationTimeout:      3 * time.Minute,
+		MinJobExecutionTimeout:     500 * time.Millisecond,
+		MaxJobExecutionTimeout:     model.NoJobTimeout,
+		DefaultJobExecutionTimeout: model.NoJobTimeout,
 
-	LogRunningExecutionsInterval: 10 * time.Second,
-	JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
-	LocalPublisher: types.LocalPublisherConfig{
-		Directory: path.Join(config.GetStoragePath(), "bacalhau-local-publisher"),
-	},
-	ControlPlaneSettings: types.ComputeControlPlaneConfig{
-		InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
-		ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
-		HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
-		HeartbeatTopic:          "heartbeat",
-	},
+		LogRunningExecutionsInterval: 10 * time.Second,
+		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
+		LocalPublisher: types.LocalPublisherConfig{
+			Directory: path.Join(storagePath, "bacalhau-local-publisher"),
+		},
+		ControlPlaneSettings: types.ComputeControlPlaneConfig{
+			InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
+			ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+			HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+			HeartbeatTopic:          "heartbeat",
+		},
+	}
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ExecutionTimeout: model.NoJobTimeout,
+		TotalTimeout: model.NoJobTimeout,
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
@@ -76,12 +76,13 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
+	NodeInfoStoreTTL:     10 * time.Minute,
 	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
 var TestRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		ExecutionTimeout: 30 * time.Second,
+		TotalTimeout: 30 * time.Second,
 	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
@@ -102,6 +103,8 @@ var TestRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
 	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
 
+	NodeOverSubscriptionFactor: 1.5,
+
 	TranslationEnabled: false,
 
 	S3PreSignedURLDisabled:   false,
@@ -121,26 +124,6 @@ func getRequesterConfigParams() RequesterConfigParams {
 		return TestRequesterConfig
 	}
 	return DefaultRequesterConfig
-}
-
-var DefaultNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
-	Interval:             30 * time.Second,
-	EagerPublishInterval: 5 * time.Second,
-	EagerPublishDuration: 30 * time.Second,
-}
-
-// TestNodeInfoPublishConfig speeds up node announcements for tests
-var TestNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
-	Interval:             30 * time.Second,
-	EagerPublishInterval: 10 * time.Millisecond,
-	EagerPublishDuration: 5 * time.Second,
-}
-
-func GetNodeInfoPublishConfig() routing.NodeInfoPublisherIntervalConfig {
-	if system.GetEnvironment() == system.EnvironmentTest {
-		return TestNodeInfoPublishConfig
-	}
-	return DefaultNodeInfoPublishConfig
 }
 
 func NewDefaultJobSelectionPolicy() JobSelectionPolicy {

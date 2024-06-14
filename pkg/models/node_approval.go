@@ -62,6 +62,10 @@ func stringToApproval(s string) membership {
 	return unknown
 }
 
+func (t membership) IsUndefined() bool {
+	return t == unknown
+}
+
 func (t membership) IsValid() bool {
 	return t >= membership(1) && t <= membership(len(strMembershipArray))
 }

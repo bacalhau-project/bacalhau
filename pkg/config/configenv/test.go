@@ -15,8 +15,7 @@ import (
 
 var Testing = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
-		Libp2pTracerPath: os.DevNull,
-		EventTracerPath:  os.DevNull,
+		EventTracerPath: os.DevNull,
 	},
 	Update: types.UpdateConfig{
 		SkipChecks: true,
@@ -40,15 +39,10 @@ var Testing = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeNATS,
 			Port: 4222,
-		},
-		BootstrapAddresses: []string{
-			"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -59,20 +53,8 @@ var Testing = types.BacalhauConfig{
 			Publishers: []string{},
 			Storages:   []string{},
 		},
-		Libp2p: types.Libp2pConfig{
-			SwarmPort:   1235,
-			PeerConnect: "none",
-		},
 		IPFS: types.IpfsConfig{
-			Connect:         "",
-			PrivateInternal: true,
-			SwarmAddresses: []string{
-				"/ip4/0.0.0.0/tcp/1235/p2p/QmcWJnVXJ82DKJq8ED79LADR4ZBTnwgTK7yn6JQbNVMbbC",
-			},
-			Profile:                "flatfs",
-			SwarmListenAddresses:   []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			GatewayListenAddresses: []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
-			APIListenAddresses:     []string{"/ip4/0.0.0.0/tcp/0", "/ip6/::1/tcp/0"},
+			Connect: "",
 		},
 		Compute:   TestingComputeConfig,
 		Requester: TestingRequesterConfig,
@@ -178,8 +160,12 @@ var TestingRequesterConfig = types.RequesterConfig{
 		WorkerEvalDequeueBaseBackoff: types.Duration(1 * time.Second),
 		WorkerEvalDequeueMaxBackoff:  types.Duration(30 * time.Second),
 	},
+	Scheduler: types.SchedulerConfig{
+		QueueBackoff:               types.Duration(5 * time.Second),
+		NodeOverSubscriptionFactor: 1.5,
+	},
 	JobDefaults: types.JobDefaults{
-		ExecutionTimeout: types.Duration(30 * time.Second),
+		TotalTimeout: types.Duration(30 * time.Second),
 	},
 	StorageProvider: types.StorageProviderConfig{
 		S3: types.S3StorageProviderConfig{
@@ -191,4 +177,5 @@ var TestingRequesterConfig = types.RequesterConfig{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
+	NodeInfoStoreTTL: types.Duration(10 * time.Minute),
 }

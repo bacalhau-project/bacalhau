@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -45,6 +46,23 @@ func NodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error)
 		return []model.LabelSelectorRequirement{}, fmt.Errorf("failed to parse node selector: %w", err)
 	}
 	return model.ToLabelSelectorRequirements(requirements...), nil
+}
+
+func NodeSelectorV2(nodeSelector string) ([]*models.LabelSelectorRequirement, error) {
+	selector := strings.TrimSpace(nodeSelector)
+	if len(selector) == 0 {
+		return nil, nil
+	}
+	requirements, err := labels.ParseToRequirements(selector)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse node selector: %w", err)
+	}
+	tmp := models.ToLabelSelectorRequirements(requirements...)
+	out := make([]*models.LabelSelectorRequirement, 0, len(tmp))
+	for _, r := range tmp {
+		out = append(out, r.Copy())
+	}
+	return out, nil
 }
 
 var DefaultOutputSpec = model.StorageSpec{

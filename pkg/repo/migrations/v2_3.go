@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,11 +33,20 @@ var V2Migration = repo.NewMigration(
 		// we load the config to resolve the libp2p node id. Loading the config this way will also
 		// use default values, args and env vars to fill in the config, so we can be sure we are
 		// reading the correct libp2p key in case the user is overriding the default value.
-		resolvedCfg, err := config.Load(repoPath)
+		c := config.New()
+		if err := c.Load(filepath.Join(repoPath, config.FileName)); err != nil {
+			// if the config doesn't exist that's okay, just means we read a repo without a config in it.
+			if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("loading config from repo: %w", err)
+			}
+		}
+		// modify the config with default paths required by the repo
+		r.EnsureRepoPathsConfigured(c)
+		resolvedCfg, err := c.Current()
 		if err != nil {
 			return err
 		}
-		libp2pNodeID, err := getLibp2pNodeID()
+		libp2pNodeID, err := getLibp2pNodeID(repoPath)
 		if err != nil {
 			return err
 		}
