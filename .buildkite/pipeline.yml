@@ -1,4 +1,48 @@
 # Default pipeline from cli
 steps:
-- label: ":pipeline:"
-  command: buildkite-agent pipeline upload
+  - label: ":asdf: Install ASDF"
+    command: |
+      git config advice.detachedHead false
+      if [ ! -d $HOME/.asdf ]; then
+        git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch << parameters.asdf_version >>
+              cd $HOME/.asdf
+            else
+              cd $HOME/.asdf
+              git fetch origin
+            fi
+            git checkout master
+            git pull --all
+            git checkout tags/<< parameters.asdf_version >>
+      cd -
+      echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
+      source "${BASH_ENV}"
+    key: asdf
+
+  - label: ":earth: Install Earthly"
+    command: |
+      asdf plugin-add earthly
+      asdf install earthly $(awk '/^earthly/ {print $2}' .tool-versions)
+      earthly --version
+    key: earthly
+    depends_on: asdf
+
+  - label: ":earth: Select Earthly satellite"
+    command: |
+      earthly account login --token $(buildkite-agent secret get EARTHLY_ACCOUNT_TOKEN)
+      earthly sat select
+    key: earthly-satellite
+    depends_on: earthly
+
+  - label: ":hammer: Build"
+    command: |
+      cd webui
+      earthly --push +all
+    key: build
+    depends_on: earthly-satellite
+
+  - label: ":test_tube: Test"
+    command: |
+      cd webui
+      earthly --push +test
+    key: test
+    depends_on: build
