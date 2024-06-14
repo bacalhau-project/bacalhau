@@ -3,7 +3,7 @@
   "$defs": {
     "LocalParams": {
       "type": "object",
-      "required": ["SourcePath", "ReadWrite"],
+      "required": ["SourcePath"],
       "properties": {
         "SourcePath": { "type": "string" },
         "ReadWrite": { "type": "boolean" }
