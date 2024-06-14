@@ -41,7 +41,8 @@ def main():
         data=json.dumps(data),
     )
 
-    if response.status_code != 200:
+    # If response code not in 2xx, raise an exception
+    if response.status_code < 200 or response.status_code >= 300:
         print(f"Failed to trigger CircleCI pipeline: {response.status_code}")
         print(response.text)
         response.raise_for_status()
