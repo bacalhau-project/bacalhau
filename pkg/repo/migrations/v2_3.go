@@ -46,7 +46,7 @@ var V2Migration = repo.NewMigration(
 		if err != nil {
 			return err
 		}
-		libp2pNodeID, err := getLibp2pNodeID(resolvedCfg.User.Libp2pKeyPath)
+		libp2pNodeID, err := getLibp2pNodeID(repoPath)
 		if err != nil {
 			return err
 		}

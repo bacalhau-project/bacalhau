@@ -3,12 +3,9 @@ package config
 import (
 	"crypto"
 	"crypto/rsa"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"strings"
-
-	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 )
@@ -103,26 +100,4 @@ func GetClientPrivateKey(path string) (*rsa.PrivateKey, error) {
 // loadUserIDKey loads the user ID key from whatever source is configured.
 func loadUserIDKey(path string) (*rsa.PrivateKey, error) {
 	return baccrypto.LoadPKCS1KeyFile(path)
-}
-
-func GetLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
-	return loadLibp2pPrivKey(path)
-}
-
-func loadLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
-	keyBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %w", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %w", err)
-	}
-	// parse the private key
-	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-	return key, nil
 }

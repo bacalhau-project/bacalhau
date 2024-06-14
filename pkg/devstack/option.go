@@ -3,14 +3,12 @@ package devstack
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 type ConfigOption = func(cfg *DevStackConfig)
@@ -37,14 +35,12 @@ func defaultDevStackConfig(cfg types.BacalhauConfig) (*DevStackConfig, error) {
 		NumberOfBadComputeActors:   0,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
 
 		NumberOfBadRequesterActors: 0,
 		NumberOfHybridNodes:        0,
 		DisabledFeatures:           node.FeatureConfig{},
 		AllowListedLocalPaths:      nil,
 		ExecutorPlugins:            false,
-		NodeInfoStoreTTL:           10 * time.Minute,
 	}, nil
 }
 
@@ -69,9 +65,7 @@ type DevStackConfig struct {
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
-	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
-	ExecutorPlugins            bool // when true pluggable executors will be used.
-	NodeInfoStoreTTL           time.Duration
+	ExecutorPlugins            bool     // when true pluggable executors will be used.
 	TLS                        DevstackTLSSettings
 	AuthSecret                 string
 }
@@ -86,7 +80,6 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Str("MemoryProfilingFile", o.MemoryProfilingFile).
 		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
-		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
 		Bool("ExecutorPlugins", o.ExecutorPlugins)
 }
 
@@ -196,12 +189,6 @@ func WithDisabledFeatures(disable node.FeatureConfig) ConfigOption {
 func WithAllowListedLocalPaths(paths []string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.AllowListedLocalPaths = paths
-	}
-}
-
-func WithNodeInfoPublisherInterval(interval routing.NodeInfoPublisherIntervalConfig) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.NodeInfoPublisherInterval = interval
 	}
 }
 

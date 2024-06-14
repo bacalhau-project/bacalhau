@@ -1,10 +1,12 @@
 package migrations
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/viper"
 
@@ -12,6 +14,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
+
+const libp2pPrivateKey = "libp2p_private_key"
 
 func getViper(r repo.FsRepo) (*viper.Viper, error) {
 	repoPath, err := r.Path()
@@ -59,8 +63,10 @@ func readConfig(r repo.FsRepo) (*viper.Viper, types.BacalhauConfig, error) {
 	return v, fileCfg, nil
 }
 
-func getLibp2pNodeID(path string) (string, error) {
-	privKey, err := config.GetLibp2pPrivKey(path)
+// TODO: remove this with 1.5 release as we don't expect users to migrate from 1.2 to 1.5
+func getLibp2pNodeID(repoPath string) (string, error) {
+	path := filepath.Join(repoPath, libp2pPrivateKey)
+	privKey, err := loadLibp2pPrivKey(path)
 	if err != nil {
 		return "", err
 	}
@@ -69,4 +75,22 @@ func getLibp2pNodeID(path string) (string, error) {
 		return "", err
 	}
 	return peerID.String(), nil
+}
+
+func loadLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
+	keyBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %w", err)
+	}
+	// parse the private key
+	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	return key, nil
 }

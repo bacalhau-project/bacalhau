@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
@@ -45,6 +44,8 @@ type NodeManagerParams struct {
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
+	log.Info().Msgf("Nodes joining the cluster will be assigned approval state: %s",
+		params.DefaultApprovalState.String())
 	return &NodeManager{
 		resourceMap:          concurrency.NewStripedMap[trackedResources](resourceMapLockCount),
 		store:                params.NodeInfo,
@@ -168,11 +169,6 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 		queueUsedCapacity: request.QueueUsedCapacity,
 	})
 	return &requests.UpdateResourcesResponse{}, nil
-}
-
-// ---- Implementation of routing.NodeInfoStore ----
-func (n *NodeManager) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
-	return n.store.FindPeer(ctx, peerID)
 }
 
 func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeState) error {

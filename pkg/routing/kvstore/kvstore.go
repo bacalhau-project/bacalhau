@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	pkgerrors "github.com/pkg/errors"
@@ -59,19 +58,6 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 		js: js,
 		kv: kv,
 	}, nil
-}
-
-func (n *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
-	// TODO: Remove this once we now longer need to implement the routing.PeerStore interface
-	// We are temporarily matching the code of the inmemory.NodeStore which never returns an
-	// error for this method.
-	nodeID := peerID.String()
-	state, err := n.Get(ctx, nodeID)
-	if err != nil {
-		return peer.AddrInfo{}, nil
-	}
-
-	return *state.Info.PeerInfo, nil
 }
 
 // Add adds a node state to the repo.

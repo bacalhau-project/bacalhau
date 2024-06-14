@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -104,19 +103,6 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	}
 
 	return r.nodeInfoMap[nodeIDsWithPrefix[0]].NodeState, nil
-}
-
-func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	infoWrapper, ok := r.nodeInfoMap[peerID.String()]
-	if !ok {
-		return peer.AddrInfo{}, nil
-	}
-	if infoWrapper.Info.PeerInfo != nil && len(infoWrapper.Info.PeerInfo.Addrs) > 0 {
-		return *infoWrapper.Info.PeerInfo, nil
-	}
-	return peer.AddrInfo{}, nil
 }
 
 func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {

@@ -14,7 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 func randomText(t *testing.T) []byte {
@@ -29,8 +31,10 @@ func TestIPFSDownload(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	t.Skip("Enable test only when IPFS is running")
-	client, err := ipfs.NewClient(ctx, "http://localhost:5001")
+	_, cfg := setup.SetupBacalhauRepoForTesting(t)
+	testutils.MustHaveIPFS(t, cfg.Node.IPFS.Connect)
+
+	client, err := ipfs.NewClient(context.Background(), cfg.Node.IPFS.Connect)
 	require.NoError(t, err)
 
 	text := randomText(t)
