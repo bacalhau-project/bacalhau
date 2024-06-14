@@ -1,7 +1,7 @@
 # Default pipeline from cli
 steps:
   - label: ":asdf: Install ASDF"
-    commands:
+  - commands:
       - git config advice.detachedHead false
       - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
       - cd $HOME/.asdf
@@ -14,7 +14,7 @@ steps:
     key: asdf
 
   - label: ":earth: Install Earthly"
-    commands:
+  - commands:
       - asdf plugin-add earthly
       - asdf install
       - earthly --version
@@ -22,7 +22,7 @@ steps:
     depends_on: asdf
 
   - label: ":earth: Select Earthly satellite"
-    commands:
+  - commands:
       - earthly account login --token $(buildkite-agent secret get EARTHLY_ACCOUNT_TOKEN)
       - earthly sat select
     key: earthly-satellite
@@ -36,7 +36,7 @@ steps:
     depends_on: earthly-satellite
 
   - label: ":test_tube: Test"
-    commands:
+  - commands:
       - cd webui
       - earthly --push +test
     key: test
