@@ -65,6 +65,7 @@ jobs:
       - name: "Trigger CircleCI"
         id: trigger-circle-ci
         run: |
+          python -m pip install poetry
           poetry install
           python ./.circleci/trigger_circleci.py
         env:
