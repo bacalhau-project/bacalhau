@@ -1,6 +1,6 @@
 //go:build integration || !unit
 
-package get_test
+package job_test
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func (s *GetSuite) SetupTest() {
 	s.BaseSuite.SetupTest()
 }
 
-func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expectedFiles []string) {
+func testResultsFolderStructure(t *testing.T, baseFolder string, expectedFiles []string) {
 	var files []string
 	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
@@ -135,10 +135,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	require.NoError(s.T(), err, "Error submitting job")
 
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	hostID := s.Node.ID
 	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), outputFolder, hostID, nil)
+	testResultsFolderStructure(s.T(), outputFolder, nil)
 
 }
 
@@ -157,9 +156,8 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	_, runOutput, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(runOutput)
-	hostID := s.Node.ID
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
+	testResultsFolderStructure(s.T(), tempDir, nil)
 }
 
 // this tests that when we do get with no --output-dir
@@ -177,15 +175,13 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
-
-	_, getOutput, err := s.ExecuteTestCobraCommand("get",
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, nil)
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), nil)
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
@@ -198,7 +194,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
 
-	_, getoutput, err := s.ExecuteTestCobraCommand("get",
+	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
 		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		fmt.Sprintf("%s/missing", jobID),
 	)
@@ -219,16 +215,15 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
-	_, getOutput, err := s.ExecuteTestCobraCommand("get",
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
 		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), []string{"/stdout"})
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
@@ -243,9 +238,8 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	_, out, err := s.ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
-	_, getOutput, err := s.ExecuteTestCobraCommand("get",
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
 		"--ipfs-connect", s.Config.Node.IPFS.Connect,
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
@@ -256,7 +250,6 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(),
 		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
-		hostID,
 		[]string{
 			"/data",
 			"/data/apples",
@@ -279,13 +272,12 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutputLegacy(out)
-	hostID := s.Node.ID
 
-	_, getOutput, err := s.ExecuteTestCobraCommand("get",
+	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
 		"--output-dir", tempDir,
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
 	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
+	testResultsFolderStructure(s.T(), tempDir, nil)
 }

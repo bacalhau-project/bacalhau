@@ -21,5 +21,6 @@ func NewCmd() *cobra.Command {
 	cmd.AddCommand(NewLogCmd())
 	cmd.AddCommand(NewRunCmd())
 	cmd.AddCommand(NewStopCmd())
+	cmd.AddCommand(NewGetCmd())
 	return cmd
 }
