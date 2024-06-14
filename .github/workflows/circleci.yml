@@ -64,7 +64,9 @@ jobs:
 
       - name: "Trigger CircleCI"
         id: trigger-circle-ci
-        run: "python ./.circleci/trigger_circleci.py"
+        run: |
+          poetry install
+          python ./.circleci/trigger_circleci.py
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
           BRANCH: ${{ env.SHA }}
