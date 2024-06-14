@@ -35,6 +35,8 @@ def main():
     }
     data.update(target)
 
+    print(f"Full data: {data}")
+
     response = requests.post(
         "https://circleci.com/api/v2/project/gh/bacalhau-project/bacalhau/pipeline",
         headers=headers,
