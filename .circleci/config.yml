@@ -267,16 +267,36 @@ commands:
             earthly sat select << pipeline.parameters.earthly_satellite >>
 
   install_ipfs:
+    parameters:
+      cache_version:
+        type: string
+        default: v1-1
+      ipfs_version:
+        type: string
+        default: v0.18.0
     description: Install IPFS for linux-amd64
     steps:
+      - restore_cache:
+          keys:
+            - ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>-{{ checksum ".circleci/config.yml" }}
+            - ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>
+            - ipfs-<< parameters.cache_version >>
       - run:
           name: Install IPFS
           command: |
-            wget https://dist.ipfs.tech/go-ipfs/v0.18.0/go-ipfs_v0.18.0_linux-amd64.tar.gz -O ipfs.tar.gz
-            tar -xzf ipfs.tar.gz
-            cd go-ipfs
-            sudo bash install.sh
-            ipfs --version
+            if [ ! -f /usr/local/bin/ipfs ]; then
+              wget https://dist.ipfs.tech/go-ipfs/<< parameters.ipfs_version >>/go-ipfs_<< parameters.ipfs_version >>_linux-amd64.tar.gz -O ipfs.tar.gz
+              tar -xzf ipfs.tar.gz
+              cd go-ipfs
+              sudo bash install.sh
+              ipfs --version
+            else
+              echo "IPFS is already installed, skipping download."
+            fi
+      - save_cache:
+          key: ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>-{{ checksum ".circleci/config.yml" }}
+          paths:
+            - /usr/local/bin/ipfs
       - run:
           name: Initialize IPFS
           command: |
