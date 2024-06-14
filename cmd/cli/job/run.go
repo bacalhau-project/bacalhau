@@ -36,6 +36,8 @@ var (
 
 		# Run a new job from an already executed job
 		bacalhau job describe 6e51df50 | bacalhau job run
+
+		# Download the 
 		`))
 )
 
@@ -172,7 +174,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
+	if err := printer.PrintJobExecution(ctx, j, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 
