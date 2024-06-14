@@ -67,6 +67,7 @@ jobs:
         run: |
           python -m pip install poetry
           poetry install
+          source $(poetry env info --path)/bin/activate
           python ./.circleci/trigger_circleci.py
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
