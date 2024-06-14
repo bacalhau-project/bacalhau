@@ -1,13 +1,15 @@
+import argparse
 import json
 import os
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
 
 def main():
     branch = os.getenv("BRANCH")
     circle_token = os.getenv("CIRCLE_TOKEN")
-    name = os.getenv("NAME")
 
     if not circle_token:
         print("CIRCLE_TOKEN is not set. Exiting.")
@@ -29,8 +31,7 @@ def main():
     data = {
         "parameters": {
             "GHA_Action": "trigger_pipeline",
-            "Name": name,
-        }
+        },
     }
     data.update(target)
 
@@ -48,5 +49,24 @@ def main():
         print("Successfully triggered CircleCI pipeline")
 
 
+# curl --fail -X POST --header "Content-Type: application/json" --header "Circle-Token: ${CIRCLE_TOKEN}" -d "{
+#  \"parameters\": {
+#     \"GHA_Action\": \"trigger_pipeline\"
+#  },
+#  ${TARGET}
+# }" https://circleci.com/api/v2/project/gh/bacalhau-project/bacalhau/pipeline
+
 if __name__ == "__main__":
+    # Get .env file as flag
+    argsp = argparse.ArgumentParser()
+    argsp.add_argument("--env", type=str, default=".env")
+    args = argsp.parse_args()
+
+    if args.env:
+        if Path(args.env).exists():
+            load_dotenv(args.env)
+        else:
+            print(f"File {args.env} does not exist. Exiting.")
+            exit
+
     main()

@@ -3,6 +3,7 @@ name = "bacalhau"
 version = "0.1"
 description = ""
 authors = []
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10.5"
@@ -10,6 +11,7 @@ pre-commit = "^2.20.0"
 sgqlc = "^16.0"
 semver = "^2.13.0"
 ruff = "^0.2.1"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 
