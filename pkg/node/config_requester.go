@@ -55,7 +55,8 @@ type RequesterConfigParams struct {
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
 
-	JobStore jobstore.Store
+	JobStore         jobstore.Store
+	NodeInfoStoreTTL time.Duration
 
 	DefaultPublisher string
 

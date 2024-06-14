@@ -20,24 +20,6 @@ variable "bacalhau_unsafe_cluster" {
   type    = bool
   default = false
 }
-# these are used for long lived clusters that have already been bootstrapped
-# and the node0, node1 and node2 ids are derived from a persisted known private key
-variable "bacalhau_node_id_0" {
-  type    = string
-  default = ""
-}
-variable "bacalhau_node_id_1" {
-  type    = string
-  default = ""
-}
-variable "bacalhau_node_id_2" {
-  type    = string
-  default = ""
-}
-variable "bacalhau_connect_peer" {
-  type    = string
-  default = ""
-}
 variable "ipfs_version" {
   type = string
 }
@@ -48,7 +30,7 @@ variable "machine_type" {
   type = string
 }
 variable "instance_count" {
-  type = string
+  type = number
 }
 variable "volume_size_gb" {
   type = number
@@ -225,10 +207,4 @@ variable "docker_password" {
   type      = string
   default   = ""
   sensitive = true
-}
-
-// Use NATs for transport instead of libp2p
-variable "network_type" {
-  type    = string
-  default = "libp2p"
 }

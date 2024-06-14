@@ -267,16 +267,36 @@ commands:
             earthly sat select << pipeline.parameters.earthly_satellite >>
 
   install_ipfs:
+    parameters:
+      cache_version:
+        type: string
+        default: v1-1
+      ipfs_version:
+        type: string
+        default: v0.18.0
     description: Install IPFS for linux-amd64
     steps:
+      - restore_cache:
+          keys:
+            - ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>-{{ checksum ".circleci/config.yml" }}
+            - ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>
+            - ipfs-<< parameters.cache_version >>
       - run:
           name: Install IPFS
           command: |
-            wget https://dist.ipfs.tech/go-ipfs/v0.18.0/go-ipfs_v0.18.0_linux-amd64.tar.gz -O ipfs.tar.gz
-            tar -xzf ipfs.tar.gz
-            cd go-ipfs
-            sudo bash install.sh
-            ipfs --version
+            if [ ! -f /usr/local/bin/ipfs ]; then
+              wget https://dist.ipfs.tech/go-ipfs/<< parameters.ipfs_version >>/go-ipfs_<< parameters.ipfs_version >>_linux-amd64.tar.gz -O ipfs.tar.gz
+              tar -xzf ipfs.tar.gz
+              cd go-ipfs
+              sudo bash install.sh
+              ipfs --version
+            else
+              echo "IPFS is already installed, skipping download."
+            fi
+      - save_cache:
+          key: ipfs-<< parameters.cache_version >>-<< parameters.ipfs_version >>-{{ checksum ".circleci/config.yml" }}
+          paths:
+            - /usr/local/bin/ipfs
       - run:
           name: Initialize IPFS
           command: |
@@ -372,30 +392,34 @@ jobs:
           executor: linux-amd64
 
       - run:
-          name: Install Executor Plugins
-          command: make install-plugins
-
-      - run:
-          name: Set canary dependency
-          working_directory: ops/aws/canary/lambda
-          command: make update
-
-      - run:
-          name: Build
-          working_directory: ops/aws/canary/lambda
-          command: make build -j
-
-      - run:
-          name: Run tests
-          working_directory: ops/aws/canary/lambda
           command: |
-            export GOBIN=${HOME}/bin
-            export PATH=$GOBIN:$PATH
-            go install gotest.tools/gotestsum@v1.8.2
-            make test
+            echo "CANARIES HAVE BEEN MOVED TO https://github.com/bacalhau-project/canaries"
 
-      - store_test_results:
-          path: ops/aws/canary/lambda/tests.xml
+      # - run:
+      #     name: Install Executor Plugins
+      #     command: make install-plugins
+
+      # - run:
+      #     name: Set canary dependency
+      #     working_directory: ops/aws/canary/lambda
+      #     command: make update
+
+      # - run:
+      #     name: Build
+      #     working_directory: ops/aws/canary/lambda
+      #     command: make build -j
+
+      # - run:
+      #     name: Run tests
+      #     working_directory: ops/aws/canary/lambda
+      #     command: |
+      #       export GOBIN=${HOME}/bin
+      #       export PATH=$GOBIN:$PATH
+      #       go install gotest.tools/gotestsum@v1.8.2
+      #       make test
+
+      # - store_test_results:
+      #     path: ops/aws/canary/lambda/tests.xml
 
   build_docker:
     executor: linux-amd64

@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -47,7 +48,7 @@ func (s *BaseSuite) SetupTest() {
 
 	// TODO: Update checker is configured with production default configs
 	//  and not respecting the test environment. This is a temporary fix
-	os.Setenv("BACALHAU_UPDATE_SKIPCHECKS", "true")
+	os.Setenv(config.KeyAsEnvVar(types.UpdateSkipChecks), "true")
 
 	s.AllowListedPath = s.T().TempDir()
 

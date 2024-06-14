@@ -10,13 +10,12 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -101,20 +100,9 @@ func (s *ComputeSuite) setupNode() {
 		},
 	}
 
-	// TODO: Not needed until we switch to nats
-	// mgmtProxy := ManagementEndpointMock{
-	// 	RegisterHandler: func(ctx context.Context, req requests.RegisterRequest) (*requests.RegisterResponse, error) {
-	// 		return nil, nil
-	// 	},
-	// 	UpdateInfoHandler: func(ctx context.Context, req requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
-	// 		return nil, nil
-	// 	},
-	// }
-
 	s.node, err = node.NewComputeNode(
 		ctx,
 		"test",
-		s.cm,
 		apiServer,
 		s.config,
 		storagePath,
@@ -123,9 +111,9 @@ func (s *ComputeSuite) setupNode() {
 		provider.NewNoopProvider[executor.Executor](s.executor),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
 		callback,
-		nil,                 // until we switch to testing with NATS
-		map[string]string{}, // empty configured labels
-		nil,                 // no heartbeat client
+		ManagementEndpointMock{},
+		map[string]string{},   // empty configured labels
+		HeartbeatClientMock{}, // no heartbeat client
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

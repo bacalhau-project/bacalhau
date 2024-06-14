@@ -3,6 +3,7 @@ acks
 Addrs
 alessio
 apimodels
+argsp
 armv
 astype
 authorised
@@ -56,7 +57,9 @@ deflt
 deleteme
 devstack
 devstask
+direnv
 doclines
+dotenv
 dpkg
 dpokidov
 dport

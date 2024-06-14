@@ -3,7 +3,6 @@ package tracing
 import (
 	"context"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -68,10 +67,6 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	}()
 
 	return r.delegate.GetByPrefix(ctx, prefix)
-}
-
-func (r *NodeStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
-	return r.delegate.FindPeer(ctx, peerID)
 }
 
 func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {

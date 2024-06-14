@@ -15,8 +15,7 @@ import (
 
 var Development = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
-		Libp2pTracerPath: os.DevNull,
-		EventTracerPath:  os.DevNull,
+		EventTracerPath: os.DevNull,
 	},
 	Update: types.UpdateConfig{
 		SkipChecks: true,
@@ -40,16 +39,10 @@ var Development = types.BacalhauConfig{
 			TLS:  types.TLSConfiguration{},
 		},
 		Network: types.NetworkConfig{
-			Type: models.NetworkTypeNATS,
 			Port: 4222,
-		},
-		BootstrapAddresses: []string{
-			"/ip4/34.86.177.175/tcp/1235/p2p/QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu",
-			"/ip4/35.245.221.171/tcp/1235/p2p/QmNjEQByyK8GiMTvnZqGyURuwXDCtzp9X6gJRKkpWfai7S",
 		},
 		DownloadURLRequestTimeout: types.Duration(300 * time.Second),
 		VolumeSizeRequestTimeout:  types.Duration(2 * time.Minute),
-		NodeInfoStoreTTL:          types.Duration(10 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,
 		Type:                      []string{"requester"},
@@ -59,10 +52,6 @@ var Development = types.BacalhauConfig{
 			Engines:    []string{},
 			Publishers: []string{},
 			Storages:   []string{},
-		},
-		Libp2p: types.Libp2pConfig{
-			SwarmPort:   1235,
-			PeerConnect: "none",
 		},
 		IPFS: types.IpfsConfig{
 			Connect: "",
@@ -188,4 +177,5 @@ var DevelopmentRequesterConfig = types.RequesterConfig{
 		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
+	NodeInfoStoreTTL: types.Duration(10 * time.Minute),
 }
