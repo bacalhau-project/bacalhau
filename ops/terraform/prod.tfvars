@@ -1,8 +1,5 @@
 bacalhau_version            = "v1.3.2"
 bacalhau_port               = "1235"
-bacalhau_node_id_0          = "QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws"
-bacalhau_node_id_1          = "QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe"
-bacalhau_node_id_2          = "QmPLPUUjaVE3wQNSSkxmYoaBPHVAWdjBjDYmMkWvtMZxAf"
 bacalhau_environment        = "production"
 ipfs_version                = "v0.12.2"
 gcp_project                 = "bacalhau-prod"
@@ -32,6 +29,5 @@ num_gpu_machines            = 2
 internal_ip_addresses       = ["10.150.0.5", "10.150.0.6", "10.150.0.7", "10.150.0.8", "10.150.0.9"]
 public_ip_addresses         = ["35.245.161.250", "34.86.254.26", "35.245.215.155", "34.145.201.224", "35.245.41.51"]
 log_level                   = "debug"
-network_type                = "nats"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"

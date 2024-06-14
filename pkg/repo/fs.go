@@ -160,7 +160,7 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 	}
 
 	// ensure the loaded config has valid fields as they pertain to the filesystem
-	// e.g. user key and libp2p files exists, storage paths exist, etc.
+	// e.g. user key files exists, storage paths exist, etc.
 	if err := validateRepoConfig(cfg); err != nil {
 		return fmt.Errorf("failed to validate repo config: %w", err)
 	}
@@ -249,7 +249,6 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 
 	c.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(config.UpdateCheckStatePath))
 	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
-	c.SetIfAbsent(types.UserLibp2pKeyPath, fsr.join(config.Libp2pPrivateKeyFileName))
 	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
 
 	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))

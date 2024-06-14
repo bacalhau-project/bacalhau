@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/exp/maps"
 )
 
@@ -80,7 +79,6 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 type NodeInfo struct {
 	// TODO replace all access on this field with the `ID()` method
 	NodeID          string            `json:"NodeID"`
-	PeerInfo        *peer.AddrInfo    `json:"PeerInfo,omitempty" yaml:",omitempty"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
@@ -89,12 +87,7 @@ type NodeInfo struct {
 
 // ID returns the node ID
 func (n NodeInfo) ID() string {
-	if n.NodeID != "" {
-		return n.NodeID
-	} else if n.PeerInfo != nil {
-		return n.PeerInfo.ID.String()
-	}
-	return ""
+	return n.NodeID
 }
 
 // IsComputeNode returns true if the node is a compute node
