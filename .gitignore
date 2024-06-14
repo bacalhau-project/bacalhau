@@ -46,7 +46,7 @@ tests.xml
 output_dir
 experimental/*
 .idea/
-job-*
+/job-*/
 !job-info-consumer*
 !testdata/job-*
 coverage/
