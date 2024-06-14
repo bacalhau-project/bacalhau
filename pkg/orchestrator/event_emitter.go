@@ -4,16 +4,17 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
 )
 
 // A quick workaround to publish job events locally as we still have some types that rely
 // on job events to update their states (e.g. localdb) and to take actions (e.g. websockets and logging)
-// TODO: create a strongly typed local event emitter similar to libp2p event bus, and update localdb directly from
+// TODO: create a strongly typed local event emitter, and update localdb directly from
 //
 //	requester instead of consuming events.
 type EventEmitterParams struct {

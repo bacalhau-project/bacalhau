@@ -2,25 +2,17 @@ package test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -43,36 +35,12 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
-	libp2pPort, err := network.GetFreePort()
+	networkPort, err := network.GetFreePort()
 	require.NoError(t, err)
 
-	privKey, err := config.GetLibp2pPrivKey(c.User.Libp2pKeyPath)
-	require.NoError(t, err)
-
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	require.NoError(t, err)
-	nodeID := peerID.String()
-
-	var libp2pHost host.Host
-
-	networkConfig := node.NetworkConfig{}
-
-	networkType, ok := os.LookupEnv("BACALHAU_NODE_NETWORK_TYPE")
-	if !ok {
-		// Default to NATS
-		networkType = models.NetworkTypeNATS
-	}
-
-	networkConfig.Type = networkType
-	if networkType == models.NetworkTypeLibp2p {
-		libp2pHost, err = libp2p.NewHost(libp2pPort, privKey)
-		require.NoError(t, err)
-
-		networkConfig.Libp2pHost = libp2pHost
-	} else {
-		networkConfig.AuthSecret = "test"
-		networkConfig.Port, err = network.GetFreePort()
-		require.NoError(t, err)
+	networkConfig := node.NetworkConfig{
+		AuthSecret: "test",
+		Port:       networkPort,
 	}
 
 	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(repoPath, "jobs.db"))
@@ -91,19 +59,17 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
-		NodeID:                    nodeID,
-		CleanupManager:            cm,
-		HostAddress:               "0.0.0.0",
-		APIPort:                   0,
-		ComputeConfig:             computeConfig,
-		RequesterNodeConfig:       requesterConfig,
-		APIServerConfig:           apiCfg,
-		IsRequesterNode:           true,
-		IsComputeNode:             true,
-		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
-		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
-		NodeInfoStoreTTL:          10 * time.Minute,
-		NetworkConfig:             networkConfig,
+		NodeID:              "node-0",
+		CleanupManager:      cm,
+		HostAddress:         "0.0.0.0",
+		APIPort:             0,
+		ComputeConfig:       computeConfig,
+		RequesterNodeConfig: requesterConfig,
+		APIServerConfig:     apiCfg,
+		IsRequesterNode:     true,
+		IsComputeNode:       true,
+		DependencyInjector:  devstack.NewNoopNodeDependencyInjector(),
+		NetworkConfig:       networkConfig,
 	}
 
 	n, err := node.NewNode(ctx, c, nodeConfig, repo)

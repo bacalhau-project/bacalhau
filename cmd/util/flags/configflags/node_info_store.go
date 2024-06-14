@@ -7,8 +7,8 @@ import (
 var NodeInfoStoreFlags = []Definition{
 	{
 		FlagName:     "node-info-store-ttl",
-		ConfigPath:   types.NodeNodeInfoStoreTTL,
-		DefaultValue: Default.Node.NodeInfoStoreTTL,
+		ConfigPath:   types.NodeRequesterNodeInfoStoreTTL,
+		DefaultValue: Default.Node.Requester.NodeInfoStoreTTL,
 		Description: `Sets the duration for which node information is retained in the node info store after which it
 is automatically removed from the store.`,
 	},
