@@ -35,6 +35,8 @@ def main():
     }
     data.update(target)
 
+    print(f"Full data: {data}")
+
     response = requests.post(
         "https://circleci.com/api/v2/project/gh/bacalhau-project/bacalhau/pipeline",
         headers=headers,
@@ -49,13 +51,6 @@ def main():
     else:
         print("Successfully triggered CircleCI pipeline")
 
-
-# curl --fail -X POST --header "Content-Type: application/json" --header "Circle-Token: ${CIRCLE_TOKEN}" -d "{
-#  \"parameters\": {
-#     \"GHA_Action\": \"trigger_pipeline\"
-#  },
-#  ${TARGET}
-# }" https://circleci.com/api/v2/project/gh/bacalhau-project/bacalhau/pipeline
 
 if __name__ == "__main__":
     # Get .env file as flag
