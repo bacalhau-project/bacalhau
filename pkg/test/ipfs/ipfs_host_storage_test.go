@@ -90,10 +90,7 @@ func (suite *IPFSHostStorageSuite) runFileTest(getStorageDriver getStorageFunc) 
 		Target: "/data/file.txt",
 	}
 
-	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorageLocally(ctx, inputSource)
-	suite.Require().NoError(err)
-	suite.Require().True(hasCid)
+	suite.verifyHasCID(ctx, storageDriver, inputSource, fileCid)
 
 	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
 	suite.Require().NoError(err)
@@ -134,10 +131,7 @@ func (suite *IPFSHostStorageSuite) runFolderTest(getStorageDriver getStorageFunc
 		Target: "/data/folder",
 	}
 
-	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorageLocally(ctx, inputSource)
-	suite.Require().NoError(err)
-	suite.Require().True(hasCid)
+	suite.verifyHasCID(ctx, storageDriver, inputSource, folderCid)
 
 	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
 	suite.Require().NoError(err)
@@ -151,4 +145,23 @@ func (suite *IPFSHostStorageSuite) runFolderTest(getStorageDriver getStorageFunc
 
 	err = storageDriver.CleanupStorage(ctx, inputSource, volume)
 	suite.Require().NoError(err)
+}
+
+func (suite *IPFSHostStorageSuite) verifyHasCID(ctx context.Context,
+	storageDriver storage.Storage,
+	inputSource models.InputSource,
+	fileCid string) {
+	// we check public dht for the cid providers, and can take time
+	// for the cid to be discoverable
+	var hasCid bool
+	var err error
+	timeoutAt := time.Now().Add(10 * time.Second)
+	for !hasCid && time.Now().Before(timeoutAt) {
+		hasCid, err = storageDriver.HasStorageLocally(ctx, inputSource)
+		suite.Require().NoError(err)
+		if !hasCid {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	suite.Require().Truef(hasCid, "cid %s not found in local storage", fileCid)
 }
