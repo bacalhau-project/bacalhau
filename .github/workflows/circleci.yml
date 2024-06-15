@@ -12,7 +12,7 @@ on:
     types:
       - completed
   repository_dispatch:
-    types: [ok-to-test]
+    types: [ok-to-test, ok-to-trigger-circleci]
 
 permissions:
   contents: write
@@ -62,6 +62,12 @@ jobs:
             exit 1
           fi
 
+          if [[ -n "${{ github.event.client_payload.full_name }}" ]]; then
+            echo "FULL_NAME=${{ github.event.client_payload.full_name }}" >> $GITHUB_ENV
+          else
+            echo "FULL_NAME=${{ github.repository }}" >> $GITHUB_ENV
+          fi
+
       - uses: hmarr/debug-action@v3
 
       - name: "Trigger CircleCI"
@@ -74,3 +80,4 @@ jobs:
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
           REF: ${{ env.REF }}
+          FULL_NAME: ${{ github.repository }}
