@@ -1,0 +1,29 @@
+name: Ok to push to upstream
+
+on:
+  repository_dispatch:
+    types: [ok-to-push-to-upstream]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-push-to-upstream:
+    runs-on: ubuntu-latest
+    name: Push to upstream
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - uses: hmarr/debug-action@v3
+      - name: "Trigger Push to Upstream"
+        id: trigger-push-to-upstream-step
+        run: |
+          echo "Trigger Push to Upstream"
+
+          # Print out the full client_payload for debugging
+          echo "Client Payload: ${{ toJson(github.event.client_payload) }}"
+
+          ./.circleci/push-to-upstream-fork.sh \
+          ${{ github.event.client_payload.upstream_branch }} \
+          ${{ github.event.client_payload.user }}/${{ github.event.client_payload.branch }}
