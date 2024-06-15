@@ -39,6 +39,9 @@ parameters:
   PUSH_BRANCH:
     type: string
     default: ""
+  full_name:
+    default: ""
+    type: string
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
