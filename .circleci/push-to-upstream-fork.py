@@ -48,23 +48,6 @@ def get_pull_request_info(github_token, upstream_repo, source_gh_user, source_br
     return pr.title, pr.body
 
 
-def experimental_code(github_token, upstream_repo, source_gh_user, source_branch):
-    g = Github(github_token)
-    repo = g.get_repo(f"{upstream_repo}")
-    pull_requests = repo.get_pulls(
-        state="open", head=f"{source_gh_user}:{source_branch}"
-    )
-
-    if pull_requests.totalCount == 0:
-        print(
-            f"No open pull request found for branch {source_branch} in repo {upstream_repo}"
-        )
-        sys.exit(1)
-
-    pr = pull_requests[0]
-    return pr.title, pr.body
-
-
 def create_pull_request(
     github_token, upstream_repo, source_branch, new_branch_name, title, body
 ):
@@ -116,21 +99,12 @@ def main():
     parser.add_argument(
         "--github_token", type=str, required=True, help="GitHub token for API access"
     )
-    parser.add_argument(
-        "--experimental",
-        default=False,
-        required=False,
-        action="store_true",
-        help="Enable experimental code",
-    )
-
     args = parser.parse_args()
 
     upstream_full_name = args.upstream_full_name
     branch_spec = args.branch_spec
     gpf_upstream_branch = args.gpf_upstream_branch
     github_token = args.github_token
-    experimental = args.experimental
 
     if branch_spec.count(":") != 1:
         parser.error(
@@ -141,13 +115,6 @@ def main():
     repo_name = run_command(
         "git remote get-url --push origin | awk -F/ '{print $NF}' | sed 's/\\.git$//'"
     )
-
-    # Set to false for now
-    if experimental is False:
-        title, body = experimental_code(
-            github_token, upstream_full_name, source_gh_user, source_branch
-        )
-        exit(0)
 
     random_string = "".join(random.choices(string.ascii_letters + string.digits, k=6))
     fork_to_test_name = f"fork-to-test-{random_string}"
