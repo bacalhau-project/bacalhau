@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -26,7 +25,7 @@ var (
 	//nolint:lll // Documentation
 	getExample = templates.Examples(i18n.T(`
 		# Get the results of a job.
-		bacalhau job get 51225160-807e-48b8-88c9-28311c7899e1
+		bacalhau job get j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Get the results of a job, with a short ID.
 		bacalhau job get ebd9bf2f
@@ -109,7 +108,7 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 		jobID,
 		OG.DownloadSettings,
 	); err != nil {
-		return errors.Wrap(err, "error downloading job")
+		return fmt.Errorf("downloading job: %w", err)
 	}
 
 	return nil
