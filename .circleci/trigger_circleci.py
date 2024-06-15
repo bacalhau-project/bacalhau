@@ -57,16 +57,17 @@ def main():
 if __name__ == "__main__":
     # Get .env file as flag
     argsp = argparse.ArgumentParser()
-    argsp.add_argument("--env", type=str, default=".env")
+    argsp.add_argument(
+        "--env", type=str, default=".env", required=False, help="Path to .env file."
+    )
     argsp.add_argument("--test", type=bool, default=False, help="Test mode.")
     args = argsp.parse_args()
 
-    if args.env:
+    if args.env is not None and args.env != "":
         if Path(args.env).exists():
             load_dotenv(args.env)
         else:
             print(f"File {args.env} does not exist. Exiting.")
-            exit
 
     if args.test:
         if Path(args.env).exists():
