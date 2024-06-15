@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 def main():
     branch = os.getenv("BRANCH")
     circle_token = os.getenv("CIRCLE_TOKEN")
+    full_name = os.getenv("FULL_NAME")
 
     if not circle_token:
         print("CIRCLE_TOKEN is not set. Exiting.")
@@ -31,6 +32,7 @@ def main():
     data = {
         "parameters": {
             "GHA_Action": "trigger_pipeline",
+            "full_name": full_name,
         },
     }
     data.update(target)

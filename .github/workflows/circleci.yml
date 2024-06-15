@@ -62,6 +62,12 @@ jobs:
             exit 1
           fi
 
+          if [[ -n "${{ github.event.client_payload.full_name }}" ]]; then
+            echo "FULL_NAME=${{ github.event.client_payload.full_name }}" >> $GITHUB_ENV
+          else
+            echo "FULL_NAME=${{ github.repository }}" >> $GITHUB_ENV
+          fi
+
       - uses: hmarr/debug-action@v3
 
       - name: "Trigger CircleCI"
@@ -73,4 +79,5 @@ jobs:
           python ./.circleci/trigger_circleci.py
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          SHA: ${{ env.SHA }}
+          REF: ${{ env.REF }}
+          FULL_NAME: ${{ github.repository }}
