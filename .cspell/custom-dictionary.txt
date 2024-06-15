@@ -134,6 +134,7 @@ gserviceaccount
 healthz
 helloworld
 HMAC
+hmarr
 humanid
 icore
 icoreoptions
