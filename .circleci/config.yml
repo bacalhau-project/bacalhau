@@ -31,6 +31,10 @@ parameters:
   earthly_satellite:
     default: "build-vm-linux-amd64"
     type: string
+    
+  full_name:
+    type: string
+    default: ""
 
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
