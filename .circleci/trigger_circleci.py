@@ -17,12 +17,12 @@ def main():
         exit(1)
 
     if not branch:
-        target = {"branch": "main"}
+        target = {"PUSH_BRANCH": "main"}
     elif "refs/tags" in branch:
         tag = branch.replace("refs/tags/", "")
-        target = {"tag": tag}
+        target = {"PUSH_TAG": tag}
     else:
-        target = {"branch": branch}
+        target = {"PUSH_BRANCH": branch}
 
     headers = {
         "Content-Type": "application/json",
@@ -58,6 +58,7 @@ if __name__ == "__main__":
     # Get .env file as flag
     argsp = argparse.ArgumentParser()
     argsp.add_argument("--env", type=str, default=".env")
+    argsp.add_argument("--test", type=bool, default=False, help="Test mode.")
     args = argsp.parse_args()
 
     if args.env:
@@ -66,5 +67,21 @@ if __name__ == "__main__":
         else:
             print(f"File {args.env} does not exist. Exiting.")
             exit
+
+    if args.test:
+        if Path(args.env).exists():
+            load_dotenv(args.env)
+        else:
+            print(f"File {args.env} does not exist. Exiting.")
+            exit
+
+        os.environ["REF"] = "main"
+        os.environ["CIRCLE_TOKEN"] = os.environ["CIRCLE_TOKEN"]
+        os.environ["FULL_NAME"] = "aronchick/main"
+
+        print("Running in test mode.")
+        print(f"Branch: {os.getenv('BRANCH')}")
+        print(f"Circle Token: {os.getenv('CIRCLE_TOKEN')}")
+        print(f"Full Name: {os.getenv('FULL_NAME')}")
 
     main()
