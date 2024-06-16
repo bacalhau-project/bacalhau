@@ -15,6 +15,8 @@ pre-commit:
 	poetry run pre-commit run --files ./**/*
 
 install-deps:
+	python -m ensurepip
+	python -m pip install poetry
 	poetry install --no-root --no-interaction --no-ansi --with test
 	poetry run pre-commit install
 
@@ -22,12 +24,12 @@ install-deps:
 setup: pre-commit install-deps
 
 build: install-deps
-	python get_pypi_token.py
-	PYPI_VERSION=$VERSION
-
 	# Exit with error if PYPI_VERSION environment variable is not set
 	test -n $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
 	# Test to see if poetry version is same as the one in pyproject.toml
+	echo "poetry version: $(poetry --version)"
+	echo "PYPI_VERSION environment variable: $PYPI_VERSION"
+
 	poetry version -- $PYPI_VERSION
 
 	echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"

@@ -58,6 +58,7 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 export MAKE := $(shell command -v make 2> /dev/null)
+export JUST := $(shell command -v just 2> /dev/null)
 
 define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
@@ -88,8 +89,16 @@ install-pre-commit:
 resolve-earthly:
 	@echo "Resolved Earthly path - ${EARTHLY}"
 ifeq ($(EARTHLY),)
-	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly install it.")
+	$(error "Earthly is not installed. Please go to https://earthly.dev/get-earthly to install it.")
 endif
+
+.PHONY: resolve-just
+resolve-just:
+	@echo "Resolved Just path - ${JUST}"
+ifeq ($(JUST),)
+	$(error "Just is not installed. Please go to https://github.com/casey/just to install it.")
+endif
+
 
 ## Run all pre-commit hooks
 ################################################################################
@@ -123,7 +132,7 @@ build-python-apiclient: resolve-earthly
 ################################################################################
 .PHONY: build-python-sdk
 build-python-sdk:
-	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
+	cd python && ${JUST} build
 	@echo "Python SDK built."
 
 ################################################################################
@@ -330,9 +339,9 @@ unit-test:
 	go test ./... -v --tags=unit
 
 .PHONY: test-python-sdk
-test-python-sdk: resolve-earthly
+test-python-sdk:
 # sdk tests
-	cd python && ${MAKE} test
+	cd python && ${JUST} test
 
 .PHONY: integration-test
 integration-test:
