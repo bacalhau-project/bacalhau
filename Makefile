@@ -339,6 +339,8 @@ integration-test:
 
 .PHONY: bash-test
 bash-test: ${BINARY_PATH}
+	export BACALHAU_CUSTOM_CONFIG=$(CONFIG); \
+	export CLUSTER=$(CLUSTER); \
 	cd test && bin/bashtub *.sh
 
 .PHONY: test-debug

@@ -1,0 +1,254 @@
+[
+    {
+      "NodeID": "QmRr9qPTe4mU7aS9faKnWgvn1NtXt36FT8YUULRPCn2f3K",
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "git-lfs": "false",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "s3",
+          "local",
+          "noop",
+          "ipfs"
+        ],
+        "StorageSources": [
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3",
+          "ipfs",
+          "urldownload"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 83223625728
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 83223625728
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 83223625728
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "GitVersion": "",
+        "GitCommit": "",
+        "BuildDate": "0001-01-01T00:00:00Z",
+        "GOOS": "",
+        "GOARCH": ""
+      },
+      "Approval": ""
+    },
+    {
+      "NodeID": "QmVHCeiLzhFJPCyCj5S1RTAk1vBEvxd8r5A6E4HyJGQtbJ",
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "git-lfs": "false",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "noop",
+          "ipfs",
+          "s3",
+          "local"
+        ],
+        "StorageSources": [
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3",
+          "ipfs"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406194892,
+          "Disk": 83159826432
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406194892,
+          "Disk": 83159826432
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 13406194892,
+          "Disk": 83159826432
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "GitVersion": "",
+        "GitCommit": "",
+        "BuildDate": "0001-01-01T00:00:00Z",
+        "GOOS": "",
+        "GOARCH": ""
+      },
+      "Approval": ""
+    },
+    {
+      "NodeID": "Qma5yQAkEDWKBUZd3G4YRpvv5qBMpKvFywR7sqB34LB2Aw",
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "GPU-0": "Tesla-T4",
+        "GPU-0-Memory": "15360-MiB",
+        "Operating-System": "linux",
+        "git-lfs": "false",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "noop",
+          "ipfs",
+          "s3",
+          "local"
+        ],
+        "StorageSources": [
+          "ipfs",
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 33151667404,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 33151667404,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 33151667404,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "GitVersion": "",
+        "GitCommit": "",
+        "BuildDate": "0001-01-01T00:00:00Z",
+        "GOOS": "",
+        "GOARCH": ""
+      },
+      "Approval": ""
+    },
+    {
+      "NodeID": "QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv",
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "git-lfs": "false",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "ipfs",
+          "s3",
+          "local",
+          "noop"
+        ],
+        "StorageSources": [
+          "repoclonelfs",
+          "s3",
+          "ipfs",
+          "urldownload",
+          "inline",
+          "repoclone"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 80532196556
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 80532196556
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 13406201446,
+          "Disk": 80532196556
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "GitVersion": "",
+        "GitCommit": "",
+        "BuildDate": "0001-01-01T00:00:00Z",
+        "GOOS": "",
+        "GOARCH": ""
+      },
+      "Approval": ""
+    }
+  ]

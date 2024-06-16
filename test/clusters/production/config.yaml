@@ -1,0 +1,6 @@
+Node:
+  Name: ""
+  NameProvider: puuid
+  ClientAPI:
+    Host: bootstrap.production.bacalhau.org
+    Port: 1234

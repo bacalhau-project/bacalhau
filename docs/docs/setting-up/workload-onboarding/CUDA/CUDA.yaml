@@ -1,0 +1,25 @@
+name: Run CUDA programs
+type: batch
+count: 1
+tasks:
+  - name: My main task
+    Engine:
+      type: docker
+      params:
+        Image: nvidia/cuda:12.2.2-devel-ubuntu22.04
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello
+    Publisher:
+      Type: ipfs
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs      
+    InputSources:
+    - Target: /inputs
+      Source:
+        Type: urlDownload
+        Params:
+          URL: https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu

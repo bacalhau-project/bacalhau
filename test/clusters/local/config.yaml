@@ -1,0 +1,6 @@
+Node:
+  Name: ""
+  NameProvider: puuid
+  ClientAPI:
+    Host: "0.0.0.0"
+    Port: 1234

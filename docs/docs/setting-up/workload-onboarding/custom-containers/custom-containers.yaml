@@ -1,0 +1,14 @@
+name: A Simple Docker Job
+type: batch
+count: 3
+tasks:
+  - name: My main task
+    engine:
+      type: docker
+      params:
+        Image: ghcr.io/bacalhau-project/examples/codsay:v1.0.0
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - codsay Look at all this data

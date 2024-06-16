@@ -1,0 +1,368 @@
+[
+    {
+      "NodeID": "QmPLPUUjaVE3wQNSSkxmYoaBPHVAWdjBjDYmMkWvtMZxAf",
+      "PeerInfo": {
+        "ID": "QmPLPUUjaVE3wQNSSkxmYoaBPHVAWdjBjDYmMkWvtMZxAf",
+        "Addrs": [
+          "/ip4/35.245.215.155/tcp/1235"
+        ]
+      },
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "noop",
+          "ipfs",
+          "local"
+        ],
+        "StorageSources": [
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3",
+          "ipfs"
+        ],
+        "MaxCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930672128,
+          "Disk": 1685484522700
+        },
+        "AvailableCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930672128,
+          "Disk": 1685484522700
+        },
+        "MaxJobRequirements": {
+          "CPU": 12.8,
+          "Memory": 53930672128,
+          "Disk": 1685484522700
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "Major": "1",
+        "Minor": "3",
+        "GitVersion": "v1.3.0",
+        "GitCommit": "5428f7f66d51f31638d46550b47fd90aab5d2cff",
+        "BuildDate": "2024-03-24T18:20:18Z",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+      },
+      "Approval": "APPROVED"
+    },
+    {
+      "NodeID": "QmRHRr8cB4Saus5VogTekvKi7CUQ1WXjYmjPPcn7uEYzse",
+      "PeerInfo": {
+        "ID": "QmRHRr8cB4Saus5VogTekvKi7CUQ1WXjYmjPPcn7uEYzse",
+        "Addrs": [
+          "/ip4/34.145.201.224/tcp/1235"
+        ]
+      },
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "ipfs",
+          "local",
+          "noop"
+        ],
+        "StorageSources": [
+          "ipfs",
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1597182771200,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1597182771200,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1597182771200,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "Major": "1",
+        "Minor": "3",
+        "GitVersion": "v1.3.0",
+        "GitCommit": "5428f7f66d51f31638d46550b47fd90aab5d2cff",
+        "BuildDate": "2024-03-24T18:20:18Z",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+      },
+      "Approval": "APPROVED"
+    },
+    {
+      "NodeID": "QmSD38wHdeoLrfysEejQnqpmNx4iUPh83Dh4vfYRHML9aC",
+      "PeerInfo": {
+        "ID": "QmSD38wHdeoLrfysEejQnqpmNx4iUPh83Dh4vfYRHML9aC",
+        "Addrs": [
+          "/ip4/35.245.41.51/tcp/1235"
+        ]
+      },
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "docker",
+          "wasm"
+        ],
+        "Publishers": [
+          "local",
+          "noop",
+          "ipfs"
+        ],
+        "StorageSources": [
+          "ipfs",
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3"
+        ],
+        "MaxCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1592270526873,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "AvailableCapacity": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1592270526873,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "MaxJobRequirements": {
+          "CPU": 3.2,
+          "Memory": 12560629760,
+          "Disk": 1592270526873,
+          "GPU": 1,
+          "GPUs": [
+            {
+              "Index": 0,
+              "Name": "Tesla T4",
+              "Vendor": "NVIDIA",
+              "Memory": 15360,
+              "PCIAddress": ""
+            }
+          ]
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "Major": "1",
+        "Minor": "3",
+        "GitVersion": "v1.3.0",
+        "GitCommit": "5428f7f66d51f31638d46550b47fd90aab5d2cff",
+        "BuildDate": "2024-03-24T18:20:18Z",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+      },
+      "Approval": "APPROVED"
+    },
+    {
+      "NodeID": "QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws",
+      "PeerInfo": {
+        "ID": "QmbxGSsM6saCTyKkiWSxhJCt6Fgj7M9cns1vzYtfDbB5Ws",
+        "Addrs": [
+          "/ip4/35.245.161.250/tcp/1235"
+        ]
+      },
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "wasm",
+          "docker"
+        ],
+        "Publishers": [
+          "noop",
+          "ipfs",
+          "local"
+        ],
+        "StorageSources": [
+          "urldownload",
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3",
+          "ipfs"
+        ],
+        "MaxCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1677616706355
+        },
+        "AvailableCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1677616706355
+        },
+        "MaxJobRequirements": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1677616706355
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "Major": "1",
+        "Minor": "3",
+        "GitVersion": "v1.3.0",
+        "GitCommit": "5428f7f66d51f31638d46550b47fd90aab5d2cff",
+        "BuildDate": "2024-03-24T18:20:18Z",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+      },
+      "Approval": "APPROVED"
+    },
+    {
+      "NodeID": "QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe",
+      "PeerInfo": {
+        "ID": "QmeXjeQDinxm7zRiEo8ekrJdbs7585BM6j7ZeLVFrA7GPe",
+        "Addrs": [
+          "/ip4/34.86.254.26/tcp/1235"
+        ]
+      },
+      "NodeType": "Compute",
+      "Labels": {
+        "Architecture": "amd64",
+        "Operating-System": "linux",
+        "owner": "bacalhau"
+      },
+      "ComputeNodeInfo": {
+        "ExecutionEngines": [
+          "wasm",
+          "docker"
+        ],
+        "Publishers": [
+          "local",
+          "noop",
+          "ipfs"
+        ],
+        "StorageSources": [
+          "inline",
+          "repoclone",
+          "repoclonelfs",
+          "s3",
+          "ipfs",
+          "urldownload"
+        ],
+        "MaxCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1685395593625
+        },
+        "AvailableCapacity": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1685395593625
+        },
+        "MaxJobRequirements": {
+          "CPU": 12.8,
+          "Memory": 53930665574,
+          "Disk": 1685395593625
+        },
+        "RunningExecutions": 0,
+        "EnqueuedExecutions": 0
+      },
+      "BacalhauVersion": {
+        "Major": "1",
+        "Minor": "3",
+        "GitVersion": "v1.3.0",
+        "GitCommit": "5428f7f66d51f31638d46550b47fd90aab5d2cff",
+        "BuildDate": "2024-03-24T18:20:18Z",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+      },
+      "Approval": "APPROVED"
+    }
+  ]
+  
