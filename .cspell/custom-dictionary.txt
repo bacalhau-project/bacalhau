@@ -276,6 +276,7 @@ Pylance
 pypi
 pypoetry
 pyseaflux
+pytest
 PYTHONVER
 querys
 quic

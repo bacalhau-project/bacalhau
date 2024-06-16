@@ -1,19 +1,14 @@
-set shell := ["sh", "-c"]
+set shell := ["bash", "-c"]
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 set allow-duplicate-recipes
 set positional-arguments
 set dotenv-load
 set export
 
-SOURCES := bacalhau_sdk
+SOURCES:="bacalhau_sdk"
 
 @default:
 	just --list
-
-# Setup the environment
-setup:
-	install-deps
-	check-python-version-is-same-as-in-pyproject
 
 # Run pre-commit hooks
 pre-commit:
@@ -23,10 +18,10 @@ install-deps:
 	poetry install --no-root --no-interaction --no-ansi --with test
 	poetry run pre-commit install
 
-check-python-version-is-same-as-in-pyproject:
-	poetry version --check
+# Setup the environment
+setup: pre-commit install-deps
 
-build: install-deps check-python-version-is-same-as-in-pyproject ruff
+build: install-deps
 	python get_pypi_token.py
 	PYPI_VERSION=$VERSION
 
@@ -34,7 +29,7 @@ build: install-deps check-python-version-is-same-as-in-pyproject ruff
 	test -n $PYPI_VERSION || (echo "PYPI_VERSION environment variable not set" && exit 1)
 	# Test to see if poetry version is same as the one in pyproject.toml
 	poetry version -- $PYPI_VERSION
-	
+
 	echo "Below will give errors about git repo - it will be fixed when this releases: https://github.com/python-poetry/poetry/issues/8728"
 	poetry build
 
@@ -64,31 +59,34 @@ install-twine: install-deps
 	python3 -m pip install --upgrade twine
 
 publish: install-twine
-	test -n $RELEASE_PYTHON_PACKAGES || (echo "RELEASE_PYTHON_PACKAGES environment variable not set" && exit 1)
-	REPOSITORY_FLAG="--repository-url https://test.pypi.org/legacy/"
-	if [ "${RELEASE_PYTHON_PACKAGES}" = 1 ] {
-		echo "Publishing to pypi.org"
-		REPOSITORY_FLAG=""
-		test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
-		python3 -m twine upload \
-			--non-interactive \
-			--disable-progress-bar \
-			--skip-existing \
-			-u __token__ -p ${PYPI_TOKEN} \
-			--verbose \
-			dist/* \
-			${REPOSITORY_FLAG}
-	} else {
-		echo "Publishing to test.pypi.org"
-		test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
-		python3 -m twine upload \
-			--non-interactive \
-			--disable-progress-bar \
-			--skip-existing \
-			-u __token__ -p ${TEST_PYPI_TOKEN} \
-			--verbose \
-			dist/* \
-			${REPOSITORY_FLAG}
-	}
+	#!/usr/bin/env python
+	import os
+	import sys
+	import subprocess
 
-	echo "Package uploaded to ${REPOSITORY_FLAG}"
+	def error(message):
+		print(message, file=sys.stderr)
+		sys.exit(1)
+
+	RELEASE_PYTHON_PACKAGES = os.getenv('RELEASE_PYTHON_PACKAGES')
+	REPOSITORY_URL = "" if RELEASE_PYTHON_PACKAGES == "1" else "https://test.pypi.org/legacy/"
+	REPOSITORY_FLAG = f"--repository-url" if REPOSITORY_URL else ""
+	print(f"Publishing to '{REPOSITORY_FLAG} {REPOSITORY_URL}' repository (empty means default)")
+
+	TOKEN = os.getenv('PYPI_TOKEN') if RELEASE_PYTHON_PACKAGES == "1" else os.getenv('TEST_PYPI_TOKEN')
+	if not TOKEN:
+		error(f"TOKEN (RELEASE_PYTHON_PACKAGES={RELEASE_PYTHON_PACKAGES}) not found")
+
+	subprocess.run([
+		"python3", "-m", "twine", "upload",
+		"--non-interactive",
+		"--disable-progress-bar",
+		"--skip-existing",
+		"-u", "__token__", "-p", TOKEN,
+		"--verbose",
+		"dist/*",
+		REPOSITORY_FLAG,
+		REPOSITORY_URL
+	], check=True)
+
+	print(f"Package uploaded to {REPOSITORY_FLAG}")
