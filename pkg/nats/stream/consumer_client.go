@@ -71,9 +71,8 @@ type ConsumerClientParams struct {
 
 // ConsumerClient represents a NATS streaming client.
 type ConsumerClient struct {
-	Conn        *nats.Conn
-	mu          sync.RWMutex // Protects access to the response map.
-	muReqSubMap sync.RWMutex // Protects access to reqSubMap
+	Conn *nats.Conn
+	mu   sync.RWMutex // Protects access to the response map.
 
 	// response handler
 	respSub       string                        // The wildcard subject
@@ -267,7 +266,7 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 	request := new(HeartBeatRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
-		log.Err(err).Msg("failured to parse heart beat request for NATs based consumer client")
+		log.Err(err).Msg("Failed to parse heart beat request for NATs based consumer client")
 		return
 	}
 
@@ -298,12 +297,9 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 	token := respInbox[nc.respSubLen:]
 	bucket := newStreamingBucket(ctx, token, subj)
 	nc.respMap[token] = bucket
-	nc.mu.Unlock()
-
-	// Ensure map for this subject exists
-	nc.muReqSubMap.Lock()
 	nc.reqSubMap[subj] = append(nc.reqSubMap[subj], bucket)
-	nc.muReqSubMap.Unlock()
+
+	nc.mu.Unlock()
 
 	streamRequest := Request{
 		ConsumerID:          nc.respSubPrefix,
@@ -332,8 +328,8 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 
 func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[string][]string) map[string][]string {
 	nonActiveStreamIds := make(map[string][]string)
-	nc.muReqSubMap.RLock()
-	defer nc.muReqSubMap.RUnlock()
+	nc.mu.RLock()
+	defer nc.mu.RUnlock()
 
 	// Loop through all active stream ids at producer
 	for subject, producerStreamIds := range activeStreamIDsAtProducer {
@@ -349,7 +345,7 @@ func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[st
 			return time.Since(bucket.createdAt) < nc.config.StreamCancellationBufferDuration
 		})
 
-		//If no non recent buckets, means all are active streams
+		// If no non recent buckets, means all are active streams
 		if len(nonRecentBuckets) == 0 {
 			continue
 		}

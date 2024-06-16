@@ -48,7 +48,9 @@ type StreamInfo struct {
 	RequestSub string
 	// CreatedAt represents the time the stream was created.
 	CreatedAt time.Time
-	// Function to cancel the stream
+	// Function to cancel the stream. This is useful in the event the consumer client
+	// is no longer interested in the stream. The cancel function is inovked informing the
+	// producer to no longer serve the stream.
 	Cancel context.CancelFunc
 }
 

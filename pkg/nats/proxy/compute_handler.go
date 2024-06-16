@@ -158,6 +158,12 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
+	// This context is passed down to particular engine serving the stream. The cancel function is stored as part of
+	// the StreamInfo. When the consumer client informs the producer client via heartBeat that it is no longer interested
+	// in the stream, we call this cancel function. This also informs the engine that we are no longer interested in this
+	// stream and hence close it. There might be scenarios where few logs will make it through after context cancelation
+	// due to race conditions. This should be find and won't result in nil pointers or writing to a closed writer as
+	// we only close the writer after source channel is closed.
 	childCtx, cancel := context.WithCancel(ctx)
 	err = streamingClient.AddStream(
 		streamRequest.ConsumerID,
