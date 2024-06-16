@@ -201,8 +201,10 @@ WEB_GO_FILES := $(shell find webui -name '*.go')
 WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui/build' -not -path 'webui/node_modules/*' -not -name '*.go')
 
 .PHONY: build-webui
-build-webui: resolve-earthly
-	cd webui && ${EARTHLY} --push +all
+build-webui:
+	cd webui
+	flox pull aronchick/webui
+	just all
 
 
 ################################################################################

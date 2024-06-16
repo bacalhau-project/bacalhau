@@ -1,0 +1,16 @@
+install-deps: 
+  yarn set version berry
+  yarn config set nodeLinker node-modules
+  yarn install
+
+run-linter: install-deps
+  yarn eslint
+
+build-artifacts: run-linter
+  yarn build
+
+run-tests: build-artifacts
+  yarn test
+
+all: run-tests
+  echo "Build complete"

@@ -110,5 +110,5 @@
   "description": "WebUI for Bacalhau",
   "main": "./src/index.tsx",
   "homepage": ".",
-  "packageManager": "yarn@4.1.1"
+  "packageManager": "yarn@4.3.0"
 }
