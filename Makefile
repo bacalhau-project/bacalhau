@@ -211,8 +211,12 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 
 .PHONY: build-webui
 build-webui:
+	if [ ! -d ".flox" ]; then \
+		flox pull "aronchick/webui"; \
+	else \
+		flox pull; \
+	fi
 	cd webui
-	flox pull aronchick/webui
 	just all
 
 

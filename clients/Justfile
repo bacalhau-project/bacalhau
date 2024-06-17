@@ -1,0 +1,80 @@
+PACKAGE_NAME := "bacalhau-apiclient"
+UNDERSCORE_PACKAGE_NAME:=`echo "bacalhau-apiclient" | sed 's/-/_/g'`
+SWAGGER_JSON := "../webui/public/swagger/swagger.json"
+VERSION_FROM_SWAGGER_JSON := `jq -r '.info.version' "../webui/public/swagger/swagger.json"`
+PYPI_VERSION := if VERSION_FROM_SWAGGER_JSON != "" { VERSION_FROM_SWAGGER_JSON } else { "0.0.0+develop" }
+
+create-python-config:
+	#!/usr/bin/env bash
+	echo "PACKAGE_NAME={{PACKAGE_NAME}}"
+	echo "jq -r '.info.version' \"{{SWAGGER_JSON}}\""
+	echo "VERSION_FROM_SWAGGER_JSON={{VERSION_FROM_SWAGGER_JSON}}"
+	echo "PYPI_VERSION={{PYPI_VERSION}}"
+
+	PYPI_DOTS_NOT_HYPHENS=$(echo "{{PYPI_VERSION}}" | perl -pe 's/^v(\d+\.\d+\.\d+)-(\d+)-g\w+$/\1.dev\2/')
+
+	cat config.json.template | \
+		sed -e "s/VERSION/$PYPI_DOTS_NOT_HYPHENS/g" | \
+		sed -e "s/PACKAGE-NAME/{{UNDERSCORE_PACKAGE_NAME}}/g" > python-config.json
+
+	# swagger codegen names the generated methods after the related endpoint @ID annotation (e.g. pkg/requester/publicapi/submit)
+	# this results into a names that are not quite user-friendly (e.g. pkgrequesterpublicapisubmit)
+	# furthermore, codegen does not allow overriding the prefix name for python
+	# thus, we patch the swagger spec file to remove the prefix above
+	# TODO: remove the line below when https://github.com/swagger-api/swagger-codegen/issues/11993 is addressed
+	cat {{ SWAGGER_JSON }} | sed -e 's/model.//g;s/publicapi.//g;s/pkg\/requester//g;s/types.//g' | tee ./swagger-edited-tmp.json >> /dev/null
+	mv ./swagger-edited-tmp.json ./swagger-edited.json
+
+	rm -rf python/
+
+	swagger-codegen generate -l python \
+			-o python/ \
+			-i ./swagger-edited.json \
+			-c python-config.json \
+			--remove-operation-id-prefix=true 2>&1 | tee python-codegen.log
+
+	# patch package version
+	cat pyproject.toml.template | sed -e "s/VERSION/$PYPI_DOTS_NOT_HYPHENS/g" > python/pyproject.toml
+	# patch README
+	cat python/README.md | sed -e "s/Python 2.7 and 3.4+/Python 3.6+/g" | tee python/README.md
+
+pypi-build:
+	cd python && python3 -m pip install --upgrade build && python3 -m build
+
+install-twine:
+	python3 -m pip install --upgrade twine
+
+publish: install-twine
+	#!/usr/bin/env python
+	import os
+	import sys
+	import subprocess
+
+	def error(message):
+			print(message, file=sys.stderr)
+			sys.exit(1)
+
+	RELEASE_PYTHON_PACKAGES = os.getenv('RELEASE_PYTHON_PACKAGES')
+	REPOSITORY_URL = "" if RELEASE_PYTHON_PACKAGES == "1" else "https://test.pypi.org/legacy/"
+	REPOSITORY_FLAG = f"--repository-url" if REPOSITORY_URL else ""
+	print(f"Publishing to '{REPOSITORY_FLAG} {REPOSITORY_URL}' repository (empty means default)")
+
+	TOKEN = os.getenv('PYPI_TOKEN') if RELEASE_PYTHON_PACKAGES == "1" else os.getenv('TEST_PYPI_TOKEN')
+	if not TOKEN:
+			error(f"TOKEN (RELEASE_PYTHON_PACKAGES={RELEASE_PYTHON_PACKAGES}) not found")
+
+	subprocess.run([
+			"python3", "-m", "twine", "upload",
+			"--non-interactive",
+			"--disable-progress-bar",
+			"--skip-existing",
+			"-u", "__token__", "-p", TOKEN,
+			"--verbose",
+			"python/dist/*",
+			REPOSITORY_FLAG,
+			REPOSITORY_URL
+	], check=True)
+
+	print(f"Package uploaded to {REPOSITORY_FLAG}")
+
+all: create-python-config pypi-build publish

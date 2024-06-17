@@ -1,16 +1,22 @@
-install-deps: 
-  yarn set version berry
-  yarn config set nodeLinker node-modules
-  yarn install
+set shell := ["sh", "-c"]
+set allow-duplicate-recipes
+set positional-arguments
+set dotenv-load
+set export
+
+install-deps:
+	yarn set version berry
+	yarn config set nodeLinker node-modules
+	yarn install
 
 run-linter: install-deps
-  yarn eslint
+	yarn eslint
 
 build-artifacts: run-linter
-  yarn build
+	yarn build
 
 run-tests: build-artifacts
-  yarn test
+	yarn test
 
 all: run-tests
-  echo "Build complete"
+	echo "Build complete"
