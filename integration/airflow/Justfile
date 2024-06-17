@@ -1,0 +1,79 @@
+set shell := ["sh", "-c"]
+set allow-duplicate-recipes
+set positional-arguments
+set dotenv-load
+set export
+
+SWAGGER_JSON := "../../webui/public/swagger/swagger.json"
+PYPI_VERSION := `python ../../scripts/get_current_version_for_builds.py --pep440`
+
+install-deps:
+	#!/usr/bin/env bash
+	pip3 install --upgrade pip
+	requirements.txt .
+	pip3 install -r requirements.txt
+
+run-lint: install-deps
+	#!/usr/bin/env bash
+	ruff --config ruff.toml
+
+run-format: install-deps
+	#!/usr/bin/env bash
+	ruff format .
+
+run-tests: install-deps
+	#!/usr/bin/env bash
+	tox
+
+make-docs: install-deps
+	#!/usr/bin/env bash
+	rm -f docs/bacalhau_airflow.rst
+	rm -f docs/modules.rst
+	sphinx-apidoc -o docs/ bacalhau_airflow
+	make -C docs clean
+	make -C docs html
+
+dist: install-deps
+	#!/usr/bin/env bash
+	echo "Building version ${PYPI_VERSION}"
+
+	# Clean all dist/ files
+	rm -rf dist/
+
+	python3 setup.py sdist
+	python3 setup.py bdist_wheel
+
+release: dist
+	#!/usr/bin/env python
+	import os
+	import sys
+	import subprocess
+
+	def error(message):
+		print(message, file=sys.stderr)
+		sys.exit(1)
+
+	RELEASE_PYTHON_PACKAGES = os.getenv('RELEASE_PYTHON_PACKAGES')
+	REPOSITORY_URL = "" if RELEASE_PYTHON_PACKAGES == "1" else "https://test.pypi.org/legacy/"
+	REPOSITORY_FLAG = f"--repository-url" if REPOSITORY_URL else ""
+	print(f"Publishing to '{REPOSITORY_FLAG} {REPOSITORY_URL}' repository (empty means default)")
+
+	TOKEN = os.getenv('PYPI_TOKEN') if RELEASE_PYTHON_PACKAGES == "1" else os.getenv('TEST_PYPI_TOKEN')
+	if not TOKEN:
+		error(f"TOKEN (RELEASE_PYTHON_PACKAGES={RELEASE_PYTHON_PACKAGES}) not found")
+
+	subprocess.run([
+		"python3", "-m", "twine", "upload",
+		"--non-interactive",
+		"--disable-progress-bar",
+		"--skip-existing",
+		"-u", "__token__", "-p", TOKEN,
+		"--verbose",
+		"dist/*",
+		REPOSITORY_FLAG,
+		REPOSITORY_URL
+	], check=True)
+
+	print(f"Package uploaded to {REPOSITORY_FLAG}")
+
+all: release
