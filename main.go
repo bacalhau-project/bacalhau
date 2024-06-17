@@ -38,6 +38,8 @@ import (
 // @externalDocs.description 	Bacalhau Documentation
 // @externalDocs.url			https://docs.bacalhau.org
 
+// @version 1.0
+
 ////	@securityDefinitions.basic	BasicAuth
 
 ////	@securityDefinitions.apikey	ApiKeyAuth

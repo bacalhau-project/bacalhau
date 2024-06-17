@@ -123,8 +123,8 @@ endif
 # Target: build-python-apiclient
 ################################################################################
 .PHONY: build-python-apiclient
-build-python-apiclient: resolve-earthly
-	cd clients && ${MAKE} clean all
+build-python-apiclient:
+	cd clients && ${JUST} clean all
 	@echo "Python API client built."
 
 ################################################################################
