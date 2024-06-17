@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
@@ -135,10 +134,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		}
 	}
 
-	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
-	// so we can just use that
-	var j *models.Job
-	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
+	j, err := marshaller.UnmarshalJob(byteResult)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
