@@ -148,8 +148,7 @@ build-bacalhau-airflow: resolve-earthly
 ################################################################################
 .PHONY: build-bacalhau-flyte
 build-bacalhau-flyte:
-	cd integration/flyte && ${MAKE} all
-	@echo "Python bacalhau-flyte built."
+	$(error "Flyte Plugins NOT built - the libaries are out of date.")
 
 # Builds all python packages
 ################################################################################
@@ -187,8 +186,7 @@ release-bacalhau-airflow: resolve-earthly
 ################################################################################
 .PHONY: release-bacalhau-flyte
 release-bacalhau-flyte: resolve-earthly
-	cd integration/flyte && ${MAKE} release
-	@echo "Python flyteplugins-bacalhau pushed to PyPi."
+	$(error "Flyte Plugins NOT released - the libaries are out of date.")
 
 ################################################################################
 # Target: build

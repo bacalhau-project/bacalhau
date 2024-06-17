@@ -1,6 +1,6 @@
+from flytekit import kwtypes
 from flytekit.extend import Interface, PythonTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit import kwtypes
 
 
 class BacalhauTask(AsyncAgentExecutorMixin, PythonTask):

@@ -15,8 +15,10 @@ pre-commit:
 	poetry run pre-commit run --files ./**/*
 
 install-deps:
-	python -m ensurepip
-	python -m pip install poetry
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	uv venv .venv --seed
+	source .venv/bin/activate
+	uv pip install poetry
 	poetry install --no-root --no-interaction --no-ansi --with test
 	poetry run pre-commit install
 
@@ -58,7 +60,7 @@ clean:
 	rm -rf coverage.xml .coverage
 
 install-twine: install-deps
-	python3 -m pip install --upgrade twine
+	uv pip install --upgrade twine
 
 publish: install-twine
 	#!/usr/bin/env python

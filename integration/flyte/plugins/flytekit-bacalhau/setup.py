@@ -1,4 +1,5 @@
 import os
+
 from setuptools import setup
 
 PLUGIN_NAME = "bacalhau"
@@ -7,7 +8,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 # TODO add additional requirements
 plugin_requires = [
-    "flytekit>=1.1.0b0,<=1.8.1",
+    "flytekit>=1.1.0b0,<2.0.0",
     "bacalhau-sdk>=1.0.3",
     "dataclasses-json",
     "marshmallow",

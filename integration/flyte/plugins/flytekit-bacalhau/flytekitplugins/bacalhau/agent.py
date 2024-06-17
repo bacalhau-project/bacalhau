@@ -42,7 +42,7 @@ class BacalhauAgent(AgentBase):
 
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        super().__init__(task_type="bacalhau_task")
+        super().__init__(task_type="bacalhau_task", task_type_name="bacalhau_task_name")
 
     def create(
         self,
