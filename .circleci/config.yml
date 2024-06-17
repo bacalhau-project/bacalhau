@@ -1,8 +1,5 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
-# In order to call CircleCI with webhook, you need to set the parameters
-# and leave the default values empty.
+
 parameters:
   GHA_Actor:
     type: string
@@ -19,21 +16,26 @@ parameters:
   run_workflow_build:
     default: true
     type: boolean
-
   run_workflow_test:
     default: true
     type: boolean
-
   run_workflow_lint:
     default: true
     type: boolean
-
   earthly_satellite:
     default: "build-vm-linux-amd64"
     type: string
+  PUSH_TAG:
+    type: string
+    default: ""
+  PUSH_BRANCH:
+    type: string
+    default: ""
+  full_name:
+    default: ""
+    type: string
 
 executors:
-  # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
       image: default
@@ -85,7 +87,6 @@ commands:
               jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
             echo "Latest Go version for $go_spec is $version"
             echo "export GOVER=$version" >> $BASH_ENV
-
       - when:
           condition:
             equal: ["windows-amd64", << parameters.executor >>]
@@ -96,7 +97,6 @@ commands:
                 command: |
                   rm -rf /c/Program\ Files/Go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
-
       - when:
           condition:
             or:
@@ -111,23 +111,18 @@ commands:
                   sudo rm -fr /usr/local/go /usr/local/bin/go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
                   sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-
       - run:
           name: Set GOCACHE
           command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
-
       - run:
           name: Set GOPATH
           command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
-
       - restore_cache:
           name: Restoring Go cache
           key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
-
       - run:
           name: Install packages
           command: go mod tidy
-
       - save_cache:
           name: Saving Go cache
           key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
@@ -135,7 +130,6 @@ commands:
             - ~/.cache/go-build
             - ~/go/pkg/mod
 
-  # Installs asdf, a version manager for golang, python, nodejs, etc. Installs from .tool-versions
   install_asdf:
     parameters:
       cache_version:
@@ -177,8 +171,6 @@ commands:
             echo 'export PATH=$HOME/.asdf/bin:$HOME/.asdf/shims:"${PATH}"' >> "${BASH_ENV}"
             source "${BASH_ENV}"
 
-  # Installs and caches python and dependencies. Installs from .tool-versions in the local directory
-  # which is a file that asdf uses to install the correct version of python.
   install_python:
     description: Install Python and dependencies.
     parameters:
@@ -217,12 +209,8 @@ commands:
             - $HOME/.local
       - run:
           name: Set PATH
-          # Sources PATH after installing asdf and python, from $BASH_ENV, which CircleCI uses to set the PATH
           command: echo 'export PATH="${PATH}":$HOME/.asdf/bin:$HOME/.asdf/shims:$HOME/.brew/bin' >> "${BASH_ENV}"
 
-  # When running the makefile, we need to ensure that we are using the correct shell
-  # so that the right shims are used. We cannot use global versions of tools because
-  # the makefile is not aware of the asdf environment.
   run_make_under_specific_shell:
     parameters:
       directory_to_change_to:
@@ -245,6 +233,7 @@ commands:
             deactivate
             # Return to the original directory
             popd
+
   install_earthly:
     description: Install Earthly and dependencies.
     steps:
@@ -308,6 +297,7 @@ commands:
           command: |
             ipfs daemon
           background: true
+
 jobs:
   build_cli:
     executor: linux-amd64
@@ -326,7 +316,6 @@ jobs:
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            # Prevent rebuilding web ui, we should have already attached it
             find webui -exec touch -c '{}' +
             GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
             GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
@@ -335,13 +324,11 @@ jobs:
             GOOS=linux GOARCH=armv6 make build-bacalhau-tgz
             GOOS=linux GOARCH=armv7 make build-bacalhau-tgz
             GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
-
       - persist_to_workspace:
           root: dist/
           paths:
             - "*.tar.gz"
             - "*.sha256"
-
       - store_artifacts:
           path: dist/
 
@@ -351,14 +338,12 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-
       - run:
           command: |
             mkdir -p bin/linux/amd64
             pushd bin/linux/amd64
             tar -xvf ../../../bacalhau_*_linux_amd64.tar.gz
             popd
-
       - run: cd test && bin/bashtub *.sh
 
   build_webui:
@@ -378,48 +363,6 @@ jobs:
           paths:
             - "webui/build/*"
             - "webui/node_modules/*"
-
-  build_canary:
-    environment:
-      GOPROXY: https://proxy.golang.org
-      TARGET_COMMIT: << pipeline.git.revision >>
-    working_directory: ~/repo
-    executor: linux-amd64
-    steps:
-      - checkout
-
-      - install_go:
-          executor: linux-amd64
-
-      - run:
-          command: |
-            echo "CANARIES HAVE BEEN MOVED TO https://github.com/bacalhau-project/canaries"
-
-      # - run:
-      #     name: Install Executor Plugins
-      #     command: make install-plugins
-
-      # - run:
-      #     name: Set canary dependency
-      #     working_directory: ops/aws/canary/lambda
-      #     command: make update
-
-      # - run:
-      #     name: Build
-      #     working_directory: ops/aws/canary/lambda
-      #     command: make build -j
-
-      # - run:
-      #     name: Run tests
-      #     working_directory: ops/aws/canary/lambda
-      #     command: |
-      #       export GOBIN=${HOME}/bin
-      #       export PATH=$GOBIN:$PATH
-      #       go install gotest.tools/gotestsum@v1.8.2
-      #       make test
-
-      # - store_test_results:
-      #     path: ops/aws/canary/lambda/tests.xml
 
   build_docker:
     executor: linux-amd64
@@ -451,7 +394,6 @@ jobs:
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
-      # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
     working_directory: ~/repo
     steps:
       - checkout
@@ -491,12 +433,10 @@ jobs:
             - bacalhau_airflow-*.tar.gz
             - bacalhau_airflow-*.whl
       - run_make_under_specific_shell:
-          # Setup flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte
           makefile_directory: $HOME/repo/integration/flyte
           make_command: setup
       - run_make_under_specific_shell:
-          # Build the flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte/plugins
           makefile_directory: $HOME/repo/integration/flyte/plugins
           make_command: build_all_plugins
@@ -507,7 +447,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
-      GOMAXPROCS: "2" # Avoid using all the allocated CPU, so tests don't get rate limited
+      GOMAXPROCS: "2"
     working_directory: ~/repo
     executor: << parameters.executor >>
     parameters:
@@ -532,10 +472,8 @@ jobs:
         default: ""
     steps:
       - checkout
-
       - attach_workspace:
           at: .
-
       - when:
           condition:
             equal: ["windows", << parameters.target_os >>]
@@ -546,14 +484,11 @@ jobs:
                   choco install -y make
                   choco install -y jq
                 shell: powershell.exe
-
       - install_go:
           executor: << parameters.executor >>
-
       - run:
           name: "Setup BACALHAU_ENVIRONMENT environment variable"
           command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
-
       - when:
           condition:
             equal: ["linux-amd64", << parameters.executor >>]
@@ -566,20 +501,18 @@ jobs:
                   - run:
                       name: Set IPFS Connect Env
                       command: echo 'export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001' >> "$BASH_ENV"
-
       - run:
           name: Test Go
           environment:
             LOG_LEVEL: debug
             TEST_BUILD_TAGS: << parameters.build_tags >>
-            TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+            TEST_PARALLEL_PACKAGES: 4
           command: |
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH
             go install gotest.tools/gotestsum@v1.8.2
             make test-and-report
           no_output_timeout: 20m
-
       - store_test_results:
           path: .
       - persist_to_workspace:
@@ -595,8 +528,7 @@ jobs:
       - select_earthly_satellite
       - run:
           working_directory: python
-          command: |
-            earthly --push +run-unittest
+          command: earthly --push +run-unittest
 
   test_python_airflow:
     executor: linux-amd64
@@ -623,18 +555,14 @@ jobs:
       GOPROXY: https://proxy.golang.org
     steps:
       - checkout
-
       - attach_workspace:
           at: coverage/
-
       - run:
           name: Install gocovmerge
           command: go install github.com/wadey/gocovmerge@latest
-
       - run:
           name: Build coverage report
           command: make coverage-report
-
       - store_artifacts:
           path: coverage/coverage.html
 
@@ -680,8 +608,7 @@ jobs:
             cp /tmp/py_dist/bacalhau_flyte* integration/flyte/dist
       - run:
           name: Release python apiclient
-          command: |
-            python -m poetry run make release-python-apiclient
+          command: python -m poetry run make release-python-apiclient
       - run:
           name: Release python sdk
           command: |
@@ -721,59 +648,13 @@ jobs:
             go install github.com/golang/mock/mockgen
             go install github.com/swaggo/swag/cmd/swag@latest
             make generate
-
       - persist_to_workspace:
           root: .
           paths:
             - pkg/swagger/docs.go
             - webui/public/swagger/swagger.json
 
-      # - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
-      #     condition:
-      #       equal: ["main", << pipeline.git.branch >>]
-      #     steps:
-      #       - run:
-      #           name: Install gh
-      #           command: |
-      #             wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
-      #             sudo dpkg -i gh_2.14.7_linux_amd64.deb
-      #             echo "$GITHUB_PR_PAT" | gh auth login --with-token
-      #             rm gh_2.14.7_linux_amd64.deb
-      #       - run:
-      #           name: Install human-id generator
-      #           command: |
-      #             pip3 install human-id
-      #       - run:
-      #           name: Git commit
-      #           command: |
-      #             git config user.email "$(git log --format='format:%ae' -n1)"
-      #             git config user.name "$(git log --format='format:%an' -n1)"
-      #             # Note: we delete this branch after the PR is merged
-      #             GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
-      #             git checkout -b $GH_BRANCH_NAME
-      #             if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
-      #               git add --verbose -- ./docs
-      #               COMMIT_MSG="Build swagger reference - this is an automatic commit"
-      #               git commit -m "[circleci] $COMMIT_MSG [skip ci]"
-      #               git push --set-upstream origin $GH_BRANCH_NAME
-      #               # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-      #               PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
-      #               echo "Pull request: $PR_URL"
-      #               sleep 3
-      #               gh pr merge --auto --delete-branch -r $PR_URL
-      #             fi
-
-# Invoke jobs via workflows
-# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  check_canary:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - build_canary:
-          name: Check canary build
-          filters:
-            tags:
-              ignore: /.*/
   test_workflow:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
@@ -810,8 +691,6 @@ workflows:
           name: build-swagger-spec
           filters: &build_on_branch_and_tag_push
             tags:
-              # only run on tags that look like release tags e.g. v0.1.2 or
-              # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
       - build_python_packages:
           name: build-python-packages
@@ -822,11 +701,9 @@ workflows:
           requires:
             - build-swagger-spec
             - build-python-packages
-          # This job will only run on tags (specifically starting with 'v.') and
-          # will not run on branches
           filters: &build_on_release_only
             branches:
-              ignore: /.*/ # don't run on any branches - only tags
+              ignore: /.*/
             <<: *build_on_branch_and_tag_push
 
   build_workflow:
