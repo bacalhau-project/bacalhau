@@ -266,7 +266,7 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 	request := new(HeartBeatRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("Failed to parse heart beat request for NATs based consumer client")
 		return
 	}
 
@@ -274,13 +274,13 @@ func (nc *ConsumerClient) heartBeatRespHandler(msg *nats.Msg) {
 
 	data, err := json.Marshal(ConsumerHeartBeatResponse{NonActiveStreamIds: nonActiveStreamIds})
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("failed to marshal ConsumerHeartBeatResponse")
 		return
 	}
 
 	err = nc.Conn.Publish(msg.Reply, data)
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msg("failed to publish heart beat response")
 		return
 	}
 }
@@ -297,9 +297,8 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 	token := respInbox[nc.respSubLen:]
 	bucket := newStreamingBucket(ctx, token, subj)
 	nc.respMap[token] = bucket
-
-	// Ensure map for this subject exists
 	nc.reqSubMap[subj] = append(nc.reqSubMap[subj], bucket)
+
 	nc.mu.Unlock()
 
 	streamRequest := Request{
@@ -329,6 +328,8 @@ func (nc *ConsumerClient) createNewRequestAndSend(
 
 func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[string][]string) map[string][]string {
 	nonActiveStreamIds := make(map[string][]string)
+	nc.mu.RLock()
+	defer nc.mu.RUnlock()
 
 	// Loop through all active stream ids at producer
 	for subject, producerStreamIds := range activeStreamIDsAtProducer {
@@ -344,7 +345,7 @@ func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[st
 			return time.Since(bucket.createdAt) < nc.config.StreamCancellationBufferDuration
 		})
 
-		//If no non recent buckets, means all are active streams
+		// If no non recent buckets, means all are active streams
 		if len(nonRecentBuckets) == 0 {
 			continue
 		}
