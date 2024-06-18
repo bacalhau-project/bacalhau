@@ -16,6 +16,9 @@ def main():
         print("CIRCLE_TOKEN is not set. Exiting.")
         exit(1)
 
+    print(f"Branch: {branch}")
+    print(f"Full Name: {full_name}")
+
     if not branch:
         target = {"PUSH_BRANCH": "main"}
     elif "refs/tags" in branch:
