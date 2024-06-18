@@ -366,8 +366,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			})
 			s.Require().NoError(err)
 
-			s.Len(info.Executions.Executions, 1)
-			s.Len(info.Executions.Executions[0].RunOutput.STDOUT, int(tc.expectedLength.Bytes()))
+			s.Len(info.Executions.Items, 1)
+			s.Len(info.Executions.Items[0].RunOutput.STDOUT, int(tc.expectedLength.Bytes()))
 		})
 	}
 }
@@ -490,9 +490,9 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	// expected message we may consider adjusting the retry policy for this specific
 	// test. Alternatively, we could reduce the complexity and assert the job
 	// simply failed which is the expected behaviour for an invalid image
-	s.Require().Len(info.Executions.Executions, 2)
-	s.Contains(info.Executions.Executions[0].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
-	s.Contains(info.Executions.Executions[1].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
+	s.Require().Len(info.Executions.Items, 2)
+	s.Contains(info.Executions.Items[0].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
+	s.Contains(info.Executions.Items[1].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
@@ -541,9 +541,9 @@ func (s *DockerRunSuite) TestRun_NoPublisher() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	s.Require().Len(info.Executions.Executions, 1)
+	s.Require().Len(info.Executions.Items, 1)
 
-	exec := info.Executions.Executions[0]
+	exec := info.Executions.Items[0]
 	s.Require().Empty(exec.PublishedResult)
 
 }
@@ -561,9 +561,9 @@ func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	s.Require().Len(info.Executions.Executions, 1)
+	s.Require().Len(info.Executions.Items, 1)
 
-	exec := info.Executions.Executions[0]
+	exec := info.Executions.Items[0]
 	result := exec.PublishedResult
 	s.Require().Equal(models.StorageSourceURL, result.Type)
 

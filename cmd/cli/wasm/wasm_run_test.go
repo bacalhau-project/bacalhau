@@ -58,7 +58,7 @@ func (s *WasmRunSuite) TestNoPublisher() {
 	s.Require().NoError(err)
 	s.T().Log(info)
 
-	exec := info.Executions.Executions
+	exec := info.Executions.Items
 	s.Require().Len(exec, 1)
 
 	result := exec[0].PublishedResult
@@ -83,7 +83,7 @@ func (s *WasmRunSuite) TestLocalPublisher() {
 
 	s.Require().Equal(models.PublisherLocal, job.Task().Publisher.Type, "Expected a local publisher")
 
-	exec := info.Executions.Executions
+	exec := info.Executions.Items
 	s.Require().Len(exec, 1)
 
 	result := exec[0].PublishedResult

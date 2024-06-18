@@ -21,6 +21,11 @@ import (
 const DevelopmentGitVersion = "v0.0.0-xxxxxxx"
 
 var (
+	Development = semver.MustParse(DevelopmentGitVersion)
+	V1_3_2      = semver.MustParse("v1.3.2") //nolint: stylecheck
+)
+
+var (
 	// GITVERSION is the Git tag that Bacalhau was built from. This is expected to be populated via the `ldflags` flag,
 	// at least until https://github.com/golang/go/issues/50603 is fixed. The value shown here will be used when the
 	// value isn't provided by ldflags.

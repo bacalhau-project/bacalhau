@@ -188,7 +188,7 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) 
 		return err
 	}
 
-	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.History); err != nil {
+	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.Items); err != nil {
 		return fmt.Errorf("failed to output: %w", err)
 	}
 
