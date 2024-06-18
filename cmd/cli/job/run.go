@@ -1,10 +1,7 @@
 package job
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -96,28 +93,9 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 	ctx := cmd.Context()
 
 	// read the job spec from stdin or file
-	var err error
-	var byteResult []byte
-	if len(args) == 0 {
-		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
-		if err != nil {
-			return fmt.Errorf("unknown error reading from file or stdin: %w", err)
-		}
-	} else {
-		var fileContent *os.File
-		fileContent, err = os.Open(args[0])
-		if err != nil {
-			return fmt.Errorf("error opening file: %w", err)
-		}
-		defer fileContent.Close()
-
-		byteResult, err = io.ReadAll(fileContent)
-		if err != nil {
-			return fmt.Errorf("error reading file: %w", err)
-		}
-	}
-	if len(byteResult) == 0 {
-		return errors.New(userstrings.JobSpecBad)
+	jobBytes, err := util.ReadJobFromUser(cmd, args)
+	if err != nil {
+		return err
 	}
 
 	if !o.NoTemplate {
@@ -128,13 +106,13 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		if err != nil {
 			return fmt.Errorf("failed to create template parser: %w", err)
 		}
-		byteResult, err = parser.ParseBytes(byteResult)
+		jobBytes, err = parser.ParseBytes(jobBytes)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 	}
 
-	j, err := marshaller.UnmarshalJob(byteResult)
+	j, err := marshaller.UnmarshalJob(jobBytes)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
