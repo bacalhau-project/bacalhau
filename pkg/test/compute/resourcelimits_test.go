@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -60,8 +61,8 @@ type TotalResourceTestCaseCheck struct {
 
 type TotalResourceTestCase struct {
 	// the total list of jobs to throw at the cluster all at the same time
-	jobs        []model.ResourceUsageConfig
-	totalLimits model.ResourceUsageConfig
+	jobs        []*models.ResourcesConfig
+	totalLimits *models.ResourcesConfig
 	wait        TotalResourceTestCaseCheck
 	checkers    []TotalResourceTestCaseCheck
 }
@@ -126,7 +127,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return size.Bytes(), err
 		}
 
-		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)
+		resourcesConfig := testCase.totalLimits
 		parsedResources, err := resourcesConfig.ToResources()
 		require.NoError(suite.T(), err)
 
@@ -148,13 +149,22 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := testutils.MakeNoopJob(suite.T())
-			j.Spec.Resources = jobResources
-			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID:   "123",
-				APIVersion: j.APIVersion,
-				Spec:       &j.Spec,
-			})
+			j := &models.Job{
+				Name:  suite.T().Name(),
+				Type:  models.JobTypeBatch,
+				Count: 1,
+				Tasks: []*models.Task{
+					{
+						Name: suite.T().Name(),
+						Engine: &models.SpecConfig{
+							Type:   models.EngineNoop,
+							Params: map[string]interface{}{},
+						},
+						ResourcesConfig: jobResources,
+					},
+				},
+			}
+			_, err := stack.Nodes[0].RequesterNode.EndpointV2.SubmitJob(ctx, &orchestrator.SubmitJobRequest{Job: j})
 			require.NoError(suite.T(), err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time

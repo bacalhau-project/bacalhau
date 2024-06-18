@@ -10,18 +10,17 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackErrorLogsSuite struct {
@@ -32,23 +31,37 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 	suite.Run(t, new(DevstackErrorLogsSuite))
 }
 
-func executorTestCases(t testing.TB) []model.Spec {
-	return []model.Spec{
-		testutils.MakeSpecWithOpts(t,
-			legacy_job.WithPublisher(
-				model.PublisherSpec{Type: model.PublisherLocal},
-			),
-		),
-		testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder("ubuntu").
-					WithEntrypoint("bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;").
-					Build(),
-			),
-			legacy_job.WithPublisher(
-				model.PublisherSpec{Type: model.PublisherLocal},
-			),
-		),
+func executorTestCases(t testing.TB) []*models.Job {
+	return []*models.Job{
+		{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: &models.SpecConfig{
+						Type:   models.EngineNoop,
+						Params: make(map[string]interface{}),
+					},
+					Publisher: publisher_local.NewSpecConfig(),
+				},
+			},
+		},
+		{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder("ubuntu:latest").
+						WithEntrypoint("bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;").
+						MustBuild(),
+					Publisher: publisher_local.NewSpecConfig(),
+				},
+			},
+		},
 	}
 }
 
@@ -71,19 +84,19 @@ var errorLogsTestCase = scenario.Scenario{
 		scenario.FileEquals(downloader.DownloadFilenameStdout, "apples"),
 		scenario.FileEquals(downloader.DownloadFilenameStderr, "oranges"),
 	),
-	JobCheckers: []legacy_job.CheckStatesFunction{
-		legacy_job.WaitForSuccessfulCompletion(),
+	JobCheckers: []scenario.StateChecks{
+		scenario.WaitForSuccessfulCompletion(),
 	},
 }
 
 func (suite *DevstackErrorLogsSuite) TestCanGetResultsFromErroredJob() {
 	for _, testCase := range executorTestCases(suite.T()) {
-		suite.Run(testCase.EngineSpec.String(), func() {
-			docker.EngineSpecRequiresDocker(suite.T(), testCase.EngineSpec)
+		suite.Run(testCase.Task().Engine.Type, func() {
+			docker.EngineSpecRequiresDocker(suite.T(), testCase.Task().Engine)
 
-			scenario := errorLogsTestCase
-			scenario.Spec = testCase
-			suite.RunScenario(scenario)
+			s := errorLogsTestCase
+			s.Job = testCase
+			suite.RunScenario(s)
 		})
 	}
 }

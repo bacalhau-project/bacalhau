@@ -7,9 +7,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
@@ -23,6 +23,7 @@ const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
+const defaultDockerImage = "ubuntu:latest"
 
 const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
 
@@ -44,14 +45,19 @@ func CatFileToStdout(t testing.TB) Scenario {
 			FileEquals(downloader.DownloadFilenameStderr, ""),
 			FileEquals(downloader.DownloadFilenameStdout, helloWorld),
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(cat.Program())).
-					WithEntrypoint("_start").
-					WithParameters(simpleMountPath).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(cat.Program())).
+						WithEntrypoint("_start").
+						WithParameters(simpleMountPath).MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -73,19 +79,24 @@ func CatFileToVolume(t testing.TB) Scenario {
 			"test/output_file.txt",
 			catProgram,
 		),
-		Outputs: []model.StorageSpec{
+		Outputs: []*models.ResultPath{
 			{
 				Name: "test",
 				Path: "/output_data",
 			},
 		},
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder("ubuntu:latest").
-					WithEntrypoint("bash", simpleMountPath).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
+						WithEntrypoint("bash", simpleMountPath).MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -108,13 +119,19 @@ func GrepFile(t testing.TB) Scenario {
 			[]string{"kiwi is delicious"},
 			2,
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder("ubuntu:latest").
-					WithEntrypoint("grep", "kiwi", simpleMountPath).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
+						WithEntrypoint("grep", "kiwi", simpleMountPath).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -137,18 +154,19 @@ func SedFile(t testing.TB) Scenario {
 			[]string{"LISBON"},
 			5, //nolint:gomnd // magic number ok for testing
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder("ubuntu:latest").
-					WithEntrypoint(
-						"sed",
-						"-n",
-						"/38.7[2-4]..,-9.1[3-7]../p",
-						simpleMountPath,
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
+						WithEntrypoint("sed", "-n", "/38.7[2-4]..,-9.1[3-7]../p", simpleMountPath).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -171,18 +189,24 @@ func AwkFile(t testing.TB) Scenario {
 			[]string{"LISBON"},
 			501, //nolint:gomnd // magic number appropriate for test
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder("ubuntu:latest").
-					WithEntrypoint(
-						"awk",
-						"-F,",
-						"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
-						simpleMountPath,
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
+						WithEntrypoint(
+							"awk",
+							"-F,",
+							"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
+							simpleMountPath,
+						).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -192,10 +216,18 @@ func WasmHelloWorld(t testing.TB) Scenario {
 			downloader.DownloadFilenameStdout,
 			"Hello, world!\n",
 		),
-		Spec: model.Spec{
-			EngineSpec: model.NewWasmEngineBuilder(InlineData(noop.Program())).
-				WithEntrypoint("_start").
-				Build(),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(noop.Program())).
+						WithEntrypoint("_start").
+						MustBuild(),
+				},
+			},
 		},
 	}
 }
@@ -206,14 +238,20 @@ func WasmExitCode(t testing.TB) Scenario {
 			downloader.DownloadFilenameExitCode,
 			"5",
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(exit_code.Program())).
-					WithEntrypoint("_start").
-					WithEnvironmentVariables(map[string]string{"EXIT_CODE": "5"}).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(exit_code.Program())).
+						WithEntrypoint("_start").
+						WithEnvironmentVariables(map[string]string{"EXIT_CODE": "5"}).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -224,19 +262,25 @@ func WasmEnvVars(t testing.TB) Scenario {
 			[]string{"AWESOME=definitely", "TEST=yes"},
 			3, //nolint:gomnd // magic number appropriate for test
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(env.Program())).
-					WithEntrypoint("_start").
-					WithEnvironmentVariables(
-						map[string]string{
-							"TEST":    "yes",
-							"AWESOME": "definitely",
-						},
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(env.Program())).
+						WithEntrypoint("_start").
+						WithEnvironmentVariables(
+							map[string]string{
+								"TEST":    "yes",
+								"AWESOME": "definitely",
+							},
+						).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -259,23 +303,29 @@ func WasmCsvTransform(t testing.TB) Scenario {
 			[]string{"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva"},
 			269, //nolint:gomnd // magic number appropriate for test
 		),
-		Outputs: []model.StorageSpec{
+		Outputs: []*models.ResultPath{
 			{
 				Name: "outputs",
 				Path: "/outputs",
 			},
 		},
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(csv.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						"inputs/horses.csv",
-						"outputs/parents-children.csv",
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(csv.Program())).
+						WithEntrypoint("_start").
+						WithParameters(
+							"inputs/horses.csv",
+							"outputs/parents-children.csv",
+						).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -301,13 +351,19 @@ func WasmDynamicLink(t testing.TB) Scenario {
 			downloader.DownloadFilenameStdout,
 			"17\n",
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(dynamic.Program())).
-					WithEntrypoint("_start").
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(dynamic.Program())).
+						WithEntrypoint("_start").
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 
@@ -329,17 +385,23 @@ func WasmLogTest(t testing.TB) Scenario {
 			[]string{"https://www.gutenberg.org"}, // end of the file
 			-1,                                    //nolint:gomnd // magic number appropriate for test
 		),
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(InlineData(logtest.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						"inputs/cosmic_computer.txt",
-						"--fast",
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(logtest.Program())).
+						WithEntrypoint("_start").
+						WithParameters(
+							"inputs/cosmic_computer.txt",
+							"--fast",
+						).
+						MustBuild(),
+				},
+			},
+		},
 	}
 }
 

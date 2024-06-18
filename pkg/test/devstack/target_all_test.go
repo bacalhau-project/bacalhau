@@ -10,15 +10,11 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
@@ -38,8 +34,20 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   0,
 		}},
-		Spec:          testutils.MakeSpecWithOpts(suite.T()),
-		Deal:          model.Deal{TargetingMode: model.TargetAll},
+		Job: &models.Job{
+			Name:  suite.T().Name(),
+			Type:  models.JobTypeOps,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: suite.T().Name(),
+					Engine: &models.SpecConfig{
+						Type:   models.EngineNoop,
+						Params: make(map[string]interface{}),
+					},
+				},
+			},
+		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(0),
 	}
@@ -52,13 +60,25 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
 			NumberOfHybridNodes: 1,
 		}},
-		Spec:          testutils.MakeSpecWithOpts(suite.T()),
-		Deal:          model.Deal{TargetingMode: model.TargetAll},
+		Job: &models.Job{
+			Name:  suite.T().Name(),
+			Type:  models.JobTypeOps,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: suite.T().Name(),
+					Engine: &models.SpecConfig{
+						Type:   models.EngineNoop,
+						Params: make(map[string]interface{}),
+					},
+				},
+			},
+		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForSuccessfulCompletion(),
-			legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 1,
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
+			scenario.WaitForExecutionStates(map[models.ExecutionStateType]int{
+				models.ExecutionStateCompleted: 1,
 			}),
 		},
 	}
@@ -72,13 +92,25 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfHybridNodes:      1,
 			NumberOfComputeOnlyNodes: 4,
 		}},
-		Spec:          testutils.MakeSpecWithOpts(suite.T()),
-		Deal:          model.Deal{TargetingMode: model.TargetAll},
+		Job: &models.Job{
+			Name:  suite.T().Name(),
+			Type:  models.JobTypeOps,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: suite.T().Name(),
+					Engine: &models.SpecConfig{
+						Type:   models.EngineNoop,
+						Params: make(map[string]interface{}),
+					},
+				},
+			},
+		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForSuccessfulCompletion(),
-			legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 5,
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
+			scenario.WaitForExecutionStates(map[models.ExecutionStateType]int{
+				models.ExecutionStateCompleted: 5,
 			}),
 		},
 	}
@@ -112,14 +144,26 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 				},
 			},
 		},
-		Spec:          testutils.MakeSpecWithOpts(suite.T()),
-		Deal:          model.Deal{TargetingMode: model.TargetAll},
+		Job: &models.Job{
+			Name:  suite.T().Name(),
+			Type:  models.JobTypeOps,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: suite.T().Name(),
+					Engine: &models.SpecConfig{
+						Type:   models.EngineNoop,
+						Params: make(map[string]interface{}),
+					},
+				},
+			},
+		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForUnsuccessfulCompletion(),
-			legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 1,
-				model.ExecutionStateFailed:    1,
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForUnsuccessfulCompletion(),
+			scenario.WaitForExecutionStates(map[models.ExecutionStateType]int{
+				models.ExecutionStateCompleted: 1,
+				models.ExecutionStateFailed:    1,
 			}),
 		},
 	}

@@ -7,11 +7,10 @@ import (
 	"os"
 	"testing"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
 	"github.com/stretchr/testify/suite"
@@ -27,20 +26,26 @@ func TestDefaultPublisherSuite(t *testing.T) {
 
 func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 	testcase := scenario.Scenario{
-		Spec: testutils.MakeSpecWithOpts(s.T(),
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						"data/hello.txt",
-						"does/not/exist.txt",
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  s.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: s.T().Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+						WithEntrypoint("_start").
+						WithParameters(
+							"data/hello.txt",
+							"does/not/exist.txt",
+						).
+						MustBuild(),
+				},
+			},
+		},
 		ResultsChecker: expectResultsNone,
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForSuccessfulCompletion(),
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
 		},
 	}
 
@@ -48,25 +53,33 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 }
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
+	// we are skipping this test because the orchestrator endpoint doesn't require a publisher
+	s.T().Skip("DefaultPublisher was a concept on the Requester endpoint, but not the orchestrator endpoint")
 	stack := scenario.StackConfig{}
 	stack.DefaultPublisher = "local"
 
 	testcase := scenario.Scenario{
-		Spec: testutils.MakeSpecWithOpts(s.T(),
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						"data/hello.txt",
-						"does/not/exist.txt",
-					).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  s.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: s.T().Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+						WithEntrypoint("_start").
+						WithParameters(
+							"data/hello.txt",
+							"does/not/exist.txt",
+						).
+						MustBuild(),
+				},
+			},
+		},
 		Stack:          &stack,
 		ResultsChecker: expectResultsSome,
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForSuccessfulCompletion(),
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
 		},
 	}
 
