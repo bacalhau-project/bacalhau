@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -13,11 +12,13 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 // godoc for Orchestrator PutJob
@@ -69,7 +70,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 // @Failure		400	{object}	string
 // @Failure		500	{object}	string
 // @Router			/api/v1/orchestrator/jobs [get]
-func (e *Endpoint) getJob(c echo.Context) error {
+func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
 	var args apimodels.GetJobRequest
@@ -97,10 +98,10 @@ func (e *Endpoint) getJob(c echo.Context) error {
 				return err
 			}
 			response.History = &apimodels.ListJobHistoryResponse{
-				History: make([]*models.JobHistory, len(history)),
+				Items: make([]*models.JobHistory, len(history)),
 			}
 			for i := range history {
-				response.History.History[i] = &history[i]
+				response.History.Items[i] = &history[i]
 			}
 		case "executions":
 			// ignore if user requested executions twice
@@ -114,12 +115,25 @@ func (e *Endpoint) getJob(c echo.Context) error {
 				return err
 			}
 			response.Executions = &apimodels.ListJobExecutionsResponse{
-				Executions: make([]*models.Execution, len(executions)),
+				Items: make([]*models.Execution, len(executions)),
 			}
 			for i := range executions {
-				response.Executions.Executions[i] = &executions[i]
+				response.Executions.Items[i] = &executions[i]
 			}
 		}
+	}
+
+	clientVersion := apimodels.GetClientVersion(c.Request())
+	if !(clientVersion.GreaterThan(version.V1_3_2) || clientVersion.Equal(version.Development) || clientVersion.Prerelease() != "") {
+		if response.History != nil && len(response.History.History) > 0 { //nolint: staticcheck
+			response.History.History = response.History.Items //nolint: staticcheck
+			response.History.Items = make([]*models.JobHistory, 0)
+		}
+		if response.Executions != nil && len(response.Executions.Executions) > 0 { //nolint: staticcheck
+			response.Executions.Executions = response.Executions.Items //nolint: staticcheck
+			response.Executions.Items = make([]*models.Execution, 0)
+		}
+		response.Normalize()
 	}
 	return c.JSON(http.StatusOK, response)
 }
@@ -209,12 +223,19 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 	}
 
 	res := &apimodels.ListJobsResponse{
-		Jobs: lo.Map[models.Job, *models.Job](response.Jobs, func(item models.Job, _ int) *models.Job {
+		Items: lo.Map[models.Job, *models.Job](response.Jobs, func(item models.Job, _ int) *models.Job {
 			return &item
 		}),
 		BaseListResponse: apimodels.BaseListResponse{
 			NextToken: nextToken,
 		},
+	}
+
+	clientVersion := apimodels.GetClientVersion(c.Request())
+	if !(clientVersion.GreaterThan(version.V1_3_2) || clientVersion.Equal(version.Development) || clientVersion.Prerelease() != "") {
+		res.Jobs = res.Items
+		res.Items = make([]*models.Job, 0)
+		res.Normalize()
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -298,10 +319,17 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		return err
 	}
 	res := &apimodels.ListJobHistoryResponse{
-		History: make([]*models.JobHistory, len(history)),
+		Items: make([]*models.JobHistory, len(history)),
 	}
 	for i := range history {
-		res.History[i] = &history[i]
+		res.Items[i] = &history[i]
+	}
+
+	clientVersion := apimodels.GetClientVersion(c.Request())
+	if !(clientVersion.GreaterThan(version.V1_3_2) || clientVersion.Equal(version.Development) || clientVersion.Prerelease() != "") {
+		res.History = res.Items //nolint: staticcheck
+		res.Items = make([]*models.JobHistory, 0)
+		res.Normalize()
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -384,10 +412,17 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 
 	// prepare result
 	res := &apimodels.ListJobExecutionsResponse{
-		Executions: make([]*models.Execution, len(executions)),
+		Items: make([]*models.Execution, len(executions)),
 	}
 	for i := range executions {
-		res.Executions[i] = &executions[i]
+		res.Items[i] = &executions[i]
+	}
+
+	clientVersion := apimodels.GetClientVersion(c.Request())
+	if !(clientVersion.GreaterThan(version.V1_3_2) || clientVersion.Equal(version.Development) || clientVersion.Prerelease() != "") {
+		res.Executions = res.Items //nolint: staticcheck
+		res.Items = make([]*models.Execution, 0)
+		res.Normalize()
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -428,9 +463,15 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 		return err
 	}
 
-	return publicapi.UnescapedJSON(c, http.StatusOK, &apimodels.ListJobResultsResponse{
-		Results: resp.Results,
-	})
+	result := &apimodels.ListJobResultsResponse{Items: resp.Results}
+	clientVersion := apimodels.GetClientVersion(c.Request())
+	if !(clientVersion.GreaterThan(version.V1_3_2) || clientVersion.Equal(version.Development) || clientVersion.Prerelease() != "") {
+		result.Results = result.Items //nolint: staticcheck
+		result.Items = make([]*models.SpecConfig, 0)
+		result.Normalize()
+	}
+
+	return publicapi.UnescapedJSON(c, http.StatusOK, result)
 }
 
 // godoc for Orchestrator JobLogs

@@ -194,7 +194,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 			models.StorageSourceURL: http.NewHTTPDownloader(),
 		})
 
-		err = downloader.DownloadResults(s.Ctx, results.Results, downloaderProvider, downloaderSettings)
+		err = downloader.DownloadResults(s.Ctx, results.Items, downloaderProvider, downloaderSettings)
 		s.Require().NoError(err)
 
 		err = scenario.ResultsChecker(resultsDir)
