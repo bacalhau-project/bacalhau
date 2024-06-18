@@ -40,6 +40,10 @@ parameters:
     default: "v0.0.0"
     type: string
 
+  full_name:
+    default: "bacalhau-project/bacalhau"
+    type: string
+
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
