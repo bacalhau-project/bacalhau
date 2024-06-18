@@ -98,4 +98,4 @@ zsh = '''
 # Additional options can be set in the `[options]` section. Refer to
 # manifest.toml(5) for a list of available options.
 [options]
-systems = ["aarch64-darwin"]
+systems = ["aarch64-darwin", "x86_64-linux"]
