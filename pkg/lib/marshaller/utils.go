@@ -158,7 +158,7 @@ func validateRawJob(jobSpec map[string]interface{}) error {
 	}
 	// any fields that remain are considered unknown
 	for key := range jobSpec {
-		mErr = errors.Join(mErr, fmt.Errorf("unknown field: '%s' in 'Job' is ignored", key))
+		mErr = errors.Join(mErr, fmt.Errorf("unknown field: '%s' in 'Job'", key))
 	}
 	return mErr
 }
