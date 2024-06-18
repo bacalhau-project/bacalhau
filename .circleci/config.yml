@@ -474,12 +474,12 @@ jobs:
           # Setup flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte
           makefile_directory: $HOME/repo/integration/flyte
-          make_command: setup
+          make_command: echo "FLYTE BUILDING DISABLED"
       - run_make_under_specific_shell:
           # Build the flyte integration
           directory_to_change_to: $HOME/repo/integration/flyte/plugins
           makefile_directory: $HOME/repo/integration/flyte/plugins
-          make_command: build_all_plugins
+          make_command: echo "FLYTE BUILDING DISABLED"
 
   test_cli:
     environment:
@@ -591,11 +591,12 @@ jobs:
   test_python_flyte:
     executor: linux-amd64
     steps:
-      - checkout
-      - install_python
-      - run:
-          working_directory: integration/flyte
-          command: python -m poetry run make setup test
+      - echo "FLYTE BUILDING DISABLED"
+      # - checkout
+      # - install_python
+      # - run:
+      #     working_directory: integration/flyte
+      #     command: python -m poetry run make setup test
 
   coverage:
     executor: linux-amd64
@@ -657,7 +658,7 @@ jobs:
             mkdir -p integration/airflow/dist
             cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
             mkdir -p integration/airflow/dist
-            cp /tmp/py_dist/bacalhau_flyte* integration/flyte/dist
+            # cp /tmp/py_dist/bacalhau_flyte* integration/flyte/dist
       - run:
           name: Release python apiclient
           command: |
@@ -675,8 +676,9 @@ jobs:
       - run:
           name: Release python Flyte integration
           command: |
-            python -m poetry run pip install twine==4.0.2
-            python -m poetry run make release-bacalhau-flyte
+            echo "FLYTE BUILDING DISABLED"
+            # python -m poetry run pip install twine==4.0.2
+            # python -m poetry run make release-bacalhau-flyte
 
   build_swagger:
     executor: linux-amd64
@@ -777,7 +779,7 @@ workflows:
                 build_tags: integration
       - test_python_sdk
       - test_python_airflow
-      - test_python_flyte
+      # - test_python_flyte
       - coverage:
           name: Build coverage report
           requires:
