@@ -158,11 +158,19 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
+	// This context is passed down to particular engine serving the stream. The cancel function is stored as part of
+	// the StreamInfo. When the consumer client informs the producer client via heartBeat that it is no longer interested
+	// in the stream, we call this cancel function. This also informs the engine that we are no longer interested in this
+	// stream and hence close it. There might be scenarios where few logs will make it through after context cancelation
+	// due to race conditions. This should be find and won't result in nil pointers or writing to a closed writer as
+	// we only close the writer after source channel is closed.
+	childCtx, cancel := context.WithCancel(ctx)
 	err = streamingClient.AddStream(
 		streamRequest.ConsumerID,
 		streamRequest.StreamID,
 		msg.Subject,
 		streamRequest.HeartBeatRequestSub,
+		cancel,
 	)
 
 	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.ConsumerID)
@@ -172,17 +180,20 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		return
 	}
 
-	ch, err := f(ctx, *request)
+	ch, err := f(childCtx, *request)
 	if err != nil {
-		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
+		closeError := writer.CloseWithCode(stream.CloseInternalServerErr,
 			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))
+		if closeError != nil {
+			log.Err(closeError).Msg("error while closing NATS Stream")
+		}
 		return
 	}
 
 	for res := range ch {
-		_, err := streamingClient.WriteResponse(streamRequest.ConsumerID, streamRequest.StreamID, res, writer)
+		_, err := writer.WriteObject(res)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("error writing response to stream: %s", err)
+			log.Err(err).Msg("error writing log to NATS subject")
 			break
 		}
 	}
