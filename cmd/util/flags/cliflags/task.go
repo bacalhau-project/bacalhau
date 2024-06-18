@@ -47,6 +47,7 @@ type TaskSettings struct {
 	Resources            ResourceSettings
 	Network              NetworkSettings
 	Timeout              int64
+	QueueTimeout         int64
 }
 
 type ResourceSettings struct {
@@ -78,7 +79,8 @@ func DefaultTaskSettings() *TaskSettings {
 			Network: models.NetworkNone,
 			Domains: make([]string, 0),
 		},
-		Timeout: int64(time.Duration(0)),
+		Timeout:      int64(time.Duration(0)),
+		QueueTimeout: int64(time.Duration(0)),
 	}
 }
 
@@ -98,6 +100,9 @@ func RegisterTaskFlags(cmd *cobra.Command, s *TaskSettings) {
 	fs.Int64Var(&s.Timeout, "timeout", s.Timeout,
 		`Job execution timeout in seconds (e.g. 300 for 5 minutes)`,
 	)
-
+	fs.Int64Var(&s.QueueTimeout, "queue-timeout", s.QueueTimeout,
+		`Job queue timeout in seconds (e.g. 300 for 5 minutes). 
+zero timeout means no queueing is enabled and jobs will fail if they cannot be scheduled immediately`,
+	)
 	cmd.Flags().AddFlagSet(fs)
 }

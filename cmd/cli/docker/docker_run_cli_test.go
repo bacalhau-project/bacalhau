@@ -45,7 +45,8 @@ var (
 		Domains: []string(nil),
 	}
 	expectedDefaultTimeoutConfig = &models.TimeoutConfig{
-		ExecutionTimeout: 0,
+		TotalTimeout: 0,
+		QueueTimeout: 0,
 	}
 )
 
@@ -444,6 +445,16 @@ func TestJobFlagParsing(t *testing.T) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
 				assert.EqualValues(t, 300, task.Timeouts.TotalTimeout)
+			},
+			expectedError: false,
+		},
+		{
+			name:  "with queue timeout",
+			flags: []string{"--queue-timeout=300", "image:tag"},
+			assertJob: func(t *testing.T, j *models.Job) {
+				defaultJobAssertions(t, j)
+				task := j.Task()
+				assert.EqualValues(t, 300, task.Timeouts.QueueTimeout)
 			},
 			expectedError: false,
 		},
