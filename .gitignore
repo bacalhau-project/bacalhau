@@ -64,3 +64,5 @@ dist/
 .arg
 .ruff_cache
 .aider*
+
+!**/.flox/env.json
