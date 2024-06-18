@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 
 def main():
-    branch = os.getenv("BRANCH")
+    ref = os.getenv("REF")
     circle_token = os.getenv("CIRCLE_TOKEN")
     full_name = os.getenv("FULL_NAME")
 
@@ -16,16 +16,16 @@ def main():
         print("CIRCLE_TOKEN is not set. Exiting.")
         exit(1)
 
-    print(f"Branch: {branch}")
+    print(f"Ref: {ref}")
     print(f"Full Name: {full_name}")
 
-    if not branch:
+    if not ref:
         target = {"PUSH_BRANCH": "main"}
-    elif "refs/tags" in branch:
-        tag = branch.replace("refs/tags/", "")
+    elif "refs/tags" in ref:
+        tag = ref.replace("refs/tags/", "")
         target = {"PUSH_TAG": tag}
     else:
-        target = {"PUSH_BRANCH": branch}
+        target = {"PUSH_BRANCH": ref}
 
     headers = {
         "Content-Type": "application/json",
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         os.environ["FULL_NAME"] = "aronchick/main"
 
         print("Running in test mode.")
-        print(f"Branch: {os.getenv('BRANCH')}")
+        print(f"REF: {os.getenv('REF')}")
         print(f"Circle Token: {os.getenv('CIRCLE_TOKEN')}")
         print(f"Full Name: {os.getenv('FULL_NAME')}")
 
