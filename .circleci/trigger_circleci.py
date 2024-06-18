@@ -20,12 +20,12 @@ def main():
     print(f"Full Name: {full_name}")
 
     if not ref:
-        target = {"PUSH_BRANCH": "main"}
+        target = {"branch": "main"}
     elif "refs/tags" in ref:
         tag = ref.replace("refs/tags/", "")
-        target = {"PUSH_TAG": tag}
+        target = {"tag": tag}
     else:
-        target = {"PUSH_BRANCH": ref}
+        target = {"branch": ref}
 
     headers = {
         "Content-Type": "application/json",
