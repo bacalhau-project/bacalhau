@@ -3,7 +3,7 @@ export GOOS:=`go env GOOS`
 export GOARCH:=`go env GOARCH | perl -pe 's/^(armv[67])$$/arm/'`
 UNAME_S := `uname -s`
 
-GOARM:= `go env GOARCH | perl -ne 'if (/^armv6$$/) { print "6" } elsif (/^armv7$$/) { print "7" }'`
+GOARM:= `echo $GOARCH | perl -ne 'if (/^armv6$$/) { print "6" } elsif (/^armv7$$/) { print "7" }'`
 
 # Env Variables
 export GO111MODULE := "on"
@@ -12,8 +12,8 @@ export PRECOMMIT:="poetry run pre-commit"
 
 BUILD_DIR:="bacalhau"
 
-BINARY_NAME := if `go env GOOS` == "windows" { "bacalhau.exe" } else  { "bacalhau" }
-CC := `if [ "$(GOOS)" = "windows" ]; then echo "gcc.exe"; else echo "gcc"; fi`
+BINARY_NAME := `if [ $GOOS = "windows" ]; then echo "bacalhau.exe"; else echo "bacalhau"; fi`
+CC := `if [ $GOOS = "windows" ]; then echo "gcc.exe"; else echo "gcc"; fi`
 
 BINARY_PATH:="bin/${GOOS}/${GOARCH}${GOARM}/${BINARY_NAME}"
 

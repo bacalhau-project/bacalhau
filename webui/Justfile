@@ -1,4 +1,4 @@
-set shell := ["sh", "-c"]
+set shell := ["bash", "-c"]
 set allow-duplicate-recipes
 set positional-arguments
 set dotenv-load

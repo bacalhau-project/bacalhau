@@ -1,6 +1,7 @@
 export GO = go
 export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
+export FLOXREPOSITORY = "aronchick"
 
 UNAME_S := $(shell uname -s)
 
@@ -66,10 +67,8 @@ endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
 # versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
-GIT_VERSION := $(shell git describe --tags --dirty)
-PYPI_VERSION ?= $(shell python3 scripts/convert_git_version_to_pep440_compatible.py $(GIT_VERSION))
-
-export PYPI_VERSION
+export GIT_VERSION := $(shell git describe --tags --dirty)
+export PYPI_VERSION ?= $(shell python3 scripts/convert_git_version_to_pep440_compatible.py $(GIT_VERSION))
 
 all: build
 
@@ -209,8 +208,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 
 .PHONY: build-webui
 build-webui:
-	cd webui
-	just all
+	cd webui && flox activate -r "${FLOXREPOSITORY}/bacalhau" -- just all
 
 
 ################################################################################
