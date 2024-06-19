@@ -246,45 +246,32 @@ func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 	return uint64(stat.CumulativeSize), nil
 }
 
-// nodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
-func (cl Client) nodesWithCID(ctx context.Context, cid string) ([]string, error) {
-	path, err := pathFromCIDString(cid)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
-	}
-
-	ch, err := cl.API.Dht().FindProviders(ctx, path)
-	if err != nil {
-		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
-	}
-
-	var res []string
-	for info := range ch {
-		res = append(res, info.ID.String())
-	}
-
-	return res, nil
-}
-
 // HasCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
-	id, err := cl.ID(ctx)
+	// create an offline API that will not search the network for content.
+	offlineAPI, err := cl.API.WithOptions(
+		icoreoptions.Api.FetchBlocks(false),
+		icoreoptions.Api.Offline(true),
+	)
 	if err != nil {
-		return false, fmt.Errorf("error fetching node's ipfs id: %w", err)
+		return false, err
 	}
-
-	nodes, err := cl.nodesWithCID(ctx, cid)
+	path, err := pathFromCIDString(cid)
 	if err != nil {
-		return false, fmt.Errorf("error fetching nodes with cid '%s': %w", cid, err)
+		return false, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
 	}
-
-	for _, node := range nodes {
-		if node == id {
-			return true, nil
+	// attempt to stat the block in the local IPFS, if it's not found w/ the offlineAPI then the content
+	// is not local to the IPFS node.
+	_, err = offlineAPI.Block().Stat(ctx, path)
+	if err != nil {
+		if ipld.IsNotFound(err) {
+			return false, nil
 		}
+		return false, err
 	}
 
-	return false, nil
+	// stating the CID was successful, IPFS has this content locally.
+	return true, nil
 }
 
 func (cl Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {

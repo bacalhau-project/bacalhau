@@ -3,6 +3,7 @@ acks
 Addrs
 alessio
 apimodels
+argsp
 armv
 astype
 authorised
@@ -58,6 +59,7 @@ devstack
 devstask
 direnv
 doclines
+dotenv
 dpkg
 dpokidov
 dport
@@ -132,6 +134,7 @@ gserviceaccount
 healthz
 helloworld
 HMAC
+hmarr
 humanid
 icore
 icoreoptions

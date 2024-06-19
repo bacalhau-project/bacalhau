@@ -511,10 +511,12 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	const expectedTimeout = 999 * time.Second
+	const expectedQueueTimeout = 888 * time.Second
 
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
+		"--queue-timeout", fmt.Sprintf("%d", int64(expectedQueueTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",
 	)
@@ -523,6 +525,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 
 	s.Require().Equal(expectedTimeout, j.Task().Timeouts.GetTotalTimeout())
+	s.Require().Equal(expectedQueueTimeout, j.Task().Timeouts.GetQueueTimeout())
 }
 
 func (s *DockerRunSuite) TestRun_NoPublisher() {

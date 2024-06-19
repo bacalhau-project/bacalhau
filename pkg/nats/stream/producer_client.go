@@ -46,6 +46,7 @@ func (pc *ProducerClient) AddStream(
 	streamID string,
 	requestSub string,
 	heartBeatRequestSub string,
+	cancelFunc context.CancelFunc,
 ) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
@@ -54,6 +55,7 @@ func (pc *ProducerClient) AddStream(
 		ID:         streamID,
 		RequestSub: requestSub,
 		CreatedAt:  time.Now(),
+		Cancel:     cancelFunc,
 	}
 
 	if pc.activeStreamInfo[consumerID] == nil {
@@ -106,6 +108,7 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 		case <-ticker.C:
 
 			nonActiveStreamIds := make(map[string][]string)
+			pc.mu.RLock()
 
 			for c, v := range pc.activeConnHeartBeatRequestSubjects {
 				// Create an empty slice for activeStreamIds
@@ -130,50 +133,30 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 				msg, err := pc.Conn.Request(v, data, pc.config.HeartBeatRequestTimeout)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("error while sending heart beat request from NATS streaming producer client")
-					nonActiveStreamIds[c] = []string{}
 					continue
 				}
 
 				var heartBeatResponse ConsumerHeartBeatResponse
 				err = json.Unmarshal(msg.Data, &heartBeatResponse)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("error while  parsing heart beat response from NATS streaming consumer client")
+					log.Ctx(ctx).Err(err).Msg("error while parsing heart beat response from NATS streaming consumer client")
 					continue
 				}
 
 				nonActiveStreamIds[c] = getStringList(heartBeatResponse.NonActiveStreamIds)
 			}
 
-			pc.updateActiveStreamInfo(nonActiveStreamIds)
+			pc.mu.RUnlock()
+			if len(nonActiveStreamIds) != 0 {
+				pc.updateActiveStreamInfo(nonActiveStreamIds)
+			}
 		}
 	}
 }
 
-func (pc *ProducerClient) WriteResponse(
-	consumerID string,
-	streamID string,
-	obj interface{},
-	writer *Writer,
-) (int, error) {
-	pc.mu.Lock()
-	streamIds, active := pc.activeStreamInfo[consumerID]
-
-	if !active {
-		return 0, fmt.Errorf("no stream ids exist to write for consumerId=%s", consumerID)
-	}
-	pc.mu.Unlock()
-
-	_, active = streamIds[streamID]
-	if !active {
-		return 0, fmt.Errorf("streamId %s is now closed", streamID)
-	}
-
-	return writer.WriteObject(obj)
-}
-
 func (pc *ProducerClient) updateActiveStreamInfo(nonActiveStreamIds map[string][]string) {
-	// Create a map to store the streams that need to be deleted.
-	streamsToDelete := make(map[string][]string)
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
 
 	for connID, nonActiveIdsList := range nonActiveStreamIds {
 		// Create a map for quick lookup of non-active streams.
@@ -184,27 +167,18 @@ func (pc *ProducerClient) updateActiveStreamInfo(nonActiveStreamIds map[string][
 
 		if streamInfo, ok := pc.activeStreamInfo[connID]; ok {
 			for streamID := range streamInfo {
-				// If the stream is not active, store it for deletion.
 				if nonActiveMap[streamID] {
-					streamsToDelete[connID] = append(streamsToDelete[connID], streamID)
+					streamInfo := pc.activeStreamInfo[connID][streamID]
+					streamInfo.Cancel()
+					delete(pc.activeStreamInfo[connID], streamID)
 				}
+			}
+			// If after deletion, there's no stream left for this connection, delete the connection
+			if len(pc.activeStreamInfo[connID]) == 0 {
+				delete(pc.activeStreamInfo, connID)
 			}
 		}
 	}
-
-	// Delete all inactive streams with minimal lock contention.
-	pc.mu.Lock()
-	for connID, streams := range streamsToDelete {
-		for _, streamID := range streams {
-			delete(pc.activeStreamInfo[connID], streamID)
-		}
-
-		// If after deletion, there's no stream left for this connection, delete the connection
-		if len(pc.activeStreamInfo[connID]) == 0 {
-			delete(pc.activeStreamInfo, connID)
-		}
-	}
-	pc.mu.Unlock()
 }
 
 func (pc *ProducerClient) NewWriter(subject string) *Writer {

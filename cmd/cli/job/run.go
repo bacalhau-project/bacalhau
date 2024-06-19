@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
@@ -36,6 +35,8 @@ var (
 
 		# Run a new job from an already executed job
 		bacalhau job describe 6e51df50 | bacalhau job run
+
+		# Download the 
 		`))
 )
 
@@ -133,10 +134,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		}
 	}
 
-	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
-	// so we can just use that
-	var j *models.Job
-	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
+	j, err := marshaller.UnmarshalJob(byteResult)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
@@ -172,7 +170,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
+	if err := printer.PrintJobExecution(ctx, j, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 
