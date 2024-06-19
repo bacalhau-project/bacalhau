@@ -4,5 +4,5 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "ignoreWords": [],
-    "import": [".cspell-docs.json", ".cspell-code.json"]
+    "import": [".cspell-code.json"]
 }
