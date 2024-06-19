@@ -52,10 +52,13 @@ jobs:
         id: set-ref
         run: |
           if [[ -n "${{ github.event.client_payload.ref }}" ]]; then
+            echo "Payload ref: ${{ github.event.client_payload.ref }}"
             echo "REF=${{ github.event.client_payload.ref }}" >> $GITHUB_ENV
           elif [[ -n "${{ github.event.pull_request.head.ref }}" ]]; then
+            echo "PR ref: ${{ github.event.pull_request.head.ref }}"
             echo "REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
           elif [[ -n "${{ github.sha }}" ]]; then
+            echo "REF: ${{ github.sha }}"
             echo "REF=${{ github.sha }}" >> $GITHUB_ENV
           else
             echo "No SHA set. Exiting."
