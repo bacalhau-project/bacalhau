@@ -9,9 +9,8 @@ PYPI_VERSION := `python ../../scripts/get_current_version_for_builds.py --pep440
 
 install-deps:
 	#!/usr/bin/env bash
-	pip3 install --upgrade pip
-	requirements.txt .
-	pip3 install -r requirements.txt
+	python3 -m pip install uv
+	uv pip install -r requirements.txt
 
 run-lint: install-deps
 	#!/usr/bin/env bash

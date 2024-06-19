@@ -5,6 +5,8 @@ set dotenv-load
 set export
 
 install-deps:
+	#!/usr/bin/env bash
+	corepack enable
 	yarn set version berry
 	yarn config set nodeLinker node-modules
 	yarn install

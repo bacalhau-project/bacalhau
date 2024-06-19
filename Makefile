@@ -1,7 +1,7 @@
 export GO = go
 export GOOS ?= $(shell $(GO) env GOOS)
 export GOARCH ?= $(shell $(GO) env GOARCH)
-export FLOXREPOSITORY = "aronchick"
+export FLOXREPOSITORY = aronchick
 
 UNAME_S := $(shell uname -s)
 
@@ -208,7 +208,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 
 .PHONY: build-webui
 build-webui:
-	cd webui && flox activate -r "${FLOXREPOSITORY}/bacalhau" -- just all
+	cd webui && flox activate -r "${FLOXREPOSITORY}/webui" -- just all
 
 
 ################################################################################

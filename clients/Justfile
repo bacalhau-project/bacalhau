@@ -4,6 +4,14 @@ SWAGGER_JSON := "../webui/public/swagger/swagger.json"
 VERSION_FROM_SWAGGER_JSON := `jq -r '.info.version' "../webui/public/swagger/swagger.json"`
 PYPI_VERSION := if VERSION_FROM_SWAGGER_JSON != "" { VERSION_FROM_SWAGGER_JSON } else { "0.0.0+develop" }
 
+clean:
+	rm -rf python/
+	rm -f python-config.json
+	rm -f swagger-edited.json
+	rm -f python-codegen.log
+	rm -f pyproject.toml
+	rm -f python/README.md
+
 create-python-config:
 	#!/usr/bin/env bash
 	echo "PACKAGE_NAME={{PACKAGE_NAME}}"
@@ -30,8 +38,7 @@ create-python-config:
 	swagger-codegen generate -l python \
 			-o python/ \
 			-i ./swagger-edited.json \
-			-c python-config.json \
-			--remove-operation-id-prefix=true 2>&1 | tee python-codegen.log
+			-c python-config.json 2>&1 | tee python-codegen.log
 
 	# patch package version
 	cat pyproject.toml.template | sed -e "s/VERSION/$PYPI_DOTS_NOT_HYPHENS/g" > python/pyproject.toml
