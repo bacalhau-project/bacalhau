@@ -4,6 +4,9 @@ FROM cgr.dev/chainguard/nvidia-device-plugin
 # Automatically set by Docker to be the --platform flag
 ARG TARGETPLATFORM
 
+# If the binary is not found, warn the user and exit
+RUN test -f bin/$TARGETPLATFORM/bacalhau || (echo "Binary not found for $TARGETPLATFORM" && exit 1)
+
 # Take advantage of the format for $TARGETPLATFORM being "OS/ARCH"
 # which matches our output directory structure in ./bin
 ADD bin/$TARGETPLATFORM/bacalhau /usr/local/bin/bacalhau
