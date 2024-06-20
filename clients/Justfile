@@ -5,7 +5,7 @@ VERSION_FROM_SWAGGER_JSON := `jq -r '.info.version' "../webui/public/swagger/swa
 PYPI_VERSION := if VERSION_FROM_SWAGGER_JSON != "" { VERSION_FROM_SWAGGER_JSON } else { "0.0.0+develop" }
 
 clean:
-	rm -rf python/
+ 		rm -rf python/
 	rm -f python-config.json
 	rm -f swagger-edited.json
 	rm -f python-codegen.log
