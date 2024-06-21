@@ -110,7 +110,7 @@ bacalhau docker run \
 --workdir /inputs/ \
 --wait \
 --id-only \
-davidgasquez/datadex:v0.2.0 -- /bin/bash -c 'duckdb -s "select 1"'
+davidgasquez/datadex:v0.2.0 -- /usr/bin/env bash -c 'duckdb -s "select 1"'
 ```
 
 ### Structure of the command

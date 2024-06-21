@@ -42,7 +42,7 @@ write_files:
     permissions: "0400"
     defer: true
     content: |
-        ${tls_key_file}
+      ${tls_key_file}
 
     # tls cert
   - path: /bacalhau_repo/bacalhau_cert.crt
@@ -51,15 +51,14 @@ write_files:
     permissions: "0400"
     defer: true
     content: |
-        ${tls_cert_file}
+      ${tls_cert_file}
 
-
-# Runs at every boot to ensure disks are mounted. Ensures on instance restarts disks are mounted.
+  # Runs at every boot to ensure disks are mounted. Ensures on instance restarts disks are mounted.
   - path: /var/lib/cloud/scripts/per-boot/mount-bacalhau-disks.sh
-    permissions: '0755'
+    permissions: "0755"
     owner: root:root
     content: |
-      #!/bin/bash
+      #!/usr/bin/env bash
       is_mounted() {
         mountpoint -q "$1"
       }
@@ -102,21 +101,27 @@ write_files:
     content: |
       ${otel_service_file}
 
-
 # setup and mount the bacalhau repo attached disk
 disk_setup:
   /dev/disk/by-id/google-bacalhau-repo:
-    table_type: 'gpt'
+    table_type: "gpt"
     layout: true
     overwrite: false
 
 fs_setup:
   - device: /dev/disk/by-id/google-bacalhau-repo
-    filesystem: 'ext4'
+    filesystem: "ext4"
     overwrite: false
 
 mounts:
-  - [ /dev/disk/by-id/google-bacalhau-repo, /bacalhau_repo, auto, "defaults,nofail", "0", "2" ]
+  - [
+      /dev/disk/by-id/google-bacalhau-repo,
+      /bacalhau_repo,
+      auto,
+      "defaults,nofail",
+      "0",
+      "2",
+    ]
 
 # change the owner of the bacalhau repo to the bacalhau user
 runcmd:

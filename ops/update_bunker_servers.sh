@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -xeuo pipefail
 
 for NODE in {mind,node0{1..4}}.lukemarsden.net; do

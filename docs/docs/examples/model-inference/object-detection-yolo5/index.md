@@ -58,7 +58,7 @@ bacalhau docker run \
 --id-only \
 --input https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
 ultralytics/yolov5:v6.2 \
--- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source $(pwd)/data/images --project /outputs'
+-- /usr/bin/env bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source $(pwd)/data/images --project /outputs'
 ```
 
 
@@ -129,7 +129,7 @@ bacalhau docker run \
 --input https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
 --input ipfs://bafybeicyuddgg4iliqzkx57twgshjluo2jtmlovovlx5lmgp5uoh3zrvpm:/datasets \
 ultralytics/yolov5:v6.2 \
--- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source /datasets --project /outputs'
+-- /usr/bin/env bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source /datasets --project /outputs'
 ```
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.

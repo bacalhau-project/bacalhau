@@ -54,7 +54,7 @@ This command converts coordinate files to topology and FF-compliant coordinate f
 bacalhau docker run \
 -i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
 gromacs/gromacs \
--- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
+-- /usr/bin/env bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
 ```
 Lets look at the command above more closely:
 
@@ -107,7 +107,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 -i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
 gromacs/gromacs
--- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
+-- /usr/bin/env bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
 ```
 
 

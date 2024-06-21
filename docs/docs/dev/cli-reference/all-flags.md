@@ -1372,7 +1372,7 @@ tasks:
       params:
         Image: ubuntu:latest
         Entrypoint:
-          - /bin/bash
+          - /usr/bin/env bash
         Parameters:
           - -c
           - echo Hello Bacalhau!

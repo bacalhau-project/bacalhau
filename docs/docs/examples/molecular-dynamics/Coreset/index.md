@@ -146,7 +146,7 @@ After the repo image has been pushed to Docker Hub, we can now use the container
 bacalhau docker run \
 -i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input \
 jsace/coreset \
--- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson;
+-- /usr/bin/env bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson;
 python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o outputs'
 ```
 

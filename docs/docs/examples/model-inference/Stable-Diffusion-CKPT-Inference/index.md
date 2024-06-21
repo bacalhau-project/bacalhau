@@ -53,7 +53,7 @@ WORKDIR /stable-diffusion
 
 RUN conda env create -f environment.yaml
 
-SHELL ["conda", "run", "-n", "ldm", "/bin/bash", "-c"]
+SHELL ["conda", "run", "-n", "ldm", "/usr/bin/env", "bash", "-c"]
 
 RUN pip install opencv-python
 

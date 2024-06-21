@@ -28,7 +28,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   }
 
   metadata_startup_script = <<-EOF
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 IFS=$'\n\t'
 

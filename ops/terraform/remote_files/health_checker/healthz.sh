@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "Status: 200\r\n\r\n"
 
 date --rfc-3339=ns

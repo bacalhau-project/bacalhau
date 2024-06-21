@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 terraform apply --auto-approve
 
@@ -7,19 +7,19 @@ sleep 60
 echo "Done."
 
 runRemote() {
-  local remote_addr args script
+    local remote_addr args script
 
-  remote_addr=$1; shift
-  script=$1; shift
+    remote_addr=$1; shift
+    script=$1; shift
 
-# generate eval-safe quoted version of current argument list
-# shellcheck disable=SC2034
-  printf -v args '%q ' "$@"
+    # generate eval-safe quoted version of current argument list
+    # shellcheck disable=SC2034
+    printf -v args '%q ' "$@"
 
-# pass that through on the command line to bash -s
-# note that $args is parsed remotely by /bin/sh, not by bash!
-  ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"${remote_addr}" "sudo ${script}"
-  # ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$remote_addr" "sudo bash -s -x -- $args" < "$script"
+    # pass that through on the command line to bash -s
+    # note that $args is parsed remotely by /bin/sh, not by bash!
+    ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"${remote_addr}" "sudo ${script}"
+    # ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$remote_addr" "sudo bash -s -x -- $args" < "$script"
 }
 
 all_nodes_public=()
@@ -36,13 +36,13 @@ runRemote "${first_node}" "/usr/local/bin/scripts/setup_node.sh"
 runRemote "${first_node}" "touch /tmp/remote_peer_string"
 
 while true ; do
-  # trunk-ignore(shellcheck/SC2312)
-  peer_string=$(curl -s "${first_node}/peer_token.html" | head -1)
-  if [[ "${peer_string}" == *"html"* ]]; then
-    sleep 5
-  else
-    break
-  fi
+    # trunk-ignore(shellcheck/SC2312)
+    peer_string=$(curl -s "${first_node}/peer_token.html" | head -1)
+    if [[ "${peer_string}" == *"html"* ]]; then
+        sleep 5
+    else
+        break
+    fi
 done
 
 
@@ -51,7 +51,7 @@ len_nodes=${#all_nodes_public[@]}
 
 for i in "${!all_nodes_public[@]}"; do
     if (( index >= len_nodes)); then
-      break
+        break
     fi
 
     this_node_public="${all_nodes_public[((i+1))]}"

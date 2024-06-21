@@ -45,7 +45,7 @@ curl 127.0.0.1:1234/api/v1/orchestrator/jobs/j-d586d2cc-6fc9-42c4-9dd9-a78df1d7c
           "Type": "docker",
           "Params": {
             "Entrypoint": [
-              "/bin/bash"
+              "/usr/bin/en bash"
             ],
             "Image": "ubuntu:latest",
             "Parameters": [

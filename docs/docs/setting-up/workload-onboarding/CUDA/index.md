@@ -92,7 +92,7 @@ bacalhau docker run \
     --id-only \
     --wait \
     nvidia/cuda:11.2.2-cudnn8-devel-ubuntu18.04 \
-    -- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello '
+    -- /usr/bin/env bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello '
 ```
 
 ### Structure of the Commands
@@ -106,7 +106,7 @@ bacalhau docker run \
 `nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu`: Compilation using the nvcc compiler and save it to the outputs directory as hello
 
 Note that there is `;` between the commands:
-  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line.
+  `-- /usr/bin/env bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello ` The ";" symbol allows executing multiple commands sequentially in a single line.
 
 `./outputs/hello`: Execution hello binary:
 You can combine compilation and execution commands.

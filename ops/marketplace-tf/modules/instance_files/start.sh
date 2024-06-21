@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -x
 
@@ -20,34 +20,34 @@ function install-bacalhau() {
 
 # reload service files and enable services
 function setup-services() {
-  echo "Loading systemctl services..."
-  sudo systemctl daemon-reload
-  echo "Enabling systemctl services..."
-  sudo systemctl enable docker
-  sudo systemctl enable otel.service
-  sudo systemctl enable bacalhau.service
+    echo "Loading systemctl services..."
+    sudo systemctl daemon-reload
+    echo "Enabling systemctl services..."
+    sudo systemctl enable docker
+    sudo systemctl enable otel.service
+    sudo systemctl enable bacalhau.service
 }
 
 # start services
 function start-services() {
-  echo "Starting systemctl services..."
-  sudo systemctl restart docker
-  sudo systemctl restart otel.service
-  sudo systemctl restart bacalhau.service
+    echo "Starting systemctl services..."
+    sudo systemctl restart docker
+    sudo systemctl restart otel.service
+    sudo systemctl restart bacalhau.service
 }
 
 # setup and start everything
 function start() {
-  echo "Starting..."
+    echo "Starting..."
 
-  if [ "$BACALHAU_VERSION_CMD" != "" ]; then
-    install-bacalhau
-  fi
+    if [ "$BACALHAU_VERSION_CMD" != "" ]; then
+        install-bacalhau
+    fi
 
-  # TODO move this into the VMI, maybe?
-  install-otel-collector
-  setup-services
-  start-services
+    # TODO move this into the VMI, maybe?
+    install-otel-collector
+    setup-services
+    start-services
 }
 
 start &> /var/log/startup-script.log

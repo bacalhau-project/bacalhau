@@ -5,7 +5,11 @@
       "Type": "docker",
       "Params": {
         "Image": "ubuntu:latest",
-        "Entrypoint": ["/bin/bash", "-c", "echo 15"]
+        "Entrypoint": [
+          "/usr/bin/env bash",
+          "-c",
+          "echo 15"
+        ]
       }
     }
   },
@@ -16,8 +20,7 @@
     "Memory": "",
     "Disk": ""
   },
-  "Inputs": [
-  ],
+  "Inputs": [],
   "Outputs": [
     {
       "StorageSource": "localDirectory",
