@@ -173,7 +173,7 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		cancel,
 	)
 
-	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.ConsumerID)
+	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.StreamID)
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
 			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))

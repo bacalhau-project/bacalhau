@@ -111,17 +111,19 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 			pc.mu.RLock()
 
 			for c, v := range pc.activeConnHeartBeatRequestSubjects {
-				// Create an empty slice for activeStreamIds
-				activeStreamIds := make(map[string][]string)
+				// Create an empty slice for activeStreamIdsByReqSubj
+				activeStreamIdsByReqSubj := make(map[string][]string)
+				var activeStreamIds []string
 
 				if streamInfoMap, ok := pc.activeStreamInfo[c]; ok {
-					for _, streamInfo := range streamInfoMap {
-						activeStreamIds[streamInfo.RequestSub] = append(activeStreamIds[streamInfo.RequestSub], streamInfo.ID)
+					for streamId, streamInfo := range streamInfoMap {
+						activeStreamIds = append(activeStreamIds, streamId)
+						activeStreamIdsByReqSubj[streamInfo.RequestSub] = append(activeStreamIdsByReqSubj[streamInfo.RequestSub], streamInfo.ID)
 					}
 				}
 
 				heartBeatRequest := HeartBeatRequest{
-					ActiveStreamIds: activeStreamIds,
+					ActiveStreamIds: activeStreamIdsByReqSubj,
 				}
 
 				data, err := json.Marshal(heartBeatRequest)
@@ -132,7 +134,8 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 
 				msg, err := pc.Conn.Request(v, data, pc.config.HeartBeatRequestTimeout)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("error while sending heart beat request from NATS streaming producer client")
+					log.Ctx(ctx).Err(err).Msg("heartbeat request to consumer client timed out")
+					nonActiveStreamIds[c] = append(nonActiveStreamIds[c], activeStreamIds...)
 					continue
 				}
 
@@ -143,7 +146,10 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 					continue
 				}
 
-				nonActiveStreamIds[c] = getStringList(heartBeatResponse.NonActiveStreamIds)
+				nonActiveStreamIdsFromConsumer := getStringList(heartBeatResponse.NonActiveStreamIds)
+				if len(nonActiveStreamIdsFromConsumer) != 0 {
+					nonActiveStreamIds[c] = append(nonActiveStreamIds[c], nonActiveStreamIdsFromConsumer...)
+				}
 			}
 
 			pc.mu.RUnlock()
@@ -176,6 +182,7 @@ func (pc *ProducerClient) updateActiveStreamInfo(nonActiveStreamIds map[string][
 			// If after deletion, there's no stream left for this connection, delete the connection
 			if len(pc.activeStreamInfo[connID]) == 0 {
 				delete(pc.activeStreamInfo, connID)
+				delete(pc.activeConnHeartBeatRequestSubjects, connID)
 			}
 		}
 	}
