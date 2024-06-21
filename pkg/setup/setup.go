@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -57,6 +58,9 @@ func SetupBacalhauRepo(repoDir string, c config.ReadWriter) (*repo.FsRepo, error
 }
 
 func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConfig) {
+	if err := os.Setenv(requester.UseDeprecatedEndpointsForTesting, "true"); err != nil {
+		t.Fatal(err)
+	}
 	// reset the global viper instance used by cmds pkg.
 	viper.Reset()
 	// create a specific viper instance for testing
