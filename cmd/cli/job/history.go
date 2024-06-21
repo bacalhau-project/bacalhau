@@ -2,7 +2,6 @@ package job
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -46,7 +45,6 @@ type HistoryOptions struct {
 	cliflags.ListOptions
 	EventType   string
 	ExecutionID string
-	NodeID      string
 }
 
 // NewHistoryOptions returns initialized Options
@@ -84,8 +82,6 @@ func NewHistoryCmd() *cobra.Command {
 		"The type of history events to return. One of: all, job, execution")
 	nodeCmd.Flags().StringVar(&o.ExecutionID, "execution-id", o.ExecutionID,
 		"The execution id to filter by.")
-	nodeCmd.Flags().StringVar(&o.NodeID, "node-id", o.NodeID,
-		"The node id to filter by.")
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
 	return nodeCmd
@@ -100,33 +96,16 @@ var (
 		ColumnConfig: table.ColumnConfig{Name: "Level", WidthMax: 15, WidthMaxEnforcer: text.WrapText},
 		Value:        func(jwi *models.JobHistory) string { return jwi.Type.String() },
 	}
-	historyRevisionCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return strconv.FormatUint(j.NewRevision, 10) },
-	}
 	historyExecIDCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
-	}
-	historyNodeIDCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
-	}
-	historyStateCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
-		Value: func(j *models.JobHistory) string {
-			if j.Type == models.JobHistoryTypeJobLevel {
-				return j.JobState.New.String()
-			}
-			return j.ExecutionState.New.String()
-		},
 	}
 	historyTopicCol = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: 15, WidthMaxEnforcer: text.WrapSoft},
 		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
 	}
 	historyEventCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 60, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 90, WidthMaxEnforcer: text.WrapText},
 		Value: func(h *models.JobHistory) string {
 			res := h.Event.Message
 
@@ -161,10 +140,7 @@ var (
 var historyColumns = []output.TableColumn[*models.JobHistory]{
 	historyTimeCol,
 	historyLevelCol,
-	historyRevisionCol,
 	historyExecIDCol,
-	historyNodeIDCol,
-	historyStateCol,
 	historyTopicCol,
 	historyEventCol,
 }
@@ -176,7 +152,6 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) 
 		JobID:       jobID,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,
-		NodeID:      o.NodeID,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,
 			NextToken: o.NextToken,

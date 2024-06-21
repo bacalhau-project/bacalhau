@@ -245,14 +245,8 @@ func ToLegacyJobHistory(history *models.JobHistory) *model.JobHistory {
 	return &model.JobHistory{
 		Type:             ToLegacyJobHistoryType(history.Type),
 		JobID:            history.JobID,
-		NodeID:           history.NodeID,
 		ComputeReference: history.ExecutionID,
-		JobState:         ToLegacyStateChange[models.JobStateType, model.JobStateType](history.JobState, ToLegacyJobStateType),
-		ExecutionState: ToLegacyStateChange[models.ExecutionStateType, model.ExecutionStateType](
-			history.ExecutionState, ToLegacyExecutionStateType),
-		NewVersion: int(history.NewRevision),
-		Comment:    history.Comment,
-		Time:       history.Time,
+		Time:             history.Time,
 	}
 }
 

@@ -144,6 +144,44 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// AddExecutionHistory mocks base method.
+func (m *MockStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, jobID, executionID}
+	for _, a := range events {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AddExecutionHistory", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddExecutionHistory indicates an expected call of AddExecutionHistory.
+func (mr *MockStoreMockRecorder) AddExecutionHistory(ctx, jobID, executionID interface{}, events ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, jobID, executionID}, events...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddExecutionHistory", reflect.TypeOf((*MockStore)(nil).AddExecutionHistory), varargs...)
+}
+
+// AddJobHistory mocks base method.
+func (m *MockStore) AddJobHistory(ctx context.Context, jobID string, events ...models.Event) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, jobID}
+	for _, a := range events {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AddJobHistory", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddJobHistory indicates an expected call of AddJobHistory.
+func (mr *MockStoreMockRecorder) AddJobHistory(ctx, jobID interface{}, events ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, jobID}, events...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddJobHistory", reflect.TypeOf((*MockStore)(nil).AddJobHistory), varargs...)
+}
+
 // BeginTx mocks base method.
 func (m *MockStore) BeginTx(ctx context.Context) (TxContext, error) {
 	m.ctrl.T.Helper()
@@ -188,31 +226,31 @@ func (mr *MockStoreMockRecorder) CreateEvaluation(ctx, eval interface{}) *gomock
 }
 
 // CreateExecution mocks base method.
-func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
+func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution, event)
+	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateExecution indicates an expected call of CreateExecution.
-func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution, event interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution, event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockStore)(nil).CreateExecution), ctx, execution)
 }
 
 // CreateJob mocks base method.
-func (m *MockStore) CreateJob(ctx context.Context, j models.Job, event models.Event) error {
+func (m *MockStore) CreateJob(ctx context.Context, j models.Job) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJob", ctx, j, event)
+	ret := m.ctrl.Call(m, "CreateJob", ctx, j)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateJob indicates an expected call of CreateJob.
-func (mr *MockStoreMockRecorder) CreateJob(ctx, j, event interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) CreateJob(ctx, j interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j, event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j)
 }
 
 // DeleteEvaluation mocks base method.

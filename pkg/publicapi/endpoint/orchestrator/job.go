@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -291,7 +292,6 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		ExcludeExecutionLevel: args.EventType == "job",
 		ExcludeJobLevel:       args.EventType == "execution",
 		ExecutionID:           args.ExecutionID,
-		NodeID:                args.NodeID,
 	}
 	history, err := e.store.GetJobHistory(ctx, jobID, options)
 	if err != nil {

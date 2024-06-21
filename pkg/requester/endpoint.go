@@ -123,7 +123,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 
 	JobsSubmitted.Inc(ctx, job.MetricAttributes()...)
 
-	err = e.store.CreateJob(ctx, *job, orchestrator.JobSubmittedEvent())
+	err = e.store.CreateJob(ctx, *job)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			},
 		},
 		NewState: models.JobStateTypeStopped,
-		Event:    orchestrator.JobStoppedEvent("job canceled by user"),
+		Message:  "job canceled by user",
 	})
 	if err != nil {
 		return CancelJobResult{}, err
@@ -228,7 +228,6 @@ func (e *BaseEndpoint) OnBidComplete(ctx context.Context, response compute.BidRe
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).WithMessage(response.Event.Message),
 		},
-		Event: response.Event,
 	}
 
 	if !response.Accepted {
@@ -236,14 +235,40 @@ func (e *BaseEndpoint) OnBidComplete(ctx context.Context, response compute.BidRe
 		updateRequest.NewValues.DesiredState =
 			models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("bid rejected")
 	}
-	err := e.store.UpdateExecution(ctx, updateRequest)
+
+	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to begin transaction")
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
+
+	if err = e.store.UpdateExecution(txContext, updateRequest); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to update execution")
 		return
 	}
 
+	updateEvent := orchestrator.ExecStateUpdateEvent(
+		updateRequest.NewValues.ComputeState.StateType,
+		updateRequest.NewValues.ComputeState.Message,
+	)
+	if err = e.store.AddExecutionHistory(txContext, response.JobID, response.ExecutionID, updateEvent); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to add execution history")
+		return
+	}
+
 	// enqueue evaluation to allow the scheduler to either accept the bid, or find a new node
-	e.enqueueEvaluation(ctx, response.JobID, "OnBidComplete")
+	e.enqueueEvaluation(txContext, response.JobID, "OnBidComplete")
+
+	if err = txContext.Commit(); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to commit transaction")
+		return
+	}
 
 	if response.Accepted {
 		e.eventEmitter.EmitBidReceived(ctx, response)
@@ -255,14 +280,24 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 		e.id, result.ExecutionID, result.SourcePeerID)
 	e.eventEmitter.EmitRunComplete(ctx, result)
 
-	job, err := e.store.GetJob(ctx, result.JobID)
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to begin transaction")
+		return
+	}
+
+	defer func() {
+		_ = txContext.Rollback()
+	}()
+
+	job, err := e.store.GetJob(txContext, result.JobID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to get job %s", result.JobID)
 		return
 	}
 
 	// update execution state
-	updateExecutionRequest := jobstore.UpdateExecutionRequest{
+	updateRequest := jobstore.UpdateExecutionRequest{
 		ExecutionID: result.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedStates: []models.ExecutionStateType{
@@ -285,20 +320,33 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 	if job.IsLongRunning() {
 		log.Ctx(ctx).Error().Msgf(
 			"[OnRunComplete] job %s is long running, but received a RunComplete. Marking the execution as failed instead", result.JobID)
-		updateExecutionRequest.NewValues.ComputeState =
+		updateRequest.NewValues.ComputeState =
 			models.NewExecutionState(models.ExecutionStateFailed).WithMessage("execution completed unexpectedly")
-		updateExecutionRequest.NewValues.DesiredState =
+		updateRequest.NewValues.DesiredState =
 			models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution completed unexpectedly")
 	}
 
-	err = e.store.UpdateExecution(ctx, updateExecutionRequest)
-	if err != nil {
+	if err = e.store.UpdateExecution(txContext, updateRequest); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to update execution")
 		return
 	}
 
+	updateEvent := orchestrator.ExecStateUpdateEvent(
+		updateRequest.NewValues.ComputeState.StateType,
+		updateRequest.NewValues.ComputeState.Message,
+	)
+	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.ExecutionID, updateEvent); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to add execution history")
+		return
+	}
+
 	// enqueue evaluation to allow the scheduler to mark the job as completed if all executions are completed
-	e.enqueueEvaluation(ctx, result.JobID, "OnRunComplete")
+	e.enqueueEvaluation(txContext, result.JobID, "OnRunComplete")
+
+	if err = txContext.Commit(); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to commit transaction")
+		return
+	}
 }
 
 func (e *BaseEndpoint) OnCancelComplete(ctx context.Context, result compute.CancelResult) {
@@ -310,8 +358,18 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 	log.Ctx(ctx).Debug().Err(result).Msgf("Requester node %s received ComputeFailure for execution: %s from %s",
 		e.id, result.ExecutionID, result.SourcePeerID)
 
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to begin transaction")
+		return
+	}
+
+	defer func() {
+		_ = txContext.Rollback()
+	}()
+
 	// update execution state
-	err := e.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
+	if err = e.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
 		ExecutionID: result.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
 			UnexpectedStates: []models.ExecutionStateType{
@@ -323,20 +381,28 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(result.Error()),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution failed"),
 		},
-		Event: result.Event,
-	})
-	if err != nil {
+	}); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to update execution")
 		return
 	}
 
 	// enqueue evaluation to allow the scheduler find other nodes, or mark the job as failed
-	e.enqueueEvaluation(ctx, result.JobID, "OnComputeFailure")
+	e.enqueueEvaluation(txContext, result.JobID, "OnComputeFailure")
+
+	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.ExecutionID, result.Event); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to add execution history")
+		return
+	}
+
+	if err = txContext.Commit(); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to commit transaction")
+		return
+	}
+
 	e.eventEmitter.EmitComputeFailure(ctx, result.ExecutionID, result)
 }
 
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node
-// TODO: solve edge case where execution is updated, but evaluation is not enqueued
 func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation string) {
 	job, err := e.store.GetJob(ctx, jobID)
 	if err != nil {

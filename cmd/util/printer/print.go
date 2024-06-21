@@ -155,7 +155,7 @@ func followLogs(cmd *cobra.Command, api clientv2.API, jobID string, client clien
 		if err != nil {
 			return fmt.Errorf("failed getting job: %w", err)
 		}
-		if resp.Job.State.StateType != models.JobStateTypePending {
+		if resp.Job.State.StateType != models.JobStateTypePending && resp.Job.State.StateType != models.JobStateTypeQueued {
 			break
 		}
 		// TODO: add exponential backoff if there were no state updates
@@ -413,8 +413,7 @@ func summariseHistoryEvents(history []*models.JobHistory) []models.Event {
 	for _, entry := range history {
 		hasDetails := entry.Event.Details != nil
 		failsExecution := hasDetails && entry.Event.Details[models.DetailsKeyFailsExecution] == "true"
-		terminalState := entry.ExecutionState.New.IsTermainl()
-		if (failsExecution || terminalState) && entry.Event.Message != "" {
+		if failsExecution && entry.Event.Message != "" {
 			events[entry.Event.Message] = entry.Event
 		}
 	}

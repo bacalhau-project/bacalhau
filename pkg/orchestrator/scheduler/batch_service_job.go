@@ -77,7 +77,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(orchestrator.ExecStoppedByJobStopEvent(), plan)
+		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedByJobStopEvent())
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -92,7 +92,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
+	lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	allFailedExecs = allFailedExecs.union(lost)
 
 	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
@@ -109,7 +109,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// Approve/Reject nodes
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
-	execsByApprovalStatus.toReject.markStopped(orchestrator.ExecStoppedByNodeRejectedEvent(), plan)
+	execsByApprovalStatus.toReject.markStopped(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
 
 	// create new executions if needed
 	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
@@ -130,18 +130,18 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// if the plan's job state if terminal, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalExecs.markStopped(plan.Event, plan)
+		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// stop executions if we over-subscribed and exceeded the desired number of executions
 		_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
-		overSubscriptions.markStopped(orchestrator.ExecStoppedByOversubscriptionEvent(), plan)
+		overSubscriptions.markStopped(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
 
 		// Check the job's state and update it accordingly.
 		if desiredRemainingCount <= 0 {
 			// If there are no remaining tasks to be done, mark the job as completed.
-			plan.MarkJobCompleted()
+			plan.MarkJobCompleted(orchestrator.JobStateUpdateEvent(models.JobStateTypeCompleted))
 		}
-		plan.MarkJobRunningIfEligible()
+		plan.MarkJobRunningIfEligible(orchestrator.JobStateUpdateEvent(models.JobStateTypeRunning))
 	}
 	return b.planner.Process(ctx, plan)
 }
@@ -165,7 +165,7 @@ func (b *BatchServiceJobScheduler) handleTimeouts(
 			expirationTime := b.clock.Now().Add(-timeout)
 			var timedOut execSet
 			nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-			timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+			timedOut.markStopped(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
 			allFailedExecs = allFailedExecs.union(timedOut)
 		}
 	}
@@ -210,7 +210,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
 		}
 		execution.Normalize()
-		plan.AppendExecution(execution)
+		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
 	}
 
 	if len(matching) < remainingExecutionCount {
@@ -224,6 +224,16 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		plan.AppendEvaluation(delayedEvaluation)
 		log.Ctx(ctx).Debug().Msgf("Creating delayed evaluation %s to retry scheduling job %s in %s due to: %s",
 			delayedEvaluation.ID, job.ID, waitUntil.Sub(b.clock.Now()), comment)
+
+		// if not a single node was matched, then the job if fully queued and we should reflect that
+		// in the job state and events
+		if len(matching) == 0 {
+			// only update the state if the is running, or pending and triggered by job registration
+			if job.State.StateType == models.JobStateTypeRunning ||
+				plan.Eval.TriggeredBy == models.EvalTriggerJobRegister {
+				plan.MarkJobQueued(orchestrator.JobQueueingEvent(comment))
+			}
+		}
 	}
 	return nil
 }

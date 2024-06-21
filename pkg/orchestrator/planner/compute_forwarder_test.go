@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 )
 
 type ComputeForwarderSuite struct {
@@ -151,7 +152,11 @@ func (suite *ComputeForwarderSuite) assertStateUpdated(execution *models.Executi
 		NewState:      newState,
 		ExpectedState: expectedState,
 	})
-	suite.jobStore.EXPECT().UpdateExecution(suite.ctx, matcher).Times(1)
+	txContext := jobstore.NewMockTxContext(suite.ctrl)
+	suite.jobStore.EXPECT().BeginTx(suite.ctx).Return(txContext, nil).Times(1)
+	suite.jobStore.EXPECT().UpdateExecution(txContext, matcher).Times(1)
+	suite.jobStore.EXPECT().AddExecutionHistory(txContext, execution.JobID, execution.ID, gomock.Any()).Times(1)
+	txContext.EXPECT().Commit().Times(1)
 }
 
 func (suite *ComputeForwarderSuite) waitUntilSatisfied() bool {

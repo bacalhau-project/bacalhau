@@ -218,8 +218,6 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 	}
 	jobHistoryCols := []output.TableColumn[*models.JobHistory]{
 		timeCol,
-		historyRevisionCol,
-		historyStateCol,
 		historyTopicCol,
 		historyEventCol,
 	}

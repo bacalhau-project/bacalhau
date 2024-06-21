@@ -3,10 +3,12 @@ package planner
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 type ComputeForwarder struct {
@@ -170,7 +172,19 @@ func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, exe
 // updateExecutionState updates the execution state in the job store.
 func (s *ComputeForwarder) updateExecutionState(ctx context.Context, execution *models.Execution,
 	newState models.ExecutionStateType, expectedStates ...models.ExecutionStateType) {
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
+	txContext, err := s.jobStore.BeginTx(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to begin transaction to update execution %s to state %s",
+			execution.ID, newState)
+		return
+	}
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
+
+	if err = s.jobStore.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
 		ExecutionID: execution.ID,
 		NewValues: models.Execution{
 			ComputeState: models.State[models.ExecutionStateType]{
@@ -180,8 +194,18 @@ func (s *ComputeForwarder) updateExecutionState(ctx context.Context, execution *
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedStates: expectedStates,
 		},
-	})
-	if err != nil {
+	}); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to update execution %s to state %s", execution.ID, newState)
+	}
+
+	if err = s.jobStore.AddExecutionHistory(txContext, execution.JobID, execution.ID,
+		orchestrator.ExecStateUpdateEvent(newState)); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to add history for execution %s to state %s",
+			execution.ID, newState)
+	}
+
+	if err = txContext.Commit(); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to commit transaction to update execution %s to state %s",
+			execution.ID, newState)
 	}
 }

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // execSet is a set of executions with a series of helper functions defined
@@ -208,7 +209,7 @@ func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApproval
 }
 
 // markStopped
-func (set execSet) markStopped(event models.Event, plan *models.Plan) {
+func (set execSet) markStopped(plan *models.Plan, event models.Event) {
 	for _, exec := range set {
 		plan.AppendStoppedExecution(exec, event)
 	}
