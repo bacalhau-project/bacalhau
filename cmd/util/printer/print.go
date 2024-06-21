@@ -100,7 +100,7 @@ func PrintJobExecution(
 		}
 	}
 
-	if runtimeSettings.PrintNodeDetails {
+	if runtimeSettings.PrintNodeDetails || jobErr != nil {
 		executions, err := client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 			JobID: jobID,
 		})
