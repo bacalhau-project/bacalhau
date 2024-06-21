@@ -2,11 +2,14 @@ package ranking
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/rs/zerolog/log"
 )
 
 type PreviousExecutionsNodeRankerParams struct {
@@ -25,8 +28,8 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // RankNodes ranks nodes based on whether the node has already executed the job, which is useful when ranking
 // nodes when handling retries:
 // - Rank 30: Node has never executed the job.
-// - Rank 0: Node has already executed the job.
-// - Rank -1: Node has executed the job more than once or has rejected a bid
+// - Rank 30-n: Node has already executed the job n times.
+// - Rank -1: Node has rejected a bid
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
@@ -41,9 +44,6 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 				previousExecutors[execution.NodeID] = 0
 			}
 			previousExecutors[execution.NodeID]++
-			if !execution.IsDiscarded() {
-				toFilterOut[execution.NodeID] = true
-			}
 			if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true
 			}
@@ -54,14 +54,11 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 		reason := "job not executed yet"
 		if previousExecutions, ok := previousExecutors[node.ID()]; ok {
 			if previousExecutions > 1 {
-				rank = orchestrator.RankUnsuitable
-				reason = "job already executed on this node more than once"
+				rank = math.Max(orchestrator.RankPossible, rank-previousExecutions)
+				reason = fmt.Sprintf("job already executed on this node %d times", previousExecutions)
 			} else if _, filterOut := toFilterOut[node.ID()]; filterOut {
 				rank = orchestrator.RankUnsuitable
 				reason = "job rejected"
-			} else {
-				rank = orchestrator.RankPossible
-				reason = "job already executed on this node"
 			}
 		}
 		ranks[i] = orchestrator.NodeRank{
