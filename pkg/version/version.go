@@ -24,7 +24,6 @@ const UnknownGitVersion = "v0.0.0"
 var (
 	Development = semver.MustParse(DevelopmentGitVersion)
 	Unknown     = semver.MustParse(UnknownGitVersion)
-	V1_3_2      = semver.MustParse("v1.3.2") //nolint: stylecheck
 )
 
 var (

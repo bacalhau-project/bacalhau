@@ -27,6 +27,8 @@ import (
 
 const TimeoutMessage = "Server Timeout!"
 
+var minClientVersion = semver.MustParse("v1.3.3")
+
 type ServerParams struct {
 	Router             *echo.Echo
 	Address            string
@@ -131,6 +133,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		middleware.ServerHeader(params.Headers),
 		// logs request at appropriate error level based on status code
 		middleware.RequestLogger(*middlewareLogger, logLevel),
+		// checks if the client version is supported by the server
+		middleware.VersionCheckMiddleware(*serverVersion, *minClientVersion),
 		// logs requests made by clients with different versions than the server
 		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
 	)
