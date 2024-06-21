@@ -69,7 +69,7 @@ func TestUnmarshalJob(t *testing.T) {
 		j, err := UnmarshalJob([]byte(jobWithUnknownFields))
 		assert.Nil(t, j)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "unknown field: 'Selector' in 'Job' is ignored")
+		assert.ErrorContains(t, err, "unknown field: 'Selector' in 'Job'")
 	})
 	t.Run("job with un-settable field", func(t *testing.T) {
 		var jobWithUnknownFields = `

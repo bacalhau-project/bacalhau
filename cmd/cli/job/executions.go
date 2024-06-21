@@ -150,7 +150,7 @@ func (o *ExecutionOptions) run(cmd *cobra.Command, args []string, api client.API
 		return err
 	}
 
-	if err = output.Output(cmd, executionColumns, o.OutputOptions, response.Executions); err != nil {
+	if err = output.Output(cmd, executionColumns, o.OutputOptions, response.Items); err != nil {
 		return fmt.Errorf("failed to output: %w", err)
 	}
 

@@ -90,7 +90,7 @@ func PrintJobExecution(
 			return fmt.Errorf("failed getting job history: %w", err)
 		}
 
-		historySummary := summariseHistoryEvents(history.History)
+		historySummary := summariseHistoryEvents(history.Items)
 		if len(historySummary) > 0 {
 			for _, event := range historySummary {
 				printEvent(cmd, event)
@@ -107,7 +107,7 @@ func PrintJobExecution(
 		if err != nil {
 			return fmt.Errorf("failed getting job executions: %w", err)
 		}
-		summary := summariseExecutions(executions.Executions)
+		summary := summariseExecutions(executions.Items)
 		if len(summary) > 0 {
 			cmd.Println("\nJob Results By Node:")
 			for message, runs := range summary {

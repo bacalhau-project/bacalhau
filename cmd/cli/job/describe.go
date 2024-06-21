@@ -102,7 +102,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API)
 	var executions []*models.Execution
 	if response.Executions != nil {
 		// TODO: #520 rename Executions.Executions to Executions.Items
-		executions = response.Executions.Executions
+		executions = response.Executions.Items
 	}
 	// Show most relevant execution first: sort by time DESC
 	slices.SortFunc(executions, func(a, b *models.Execution) int {
@@ -111,7 +111,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API)
 
 	var history []*models.JobHistory
 	if response.History != nil {
-		history = response.History.History
+		history = response.History.Items
 	}
 
 	o.printHeaderData(cmd, job)
