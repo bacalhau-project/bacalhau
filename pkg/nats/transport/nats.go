@@ -208,6 +208,7 @@ func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helpe
 	log.Debug().Msgf("Creating NATS client with servers: %s", strings.Join(config.Orchestrators, ","))
 	clientOptions := []nats.Option{
 		nats.Name(config.NodeID),
+		nats.MaxReconnects(-1),
 	}
 	if config.AuthSecret != "" {
 		clientOptions = append(clientOptions, nats.Token(config.AuthSecret))
