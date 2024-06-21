@@ -338,7 +338,9 @@ integration-test:
 	go test ./... -v --tags=integration -p 1
 
 .PHONY: bash-test
-bash-test: ${BINARY_PATH}
+bash-test: 
+	export REQUESTER_ENDPOINT_USE_DEPRECATED_ENV=true
+	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
 .PHONY: test-debug

@@ -35,6 +35,9 @@ type Endpoint struct {
 	websocketsMutex sync.RWMutex
 }
 
+// NB: to whomever removes this, grep for the env var when doing so, we can't
+// use this variable everywhere due to circular deps
+// TODO: https://github.com/bacalhau-project/bacalhau/issues/4119
 const UseDeprecatedEndpointsForTesting = "REQUESTER_ENDPOINT_USE_DEPRECATED_ENV"
 
 func NewEndpoint(params EndpointParams) *Endpoint {

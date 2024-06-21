@@ -57,6 +57,9 @@ func SetupBacalhauRepo(repoDir string, c config.ReadWriter) (*repo.FsRepo, error
 }
 
 func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConfig) {
+	if err := os.Setenv("REQUESTER_ENDPOINT_USE_DEPRECATED_ENV", "true"); err != nil {
+		t.Fatal(err)
+	}
 	// reset the global viper instance used by cmds pkg.
 	viper.Reset()
 	// create a specific viper instance for testing
