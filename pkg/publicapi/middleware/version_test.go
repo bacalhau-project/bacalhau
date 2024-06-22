@@ -205,11 +205,12 @@ func (suite *VersionCheckTestSuite) TestVersionCheckMiddleware() {
 
 			suite.Equal(tc.expectedStatus, rr.Code)
 			if tc.expectedStatus == http.StatusForbidden {
-				var response map[string]string
+				var response VersionCheckError
 				suite.NoError(json.Unmarshal(rr.Body.Bytes(), &response))
-				suite.Equal(tc.expectedResponse, response["Error"])
-				suite.Equal(tc.serverVersion.String(), response["ServerVersion"])
-				suite.Equal(tc.minVersion.String(), response["MinimumVersion"])
+				suite.Equal(tc.expectedResponse, response.Error)
+				suite.Equal(tc.serverVersion.String(), response.ServerVersion)
+				suite.Equal(tc.minVersion.String(), response.MinVersion)
+				suite.Equal(tc.clientVersion, "v"+response.ClientVersion)
 			}
 		})
 	}

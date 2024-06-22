@@ -22,6 +22,13 @@ type Notification struct {
 	Message       string
 }
 
+type VersionCheckError struct {
+	Error         string
+	MinVersion    string
+	ClientVersion string
+	ServerVersion string
+}
+
 func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) echo.MiddlewareFunc {
 	return echomiddelware.RequestLoggerWithConfig(echomiddelware.RequestLoggerConfig{
 		// instructs logger to extract given list of headers from request.
@@ -104,10 +111,11 @@ func VersionCheckMiddleware(serverVersion, minVersion semver.Version) echo.Middl
 
 			if clientVersion.LessThan(&minVersion) {
 				// Client version is less than the minimum required version
-				return c.JSON(http.StatusForbidden, map[string]string{
-					"Error":          "Client version is outdated. Update your client",
-					"ServerVersion":  serverVersion.String(),
-					"MinimumVersion": minVersion.String(),
+				return c.JSON(http.StatusForbidden, VersionCheckError{
+					Error:         "Client version is outdated. Update your client",
+					MinVersion:    minVersion.String(),
+					ClientVersion: clientVersion.String(),
+					ServerVersion: serverVersion.String(),
 				})
 			}
 

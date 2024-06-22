@@ -27,7 +27,7 @@ import (
 
 const TimeoutMessage = "Server Timeout!"
 
-var minClientVersion = semver.MustParse("v1.3.3")
+var minClientVersion = semver.MustParse("v1.4.0")
 
 type ServerParams struct {
 	Router             *echo.Echo
