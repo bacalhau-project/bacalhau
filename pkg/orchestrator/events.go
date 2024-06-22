@@ -10,6 +10,7 @@ import (
 const (
 	EventTopicJobSubmission    models.EventTopic = "Submission"
 	EventTopicJobScheduling    models.EventTopic = "Scheduling"
+	EventTopicJobQueueing      models.EventTopic = "Queueing"
 	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
 	EventTopicJobTimeout       models.EventTopic = "Job Timeout"
 )
@@ -17,6 +18,7 @@ const (
 const (
 	jobSubmittedMessage        = "Job submitted"
 	jobTranslatedMessage       = "Job tasks translated to new type"
+	jobQueuedMessage           = "Job queued"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
 	JobTimeoutMessage          = "Job timed out"
@@ -68,6 +70,14 @@ func JobTimeoutEvent(timeout time.Duration) models.Event {
 		WithHint(timeoutHint).
 		WithFailsExecution(true)
 	return *e
+}
+
+func JobQueueingEvent(reason string) models.Event {
+	message := jobQueuedMessage
+	if reason != "" {
+		message = fmt.Sprintf("%s. %s", message, reason)
+	}
+	return *models.NewEvent(EventTopicJobQueueing).WithMessage(message)
 }
 
 func ExecStoppedByJobStopEvent() models.Event {

@@ -224,6 +224,16 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		plan.AppendEvaluation(delayedEvaluation)
 		log.Ctx(ctx).Debug().Msgf("Creating delayed evaluation %s to retry scheduling job %s in %s due to: %s",
 			delayedEvaluation.ID, job.ID, waitUntil.Sub(b.clock.Now()), comment)
+
+		// if not a single node was matched, then the job if fully queued and we should reflect that
+		// in the job state and events
+		if len(matching) == 0 {
+			// only update the state if the is running, or pending and triggered by job registration
+			if job.State.StateType == models.JobStateTypeRunning ||
+				plan.Eval.TriggeredBy == models.EvalTriggerJobRegister {
+				plan.MarkJobQueued(orchestrator.JobQueueingEvent(comment))
+			}
+		}
 	}
 	return nil
 }

@@ -96,6 +96,12 @@ func (p *Plan) MarkJobRunningIfEligible() {
 	p.DesiredJobState = JobStateTypeRunning
 }
 
+// MarkJobQueued marks the job as pending.
+func (p *Plan) MarkJobQueued(event Event) {
+	p.DesiredJobState = JobStateTypeQueued
+	p.Event = event
+}
+
 func (p *Plan) MarkJobFailed(event Event) {
 	p.DesiredJobState = JobStateTypeFailed
 	p.Event = event
