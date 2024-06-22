@@ -1,0 +1,6 @@
+#!/sbin/openrc-run
+description="Nix multi-user support daemon"
+
+command="/nix/var/nix/profiles/default/bin/nix-daemon"
+command_background="yes"
+pidfile="/run/$RC_SVCNAME.pid"
