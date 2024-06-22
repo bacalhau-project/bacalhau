@@ -3,10 +3,11 @@ package planner
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 type LoggingPlanner struct {
@@ -18,8 +19,14 @@ func NewLoggingPlanner() *LoggingPlanner {
 
 func (s *LoggingPlanner) Process(ctx context.Context, plan *models.Plan) error {
 	dict := zerolog.Dict()
-	for key, value := range plan.Event.Details {
-		dict = dict.Str(key, value)
+	var eventMessage string
+	var delim string
+	for _, event := range plan.JobEvents {
+		for key, value := range event.Details {
+			dict = dict.Str(key, value)
+		}
+		eventMessage += delim + event.Message
+		delim = ". "
 	}
 
 	level := zerolog.TraceLevel
@@ -34,7 +41,11 @@ func (s *LoggingPlanner) Process(ctx context.Context, plan *models.Plan) error {
 	default:
 	}
 
-	log.Ctx(ctx).WithLevel(level).Dict("Details", dict).Str("Event", plan.Event.Message).Str("JobID", plan.Job.ID).Msg(message)
+	log.Ctx(ctx).WithLevel(level).
+		Dict("Details", dict).
+		Str("Event", eventMessage).
+		Str("JobID", plan.Job.ID).
+		Msg(message)
 	return nil
 }
 

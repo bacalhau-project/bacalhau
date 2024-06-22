@@ -4,8 +4,9 @@ package jobstore
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
@@ -76,7 +77,7 @@ type Store interface {
 	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error)
 
 	// CreateJob will create a new job and persist it in the store.
-	CreateJob(ctx context.Context, j models.Job, event models.Event) error
+	CreateJob(ctx context.Context, j models.Job) error
 
 	// GetExecutions retrieves all executions for the specified job.
 	GetExecutions(ctx context.Context, options GetExecutionsOptions) ([]models.Execution, error)
@@ -85,12 +86,18 @@ type Store interface {
 	// [UpdateJobStateRequest].
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 
+	// AddJobHistory adds a new history entry for the specified job
+	AddJobHistory(ctx context.Context, jobID string, events ...models.Event) error
+
 	// CreateExecution creates a new execution
-	CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error
+	CreateExecution(ctx context.Context, execution models.Execution) error
 
 	// UpdateExecution updates the execution state according to the values
 	// within [UpdateExecutionRequest].
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+
+	// AddExecutionHistory adds a new history entry for the specified execution
+	AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error
 
 	// DeleteJob removes all trace of the provided job from storage
 	DeleteJob(ctx context.Context, jobID string) error
@@ -113,14 +120,13 @@ type UpdateJobStateRequest struct {
 	JobID     string
 	Condition UpdateJobCondition
 	NewState  models.JobStateType
-	Event     models.Event
+	Message   string
 }
 
 type UpdateExecutionRequest struct {
 	ExecutionID string
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
-	Event       models.Event
 }
 
 type UpdateJobCondition struct {
@@ -186,7 +192,6 @@ type JobHistoryFilterOptions struct {
 	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
 	ExcludeJobLevel       bool   `json:"exclude_job_level"`
 	ExecutionID           string `json:"execution_id"`
-	NodeID                string `json:"node_id"`
 }
 
 type GetExecutionsOptions struct {

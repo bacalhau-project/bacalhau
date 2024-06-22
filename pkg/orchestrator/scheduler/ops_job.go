@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/benbjohnson/clock"
@@ -68,7 +67,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(orchestrator.ExecStoppedByJobStopEvent(), plan)
+		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedByJobStopEvent())
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -83,7 +82,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(orchestrator.ExecStoppedByNodeUnhealthyEvent(), plan)
+	lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	allFailedExecs = allFailedExecs.union(lost)
 
 	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
@@ -92,27 +91,25 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	// the first time we are evaluating the job
 	var newExecs execSet
 	if len(existingExecs) == 0 {
-		newExecs, err = b.createMissingExecs(ctx, &job, plan)
-		if err != nil {
-			b.handleFailure(nonTerminalExecs, allFailedExecs, plan, err)
-			return b.planner.Process(ctx, plan)
+		if newExecs, err = b.createMissingExecs(ctx, &job, plan); err != nil {
+			return err // internal error
 		}
 	}
 
 	// if the plan's job state is failed, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalExecs.markStopped(plan.Event, plan)
+		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// mark job as completed if there are no more active or new executions
 		if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
 			if len(allFailedExecs) > 0 {
-				b.handleFailure(nonTerminalExecs, allFailedExecs, plan, errors.New(""))
+				plan.MarkJobFailed(orchestrator.JobExecutionsFailedEvent())
 			} else {
-				plan.MarkJobCompleted()
+				plan.MarkJobCompleted(orchestrator.JobStateUpdateEvent(models.JobStateTypeCompleted))
 			}
 		}
 	}
-	plan.MarkJobRunningIfEligible()
+	plan.MarkJobRunningIfEligible(orchestrator.JobStateUpdateEvent(models.JobStateTypeRunning))
 	return b.planner.Process(ctx, plan)
 }
 
@@ -133,7 +130,7 @@ func (b *OpsJobScheduler) handleTimeouts(
 		expirationTime := b.clock.Now().Add(-timeout)
 		var timedOut execSet
 		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-		timedOut.markStopped(orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout), plan)
+		timedOut.markStopped(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
 		allFailedExecs = allFailedExecs.union(timedOut)
 	}
 	return nonTerminalExecs, allFailedExecs
@@ -141,15 +138,17 @@ func (b *OpsJobScheduler) handleTimeouts(
 
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
-	newExecs := execSet{}
-	nodes, _, err := b.selector.MatchingNodes(ctx, job)
+	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
-		return newExecs, err
+		return nil, err
 	}
-	if len(nodes) == 0 {
-		return nil, orchestrator.ErrNoMatchingNodes{}
+	if len(matching) == 0 {
+		plan.MarkJobFailed(
+			models.EventFromError(orchestrator.EventTopicJobScheduling, orchestrator.NewErrNoMatchingNodes(rejected)))
+		return nil, nil
 	}
-	for _, node := range nodes {
+	newExecs := execSet{}
+	for _, node := range matching {
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
@@ -161,21 +160,10 @@ func (b *OpsJobScheduler) createMissingExecs(
 			NodeID:       node.NodeInfo.ID(),
 		}
 		execution.Normalize()
+		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
 		newExecs[execution.ID] = execution
 	}
-	for _, exec := range newExecs {
-		plan.AppendExecution(exec)
-	}
 	return newExecs, nil
-}
-
-func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet, plan *models.Plan, err error) {
-	// mark all non-terminal executions as failed
-	nonTerminalExecs.markStopped(plan.Event, plan)
-
-	// mark the job as failed, using the error message of the latest failed execution, if any, or use
-	// the error message passed by the scheduler
-	plan.MarkJobFailed(plan.Event)
 }
 
 // compile-time assertion that OpsJobScheduler satisfies the Scheduler interface

@@ -34,7 +34,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	execution.NodeID = node.ID
 	execution.AllocateResources(task.Name, models.Resources{})
 
-	err = node.RequesterNode.JobStore.CreateJob(s.ctx, *job, models.Event{})
+	err = node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
 	require.NoError(s.T(), err)
 
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, models.EngineDocker)
@@ -74,7 +74,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, *localExecutionState)
 
 	execution.ComputeState.StateType = models.ExecutionStateBidAccepted
-	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution, models.Event{})
+	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution)
 	require.NoError(s.T(), err)
 
 	ch, err := node.RequesterNode.EndpointV2.ReadLogs(s.ctx, orchestrator.ReadLogsRequest{

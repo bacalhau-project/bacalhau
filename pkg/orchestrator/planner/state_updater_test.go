@@ -37,8 +37,8 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_CreateExecutions_Succes
 	execution1, execution2 := mockCreateExecutions(plan)
 
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
-	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1, models.Event{}).Times(1)
-	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution2, models.Event{}).Times(1)
+	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1).Times(1)
+	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution2).Times(1)
 	suite.mockTxContext.EXPECT().Commit()
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
@@ -50,7 +50,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_CreateExecutions_Error(
 
 	// no attempt to create execution2
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
-	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1, models.Event{}).Return(errors.New("create error")).Times(1)
+	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1).Return(errors.New("create error")).Times(1)
 	suite.mockTxContext.EXPECT().Rollback()
 
 	suite.Error(suite.stateUpdater.Process(suite.ctx, plan))
@@ -124,8 +124,8 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultiOp() {
 	plan.DesiredJobState = models.JobStateTypeCompleted
 
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
-	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1, models.Event{}).Times(1)
-	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution2, models.Event{}).Times(1)
+	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1).Times(1)
+	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution2).Times(1)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext, NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update1)).Times(1)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext, NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update2)).Times(1)
 	suite.mockStore.EXPECT().UpdateJobState(suite.mockTxContext, NewUpdateJobMatcherFromPlanUpdate(suite.T(), plan)).Times(1)

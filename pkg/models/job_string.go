@@ -10,15 +10,16 @@ func _() {
 	var x [1]struct{}
 	_ = x[JobStateTypeUndefined-0]
 	_ = x[JobStateTypePending-1]
-	_ = x[JobStateTypeRunning-2]
-	_ = x[JobStateTypeCompleted-3]
-	_ = x[JobStateTypeFailed-4]
-	_ = x[JobStateTypeStopped-5]
+	_ = x[JobStateTypeQueued-2]
+	_ = x[JobStateTypeRunning-3]
+	_ = x[JobStateTypeCompleted-4]
+	_ = x[JobStateTypeFailed-5]
+	_ = x[JobStateTypeStopped-6]
 }
 
-const _JobStateType_name = "UndefinedPendingRunningCompletedFailedStopped"
+const _JobStateType_name = "UndefinedPendingQueuedRunningCompletedFailedStopped"
 
-var _JobStateType_index = [...]uint8{0, 9, 16, 23, 32, 38, 45}
+var _JobStateType_index = [...]uint8{0, 9, 16, 22, 29, 38, 44, 51}
 
 func (i JobStateType) String() string {
 	if i < 0 || i >= JobStateType(len(_JobStateType_index)-1) {

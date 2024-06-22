@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -9,7 +10,9 @@ import (
 
 const (
 	EventTopicJobSubmission    models.EventTopic = "Submission"
+	EventTopicJobStateUpdate   models.EventTopic = "State Update"
 	EventTopicJobScheduling    models.EventTopic = "Scheduling"
+	EventTopicJobQueueing      models.EventTopic = "Queueing"
 	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
 	EventTopicJobTimeout       models.EventTopic = "Job Timeout"
 )
@@ -17,16 +20,18 @@ const (
 const (
 	jobSubmittedMessage        = "Job submitted"
 	jobTranslatedMessage       = "Job tasks translated to new type"
+	jobQueuedMessage           = "Job queued"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
 	JobTimeoutMessage          = "Job timed out"
+	jobExecutionsFailedMessage = "Job failed because one or more executions failed"
 
+	execCreatedMessage                   = "Execution created"
 	execStoppedByJobStopMessage          = "Execution stop requested because job has been stopped"
 	execStoppedByNodeUnhealthyMessage    = "Execution stop requested because node has disappeared"
 	execStoppedByNodeRejectedMessage     = "Execution stop requested because node has been rejected"
 	execStoppedByOversubscriptionMessage = "Execution stop requested because there are more executions than needed"
-	execRejectedByNodeMessage            = "Node responded to execution run request"
-	execFailedMessage                    = "Execution did not complete successfully"
+	execStoppedDueToJobFailureMessage    = "Execution stopped due to job failure"
 
 	executionTimeoutMessage = "Execution timed out"
 	timeoutHint             = "Try increasing the task timeout or reducing the task size"
@@ -52,6 +57,16 @@ func JobTranslatedEvent(old, new *models.Job) models.Event {
 	})
 }
 
+func JobStateUpdateEvent(new models.JobStateType, message ...string) models.Event {
+	eventMessage := new.String()
+	if len(message) > 0 && message[0] != "" {
+		eventMessage += fmt.Sprintf(". %s", strings.Join(message, ". "))
+	}
+	return *models.NewEvent(EventTopicJobStateUpdate).
+		WithMessage(eventMessage).
+		WithDetail("NewState", new.String())
+}
+
 func JobStoppedEvent(reason string) models.Event {
 	return event(EventTopicJobScheduling, jobStopRequestedMessage, map[string]string{
 		"Reason": reason,
@@ -68,6 +83,34 @@ func JobTimeoutEvent(timeout time.Duration) models.Event {
 		WithHint(timeoutHint).
 		WithFailsExecution(true)
 	return *e
+}
+
+func JobExecutionsFailedEvent() models.Event {
+	return event(EventTopicJobScheduling, jobExecutionsFailedMessage, map[string]string{})
+}
+
+func JobQueueingEvent(reason string) models.Event {
+	message := jobQueuedMessage
+	if reason != "" {
+		message = fmt.Sprintf("%s. %s", message, reason)
+	}
+	return *models.NewEvent(EventTopicJobQueueing).WithMessage(message)
+}
+
+func ExecCreatedEvent(execution *models.Execution) models.Event {
+	return *models.NewEvent(EventTopicJobScheduling).
+		WithMessage(execCreatedMessage).
+		WithDetail("NodeID", execution.NodeID)
+}
+
+func ExecStateUpdateEvent(new models.ExecutionStateType, message ...string) models.Event {
+	eventMessage := new.String()
+	if len(message) > 0 && message[0] != "" {
+		eventMessage += fmt.Sprintf(". %s", strings.Join(message, ". "))
+	}
+	return *models.NewEvent(EventTopicJobStateUpdate).
+		WithMessage(eventMessage).
+		WithDetail("NewState", new.String())
 }
 
 func ExecStoppedByJobStopEvent() models.Event {
@@ -92,4 +135,8 @@ func ExecStoppedByNodeRejectedEvent() models.Event {
 
 func ExecStoppedByOversubscriptionEvent() models.Event {
 	return event(EventTopicJobScheduling, execStoppedByOversubscriptionMessage, map[string]string{})
+}
+
+func ExecStoppedDueToJobFailureEvent() models.Event {
+	return *models.NewEvent(EventTopicJobScheduling).WithMessage(execStoppedDueToJobFailureMessage)
 }

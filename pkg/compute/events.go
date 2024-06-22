@@ -16,13 +16,8 @@ const (
 )
 
 func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
-	message := response.Reason
-	if message == "" && response.ShouldBid {
-		message = "Accepted job"
-	}
-
 	return models.Event{
-		Message:   message,
+		Message:   response.Reason,
 		Topic:     EventTopicExecutionBidding,
 		Timestamp: time.Now(),
 		Details:   map[string]string{},

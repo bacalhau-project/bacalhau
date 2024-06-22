@@ -116,7 +116,7 @@ func (s *WatcherTestSuite) createEvaluation() (*models.Evaluation, error) {
 	eval.Type = job.Type
 
 	// Create job
-	err := s.store.CreateJob(context.Background(), *job, models.Event{})
+	err := s.store.CreateJob(context.Background(), *job)
 	s.Require().NoError(err)
 
 	// Create an evaluation

@@ -22,6 +22,10 @@ const (
 	// yet scheduled.
 	JobStateTypePending
 
+	// JobStateTypeQueued is the state of a job that has been evaluated but no
+	// matching nodes are available yet.
+	JobStateTypeQueued
+
 	// JobStateTypeRunning is the state of a job that has been scheduled, with at
 	// least one active execution.
 	JobStateTypeRunning
