@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 # Install required packages
-RUN apk add --no-cache sudo shadow bash curl xz git openrc git-lfs nodejs aws-cli
+RUN apk add --no-cache sudo shadow bash curl xz git openrc git-lfs nodejs aws-cli just
 
 RUN curl -sSL https://sdk.cloud.google.com | bash
 

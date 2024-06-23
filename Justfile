@@ -68,7 +68,7 @@ all: build
 init:
 	#!/usr/bin/env bash
 	echo "Activating repo with flox..."
-	flox activate -r "aronchick/bacalhau" 2>/dev/null
+	flox activate -r "aronchick/bacalhau" -t 2>/dev/null
 	if [ $? -eq 1 ]; then
 		echo "Already active."
 	fi
@@ -78,7 +78,7 @@ pre-commit:
 	mkdir -p webui/build && touch webui/build/stub
 	pre-commit run --all
 	rm webui/build/stub
-	cd python && flox activate -r "aronchick/python" -- just pre-commit
+	cd python && flox activate -r "aronchick/python" -t -- just pre-commit
 
 generate_public_key_pair:
 	#!/usr/bin/env bash
@@ -86,20 +86,20 @@ generate_public_key_pair:
 
 build-python-apiclient:
 	#!/usr/bin/env bash
-	cd clients && flox activate -r "aronchick/clients" -- just clean all
+	cd clients && flox activate -r "aronchick/clients" -t -- just clean all
 	echo "Python API client built."
 
 build-python-sdk:
 	#!/usr/bin/env bash
 	export PYPI_VERSION=$({{ PYPI_VERSION_SCRIPT }} $({{ GIT_VERSION_COMMAND }}))
 	cd python
-	flox activate -r "aronchick/python" -- just clean build
+	flox activate -r "aronchick/python" -t -- just clean build
 	echo "Python SDK built."
 
 build-bacalhau-airflow:
 	#!/usr/bin/env bash
 	cd integration/airflow
-	flox activate -r "aronchick/airflow" -- just clean all
+	flox activate -r "aronchick/airflow" -t -- just clean all
 	echo "Python bacalhau-airflow built."
 
 build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
@@ -107,19 +107,19 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 release-python-apiclient: build-python-apiclient
 	#!/usr/bin/env bash
 	cd clients
-	flox activate -r "aronchick/clients" -- just publish
+	flox activate -r "aronchick/clients" -t -- just publish
 	echo "Python API client pushed to PyPi."
 
 release-python-sdk: build-python-sdk
 	#!/usr/bin/env bash
 	cd python
-	flox activate -r "aronchick/python" -- just publish
+	flox activate -r "aronchick/python" -t -- just publish
 	echo "Python SDK pushed to PyPi."
 
 release-bacalhau-airflow: build-bacalhau-airflow
 	#!/usr/bin/env bash
 	cd integration/airflow
-	flox activate -r "aronchick/airflow" -- just release
+	flox activate -r "aronchick/airflow" -t -- just release
 	echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
@@ -165,7 +165,7 @@ pkg_files:
 # Define the build-webui recipe
 build-webui:
 	@#!/usr/bin/env bash
-	@cd webui && flox activate -r "aronchick/webui" -- just all
+	@cd webui && flox activate -r "aronchick/webui" -t -- just all
 
 # Define the binary-web recipe
 binary-web: build-webui
