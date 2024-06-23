@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/Masterminds/semver"
 	"github.com/labstack/echo/v4"
@@ -9,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type Notification struct {
@@ -18,6 +20,13 @@ type Notification struct {
 
 	ClientVersion string
 	Message       string
+}
+
+type VersionCheckError struct {
+	Error         string
+	MinVersion    string
+	ClientVersion string
+	ServerVersion string
 }
 
 func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) echo.MiddlewareFunc {
@@ -79,4 +88,39 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 			return nil
 		},
 	})
+}
+
+// VersionCheckMiddleware returns a middleware that checks if the client version is at least minVersion.
+func VersionCheckMiddleware(serverVersion, minVersion semver.Version) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			clientVersionStr := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauGitVersion)
+			if clientVersionStr == "" ||
+				clientVersionStr == version.DevelopmentGitVersion ||
+				clientVersionStr == version.UnknownGitVersion {
+				// allow the request to pass through
+				return next(c)
+			}
+
+			clientVersion, err := semver.NewVersion(clientVersionStr)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]string{
+					"Error": "Invalid client version " + clientVersionStr,
+				})
+			}
+
+			if clientVersion.LessThan(&minVersion) {
+				// Client version is less than the minimum required version
+				return c.JSON(http.StatusForbidden, VersionCheckError{
+					Error:         "Client version is outdated. Update your client",
+					MinVersion:    minVersion.String(),
+					ClientVersion: clientVersion.String(),
+					ServerVersion: serverVersion.String(),
+				})
+			}
+
+			// Client version is acceptable, proceed with the request
+			return next(c)
+		}
+	}
 }

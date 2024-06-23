@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -19,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 // godoc for Orchestrator PutJob
@@ -104,11 +102,6 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			for i := range history {
 				response.History.Items[i] = &history[i]
 			}
-			// migrate to old response if required
-			if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-				response.History.History = response.History.Items //nolint: staticcheck
-				response.History.Items = make([]*models.JobHistory, 0)
-			}
 		case "executions":
 			// ignore if user requested executions twice
 			if response.Executions != nil {
@@ -125,11 +118,6 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			}
 			for i := range executions {
 				response.Executions.Items[i] = &executions[i]
-			}
-			// migrate to old response if required
-			if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-				response.Executions.Executions = response.Executions.Items //nolint: staticcheck
-				response.Executions.Items = make([]*models.Execution, 0)
 			}
 		}
 	}
@@ -230,13 +218,6 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		},
 	}
 
-	// migrate to old response if required
-	if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-		res.Jobs = res.Items
-		res.Items = make([]*models.Job, 0)
-		res.Normalize()
-	}
-
 	return c.JSON(http.StatusOK, res)
 }
 
@@ -322,13 +303,6 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 	}
 	for i := range history {
 		res.Items[i] = &history[i]
-	}
-
-	// migrate to old response if required
-	if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-		res.History = res.Items //nolint: staticcheck
-		res.Items = make([]*models.JobHistory, 0)
-		res.Normalize()
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -417,13 +391,6 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 		res.Items[i] = &executions[i]
 	}
 
-	// migrate to old response if required
-	if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-		res.Executions = res.Items //nolint: staticcheck
-		res.Items = make([]*models.Execution, 0)
-		res.Normalize()
-	}
-
 	return c.JSON(http.StatusOK, res)
 }
 
@@ -463,12 +430,6 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 	}
 
 	result := &apimodels.ListJobResultsResponse{Items: resp.Results}
-	// migrate to old response if required
-	if listResponseRequiresMigration(apimodels.GetClientVersion(c.Request())) {
-		result.Results = result.Items //nolint: staticcheck
-		result.Items = make([]*models.SpecConfig, 0)
-		result.Normalize()
-	}
 
 	return publicapi.UnescapedJSON(c, http.StatusOK, result)
 }
@@ -537,16 +498,4 @@ func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
 		}
 	}
 	return nil
-}
-
-// listResponseRequiresMigration determines if the response to the request needs
-// to be migrated based on the client version. It returns true if the client
-// version is less than or equal to version.V1_3_2 without a pre-release version,
-// or if the client version is not development, or is unknown.
-// Otherwise, it returns false.
-func listResponseRequiresMigration(clientVersion *semver.Version) bool {
-	return !(clientVersion.GreaterThan(version.V1_3_2) ||
-		(clientVersion.Equal(version.V1_3_2) && clientVersion.Prerelease() != "") ||
-		clientVersion.Equal(version.Development) ||
-		clientVersion.Equal(version.Unknown))
 }
