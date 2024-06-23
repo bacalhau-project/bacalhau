@@ -9,6 +9,6 @@ poetry install
 popd || exit
 
 pushd webui || exit
-corepack enable
+corepack --yes enable
 yarn install
 popd || exit

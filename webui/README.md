@@ -9,7 +9,7 @@ asdf install
 Then install corepack which you'll need for the latest yarn version.
 ```bash
 npm install -g corepack
-corepack prepare yarn@latest --activate
+corepack --yes prepare yarn@latest --activate
 ```
 
 ## Install all yarn dependencies
