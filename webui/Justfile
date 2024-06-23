@@ -6,8 +6,8 @@ set export
 
 install-deps:
 	#!/usr/bin/env bash
-	export COREPACK_ENABLE_STRICT=0
 	corepack enable
+	corepack prepare yarn@stable --activate
 	yarn set version berry
 	yarn config set nodeLinker node-modules
 	yarn install

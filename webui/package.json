@@ -7,6 +7,7 @@
     "@faker-js/faker": "^8.4.0",
     "@fontsource/open-sans": "^5.0.22",
     "@jest/globals": "^29.7.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.18.0",
     "@testing-library/jest-dom": "^6.4.1",
     "@testing-library/react": "^14.2.1",
     "@types/json-schema": "^7.0.15",
