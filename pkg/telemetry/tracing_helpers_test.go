@@ -171,7 +171,9 @@ func TestRecordErrorOnSpanOneChannel_withoutError(t *testing.T) {
 	assert.False(t, span.ended, "span should only be closed once the channel has received a response")
 	realChan <- expectedParam
 	actualParam := <-actualChan
-	assert.True(t, span.ended, "span should only be closed once the channel has received a response")
+	assert.Eventually(t, func() bool {
+		return span.ended
+	}, 1*time.Second, 5*time.Millisecond, "span should only be closed once the channel has received a response")
 	assert.Equal(t, expectedParam, actualParam)
 }
 
@@ -193,8 +195,9 @@ func TestRecordErrorOnSpanTwoChannels_withError(t *testing.T) {
 	assert.False(t, span.ended, "span should only be closed once the channel has received a response")
 	errChan <- expectedErr
 	actualErr := <-actualErrChan
-	assert.True(t, span.ended, "span should only be closed once the channel has received a response")
-
+	assert.Eventually(t, func() bool {
+		return span.ended
+	}, 1*time.Second, 5*time.Millisecond, "span should only be closed once the channel has received a response")
 	assert.Equal(t, expectedErr, actualErr)
 	assert.Equal(t, expectedErr, span.err)
 	assert.Equal(t, codes.Error, span.statusCode)

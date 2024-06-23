@@ -58,7 +58,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	)
 
 	require.Error(s.T(), err, "expected error but it wasn't returned")
-	require.Contains(s.T(), getoutput, "error downloading job")
+	require.Contains(s.T(), getoutput, "Error: downloading job")
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {

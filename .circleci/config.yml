@@ -318,7 +318,7 @@ commands:
       - run:
           name: Start IPFS Daemon
           command: |
-            ipfs daemon
+            ipfs daemon --offline
           background: true
 jobs:
   build_cli:
