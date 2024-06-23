@@ -15,8 +15,8 @@ jobs:
         env:
           REPO: ${{ github.repository }}
         run: |
-          curl -X POST \
+          curl -L -X POST \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
+          -H "Accept: application/vnd.github+json" \
           "https://api.github.com/repos/$REPO/dispatches" \
           -d '{"event_type": "new-version-release", "client_payload": {"release_tag": "${{ github.ref_name }}"} }'
