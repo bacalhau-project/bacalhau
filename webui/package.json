@@ -53,6 +53,9 @@
     "web-vitals": "^4.2.0",
     "wesbos": "^1.0.1"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.18.0"
+  },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
