@@ -32,18 +32,6 @@ parameters:
     default: "build-vm-linux-amd64"
     type: string
 
-  PUSH_BRANCH:
-    default: "main"
-    type: string
-
-  PUSH_TAG:
-    default: "v0.0.0"
-    type: string
-
-  full_name:
-    default: "bacalhau-project/bacalhau"
-    type: string
-
 executors:
   # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:

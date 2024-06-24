@@ -12,7 +12,7 @@ on:
     types:
       - completed
   repository_dispatch:
-    types: [ok-to-test, ok-to-trigger-circleci]
+    types: [ok-to-test]
 
 permissions:
   contents: write
@@ -21,14 +21,12 @@ permissions:
 jobs:
   trigger-circle-ci:
     if: |
-      github.event_name != 'pull_request' ||
-      (
-        !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
-        !contains(github.event.pull_request.labels.*.name, 'wip')
-      )
+      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
+      !contains(github.event.pull_request.labels.*.name, 'wip')
     runs-on: ubuntu-latest
     name: Pull Request Triggered CircleCI
     steps:
+      # For Debugging Below
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -46,41 +44,14 @@ jobs:
           RUNNER_CONTEXT: ${{ toJson(runner) }}
         run: echo "$RUNNER_CONTEXT"
       - uses: actions/checkout@v3
-      - if: ${{ github.event_name != 'pull_request' }}
-        run: echo "Not a pull request. Exiting."
-      - name: Set up ref
-        id: set-ref
-        run: |
-          if [[ -n "${{ github.event.client_payload.ref }}" ]]; then
-            echo "Payload ref: ${{ github.event.client_payload.ref }}"
-            echo "REF=${{ github.event.client_payload.ref }}" >> $GITHUB_ENV
-          elif [[ -n "${{ github.event.pull_request.head.ref }}" ]]; then
-            echo "PR ref: ${{ github.event.pull_request.head.ref }}"
-            echo "REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
-          elif [[ -n "${{ github.sha }}" ]]; then
-            echo "REF: ${{ github.sha }}"
-            echo "REF=${{ github.sha }}" >> $GITHUB_ENV
-          else
-            echo "No SHA set. Exiting."
-            exit 1
-          fi
-
-          if [[ -n "${{ github.event.client_payload.full_name }}" ]]; then
-            echo "FULL_NAME=${{ github.event.client_payload.full_name }}" >> $GITHUB_ENV
-          else
-            echo "FULL_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          fi
-
-      - uses: hmarr/debug-action@v3
-
-      - name: "Trigger CircleCI"
+      - name: Trigger CircleCI
         id: trigger-circle-ci
         run: |
-          python -m pip install poetry
-          poetry install
-          source $(poetry env info --path)/bin/activate
-          python ./.circleci/trigger_circleci.py
+          if [[ -z $CIRCLE_TOKEN ]]; then
+            echo "CIRCLE_TOKEN is not set. Exiting."
+            exit 1
+          fi
+          ./.circleci/trigger_pipeline.sh
         env:
           CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
-          REF: ${{ env.REF }}
-          FULL_NAME: ${{ github.repository }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}
