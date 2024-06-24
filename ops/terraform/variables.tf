@@ -208,3 +208,8 @@ variable "docker_password" {
   default   = ""
   sensitive = true
 }
+
+variable "web_ui_enabled" {
+  description = "Enable or disable the web UI"
+  type    = bool
+}
