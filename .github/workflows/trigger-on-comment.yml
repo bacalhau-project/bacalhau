@@ -1,0 +1,27 @@
+name: Trigger on Comment
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  trigger-workflows:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/oktotest')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if commenter is authorized
+        id: check-authorization
+        run: |
+          COMMENTER=$(jq --raw-output .comment.user.login "$GITHUB_EVENT_PATH")
+          APPROVERS=$(yq e '.approvers[]' OWNERS)
+          if echo "$APPROVERS" | grep -Fxq "$COMMENTER"; then
+            echo "::set-output name=authorized::true"
+          else
+            echo "::set-output name=authorized::false"
+          fi
+      - name: Dispatch event
+        if: steps.check-authorization.outputs.authorized == 'true'
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: ok-to-test

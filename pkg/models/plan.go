@@ -82,8 +82,8 @@ func (p *Plan) MarkJobRunningIfEligible() {
 		return
 	}
 
-	// Only proceed if the current job state is "Pending".
-	if p.Job.State.StateType != JobStateTypePending {
+	// Only proceed if the current job state is "Pending" or "Queued".
+	if p.Job.State.StateType != JobStateTypePending && p.Job.State.StateType != JobStateTypeQueued {
 		return
 	}
 
