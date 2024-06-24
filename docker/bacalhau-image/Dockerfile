@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.4
 FROM cgr.dev/chainguard/nvidia-device-plugin
 
 # Automatically set by Docker to be the --platform flag

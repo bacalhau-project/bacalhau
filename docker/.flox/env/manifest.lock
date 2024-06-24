@@ -1,0 +1,310 @@
+{
+  "lockfile-version": 0,
+  "manifest": {
+    "hook": {
+      "on-activate": "  # Perform initialization steps, e.g. create a python venv\n  python -m venv .venv\n"
+    },
+    "install": {
+      "pip": {
+        "pkg-path": "python311Packages.pip"
+      },
+      "python311": {
+        "pkg-path": "python311"
+      }
+    },
+    "options": {
+      "systems": [
+        "aarch64-darwin",
+        "x86_64-darwin",
+        "aarch64-linux",
+        "x86_64-linux"
+      ]
+    },
+    "profile": {
+      "common": "  source .venv/bin/activate\n  alias uvf=\"uv pip freeze | uv pip compile - -o requirements.txt\"\n  alias uvs=\"uv pip sync requirements.txt\"\n"
+    },
+    "registry": {
+      "defaults": {
+        "subtrees": null
+      },
+      "inputs": {
+        "nixpkgs": {
+          "from": {
+            "owner": "NixOS",
+            "ref": "release-23.11",
+            "repo": "nixpkgs",
+            "type": "github"
+          },
+          "subtrees": [
+            "legacyPackages"
+          ]
+        }
+      },
+      "priority": [
+        "nixpkgs"
+      ]
+    },
+    "vars": {}
+  },
+  "packages": {
+    "aarch64-darwin": {
+      "pip": {
+        "attr-path": [
+          "legacyPackages",
+          "aarch64-darwin",
+          "python311Packages",
+          "pip"
+        ],
+        "info": {
+          "broken": false,
+          "description": "The PyPA recommended tool for installing Python packages",
+          "license": null,
+          "pname": "pip",
+          "unfree": false,
+          "version": "23.2.1"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      },
+      "python311": {
+        "attr-path": [
+          "legacyPackages",
+          "aarch64-darwin",
+          "python311"
+        ],
+        "info": {
+          "broken": false,
+          "description": "A high-level dynamically-typed programming language",
+          "license": "Python-2.0",
+          "pname": "python3",
+          "unfree": false,
+          "version": "3.11.8"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      }
+    },
+    "aarch64-linux": {
+      "pip": {
+        "attr-path": [
+          "legacyPackages",
+          "aarch64-linux",
+          "python311Packages",
+          "pip"
+        ],
+        "info": {
+          "broken": false,
+          "description": "The PyPA recommended tool for installing Python packages",
+          "license": null,
+          "pname": "pip",
+          "unfree": false,
+          "version": "23.2.1"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      },
+      "python311": {
+        "attr-path": [
+          "legacyPackages",
+          "aarch64-linux",
+          "python311"
+        ],
+        "info": {
+          "broken": false,
+          "description": "A high-level dynamically-typed programming language",
+          "license": "Python-2.0",
+          "pname": "python3",
+          "unfree": false,
+          "version": "3.11.8"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      }
+    },
+    "x86_64-darwin": {
+      "pip": {
+        "attr-path": [
+          "legacyPackages",
+          "x86_64-darwin",
+          "python311Packages",
+          "pip"
+        ],
+        "info": {
+          "broken": false,
+          "description": "The PyPA recommended tool for installing Python packages",
+          "license": null,
+          "pname": "pip",
+          "unfree": false,
+          "version": "23.2.1"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      },
+      "python311": {
+        "attr-path": [
+          "legacyPackages",
+          "x86_64-darwin",
+          "python311"
+        ],
+        "info": {
+          "broken": false,
+          "description": "A high-level dynamically-typed programming language",
+          "license": "Python-2.0",
+          "pname": "python3",
+          "unfree": false,
+          "version": "3.11.8"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      }
+    },
+    "x86_64-linux": {
+      "pip": {
+        "attr-path": [
+          "legacyPackages",
+          "x86_64-linux",
+          "python311Packages",
+          "pip"
+        ],
+        "info": {
+          "broken": false,
+          "description": "The PyPA recommended tool for installing Python packages",
+          "license": null,
+          "pname": "pip",
+          "unfree": false,
+          "version": "23.2.1"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      },
+      "python311": {
+        "attr-path": [
+          "legacyPackages",
+          "x86_64-linux",
+          "python311"
+        ],
+        "info": {
+          "broken": false,
+          "description": "A high-level dynamically-typed programming language",
+          "license": "Python-2.0",
+          "pname": "python3",
+          "unfree": false,
+          "version": "3.11.8"
+        },
+        "input": {
+          "attrs": {
+            "lastModified": 1718308197,
+            "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+            "owner": "NixOS",
+            "repo": "nixpkgs",
+            "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+            "type": "github"
+          },
+          "fingerprint": "944bb05628623ef9bba4355116342e9de930c1f3b45cf449444b196a0cb0739d",
+          "url": "github:NixOS/nixpkgs/0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327"
+        },
+        "priority": 5
+      }
+    }
+  },
+  "registry": {
+    "defaults": {
+      "subtrees": null
+    },
+    "inputs": {
+      "nixpkgs": {
+        "from": {
+          "lastModified": 1718308197,
+          "narHash": "sha256-61KJ0bnNXxbQ0CbOOKFHbB9BWrqCzVhLGhYRZFfJXv0=",
+          "owner": "NixOS",
+          "repo": "nixpkgs",
+          "rev": "0fc70ac44ab22b4a6bb434dadc5bb34e30bdb327",
+          "type": "github"
+        },
+        "subtrees": [
+          "legacyPackages"
+        ]
+      }
+    },
+    "priority": [
+      "nixpkgs"
+    ]
+  }
+}

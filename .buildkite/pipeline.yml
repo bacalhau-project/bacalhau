@@ -5,36 +5,21 @@ steps:
   steps:
   - name: Build WebUI
     commands: |
-      flox activate -r aronchick/bacalhau -t
+      . <(FLOX_DISABLE_METRICS=true SHELL=$(which bash) flox activate -r aronchick/bacalhau -t;);
       cd webui && yarn install && yarn build
       buildkite-agent artifact upload 'webui/build/*;webui/node_modules/*'
     plugins:
-      - docker#v5.9.0:
-          image: docker.io/bacalhauproject/build-container:0.0.13
+      - docker#v5.11.0:
+          image: docker.io/bacalhauproject/build-container:0.0.32
     key: build_webui
   - name: Test
     commands: |
-      flox activate -r aronchick/bacalhau -t
+      . <(FLOX_DISABLE_METRICS=true SHELL=$(which bash) flox activate -r aronchick/bacalhau -t;);
       buildkite agent artifact download *
-      go mod tidy
-      export BACALHAU_ENVIRONMENT=test'
-      wget https://dist.ipfs.tech/go-ipfs/v0.18.0/go-ipfs_v0.18.0_linux-amd64.tar.gz -O ipfs.tar.gz"
-      tar -xzf ipfs.tar.gz
-      cd go-ipfs"
-      sudo bash install.sh"
-      ipfs --version"
-      ipfs init
-      ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
-      ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-      echo '~~~ Start IPFS Daemon'
-      ( ipfs daemon ) &
-      echo '~~~ Set IPFS Connect Env'
-      export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
-      (
-        LOG_LEVEL='debug' TEST_BUILD_TAGS='{{ matrix.build_tags }}' TEST_PARALLEL_PACKAGES='4'
-        go install gotest.tools/gotestsum@v1.8.2
-        just test-and-report
-      )
+
+      LOG_LEVEL='debug' TEST_BUILD_TAGS='{{ matrix.build_tags }}' TEST_PARALLEL_PACKAGES='4'
+      go install gotest.tools/gotestsum@v1.8.2
+      just test-and-report
       cd coverage/ && buildkite-agent artifact upload '*.coverage' && cd -
     depends_on:
     - build_webui
@@ -65,6 +50,9 @@ steps:
           build_tags: integration
         skip: true
     key: test-{{ matrix.target_os }}-{{ matrix.target_arch }}-{{ matrix.build_tags }}
+    plugins:
+      - docker#v5.11.0:
+          image: docker.io/bacalhauproject/build-container:0.0.32
   - name: Build
     commands: |
       flox activate -r aronchick/bacalhau -t
