@@ -11,6 +11,9 @@ required_vars=(
   "AWS_POLICY_ARN"
   "BUCKET_NAME"
   "BUILDKITE_AGENT_TEST_TOKEN"
+  "BUILDKITE_S3_ACCESS_KEY_ID"
+  "BUILDKITE_S3_SECRET_ACCESS_KEY"
+  "BUILDKITE_S3_ACL"
 )
 
 # Get the directory of the current script
@@ -53,9 +56,10 @@ done
 
 just build-python-sdk
 
-# If $BUILDKITE_JOB_ID is not set, make a random one with a prefix of "test-"
-if [ -z "$BUILDKITE_JOB_ID" ]; then
-    BUILDKITE_JOB_ID="test-$(uuidgen | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)"
+# If BUILDKITE_AGENT_ACCESS_TOKEN is not set, skip
+if [ -z "$BUILDKITE_AGENT_ACCESS_TOKEN" ]; then
+    echo "BUILDKITE_AGENT_ACCESS_TOKEN is not set, skipping artifact upload"
+    exit 0
 fi
 
 buildkite-agent artifact upload "python/dist/*" "s3://$BUCKET_NAME/$BUILDKITE_JOB_ID" \
