@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y \
     git-lfs \
     && rm -rf /var/lib/apt/lists/*
 
+RUN git config --global --add safe.directory '*'
+
 # Install Nix
 ENV NIX_INSTALLER_EXTRA_CONF='filter-syscalls = false'
 ENV NIX_INSTALLER_NO_MODIFY_PROFILE=1
