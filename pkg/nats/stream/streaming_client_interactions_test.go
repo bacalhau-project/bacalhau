@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package stream
 
 import (
@@ -67,9 +69,9 @@ func (s *StreamingClientInteractionTestSuite) createProducerClient() *ProducerCl
 	pc, err := NewProducerClient(s.ctx, ProducerClientParams{
 		Conn: clientManager.Client,
 		Config: StreamProducerClientConfig{
-			HeartBeatIntervalDuration:        2 * time.Second,
-			HeartBeatRequestTimeout:          1 * time.Second,
-			StreamCancellationBufferDuration: 2 * time.Second,
+			HeartBeatIntervalDuration:        100 * time.Millisecond,
+			HeartBeatRequestTimeout:          50 * time.Millisecond,
+			StreamCancellationBufferDuration: 100 * time.Millisecond,
 		},
 	})
 
@@ -85,7 +87,7 @@ func (s *StreamingClientInteractionTestSuite) createConsumerClient() *ConsumerCl
 	cc, err := NewConsumerClient(ConsumerClientParams{
 		Conn: clientManager.Client,
 		Config: StreamConsumerClientConfig{
-			StreamCancellationBufferDuration: 1 * time.Second,
+			StreamCancellationBufferDuration: 50 * time.Millisecond,
 		},
 	})
 
@@ -125,7 +127,7 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 		td.heartBeatRequestSub = streamRequest.HeartBeatRequestSub
 		go func() {
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(50 * time.Millisecond)
 			defer ticker.Stop()
 
 			for {
@@ -162,7 +164,7 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	// Close the Consumer Client After Certain Time
 	go func() {
 
-		ticker := time.NewTicker(4 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -178,6 +180,6 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	// Validate that producer client does the cleanup
 	s.Eventually(func() bool {
 		return td.contextCancelled
-	}, 8*time.Second, 1*time.Second)
+	}, 1800*time.Millisecond, 100*time.Millisecond)
 
 }
