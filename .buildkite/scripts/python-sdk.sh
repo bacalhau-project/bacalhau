@@ -54,7 +54,23 @@ for var in "${required_vars[@]}"; do
   fi
 done
 
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# If BACALHAU_VERSION is set, check out that version
+if [ -n "$BACALHAU_VERSION" ]; then
+    git stash
+    git checkout "$BACALHAU_VERSION"
+    git pull
+fi
+
 just build-python-sdk
+
+# If BACALHAU_VERSION is set, restore the original branch
+if [ -n "$BACALHAU_VERSION" ]; then
+    git stash
+    git checkout "$current_branch"
+    git pull
+fi
 
 # If BUILDKITE_AGENT_ACCESS_TOKEN is not set, skip
 if [ -z "$BUILDKITE_AGENT_ACCESS_TOKEN" ]; then
