@@ -284,11 +284,37 @@ func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	}
 }
 
-func TargetingFlag(value *model.TargetingMode) *ValueFlag[model.TargetingMode] {
-	return &ValueFlag[model.TargetingMode]{
+type TargetingMode bool
+
+const (
+	TargetAny TargetingMode = false
+	TargetAll TargetingMode = true
+)
+
+func (t TargetingMode) String() string {
+	if bool(t) {
+		return "all"
+	} else {
+		return "any"
+	}
+}
+
+func ParseTargetingMode(s string) (TargetingMode, error) {
+	switch s {
+	case "any":
+		return TargetAny, nil
+	case "all":
+		return TargetAll, nil
+	default:
+		return TargetAny, fmt.Errorf(`expecting "any" or "all", not %q`, s)
+	}
+}
+
+func TargetingFlag(value *TargetingMode) *ValueFlag[TargetingMode] {
+	return &ValueFlag[TargetingMode]{
 		value:    value,
-		parser:   model.ParseTargetingMode,
-		stringer: func(tm *model.TargetingMode) string { return tm.String() },
+		parser:   ParseTargetingMode,
+		stringer: func(tm *TargetingMode) string { return tm.String() },
 		typeStr:  "all|any",
 	}
 }

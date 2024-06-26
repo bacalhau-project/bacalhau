@@ -10,24 +10,17 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobSettings struct {
 	name        string
 	namespace   string
-	jobType     model.TargetingMode
+	jobType     flags.TargetingMode
 	priority    int
 	count       int
 	constraints string
 	labels      []string
-
-	// TODO(forrest): remove these fields and their usage when we complete deprecation of legacy flag names.
-	// tracked via https://github.com/bacalhau-project/bacalhau/issues/3838
-	legacy *LegacyJobFlags
-	// we hold a reference to the command so we may check if users provided legacy or new flag names.
-	cmd *cobra.Command
 }
 
 func (j *JobSettings) Name() string {
@@ -40,9 +33,9 @@ func (j *JobSettings) Namespace() string {
 
 func (j *JobSettings) Type() string {
 	switch j.jobType {
-	case model.TargetAll:
+	case flags.TargetAll:
 		return models.JobTypeOps
-	case model.TargetAny:
+	case flags.TargetAny:
 		return models.JobTypeBatch
 	default:
 		panic("unreachable")
@@ -54,25 +47,10 @@ func (j *JobSettings) Priority() int {
 }
 
 func (j *JobSettings) Count() int {
-	if j.cmd.Flags().Changed("concurrency") {
-		return j.legacy.concurrency
-	}
 	return j.count
 }
 
 func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) {
-	if j.cmd.Flags().Changed("selector") {
-		req, err := parse.NodeSelector(j.legacy.selectors)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]*models.LabelSelectorRequirement, 0, len(req))
-		for _, c := range req {
-			tmp := models.LabelSelectorRequirement(c)
-			out = append(out, &tmp)
-		}
-		return out, nil
-	}
 	return parse.NodeSelectorV2(j.constraints)
 }
 
@@ -102,32 +80,19 @@ func (j *JobSettings) Labels() (map[string]string, error) {
 	return s, nil
 }
 
-type LegacyJobFlags struct {
-	// Deprecated: use 'JobSettings.constraints'
-	selectors string
-	//Deprecated: use `JobSettings.count`
-	concurrency int
-}
-
 func DefaultJobSettings() *JobSettings {
 	return &JobSettings{
 		name:        "",
 		namespace:   models.DefaultNamespace,
-		jobType:     model.TargetAny,
+		jobType:     flags.TargetAny,
 		priority:    0,
 		count:       1,
 		constraints: "",
 		labels:      make([]string, 0),
-
-		legacy: &LegacyJobFlags{
-			selectors:   "",
-			concurrency: 1,
-		},
 	}
 }
 
 func RegisterJobFlags(cmd *cobra.Command, s *JobSettings) {
-	s.cmd = cmd
 	fs := pflag.NewFlagSet("job", pflag.ContinueOnError)
 	fs.StringVar(&s.name, "name", s.name,
 		`The name to refer to this job by.`)
@@ -142,19 +107,8 @@ Valid label keys must consist of alphanumeric characters, '-', '_' or '.', and m
 Valid label values must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end 
 with an alphanumeric character.`)
 
-	//
-	// Deprecation of legacy flags tracked via https://github.com/bacalhau-project/bacalhau/issues/3838
-	//
-
 	// NB(forrest): the `count` flag is replacing `concurrency`. Hide the `concurrency` flag and add deprecation notice.
 	fs.IntVar(&s.count, "count", s.count, `How many nodes should run the job.`)
-
-	fs.IntVar(&s.legacy.concurrency, "concurrency", s.legacy.concurrency,
-		`How many nodes should run the job`)
-
-	if err := fs.MarkDeprecated("concurrency", "use --count"); err != nil {
-		panic(err)
-	}
 
 	fs.Var(flags.TargetingFlag(&s.jobType), "target",
 		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all").`)
@@ -165,18 +119,5 @@ with an alphanumeric character.`)
 Supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2).
 Matching objects must satisfy all of the specified label constraints.`)
 
-	// deprecated
-	fs.StringVarP(&s.legacy.selectors, "selector", "s", s.legacy.selectors,
-		`Selector (label query) to filter nodes on which this job can be executed.
-Supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). 
-Matching objects must satisfy all of the specified label constraints.`)
-
-	if err := fs.MarkDeprecated("selector", "use --constraints"); err != nil {
-		panic(err)
-	}
-
 	cmd.Flags().AddFlagSet(fs)
-	// NB(forrest): don't allow the legacy flag name to be used together with the new flag name.
-	cmd.MarkFlagsMutuallyExclusive("count", "concurrency")
-	cmd.MarkFlagsMutuallyExclusive("selector", "constraints")
 }
