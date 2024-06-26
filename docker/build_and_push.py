@@ -6,8 +6,6 @@ import json
 import logging
 import os
 import subprocess
-import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import List, TypedDict
 
 import semver
