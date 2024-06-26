@@ -1,4 +1,4 @@
-FROM docker.io/bacalhauproject/nix-flox-base:0.0.49
+FROM docker.io/bacalhauproject/nix-flox-base:0.0.50
 
 # Set up environment
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"

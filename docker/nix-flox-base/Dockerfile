@@ -3,6 +3,9 @@ FROM ubuntu:20.04
 # Set environment variable for headless installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Make Bash the default shell
+SHELL ["/bin/bash", "-c"]
+
 # Install required packages
 RUN apt-get update && apt-get install -y \
     sudo \
@@ -32,13 +35,17 @@ RUN curl -L https://nixos.org/nix/install | NIX_BUILD_GROUP_ID=122 bash -s -- --
 # Set up environment
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 
+RUN /bin/bash -c '. /nix/var/nix/profiles/default/etc/profile.d/nix.sh && nix profile install --impure --profile /nix/var/nix/profiles/default --experimental-features "nix-command flakes" --accept-flake-config github:flox/flox'
+
+
 # Install Flox
-RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
+RUN /bin/bash -c '\
+    . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
     nix profile install --impure \
     --profile /nix/var/nix/profiles/default \
     --experimental-features "nix-command flakes" \
     --accept-flake-config \
-    'github:flox/flox'
+    github:flox/flox'
 
 # Copy the startup script
 COPY start.sh /start.sh
