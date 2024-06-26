@@ -97,7 +97,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			JobCheckers: []legacy_job.CheckStatesFunction{
 				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted:         testCase.completedCount,
-					model.ExecutionStateCancelled:         testCase.errorCount,
+					model.ExecutionStateFailed:            testCase.errorCount,
 					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
