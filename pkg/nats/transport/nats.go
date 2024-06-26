@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
@@ -281,8 +280,8 @@ func (t *NATSTransport) NodeInfoDecorator() models.NodeInfoDecorator {
 }
 
 // DebugInfoProviders returns the debug info of the NATS transport layer
-func (t *NATSTransport) DebugInfoProviders() []model.DebugInfoProvider {
-	var debugInfoProviders []model.DebugInfoProvider
+func (t *NATSTransport) DebugInfoProviders() []models.DebugInfoProvider {
+	var debugInfoProviders []models.DebugInfoProvider
 	if t.natsServer != nil {
 		debugInfoProviders = append(debugInfoProviders, t.natsServer)
 	}

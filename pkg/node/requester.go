@@ -37,7 +37,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
@@ -53,7 +52,7 @@ type Requester struct {
 	NodeDiscoverer     orchestrator.NodeDiscoverer
 	nodeManager        *manager.NodeManager
 	cleanupFunc        func(ctx context.Context)
-	debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders []models.DebugInfoProvider
 }
 
 //nolint:funlen,gocyclo
@@ -249,7 +248,7 @@ func NewRequesterNode(
 	housekeeping.Start(ctx)
 
 	// register debug info providers for the /debug endpoint
-	debugInfoProviders := []model.DebugInfoProvider{
+	debugInfoProviders := []models.DebugInfoProvider{
 		discovery.NewDebugInfoProvider(nodeManager),
 	}
 
