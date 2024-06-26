@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+go env
+
 # shellcheck disable=SC1090,SC2312
 source <(.buildkite/scripts/get_google_application_credentials.sh GOOGLE_APPLICATION_CREDENTIALS_CONTENT)
 
