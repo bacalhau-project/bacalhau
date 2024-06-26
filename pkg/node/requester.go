@@ -264,14 +264,8 @@ func NewRequesterNode(
 		discovery.NewDebugInfoProvider(nodeManager),
 	}
 
-	// register requester public http apis
-	requesterAPIServer := requester_endpoint.NewEndpoint(requester_endpoint.EndpointParams{
-		Router:             apiServer.Router,
-		Requester:          endpoint,
-		DebugInfoProviders: debugInfoProviders,
-		JobStore:           jobStore,
-		NodeDiscoverer:     nodeManager,
-	})
+	// TODO: delete this when we are ready to stop serving a deprecation notice.
+	requester_endpoint.NewEndpoint(apiServer.Router)
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:       apiServer.Router,
@@ -305,7 +299,6 @@ func NewRequesterNode(
 		// record the event in a log
 		eventTracer,
 		// dispatches events to listening websockets
-		requesterAPIServer,
 	)
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct

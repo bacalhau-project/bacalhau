@@ -18,18 +18,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
@@ -340,21 +338,39 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	// for the requester node to pick up the nodeInfo messages
 	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0].RequesterNode, nodeCount)
 
-	jobConfig := testutils.MakeJobWithOpts(suite.T(),
-		legacy_job.WithResources("", "", "", "1"),
-	)
+	job := &models.Job{
+		Name:  suite.T().Name(),
+		Type:  models.JobTypeBatch,
+		Count: 1,
+		Tasks: []*models.Task{
+			{
+				Name: suite.T().Name(),
+				Engine: &models.SpecConfig{
+					Type:   models.EngineNoop,
+					Params: make(map[string]interface{}),
+				},
+				Publisher: &models.SpecConfig{
+					Type:   models.PublisherNoop,
+					Params: make(map[string]interface{}),
+				},
+				ResourcesConfig: &models.ResourcesConfig{
+					CPU:    "",
+					Memory: "",
+					Disk:   "",
+					GPU:    "1",
+				},
+			},
+		},
+	}
+	job.Normalize()
 
-	resolver := legacy.NewStateResolver(stack.Nodes[0].RequesterNode.JobStore)
+	resolver := scenario.NewStateResolverFromStore(stack.Nodes[0].RequesterNode.JobStore)
 
 	for i := 0; i < nodeCount; i++ {
 		for j := 0; j < jobsPerNode; j++ {
-			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID:   "123",
-				APIVersion: jobConfig.APIVersion,
-				Spec:       &jobConfig.Spec,
-			})
+			submittedJob, err := stack.Nodes[0].RequesterNode.EndpointV2.SubmitJob(ctx, &orchestrator.SubmitJobRequest{Job: job})
 			require.NoError(suite.T(), err)
-			jobIds = append(jobIds, submittedJob.Metadata.ID)
+			jobIds = append(jobIds, submittedJob.JobID)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
 			// and to give time for compute nodes to accept and run the jobs
@@ -365,7 +381,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	for _, jobId := range jobIds {
-		err := resolver.WaitUntilComplete(ctx, jobId)
+		err = resolver.Wait(ctx, jobId, scenario.WaitForSuccessfulCompletion())
 		require.NoError(suite.T(), err)
 	}
 
@@ -374,11 +390,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	allocationMap := map[string]int{}
 
 	for _, jobId := range jobIds {
-		jobState, err := resolver.GetJobState(ctx, jobId)
+		jobState, err := resolver.JobState(ctx, jobId)
 		require.NoError(suite.T(), err)
-		completedExecutionStates := legacy_job.GetCompletedExecutionStates(jobState)
+		completedExecutionStates := scenario.GetCompletedExecutionStates(jobState)
 		require.Equal(suite.T(), 1, len(completedExecutionStates))
-		require.Equal(suite.T(), model.ExecutionStateCompleted, completedExecutionStates[0].State)
+		require.Equal(suite.T(), models.ExecutionStateCompleted, completedExecutionStates[0].ComputeState.StateType)
 		allocationMap[completedExecutionStates[0].NodeID]++
 	}
 

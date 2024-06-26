@@ -80,7 +80,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute3 = stack.Nodes[3]
 	s.api = clientv2.New(fmt.Sprintf("http://%s:%d", s.requester.APIServer.Address, s.requester.APIServer.Port))
 	s.Require().NoError(err)
-	s.stateResolver = scenario.NewStateResolver(s.api)
+	s.stateResolver = scenario.NewStateResolverFromAPI(s.api)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester.RequesterNode, 4)

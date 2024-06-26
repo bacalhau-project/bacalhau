@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -22,14 +22,22 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api *client.APIClient) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.API) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 
-	versions.ServerVersion, err = api.Version(ctx)
+	resp, err := api.Agent().Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
 	}
+	// urrrgguuhcckkk why are we embedding the version in the response
+	versions.ServerVersion.Major = resp.Major
+	versions.ServerVersion.Minor = resp.Minor
+	versions.ServerVersion.GitVersion = resp.GitVersion
+	versions.ServerVersion.GitCommit = resp.GitCommit
+	versions.ServerVersion.BuildDate = resp.BuildDate
+	versions.ServerVersion.GOOS = resp.GOOS
+	versions.ServerVersion.GOARCH = resp.GOARCH
 
 	clientID, err := config.GetClientID(cfg.User.KeyPath)
 	if err != nil {
