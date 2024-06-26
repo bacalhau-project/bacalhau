@@ -67,3 +67,5 @@ dist/
 
 !**/.flox/env.json
 .flox/cache
+
+*credentials.json
