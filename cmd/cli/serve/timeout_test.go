@@ -4,10 +4,10 @@ package serve_test
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	noTimeout          = model.NoJobTimeout
+	noTimeout          = time.Duration(math.MaxInt64).Truncate(time.Second)
 	nonZeroTimeout     = 30 * time.Second
 	halfNonZeroTimeout = nonZeroTimeout / 2
 )
@@ -26,21 +26,19 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 	cases := []struct {
 		configuredMax    *time.Duration
 		timeoutSpecified *time.Duration
-		timeoutApplied   time.Duration
-		stateExpected    model.JobStateType
+		stateExpected    models.JobStateType
 	}{
-		{configuredMax: nil, timeoutSpecified: nil, timeoutApplied: model.NoJobTimeout, stateExpected: model.JobStateCompleted},
-		{configuredMax: nil, timeoutSpecified: &nonZeroTimeout, timeoutApplied: nonZeroTimeout, stateExpected: model.JobStateCompleted},
-		{configuredMax: &nonZeroTimeout, timeoutSpecified: nil, timeoutApplied: nonZeroTimeout, stateExpected: model.JobStateCompleted},
-		{configuredMax: &nonZeroTimeout, timeoutSpecified: &halfNonZeroTimeout, timeoutApplied: halfNonZeroTimeout, stateExpected: model.JobStateCompleted},
-		{configuredMax: &nonZeroTimeout, timeoutSpecified: &noTimeout, timeoutApplied: noTimeout, stateExpected: model.JobStateError},
+		{configuredMax: nil, timeoutSpecified: nil, stateExpected: models.JobStateTypeCompleted},
+		{configuredMax: nil, timeoutSpecified: &nonZeroTimeout, stateExpected: models.JobStateTypeCompleted},
+		{configuredMax: &nonZeroTimeout, timeoutSpecified: nil, stateExpected: models.JobStateTypeCompleted},
+		{configuredMax: &nonZeroTimeout, timeoutSpecified: &halfNonZeroTimeout, stateExpected: models.JobStateTypeCompleted},
+		{configuredMax: &nonZeroTimeout, timeoutSpecified: &noTimeout, stateExpected: models.JobStateTypeFailed},
 	}
 
 	for _, tc := range cases {
 		name := fmt.Sprintf(
-			"job in %s has timeout %s after configuring %s and specifying %s",
+			"job in %s configuring timeout %s and specifying %s",
 			tc.stateExpected,
-			tc.timeoutApplied,
 			tc.configuredMax,
 			tc.timeoutSpecified,
 		)

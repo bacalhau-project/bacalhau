@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ func TestLoggingTracerProvider_addsSpanIDToLogger(t *testing.T) {
 	ctx := context.Background()
 	expectedJobId := "job-id"
 
-	m, err := baggage.NewMember(model.TracerAttributeNameJobID, expectedJobId)
+	m, err := baggage.NewMember(TracerAttributeNameJobID, expectedJobId)
 	require.NoError(t, err)
 	b, err := baggage.New(m)
 	require.NoError(t, err)
@@ -52,7 +51,7 @@ func TestLoggingTracerProvider_addsSpanIDToLogger(t *testing.T) {
 	var message map[string]string
 	require.NoError(t, json.Unmarshal([]byte(sb.String()), &message))
 
-	assert.Equal(t, expectedJobId, message[model.TracerAttributeNameJobID])
+	assert.Equal(t, expectedJobId, message[TracerAttributeNameJobID])
 	assert.Equal(t, span.SpanContext().SpanID().String(), message["span_id"])
 	assert.Equal(t, span.SpanContext().TraceID().String(), message["trace_id"])
 }

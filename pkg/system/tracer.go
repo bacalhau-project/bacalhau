@@ -4,7 +4,8 @@ import (
 	"context"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -26,7 +27,7 @@ func GetTracer() oteltrace.Tracer {
 // ----------------------------------------
 
 func NewSpan(ctx context.Context, t oteltrace.Tracer, name string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
-	for _, attributeName := range []string{model.TracerAttributeNameJobID, model.TracerAttributeNameNodeID} {
+	for _, attributeName := range []string{telemetry.TracerAttributeNameJobID, telemetry.TracerAttributeNameNodeID} {
 		if v := baggage.FromContext(ctx).Member(attributeName).Value(); v != "" {
 			opts = append(opts, oteltrace.WithAttributes(
 				attribute.String(attributeName, v),
@@ -74,11 +75,11 @@ func Span(ctx context.Context, spanName string, opts ...oteltrace.SpanStartOptio
 // ----------------------------------------
 
 func AddNodeIDToBaggage(ctx context.Context, nodeID string) context.Context {
-	return addFieldToBaggage(ctx, model.TracerAttributeNameNodeID, nodeID)
+	return addFieldToBaggage(ctx, telemetry.TracerAttributeNameNodeID, nodeID)
 }
 
 func AddJobIDToBaggage(ctx context.Context, jobID string) context.Context {
-	return addFieldToBaggage(ctx, model.TracerAttributeNameJobID, jobID)
+	return addFieldToBaggage(ctx, telemetry.TracerAttributeNameJobID, jobID)
 }
 
 func addFieldToBaggage(ctx context.Context, key, value string) context.Context {
@@ -94,10 +95,6 @@ func addFieldToBaggage(ctx context.Context, key, value string) context.Context {
 	}
 
 	return baggage.ContextWithBaggage(ctx, b)
-}
-
-func AddJobIDFromBaggageToSpan(ctx context.Context, span oteltrace.Span) {
-	addAttributeToSpanFromBaggage(ctx, span, model.TracerAttributeNameJobID)
 }
 
 func addAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, name string) {

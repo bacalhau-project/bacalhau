@@ -40,7 +40,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type Requester struct {
@@ -272,7 +271,6 @@ func NewRequesterNode(
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
 	// Register event handlers
-	lifecycleEventHandler := system.NewJobLifecycleEventHandler(nodeID)
 	eventTracer, err := eventhandler.NewTracer(metricsConfig.EventTracerPath)
 	if err != nil {
 		return nil, err
@@ -280,8 +278,6 @@ func NewRequesterNode(
 
 	// order of event handlers is important as triggering some handlers might depend on the state of others.
 	localJobEventConsumer.AddHandlers(
-		// add tracing metadata to the context about the read event
-		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
 		// ends the span for the job if received a terminal event
 		tracerContextProvider,
 		// record the event in a log

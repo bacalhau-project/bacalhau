@@ -15,7 +15,6 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -122,7 +121,7 @@ func (m *mixedExecutorFactory) Get(
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop.String())
+	noopExecutor, err := noopProvider.Get(ctx, models.EngineNoop)
 	if err != nil {
 		return nil, err
 	}
