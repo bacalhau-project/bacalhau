@@ -3,11 +3,11 @@
 import json
 
 from bacalhau_apiclient.api import job_api
-from bacalhau_apiclient.models.cancel_request import CancelRequest
-from bacalhau_apiclient.models.events_request import EventsRequest
-from bacalhau_apiclient.models.list_request import ListRequest
-from bacalhau_apiclient.models.state_request import StateRequest
-from bacalhau_apiclient.models.submit_request import SubmitRequest
+from bacalhau_apiclient.models.legacy_cancel_request import LegacyCancelRequest
+from bacalhau_apiclient.models.legacy_events_request import LegacyEventsRequest
+from bacalhau_apiclient.models.legacy_list_request import LegacyListRequest
+from bacalhau_apiclient.models.legacy_state_request import LegacyStateRequest
+from bacalhau_apiclient.models.legacy_submit_request import LegacySubmitRequest
 from bacalhau_apiclient.rest import ApiException
 from bacalhau_sdk.config import (
     get_client_id,
@@ -31,7 +31,7 @@ def submit(data: dict):
     json_bytes = json_data.encode("utf-8")
     signature = sign_for_client(json_bytes)
     client_public_key = get_client_public_key()
-    submit_req = SubmitRequest(
+    submit_req = LegacySubmitRequest(
         client_public_key=client_public_key,
         payload=sanitized_data,
         signature=signature,
@@ -51,7 +51,7 @@ def cancel(job_id: str):
     json_bytes = json_data.encode("utf-8")
     signature = sign_for_client(json_bytes)
     client_public_key = get_client_public_key()
-    cancel_req = CancelRequest(
+    cancel_req = LegacyCancelRequest(
         client_public_key=client_public_key,
         payload=sanitized_data,
         signature=signature,
@@ -63,7 +63,7 @@ def list():
     """List all jobs."""
     try:
         # Simply lists jobs.
-        list_request = ListRequest(
+        list_request = LegacyListRequest(
             client_id=get_client_id(),
             sort_reverse=False,
             sort_by="created_at",
@@ -96,7 +96,7 @@ def states(job_id: str):
     """Get states."""
     try:
         # Returns the state of the job-id specified in the body payload.
-        state_request = StateRequest(
+        state_request = LegacyStateRequest(
             client_id=get_client_id(),
             job_id=job_id,
         )
@@ -111,7 +111,7 @@ def events(job_id: str):
     # TODO - add tests
     try:
         # Returns the events of the job-id specified in the body payload.
-        state_request = EventsRequest(
+        state_request = LegacyEventsRequest(
             client_id=get_client_id(),
             job_id=job_id,
         )
