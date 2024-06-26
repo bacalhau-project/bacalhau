@@ -30,14 +30,15 @@ func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
 	}
-	// urrrgguuhcckkk why are we embedding the version in the response
-	versions.ServerVersion.Major = resp.Major
-	versions.ServerVersion.Minor = resp.Minor
-	versions.ServerVersion.GitVersion = resp.GitVersion
-	versions.ServerVersion.GitCommit = resp.GitCommit
-	versions.ServerVersion.BuildDate = resp.BuildDate
-	versions.ServerVersion.GOOS = resp.GOOS
-	versions.ServerVersion.GOARCH = resp.GOARCH
+	versions.ServerVersion = &models.BuildVersionInfo{
+		Major:      resp.Major,
+		Minor:      resp.Minor,
+		GitVersion: resp.GitVersion,
+		GitCommit:  resp.GitCommit,
+		BuildDate:  resp.BuildDate,
+		GOOS:       resp.GOOS,
+		GOARCH:     resp.GOARCH,
+	}
 
 	clientID, err := config.GetClientID(cfg.User.KeyPath)
 	if err != nil {
