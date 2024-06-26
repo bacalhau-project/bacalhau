@@ -368,7 +368,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	for i := 0; i < nodeCount; i++ {
 		for j := 0; j < jobsPerNode; j++ {
-			submittedJob, err := stack.Nodes[0].RequesterNode.EndpointV2.SubmitJob(ctx, &orchestrator.SubmitJobRequest{Job: job})
+			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, &orchestrator.SubmitJobRequest{Job: job})
 			require.NoError(suite.T(), err)
 			jobIds = append(jobIds, submittedJob.JobID)
 
