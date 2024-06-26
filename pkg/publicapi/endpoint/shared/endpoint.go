@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels/legacymodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -78,6 +77,14 @@ func (e *Endpoint) nodeInfo(c echo.Context) error {
 	return c.JSON(http.StatusOK, e.nodeStateProvider.GetNodeState(c.Request().Context()))
 }
 
+type VersionRequest struct {
+	ClientID string `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+}
+
+type VersionResponse struct {
+	VersionInfo *models.BuildVersionInfo `json:"build_version_info"`
+}
+
 // version godoc
 //
 //	@ID				apiServer/version
@@ -94,12 +101,12 @@ func (e *Endpoint) nodeInfo(c echo.Context) error {
 //
 //nolint:lll
 func (e *Endpoint) version(c echo.Context) error {
-	var versionReq legacymodels.VersionRequest
+	var versionReq VersionRequest
 	if err := c.Bind(&versionReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, legacymodels.VersionResponse{
+	return c.JSON(http.StatusOK, VersionResponse{
 		VersionInfo: version.Get(),
 	})
 }
